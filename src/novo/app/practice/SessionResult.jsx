@@ -1,13 +1,11 @@
 // Resultado de um treino ou simulado: placar, desempenho por área e revisão questão a questão.
 // O protótipo não tem esta tela; ela usa só componentes do design system.
 import React from "react";
-import { AnswerOption, Badge, Banner, Button, Card, Icon, ProgressBar, StatCard, Tabs } from "../../ds";
+import { Badge, Banner, Button, Card, Icon, ProgressBar, StatCard, Tabs } from "../../ds";
 import { useMQ } from "../Shell.jsx";
-import { Correction, PreliminarySeal, answerState, isAnnulled } from "./Correction.jsx";
-import { IneditaSeal } from "./IneditasCard.jsx";
-import { areaLabel, areaOf, formatClock, formatWhen, isStaziamed, percent, questionRef, splitStatement } from "./format.js";
-import { SupportTable } from "./SupportTable.jsx";
-import { QuestionFigures } from "./QuestionFigures.jsx";
+import { PreliminarySeal, isAnnulled } from "./Correction.jsx";
+import { areaLabel, areaOf, formatClock, formatWhen, percent } from "./format.js";
+import { QuestionReview } from "./tela/QuestionReview.jsx";
 import { TriResult } from "./TriResult.jsx";
 
 // Anulada pela banca: fora de certas, erradas e em branco (não conta como acerto nem erro).
@@ -22,7 +20,6 @@ const STATE = {
 
 function ReviewRow({ question, position, first, open, onToggle, go }) {
   const state = STATE[stateOf(question)];
-  const { stem, ask } = splitStatement(question.statement);
   return (
     <div style={{ borderTop: first ? 0 : "1px solid var(--border-subtle)" }}>
       <button
@@ -39,28 +36,8 @@ function ReviewRow({ question, position, first, open, onToggle, go }) {
         <Icon name={open ? "chevron-up" : "chevron-down"} size={18} style={{ color: "var(--text-tertiary)", flex: "none" }} />
       </button>
       {open && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "4px 0 24px" }}>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Badge tone="brand">{areaLabel(question.area)}</Badge>
-            {isStaziamed(question) ? <IneditaSeal number={question.number} /> : <Badge>{questionRef(question)}</Badge>}
-            {isStaziamed(question) && <Badge tone="warning">não é questão oficial do Inep</Badge>}
-          </div>
-          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, textWrap: "pretty", textAlign: "justify", hyphens: "auto" }} lang="pt-BR">{stem}</p>
-          <QuestionFigures images={question.images} questionId={question.id} />
-          <SupportTable support={question.support} />
-          {ask && <p style={{ margin: 0, font: "600 16px/1.45 var(--font-sans)", textAlign: "justify", hyphens: "auto" }} lang="pt-BR">{ask}</p>}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {question.options.map((option) => (
-              <AnswerOption
-                key={option.id}
-                letter={option.id}
-                state={answerState(option.id, question.selected, question.correction)}
-              >
-                {option.text}
-              </AnswerOption>
-            ))}
-          </div>
-          <Correction selected={question.selected} correction={question.correction} question={question} go={go} />
+        <div style={{ padding: "4px 0 24px" }}>
+          <QuestionReview question={question} selected={question.selected} correction={question.correction} go={go} />
         </div>
       )}
     </div>

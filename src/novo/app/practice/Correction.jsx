@@ -1,15 +1,27 @@
 // Correção de uma questão: veredito, explicação e o que a banca cobra.
-// Usada no painel da sessão e na revisão do resultado. Só mostra o que existe no banco.
+// Usada na sessão, na revisão do resultado e no caderno de erros. Só mostra o que existe no banco.
+// Modelo "Tela de Questão" (15/10/2026): a correção se divide em duas partes que a tela encaixa onde quiser:
+//  - CorrectionBody: o que fica no cartão da questão (veredito, explicação, "por que não as outras", análise, conduta);
+//  - CorrectionSide: o painel lateral (área e tema, selo de gabarito, fontes, Tutor, flashcard, relacionadas).
+// `Correction` junta as duas, empilhadas (resultado e caderno de erros).
 import React from "react";
-import { Badge, Button, Icon } from "../../ds";
+import { Badge, Icon } from "../../ds";
 import { FlashcardForm } from "../review/FlashcardForm.jsx";
 import { QuestionCommentary, useCommentary } from "./QuestionCommentary.jsx";
 import { LinkedSources, useLinkedSources } from "./LinkedSources.jsx";
 import { useSession } from "../session.jsx";
 import { ERROR_TYPE, KIND_LABEL } from "./diagnosisLabels.js";
-import { isStaziamed } from "./format.js";
+import { areaLabel, areaOf, isStaziamed } from "./format.js";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
 import { RelatedQuestions } from "./RelatedQuestions.jsx";
+import "./tela/tela-questao.css";
+
+/**
+ * Decisão do dono (15/10/2026): as fontes das Questões Inéditas ficam na tabela interna e NÃO aparecem ao aluno (referências e códigos
+ * não aparecem em conteúdo StaziaMed). O banco ainda manda `official_sources` na correção; a tela não as mostra. Ligar = voltar o bloco
+ * "Fontes oficiais citadas" das inéditas (só com nova decisão do dono).
+ */
+export const MOSTRAR_FONTES_DAS_INEDITAS = false;
 
 /** Questão anulada pela banca (o banco diz "annulled"; sem gabarito também é anulada): não conta como acerto nem erro. */
 export const isAnnulled = (correction) => correction?.annulled === true || (correction != null && correction.correct_option == null);
@@ -33,9 +45,12 @@ export function answerState(id, selected, correction) {
 export function Verdict({ selected, correction }) {
   if (isAnnulled(correction)) {
     return (
-      <div style={{ padding: 16, borderRadius: 16, background: "var(--info-bg)", border: "1px solid var(--info-border)", display: "flex", gap: 12, alignItems: "center" }}>
-        <Icon name="ban" size={22} style={{ color: "var(--info-text)", flex: "none" }} />
-        <div>
+      <div className="tq-verdict" style={{ alignItems: "flex-start" }}>
+        <span className="tq-verdict__pill" data-t="info">
+          <Icon name="ban" size={16} style={{ marginRight: 6 }} />
+          Questão anulada
+        </span>
+        <div style={{ flex: "1 1 240px", minWidth: 0 }}>
           <div style={{ font: "600 15px var(--font-sans)" }}>Questão anulada pela banca. Não conta como acerto nem erro.</div>
           {annulledStudyNotes(correction).length === 0 && (
             <div style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 2 }}>Nenhuma alternativa conta como correta, por isso não há explicação de cada alternativa.</div>
@@ -46,16 +61,14 @@ export function Verdict({ selected, correction }) {
   }
   const blank = selected == null;
   const ok = correction.is_correct === true;
-  const tone = blank ? "warning" : ok ? "success" : "danger";
-  const text = blank
-    ? `Em branco. A correta é ${correction.correct_option}.`
-    : ok
-      ? "Resposta correta."
-      : `Você marcou ${selected}. A correta é ${correction.correct_option}.`;
   return (
-    <div style={{ padding: 16, borderRadius: 16, background: `var(--${tone}-bg)`, border: `1px solid var(--${tone}-border)`, display: "flex", gap: 12, alignItems: "center" }}>
-      <Icon name={blank ? "circle-minus" : ok ? "circle-check" : "circle-x"} size={22} style={{ color: `var(--${tone}-text)`, flex: "none" }} />
-      <div style={{ font: "600 15px var(--font-sans)" }}>{text}</div>
+    <div className="tq-verdict">
+      <span className="tq-verdict__pill" data-t={blank ? "warning" : ok ? "success" : "danger"}>
+        {blank ? "Em branco" : ok ? "Você acertou" : "Resposta incorreta"}
+      </span>
+      <span className="tq-verdict__key">
+        Gabarito: <strong>{correction.correct_option}</strong>
+      </span>
     </div>
   );
 }
@@ -112,35 +125,32 @@ function ErrorDiagnosis({ questionId }) {
   );
 }
 
-/** Salvar um flashcard pessoal a partir da questão: o verso vem com a conduta esperada. */
+/** Salvar um flashcard pessoal a partir da questão: o verso vem com a conduta esperada. Botão do painel + formulário embaixo. */
 function SaveAsFlashcard({ question, correction }) {
   const [state, setState] = React.useState("closed"); // closed | open | saved
-  if (state === "saved") {
-    return (
-      <div style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-body-sm)", color: "var(--success-text)" }} role="status">
-        <Icon name="circle-check" size={16} /> Flashcard salvo. Ele aparece na sua revisão de Flashcards.
-      </div>
-    );
-  }
-  if (state === "closed") {
-    return (
-      <div>
-        <Button variant="secondary" size="sm" icon="layers" onClick={() => setState("open")}>
-          Criar flashcard
-        </Button>
-      </div>
-    );
-  }
   return (
-    <div style={{ padding: 16, borderRadius: 16, background: "var(--surface-card)", border: "1px solid var(--border-default)" }}>
-      <div style={{ font: "600 15px var(--font-sans)", marginBottom: 12 }}>Novo flashcard</div>
-      <FlashcardForm
-        compact
-        initial={{ area: question.area, topic: correction.topic ?? "", front: "", back: correction.expected_conduct ?? "", source_question_id: question.id }}
-        onCancel={() => setState("closed")}
-        onSaved={() => setState("saved")}
-      />
-    </div>
+    <>
+      <button type="button" className="tq-secondary" data-done={state === "saved" ? "true" : "false"} disabled={state === "saved"} aria-expanded={state === "open"} onClick={() => setState(state === "open" ? "closed" : "open")}>
+        <Icon name="layers" size={18} />
+        {state === "saved" ? "Flashcard criado" : "Criar flashcard"}
+      </button>
+      {state === "saved" && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-body-sm)", color: "var(--success-text)" }} role="status">
+          <Icon name="circle-check" size={16} /> Flashcard salvo. Ele aparece na sua revisão de Flashcards.
+        </div>
+      )}
+      {state === "open" && (
+        <div className="tq-box" style={{ padding: 16, borderRadius: 16, borderColor: "var(--border-default)" }}>
+          <div style={{ font: "600 15px var(--font-sans)", marginBottom: 12 }}>Novo flashcard</div>
+          <FlashcardForm
+            compact
+            initial={{ area: question.area, topic: correction.topic ?? "", front: "", back: correction.expected_conduct ?? "", source_question_id: question.id }}
+            onCancel={() => setState("closed")}
+            onSaved={() => setState("saved")}
+          />
+        </div>
+      )}
+    </>
   );
 }
 
@@ -200,66 +210,54 @@ function OfficialSources({ correction }) {
   );
 }
 
-/**
- * `go` (navegação das telas) liga o bloco "Questões relacionadas" no fim da correção; `inSession` avisa que abrir outra
- * questão sai do treino em andamento.
- */
-export function Correction({ selected, correction, question, tutorContext = "question", go = null, inSession = false }) {
-  const source = correction.sources?.[0];
+/** Tudo que a correção busca no banco, num lugar só (a tela chama uma vez e passa para o corpo e o painel). */
+export function useCorrectionData(question, correction) {
+  const on = correction != null;
   // Questão StaziaMed: "Gabarito StaziaMed", nunca "gabarito oficial", "O que a questão avalia" nem o Tutor (o Tutor só trabalha com as oficiais)
-  const staz = correction.origin === "staziamed" || isStaziamed(question);
+  const staz = on && (correction.origin === "staziamed" || isStaziamed(question));
   // Anulada: nenhuma alternativa é "a correta" (a letra guardada não vale), então não há "Explicação clínica" da correta,
   // "Por que não as outras?" nem análise publicada, mesmo que venham de um servidor antigo
-  const annulled = isAnnulled(correction);
+  const annulled = on && isAnnulled(correction);
   // Análise Stazia publicada (se houver): substitui "Por que não as outras?", que fica como reserva
-  const fetched = useCommentary(staz ? null : question?.id);
+  const fetched = useCommentary(on && !staz ? question?.id : null);
   const commentary = annulled ? null : fetched;
   // Fontes vinculadas (12/10/2026): o trecho do documento oficial que sustenta a resposta; questão anulada não tem resposta a sustentar
-  const linked = useLinkedSources(annulled ? null : question?.id);
+  const linked = useLinkedSources(on && !annulled ? question?.id : null);
   // regra da rodada 2: a nota "O que mudou desde a prova" aparece UMA vez só. O banco (9920) já não manda a da carga das explicações
   // quando o quadro tem nota; a tela confere de novo (se o quadro mostra a nota da referência atual, a outra não aparece)
   const linkedNote = Boolean(linked) && linked.status !== "nao_confirmada" && (linked.current ?? []).some((i) => typeof i?.update_note === "string" && i.update_note.trim());
+  return { staz, annulled, commentary, linked, linkedNote };
+}
+
+const boxStyle = { padding: "14px 16px", borderRadius: 14, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", fontSize: 14, lineHeight: 1.55 };
+
+/** O que fica dentro do cartão da questão depois de responder: veredito, explicação, letras, análise, conduta, fontes vinculadas. */
+export function CorrectionBody({ selected, correction, question, data }) {
+  const { staz, annulled, commentary, linked, linkedNote } = data;
   return (
-    <>
+    <div className="tq-answer" aria-live="polite">
       <Verdict selected={selected} correction={correction} />
       {/* gabarito oficial ainda preliminar (o banco diz answer_preliminary; some quando o definitivo for registrado) */}
       {!staz && !annulled && correction.answer_preliminary === true && <PreliminarySeal info={correction.preliminary ?? {}} />}
-      {/* anulada: o Tutor não abre questão anulada (responderia "Questão não encontrada."), então o botão não aparece */}
-      {staz && !annulled && (
-        <div style={{ font: "600 15px var(--font-sans)" }}>
-          Gabarito StaziaMed: alternativa {correction.correct_option}
-          <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", fontWeight: 400 }}> · Questão Inédita, não é questão oficial do Inep</span>
-        </div>
-      )}
-      {!staz && question?.id && selected != null && !annulled && (
-        <div>
-          <TutorButton request={{ mode: "livre", questionId: question.id, context: { type: tutorContext, id: question.id } }} label={correction.is_correct === false ? "Discutir com o Tutor" : "Conversar com o Tutor"} />
-        </div>
-      )}
-      {correction.in_review && (
-        <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>A explicação desta questão está em revisão pela equipe.</div>
-      )}
-      {correction.explanation && !annulled && (
-        <div>
-          <div className="sm-overline">Explicação clínica</div>
-          <p style={{ margin: "8px 0 0", fontSize: 15, lineHeight: 1.6 }}>{correction.explanation}</p>
-        </div>
-      )}
+      {correction.explanation && !annulled && <p className="tq-expl">{correction.explanation}</p>}
       {question && correction.is_correct === false && selected != null && !annulled && <ErrorDiagnosis questionId={question.id} />}
       <QuestionCommentary commentary={commentary} />
       {!commentary && !annulled && correction.option_notes?.length > 0 && (
-        <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", fontSize: 14, display: "flex", flexDirection: "column", gap: 8 }}>
-          <b>Por que não as outras?</b>
-          {correction.option_notes.map((note) => (
-            <div key={note.id}>
-              <b>{note.id}.</b> {note.text}
-            </div>
-          ))}
+        <div>
+          <div className="tq-over" style={{ marginBottom: 8 }}>Por que não as outras?</div>
+          <div className="tq-letters">
+            {correction.option_notes.map((note) => (
+              <div key={note.id} data-key={note.id === correction.correct_option ? "true" : "false"}>
+                <b>{note.id}.</b>
+                <span>{note.text}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
       {annulled && <AnnulledStudy notes={annulledStudyNotes(correction)} />}
       {correction.expected_conduct && (
-        <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", fontSize: 14, lineHeight: 1.55 }}>
+        <div style={boxStyle}>
           <b>Conduta esperada.</b> {correction.expected_conduct}
         </div>
       )}
@@ -270,31 +268,88 @@ export function Correction({ selected, correction, question, tutorContext = "que
       {!commentary?.update_card && !linkedNote && <UpdateNote text={correction.update_note} />}
       {!staz && correction.inep_intent && (
         <div>
-          <div className="sm-overline">O que a questão avalia</div>
+          <div className="tq-over">O que a questão avalia</div>
           <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.55, color: "var(--text-secondary)" }}>{correction.inep_intent}</p>
         </div>
       )}
-      {correction.topic && (
-        <div style={{ minWidth: 0 }}>
-          {/* Temas podem ser longos: o selo quebra linha em vez de vazar do painel. */}
-          <Badge tone="brand" style={{ height: "auto", minHeight: 24, padding: "4px 8px", whiteSpace: "normal", lineHeight: 1.3, borderRadius: 12 }}>
-            {correction.topic}
-          </Badge>
-          {correction.subtopic && (
-            <p style={{ margin: "6px 0 0", font: "var(--type-body-sm)", fontSize: 13, color: "var(--text-secondary)" }}>{correction.subtopic}</p>
-          )}
+    </div>
+  );
+}
+
+/**
+ * Painel lateral. Área e tema (o tema só existe depois de responder, vem da correção), selo do gabarito, fontes do gabarito
+ * (só das questões oficiais, que o app já mostrava), Tutor (não abre para Inédita nem anulada), flashcard e relacionadas.
+ * Não mostra dificuldade: o banco não tem esse dado.
+ */
+export function CorrectionSide({ selected, correction, question, data, tutorContext = "question", go = null, inSession = false, children = null }) {
+  const { staz, annulled } = data;
+  const area = areaOf(question?.area);
+  const source = correction.sources?.[0];
+  const title = correction.topic ? `${areaLabel(question?.area)} — ${correction.topic}` : areaLabel(question?.area);
+  return (
+    <>
+      {children}
+      <div className="tq-panel" style={area ? { "--area": `var(${area.tone})` } : undefined}>
+        <div className="tq-ctx">
+          <div className="tq-ctx__tile" aria-hidden="true">
+            <Icon name={area?.icon ?? "stethoscope"} size={22} />
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div className="tq-over">Área e tema</div>
+            <div className="tq-ctx__title">{title}</div>
+            {correction.subtopic && <div className="tq-ctx__sub">{correction.subtopic}</div>}
+          </div>
+        </div>
+        {staz && !annulled && (
+          <dl className="tq-dl">
+            <dt>Gabarito</dt>
+            <dd>
+              <strong>Gabarito StaziaMed</strong> · questão autoral, não oficial do Inep
+            </dd>
+          </dl>
+        )}
+      </div>
+      {correction.in_review && (
+        <div className="tq-notice-card" role="status">
+          <Icon name="clock" size={20} style={{ flex: "none", marginTop: 1 }} />
+          <div>
+            <strong style={{ display: "block", fontWeight: 700 }}>Explicação em revisão</strong>A explicação desta questão está em revisão pela equipe.
+          </div>
         </div>
       )}
-      {staz && <OfficialSources correction={correction} />}
+      {staz && MOSTRAR_FONTES_DAS_INEDITAS && <OfficialSources correction={correction} />}
       {!staz && source?.title && (
-        <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
-          Gabarito: {source.title}
-          {source.organization ? ` · ${source.organization}` : ""}
+        <div className="tq-panel" style={{ gap: 12 }}>
+          <div className="tq-over tq-over--accent">Fontes</div>
+          <div className="tq-src">
+            <Icon name="file-text" size={20} style={{ color: "var(--tq-accent-text)", flex: "none" }} />
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span className="tq-src__t">{source.title}</span>
+              {(source.organization ?? source.organ) && <span className="tq-src__o">{source.organization ?? source.organ}</span>}
+            </span>
+          </div>
         </div>
       )}
-      {/* chaves DIFERENTES de propósito: irmãos com a mesma chave fazem o React duplicar o botão a cada nova renderização */}
-      {question && <SaveAsFlashcard key={`flashcard-${question.id}`} question={question} correction={correction} />}
+      <div className="tq-actions">
+        {!staz && question?.id && selected != null && !annulled && <TutorButton variant="modelo" request={{ mode: "livre", questionId: question.id, context: { type: tutorContext, id: question.id } }} label={correction.is_correct === false ? "Discutir com o Tutor" : "Conversar com o Tutor"} />}
+        {/* chaves DIFERENTES de propósito: irmãos com a mesma chave fazem o React duplicar o botão a cada nova renderização */}
+        {question && <SaveAsFlashcard key={`flashcard-${question.id}`} question={question} correction={correction} />}
+      </div>
       {go && question?.id && <RelatedQuestions key={`related-${question.id}`} questionId={question.id} go={go} inSession={inSession} />}
     </>
+  );
+}
+
+/**
+ * Correção empilhada (resultado do treino e caderno de erros): o corpo e o painel, um embaixo do outro.
+ * `go` liga "Questões relacionadas"; `inSession` avisa que abrir outra questão sai do treino em andamento.
+ */
+export function Correction({ selected, correction, question, tutorContext = "question", go = null, inSession = false }) {
+  const data = useCorrectionData(question, correction);
+  return (
+    <div className="tq" style={{ minHeight: 0, background: "transparent", display: "flex", flexDirection: "column", gap: 16 }}>
+      <CorrectionBody selected={selected} correction={correction} question={question} data={data} />
+      <CorrectionSide selected={selected} correction={correction} question={question} data={data} tutorContext={tutorContext} go={go} inSession={inSession} />
+    </div>
   );
 }

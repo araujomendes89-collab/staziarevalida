@@ -2,12 +2,12 @@
 // Mesma marcação da ErrorsScreen do kit (prototype/ReviewScreens.jsx), que só tinha o estado
 // vazio; a lista, o detalhe com a correção e a anotação usam componentes do design system.
 import React from "react";
-import { AnswerOption, Badge, Banner, Button, Card, Chip, EmptyState, Icon, SelectField, StatCard, Tabs } from "../../ds";
+import { Badge, Banner, Button, Card, Chip, EmptyState, Icon, SelectField, StatCard, Tabs } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
-import { Correction, PreliminarySeal, answerState } from "../practice/Correction.jsx";
-import { AREAS, areaLabel, formatWhen, isStaziamed, questionRef, splitStatement } from "../practice/format.js";
-import { SupportTable } from "../practice/SupportTable.jsx";
+import { PreliminarySeal } from "../practice/Correction.jsx";
+import { AREAS, areaLabel, formatWhen, isStaziamed, questionRef } from "../practice/format.js";
+import { QuestionReview } from "../practice/tela/QuestionReview.jsx";
 
 const REASONS = [
   { value: "conhecimento", label: "Não sabia o conteúdo" },
@@ -100,7 +100,6 @@ function ErrorRow({ item, first, open, onToggle, onNote, go }) {
     };
   }, [open, detail, backend, item.question_id]);
 
-  const parts = detail ? splitStatement(detail.statement) : null;
   return (
     <div style={{ borderTop: first ? 0 : "1px solid var(--border-subtle)" }}>
       <button
@@ -132,17 +131,7 @@ function ErrorRow({ item, first, open, onToggle, onNote, go }) {
           {!detail && !failed && <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Carregando…</p>}
           {detail && (
             <>
-              <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, textWrap: "pretty" }}>{parts.stem}</p>
-              <SupportTable support={detail.support} />
-              {parts.ask && <p style={{ margin: 0, font: "600 16px/1.45 var(--font-sans)" }}>{parts.ask}</p>}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {detail.options.map((option) => (
-                  <AnswerOption key={option.id} letter={option.id} state={answerState(option.id, detail.selected, detail.correction)}>
-                    {option.text}
-                  </AnswerOption>
-                ))}
-              </div>
-              <Correction selected={detail.selected} correction={detail.correction} question={detail} tutorContext="error" go={go} />
+              <QuestionReview question={{ ...item, ...detail, id: item.question_id }} selected={detail.selected} correction={detail.correction} tutorContext="error" go={go} />
               <NoteEditor
                 questionId={item.question_id}
                 initial={detail}

@@ -81,8 +81,9 @@ describe("selo GABARITO PRELIMINAR (Revalida 2026/2)", () => {
   });
 
   it("na correção: selo e frase visíveis junto do veredito", () => {
-    render(<Correction selected="A" correction={{ ...base, answer_preliminary: true, preliminary: { expected_on: "2026-12-04" } }} question={question} />);
-    expect(screen.getByText("Você marcou A. A correta é B.")).toBeTruthy();
+    const { container } = render(<Correction selected="A" correction={{ ...base, answer_preliminary: true, preliminary: { expected_on: "2026-12-04" } }} question={question} />);
+    expect(screen.getByText("Resposta incorreta")).toBeTruthy();
+    expect(container.querySelector(".tq-verdict__key")!.textContent).toBe("Gabarito: B");
     const nota = screen.getByRole("note", { name: PRELIMINARY_SEAL });
     expect(nota.textContent).toBe(`${PRELIMINARY_SEAL}${FRASE}`);
   });

@@ -5,20 +5,20 @@
 //    O cronômetro do simulado pausa, continua e encerra (com confirmação). A pausa fica no banco
 //    (…4300_simulado_cronometro.sql): pausado, o tempo não corre, a questão fica escondida e o banco
 //    não aceita resposta; dá para sair e continuar outro dia.
-// A dica e o tutor de IA entram quando o Tutor for ligado.
+// Visual: modelo "Tela de Questão" (15/10/2026), em ./tela. A dica do Tutor antes de responder não existe no app (só o Tutor depois de
+// responder, que vem com a correção); dificuldade e fontes das Questões Inéditas não aparecem (ver docs/tela-questao-modelo.md).
 import React from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
-import { AnswerOption, Badge, Banner, Button, Card, EmptyState, Icon, IconButton, IconTile } from "../../ds";
+import { Banner, Button, Card, EmptyState, Icon } from "../../ds";
 import { useMQ } from "../Shell.jsx";
 import { useSession } from "../session.jsx";
-import { Correction, answerState } from "./Correction.jsx";
-import { QuestionFigures } from "./QuestionFigures.jsx";
+import { CorrectionBody, CorrectionSide, answerState, isAnnulled, useCorrectionData } from "./Correction.jsx";
 import { SessionResult } from "./SessionResult.jsx";
-import { IneditaSeal } from "./IneditasCard.jsx";
-import { areaLabel, formatClock, isStaziamed, questionRef, splitStatement } from "./format.js";
-import { SupportTable } from "./SupportTable.jsx";
-import { PreliminarySeal } from "./Correction.jsx";
+import { areaLabel, formatClock } from "./format.js";
 import { XPToast, useTurnFeedback } from "../play/PlayFeedback.jsx";
+import { QuestionHeader, timerLevel } from "./tela/QuestionHeader.jsx";
+import { Alternatives, QuestionFooter, QuestionSheet, ReportQuestion } from "./tela/QuestionSheet.jsx";
+import "./tela/tela-questao.css";
 
 // Até aqui, um traço por questão na barra do topo; acima disso, uma barra contínua.
 const SEGMENT_LIMIT = 30;
@@ -92,7 +92,6 @@ function Runner({ session, go, onFinished }) {
   });
   const [picked, setPicked] = React.useState(null); // treino: alternativa escolhida, ainda sem confirmar
   const [strike, setStrike] = React.useState({}); // alternativas riscadas por questão (só na tela)
-  const [striking, setStriking] = React.useState(false);
   const [confirming, setConfirming] = React.useState(false); // false · "finish" (última questão) · "end" (encerrar pelo cronômetro)
   const [busy, setBusy] = React.useState(false);
   const [timer, setTimer] = React.useState(() => readTimer(session));
@@ -158,7 +157,6 @@ function Runner({ session, go, onFinished }) {
     try {
       await saving.current.catch(() => {}); // a resposta que estava saindo entra antes da pausa
       setTimer(readTimer(await backend.rpc("app_pause_session", { p_session_id: session.id })));
-      setStriking(false);
     } catch (e) {
       if (timeIsUp(e)) finish(true);
       else setError("Não foi possível pausar. Verifique a conexão e tente de novo.");
@@ -187,16 +185,8 @@ function Runner({ session, go, onFinished }) {
 
   const choose = (option) => {
     if (busy || revealed) return;
-    if (striking) {
-      if (sim && question.selected === option) return; // resposta guardada não é riscada
-      if (picked === option) setPicked(null);
-      setStrike((all) => ({ ...all, [question.id]: struck.includes(option) ? struck.filter((o) => o !== option) : [...struck, option] }));
-      return;
-    }
-    if (struck.includes(option)) {
-      setStrike((all) => ({ ...all, [question.id]: struck.filter((o) => o !== option) }));
-      return;
-    }
+    // tocar numa alternativa riscada tira o risco e a escolhe (como no modelo)
+    if (struck.includes(option)) setStrike((all) => ({ ...all, [question.id]: struck.filter((o) => o !== option) }));
     if (!sim) {
       setPicked(option);
       return;
@@ -221,6 +211,14 @@ function Runner({ session, go, onFinished }) {
       });
   };
 
+  // Riscar é só da tela. A resposta já guardada do simulado não se risca; no treino, riscar a escolhida desmarca.
+  const strikeOption = (option) => {
+    if (busy || revealed) return;
+    if (sim && question.selected === option) return;
+    if (picked === option) setPicked(null);
+    setStrike((all) => ({ ...all, [question.id]: struck.includes(option) ? struck.filter((o) => o !== option) : [...struck, option] }));
+  };
+
   const confirm = async () => {
     if (picked == null || busy) return;
     setBusy(true);
@@ -238,7 +236,6 @@ function Runner({ session, go, onFinished }) {
       if (play?.xp?.valid) setSessionXp((n) => n + (play.xp.total ?? 0) + (play.bonus ?? []).reduce((sum, b) => sum + (b.xp ?? 0), 0));
       feedback.push(play);
       setPicked(null);
-      setStriking(false);
     } catch {
       setError("Não foi possível registrar sua resposta. Tente de novo.");
     }
@@ -291,238 +288,181 @@ function Runner({ session, go, onFinished }) {
     if (!revealed) return selected === id ? "selected" : "idle";
     return answerState(id, question.selected, question.correction);
   };
-  const tool = (icon, label, on, onClick, disabled) => (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-pressed={on}
-      aria-label={label}
-      style={{ display: "flex", alignItems: "center", gap: 8, height: 44, padding: mobile ? "0 12px" : "0 16px", border: 0, borderRadius: 999, background: on ? "var(--selected-bg)" : "transparent", color: on ? "var(--selected-text)" : "var(--text-secondary)", font: "600 14px var(--font-sans)", cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.4 : 1 }}
-    >
-      <Icon name={icon} size={18} />
-      {!mobile && label}
-    </button>
-  );
 
-  const { stem, ask } = splitStatement(question.statement);
   const blanks = questions.map((q, k) => ({ q, k })).filter(({ q }) => q.selected == null);
-  const urgent = remaining !== null && remaining <= 300 && !paused;
+  const limit = sim ? (session.time_limit_seconds ?? null) : null;
+  const level = sim && !paused ? timerLevel(remaining, limit) : "ok";
   const clock = remaining !== null ? remaining : spent;
   const ending = confirming === "end";
-  // Controles do cronômetro do simulado: com texto no computador, só o ícone no celular.
-  const timerControl = (icon, label, onClick, disabled) =>
-    mobile ? (
-      <IconButton size="sm" icon={icon} label={`${label} o simulado`} onClick={onClick} disabled={disabled} />
-    ) : (
-      <Button variant="ghost" size="sm" icon={icon} onClick={onClick} disabled={disabled} aria-label={`${label} o simulado`}>
-        {label}
-      </Button>
-    );
-  const panel = revealed && (
-    <aside
-      style={{ background: "var(--surface-subtle)", borderLeft: mobile ? 0 : "1px solid var(--border-subtle)", borderTop: mobile ? "1px solid var(--border-subtle)" : 0, padding: 28, display: "flex", flexDirection: "column", gap: 16 }}
-      aria-live="polite"
-    >
-      {question.play && <XPToast play={question.play} />}
-      <Correction selected={question.selected} correction={question.correction} question={question} go={go} inSession />
-    </aside>
+  const correctionData = useCorrectionData(question, revealed ? question.correction : null);
+
+  // Progresso: um traço por questão (até 30) com a cor do resultado no treino; acima disso, barra contínua.
+  const segments =
+    total <= SEGMENT_LIMIT && !(mobile && sim)
+      ? questions.map((q, k) => {
+          if (k === index) return revealed ? (isAnnulled(question.correction) ? "done" : question.correction.is_correct ? "right" : "wrong") : "current";
+          if (q.selected == null) return "open";
+          if (!q.correction || isAnnulled(q.correction)) return "done";
+          return q.correction.is_correct ? "right" : "wrong";
+        })
+      : null;
+  const timerLabel = !sim ? "Respondendo" : paused ? "Pausado" : remaining === null ? "Tempo de prova" : level === "over" ? "Tempo esgotado" : level === "ok" ? "Restante" : "Reta final";
+  const headerTimer = {
+    mainLabel: timerLabel,
+    mainValue: clock,
+    level,
+    fraction: limit && remaining !== null ? remaining / limit : null,
+    paused,
+    questionSeconds: Math.floor((revealed ? question.active_ms : activeMs()) / 1000),
+    aria: `${sim ? (remaining !== null ? "Tempo restante do simulado" : "Tempo de prova") : "Tempo respondendo"} ${formatClock(clock)}${paused ? ", pausado" : ""}`,
+  };
+
+  // Rodapé: no treino, "Confirmar resposta" corrige; no simulado a resposta fica guardada ao marcar e o botão avança.
+  const primary =
+    !sim && !revealed
+      ? { label: "Confirmar resposta", onClick: confirm, disabled: picked == null || busy, loading: busy }
+      : { label: last ? (sim ? "Finalizar simulado" : "Concluir treino") : "Próxima questão", onClick: next, disabled: busy || (sim && selected == null), loading: busy };
+  const hint = revealed ? "" : selected ? `Alternativa ${selected} ${sim ? "guardada" : "selecionada"}` : "Escolha uma alternativa";
+
+  const status = (
+    <div style={{ maxWidth: 560, margin: "0 auto", flex: "1 1 100%", padding: "20px 0" }}>
+      <Card style={{ borderRadius: 24 }} padding={mobile ? 22 : 32}>
+        <h1 style={{ margin: 0, font: "var(--type-h2)" }}>{ending ? "Encerrar o simulado?" : "Finalizar simulado?"}</h1>
+        <p style={{ margin: "10px 0 0", color: "var(--text-secondary)" }}>
+          Você respondeu {answered} de {total} questões.
+          {blanks.length > 0 && ` ${blanks.length === 1 ? "A questão em branco conta" : `As ${blanks.length} em branco contam`} como erro.`}
+          {ending && remaining !== null && ` Ainda restam ${formatClock(remaining)} de prova.`}
+        </p>
+        {blanks.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 16 }} aria-label="Questões em branco">
+            {blanks.slice(0, BLANK_CHIPS).map(({ q, k }) => (
+              <button
+                key={q.id}
+                type="button"
+                className="sm-chip"
+                onClick={() => {
+                  goTo(k);
+                  if (paused) resume(); // para responder, o cronômetro volta a correr
+                }}
+                aria-label={`Ir para a questão ${k + 1}`}
+              >
+                {k + 1}
+              </button>
+            ))}
+            {blanks.length > BLANK_CHIPS && <span style={{ alignSelf: "center", color: "var(--text-tertiary)" }}>e mais {blanks.length - BLANK_CHIPS}</span>}
+          </div>
+        )}
+        {error && (
+          <div style={{ marginTop: 16 }}>
+            <Banner tone="danger">{error}</Banner>
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 24 }}>
+          <Button onClick={() => finish()} loading={busy}>
+            {ending ? "Encerrar e ver resultado" : "Finalizar e ver resultado"}
+          </Button>
+          <Button variant="secondary" onClick={() => setConfirming(false)} disabled={busy}>
+            {paused ? "Voltar" : "Voltar às questões"}
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+
+  const pausePanel = (
+    <div className="tq-pause">
+      <div className="tq-pause__tile">
+        <Icon name="pause" size={26} />
+      </div>
+      <h1>Simulado pausado</h1>
+      <div className="tq-mono" style={{ font: "700 44px/1 var(--font-mono)", letterSpacing: "-0.02em", color: "var(--tq-ink)" }}>
+        {formatClock(clock)}
+      </div>
+      <p>{remaining !== null ? "de prova restantes. O cronômetro só volta a correr quando você continuar." : "de prova até aqui. O tempo só volta a contar quando você continuar."}</p>
+      <p style={{ fontSize: 14, color: "var(--text-tertiary)" }}>Você respondeu {answered} de {total}. As respostas estão guardadas e as questões ficam escondidas durante a pausa.</p>
+      {error && <Banner tone="danger">{error}</Banner>}
+      <div className="tq-pause__btns">
+        <button type="button" className="tq-primary" onClick={resume} disabled={toggling} aria-busy={toggling || undefined}>
+          <Icon name="play" size={18} />
+          Continuar simulado
+        </button>
+        <button type="button" className="tq-secondary" onClick={() => setConfirming("end")} disabled={toggling}>
+          <Icon name="square" size={18} />
+          Encerrar simulado
+        </button>
+        <button type="button" className="tq-ghost" style={{ justifyContent: "center" }} onClick={() => go("simulados")} disabled={toggling}>
+          Sair e continuar depois
+        </button>
+      </div>
+    </div>
   );
 
   return (
-    <div style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: revealed && !mobile ? "minmax(0,1fr) 440px" : "1fr", background: "var(--surface-card)" }}>
-      <div style={{ position: "relative", paddingBottom: 120 }}>
-        <header style={{ position: "sticky", top: 0, zIndex: 5, height: 68, display: "flex", alignItems: "center", gap: mobile ? 10 : 16, padding: mobile ? "0 12px" : "0 32px", borderBottom: "1px solid var(--border-subtle)", background: "color-mix(in oklab,var(--surface-card) 90%,transparent)", backdropFilter: "blur(12px)" }}>
-          {mobile && sim ? (
-            <IconButton size="sm" icon="x" label="Sair" onClick={exit} />
-          ) : (
-            <Button variant="ghost" size="sm" icon="x" onClick={exit}>
-              Sair
-            </Button>
-          )}
-          <div style={{ flex: 1, minWidth: 0, display: "flex", gap: 3, maxWidth: 560, margin: "0 auto" }} aria-hidden="true">
-            {total <= SEGMENT_LIMIT && !(mobile && sim) ? (
-              questions.map((q, k) => (
-                <span key={q.id} style={{ flex: 1, height: 6, borderRadius: 9, background: k === index ? "var(--teal-300)" : q.selected != null ? "var(--action-primary)" : "var(--chart-track)" }} />
-              ))
-            ) : (
-              <span style={{ flex: 1, height: 6, borderRadius: 9, background: "var(--chart-track)", overflow: "hidden" }}>
-                <span style={{ display: "block", height: "100%", width: `${(100 * answered) / total}%`, borderRadius: 9, background: "var(--action-primary)" }} />
-              </span>
-            )}
-          </div>
-          <span style={{ font: "600 14px var(--font-mono)", color: "var(--text-secondary)" }}>
-            {index + 1}/{total}
-          </span>
-          {sessionXp > 0 && (
-            <span className="sm-pill" style={{ color: "var(--xp-text)", background: "var(--xp-bg)", borderColor: "transparent" }} title="XP ganho nesta sessão">
-              <Icon name="zap" size={16} />
-              <span style={{ fontFamily: "var(--font-mono)" }}>+{sessionXp}</span>
-            </span>
-          )}
-          {sim ? (
-            <div role="group" aria-label="Cronômetro do simulado" style={{ display: "flex", alignItems: "center", gap: mobile ? 2 : 4 }}>
-              <span
-                className="sm-pill"
-                style={paused ? { color: "var(--warning-text)", background: "var(--warning-bg)", borderColor: "transparent", cursor: "default" } : { cursor: "default", ...(urgent ? { color: "var(--danger-text)" } : null) }}
-                title={`${remaining !== null ? "Tempo restante" : "Tempo de prova"}${paused ? " (pausado)" : ""}`}
-              >
-                <Icon name={paused ? "pause" : "timer"} size={16} />
-                <span style={{ fontFamily: "var(--font-mono)" }}>{formatClock(clock)}</span>
-                {paused && !mobile && <span>Pausado</span>}
-              </span>
-              {paused ? timerControl("play", "Continuar", resume, toggling || busy) : timerControl("pause", "Pausar", pause, toggling || busy)}
-              {timerControl("square", "Encerrar", () => setConfirming("end"), busy || !!confirming)}
-            </div>
-          ) : (
-            !mobile && (
-              <span className="sm-pill" title="Tempo respondendo">
-                <Icon name="timer" size={16} />
-                <span style={{ fontFamily: "var(--font-mono)" }}>{formatClock(spent)}</span>
-              </span>
-            )
-          )}
-        </header>
-
+    <div className="tq">
+      <QuestionHeader
+        label={`${sim ? "Simulado Revalida" : "Treino"} · ${areaLabel(session.filters?.area)}`}
+        index={index}
+        total={total}
+        segments={segments}
+        progress={(100 * answered) / total}
+        timer={headerTimer}
+        onExit={exit}
+        xp={sessionXp}
+        pause={sim ? { paused, disabled: toggling || busy, onToggle: paused ? resume : pause } : null}
+        onEnd={sim ? () => setConfirming("end") : null}
+        endDisabled={busy || !!confirming}
+      />
+      <main className="tq-main" data-revealed={!confirming && !paused && revealed ? "true" : "false"}>
         {confirming ? (
-          <div style={{ maxWidth: 560, margin: "0 auto", padding: mobile ? "24px 18px" : "44px 32px" }}>
-            <Card style={{ borderRadius: 24 }} padding={mobile ? 22 : 32}>
-              <h1 style={{ margin: 0, font: "var(--type-h2)" }}>{ending ? "Encerrar o simulado?" : "Finalizar simulado?"}</h1>
-              <p style={{ margin: "10px 0 0", color: "var(--text-secondary)" }}>
-                Você respondeu {answered} de {total} questões.
-                {blanks.length > 0 && ` ${blanks.length === 1 ? "A questão em branco conta" : `As ${blanks.length} em branco contam`} como erro.`}
-                {ending && remaining !== null && ` Ainda restam ${formatClock(remaining)} de prova.`}
-              </p>
-              {blanks.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 16 }} aria-label="Questões em branco">
-                  {blanks.slice(0, BLANK_CHIPS).map(({ q, k }) => (
-                    <button
-                      key={q.id}
-                      type="button"
-                      className="sm-chip"
-                      onClick={() => {
-                        goTo(k);
-                        if (paused) resume(); // para responder, o cronômetro volta a correr
-                      }}
-                      aria-label={`Ir para a questão ${k + 1}`}
-                    >
-                      {k + 1}
-                    </button>
-                  ))}
-                  {blanks.length > BLANK_CHIPS && <span style={{ alignSelf: "center", color: "var(--text-tertiary)" }}>e mais {blanks.length - BLANK_CHIPS}</span>}
-                </div>
-              )}
-              {error && (
-                <div style={{ marginTop: 16 }}>
-                  <Banner tone="danger">{error}</Banner>
-                </div>
-              )}
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 24 }}>
-                <Button onClick={() => finish()} loading={busy}>
-                  {ending ? "Encerrar e ver resultado" : "Finalizar e ver resultado"}
-                </Button>
-                <Button variant="secondary" onClick={() => setConfirming(false)} disabled={busy}>
-                  {paused ? "Voltar" : "Voltar às questões"}
-                </Button>
-              </div>
-            </Card>
-          </div>
+          status
         ) : paused ? (
-          <div style={{ maxWidth: 560, margin: "0 auto", padding: mobile ? "24px 18px" : "44px 32px" }}>
-            <Card style={{ borderRadius: 24 }} padding={mobile ? 22 : 32}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-                <IconTile name="pause" size={56} tone="brand" />
-                <h1 style={{ margin: "18px 0 0", font: "var(--type-h2)" }}>Simulado pausado</h1>
-                <div style={{ marginTop: 14, font: "700 44px/1 var(--font-mono)", letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>{formatClock(clock)}</div>
-                <p style={{ margin: "8px 0 0", color: "var(--text-secondary)" }}>
-                  {remaining !== null ? "de prova restantes. O cronômetro só volta a correr quando você continuar." : "de prova até aqui. O tempo só volta a contar quando você continuar."}
-                </p>
-                <p style={{ margin: "12px 0 0", font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>
-                  Você respondeu {answered} de {total}. As respostas estão guardadas e as questões ficam escondidas durante a pausa.
-                </p>
-              </div>
-              {error && (
-                <div style={{ marginTop: 16 }}>
-                  <Banner tone="danger">{error}</Banner>
-                </div>
-              )}
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
-                <Button size="lg" fullWidth icon="play" onClick={resume} loading={toggling}>
-                  Continuar simulado
-                </Button>
-                <Button variant="secondary" fullWidth icon="square" onClick={() => setConfirming("end")} disabled={toggling}>
-                  Encerrar simulado
-                </Button>
-                <Button variant="ghost" fullWidth onClick={() => go("simulados")} disabled={toggling}>
-                  Sair e continuar depois
-                </Button>
-              </div>
-            </Card>
-          </div>
+          pausePanel
         ) : (
-          <div style={{ maxWidth: 720, margin: "0 auto", padding: mobile ? "24px 18px" : "44px 32px" }}>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Badge tone="brand">{areaLabel(question.area)}</Badge>
-              {isStaziamed(question) ? <IneditaSeal number={question.number} /> : <Badge>{questionRef(question)}</Badge>}
-              {isStaziamed(question) && <Badge tone="warning">não é questão oficial do Inep</Badge>}
-              {question.bookmarked && (
-                <Badge tone="warning" icon="bookmark">
-                  Marcada
-                </Badge>
-              )}
-            </div>
-            {question.preliminary && (
-              <div style={{ marginTop: 16 }}>
-                <PreliminarySeal info={question.preliminary} />
-              </div>
+          <>
+            <QuestionSheet
+              key={question.id}
+              question={question}
+              revealed={revealed}
+              topic={revealed ? question.correction.topic : null}
+              bookmarked={!!question.bookmarked}
+              banner={error ? <Banner tone="danger">{error}</Banner> : null}
+              alternatives={
+                <Alternatives
+                  options={question.options}
+                  stateOf={optionState}
+                  chosen={revealed ? question.selected : selected}
+                  struck={struck}
+                  revealed={revealed}
+                  onPick={choose}
+                  onStrike={strikeOption}
+                  strikeDisabled={(id) => busy || (sim && question.selected === id)}
+                />
+              }
+              answer={revealed ? <CorrectionBody selected={question.selected} correction={question.correction} question={question} data={correctionData} /> : null}
+              footer={
+                <QuestionFooter
+                  marked={!!question.bookmarked}
+                  onMark={toggleMark}
+                  onPrev={sim ? () => goTo(index - 1) : null}
+                  prevDisabled={index === 0}
+                  onSkip={revealed ? null : next}
+                  skipDisabled={busy}
+                  hint={hint}
+                  primary={primary}
+                />
+              }
+              report={<ReportQuestion key={`report-${question.id}`} question={question} />}
+            />
+            {revealed && (
+              <aside className="tq-side" aria-label="Contexto da questão" aria-live="polite">
+                <CorrectionSide selected={question.selected} correction={question.correction} question={question} data={correctionData} go={go} inSession>
+                  {question.play && <XPToast play={question.play} />}
+                </CorrectionSide>
+              </aside>
             )}
-            {error && (
-              <div style={{ marginTop: 16 }}>
-                <Banner tone="danger">{error}</Banner>
-              </div>
-            )}
-            <p style={{ font: `400 ${mobile ? 17 : 19}px/1.65 var(--font-sans)`, margin: "22px 0 0", textWrap: "pretty", textAlign: "justify", hyphens: "auto" }} lang="pt-BR">{stem}</p>
-            <QuestionFigures images={question.images} questionId={question.id} />
-            <SupportTable support={question.support} />
-            {ask && <p style={{ font: "600 18px/1.4 var(--font-sans)", margin: "28px 0 0", textAlign: "justify", hyphens: "auto" }} lang="pt-BR">{ask}</p>}
-            <div role="radiogroup" aria-label="Alternativas" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: ask ? 20 : 28 }}>
-              {question.options.map((option) => {
-                const out = struck.includes(option.id) && !revealed;
-                return (
-                  <div key={option.id} style={{ opacity: out ? 0.45 : 1, textDecoration: out ? "line-through" : "none" }}>
-                    <AnswerOption letter={option.id} state={optionState(option.id)} onClick={() => choose(option.id)}>
-                      {option.text}
-                    </AnswerOption>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          </>
         )}
-        {mobile && !confirming && !paused && panel}
-
-        {!confirming && !paused && (
-          <div
-            role="toolbar"
-            aria-label="Ferramentas da questão"
-            style={{ position: "fixed", left: mobile ? 12 : revealed ? "calc((100% - 440px)/2)" : "50%", right: mobile ? 12 : "auto", bottom: 24, transform: mobile ? "none" : "translateX(-50%)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, padding: 6, borderRadius: 999, background: "var(--surface-card)", border: "1px solid var(--border-default)", boxShadow: "var(--shadow-lg)", zIndex: 10 }}
-          >
-            {tool("bookmark", "Marcar", question.bookmarked, toggleMark)}
-            {tool("strikethrough", "Riscar", striking, () => setStriking((value) => !value), revealed)}
-            {sim && tool("arrow-left", "Anterior", false, () => goTo(index - 1), index === 0)}
-            {!sim && !revealed ? (
-              <Button disabled={picked == null} loading={busy} onClick={confirm} style={{ borderRadius: 999, marginLeft: 6 }} iconRight="check">
-                Confirmar
-              </Button>
-            ) : (
-              <Button onClick={next} loading={busy} style={{ borderRadius: 999, marginLeft: 6 }} iconRight="arrow-right">
-                {last ? (sim ? "Finalizar" : "Concluir") : "Próxima"}
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-      {!mobile && !confirming && !paused && panel}
+      </main>
       {feedback.modal}
     </div>
   );

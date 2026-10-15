@@ -216,7 +216,7 @@ describe("Cronômetro durante o simulado", () => {
     });
     renderSession();
     await screen.findByText(/Caso clínico número 1/);
-    expect(screen.getByRole("group", { name: "Cronômetro do simulado" })).toBeTruthy();
+    expect(screen.getByRole("timer", { name: /Tempo restante do simulado/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Encerrar o simulado" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Pausar o simulado" }));
     expect(await screen.findByRole("button", { name: "Continuar o simulado" })).toBeTruthy();

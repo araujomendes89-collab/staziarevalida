@@ -93,7 +93,7 @@ async function answered(relatedResult: () => any = () => ({ items: ITEMS })) {
       <PracticeSession go={go} />
     </MemoryRouter>
   );
-  await screen.findByText("Resposta correta.");
+  await screen.findByText("Você acertou");
   return go;
 }
 const block = () => screen.findByRole("region", { name: "Questões relacionadas" });
@@ -113,7 +113,7 @@ describe("Questões relacionadas: quando aparece", () => {
     fireEvent.click(await screen.findByRole("radio", { name: new RegExp(`^${BASE.correct_option}`) }));
     expect(calls("app_related_questions")).toHaveLength(0);
     expect(screen.queryByRole("region", { name: "Questões relacionadas" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar resposta" }));
     const region = await block();
     expect(calls("app_related_questions")).toEqual([["app_related_questions", { p_question_id: BASE.id, p_limit: 8 }]]);
     expect(within(region).getByText("Mesmo assunto, diferentes abordagens")).toBeTruthy();
@@ -135,7 +135,7 @@ describe("Questões relacionadas: quando aparece", () => {
     expect(screen.queryByText("Questões relacionadas")).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
     expect(document.body.textContent).not.toMatch(/schema cache|PGRST|app_related/);
-    expect(screen.getByText("Resposta correta.")).toBeTruthy();
+    expect(screen.getByText("Você acertou")).toBeTruthy();
   });
 });
 

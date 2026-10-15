@@ -128,7 +128,7 @@ describe("Sessão e correção", () => {
   it("sessão: 'Questão Inédita · nº 12', selo 'não é questão oficial do Inep' e a tabela de apoio antes das alternativas", async () => {
     openSession(session());
     expect(await screen.findByText("Questão Inédita · nº 12")).toBeTruthy();
-    expect(screen.getByText("não é questão oficial do Inep")).toBeTruthy();
+    expect(screen.getByText("Não é questão oficial do Inep")).toBeTruthy();
     const table = screen.getByRole("table", { name: "Exames da admissão" });
     expect(within(table).getByText("Hemoglobina")).toBeTruthy();
     expect(within(table).getByText("14.000/mm3")).toBeTruthy();
@@ -139,20 +139,20 @@ describe("Sessão e correção", () => {
     expect(backend.rpc.mock.calls.some((c: any[]) => c[0] === "app_question_commentary")).toBe(false);
   });
 
-  it("correção: 'Gabarito StaziaMed: alternativa B', 'Por que não as outras?', conduta e 'Fontes oficiais citadas'; nunca 'gabarito oficial' nem 'O que a questão avalia'; sem Tutor", async () => {
-    openSession(session({ questions: [questionOf({ selected: "A", correction: CORRECTION })] }));
-    expect(await screen.findByText(/Gabarito StaziaMed: alternativa B/)).toBeTruthy();
+  it("correção: 'Gabarito StaziaMed', 'Por que não as outras?' e conduta; NENHUMA fonte (decisão do dono: as fontes das inéditas ficam na tabela interna); nunca 'gabarito oficial' nem 'O que a questão avalia'; sem Tutor", async () => {
+    const { container } = openSession(session({ questions: [questionOf({ selected: "A", correction: CORRECTION })] }));
+    expect(await screen.findByText("Gabarito StaziaMed")).toBeTruthy();
+    expect(screen.getByText(/questão autoral, não oficial do Inep/)).toBeTruthy();
+    expect(container.querySelector(".tq-verdict__key")!.textContent).toBe("Gabarito: B");
     expect(screen.getByText("Por que não as outras?")).toBeTruthy();
     expect(screen.getByText(/Tratar a otite média aguda com amoxicilina\./)).toBeTruthy();
-    const sources = screen.getByText("Fontes oficiais citadas").parentElement!;
-    expect(sources.textContent).toContain("PCDT de Otite");
-    expect(sources.textContent).toContain("Ministério da Saúde");
-    expect(sources.textContent).toContain("versão 2026");
-    expect(sources.textContent).toContain("p. 7");
-    expect(sources.textContent).toContain("indica-se amoxicilina 90 mg/kg/dia por 10 dias");
+    // o banco ainda manda official_sources na correção; o aluno não as vê (nem título, nem órgão, nem versão, nem página, nem trecho)
+    expect(screen.queryByText("Fontes oficiais citadas")).toBeNull();
+    expect(screen.queryByText("Fontes")).toBeNull();
+    expect(container.querySelector(".tq-src")).toBeNull();
+    for (const termo of ["PCDT de Otite", "Ministério da Saúde", "versão 2026", "p. 7", "indica-se amoxicilina 90 mg/kg/dia por 10 dias"]) expect(container.textContent).not.toContain(termo);
     expect(screen.queryByText(/gabarito oficial/i)).toBeNull();
     expect(screen.queryByText("O que a questão avalia")).toBeNull();
-    expect(screen.queryByText(/^Gabarito: /)).toBeNull();
     expect(screen.queryByRole("button", { name: /Tutor/ })).toBeNull();
   });
 
@@ -168,8 +168,8 @@ describe("Sessão e correção", () => {
     const oficial = { ...questionOf({ origin: "official", support: null, exam: { id: "r", kind: "REVALIDA", year: 2024, semester: 1 }, number: 51, selected: "A", correction: { ...CORRECTION, origin: "official", official_sources: undefined, sources: [{ title: "Edital do Inep", organization: "Inep" }] } }) };
     openSession(session({ collection: "oficiais", filters: {}, questions: [oficial] }));
     expect(await screen.findByText("Revalida 2024/1 · Q51")).toBeTruthy();
-    expect(screen.queryByText("não é questão oficial do Inep")).toBeNull();
-    expect(screen.getByText(/Gabarito: Edital do Inep/)).toBeTruthy();
+    expect(screen.queryByText("Não é questão oficial do Inep")).toBeNull();
+    expect(document.querySelector(".tq-src")!.textContent).toContain("Edital do Inep");
     expect(screen.queryByText("Fontes oficiais citadas")).toBeNull();
   });
 });

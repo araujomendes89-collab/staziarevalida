@@ -144,7 +144,9 @@ describe("(a) servidor certo: a tela não mostra a apostila e mostra a oficial",
   it("Correção + Análise + linha do tempo: fonte oficial, selo e atualidade aparecem; nada da apostila", async () => {
     const el = await montaCorrecao(correcao(), comentario());
     expect(vazou(el)).toEqual([]);
-    expect(el.textContent).toContain("Gabarito: Gabarito oficial INEP 2024/1 (teste) · INEP");
+    // painel "Fontes" do modelo: a fonte oficial do gabarito (título e órgão), como a linha "Gabarito: …" de antes
+    expect(el.querySelector(".tq-src")!.textContent).toContain("Gabarito oficial INEP 2024/1 (teste)");
+    expect(el.querySelector(".tq-src")!.textContent).toContain("INEP");
     for (const s of SELOS) expect(el.textContent).toContain(s);
     expect(el.textContent).toContain(OFI.title);
     expect(el.innerHTML).toContain(OFI.url);
@@ -155,7 +157,7 @@ describe("(a) servidor certo: a tela não mostra a apostila e mostra a oficial",
     const el = await montaCorrecao(correcao({ sources: [] }), comentario(SO_COMPLEMENTAR), [{ type: "OFFICIAL_ANSWER", at: "2024-06-01T12:00:00Z", answer: "B", source: null }]);
     expect(vazou(el)).toEqual([]);
     for (const s of SELOS) expect(el.textContent).not.toContain(s);
-    expect(el.textContent).not.toContain("Gabarito:");
+    expect(el.querySelector(".tq-src")).toBeNull();
     expect(el.textContent).not.toContain("Conduta atual conferida");
   });
 

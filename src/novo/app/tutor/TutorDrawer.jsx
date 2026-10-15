@@ -2,7 +2,7 @@
 // questão, o erro, o tema, a área). O aluno não copia nem cola nada: quem abre passa o contexto; o modo vem travado e o aluno só
 // escolhe o professor. Nenhuma conversa começa antes do "Começar".
 import React from "react";
-import { Button } from "../../ds";
+import { Button, Icon } from "../../ds";
 import { NexusScreen } from "./nexus/NexusScreen.jsx";
 
 const Dock = React.createContext(null);
@@ -29,6 +29,14 @@ export const useTutorDock = () => React.useContext(Dock);
 export function TutorButton({ request, label = "Discutir com o Tutor", size = "sm", variant = "secondary" }) {
   const open = useTutorDock();
   if (!open) return null;
+  // variant "modelo": o botão roxo do painel da questão (modelo "Tela de Questão"; estilo em practice/tela/tela-questao.css)
+  if (variant === "modelo")
+    return (
+      <button type="button" className="tq-tutor" onClick={() => open(request)}>
+        <Icon name="sparkles" size={18} />
+        {label}
+      </button>
+    );
   return (
     <Button size={size} variant={variant} icon="sparkles" onClick={() => open(request)}>
       {label}
