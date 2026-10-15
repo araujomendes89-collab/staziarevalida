@@ -347,13 +347,13 @@ function Barra({ tema, onBack, atual, toc, tocOpen, setTocOpen, toggleRef }) {
   );
 }
 
-export function TemaAula({ tema, onBack, go, mobile }) {
+export function TemaAula({ tema, onBack, go, mobile, onProgresso }) {
   const { backend } = useSession();
   const { data, error, reload } = useLoad(() => backend.rpc("app_tema_aula", { p_tema_id: tema.id }), [backend, tema.id]);
   const notes = useNotes(backend, data?.lesson_id ?? null);
   const vars = temaVars(tema.id, tema.area);
 
-  if (data) return <div className="al" style={vars}><Conteudo data={data} tema={tema} go={go} notes={notes} onBack={onBack} mobile={mobile} /></div>;
+  if (data) return <div className="al" style={vars}><Conteudo data={data} tema={tema} go={go} notes={notes} onBack={onBack} mobile={mobile} onProgresso={onProgresso} /></div>;
   let body;
   if (error) body = <LoadError error={error} retry={reload} />;
   else if (data === null) body = <Banner tone="info">Esta aula ainda não está disponível. Volte aos temas e tente de novo mais tarde.</Banner>;
@@ -366,7 +366,7 @@ export function TemaAula({ tema, onBack, go, mobile }) {
   );
 }
 
-function Conteudo({ data, tema, go, notes, onBack }) {
+function Conteudo({ data, tema, go, notes, onBack, onProgresso }) {
   const secoes = data.secoes ?? [];
   const [first, ...rest] = String(data.titulo ?? "").split(/:\s+/);
   const title = rest.length ? [first, rest.join(": ")] : [data.titulo, ""];
@@ -383,6 +383,12 @@ function Conteudo({ data, tema, go, notes, onBack }) {
   const temAntes = notes.inicial.includes("geral") || antigas.length > 0;
   const minutos = minutosDeLeitura(data);
   const prog = progressoDaAula(secoes.length, notes.checks, notes.notas);
+  // O cartão do tema mostra o mesmo progresso (seções estudadas) quando o aluno volta à lista; só depois que as caixas do aluno
+  // foram lidas do banco (falha na leitura não vira 0%).
+  const progLido = notes.loaded && notes.error !== "Não foi possível carregar as suas anotações.";
+  React.useEffect(() => {
+    if (progLido && prog.total > 0) onProgresso?.(tema.id, prog.pct);
+  }, [progLido, prog.pct, prog.total, tema.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const temNota = (k) => String(notes.notas[k] ?? "").trim() !== "";
   const temResumo = pontos.length > 0 || (cab && !cabCurto);
 
