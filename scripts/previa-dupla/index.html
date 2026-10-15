@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Prévia — Parte 2 prática</title>
+<style>
+  body{font:16px/1.5 system-ui,sans-serif;margin:0;background:#f6f7f5;color:#17231c}
+  main{max-width:1000px;margin:0 auto;padding:20px 16px 60px}
+  .aviso{background:#fff3cd;border:1px solid #e0c36a;border-radius:10px;padding:12px 14px;font-weight:600;color:#5c4400}
+  h1{margin:20px 0 4px} h2{margin:28px 0 8px;font-size:18px}
+  .card{background:#fff;border:1px solid #dde3dd;border-radius:12px;padding:12px 14px;margin:8px 0;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+  .card b{display:block} .card small{color:#55645b;display:block;max-width:640px}
+  .st{font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+  .pronta{background:#d6f0dc;color:#14562a}.parcial{background:#fde9b8;color:#6b4a00}.maquete{background:#fbd5d5;color:#7a1c1c}.nao{background:#e3e3e3;color:#444}
+  a.ir{font-weight:700;color:#0b6b3a;margin-right:10px;white-space:nowrap}
+</style>
+</head>
+<body><main>
+<div class="aviso">PRÉVIA SÓ NO SEU COMPUTADOR · DADOS DE TESTE. Nada aqui foi publicado. Colegas, notas e resultados são inventados para teste; as 10 estações do INEP 2020 vêm do pacote de design, só para ver as telas.</div>
+<h1>Parte 2 prática: o que já existe</h1>
+<p>Versão mais nova do ramo treino-pacote (Treino em Dupla, tarefas 1 a 13, parado desde 12/10).</p>
+
+<h2>Telas que existem no código</h2>
+<div class="card"><div><b>Praticar: baralho de colegas e "Deu match!"</b><small>Escolher o papel, arrastar/curtir colegas, tela "Deu match!" ao curtir o Colega Teste Um (o primeiro cartão). Ver a regra de compatibilidade.</small></div><div><span class="st pronta">PRONTA (sem banco real)</span><br><a class="ir" href="/tela.html?t=praticar">Abrir</a><a class="ir" href="/tela.html?t=praticar&tema=escuro">Modo noite</a></div></div>
+<div class="card"><div><b>Praticar com estação escolhida</b><small>Vindo do Banco de estações: faixa "Estação 3 · ..." e o match abre nela.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=praticar&estacao=teste-inep2020-e04">Abrir</a></div></div>
+<div class="card"><div><b>Praticar sem perfil de estudo</b><small>Estado vazio que leva a criar o perfil.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=praticar&perfil=nenhum">Abrir</a></div></div>
+<div class="card"><div><b>Convite recebido</b><small>Janela "Deu match!" para quem recebe o convite de um colega.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=praticar&convite=1">Abrir</a></div></div>
+<div class="card"><div><b>Meu perfil de estudo</b><small>Nome público, instituição, áreas, papel, ritmo, dias, turnos, privacidade e o cartão como os outros veem.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=perfil">Abrir</a></div></div>
+<div class="card"><div><b>Banco de estações</b><small>10 estações de teste (INEP 2020) por área, busca, grade/lista. Clicar abre o Praticar com a estação.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=estacoes">Abrir</a></div></div>
+
+<h2>Sala de treino (por fase)</h2>
+<p>Estado fixo de cada fase, desenhado como o banco o devolveria. <b>Sem tempo real:</b> botões de ação não fazem nada (a Etapa 5 não foi construída).</p>
+<div class="card"><div><b>1. Papéis</b><small>Quem é candidato, quem é ator/avaliador; escolher estação.</small></div><div><span class="st parcial">PARCIAL (só desenho)</span><br><a class="ir" href="/tela.html?t=sala&sala=roles-candidate">Candidato</a><a class="ir" href="/tela.html?t=sala&sala=roles-evaluator">Avaliador</a></div></div>
+<div class="card"><div><b>2. Conectando</b><small>5 etapas de preparação.</small></div><div><span class="st parcial">PARCIAL</span><br><a class="ir" href="/tela.html?t=sala&sala=connecting-candidate">Abrir</a></div></div>
+<div class="card"><div><b>3. Configuração da sessão</b><small>Link da chamada, duração, cenário, "pronto".</small></div><div><span class="st parcial">PARCIAL</span><br><a class="ir" href="/tela.html?t=sala&sala=setup-candidate">Candidato</a><a class="ir" href="/tela.html?t=sala&sala=setup-evaluator">Avaliador</a></div></div>
+<div class="card"><div><b>4. Em andamento (cronômetro, impressos, checklist PEP)</b><small>O avaliador vê o checklist da estação 1 do INEP; o candidato vê o cenário e os impressos liberados. O cronômetro NÃO anda (sem relógio do servidor).</small></div><div><span class="st parcial">PARCIAL</span><br><a class="ir" href="/tela.html?t=sala&sala=running-candidate">Candidato</a><a class="ir" href="/tela.html?t=sala&sala=running-evaluator">Avaliador</a></div></div>
+<div class="card"><div><b>5. Revisão da nota</b><small>Conferência antes de inverter papéis e feedback.</small></div><div><span class="st parcial">PARCIAL</span><br><a class="ir" href="/tela.html?t=sala&sala=review-evaluator">Avaliador</a><a class="ir" href="/tela.html?t=sala&sala=review-candidate">Candidato</a></div></div>
+<div class="card"><div><b>6. Resultado / relatório</b><small>Nota, itens, feedback, comparação com a anterior (números de teste).</small></div><div><span class="st parcial">PARCIAL</span><br><a class="ir" href="/tela.html?t=sala&sala=result-candidate">Candidato</a><a class="ir" href="/tela.html?t=sala&sala=result-evaluator">Avaliador</a></div></div>
+<div class="card"><div><b>7. Sala encerrada</b><small>Aviso quando o colega sai.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=sala&sala=closed-candidate">Abrir</a></div></div>
+
+<h2>Apoio</h2>
+<div class="card"><div><b>Vitrine de componentes</b><small>Cores novas (áreas, papéis, PEP) e componentes da estação, só de desenvolvimento.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=vitrine">Abrir</a></div></div>
+
+<h2>O que não existe (ainda)</h2>
+<div class="card"><div><b>Sala ao vivo (Etapa 5): tempo real, cronômetro sincronizado, ações dos botões</b></div><span class="st nao">NÃO EXISTE</span></div>
+<div class="card"><div><b>Praticar sozinho com avaliação por IA</b><small>Só especificado (adendo de 12/10).</small></div><span class="st nao">NÃO EXISTE</span></div>
+<div class="card"><div><b>Radar de quem está online (tela própria)</b><small>Só especificado. O baralho já usa presença, mas não há tela de radar.</small></div><span class="st nao">NÃO EXISTE</span></div>
+<div class="card"><div><b>Stazia Match completo (documento de engenharia, 19 partes)</b><small>Só spec e plano; nada construído além do baralho/convite.</small></div><span class="st nao">NÃO EXISTE</span></div>
+<div class="card"><div><b>Maquetes antigas do app (Phase2.jsx / Match.jsx)</b><small>Ver o resumo: ainda existem no código; não são abertas aqui.</small></div><span class="st maquete">SÓ MAQUETE</span></div>
+</main></body></html>
