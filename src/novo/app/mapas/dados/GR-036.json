@@ -717,7 +717,13 @@
     "Parkland: fator de 2 a 4 mL; gabarito do adulto usou 2",
     "Elétrica: monitor cardíaco 24 a 48 h, mesmo com ferida pequena"
   ],
-  "poster": {
+  "foto": {
+    "webp": "/mapas-mentais/queimaduras-e-lesao-eletrica.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  },
+  "cartoes": {
     "conceito": {
       "titulo": "Atendimento inicial",
       "icone": "cruz",
@@ -1009,10 +1015,12 @@
       ]
     }
   },
-  "foto": {
-    "webp": "/mapas-mentais/queimaduras-e-lesao-eletrica.webp",
-    "foco": "50% 50%",
-    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
-    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  "poster": {
+    "webp": "/mapas-mentais/poster-queimaduras-e-lesao-eletrica.webp",
+    "estado": "pendente de revisão médica (aprovada)",
+    "ressalvas": [
+      "alinhamento do texto irregular em alguns cartões"
+    ],
+    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K"
   }
 }

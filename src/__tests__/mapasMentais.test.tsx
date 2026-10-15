@@ -31,9 +31,47 @@ describe("menu", () => {
   });
 });
 
+// o visual principal é a imagem; sem ela (falha ao carregar) cai no mapa em código
+const semImagem = () => {
+  const r = render(<MapaMental mapa={piloto()} />);
+  fireEvent.error(screen.getByRole("img", { name: /Mapa mental: Tuberculose pulmonar/ }));
+  return r;
+};
+
+describe("pôster realista (imagem) como visual principal", () => {
+  it("abre com a imagem, com texto do mapa como descrição para leitor de tela, sem estado nem ressalvas", () => {
+    render(<MapaMental mapa={piloto()} />);
+    const img = screen.getByRole("img", { name: /Mapa mental: Tuberculose pulmonar/ });
+    expect(img.getAttribute("src")).toMatch(/\/mapas-mentais\/poster-tuberculose-pulmonar\.webp$/);
+    const desc = document.getElementById(img.getAttribute("aria-describedby")!)!;
+    expect(desc.textContent).toMatch(/2RHZE\/4RH/);
+    const tela = document.body.textContent ?? "";
+    expect(tela).not.toMatch(/pendente de revisão|ressalva|aprovada|gemini|pre-revisado/i);
+    expect(screen.getByRole("button", { name: "Pôster" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Baixar imagem/ })).toBeTruthy();
+  });
+  it("amplia em tela cheia com zoom e fecha", () => {
+    render(<MapaMental mapa={piloto()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Ampliar o mapa mental/ }));
+    const dlg = screen.getByRole("dialog");
+    fireEvent.click(within(dlg).getByRole("button", { name: "Aumentar" }));
+    expect(within(dlg).getByText("150%")).toBeTruthy();
+    fireEvent.click(within(dlg).getByRole("button", { name: "Fechar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  it("se a imagem falhar, cai no mapa em código", () => {
+    semImagem();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toMatch(/Tuberculose\s+pulmonar/);
+  });
+  it("a lista mostra a miniatura do pôster e o botão do cartão do tema só com mapa", () => {
+    render(<MemoryRouter><MapasScreen go={() => {}} /></MemoryRouter>);
+    expect(document.querySelector(".mm-lcard-img")).toBeTruthy();
+  });
+});
+
 describe("mapa piloto: Tuberculose pulmonar", () => {
   it("mostra o tema central, os ramos e o rodapé do mapa", () => {
-    render(<MapaMental mapa={piloto()} />);
+    semImagem();
     expect(screen.getByRole("heading", { level: 2 }).textContent).toMatch(/Tuberculose\s+pulmonar/);
     expect(screen.getByText("MAPA MENTAL · STAZIAMED")).toBeTruthy();
     for (const t of ["Suspeita clínica", "Diagnóstico", "Tratamento (esquema básico)", "Acompanhamento", "Controle de contatos e ILTB", "Situações especiais", "Revalida INEP: decisões e pegadinhas"]) {
@@ -44,7 +82,7 @@ describe("mapa piloto: Tuberculose pulmonar", () => {
   });
 
   it("cuidados clínicos do dono aparecem no mapa", () => {
-    render(<MapaMental mapa={piloto()} />);
+    semImagem();
     const txt = document.body.textContent ?? "";
     expect(txt).toMatch(/2RHZE\/4RH/);
     expect(txt).toMatch(/TRM-TB negativo com quadro persistente/);
@@ -54,7 +92,7 @@ describe("mapa piloto: Tuberculose pulmonar", () => {
     expect(txt).not.toMatch(/06\/10\/2026/); // data do BPaLM não verificada
   });
 
-  it("Revisão não abre detalhes; Aprofundado abre ramo por ramo", () => {
+  it("Pôster não abre detalhes; Aprofundado abre ramo por ramo", () => {
     render(<MapaMental mapa={piloto()} />);
     expect(screen.queryByRole("button", { name: /Aprofundar/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Aprofundado" }));
@@ -65,7 +103,7 @@ describe("mapa piloto: Tuberculose pulmonar", () => {
     expect(screen.getByText("Como ler o TRM-TB no caso novo")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Abrir tudo" }));
     expect(screen.getByText("Esquema encurtado pediátrico (abril de 2024)")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Revisão" }));
+    fireEvent.click(screen.getByRole("button", { name: "Pôster" }));
     expect(screen.queryByText("Como ler o TRM-TB no caso novo")).toBeNull();
   });
 });
@@ -80,7 +118,7 @@ describe("o aluno não vê rastreabilidade", () => {
       expect(t, m.slug).not.toMatch(/https?:|www\.|\.gov\.br|\.pdf/i);
       expect(t, m.slug).not.toMatch(/\bp\.\s?\d+|\bpágina\s+\d+|#[0-9a-f]{6}\b/i);
     }
-    render(<MapaMental mapa={piloto()} />);
+    semImagem();
     const tela = document.body.textContent ?? "";
     expect(tela).not.toMatch(/GR-\d{3}|https?:|pre-revisado|pré-revisado/i);
   });
@@ -127,7 +165,7 @@ describe("tema sem mapa e integração", () => {
     const lista = screen.getByRole("list");
     fireEvent.click(within(lista).getByRole("button", { name: /Tuberculose pulmonar/ }));
     expect(screen.getByRole("button", { name: /Todos os mapas/ })).toBeTruthy();
-    expect(screen.getByText("MAPA MENTAL · STAZIAMED")).toBeTruthy();
+    expect(screen.getByRole("img", { name: /Mapa mental: Tuberculose pulmonar/ })).toBeTruthy();
   });
 });
 
@@ -145,7 +183,7 @@ describe("pôster 3:2", () => {
       expect(temPoster(m), m.slug).toBe(true);
       const t: string[] = [];
       for (const k of Object.keys(CARTOES)) {
-        const c = m.poster[k];
+        const c = m.cartoes[k];
         expect(NOMES_ICONES, `${m.slug}/${k}`).toContain(c.icone);
         t.push(c.titulo, ...(c.itens ?? []), ...(c.linhas ?? []).flatMap((l: any) => [l.rotulo, l.texto, ...(l.itens ?? [])]), ...(c.faixas ?? []).flatMap((f: any) => [f.rotulo, f.chip, f.texto]));
         for (const x of c.itens ?? []) expect(String(x.t ?? x).length, `${m.slug}/${k}`).toBeLessThanOrEqual(60);

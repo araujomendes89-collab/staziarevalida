@@ -73,6 +73,7 @@ export function MapasScreen({ go }) {
             <li key={m.slug}>
               <button type="button" className="mm-lcard" style={temaVars(m.codigo, m.area)} onClick={() => abrir(m)}>
                 <span className="mm-lcard-fita" aria-hidden="true" />
+                {m.poster?.webp && <img className="mm-lcard-img" src={m.poster.webp} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
                 <span className="mm-lcard-area">{nomeDaArea(m.area)}</span>
                 <strong className="mm-lcard-t">{m.titulo}</strong>
                 {m.subtitulo && <span className="mm-lcard-s">{m.subtitulo}</span>}

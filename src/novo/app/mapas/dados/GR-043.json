@@ -754,7 +754,13 @@
     "Edema não é mais critério diagnóstico de pré-eclâmpsia",
     "Tríplice viral não se aplica; se foi inadvertida, não interrompe"
   ],
-  "poster": {
+  "foto": {
+    "webp": "/mapas-mentais/assistencia-ao-pre-natal.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  },
+  "cartoes": {
     "conceito": {
       "titulo": "Captação e calendário",
       "icone": "calendario",
@@ -1117,10 +1123,12 @@
       ]
     }
   },
-  "foto": {
-    "webp": "/mapas-mentais/assistencia-ao-pre-natal.webp",
-    "foco": "50% 50%",
-    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
-    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  "poster": {
+    "webp": "/mapas-mentais/poster-assistencia-ao-pre-natal.webp",
+    "estado": "pendente de revisão médica (aprovada)",
+    "ressalvas": [
+      "placenta pouco evidente na ilustração"
+    ],
+    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K"
   }
 }

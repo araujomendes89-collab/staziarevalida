@@ -601,7 +601,13 @@
     "Idades do ASC-US são trocadas: 6 meses, 12 meses, 3 anos",
     "Ver e tratar é inaceitável até 24 anos e na LSIL"
   ],
-  "poster": {
+  "foto": {
+    "webp": "/mapas-mentais/rastreamento-cancer-colo-do-utero.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  },
+  "cartoes": {
     "conceito": {
       "titulo": "Quem e quando rastrear",
       "icone": "calendario",
@@ -974,10 +980,10 @@
       ]
     }
   },
-  "foto": {
-    "webp": "/mapas-mentais/rastreamento-cancer-colo-do-utero.webp",
-    "foco": "50% 50%",
-    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
-    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  "poster": {
+    "webp": "/mapas-mentais/poster-rastreamento-cancer-colo-do-utero.webp",
+    "estado": "pendente de revisão médica (aprovada)",
+    "ressalvas": [],
+    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K"
   }
 }

@@ -1,6 +1,6 @@
 // Pôster do mapa mental: proporção fixa 3:2, oito cartões nas posições da referência do dono.
 // Tudo escala com a largura (unidades de container). O texto é curto e grande; se ainda assim não couber,
-// a letra encolhe até no mínimo 80%. Conteúdo vem de `mapa.poster` (ver docs/mapas-mentais.md).
+// a letra encolhe até no mínimo 80%. Conteúdo vem de `mapa.cartoes` (ver docs/mapas-mentais.md).
 import React from "react";
 import { MapaIcon } from "./icones.jsx";
 import { corDe } from "./mapas.js";
@@ -29,7 +29,7 @@ const FIOS = {
   tratamento: [[50, 63], [50, 65]],
 };
 
-export const temPoster = (mapa) => !!mapa.poster && Object.keys(CARTOES).every((k) => mapa.poster[k]);
+export const temPoster = (mapa) => !!mapa.cartoes && Object.keys(CARTOES).every((k) => mapa.cartoes[k]);
 
 function Marcadores({ itens, check }) {
   return (
@@ -83,7 +83,7 @@ function Cartao({ papel, def, mapa }) {
 
 export function Poster({ mapa }) {
   const raiz = React.useRef(null);
-  const P = mapa.poster;
+  const P = mapa.cartoes;
   const palavras = String(mapa.titulo).trim().split(/\s+/);
 
   // se mesmo curto não couber, a letra encolhe até no mínimo 80%

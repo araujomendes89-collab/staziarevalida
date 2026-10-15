@@ -867,7 +867,7 @@
     "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
     "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
   },
-  "poster": {
+  "cartoes": {
     "conceito": {
       "titulo": "Suspeita de dengue",
       "icone": "virus",
@@ -1366,5 +1366,11 @@
         "CK39"
       ]
     }
+  },
+  "poster": {
+    "webp": "/mapas-mentais/poster-dengue-e-outras-arboviroses.webp",
+    "estado": "pendente de revisão médica (aprovada)",
+    "ressalvas": [],
+    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K"
   }
 }

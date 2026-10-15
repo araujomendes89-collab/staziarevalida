@@ -790,7 +790,7 @@
     "Glicose só se hipoglicemia, de preferência após a tiamina",
     "Sem clorpromazina nem fenitoína na abstinência alcoólica"
   ],
-  "poster": {
+  "cartoes": {
     "conceito": {
       "titulo": "Consumo e rastreio",
       "icone": "gota",
@@ -997,5 +997,13 @@
         "AD72"
       ]
     }
+  },
+  "poster": {
+    "webp": "/mapas-mentais/poster-alcool-e-outras-drogas.webp",
+    "estado": "pendente de revisão médica (com ressalvas)",
+    "ressalvas": [
+      "cartão Atenção sobrepõe levemente o cartão Dependente que quer parar (texto legível)"
+    ],
+    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K"
   }
 }

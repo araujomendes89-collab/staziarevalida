@@ -6,6 +6,7 @@ import { MapaIcon, Emblema } from "./icones.jsx";
 import { corDe, distribuir, itemDe } from "./mapas.js";
 import { Itens, Fluxo, Revisao, ImagemCentral } from "./partes.jsx";
 import { Poster, temPoster } from "./Poster.jsx";
+import { PosterImagem } from "./PosterImagem.jsx";
 import "./mapas.css";
 
 const LARGURA_ABERTA = 960; // a partir daqui o mapa vira o desenho horizontal com fios curvos
@@ -68,7 +69,8 @@ function Centro({ mapa, setRef }) {
 }
 
 export function MapaMental({ mapa, modoInicial = "revisao" }) {
-  const [modo, setModo] = React.useState(modoInicial);
+  const [modo, setModo] = React.useState(modoInicial === "poster" ? "revisao" : modoInicial);
+  const [imgFalhou, setImgFalhou] = React.useState(false);
   const [abertos, setAbertos] = React.useState(() => new Set());
   const [vista, setVista] = React.useState(() => (typeof matchMedia === "function" && matchMedia("(min-width: 900px)").matches && temPoster(mapa) ? "poster" : "lista"));
   const [largo, setLargo] = React.useState(false);
@@ -158,31 +160,28 @@ export function MapaMental({ mapa, modoInicial = "revisao" }) {
   // empilhado (celular): o centro vem primeiro e os ramos seguem a ordem dos dados
   const ordem = mapa.ramos;
 
+  const usaImagem = modo === "revisao" && !!mapa.poster?.webp && !imgFalhou;
   return (
     <div className="mm" data-modo={modo}>
       <div className="mm-barra">
         <div className="mm-modos" role="group" aria-label="Nível do mapa">
-          <button type="button" aria-pressed={modo === "revisao"} onClick={() => trocarModo("revisao")}>Revisão</button>
+          <button type="button" aria-pressed={modo === "revisao"} onClick={() => trocarModo("revisao")}>Pôster</button>
           <button type="button" aria-pressed={modo === "aprofundado"} onClick={() => trocarModo("aprofundado")} disabled={!temDeep}>Aprofundado</button>
         </div>
-        {modo === "revisao" && temPoster(mapa) && (
-          <div className="mm-modos" role="group" aria-label="Forma do mapa">
-            <button type="button" aria-pressed={vista === "poster"} onClick={() => setVista("poster")}>Pôster</button>
-            <button type="button" aria-pressed={vista === "lista"} onClick={() => setVista("lista")}>Empilhado</button>
-          </div>
-        )}
         {modo === "aprofundado" && temDeep && (
           <button type="button" className="mm-todos" onClick={alternarTodos}>{todosAbertos ? "Recolher tudo" : "Abrir tudo"}</button>
         )}
-        <ul className="mm-legenda" aria-label="Cores do mapa">
+        {!usaImagem && <ul className="mm-legenda" aria-label="Cores do mapa">
           <li data-c="azul">Diagnóstico</li>
           <li data-c="verde">Conduta</li>
           <li data-c="laranja">Atenção</li>
           <li data-c="vermelho">Alerta ou erro comum</li>
-        </ul>
+        </ul>}
       </div>
 
-      {modo === "revisao" && vista === "poster" && temPoster(mapa) ? (
+      {usaImagem ? (
+        <PosterImagem mapa={mapa} onErro={() => setImgFalhou(true)} />
+      ) : modo === "revisao" && vista === "poster" && temPoster(mapa) ? (
         <Poster mapa={mapa} />
       ) : (
         <>

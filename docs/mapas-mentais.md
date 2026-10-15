@@ -46,7 +46,10 @@ pontos_chave[], atencao[]
 Item ou passo de fluxo: texto ou `{ "t": "texto", "tom": "alerta|atencao|conduta|diag" }`.
 O último ramo é sempre "Revalida INEP: decisões e pegadinhas" (vermelho).
 
-## Pôster (revisão em tela cheia)
+## Pôster realista (visual principal)
+O visual principal é a imagem 3:2 gerada por IA a partir da referência do dono (`public/mapas-mentais/poster-<nome-do-tema>.webp`), campo `poster { webp, estado, ressalvas, origem }` do JSON. O aluno nunca vê `estado`, `ressalvas` nem `origem` (ficam nos dados/Central; todas "pendente de revisão médica"). A tela tem "Pôster" | "Aprofundado": o Pôster mostra a imagem com Ampliar (tela cheia com zoom + e −, rolagem e pinça) e "Baixar imagem"; o texto do JSON vira descrição longa para leitor de tela; o Aprofundado é o mapa em código (texto pesquisável). Se a imagem falhar, cai no mapa em código. Miniaturas: lista da aba Mapas Mentais e `MiniaturaMapa` (`mapas/MapaDoTema.jsx`) para o cartão do tema. O bloco de cartões curtos do mapa em código passou a se chamar `cartoes`.
+
+## Pôster em código (reserva) — bloco `cartoes`
 O modo Revisão desenha um pôster 3:2 com os oito cartões da referência, definidos no bloco `poster` do JSON: `conceito`, `quadro`, `fatores`, `diagnostico` (tabela de 3 linhas com ícone), `exames` (tabela de 4 linhas rótulo+texto), `conduta` (tabela de 3 linhas), `objetivos` (marcadores verdes) e `tratamento` (2 faixas com chip + até 3 itens). Cada cartão: `titulo`, `icone`, `cor`, `claims`. Os títulos mudam por tema conforme a aula (ex.: o cartão `fatores` pode virar "Cinemática do impacto"). Sem bloco `poster`, o mapa só aparece empilhado. No celular o padrão é o empilhado; o pôster tem rolagem lateral e zoom do navegador. O Aprofundado é sempre empilhado. A figura redonda do Conceito e a imagem central usam o campo `foto`.
 
 ## Imagem central (opcional)

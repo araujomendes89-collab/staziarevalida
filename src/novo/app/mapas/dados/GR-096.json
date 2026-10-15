@@ -760,7 +760,13 @@
     "Inquietude inicial do ISRS costuma passar; em geral, não suspender",
     "Após a remissão, a maioria das diretrizes sugere 1 a 2 anos"
   ],
-  "poster": {
+  "foto": {
+    "webp": "/mapas-mentais/transtornos-de-ansiedade-e-panico.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  },
+  "cartoes": {
     "conceito": {
       "titulo": "Quando a ansiedade é transtorno",
       "icone": "coracao",
@@ -981,10 +987,10 @@
       ]
     }
   },
-  "foto": {
-    "webp": "/mapas-mentais/transtornos-de-ansiedade-e-panico.webp",
-    "foco": "50% 50%",
-    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
-    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  "poster": {
+    "webp": "/mapas-mentais/poster-transtornos-de-ansiedade-e-panico.webp",
+    "estado": "pendente de revisão médica (aprovada)",
+    "ressalvas": [],
+    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K"
   }
 }

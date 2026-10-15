@@ -238,3 +238,20 @@
 .mmp-emblema{left:38%;top:20%;width:24%}
 .mmp-emblema .mm-imagem{aspect-ratio:16/10;object-fit:cover}
 .mmp-atencao{top:86%;height:13.2%}
+
+/* pôster realista (imagem) */
+.mm-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mm-pimg{margin:0;display:flex;flex-direction:column;gap:10px}
+.mm-pimg-abrir{display:block;padding:0;border:0;background:none;cursor:zoom-in;border-radius:22px;overflow:hidden;box-shadow:0 14px 40px -20px rgba(10,30,70,.5);aspect-ratio:3/2;background:var(--surface-subtle)}
+.mm-pimg-abrir img{display:block;width:100%;height:100%;object-fit:contain}
+.mm-pimg-acoes{display:flex;gap:10px;flex-wrap:wrap}
+.mm-pimg-acoes button,.mm-pimg-acoes a,.mm-tc-barra button,.mm-tc-barra a{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border-radius:999px;border:1.5px solid var(--border-strong,var(--border-default));background:var(--surface-card);color:var(--text-primary);font:700 13px var(--font-sans);cursor:pointer;text-decoration:none}
+.mm-tela-cheia{position:fixed;inset:0;z-index:60;background:rgba(6,16,40,.92);display:flex;flex-direction:column}
+.mm-tc-barra{display:flex;gap:10px;align-items:center;padding:10px 14px;color:#fff;font:700 14px var(--font-sans)}
+.mm-tc-fechar{margin-left:auto}
+.mm-tc-area{flex:1;min-height:0;overflow:auto;touch-action:pan-x pan-y pinch-zoom;padding:0 14px 14px}
+.mm-tc-area img{display:block;margin:0 auto;height:auto;max-width:none;border-radius:12px}
+
+.mm-lcard-img{display:block;width:calc(100% + 6px);margin:-6px -6px 4px -6px;aspect-ratio:3/2;object-fit:cover;border-radius:12px;background:var(--surface-subtle)}
+.mm-mini{display:block;padding:0;border:1.5px solid var(--border-default);border-radius:12px;overflow:hidden;cursor:pointer;width:120px;aspect-ratio:3/2;background:var(--surface-subtle)}
+.mm-mini img{display:block;width:100%;height:100%;object-fit:cover}

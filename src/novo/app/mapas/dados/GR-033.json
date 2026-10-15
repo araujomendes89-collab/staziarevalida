@@ -630,7 +630,13 @@
     "Objeto encravado não é removido",
     "Dois locais de punção: prova prática (4º/5º) e pré-hospitalar (2º/3º)"
   ],
-  "poster": {
+  "foto": {
+    "webp": "/mapas-mentais/trauma-toracico.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  },
+  "cartoes": {
     "conceito": {
       "titulo": "Tipos de pneumotórax",
       "icone": "pulmao",
@@ -1030,10 +1036,10 @@
       ]
     }
   },
-  "foto": {
-    "webp": "/mapas-mentais/trauma-toracico.webp",
-    "foco": "50% 50%",
-    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
-    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  "poster": {
+    "webp": "/mapas-mentais/poster-trauma-toracico.webp",
+    "estado": "pendente de revisão médica (aprovada)",
+    "ressalvas": [],
+    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K"
   }
 }

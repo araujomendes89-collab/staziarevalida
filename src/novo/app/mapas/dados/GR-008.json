@@ -657,7 +657,7 @@
     "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
     "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
   },
-  "poster": {
+  "cartoes": {
     "conceito": {
       "titulo": "Estágios da sífilis",
       "icone": "microscopio",
@@ -1016,5 +1016,15 @@
         "SF30"
       ]
     }
+  },
+  "poster": {
+    "webp": "/mapas-mentais/poster-sifilis-adquirida.webp",
+    "estado": "pendente de revisão médica (com ressalvas)",
+    "ressalvas": [
+      "legenda 'Treponema pallidum' sob a figura circular não existe no JSON",
+      "rodapé 'MAPA MENTAL · STAZIAMED' aparece duas vezes",
+      "ícones de alguns itens sem relação com o conteúdo (balança, cabeça)"
+    ],
+    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K"
   }
 }
