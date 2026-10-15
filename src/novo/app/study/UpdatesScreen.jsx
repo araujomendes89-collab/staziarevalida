@@ -22,6 +22,16 @@ import "./atualizacoes.css";
 const PRIORITY = { 1: ["Prioridade muito alta", "streak"], 2: ["Prioridade alta", "warning"], 3: ["Prioridade moderada", "neutral"], 4: ["Prioridade baixa", "neutral"] };
 const dateBR = (iso) => (iso ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso)) : "");
 const ANO_ATUAL = () => new Date().getFullYear();
+/** Decisão do dono (15/10/2026): o aluno só vê mudanças de 2025 e 2026. Anos mais antigos (2013, 2016, 2024...) não aparecem. */
+export const ANOS_VISIVEIS = [2025, 2026];
+export const anosVisiveis = (ys) => (ys ?? []).map(Number).filter((y) => ANOS_VISIVEIS.includes(y));
+/** Aplica a regra à resposta da lista: some quem não tem ano visível, mostra só os anos visíveis e ajusta o total e os filtros. */
+export function soAnosVisiveis(r) {
+  if (!r?.items) return r;
+  const items = r.items.filter((i) => anosVisiveis(i.years).length > 0).map((i) => ({ ...i, years: anosVisiveis(i.years) }));
+  const ocultos = r.items.length - items.length;
+  return { ...r, items, total: typeof r.total === "number" ? Math.max(0, r.total - ocultos) : items.length, years: ANOS_VISIVEIS.filter((y) => (r.years ?? []).map(Number).includes(y)) };
+}
 /** "Novo": a mudança é deste ano. */
 const isNew = (item) => (item.years ?? []).some((y) => Number(y) >= ANO_ATUAL());
 
@@ -528,7 +538,7 @@ export function UpdateDetail({ slug, go, onBack, lidas: lidasLista, onToggleRead
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <AreaTag area={u.area} />
           <NewSeal item={u} />
-          <Years years={u.years} />
+          <Years years={anosVisiveis(u.years)} />
           <PriorityBadge priority={u.priority} />
           {read && (
             <span className="at-read">
@@ -609,6 +619,7 @@ export function UpdatesScreen({ go }) {
       .rpc("app_guideline_updates", { p_area: area || null, p_year: year, p_search: q.trim() || null })
       .then((r) => {
         if (!alive) return;
+        r = soAnosVisiveis(r);
         setData(r);
         if (semFiltro && r?.items) setAll(r.items.map((i) => i.slug));
       })
