@@ -123,3 +123,8 @@ export function useSession() {
   if (!ctx) throw new Error("useSession precisa estar dentro de <SessionProvider>.");
   return ctx;
 }
+
+/** Igual a useSession, mas devolve null fora do <SessionProvider> (a casca nova e as prévias usam para buscar dados só quando há sessão). */
+export function useOptionalSession() {
+  return React.useContext(SessionContext);
+}

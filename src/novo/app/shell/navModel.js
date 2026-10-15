@@ -62,3 +62,26 @@ export function mobileTabs(phase) {
 
 /** Telas sem menu (tela cheia). */
 export const FULL = ["sessao", "estacao"];
+
+/**
+ * Seções da página "Mais" (celular e tablet), no desenho do pacote: Estudar, Aprender, Stazia Arena, Minha evolução.
+ * Cada item: [rota, ícone, nome, selo-chave]; o selo-chave ("hoje", "missoes", "flash") diz qual contagem real mostrar (ou nenhuma).
+ * "Aulas" só entra quando o app já a mostra ao aluno (ou para a equipe); o que o pacote não põe em tela (Banco de Questões, Flashcards
+ * e Caderno de Erros, que ficam nas abas) vai numa seção a mais para nada ficar sem caminho. 2ª fase: os grupos do próprio menu.
+ */
+export function maisSections(phase, { staff = false } = {}) {
+  if (phase === 2) return groupsOf(2, { staff }).map((g) => ({ id: g.id, label: g.label, tone: "estudar", items: g.items.map(([id, ic, l]) => [id, ic, l, null]) }));
+  const aulas = aulasParaAluno() || staff;
+  return [
+    { id: "estudar", label: "Estudar", tone: "estudar", items: [["hoje", "list-checks", "Plano de Hoje", "hoje"], ["trilha", "route", "Minha Trilha", null], ["simulados", "timer", "Simulados", null]] },
+    {
+      id: "aprender",
+      label: "Aprender",
+      tone: "aprender",
+      items: [...(aulas ? [["aulas", "tv", "Aulas", null]] : []), ["temas", "book-open", "Temas Essenciais", null], ["atualizacoes", "newspaper", "Diretrizes e Atualizações", null], ["mapas", "network", "Mapas Mentais", null]],
+    },
+    { id: "arena", label: "Stazia Arena", tone: "arena", items: [["missoes", "target", "Missões", "missoes"], ["classificacao", "trophy", "Ranking", null], ["conquistas", "award", "Conquistas", null]] },
+    { id: "evolucao", label: "Minha evolução", tone: "evolucao", items: [["desempenho", "chart-column", "Desempenho", null], ["analise", "chart-pie", "Análise Inteligente", null], ["plano", "calendar-days", "Planejamento", null]] },
+    { id: "praticar", label: "Praticar e revisar", tone: "estudar", items: [["questoes", "file-question", "Banco de Questões", null], ["flash", "layers", "Flashcards", "flash"], ["erros", "notebook-pen", "Caderno de Erros", null]] },
+  ];
+}

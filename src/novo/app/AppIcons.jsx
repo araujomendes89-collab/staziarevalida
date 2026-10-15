@@ -3,6 +3,7 @@
 // (classes ri-*). O arquivo do protótipo é gerado a partir do Design System e não é editado à mão; por isso estes ficam aqui.
 import React from "react";
 import { RealIcon } from "../prototype/RealIcons.jsx";
+import { NOVAS_TELAS_ICONS } from "./AppIconsNovasTelas.jsx";
 
 const g = (id, a, b, x2 = "0", y2 = "1") => (
   <linearGradient id={id} x1="0" y1="0" x2={x2} y2={y2}>
@@ -193,6 +194,15 @@ const DEF = {
 
 /** Ícone ilustrado: o do protótipo quando existe; senão, os desenhados aqui; senão, nada (quem chama usa o ícone de linha). */
 export function AppRealIcon({ name, size = 28 }) {
+  // desenhos novos do pacote "Novas telas" (onda 2) têm prioridade sobre os antigos
+  const N = NOVAS_TELAS_ICONS[name];
+  if (N) {
+    return (
+      <svg className={`ri ri-${N.an}`} width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" style={{ flexShrink: 0, filter: "drop-shadow(0 2px 2px rgba(13,28,66,.18))", overflow: "visible" }}>
+        {N.d()}
+      </svg>
+    );
+  }
   const base = RealIcon({ name, size });
   if (base) return base;
   const D = DEF[name];

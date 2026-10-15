@@ -7,29 +7,11 @@ import { Icon, Avatar, IconButton } from "../ds";
 import { RI_CSS } from "../prototype/RealIcons.jsx";
 import { AppRealIcon } from "./AppIcons.jsx";
 import { FULL, badgeOf, configItems, groupBadge, groupOfRoute, groupsOf, mobileTabs } from "./shell/navModel.js";
+import { MaisPage } from "./shell/MaisPage.jsx";
+import { useLayout, useMQ, useMobile } from "./shell/useLayout.js";
 import "./shell/shell.css";
 
-export function useMQ(q) {
-  const [m, setM] = React.useState(() => matchMedia(q).matches);
-  React.useEffect(() => {
-    const mq = matchMedia(q);
-    const f = () => setM(mq.matches);
-    f();
-    mq.addEventListener("change", f);
-    return () => mq.removeEventListener("change", f);
-  }, [q]);
-  return m;
-}
-export function useMobile() {
-  return useMQ("(max-width: 860px)");
-}
-
-/** Computador (>1180 px), tablet (720 a 1180 px, inclui o iPad de 834 px) ou celular (até 719 px). O corte das telas de dentro (useMobile) segue em 860. */
-function useLayout() {
-  const mobile = useMQ("(max-width: 719px)");
-  const tablet = useMQ("(max-width: 1180px)");
-  return mobile ? "mobile" : tablet ? "tablet" : "desktop";
-}
+export { useMQ, useMobile, useLayout };
 
 // Ícone ilustrado do app quando existe; senão o ícone do design system
 const Ic = ({ name, size = 22 }) => <span className="smn-ic" aria-hidden="true">{AppRealIcon({ name, size }) || <Icon name={name} size={size - 4} />}</span>;
@@ -211,12 +193,12 @@ function Sidebar({ route, go, phase, info, theme, collapsed, setCollapsed }) {
 }
 
 // ---------------------------------------------------------------- tablet: trilho de ícones com painel
-function Rail({ route, go, phase, info, theme }) {
+function Rail({ route, go, phase, setPhase, phase2Locked, info, theme, setTheme }) {
   const groups = groupsOf(phase, { staff: info.isStaff });
   const current = groupOfRoute(route, phase);
   const [openId, setOpenId] = React.useState(null);
   const [top, setTop] = React.useState(16);
-  const [more, setMore] = React.useState(false);
+  const [more, setMore] = React.useState(false); // false | "mais" | "prefs"
   const btnRefs = React.useRef({});
   const panelRef = React.useRef(null);
   React.useEffect(() => {
@@ -278,13 +260,13 @@ function Rail({ route, go, phase, info, theme }) {
           );
         })}
         <div className="smn-rail-sp" />
-        <button type="button" className={`smn-rb${more ? " is-current" : ""}`} aria-haspopup="dialog" aria-expanded={more} onClick={() => { setOpenId(null); setMore((m) => !m); }}>
-          <Icon name="layout-grid" size={22} />
+        <button type="button" className={`smn-rb${more === "mais" ? " is-current" : ""}`} aria-label="Mais" aria-expanded={more === "mais"} onClick={() => { setOpenId(null); setMore((m) => (m === "mais" ? false : "mais")); }}>
+          <MoreGrid />
           <span>Mais</span>
         </button>
-        <button type="button" className={`smn-rb${route === "perfil" ? " is-current" : ""}`} aria-current={route === "perfil" ? "page" : undefined} onClick={() => go("perfil")}>
-          <Icon name="settings" size={22} />
-          <span>Ajustes</span>
+        <button type="button" className={`smn-rb${more === "prefs" || route === "perfil" ? " is-current" : ""}`} aria-label="Preferências" aria-expanded={more === "prefs"} onClick={() => { setOpenId(null); setMore((m) => (m === "prefs" ? false : "prefs")); }}>
+          {AppRealIcon({ name: "settings", size: 26 }) || <Icon name="settings" size={22} />}
+          <span>Preferências</span>
         </button>
       </nav>
       {opened && (
@@ -302,80 +284,25 @@ function Rail({ route, go, phase, info, theme }) {
           </div>
         </>
       )}
-      {more && <MoreSheet route={route} go={go} info={info} phase={phase} variant="tablet" onClose={() => setMore(false)} />}
+      {more && <MaisPage key={more} route={route} go={go} info={info} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} themeChoice={info.themeChoice} setTheme={setTheme} variant="tablet" initialView={more} symbol={logoSrc(theme, "symbol")} onClose={() => setMore(false)} />}
     </>
   );
 }
 
-// ---------------------------------------------------------------- "Mais": lista de TODAS as áreas (celular e tablet)
-function MoreSheet({ route, go, info, phase = 1, variant, onClose }) {
-  const ref = React.useRef(null);
-  React.useEffect(() => {
-    const first = ref.current && ref.current.querySelector("button[data-item]");
-    if (first) first.focus();
-    const k = (e) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "Tab" && ref.current) {
-        const f = [...ref.current.querySelectorAll("button")];
-        if (!f.length) return;
-        const a = document.activeElement;
-        if (e.shiftKey && a === f[0]) {
-          e.preventDefault();
-          f[f.length - 1].focus();
-        } else if (!e.shiftKey && a === f[f.length - 1]) {
-          e.preventDefault();
-          f[0].focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", k);
-    return () => document.removeEventListener("keydown", k);
-  }, [onClose]);
-  const pick = (id) => {
-    onClose();
-    go(id);
-  };
-  const groups = [...groupsOf(phase, { staff: info.isStaff }).map((g) => [g.label, g.items]), ["Configurações", [...configItems(info), ["perfil", "settings", "Conta e ajuda"]]]];
+// Quatro quadradinhos coloridos do botão "Mais" (no desenho do pacote)
+function MoreGrid({ size = 24 }) {
   return (
-    <div>
-      <div className="smn-more-back" onClick={onClose} aria-hidden="true" />
-      <div ref={ref} className={`smn-more${variant === "tablet" ? " smn-more--tablet" : ""}`} role="dialog" aria-modal="true" aria-label="Todas as áreas">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0 0" }}>
-          <strong style={{ font: "700 16px var(--font-sans)", color: "var(--text-primary)" }}>Todas as áreas</strong>
-          <button type="button" className="smn-hdr-btn" onClick={onClose} aria-label="Fechar" style={{ color: "var(--text-secondary)" }}>
-            <Icon name="x" size={20} />
-          </button>
-        </div>
-        {groups.map(([t, its]) => (
-          <div key={t}>
-            <div className="smn-overline" style={{ padding: "12px 2px 6px" }}>{t}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 8 }}>
-              {its.map(([id, ic, l]) => {
-                const b = badgeOf(id, info);
-                return (
-                  <button key={id} type="button" data-item="1" className="smn-more-item" aria-current={route === id ? "page" : undefined} onClick={() => pick(id)}>
-                    <Icon name={ic} size={18} />
-                    <span style={{ flex: 1, minWidth: 0 }}>{l}</span>
-                    {b != null && <Badge n={b} />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-        <div style={{ paddingTop: 12 }}>
-          <button type="button" data-item="1" className="smn-more-item" style={{ width: "100%", color: "var(--danger-text)" }} onClick={() => { onClose(); info.onSignOut && info.onSignOut(); }}>
-            <Icon name="log-out" size={18} />
-            Sair
-          </button>
-        </div>
-      </div>
-    </div>
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="3" width="8" height="8" rx="2.5" fill="var(--teal-400)" />
+      <rect x="13" y="3" width="8" height="8" rx="2.5" fill="var(--violet-600)" />
+      <rect x="3" y="13" width="8" height="8" rx="2.5" fill="var(--orange-500)" />
+      <rect x="13" y="13" width="8" height="8" rx="2.5" fill="var(--navy-900)" />
+    </svg>
   );
 }
 
 // ---------------------------------------------------------------- celular: barra de abas
-function MobileTabs({ route, go, phase, info }) {
+function MobileTabs({ route, go, phase, setPhase, phase2Locked, info, theme, setTheme }) {
   const [more, setMore] = React.useState(false);
   const close = React.useCallback(() => setMore(false), []);
   React.useEffect(() => setMore(false), [route]);
@@ -385,7 +312,7 @@ function MobileTabs({ route, go, phase, info }) {
   const moreOn = phase === 1 && !tabs.some(onTab);
   return (
     <>
-      {more && phase === 1 && <MoreSheet route={route} go={go} info={info} phase={phase} onClose={close} />}
+      {more && phase === 1 && <MaisPage route={route} go={go} info={info} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} themeChoice={info.themeChoice} setTheme={setTheme} variant="mobile" symbol={logoSrc(theme, "symbol")} onClose={close} />}
       <nav className="smn-tabs" aria-label="Navegação principal">
         {tabs.map((t) => {
           const [id, ic, l] = t;
@@ -400,8 +327,8 @@ function MobileTabs({ route, go, phase, info }) {
           );
         })}
         {phase === 1 && (
-          <button type="button" className={`smn-tab${more || moreOn ? " is-current" : ""}`} aria-label="Mais" aria-haspopup="dialog" aria-expanded={more} onClick={() => setMore((m) => !m)}>
-            <Icon name="layout-grid" size={22} />
+          <button type="button" className={`smn-tab${more || moreOn ? " is-current" : ""}`} aria-label="Mais" aria-expanded={more} onClick={() => setMore((m) => !m)}>
+            <MoreGrid />
             <span>Mais</span>
           </button>
         )}
@@ -448,7 +375,86 @@ function PhaseSwitch({ phase, setPhase, mobile, phase2Locked }) {
   );
 }
 
-function Header({ title, sub, theme, setTheme, go, mobile, phase, setPhase, phase2Locked, info }) {
+// ---------------------------------------------------------------- cabeçalhos do Início e do Plano de Hoje (pacote "Novas telas", onda 2)
+// Celular: barra do alto (logo, fase, conta) e título; computador e tablet: título com a sequência e a fase à direita (Início) ou título com o botão de personalizar (Plano).
+function StreakChip({ info, go }) {
+  const n = info.streakDays || 0;
+  return (
+    <button type="button" className="smn-streak" onClick={() => go("missoes")} title="Sequência de dias de estudo">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="var(--streak)" stroke="var(--streak)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true">
+        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+      </svg>
+      <span className="smn-mono">{n}</span> {n === 1 ? "dia" : "dias"}
+    </button>
+  );
+}
+
+function MobileTopBar({ theme, go, phase, setPhase, phase2Locked, info }) {
+  return (
+    <div className="smn-mtop">
+      <button type="button" className="smn-mtop-logo" onClick={() => go(phase === 2 ? "home2" : "home")} aria-label="StaziaMed, início">
+        <img className="wm" src={theme === "dark" ? "/brand/horizontal-escuro-320w.png" : "/brand/horizontal-320w.png"} alt="StaziaMed Revalida" width="129" height="40" />
+        <img className="sym" src={logoSrc(theme, "symbol")} alt="" aria-hidden="true" width="26" height="38" />
+      </button>
+      <span style={{ flex: 1 }} />
+      <PhaseSwitch phase={phase} setPhase={setPhase} mobile phase2Locked={phase2Locked} />
+      <button type="button" className="smn-hdr-btn" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`}>
+        <Avatar name={info.name} size={36} />
+      </button>
+    </div>
+  );
+}
+
+function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, phase, setPhase, phase2Locked, info }) {
+  if (kind === "inicio") {
+    return (
+      <header className="smn-ph">
+        {mobile && <MobileTopBar theme={theme} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />}
+        <div className="smn-ph-row">
+          <div className="smn-ph-l">
+            <h1 className="smn-ph-h1">{title}</h1>
+            <StreakChip info={info} go={go} />
+          </div>
+          {!mobile && (
+            <div className="smn-ph-r">
+              {sub && <span className="smn-ph-date">{sub}</span>}
+              <PhaseSwitch phase={phase} setPhase={setPhase} mobile={false} phase2Locked={phase2Locked} />
+              <IconButton icon={theme === "dark" ? "sun" : "moon"} label={theme === "dark" ? "Tema claro" : "Tema escuro"} variant="secondary" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} style={{ minWidth: 44, minHeight: 44 }} />
+            </div>
+          )}
+        </div>
+        {mobile && sub && <span className="smn-ph-date smn-ph-date--m">{sub}</span>}
+      </header>
+    );
+  }
+  // plano
+  const open = () => go("hoje", { ajustar: 1 });
+  return (
+    <header className="smn-ph smn-ph--plan">
+      {mobile && <MobileTopBar theme={theme} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />}
+      {mobile && (
+        <button type="button" className="smn-ph-back" onClick={() => go("home")}>
+          <Icon name="chevron-left" size={20} />
+          Início
+        </button>
+      )}
+      <div className="smn-ph-row smn-ph-row--plan">
+        <div>
+          {!mobile && sub && <div className="smn-ph-eyebrow">{sub}</div>}
+          <h1 className="smn-ph-h1">{title}</h1>
+          {mobile && <div className="smn-ph-eyebrow smn-ph-eyebrow--m">Aprender · praticar · revisar</div>}
+        </div>
+        <button type="button" className="smn-ph-btn" onClick={open} aria-haspopup="dialog">
+          <Icon name="sliders-horizontal" size={18} />
+          {mobile ? "Ajustar" : "Personalizar plano"}
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function Header({ title, sub, theme, setTheme, go, mobile, phase, setPhase, phase2Locked, info, kind }) {
+  if (kind === "inicio" || kind === "plano") return <PageHeader kind={kind} title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />;
   return (
     <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
       <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -481,7 +487,7 @@ function Header({ title, sub, theme, setTheme, go, mobile, phase, setPhase, phas
   );
 }
 
-function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phase = 1, setPhase, phase2Locked = false, info }) {
+function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phase = 1, setPhase, phase2Locked = false, info, headerKind }) {
   const layout = useLayout();
   const full = FULL.includes(route);
   const mobile = layout === "mobile";
@@ -516,18 +522,18 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
         </a>
       )}
       {!full && layout === "desktop" && <Sidebar route={route} go={go} phase={phase} info={info} theme={theme} collapsed={collapsed} setCollapsed={setCollapsed} />}
-      {!full && layout === "tablet" && <Rail route={route} go={go} phase={phase} info={info} theme={theme} />}
+      {!full && layout === "tablet" && <Rail route={route} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} theme={theme} setTheme={setTheme} />}
       <main id="conteudo" tabIndex={-1} style={{ marginLeft, transition: "margin-left var(--dur-base) var(--ease-standard)", padding: bare ? 0 : mobile ? "24px 18px calc(104px + env(safe-area-inset-bottom))" : layout === "tablet" ? "28px 28px 64px" : "36px 48px 64px", outline: "none" }}>
         {bare ? (
           children
         ) : (
           <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
-            <Header title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />
+            <Header title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} kind={headerKind} />
             {children}
           </div>
         )}
       </main>
-      {!full && mobile && <MobileTabs route={route} go={go} phase={phase} info={info} />}
+      {!full && mobile && <MobileTabs route={route} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} theme={theme} setTheme={setTheme} />}
     </div>
   );
 }

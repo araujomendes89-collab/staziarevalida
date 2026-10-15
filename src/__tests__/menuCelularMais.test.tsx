@@ -40,64 +40,101 @@ describe("Menu do celular: Mais", () => {
     expect(names).toEqual(["Início", "Questões", "Revisar", "Tutor", "Mais"]);
   });
 
-  it("'Mais' abre a lista com todas as áreas da 1ª fase e nenhuma da 2ª", () => {
+  it("'Mais' abre a página com todas as áreas da 1ª fase e nenhuma da 2ª", () => {
     setWidth(390);
     mount();
-    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Mais" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Mais" }));
-    const sheet = screen.getByRole("dialog", { name: "Todas as áreas" });
-    for (const nome of ["Plano de Hoje", "Temas Essenciais", "Diretrizes e Atualizações", "Mapas Mentais", "Banco de Questões", "Simulados", "Flashcards", "Caderno de Erros", "Missões", "Ranking", "Conquistas", "Desempenho", "Análise Inteligente", "Planejamento", "Tutor com IA", "Meu Plano", "Conta e ajuda"]) {
-      expect(within(sheet).getByRole("button", { name: new RegExp(nome) })).toBeTruthy();
+    const page = screen.getByRole("region", { name: "Mais" });
+    for (const nome of ["Plano de Hoje", "Minha Trilha", "Temas Essenciais", "Diretrizes e Atualizações", "Mapas Mentais", "Banco de Questões", "Simulados", "Flashcards", "Caderno de Erros", "Missões", "Ranking", "Conquistas", "Desempenho", "Análise Inteligente", "Planejamento"]) {
+      expect(within(page).getByRole("button", { name: new RegExp(nome) })).toBeTruthy();
     }
-    for (const fase2 of ["Estações", "Teoria", "PEPs", "Paciente", "Praticar em dupla"]) expect(within(sheet).queryByRole("button", { name: new RegExp(fase2) })).toBeNull();
-    expect(within(sheet).queryByText(/Administração/)).toBeNull(); // aluno não vê
+    for (const fase2 of ["Estações", "Teoria", "PEPs", "Paciente", "Praticar em dupla"]) expect(within(page).queryByRole("button", { name: new RegExp(fase2) })).toBeNull();
+    expect(within(page).queryByText(/Administração/)).toBeNull(); // aluno não vê
+    // sem a caixa "Buscar no app" (fora da 1ª entrega)
+    expect(within(page).queryByRole("searchbox")).toBeNull();
     // Aulas fechadas ao aluno por decisão do dono (14/10/2026; ver features.js)
-    expect(within(sheet).queryByRole("button", { name: /Aulas/ })).toBeNull();
+    expect(within(page).queryByRole("button", { name: /Aulas/ })).toBeNull();
   });
 
-  it("com VITE_AULAS_ALUNO=1 (caminho para abrir as Aulas de novo) a lista volta a ter Aulas", () => {
+  it("com VITE_AULAS_ALUNO=1 (caminho para abrir as Aulas de novo) a página volta a ter Aulas", () => {
     vi.stubEnv("VITE_AULAS_ALUNO", "1");
     try {
       setWidth(390);
       mount();
       fireEvent.click(screen.getByRole("button", { name: "Mais" }));
-      expect(within(screen.getByRole("dialog", { name: "Todas as áreas" })).getByRole("button", { name: /Aulas/ })).toBeTruthy();
+      expect(within(screen.getByRole("region", { name: "Mais" })).getByRole("button", { name: /Aulas/ })).toBeTruthy();
     } finally {
       vi.unstubAllEnvs();
     }
   });
 
-  it("tocar numa área leva até ela e fecha a lista; Esc e o fundo também fecham", () => {
+  it("tocar numa área leva até ela e fecha a página; Esc e tocar em 'Mais' de novo também fecham", () => {
     setWidth(390);
     const go = mount();
     fireEvent.click(screen.getByRole("button", { name: "Mais" }));
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Simulados/ }));
+    fireEvent.click(within(screen.getByRole("region", { name: "Mais" })).getByRole("button", { name: /Simulados/ }));
     expect(go).toHaveBeenCalledWith("simulados");
-    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Mais" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Mais" }));
     fireEvent.keyDown(document, { key: "Escape" });
-    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Mais" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Mais" }));
-    fireEvent.click(screen.getByRole("dialog").previousElementSibling as HTMLElement);
-    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Mais" }));
+    expect(screen.queryByRole("region", { name: "Mais" })).toBeNull();
   });
 
-  it("mostra o número de flashcards a revisar, e a equipe vê a Administração", () => {
+  it("mostra o número de flashcards a revisar; Administração (equipe) fica em Preferências", () => {
     setWidth(390);
     mount({ isStaff: true });
     fireEvent.click(screen.getByRole("button", { name: "Mais" }));
-    const sheet = screen.getByRole("dialog");
-    expect(within(sheet).getByRole("button", { name: /Flashcards/ }).textContent).toContain("3");
-    expect(within(sheet).getByRole("button", { name: /Administração/ })).toBeTruthy();
+    const page = screen.getByRole("region", { name: "Mais" });
+    expect(within(page).getByRole("button", { name: /Flashcards/ }).textContent).toContain("3");
+    fireEvent.click(within(page).getByRole("button", { name: "Preferências" }));
+    const prefs = screen.getByRole("region", { name: "Preferências" });
+    expect(within(prefs).getByRole("button", { name: /Administração/ })).toBeTruthy();
+    expect(within(prefs).getByRole("button", { name: /Meu Plano/ })).toBeTruthy();
+    expect(within(prefs).getByRole("button", { name: /Dados pessoais e acesso/ })).toBeTruthy();
+    fireEvent.click(within(prefs).getByRole("button", { name: /Mais/ })); // voltar
+    expect(screen.getByRole("region", { name: "Mais" })).toBeTruthy();
   });
 
-  it("Sair fica na lista; num celular bem estreito (320 px) os botões continuam cabendo", () => {
+  it("Preferências: aluno não vê Administração; tema e fase mudam pelos botões; Sair da conta sai", () => {
+    setWidth(390);
+    const setTheme = vi.fn();
+    const setPhase = vi.fn();
+    const go = vi.fn();
+    render(
+      <AppShell bare={false} route="home" go={go} theme="light" setTheme={setTheme} title="Início" sub="" phase={1} setPhase={setPhase} phase2Locked info={{ ...INFO, themeChoice: "light" }}>
+        <div>corpo</div>
+      </AppShell>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Mais" }));
+    fireEvent.click(within(screen.getByRole("region", { name: "Mais" })).getByRole("button", { name: "Preferências" }));
+    const prefs = screen.getByRole("region", { name: "Preferências" });
+    expect(within(prefs).queryByText(/Administração/)).toBeNull();
+    expect(within(prefs).getByRole("radio", { name: "Claro" }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(within(prefs).getByRole("radio", { name: "Escuro" }));
+    expect(setTheme).toHaveBeenCalledWith("dark");
+    fireEvent.click(within(prefs).getByRole("radio", { name: "Do sistema" }));
+    expect(setTheme).toHaveBeenCalledWith("system");
+    // 2ª fase fechada ao aluno: opção sem clique
+    const second = within(prefs).getByRole("radio", { name: /2ª Fase/ });
+    expect(second.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(second);
+    expect(setPhase).not.toHaveBeenCalled();
+    fireEvent.click(within(prefs).getByRole("button", { name: /Dados pessoais e acesso/ }));
+    expect(go).toHaveBeenCalledWith("perfil");
+  });
+
+  it("Sair da conta fica em Preferências; num celular bem estreito (320 px) os botões continuam cabendo", () => {
     setWidth(320);
     mount();
     fireEvent.click(screen.getByRole("button", { name: "Mais" }));
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Sair" }));
+    fireEvent.click(within(screen.getByRole("region", { name: "Mais" })).getByRole("button", { name: "Preferências" }));
+    fireEvent.click(within(screen.getByRole("region", { name: "Preferências" })).getByRole("button", { name: "Sair da conta" }));
     expect(INFO.onSignOut).toHaveBeenCalled();
     const bar = screen.getByRole("navigation", { name: "Navegação principal" });
     for (const b of within(bar).getAllByRole("button")) expect(b.className).toContain("smn-tab") // largura flexível (flex:1) e min-height 56 no CSS;
@@ -157,6 +194,17 @@ describe("Menu do celular: Mais", () => {
     fireEvent.click(within(screen.getByRole("group", { name: "Praticar" })).getByRole("button", { name: /Simulados/ }));
     expect(go).toHaveBeenCalledWith("simulados");
     expect(screen.getByRole("button", { name: "Perguntar ao tutor" })).toBeTruthy();
+  });
+
+  it("tablet: 'Mais' e 'Preferências' do trilho abrem a página, cada uma na sua tela", () => {
+    setWidth(834);
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Mais" }));
+    expect(screen.getByRole("region", { name: "Mais" })).toBeTruthy();
+    const rail = screen.getByRole("navigation", { name: "Navegação principal" });
+    fireEvent.click(within(rail).getByRole("button", { name: "Preferências" }));
+    expect(screen.getByRole("region", { name: "Preferências" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Mais" })).toBeNull();
   });
 });
 
