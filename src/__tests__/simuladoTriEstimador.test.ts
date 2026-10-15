@@ -18,6 +18,7 @@ import {
   thetaEap,
   thetaMle,
 } from "../../scripts/tri/rasch";
+import { calibrarDaMatriz } from "../../scripts/tri/calibrar";
 
 const correlacao = (a: number[], b: number[]) => {
   const ma = a.reduce((s, x) => s + x, 0) / a.length;
@@ -212,5 +213,35 @@ describe("Calibração JMLE (dados incompletos, cada aluno com um simulado difer
     const r = calibrarJmle(X);
     expect(r.b[0]).toBeNull();
     expect(r.b[1]).not.toBeNull();
+  });
+});
+
+describe("Script de calibração (scripts/tri/calibrar.ts): o que vai para irt_save_calibration", () => {
+  it("manda só questões com ≥ 30 respostas; gabarito invertido sai rejeitado; o resto calibra perto do verdadeiro", () => {
+    const rnd = sorteador(7);
+    const nItens = 30;
+    const b0 = Array.from({ length: nItens }, () => rnd.normal());
+    const rows: { person: string; question_id: string; score: number }[] = [];
+    for (let p = 0; p < 250; p++) {
+      const th = rnd.normal();
+      b0.forEach((b, j) => {
+        let x = rnd.uniforme() < prob(th, b) ? 1 : 0;
+        if (j === 0) x = 1 - x; // gabarito errado na q0: quem sabe mais "erra"
+        rows.push({ person: `p${p}`, question_id: `q${j}`, score: x });
+      });
+    }
+    // q-rara: só 20 respostas
+    for (let p = 0; p < 20; p++) rows.push({ person: `p${p}`, question_id: "q-rara", score: p % 2 });
+    const { items, resumo } = calibrarDaMatriz(rows);
+    expect(items.some((i) => i.question_id === "q-rara")).toBe(false);
+    expect(resumo.poucas_respostas).toBe(1);
+    const q0 = items.find((i) => i.question_id === "q0")!;
+    expect(q0.reject_reason).toMatch(/correlação/);
+    const boas = items.filter((i) => !i.reject_reason);
+    expect(boas.length).toBeGreaterThanOrEqual(nItens - 3);
+    expect(boas.every((i) => i.n_resp >= 100)).toBe(true);
+    expect(resumo.calibradas).toBe(boas.length);
+    const idx = boas.map((i) => Number(i.question_id.slice(1)));
+    expect(correlacao(boas.map((i) => i.b), idx.map((j) => b0[j]))).toBeGreaterThan(0.95);
   });
 });
