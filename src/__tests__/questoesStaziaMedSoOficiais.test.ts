@@ -101,6 +101,10 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   app_admin_ineditas_limits: { classe: "as_duas", como: "equipe" }, // 010300: só conta as publicadas, para o administrador
   app_question_figure: { classe: "as_duas", como: "historico" }, // exige acesso às inéditas
   staziamed_topic_weights: { classe: "so_oficiais", como: "filtra" },
+  // 010400: o simulado TRI só conta questão oficial do Inep (a inédita não tem calibração oficial); cada uma confere origin no corpo
+  irt_calibration_matrix: { classe: "so_oficiais", como: "filtra" }, // a matriz da calibração só traz oficiais
+  irt_save_calibration: { classe: "so_oficiais", como: "filtra" }, // item de inédita é ignorado, nunca grava dificuldade
+  irt_score_session: { classe: "so_oficiais", como: "filtra" }, // a inédita não vira linha de irt_responses: fora de θ, nota e totais
   staziamed_plan_slots: { classe: "as_duas", como: "historico" }, // oficiais para temas e peso; StaziaMed publicadas só para as letras-alvo
   app_draft_questions: { classe: "as_duas", como: "historico" }, // lista dos rascunhos: lê a questão publicada (recolhida, número) e conta as StaziaMed
   app_draft_question_detail: { classe: "as_duas", como: "historico" }, // mostra a questão oficial mais parecida
