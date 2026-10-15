@@ -21,3 +21,7 @@
 .ev{--ev-tile-gold-a:#FFFAF0;--ev-tile-gold-b:#FDEBC8}
 [data-theme="dark"] .ev{--ev-tile-gold-a:rgba(255,207,107,.22);--ev-tile-gold-b:rgba(255,207,107,.1)}
 .ev-tile--gold{background:linear-gradient(160deg,var(--ev-tile-gold-a),var(--ev-tile-gold-b))}
+/* alvos de toque de 44 px (o controle segmentado do design system tem 36 px) e campos de 48 px como no pacote */
+.ev .sm-seg__opt{min-height:44px}
+.ev .ac-panel .sm-input,.ev .ac-inline .sm-input{height:48px}
+.ev .sm-input select,.ev .sm-input input{height:100%}

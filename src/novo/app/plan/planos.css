@@ -5,9 +5,9 @@
 .pn-hero>*{position:relative;z-index:1}
 .pn-hero__ic{flex:none;width:60px;height:60px;border-radius:18px;display:grid;place-items:center;background:rgba(255,255,255,.14)}
 .pn-hero__txt{display:flex;flex-direction:column;gap:4px;min-width:0}
-.pn-hero__k{font:700 12px var(--font-sans);letter-spacing:.1em;text-transform:uppercase;color:#9FD7FF}
+.pn-hero__k{font:700 12px var(--font-sans);letter-spacing:.1em;text-transform:uppercase;color:#fff}
 .pn-hero__h{font:800 22px/1.2 var(--font-sans);color:#fff}
-.pn-hero__p{font:400 14px/1.5 var(--font-sans);color:#C4DCF5}
+.pn-hero__p{font:400 14px/1.5 var(--font-sans);color:#E3F0FF}
 .pn-hero__p b{color:#fff}
 .pn--narrow .pn-hero,.pn .pn-hero{min-width:0}
 .pn-sec{display:flex;flex-direction:column;gap:12px}

@@ -37,7 +37,7 @@
 .ac-admin{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;border-radius:18px;color:#fff;background:linear-gradient(120deg,#052A5A,#0752AB)}
 [data-theme="dark"] .ac-admin{background:linear-gradient(120deg,#0B2A55,#0B5FC4)}
 .ac-admin__t{flex:1 1 220px;display:flex;flex-direction:column;gap:2px}.ac-admin__h{font:700 14px var(--font-sans)}
-.ac-admin__t small{font:400 12.5px/1.45 var(--font-sans);color:#C4DCF5}
+.ac-admin__t small{font:400 12.5px/1.45 var(--font-sans);color:#E3F0FF}
 .ac-admin__btn{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;border:0;border-radius:11px;background:#fff;color:#052A5A;font:800 13.5px var(--font-sans);cursor:pointer}
 .ac-admin__btn:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:none}
 .ac-cols{display:grid;grid-template-columns:280px minmax(0,1fr);gap:20px;align-items:start}

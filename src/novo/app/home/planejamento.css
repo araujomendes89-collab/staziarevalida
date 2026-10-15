@@ -7,9 +7,9 @@
 [data-theme="dark"] .pl-hero{background:var(--brand-hero-gradient)}
 .pl-hero::after{content:"";position:absolute;right:-70px;top:-60px;width:240px;height:240px;border-radius:999px;background:radial-gradient(circle,rgba(0,157,254,.5),rgba(0,157,254,0) 70%);pointer-events:none}
 .pl-hero>*{position:relative;z-index:1}
-.pl-hero__k{display:flex;align-items:center;gap:10px;font:700 12px var(--font-sans);letter-spacing:.1em;text-transform:uppercase;color:#9FD7FF}
+.pl-hero__k{display:flex;align-items:center;gap:10px;font:700 12px var(--font-sans);letter-spacing:.1em;text-transform:uppercase;color:#fff}
 .pl-hero__h{margin:0;font:800 26px/1.2 var(--font-sans);letter-spacing:-.02em;color:#fff}
-.pl-hero__p{margin:0;max-width:56ch;font:400 14px/1.55 var(--font-sans);color:#C4DCF5}
+.pl-hero__p{margin:0;max-width:56ch;font:400 14px/1.55 var(--font-sans);color:#E3F0FF}
 .pl-hero__btn{margin-top:10px;min-height:46px;display:inline-flex;align-items:center;gap:8px;padding:0 18px;border:0;border-radius:13px;background:#fff;color:#052A5A;font:800 14.5px var(--font-sans);cursor:pointer;transition:transform .12s ease}
 .pl-hero__btn:active{transform:scale(.98)}
 .pl-hero__btn:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:none}

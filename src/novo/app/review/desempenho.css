@@ -23,7 +23,7 @@
 .dp-bar{display:block;height:7px;border-radius:999px;background:var(--surface-sunken);overflow:hidden}
 .dp-bar>span{display:block;height:100%;border-radius:999px}
 /* botão roxo do Tutor (modelo "Me teste nos pontos fracos") */
-.ev-ia{margin-top:8px;min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 18px;border:0;border-radius:13px;background:linear-gradient(155deg,#8B6CF6,#5230C9);color:#fff;font:800 14px var(--font-sans);cursor:pointer;box-shadow:0 8px 18px -10px rgba(82,48,201,.7);transition:transform .12s ease}
+.ev-ia{margin-top:8px;min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 18px;border:0;border-radius:13px;background:linear-gradient(155deg,#7A58EE,#5230C9);color:#fff;font:800 14px var(--font-sans);cursor:pointer;box-shadow:0 8px 18px -10px rgba(82,48,201,.7);transition:transform .12s ease}
 .ev-ia:active{transform:scale(.98)}
 .ev-ia:hover{filter:brightness(1.06)}
 /* quadros de erros */
@@ -57,3 +57,4 @@
 @media (max-width:1100px){.dp-metric{padding:14px;gap:10px}.dp-metric__value{font-size:22px}}
 .dp-errors--stack{flex-direction:column}
 .dp-errors--stack .dp-err{flex:none}
+[data-theme="dark"] .ev-tab[aria-selected="true"]{background:var(--border-default);box-shadow:none}
