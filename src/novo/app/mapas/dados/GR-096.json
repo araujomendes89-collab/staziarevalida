@@ -18,7 +18,8 @@
       "Conferência 15/10: 'TCC essencial na agorafobia' trocado por 'particularmente importante', como na aula (AN95).",
       "Conferência 15/10: 'nunca com menos de 2 semanas' trocado por 'evitando trocas com menos de 2 semanas', como na aula (AN119: 'evite').",
       "Conferência 15/10: duração de 1 a 2 anos após a remissão recebeu de volta a ressalva 'a maioria das diretrizes sugere' (AN128; a aula diz que a duração ideal é controversa, AN142), no ramo de seguimento e no ponto-chave.",
-      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)"
+      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
     ]
   },
   "ramos": [
@@ -748,17 +749,242 @@
     }
   ],
   "pontos_chave": [
-    "Na APS, ansiedade vem como sintomas físicos sem causa médica",
-    "Primeiro: afastar causa clínica, de substâncias e de fármacos",
-    "Transtorno de pânico: ataques recorrentes e inesperados",
-    "Crise intensa: benzodiazepínico de ação curta, via oral",
-    "Longo prazo: psicoeducação, TCC e ISRS/IRSN em dose baixa",
-    "A maioria das diretrizes sugere 1 a 2 anos após a remissão"
+    "Na APS: sintomas físicos sem causa médica",
+    "Antes: excluir doença clínica, fármacos, drogas",
+    "Crise intensa: benzodiazepínico de ação curta, oral",
+    "Longo prazo: psicoeducação, TCC e ISRS ou IRSN"
   ],
   "atencao": [
-    "Benzodiazepínico: não é de longo prazo; contraindicado se suscetível a dependência",
-    "Benzodiazepínico intramuscular não é recomendado: absorção errática",
-    "Inquietude inicial com ISRS costuma ser transitória; em geral não justifica suspender",
-    "Antes de encaminhar: conferir psicoeducação, dose, aumento gradual e tempo de efeito"
-  ]
+    "Benzodiazepínico não é de longo prazo: risco de dependência",
+    "Benzodiazepínico intramuscular não recomendado: absorção errática",
+    "Inquietude inicial do ISRS costuma passar; em geral, não suspender",
+    "Após a remissão, a maioria das diretrizes sugere 1 a 2 anos"
+  ],
+  "poster": {
+    "conceito": {
+      "titulo": "Quando a ansiedade é transtorno",
+      "icone": "coracao",
+      "cor": "azul",
+      "itens": [
+        "Emoção normal; vira transtorno com prejuízo",
+        "Prevalente, mas costuma ser subdiagnosticado",
+        "Curso crônico em muitos, com recaídas",
+        "Mais uso de serviços e ideação suicida"
+      ],
+      "claims": [
+        "AN01",
+        "AN02",
+        "AN03",
+        "AN07",
+        "AN08",
+        "AN16"
+      ]
+    },
+    "quadro": {
+      "titulo": "Suspeita na atenção primária",
+      "icone": "estetoscopio",
+      "cor": "vermelho",
+      "itens": [
+        "Sintomas físicos sem causa médica",
+        "Múltiplas queixas sem origem",
+        "Uso excessivo do serviço de saúde",
+        "Uso de tabaco, álcool ou drogas",
+        "Rastreio: sim a qualquer pergunta"
+      ],
+      "claims": [
+        "AN10",
+        "AN11",
+        "AN12",
+        "AN14",
+        "AN201"
+      ]
+    },
+    "fatores": {
+      "titulo": "Causas a excluir primeiro",
+      "icone": "alerta",
+      "cor": "amarelo",
+      "itens": [
+        "Coração: coronariana, arritmia",
+        "Pulmão: DPOC, asma, embolia",
+        "Endócrino: tireoide, hipoglicemia",
+        "Abstinência: álcool, cocaína",
+        "Cafeína, estimulantes, corticoides"
+      ],
+      "claims": [
+        "AN15",
+        "AN20",
+        "AN22",
+        "AN23",
+        "AN24",
+        "AN25",
+        "AN27",
+        "AN28"
+      ]
+    },
+    "diagnostico": {
+      "titulo": "Quadros e critérios",
+      "icone": "prancheta",
+      "cor": "verde",
+      "linhas": [
+        {
+          "icone": "alerta",
+          "rotulo": "Ataque de pânico",
+          "itens": [
+            "Início súbito; pelo menos 4 sintomas",
+            "Pode ocorrer em qualquer ansiedade"
+          ]
+        },
+        {
+          "icone": "coracao",
+          "rotulo": "Pânico",
+          "itens": [
+            "Ataques recorrentes e inesperados",
+            "Ao menos um seguido de preocupação"
+          ]
+        },
+        {
+          "icone": "pessoas",
+          "rotulo": "Agorafobia",
+          "itens": [
+            "Medo de 2 ou mais de 5 situações",
+            "Difícil escapar ou obter ajuda"
+          ]
+        }
+      ],
+      "claims": [
+        "AN17",
+        "AN36",
+        "AN39",
+        "AN40",
+        "AN61"
+      ]
+    },
+    "exames": {
+      "titulo": "Duração dos quadros",
+      "icone": "relogio",
+      "cor": "roxo",
+      "linhas": [
+        {
+          "icone": "relogio",
+          "rotulo": "Ansiedade generalizada",
+          "texto": "Preocupação na maioria dos dias, no mínimo 6 meses"
+        },
+        {
+          "icone": "pessoas",
+          "rotulo": "Ansiedade social",
+          "texto": "Medo de avaliação negativa; em geral mais de 6 meses"
+        },
+        {
+          "icone": "lupa",
+          "rotulo": "Fobia específica",
+          "texto": "Medo desproporcional; duração mínima de 6 meses"
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "Estresse pós-traumático",
+          "texto": "Duração superior a 1 mês: considerar este diagnóstico"
+        }
+      ],
+      "claims": [
+        "AN30",
+        "AN34",
+        "AN35",
+        "AN37",
+        "AN38",
+        "AN44"
+      ]
+    },
+    "conduta": {
+      "titulo": "Manejo da crise de pânico",
+      "icone": "pessoas",
+      "cor": "azul-forte",
+      "linhas": [
+        {
+          "icone": "pessoas",
+          "rotulo": "Tranquilizar",
+          "itens": [
+            "Explicar que é um ataque de ansiedade",
+            "Reforçar que é passageira (poucos minutos)"
+          ]
+        },
+        {
+          "icone": "pulmao",
+          "rotulo": "Respiração",
+          "itens": [
+            "Pelo nariz, sem hiperventilar",
+            "Hiperventilação: respiração diafragmática"
+          ]
+        },
+        {
+          "icone": "pilula",
+          "rotulo": "Muito intensa",
+          "itens": [
+            "Benzodiazepínico de ação curta, oral",
+            "Intramuscular: não recomendado"
+          ]
+        }
+      ],
+      "claims": [
+        "AN64",
+        "AN65",
+        "AN66",
+        "AN67",
+        "AN69",
+        "AN70"
+      ]
+    },
+    "objetivos": {
+      "titulo": "Segurança e seguimento",
+      "icone": "alvo",
+      "cor": "ciano",
+      "itens": [
+        "Avaliar risco de suicídio em toda consulta",
+        "Risco agudo: emergência; não deixar sozinha",
+        "Autoprovocada: notificação em até 24 horas",
+        "Com medicamento: retorno em 1 semana"
+      ],
+      "claims": [
+        "AN50",
+        "AN60",
+        "AN72",
+        "AN124",
+        "AN126",
+        "AN206"
+      ]
+    },
+    "tratamento": {
+      "titulo": "Tratamento de longo prazo",
+      "icone": "pilula",
+      "cor": "laranja",
+      "faixas": [
+        {
+          "rotulo": "Primeira escolha",
+          "chip": "ISRS",
+          "texto": "Começar com dose baixa"
+        },
+        {
+          "rotulo": "Psicoterapia estruturada",
+          "chip": "TCC",
+          "texto": "Maiores evidências"
+        }
+      ],
+      "itens": [
+        "ISRS: inibidor seletivo de recaptação de serotonina",
+        "TCC: terapia cognitivo-comportamental",
+        "Benzodiazepínico: apoio na ansiedade muito intensa"
+      ],
+      "claims": [
+        "AN94",
+        "AN100",
+        "AN101",
+        "AN113"
+      ]
+    }
+  },
+  "foto": {
+    "webp": "/mapas-mentais/transtornos-de-ansiedade-e-panico.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  }
 }

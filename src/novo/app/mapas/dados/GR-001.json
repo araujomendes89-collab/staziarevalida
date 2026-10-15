@@ -13,7 +13,8 @@
     "aprovacao_humana": null,
     "pendencias": [
       "Data de incorporacao do BPaLM citada pelo dono (06/10/2026) NAO verificada: a aula traz apenas o documento de 24/08/2026; data omitida do mapa.",
-      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)"
+      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
     ]
   },
   "ramos": [
@@ -647,17 +648,15 @@
     }
   ],
   "pontos_chave": [
-    "Tosse por 3 semanas ou mais: investigar TB com escarro",
-    "Caso novo: TRM-TB primeiro; cultura com TS conforme o cenário",
-    "TRM-TB negativo com quadro persistente: cultura e TS",
-    "Esquema básico (10 anos ou mais): 2RHZE/4RH, com TDO",
-    "Contato assintomático: PT e/ou radiografia de tórax",
-    "Notifica só o caso confirmado; oferecer teste de HIV"
+    "Tosse por 3 semanas ou mais: investigar TB",
+    "Caso novo: TRM-TB primeiro",
+    "Esquema básico: 2RHZE/4RH, com TDO",
+    "ILTB só depois de afastar TB ativa"
   ],
   "atencao": [
-    "ILTB não é TB ativa: antes de tratar, afastar sinais de TB ativa",
+    "ILTB não é TB ativa: afastar TB ativa antes de tratar",
     "PT e IGRA indicam infecção latente: não diagnosticam doença ativa",
-    "ILTB: 3HP é o preferencial, mas há alternativas e restrições",
+    "TRM-TB negativo com quadro persistente: cultura e TS",
     "Resistência à rifampicina detectada: referência terciária imediata"
   ],
   "foto": {
@@ -665,5 +664,210 @@
     "foco": "50% 50%",
     "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
     "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  },
+  "poster": {
+    "conceito": {
+      "titulo": "Transmissão e BCG",
+      "icone": "virus",
+      "cor": "azul",
+      "itens": [
+        "A forma pulmonar é a que transmite",
+        "Com tratamento adequado, a transmissão cai",
+        "Em geral, após 15 dias já está muito reduzida",
+        "BCG não protege contra a forma pulmonar"
+      ],
+      "claims": [
+        "TB24",
+        "TB34",
+        "TB85"
+      ]
+    },
+    "quadro": {
+      "titulo": "Suspeita clínica",
+      "icone": "estetoscopio",
+      "cor": "vermelho",
+      "itens": [
+        "Tosse por 3 semanas ou mais",
+        "Febre vespertina",
+        "Sudorese noturna",
+        "Emagrecimento",
+        "Cansaço"
+      ],
+      "claims": [
+        "TB01"
+      ]
+    },
+    "fatores": {
+      "titulo": "Tosse de qualquer duração",
+      "icone": "alerta",
+      "cor": "amarelo",
+      "itens": [
+        "Privados de liberdade",
+        "Profissionais de saúde",
+        "Pessoas vivendo com HIV",
+        "Pessoas em situação de rua",
+        "Indígenas"
+      ],
+      "claims": [
+        "TB02"
+      ]
+    },
+    "diagnostico": {
+      "titulo": "Diagnóstico",
+      "icone": "prancheta",
+      "cor": "verde",
+      "linhas": [
+        {
+          "icone": "pulmao",
+          "rotulo": "Imagem",
+          "itens": [
+            "Radiografia de tórax em toda suspeita",
+            "Nenhuma imagem é patognomônica"
+          ]
+        },
+        {
+          "icone": "microscopio",
+          "rotulo": "Caso novo",
+          "itens": [
+            "TRM-TB é o exame de escolha",
+            "Sem TRM-TB: baciloscopia e cultura"
+          ]
+        },
+        {
+          "icone": "tubo",
+          "rotulo": "Cultura com TS",
+          "itens": [
+            "Sempre: HIV, criança, extrapulmonar",
+            "Demais: TRM-TB positivo ou quadro persistente"
+          ]
+        }
+      ],
+      "claims": [
+        "TB04",
+        "TB05",
+        "TB09",
+        "TB47",
+        "TB48",
+        "TB49"
+      ]
+    },
+    "exames": {
+      "titulo": "Interpretação do TRM-TB",
+      "icone": "microscopio",
+      "cor": "roxo",
+      "linhas": [
+        {
+          "icone": "escudo",
+          "rotulo": "Rifampicina sensível",
+          "texto": "MTB detectado: esquema básico e reavaliar com a cultura"
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "Rifampicina detectada",
+          "texto": "Referência terciária imediatamente"
+        },
+        {
+          "icone": "lupa",
+          "rotulo": "MTB não detectado",
+          "texto": "Sintomas persistem: cultura e TS; em HIV, criança e extrapulmonar não exclui TB"
+        },
+        {
+          "icone": "tubo",
+          "rotulo": "Traços ou indeterminada",
+          "texto": "Traços: manter investigação; indeterminada: repetir em nova amostra"
+        }
+      ],
+      "claims": [
+        "TB10",
+        "TB11",
+        "TB12",
+        "TB57",
+        "TB58",
+        "TB60",
+        "TB61"
+      ]
+    },
+    "conduta": {
+      "titulo": "Controle dos contatos",
+      "icone": "pessoas",
+      "cor": "azul-forte",
+      "linhas": [
+        {
+          "icone": "estetoscopio",
+          "rotulo": "Com sintomas",
+          "itens": [
+            "Escarro e radiografia de tórax"
+          ]
+        },
+        {
+          "icone": "pessoas",
+          "rotulo": "Sem sintomas",
+          "itens": [
+            "PT e/ou radiografia de tórax",
+            "PT 5 mm ou mais: tratar ILTB"
+          ]
+        },
+        {
+          "icone": "escudo",
+          "rotulo": "ILTB",
+          "itens": [
+            "Antes, afastar TB ativa",
+            "3HP preferencial; há alternativas e restrições"
+          ]
+        }
+      ],
+      "claims": [
+        "TB26",
+        "TB27",
+        "TB29",
+        "TB31",
+        "TB32"
+      ]
+    },
+    "objetivos": {
+      "titulo": "Condutas essenciais",
+      "icone": "alvo",
+      "cor": "ciano",
+      "itens": [
+        "Tratar na Atenção Primária, com TDO",
+        "Controlar com baciloscopia mensal",
+        "Oferecer teste de HIV ao paciente e aos contatos",
+        "Notificar o caso confirmado"
+      ],
+      "claims": [
+        "TB15",
+        "TB16",
+        "TB20",
+        "TB21",
+        "TB28",
+        "TB33"
+      ]
+    },
+    "tratamento": {
+      "titulo": "Tratamento (esquema básico)",
+      "icone": "pilula",
+      "cor": "laranja",
+      "faixas": [
+        {
+          "rotulo": "Fase intensiva (2 meses)",
+          "chip": "RHZE",
+          "texto": "Quatro fármacos"
+        },
+        {
+          "rotulo": "Manutenção (4 meses)",
+          "chip": "RH",
+          "texto": "Dois fármacos"
+        }
+      ],
+      "itens": [
+        "Adultos e adolescentes (10 anos ou mais): 2RHZE/4RH",
+        "Esquemas especiais: referência"
+      ],
+      "claims": [
+        "TB17",
+        "TB18",
+        "TB64"
+      ]
+    }
   }
 }

@@ -17,7 +17,8 @@
       "Dose de hidroxocobalamina: a aula só cita o antídoto 'conforme os critérios oficiais'; nenhuma dose registrada.",
       "Regra dos nove na criança: a aula traz 13,5% e 14% para cada membro inferior conforme a tabela usada; ambos mantidos.",
       "Conferência 15/10: item do cianeto reescrito; antes ligava os sinais direto à hidroxocobalamina, e a aula diz que esses sinais 'levam a verificar' o cianeto e que o antídoto segue 'os critérios oficiais' (QM19, QM21).",
-      "Revisão reescrita em palavras-chave em 15/10 (sem fato novo)"
+      "Revisão reescrita em palavras-chave em 15/10 (sem fato novo)",
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
     ]
   },
   "ramos": [
@@ -706,16 +707,312 @@
   ],
   "pontos_chave": [
     "Politrauma: primeiro o trauma, depois a queimadura",
-    "Rouquidão, fuligem e face queimada: via aérea precoce",
-    "Oximetria normal não afasta intoxicação por CO",
-    "Parkland: ringer lactato, 2º e 3º graus, metade em 8 h",
-    "Diurese 0,5 a 1 mL/kg/h na térmica; ~1,5 na elétrica",
-    "Química: diluir em água corrente ≥ 30 min, sem neutralizar"
+    "Rouquidão, fuligem, face queimada: via aérea precoce",
+    "Oximetria normal não afasta monóxido de carbono",
+    "Parkland: ringer lactato, metade nas primeiras 8 h"
   ],
   "atencao": [
-    "Água gelada e gelo são contraindicados para resfriar a queimadura",
-    "As 8 primeiras horas contam da hora da queimadura, não da chegada",
-    "Fator de Parkland: 2 a 4 mL; nas questões oficiais do adulto o gabarito usou 2",
-    "Lesão elétrica: monitorização cardíaca por 24 a 48 h, mesmo com ferida pequena"
-  ]
+    "Água gelada e gelo são contraindicados para resfriar",
+    "As 8 horas contam da hora da queimadura, não da chegada",
+    "Parkland: fator de 2 a 4 mL; gabarito do adulto usou 2",
+    "Elétrica: monitor cardíaco 24 a 48 h, mesmo com ferida pequena"
+  ],
+  "poster": {
+    "conceito": {
+      "titulo": "Atendimento inicial",
+      "icone": "cruz",
+      "cor": "azul",
+      "itens": [
+        "Politrauma grave: trauma antes da queimadura",
+        "Soro em abundância; gelo e água gelada não",
+        "Compressas secas e estéreis; prevenir hipotermia",
+        "Bolhas não se rompem no pré-hospitalar"
+      ],
+      "claims": [
+        "W01",
+        "QM01",
+        "QM02",
+        "QM03",
+        "QM04",
+        "QM05",
+        "QM06",
+        "QM07",
+        "QM08",
+        "QM09"
+      ]
+    },
+    "quadro": {
+      "titulo": "Sinais de via aérea queimada",
+      "icone": "estetoscopio",
+      "cor": "vermelho",
+      "itens": [
+        "Ambiente fechado ou face acometida",
+        "Rouquidão ou estridor",
+        "Escarro carbonáceo",
+        "Pelos do nariz queimados",
+        "Sialorreia, secreção com fuligem"
+      ],
+      "claims": [
+        "QM10",
+        "QM11",
+        "QM12",
+        "QM13",
+        "QM14",
+        "QM15",
+        "QM16",
+        "QM17",
+        "QM18",
+        "QM19",
+        "QM20",
+        "QM21",
+        "QM22",
+        "QM23",
+        "QM24",
+        "QM25",
+        "QM26"
+      ]
+    },
+    "fatores": {
+      "titulo": "Queimadura grave",
+      "icone": "alerta",
+      "cor": "amarelo",
+      "itens": [
+        "Adulto: mais de 20% queimado",
+        "Criança: mais de 10% queimado",
+        "Menor de 3 ou maior de 65 anos",
+        "Lesão inalatória",
+        "Elétrica, química ou áreas nobres"
+      ],
+      "claims": [
+        "QM52",
+        "QM53",
+        "QM54",
+        "QM55",
+        "QM56",
+        "QM57",
+        "QM58",
+        "QM59",
+        "QM60"
+      ]
+    },
+    "diagnostico": {
+      "titulo": "Profundidade da queimadura",
+      "icone": "prancheta",
+      "cor": "verde",
+      "linhas": [
+        {
+          "icone": "gota",
+          "rotulo": "1º grau",
+          "itens": [
+            "Eritema, sem bolhas",
+            "Descama em 4 a 6 dias"
+          ]
+        },
+        {
+          "icone": "lupa",
+          "rotulo": "2º grau",
+          "itens": [
+            "Bolhas; rósea e úmida ou branca e seca",
+            "Restaura entre 7 e 21 dias"
+          ]
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "3º grau",
+          "itens": [
+            "Indolor, coriácea; precisa de enxertia",
+            "Não reepiteliza"
+          ]
+        }
+      ],
+      "claims": [
+        "QM27",
+        "QM28",
+        "QM29",
+        "QM30",
+        "QM31",
+        "QM32",
+        "QM33",
+        "QM34",
+        "QM35",
+        "QM86",
+        "QM87"
+      ]
+    },
+    "exames": {
+      "titulo": "Extensão da queimadura",
+      "icone": "lupa",
+      "cor": "roxo",
+      "linhas": [
+        {
+          "icone": "prancheta",
+          "rotulo": "Adulto: regra dos nove",
+          "texto": "Cabeça e pescoço 9%; cada membro superior 9%; cada inferior 18%"
+        },
+        {
+          "icone": "prancheta",
+          "rotulo": "Adulto: tronco, genitais",
+          "texto": "Tronco 18% em cada face; genitais 1%"
+        },
+        {
+          "icone": "bebe",
+          "rotulo": "Criança",
+          "texto": "Cabeça e pescoço 18%; cada membro inferior 13,5 a 14%"
+        },
+        {
+          "icone": "lupa",
+          "rotulo": "Palma da mão, com dedos",
+          "texto": "Cerca de 1%"
+        }
+      ],
+      "claims": [
+        "QM27",
+        "QM28",
+        "QM29",
+        "QM30",
+        "QM31",
+        "QM32",
+        "QM33",
+        "QM34",
+        "QM35",
+        "QM86",
+        "QM87"
+      ]
+    },
+    "conduta": {
+      "titulo": "Reposição volêmica",
+      "icone": "gota",
+      "cor": "azul-forte",
+      "linhas": [
+        {
+          "icone": "gota",
+          "rotulo": "Parkland",
+          "itens": [
+            "Ringer lactato, 2º e 3º graus",
+            "2 a 4 mL x kg x % de área queimada"
+          ]
+        },
+        {
+          "icone": "relogio",
+          "rotulo": "Tempo",
+          "itens": [
+            "Metade nas primeiras 8 h; resto em 16 h",
+            "8 h contadas da hora da queimadura"
+          ]
+        },
+        {
+          "icone": "balanca",
+          "rotulo": "Ajuste",
+          "itens": [
+            "Diurese de 0,5 a 1 mL/kg/h",
+            "Evitar coloide, diurético, vasoativo"
+          ]
+        }
+      ],
+      "claims": [
+        "QM36",
+        "QM37",
+        "QM38",
+        "QM39",
+        "QM40",
+        "QM41",
+        "QM42",
+        "QM43",
+        "QM44",
+        "QM45",
+        "QM46",
+        "QM47",
+        "QM48",
+        "QM49"
+      ]
+    },
+    "objetivos": {
+      "titulo": "Objetivos do atendimento",
+      "icone": "alvo",
+      "cor": "ciano",
+      "itens": [
+        "Sinais evidentes: via aérea definitiva precoce",
+        "Monóxido de carbono: O2 máximo por 3 horas",
+        "Circular: avaliar perfusão; escarotomia",
+        "Analgesia sempre, por via venosa"
+      ],
+      "claims": [
+        "QM10",
+        "QM11",
+        "QM12",
+        "QM13",
+        "QM14",
+        "QM15",
+        "QM16",
+        "QM17",
+        "QM18",
+        "QM19",
+        "QM20",
+        "QM21",
+        "QM22",
+        "QM23",
+        "QM24",
+        "QM25",
+        "QM26",
+        "QM05",
+        "QM50",
+        "QM51",
+        "QM72",
+        "QM73",
+        "QM74",
+        "QM75",
+        "QM76",
+        "QM77",
+        "QM78",
+        "QM79",
+        "QM80",
+        "QM88",
+        "QM89"
+      ]
+    },
+    "tratamento": {
+      "titulo": "Tétano na queimadura",
+      "icone": "seringa",
+      "cor": "laranja",
+      "faixas": [
+        {
+          "rotulo": "Última dose < 5 anos",
+          "chip": "Nada",
+          "texto": "Sem vacina nem soro"
+        },
+        {
+          "rotulo": "Última dose > 5 anos",
+          "chip": "Reforço",
+          "texto": "Um reforço, sem soro"
+        }
+      ],
+      "itens": [
+        "As duas faixas valem para 3 doses ou mais",
+        "Incerto ou < 3 doses: vacina e soro/imunoglobulina",
+        "Queimadura é ferimento de alto risco"
+      ],
+      "claims": [
+        "QM05",
+        "QM50",
+        "QM51",
+        "QM72",
+        "QM73",
+        "QM74",
+        "QM75",
+        "QM76",
+        "QM77",
+        "QM78",
+        "QM79",
+        "QM80",
+        "QM88",
+        "QM89"
+      ]
+    }
+  },
+  "foto": {
+    "webp": "/mapas-mentais/queimaduras-e-lesao-eletrica.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  }
 }

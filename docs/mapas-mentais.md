@@ -46,6 +46,9 @@ pontos_chave[], atencao[]
 Item ou passo de fluxo: texto ou `{ "t": "texto", "tom": "alerta|atencao|conduta|diag" }`.
 O último ramo é sempre "Revalida INEP: decisões e pegadinhas" (vermelho).
 
+## Pôster (revisão em tela cheia)
+O modo Revisão desenha um pôster 3:2 com os oito cartões da referência, definidos no bloco `poster` do JSON: `conceito`, `quadro`, `fatores`, `diagnostico` (tabela de 3 linhas com ícone), `exames` (tabela de 4 linhas rótulo+texto), `conduta` (tabela de 3 linhas), `objetivos` (marcadores verdes) e `tratamento` (2 faixas com chip + até 3 itens). Cada cartão: `titulo`, `icone`, `cor`, `claims`. Os títulos mudam por tema conforme a aula (ex.: o cartão `fatores` pode virar "Cinemática do impacto"). Sem bloco `poster`, o mapa só aparece empilhado. No celular o padrão é o empilhado; o pôster tem rolagem lateral e zoom do navegador. O Aprofundado é sempre empilhado. A figura redonda do Conceito e a imagem central usam o campo `foto`.
+
 ## Imagem central (opcional)
 O JSON aceita, no mesmo formato do cartão de Temas Essenciais (`docs/temas-card-fotos.md`), `foto: { "webp": "...", "avif": "...", "foco": "50% 30%", "alt": "..." }` no mapa (imagem central) e, opcional, em cada ramo (figura redonda pequena no cabeçalho). Imagem sem texto nem logo; brilho e vidro por CSS. Sem imagem, ou se ela falhar ao carregar, aparece o emblema em SVG (`emblema`: pulmao, coracao, gota, cruz), desenhado em código. Nenhuma imagem foi gerada por API paga. As imagens serão geradas depois, com liberação de custo pelo dono (diretor de arte); o SVG é só reserva simples. Estética e validação científica são separadas: a ilustração é estética; qualquer dúvida anatômica/clínica vai para revisão humana (não se diz que médico validou).
 

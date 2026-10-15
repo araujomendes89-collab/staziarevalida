@@ -16,7 +16,8 @@
       "A aula nao define o que e 'quadro neurologico em atividade' nem detalha as vacinas especiais alem da DTPa; omitido.",
       "A aula so traz o resgate da pneumocócica ate 4a11m29d (dose unica de VPC 20); nao ha regra para idades maiores e nada foi acrescentado.",
       "Conferência 15/10: corte do corticoide imunossupressor reescrito com '≥ 2 mg/kg/dia' e '≥ 20 mg/dia', como na aula (CV70); antes o '2 mg/kg/dia' aparecia sem o 'ou mais'.",
-      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)"
+      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
     ]
   },
   "ramos": [
@@ -708,17 +709,242 @@
     }
   ],
   "pontos_chave": [
-    "BCG e hepatite B ao nascer; penta, VIP e rotavírus aos 2 meses",
-    "Inativadas entre si ou com vivas: qualquer intervalo",
-    "Atraso: completar o que falta; hepatite B e dT não reiniciam",
-    "Penta até 6a11m29d; de 7 anos em diante, dT e hepatite B",
-    "Corticoide imunossupressor: evitar vivas; vacinar 1 mês depois",
-    "Sarampo: bloqueio em 72 h; varicela: vacina 120 h, Ig 96 h"
+    "Atraso: completar; hepatite B e dT não reiniciam",
+    "Penta só até 6 anos, 11 meses e 29 dias; depois, dT",
+    "Corticoide imunossupressor: vivas 1 mês depois",
+    "Sarampo: bloqueio até 72 h; varicela: até 120 h"
   ],
   "atencao": [
-    "Rotavírus: perdeu o prazo da 1ª dose, perde as duas; vômito não repete a dose",
-    "Dose zero de sarampo (6 a 11 meses) não vale para a rotina",
-    "Tríplice viral é contraindicada em gestantes e menores de 6 meses, mesmo em surto",
-    "Pneumocócica e meningocócica mudaram: questões antigas trazem VPC 10 e men C"
-  ]
+    "Rotavírus: perdeu a 1ª dose no prazo, perde as duas",
+    "Dose zero de sarampo não vale para a rotina",
+    "Tríplice viral é contraindicada em gestantes e menores de 6 meses",
+    "Pneumocócica e meningocócica mudaram: questões antigas diferem"
+  ],
+  "poster": {
+    "conceito": {
+      "titulo": "Calendário e agenda oportuna",
+      "icone": "calendario",
+      "cor": "azul",
+      "itens": [
+        "Calendário 2026: 21 vacinas da rede pública",
+        "Agenda oportuna: o momento mais adequado",
+        "Inativada com outra vacina: qualquer intervalo",
+        "Febre aguda moderada ou grave: adiar"
+      ],
+      "claims": [
+        "CV01",
+        "CV01K",
+        "CV24",
+        "CV27"
+      ]
+    },
+    "quadro": {
+      "titulo": "Primeiro ano de vida",
+      "icone": "bebe",
+      "cor": "vermelho",
+      "itens": [
+        "Ao nascer: BCG e hepatite B",
+        "2 meses: penta, VIP e rotavírus",
+        "3 e 5 meses: meningocócica C",
+        "9 meses: febre amarela",
+        "12 meses: tríplice viral"
+      ],
+      "claims": [
+        "CV02",
+        "CV03",
+        "CV04",
+        "CV05",
+        "CV06",
+        "CV13",
+        "CV14",
+        "CV15"
+      ]
+    },
+    "fatores": {
+      "titulo": "Reforços e adolescência",
+      "icone": "relogio",
+      "cor": "amarelo",
+      "itens": [
+        "15 meses: reforços e hepatite A",
+        "4 anos: 2º reforço e varicela",
+        "9 anos: HPV, 1 dose",
+        "11 anos: meningocócica ACWY",
+        "14 anos: dT e a cada 10 anos"
+      ],
+      "claims": [
+        "CV04",
+        "CV05",
+        "CV17",
+        "CV18",
+        "CV26",
+        "CV50",
+        "CV53"
+      ]
+    },
+    "diagnostico": {
+      "titulo": "Vacina atrasada: resgate",
+      "icone": "prancheta",
+      "cor": "verde",
+      "linhas": [
+        {
+          "icone": "seringa",
+          "rotulo": "Penta atrasada",
+          "itens": [
+            "Menor de 7 anos: 3 doses a cada 60 dias",
+            "A partir de 7 anos: contraindicada"
+          ]
+        },
+        {
+          "icone": "escudo",
+          "rotulo": "Sem reiniciar",
+          "itens": [
+            "Hepatite B e dT nunca reiniciam",
+            "7 anos ou mais: dT, até 3 doses"
+          ]
+        },
+        {
+          "icone": "relogio",
+          "rotulo": "Limites de idade",
+          "itens": [
+            "Até 4 anos, 11 meses e 29 dias: VIP",
+            "Até 6 anos, 11 meses e 29 dias: DTP"
+          ]
+        }
+      ],
+      "claims": [
+        "CV30",
+        "CV30B",
+        "CV32",
+        "CV36",
+        "CV37",
+        "CV37B",
+        "CV41",
+        "CV42"
+      ]
+    },
+    "exames": {
+      "titulo": "Imunodepressão e vacinas",
+      "icone": "microscopio",
+      "cor": "roxo",
+      "linhas": [
+        {
+          "icone": "pilula",
+          "rotulo": "Dose imunossupressora",
+          "texto": "Prednisona ≥ 2 mg/kg/dia (até 10 kg) ou ≥ 20 mg/dia, por 14 dias ou mais"
+        },
+        {
+          "icone": "lupa",
+          "rotulo": "Não conta",
+          "texto": "Corticoide tópico, inalatório ou intra-articular"
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "Vacinas vivas",
+          "texto": "Evitar com imunodepressores; vacinar 1 mês após interromper o corticoide"
+        },
+        {
+          "icone": "escudo",
+          "rotulo": "Vacinas não vivas",
+          "texto": "Podem ser dadas na terapia; resposta pode ser menor, repetir depois"
+        }
+      ],
+      "claims": [
+        "CV70",
+        "CV71",
+        "CV72",
+        "CV73",
+        "CV74",
+        "CV75",
+        "CV78"
+      ]
+    },
+    "conduta": {
+      "titulo": "Exposição e bloqueio",
+      "icone": "alerta",
+      "cor": "azul-forte",
+      "linhas": [
+        {
+          "icone": "alerta",
+          "rotulo": "Sarampo",
+          "itens": [
+            "Bloqueio até 72 h do caso suspeito",
+            "Dose zero não vale para a rotina"
+          ]
+        },
+        {
+          "icone": "relogio",
+          "rotulo": "Varicela",
+          "itens": [
+            "Bloqueio com vacina até 120 h (5 dias)",
+            "Imunoglobulina até 96 h, grupos de risco"
+          ]
+        },
+        {
+          "icone": "bebe",
+          "rotulo": "Mãe HBsAg positiva",
+          "itens": [
+            "Imunoglobulina e 1ª dose da vacina",
+            "Em músculos diferentes"
+          ]
+        }
+      ],
+      "claims": [
+        "CV90",
+        "CV91",
+        "CV93",
+        "CV94",
+        "CV96"
+      ]
+    },
+    "objetivos": {
+      "titulo": "Condutas essenciais",
+      "icone": "alvo",
+      "cor": "ciano",
+      "itens": [
+        "Atraso: completar o que falta, pelo histórico",
+        "Vomitou após rotavírus: não repetir a dose",
+        "BCG sem cicatriz, dose válida: não revacinar",
+        "Recusa dos pais: vacina não é opcional"
+      ],
+      "claims": [
+        "CV09",
+        "CV32",
+        "CV62",
+        "CV100",
+        "CV102"
+      ]
+    },
+    "tratamento": {
+      "titulo": "Rotavírus: prazos das doses",
+      "icone": "seringa",
+      "cor": "laranja",
+      "faixas": [
+        {
+          "rotulo": "Primeira dose",
+          "chip": "2 meses",
+          "texto": "Até 11 meses e 29 dias"
+        },
+        {
+          "rotulo": "Segunda dose",
+          "chip": "4 meses",
+          "texto": "Até 23 meses e 29 dias"
+        }
+      ],
+      "itens": [
+        "Mínimo: 1 mês e 15 dias (1ª); 3 meses e 15 dias (2ª)",
+        "Perdeu a 1ª dose no prazo: perde as duas"
+      ],
+      "claims": [
+        "CV06",
+        "CV07",
+        "CV08"
+      ]
+    }
+  },
+  "foto": {
+    "webp": "/mapas-mentais/calendario-vacinal-da-crianca.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  }
 }

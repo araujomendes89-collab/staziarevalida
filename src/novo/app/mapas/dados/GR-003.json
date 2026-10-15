@@ -18,7 +18,8 @@
       "Conferência 15/10: 'hiperaldosteronismo' recebeu a ressalva da aula 'hipopotassemia não obrigatória' (HA36).",
       "Conferência 15/10: 'não baixar para menos de 120/70' restrito à faixa de 65 a 79 anos, como na aula (HA101); antes estava generalizado a todo idoso.",
       "Conferência 15/10: definição de emergência das recomendações de 2025 reescrita para deixar claro que a lesão de órgão-alvo aguda e progressiva é exigida também com 180/110 (HS01).",
-      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)"
+      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
     ]
   },
   "ramos": [
@@ -821,17 +822,15 @@
     }
   ],
   "pontos_chave": [
-    "Rastreio anual desde os 18 anos; confirmar a partir de 140/90",
-    "Avental branco e mascarada: confirmar com MAPA ou MRPA",
-    "Grau 2 ou 3: iniciar com 2 fármacos de mecanismos diferentes",
-    "Meta inicial abaixo de 140/90; 130/80 se bem tolerado",
-    "Emergência hipertensiva: definida pela lesão de órgão-alvo",
-    "Urgência: queda gradual por via oral em 24 a 48 horas, sem captopril sublingual"
+    "Rastreio anual; confirmar a partir de 140/90",
+    "Grau 2 ou 3: 2 fármacos de mecanismos diferentes",
+    "Emergência: definida pela lesão de órgão-alvo",
+    "Meta inicial abaixo de 140/90; 130/80 se tolerado"
   ],
   "atencao": [
     "Antes de falar em crise, conferir a técnica de medida",
     "Nifedipino de liberação rápida: não usar em elevação aguda da PA",
-    "IECA, BRA e antagonistas de mineralocorticoides: contraindicados na gestação",
+    "Gestação: sem IECA, BRA nem antagonistas de mineralocorticoides",
     "Antes de chamar de resistente, verificar a adesão"
   ],
   "foto": {
@@ -839,5 +838,368 @@
     "foco": "50% 50%",
     "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
     "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  },
+  "poster": {
+    "conceito": {
+      "titulo": "Definição e confirmação",
+      "icone": "coracao",
+      "cor": "azul",
+      "itens": [
+        "PA mantida em 140/90 ou mais",
+        "Rastreio anual: 18 anos ou mais, 2 medidas",
+        "Confirmar: 2 a 3 medidas, de 1 dia a 4 semanas",
+        "Mascarada: risco semelhante à sustentada"
+      ],
+      "claims": [
+        "HA01",
+        "HA02",
+        "HA03",
+        "HA04",
+        "HA05",
+        "HA06",
+        "HA07",
+        "HA08",
+        "HA09",
+        "HA10",
+        "HA11",
+        "HA12",
+        "HA13",
+        "HS08",
+        "HS10",
+        "HA14",
+        "HA15",
+        "HA16",
+        "HA17",
+        "HA18",
+        "HA19",
+        "HA21",
+        "HA22",
+        "HA23",
+        "HB36",
+        "HB37"
+      ]
+    },
+    "quadro": {
+      "titulo": "Crise hipertensiva",
+      "icone": "alerta",
+      "cor": "vermelho",
+      "itens": [
+        "Crise: sistólica 180 ou mais",
+        "ou diastólica 120 ou mais",
+        "Emergência: lesão de órgão-alvo",
+        "Urgência: sintomas, sem lesão",
+        "Pseudocrise: sem lesão"
+      ],
+      "claims": [
+        "HA77",
+        "HA78",
+        "HA79",
+        "HA80",
+        "HA81",
+        "HA82",
+        "HA83",
+        "HA84",
+        "HA85",
+        "HA86",
+        "HA87",
+        "HA88",
+        "HA89",
+        "HA90",
+        "HA91",
+        "HA92",
+        "HA99"
+      ]
+    },
+    "fatores": {
+      "titulo": "Pistas de causa secundária",
+      "icone": "lupa",
+      "cor": "amarelo",
+      "itens": [
+        "Sopro abdominal: artéria renal",
+        "Creatinina sobe mais de 30%",
+        "Sistólica 10 mmHg maior nos braços",
+        "Crises de palpitação e sudorese"
+      ],
+      "claims": [
+        "HA24",
+        "HA25",
+        "HA26",
+        "HA27",
+        "HA28",
+        "HA29",
+        "HA30",
+        "HA31",
+        "HA32",
+        "HB40",
+        "HA33",
+        "HA34",
+        "HA35",
+        "HA36",
+        "HA37",
+        "HA38",
+        "HA39",
+        "HA100",
+        "HA105",
+        "HB27"
+      ]
+    },
+    "diagnostico": {
+      "titulo": "Rastreamento e diagnóstico",
+      "icone": "prancheta",
+      "cor": "verde",
+      "linhas": [
+        {
+          "icone": "estetoscopio",
+          "rotulo": "Rastreamento",
+          "itens": [
+            "Anual desde os 18 anos, 2 medidas",
+            "140/90 ou mais: confirmar"
+          ]
+        },
+        {
+          "icone": "lupa",
+          "rotulo": "MAPA e MRPA",
+          "itens": [
+            "Confirmar com MAPA; sem MAPA, MRPA",
+            "Avental branco: alta só no consultório"
+          ]
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "Atendimento rápido",
+          "itens": [
+            "160/100 ou mais: médico imediato",
+            "180/110 ou mais, ou lesão: 1 consulta"
+          ]
+        }
+      ],
+      "claims": [
+        "HA01",
+        "HA02",
+        "HA03",
+        "HA04",
+        "HA05",
+        "HA06",
+        "HA07",
+        "HA08",
+        "HA09",
+        "HA10",
+        "HA11",
+        "HA12",
+        "HA13",
+        "HS08",
+        "HS10",
+        "HA14",
+        "HA15",
+        "HA16",
+        "HA17",
+        "HA18",
+        "HA19",
+        "HA21",
+        "HA22",
+        "HA23",
+        "HB36",
+        "HB37"
+      ]
+    },
+    "exames": {
+      "titulo": "Classificação da PA no consultório",
+      "icone": "prancheta",
+      "cor": "roxo",
+      "linhas": [
+        {
+          "icone": "escudo",
+          "rotulo": "Ótima e normal",
+          "texto": "Ótima: abaixo de 120/80; normal: 120-129 / 80-84"
+        },
+        {
+          "icone": "lupa",
+          "rotulo": "Normal alta",
+          "texto": "130-139 / 85-89: consulta para outros fatores de risco"
+        },
+        {
+          "icone": "balanca",
+          "rotulo": "Graus 1 e 2",
+          "texto": "Grau 1: 140-159 / 90-99; grau 2: 160-179 / 100-109"
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "Grau 3",
+          "texto": "180/110 ou mais; vale o maior valor, sistólica ou diastólica"
+        }
+      ],
+      "claims": [
+        "HA01",
+        "HA02",
+        "HA03",
+        "HA04",
+        "HA05",
+        "HA06",
+        "HA07",
+        "HA08",
+        "HA09",
+        "HA10",
+        "HA11",
+        "HA12",
+        "HA13",
+        "HS08",
+        "HS10"
+      ]
+    },
+    "conduta": {
+      "titulo": "Conduta na crise",
+      "icone": "seringa",
+      "cor": "azul-forte",
+      "linhas": [
+        {
+          "icone": "alerta",
+          "rotulo": "Emergência",
+          "itens": [
+            "Via intravenosa, de preferência em UTI",
+            "PA média até 25% na 1ª hora"
+          ]
+        },
+        {
+          "icone": "relogio",
+          "rotulo": "Urgência",
+          "itens": [
+            "Queda gradual por via oral em 24 a 48 h",
+            "Nifedipino de liberação rápida: não usar"
+          ]
+        },
+        {
+          "icone": "pessoas",
+          "rotulo": "Pseudocrise",
+          "itens": [
+            "Tirar o fator desencadeante",
+            "Observar em ambiente calmo"
+          ]
+        }
+      ],
+      "claims": [
+        "HA94",
+        "HA95",
+        "HA96",
+        "HA97",
+        "HA98",
+        "HB01",
+        "HB02",
+        "HB03",
+        "HB04",
+        "HB05",
+        "HB06",
+        "HB07",
+        "HB08",
+        "HB09",
+        "HB10",
+        "HB11",
+        "HB12",
+        "HB13",
+        "HB14",
+        "HB15",
+        "HB16",
+        "HB17",
+        "HB18",
+        "HB19",
+        "HB20",
+        "HB21",
+        "HB22",
+        "HB23",
+        "HB24",
+        "HB25",
+        "HB26",
+        "HB31",
+        "HB32",
+        "HB39",
+        "HA93",
+        "HS11",
+        "HS12"
+      ]
+    },
+    "objetivos": {
+      "titulo": "Metas de pressão",
+      "icone": "alvo",
+      "cor": "ciano",
+      "itens": [
+        "Meta inicial: abaixo de 140/90",
+        "Se bem tolerado: 130/80 em alguns perfis",
+        "65 a 79 anos: não baixar de 120/70",
+        "Reavaliar todo mês até a meta"
+      ],
+      "claims": [
+        "HA40",
+        "HA41",
+        "HA42",
+        "HA43",
+        "HA44",
+        "HA45",
+        "HA46",
+        "HA47",
+        "HA48",
+        "HA49",
+        "HA62",
+        "HA63",
+        "HA74",
+        "HA75",
+        "HA76",
+        "HA101",
+        "HA102",
+        "HB28",
+        "HB34",
+        "HB35"
+      ]
+    },
+    "tratamento": {
+      "titulo": "Tratamento de longo prazo",
+      "icone": "pilula",
+      "cor": "laranja",
+      "faixas": [
+        {
+          "rotulo": "Grau 1 de risco baixo",
+          "chip": "Único",
+          "texto": "Mais mudança de hábitos"
+        },
+        {
+          "rotulo": "Graus 2 e 3",
+          "chip": "Dupla",
+          "texto": "Mecanismos diferentes"
+        }
+      ],
+      "itens": [
+        "Grau 1 de risco moderado ou alto: também dupla",
+        "Betabloqueador só com indicação específica",
+        "IECA e BRA contraindicados na gestação"
+      ],
+      "claims": [
+        "HA50",
+        "HA51",
+        "HA52",
+        "HA53",
+        "HA54",
+        "HA55",
+        "HA56",
+        "HA57",
+        "HA58",
+        "HA59",
+        "HA60",
+        "HA61",
+        "HA64",
+        "HA65",
+        "HA66",
+        "HA67",
+        "HA68",
+        "HA69",
+        "HA70",
+        "HA71",
+        "HA72",
+        "HA73",
+        "HA103",
+        "HA104",
+        "HB29",
+        "HB30",
+        "HB33",
+        "HB38"
+      ]
+    }
   }
 }

@@ -17,7 +17,8 @@
       "Gestante com HSIL: aula traz colposcopia na referência, biópsia se sugerir invasão e reavaliação 90 dias após o parto; nada além disso.",
       "Intervalo da citologia na imunossuprimida (semestral no 1º ano, depois anual) mantido como regra da citologia; a aula não detalha o seguimento após alterações nesse grupo.",
       "Conferência 15/10: preparo com estrogênio no homem trans restrito a quem está 'em uso de hormônio', como na aula (CU29, CU30); antes parecia valer para todo homem trans com útero.",
-      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)"
+      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
     ]
   },
   "ramos": [
@@ -589,17 +590,394 @@
     }
   ],
   "pontos_chave": [
-    "DNA-HPV é o exame primário: dos 25 anos, 5 anos se negativo",
-    "Sem coteste e sem rastrear antes dos 25 anos",
-    "HPV 16 ou 18: colposcopia; outros tipos: citologia reflexa",
-    "Reflexa negativa: DNA-HPV em 12 meses; persistiu: colposcopia",
-    "HIV: repete em 3 anos, não encerra; qualquer HPV: colposcopia",
-    "Citologia onde falta o teste; vacina HPV: 1 dose, 9 a 14 anos"
+    "DNA-HPV primário, dos 25 anos; negativo: 5 anos",
+    "HPV 16 ou 18: colposcopia; outros: citologia reflexa",
+    "HIV: repete em 3 anos, não encerra o rastreamento",
+    "Citologia só onde o DNA-HPV ainda não chegou"
   ],
   "atencao": [
     "Teste positivo não significa lesão ou câncer",
     "A vacina não dispensa o rastreamento",
-    "Os cortes de idade do ASC-US são trocados com frequência: 6 meses, 12 meses e 3 anos",
+    "Idades do ASC-US são trocadas: 6 meses, 12 meses, 3 anos",
     "Ver e tratar é inaceitável até 24 anos e na LSIL"
-  ]
+  ],
+  "poster": {
+    "conceito": {
+      "titulo": "Quem e quando rastrear",
+      "icone": "calendario",
+      "cor": "azul",
+      "itens": [
+        "DNA-HPV com genotipagem: exame primário",
+        "Dos 25 anos; negativo, repetir em 5 anos",
+        "Sem coteste com citologia",
+        "Fim: último teste negativo após os 60 anos"
+      ],
+      "claims": [
+        "CU01",
+        "CU02",
+        "CU03",
+        "CU04",
+        "CU05",
+        "CU06",
+        "CU07",
+        "CU08",
+        "CU09",
+        "CU10",
+        "CU11",
+        "CU13",
+        "CU14",
+        "CU44",
+        "CU46",
+        "CU68",
+        "CU99",
+        "CU100"
+      ]
+    },
+    "quadro": {
+      "titulo": "Mulher com sintomas",
+      "icone": "estetoscopio",
+      "cor": "vermelho",
+      "itens": [
+        "Sangramento anormal",
+        "Sangramento pós-coito",
+        "Rastreio não vale para sintomática",
+        "Avaliar sem esperar a rodada",
+        "Encaminhar a serviço especializado"
+      ],
+      "claims": [
+        "CU12",
+        "CU15",
+        "CU16",
+        "CU17",
+        "CU18",
+        "CU19",
+        "CU20",
+        "CU21",
+        "CU22",
+        "CU23",
+        "CU24",
+        "CU25",
+        "CU26",
+        "CU27",
+        "CU28",
+        "CU29",
+        "CU30",
+        "CU31",
+        "CU32",
+        "CU67",
+        "CU96",
+        "CU101"
+      ]
+    },
+    "fatores": {
+      "titulo": "Situações especiais",
+      "icone": "pessoas",
+      "cor": "amarelo",
+      "itens": [
+        "HIV: repete em 3 anos, não encerra",
+        "Gestante: pré-natal ou puerpério",
+        "Homem trans com útero: rastrear",
+        "Sem atividade sexual: não rastrear"
+      ],
+      "claims": [
+        "CU12",
+        "CU15",
+        "CU16",
+        "CU17",
+        "CU18",
+        "CU19",
+        "CU20",
+        "CU21",
+        "CU22",
+        "CU23",
+        "CU24",
+        "CU25",
+        "CU26",
+        "CU27",
+        "CU28",
+        "CU29",
+        "CU30",
+        "CU31",
+        "CU32",
+        "CU67",
+        "CU96",
+        "CU101"
+      ]
+    },
+    "diagnostico": {
+      "titulo": "Resultado do DNA-HPV",
+      "icone": "prancheta",
+      "cor": "verde",
+      "linhas": [
+        {
+          "icone": "escudo",
+          "rotulo": "Negativo",
+          "itens": [
+            "Repetir em 5 anos"
+          ]
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "HPV 16 e/ou 18",
+          "itens": [
+            "Colposcopia",
+            "Imunossuprimida: qualquer HPV, colposcopia"
+          ]
+        },
+        {
+          "icone": "tubo",
+          "rotulo": "Outros tipos",
+          "itens": [
+            "Citologia reflexa, na mesma amostra",
+            "Alterada ou insatisfatória: colposcopia"
+          ]
+        }
+      ],
+      "claims": [
+        "CU14",
+        "CU21",
+        "CU34",
+        "CU35",
+        "CU36",
+        "CU37",
+        "CU38",
+        "CU39",
+        "CU40",
+        "CU41",
+        "CU42",
+        "CU43",
+        "CU45",
+        "CU98",
+        "CU104",
+        "CU105"
+      ]
+    },
+    "exames": {
+      "titulo": "Interpretação da citologia",
+      "icone": "microscopio",
+      "cor": "roxo",
+      "linhas": [
+        {
+          "icone": "lupa",
+          "rotulo": "ASC-US",
+          "texto": "30 anos ou mais: 6 meses; 25 a 29: 12 meses; menos de 25: 3 anos"
+        },
+        {
+          "icone": "lupa",
+          "rotulo": "LSIL",
+          "texto": "25 anos ou mais: repetir em 6 meses; não vai direto à colposcopia"
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "HSIL",
+          "texto": "Colposcopia; repetir a citologia é inaceitável"
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "ASC-H, AGC, AIS",
+          "texto": "Colposcopia direta, como no carcinoma invasor e no adenocarcinoma"
+        }
+      ],
+      "claims": [
+        "CU57",
+        "CU58",
+        "CU59",
+        "CU60",
+        "CU61",
+        "CU62",
+        "CU63",
+        "CU64",
+        "CU85",
+        "CU86",
+        "CU87",
+        "CU88",
+        "CU89",
+        "CU90",
+        "CU92",
+        "CU93",
+        "CU97",
+        "CU102",
+        "CU106",
+        "CU107",
+        "CU108"
+      ]
+    },
+    "conduta": {
+      "titulo": "Seguimento do DNA-HPV",
+      "icone": "relogio",
+      "cor": "azul-forte",
+      "linhas": [
+        {
+          "icone": "relogio",
+          "rotulo": "Reflexa negativa",
+          "itens": [
+            "Repetir o DNA-HPV em 12 meses",
+            "Negativo: 5 anos; 16 ou 18: colposcopia"
+          ]
+        },
+        {
+          "icone": "lupa",
+          "rotulo": "Persistência",
+          "itens": [
+            "Persistência por 24 meses: colposcopia"
+          ]
+        },
+        {
+          "icone": "microscopio",
+          "rotulo": "Onde falta o teste",
+          "itens": [
+            "Sem DNA-HPV: citologia de 25 a 64 anos",
+            "Trienal, após 2 exames anuais negativos"
+          ]
+        }
+      ],
+      "claims": [
+        "CU14",
+        "CU21",
+        "CU34",
+        "CU35",
+        "CU36",
+        "CU37",
+        "CU38",
+        "CU39",
+        "CU40",
+        "CU41",
+        "CU42",
+        "CU43",
+        "CU45",
+        "CU98",
+        "CU104",
+        "CU105",
+        "CU33",
+        "CU47",
+        "CU48",
+        "CU49",
+        "CU50",
+        "CU51",
+        "CU52",
+        "CU53",
+        "CU54",
+        "CU55",
+        "CU56",
+        "CU65",
+        "CU66",
+        "CU69",
+        "CU70",
+        "CU94",
+        "CU95",
+        "CU103",
+        "CU109"
+      ]
+    },
+    "objetivos": {
+      "titulo": "Condutas essenciais",
+      "icone": "alvo",
+      "cor": "ciano",
+      "itens": [
+        "Ver e tratar: não até 24 anos nem na LSIL",
+        "Insatisfatória: repetir em 6 a 12 semanas",
+        "Teste positivo não significa lesão ou câncer",
+        "Vacinada também é rastreada"
+      ],
+      "claims": [
+        "CU01",
+        "CU02",
+        "CU03",
+        "CU04",
+        "CU05",
+        "CU06",
+        "CU07",
+        "CU08",
+        "CU09",
+        "CU10",
+        "CU11",
+        "CU13",
+        "CU14",
+        "CU44",
+        "CU46",
+        "CU68",
+        "CU99",
+        "CU100",
+        "CU33",
+        "CU47",
+        "CU48",
+        "CU49",
+        "CU50",
+        "CU51",
+        "CU52",
+        "CU53",
+        "CU54",
+        "CU55",
+        "CU56",
+        "CU65",
+        "CU66",
+        "CU69",
+        "CU70",
+        "CU94",
+        "CU95",
+        "CU103",
+        "CU109",
+        "CU57",
+        "CU58",
+        "CU59",
+        "CU60",
+        "CU61",
+        "CU62",
+        "CU63",
+        "CU64",
+        "CU85",
+        "CU86",
+        "CU87",
+        "CU88",
+        "CU89",
+        "CU90",
+        "CU92",
+        "CU93",
+        "CU97",
+        "CU102",
+        "CU106",
+        "CU107",
+        "CU108"
+      ]
+    },
+    "tratamento": {
+      "titulo": "Vacina contra o HPV",
+      "icone": "seringa",
+      "cor": "laranja",
+      "faixas": [
+        {
+          "rotulo": "Rotina: 9 a 14 anos",
+          "chip": "1 dose",
+          "texto": "Meninas e meninos"
+        },
+        {
+          "rotulo": "Imunodeprimidos",
+          "chip": "3 doses",
+          "texto": "De 9 a 45 anos"
+        }
+      ],
+      "itens": [
+        "15 a 19 anos sem dose: resgate, conforme o estado",
+        "Tratadas por NIC 2, NIC 3 ou AIS: 3 doses",
+        "Contraindicada na gestação"
+      ],
+      "claims": [
+        "CU71",
+        "CU72",
+        "CU73",
+        "CU74",
+        "CU75",
+        "CU76",
+        "CU77",
+        "CU78",
+        "CU79"
+      ]
+    }
+  },
+  "foto": {
+    "webp": "/mapas-mentais/rastreamento-cancer-colo-do-utero.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  }
 }

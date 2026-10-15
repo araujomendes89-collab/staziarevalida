@@ -17,7 +17,8 @@
       "A aula não traz doses nem esquema de tratamento da pré-eclâmpsia, da pielonefrite nem do diabetes gestacional: omitidos.",
       "A aula não traz o ferro de tratamento para Hb abaixo de 9 g/dL além de 'ferro endovenoso preferível'; nada acrescentado.",
       "Conferência 15/10: pesquisa do estreptococo do grupo B recebeu a ressalva da aula 'quando disponível' (PN26).",
-      "Revisão reescrita em palavras-chave em 15/10 (sem fato novo)"
+      "Revisão reescrita em palavras-chave em 15/10 (sem fato novo)",
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
     ]
   },
   "ramos": [
@@ -742,17 +743,384 @@
     }
   ],
   "pontos_chave": [
-    "Captação até a 12ª semana; mínimo de 7 consultas (Rede Alyne)",
-    "Mensal até 28 sem, quinzenal até 36; sem alta antes do parto",
-    "1ª consulta: glicemia de jejum, sífilis, HIV, hepatites, Rh",
-    "Rh neg. com Coombs negativo: anti-D 300 µg na 28ª semana",
-    "dTpa a cada gestação desde a 20ª semana; VSR desde a 28ª",
-    "Cálcio de todas, 12ª semana ao parto; ferro e fólico de rotina"
+    "Captação até a 12ª semana; mínimo de 7 consultas",
+    "Mensal até a 28ª semana; sem alta antes do parto",
+    "1ª consulta: glicemia de jejum, não TOTG",
+    "Rh negativo e Coombs negativo: anti-D na 28ª semana"
   ],
   "atencao": [
     "Coombs indireto positivo é sensibilização: alto risco, sem anti-D",
-    "Depois da anti-D da 28ª semana, não repetir o Coombs: pode ficar positivo",
+    "Após a anti-D da 28ª semana, não repetir o Coombs indireto",
     "Edema não é mais critério diagnóstico de pré-eclâmpsia",
-    "Tríplice viral não se aplica na gestação; se foi sem querer, não interrompe"
-  ]
+    "Tríplice viral não se aplica; se foi inadvertida, não interrompe"
+  ],
+  "poster": {
+    "conceito": {
+      "titulo": "Captação e calendário",
+      "icone": "calendario",
+      "cor": "azul",
+      "itens": [
+        "Captação na Atenção Primária até a 12ª semana",
+        "Rede Alyne: no mínimo 7 consultas",
+        "Mensal até a 28ª semana; quinzenal até a 36ª",
+        "Não existe alta antes do parto"
+      ],
+      "claims": [
+        "PN01",
+        "PN03",
+        "PN04",
+        "PN05",
+        "PN06",
+        "PN07",
+        "PN08",
+        "PN39",
+        "PN46",
+        "PN91",
+        "PN96",
+        "PN97",
+        "PN98",
+        "PN105",
+        "PN137",
+        "PN138"
+      ]
+    },
+    "quadro": {
+      "titulo": "Urgência obstétrica",
+      "icone": "alerta",
+      "cor": "vermelho",
+      "itens": [
+        "Suspeita de pré-eclâmpsia",
+        "Sinais premonitórios de eclâmpsia",
+        "Crise hipertensiva (≥ 160/110)",
+        "Sangramento em qualquer semana",
+        "Perda de líquido persistente"
+      ],
+      "claims": [
+        "PN07",
+        "PN08",
+        "PN09",
+        "PN10",
+        "PN11",
+        "PN12",
+        "PN13",
+        "PN14",
+        "PN15",
+        "PN16",
+        "PN17",
+        "PN41",
+        "PN42",
+        "PN114",
+        "PN115",
+        "PN116",
+        "PN136"
+      ]
+    },
+    "fatores": {
+      "titulo": "Alto risco e encaminhamento",
+      "icone": "pessoas",
+      "cor": "amarelo",
+      "itens": [
+        "Hipertensão crônica (≥ 140/90)",
+        "Diabetes gestacional",
+        "Um fator isolado não obriga",
+        "UBS mantém a responsabilidade"
+      ],
+      "claims": [
+        "PN07",
+        "PN08",
+        "PN09",
+        "PN10",
+        "PN11",
+        "PN12",
+        "PN13",
+        "PN14",
+        "PN15",
+        "PN16",
+        "PN17",
+        "PN41",
+        "PN42",
+        "PN114",
+        "PN115",
+        "PN116",
+        "PN136",
+        "PN63",
+        "PN64",
+        "PN65",
+        "PN66",
+        "PN67",
+        "PN69",
+        "PN94",
+        "PN95",
+        "PN112",
+        "PN119",
+        "PN130",
+        "PN131",
+        "PN132"
+      ]
+    },
+    "diagnostico": {
+      "titulo": "Exames da 1ª consulta",
+      "icone": "prancheta",
+      "cor": "verde",
+      "linhas": [
+        {
+          "icone": "gota",
+          "rotulo": "Glicose",
+          "itens": [
+            "Glicemia em jejum, não TOTG"
+          ]
+        },
+        {
+          "icone": "virus",
+          "rotulo": "Infecções",
+          "itens": [
+            "Sífilis, HIV, hepatites B e C, HTLV",
+            "Repetir sífilis e HIV: 28ª semana e parto"
+          ]
+        },
+        {
+          "icone": "tubo",
+          "rotulo": "Sangue",
+          "itens": [
+            "Hemograma, tipagem ABO e Rh",
+            "Eletroforese de hemoglobina"
+          ]
+        }
+      ],
+      "claims": [
+        "PN22",
+        "PN23",
+        "PN24",
+        "PN25",
+        "PN26",
+        "PN27",
+        "PN28",
+        "PN29",
+        "PN99",
+        "PN111",
+        "PN118",
+        "PN119",
+        "PN120",
+        "PN121",
+        "PN123",
+        "PN124",
+        "PN125",
+        "PN126",
+        "PN127",
+        "PN128",
+        "PN139",
+        "PN140"
+      ]
+    },
+    "exames": {
+      "titulo": "Interpretação dos exames",
+      "icone": "microscopio",
+      "cor": "roxo",
+      "linhas": [
+        {
+          "icone": "gota",
+          "rotulo": "Jejum de 92 a 125 mg/dL",
+          "texto": "Diabetes gestacional"
+        },
+        {
+          "icone": "gota",
+          "rotulo": "Jejum ≥ 126 mg/dL",
+          "texto": "Diabetes prévio"
+        },
+        {
+          "icone": "tubo",
+          "rotulo": "Hemoglobina 9 a 11 g/dL",
+          "texto": "Ferro oral, meta de 160 a 200 mg/dia de ferro elementar"
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "Hemoglobina < 9 g/dL",
+          "texto": "Com 14 semanas ou mais: ferro endovenoso preferível"
+        }
+      ],
+      "claims": [
+        "PN22",
+        "PN23",
+        "PN24",
+        "PN25",
+        "PN26",
+        "PN27",
+        "PN28",
+        "PN29",
+        "PN99",
+        "PN111",
+        "PN118",
+        "PN119",
+        "PN120",
+        "PN121",
+        "PN123",
+        "PN124",
+        "PN125",
+        "PN126",
+        "PN127",
+        "PN128",
+        "PN139",
+        "PN140",
+        "PN75",
+        "PN76",
+        "PN78",
+        "PN79",
+        "PN80",
+        "PN81",
+        "PN82",
+        "PN83",
+        "PN84",
+        "PN85",
+        "PN107",
+        "PN108",
+        "PN109"
+      ]
+    },
+    "conduta": {
+      "titulo": "Gestante Rh negativo",
+      "icone": "gota",
+      "cor": "azul-forte",
+      "linhas": [
+        {
+          "icone": "tubo",
+          "rotulo": "Rh negativo",
+          "itens": [
+            "Fazer o Coombs indireto",
+            "Coombs positivo: alto risco, sem anti-D"
+          ]
+        },
+        {
+          "icone": "seringa",
+          "rotulo": "Coombs negativo",
+          "itens": [
+            "Repetir a cada 4 semanas desde a 24ª",
+            "Anti-D 300 µg na 28ª semana"
+          ]
+        },
+        {
+          "icone": "relogio",
+          "rotulo": "Anti-D em até 72 h",
+          "itens": [
+            "Parto de bebê Rh positivo ou desconhecido",
+            "Após sangramento, aborto ou ectópica"
+          ]
+        }
+      ],
+      "claims": [
+        "PN63",
+        "PN64",
+        "PN65",
+        "PN66",
+        "PN67",
+        "PN69",
+        "PN94",
+        "PN95",
+        "PN112",
+        "PN119",
+        "PN130",
+        "PN131",
+        "PN132"
+      ]
+    },
+    "objetivos": {
+      "titulo": "Objetivos do atendimento",
+      "icone": "alvo",
+      "cor": "ciano",
+      "itens": [
+        "Cálcio 1.000 mg/dia: 12ª semana ao parto",
+        "Ferro 40 mg e ácido fólico 400 µg ao dia",
+        "Analisar o cartão vacinal na 1ª consulta",
+        "Acompanhar até o 42º dia de puerpério"
+      ],
+      "claims": [
+        "PN01",
+        "PN03",
+        "PN04",
+        "PN05",
+        "PN06",
+        "PN07",
+        "PN08",
+        "PN39",
+        "PN46",
+        "PN91",
+        "PN96",
+        "PN97",
+        "PN98",
+        "PN105",
+        "PN137",
+        "PN138",
+        "PN31",
+        "PN32",
+        "PN34",
+        "PN35",
+        "PN36",
+        "PN70",
+        "PN71",
+        "PN72",
+        "PN73",
+        "PN74",
+        "PN113",
+        "PN133",
+        "PN134",
+        "PN135",
+        "PN75",
+        "PN76",
+        "PN78",
+        "PN79",
+        "PN80",
+        "PN81",
+        "PN82",
+        "PN83",
+        "PN84",
+        "PN85",
+        "PN107",
+        "PN108",
+        "PN109"
+      ]
+    },
+    "tratamento": {
+      "titulo": "Vacinas na gestação",
+      "icone": "seringa",
+      "cor": "laranja",
+      "faixas": [
+        {
+          "rotulo": "Cada gestação",
+          "chip": "dTpa",
+          "texto": "1 dose da 20ª semana"
+        },
+        {
+          "rotulo": "Sincicial respiratório",
+          "chip": "Única",
+          "texto": "Desde a 28ª semana"
+        }
+      ],
+      "itens": [
+        "Influenza: 1 dose por temporada",
+        "Covid: 1 dose, 6 meses após a última",
+        "Sem histórico: 3 doses de toxoide diftérico e tetânico"
+      ],
+      "claims": [
+        "PN31",
+        "PN32",
+        "PN34",
+        "PN35",
+        "PN36",
+        "PN70",
+        "PN71",
+        "PN72",
+        "PN73",
+        "PN74",
+        "PN113",
+        "PN133",
+        "PN134",
+        "PN135"
+      ]
+    }
+  },
+  "foto": {
+    "webp": "/mapas-mentais/assistencia-ao-pre-natal.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  }
 }

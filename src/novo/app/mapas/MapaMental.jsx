@@ -5,7 +5,7 @@ import React from "react";
 import { MapaIcon, Emblema } from "./icones.jsx";
 import { corDe, distribuir, itemDe } from "./mapas.js";
 import { Itens, Fluxo, Revisao, ImagemCentral } from "./partes.jsx";
-import { Poster } from "./Poster.jsx";
+import { Poster, temPoster } from "./Poster.jsx";
 import "./mapas.css";
 
 const LARGURA_ABERTA = 960; // a partir daqui o mapa vira o desenho horizontal com fios curvos
@@ -70,7 +70,7 @@ function Centro({ mapa, setRef }) {
 export function MapaMental({ mapa, modoInicial = "revisao" }) {
   const [modo, setModo] = React.useState(modoInicial);
   const [abertos, setAbertos] = React.useState(() => new Set());
-  const [vista, setVista] = React.useState(() => (typeof matchMedia === "function" && matchMedia("(min-width: 900px)").matches ? "poster" : "lista"));
+  const [vista, setVista] = React.useState(() => (typeof matchMedia === "function" && matchMedia("(min-width: 900px)").matches && temPoster(mapa) ? "poster" : "lista"));
   const [largo, setLargo] = React.useState(false);
   const [fios, setFios] = React.useState([]);
   const board = React.useRef(null);
@@ -165,7 +165,7 @@ export function MapaMental({ mapa, modoInicial = "revisao" }) {
           <button type="button" aria-pressed={modo === "revisao"} onClick={() => trocarModo("revisao")}>Revisão</button>
           <button type="button" aria-pressed={modo === "aprofundado"} onClick={() => trocarModo("aprofundado")} disabled={!temDeep}>Aprofundado</button>
         </div>
-        {modo === "revisao" && (
+        {modo === "revisao" && temPoster(mapa) && (
           <div className="mm-modos" role="group" aria-label="Forma do mapa">
             <button type="button" aria-pressed={vista === "poster"} onClick={() => setVista("poster")}>Pôster</button>
             <button type="button" aria-pressed={vista === "lista"} onClick={() => setVista("lista")}>Empilhado</button>
@@ -182,7 +182,7 @@ export function MapaMental({ mapa, modoInicial = "revisao" }) {
         </ul>
       </div>
 
-      {modo === "revisao" && vista === "poster" ? (
+      {modo === "revisao" && vista === "poster" && temPoster(mapa) ? (
         <Poster mapa={mapa} />
       ) : (
         <>

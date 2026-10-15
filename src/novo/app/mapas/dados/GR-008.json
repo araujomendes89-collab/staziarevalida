@@ -17,7 +17,8 @@
       "Seguimento da gestante: a aula traz apenas teste não treponêmico mensal; critérios adicionais não constam e foram omitidos.",
       "Conferência 15/10: cancro duro recebeu de volta a ressalva da aula 'geralmente' única e indolor (SF03); antes parecia regra absoluta.",
       "Conferência 15/10: título 'Em quem foi tratado' trocado por 'Quem teve parceria com sífilis e não foi tratado', porque contradizia o item (SF113 fala de quem não foi tratado).",
-      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)"
+      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
     ]
   },
   "ramos": [
@@ -639,15 +640,13 @@
     }
   ],
   "pontos_chave": [
-    "Recente (até 1 ano): benzatina 2,4 milhões UI, IM, dose única",
+    "Recente: benzatina 2,4 milhões UI, IM, dose única",
     "Tardia ou duração ignorada: 3 doses semanais",
-    "Rápido reagente com sinais ou sem diagnóstico prévio: tratar",
-    "Controle de cura: não treponêmico aos 3, 6, 9 e 12 meses",
-    "Parceria exposta nos 90 dias: dose única presuntiva",
-    "Gestante: só a penicilina benzatina é segura e eficaz"
+    "Controle: não treponêmico aos 3, 6, 9 e 12 meses",
+    "Parceria exposta nos 90 dias: dose única presuntiva"
   ],
   "atencao": [
-    "Treponêmico não serve para monitorar: fica reagente na vida toda em 85% dos casos",
+    "Treponêmico não monitora: fica reagente a vida toda em 85%",
     "Dor no local de injeção antiga não é alergia à penicilina",
     "Cicatriz sorológica não é falha terapêutica e não é notificada",
     "Doxiciclina é contraindicada na gestação e na amamentação"
@@ -657,5 +656,365 @@
     "foco": "50% 50%",
     "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
     "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  },
+  "poster": {
+    "conceito": {
+      "titulo": "Estágios da sífilis",
+      "icone": "microscopio",
+      "cor": "azul",
+      "itens": [
+        "Recente: primária, secundária, latente recente",
+        "Tardia: latente tardia e terciária",
+        "Duração ignorada: tratada como tardia",
+        "Sintomas somem sozinhos: falsa cura"
+      ],
+      "claims": [
+        "SF01",
+        "SF02",
+        "SF03",
+        "SF04",
+        "SF05",
+        "SF06",
+        "SF07",
+        "SF08",
+        "SF09",
+        "SF10",
+        "SF11",
+        "SF12",
+        "SF13",
+        "SF14",
+        "SF15",
+        "SF16",
+        "SF17",
+        "SF18",
+        "SF19",
+        "SF20",
+        "SF34",
+        "SF45",
+        "SF48",
+        "SF49",
+        "SF104"
+      ]
+    },
+    "quadro": {
+      "titulo": "Quadro clínico",
+      "icone": "estetoscopio",
+      "cor": "vermelho",
+      "itens": [
+        "Cancro duro, geralmente único",
+        "Úlcera indolor, base endurecida",
+        "Roséola: tronco e raiz dos membros",
+        "Lesões em palmas e plantas",
+        "Condilomas planos nas dobras"
+      ],
+      "claims": [
+        "SF01",
+        "SF02",
+        "SF03",
+        "SF04",
+        "SF05",
+        "SF06",
+        "SF07",
+        "SF08",
+        "SF09",
+        "SF10",
+        "SF11",
+        "SF12",
+        "SF13",
+        "SF14",
+        "SF15",
+        "SF16",
+        "SF17",
+        "SF18",
+        "SF19",
+        "SF20",
+        "SF34",
+        "SF45",
+        "SF48",
+        "SF49",
+        "SF104"
+      ]
+    },
+    "fatores": {
+      "titulo": "Diferencial da úlcera primária",
+      "icone": "lupa",
+      "cor": "amarelo",
+      "itens": [
+        "Cancroide",
+        "Herpes genital",
+        "Linfogranuloma venéreo",
+        "Donovanose",
+        "Câncer e leishmaniose tegumentar"
+      ],
+      "claims": [
+        "SF01",
+        "SF02",
+        "SF03",
+        "SF04",
+        "SF05",
+        "SF06",
+        "SF07",
+        "SF08",
+        "SF09",
+        "SF10",
+        "SF11",
+        "SF12",
+        "SF13",
+        "SF14",
+        "SF15",
+        "SF16",
+        "SF17",
+        "SF18",
+        "SF19",
+        "SF20",
+        "SF34",
+        "SF45",
+        "SF48",
+        "SF49",
+        "SF104"
+      ]
+    },
+    "diagnostico": {
+      "titulo": "Diagnóstico",
+      "icone": "prancheta",
+      "cor": "verde",
+      "linhas": [
+        {
+          "icone": "microscopio",
+          "rotulo": "Treponêmicos",
+          "itens": [
+            "Rápido, FTA-Abs, TPHA, ELISA",
+            "Não servem para monitorar o tratamento"
+          ]
+        },
+        {
+          "icone": "tubo",
+          "rotulo": "Não treponêmicos",
+          "itens": [
+            "VDRL, RPR, USR; resultado em títulos",
+            "Diagnóstico e controle de cura"
+          ]
+        },
+        {
+          "icone": "prancheta",
+          "rotulo": "Para diagnosticar",
+          "itens": [
+            "Um treponêmico + um não treponêmico",
+            "Rápido reagente: pedir não treponêmico"
+          ]
+        }
+      ],
+      "claims": [
+        "SF21",
+        "SF22",
+        "SF23",
+        "SF24",
+        "SF25",
+        "SF26",
+        "SF27",
+        "SF28",
+        "SF29",
+        "SF30",
+        "SF31",
+        "SF32",
+        "SF33",
+        "SF35",
+        "SF36",
+        "SF37",
+        "SF40",
+        "SF41",
+        "SF42",
+        "SF43",
+        "SF44",
+        "SF46",
+        "SF100",
+        "SF101",
+        "SF102",
+        "SF103"
+      ]
+    },
+    "exames": {
+      "titulo": "Interpretação dos testes",
+      "icone": "lupa",
+      "cor": "roxo",
+      "linhas": [
+        {
+          "icone": "microscopio",
+          "rotulo": "Rápido reagente",
+          "texto": "Pedir o não treponêmico; com sinais ou sem diagnóstico prévio, tratar"
+        },
+        {
+          "icone": "tubo",
+          "rotulo": "Segundo teste negativo",
+          "texto": "Não treponêmico não reagente: fazer 3º treponêmico de outra metodologia"
+        },
+        {
+          "icone": "escudo",
+          "rotulo": "Os dois reagentes",
+          "texto": "Sífilis ou cicatriz sorológica; correlacionar clínica e histórico"
+        },
+        {
+          "icone": "balanca",
+          "rotulo": "Título",
+          "texto": "Não ler o título isolado nem usar ponto de corte"
+        }
+      ],
+      "claims": [
+        "SF21",
+        "SF22",
+        "SF23",
+        "SF24",
+        "SF25",
+        "SF26",
+        "SF27",
+        "SF28",
+        "SF29",
+        "SF30",
+        "SF31",
+        "SF32",
+        "SF33",
+        "SF35",
+        "SF36",
+        "SF37",
+        "SF40",
+        "SF41",
+        "SF42",
+        "SF43",
+        "SF44",
+        "SF46",
+        "SF100",
+        "SF101",
+        "SF102",
+        "SF103"
+      ]
+    },
+    "conduta": {
+      "titulo": "Conduta com as parcerias",
+      "icone": "pessoas",
+      "cor": "azul-forte",
+      "linhas": [
+        {
+          "icone": "alerta",
+          "rotulo": "Exposição",
+          "itens": [
+            "Exposta nos 90 dias: dose única presuntiva",
+            "Vale em qualquer estágio e se não reagente"
+          ]
+        },
+        {
+          "icone": "microscopio",
+          "rotulo": "Testagem",
+          "itens": [
+            "Reagente: tratar conforme o estágio",
+            "Não reagente: repetir após 30 dias"
+          ]
+        },
+        {
+          "icone": "escudo",
+          "rotulo": "Reinfecção",
+          "itens": [
+            "Infecção anterior não protege"
+          ]
+        }
+      ],
+      "claims": [
+        "SF70",
+        "SF71",
+        "SF72",
+        "SF73",
+        "SF74",
+        "SF75",
+        "SF113"
+      ]
+    },
+    "objetivos": {
+      "titulo": "Controle de cura",
+      "icone": "calendario",
+      "cor": "ciano",
+      "itens": [
+        "Não treponêmico aos 3, 6, 9 e 12 meses",
+        "Resposta: não reagente ou queda de 2 diluições",
+        "Prazo: 6 meses (recente) ou 12 (tardia)",
+        "Cicatriz sorológica não é falha nem notificada"
+      ],
+      "claims": [
+        "SF38",
+        "SF76",
+        "SF77",
+        "SF78",
+        "SF80",
+        "SF81",
+        "SF82",
+        "SF83",
+        "SF84",
+        "SF85",
+        "SF86",
+        "SF87",
+        "SF92",
+        "SF93",
+        "SF94",
+        "SF95",
+        "SF96",
+        "SF97",
+        "SF98",
+        "SF110"
+      ]
+    },
+    "tratamento": {
+      "titulo": "Tratamento (penicilina benzatina)",
+      "icone": "seringa",
+      "cor": "laranja",
+      "faixas": [
+        {
+          "rotulo": "Sífilis recente",
+          "chip": "1 dose",
+          "texto": "2,4 milhões UI, IM"
+        },
+        {
+          "rotulo": "Sífilis tardia",
+          "chip": "3 doses",
+          "texto": "2,4 milhões UI semanal"
+        }
+      ],
+      "itens": [
+        "Só via intramuscular, de preferência ventro-glútea",
+        "Gestante: só penicilina benzatina; sem doxiciclina",
+        "Dor de injeção antiga não é alergia à penicilina"
+      ],
+      "claims": [
+        "SF50",
+        "SF51",
+        "SF52",
+        "SF53",
+        "SF55",
+        "SF56",
+        "SF57",
+        "SF58",
+        "SF59",
+        "SF60",
+        "SF61",
+        "SF62",
+        "SF63",
+        "SF64",
+        "SF65",
+        "SF66",
+        "SF67",
+        "SF68",
+        "SF69",
+        "SF88",
+        "SF89",
+        "SF90",
+        "SF91",
+        "SF105",
+        "SF106",
+        "SF107",
+        "SF108",
+        "SF109",
+        "SF111",
+        "SF14",
+        "SF15",
+        "SF30"
+      ]
+    }
   }
 }

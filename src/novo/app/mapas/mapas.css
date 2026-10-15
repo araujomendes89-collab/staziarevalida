@@ -203,3 +203,38 @@
 .mmp-emblema{left:27%;top:9%;width:46%}
 .mmp-emblema .mm-imagem{mix-blend-mode:multiply;-webkit-mask-image:radial-gradient(closest-side,#000 62%,transparent 100%);mask-image:radial-gradient(closest-side,#000 62%,transparent 100%)}
 :root[data-theme="dark"] .mmp-emblema .mm-imagem{mix-blend-mode:normal}
+
+/* pôster v2: tabelas de ícones, marcadores verdes, figura redonda no Conceito */
+.mmp{--u:1.08cqi}
+.mmp-emblema{left:37%;top:19%;width:26%}
+.mmp-card{overflow:hidden}
+.mmp-card .mm-card-b{padding:.6em 1.1em .7em;gap:.4em}
+.mmp-lista{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.3em;font-size:1.08em;line-height:1.25}
+.mmp-lista li{position:relative;padding-left:1.05em}
+.mmp-lista li::before{content:"";position:absolute;left:.1em;top:.5em;width:.5em;height:.5em;border-radius:50%;background:var(--ac)}
+.mmp-checks li{padding-left:0;display:flex;gap:.6em;align-items:flex-start}
+.mmp-checks li::before{display:none}
+.mmp-ok{flex:none;width:1.5em;height:1.5em;border-radius:50%;background:#14A672;color:#fff;display:grid;place-items:center}
+.mmp-tab{display:flex;flex-direction:column}
+.mmp-tr{display:grid;grid-template-columns:2.2em minmax(0,.78fr) minmax(0,1.5fr);align-items:center;gap:.55em;padding:.4em 0;border-top:1px solid color-mix(in oklab,var(--ac) 22%,transparent);font-size:1.02em;line-height:1.22}
+.mmp-tr:first-child{border-top:0}
+.mmp-ti{color:var(--ac-t);display:grid;place-items:center}
+.mmp-tr-r{font-weight:800}
+.mmp-tr-t{display:flex;flex-direction:column;gap:.15em}
+.mmp-tr-i{display:block;position:relative;padding-left:.9em}
+.mmp-tr-i::before{content:"";position:absolute;left:.1em;top:.5em;width:.42em;height:.42em;border-radius:50%;background:var(--ac)}
+.mmp-tr:has(> .mmp-tr-t > :not(.mmp-tr-i)) .mmp-tr-t{display:block}
+.mmp-figura{position:absolute;right:.9em;top:.5em;width:5.2em;height:5.2em;border-radius:50%;object-fit:cover;border:.22em solid #fff;box-shadow:0 .3em .8em -.2em rgba(10,30,70,.45);z-index:3}
+.mmp-card[data-papel="conceito"] .mm-card-h{padding-right:6.4em}
+.mmp-card .mm-faixa{grid-template-columns:minmax(0,1.3fr) auto minmax(0,1fr);font-size:1em}
+.mmp-card .mm-faixa-r{font-size:1.02em}
+.mmp-card .mm-faixa-t{font-size:.9em}
+
+.mmp-atencao{top:86.8%;height:12.4%;padding-top:1.6em}
+.mmp-pontos{top:88.4%;height:10.8%}
+.mmp-atencao .mm-ul{font-size:1em;line-height:1.25;gap:.2em}
+.mmp .mm-checks{font-size:1.05em}
+
+.mmp-emblema{left:38%;top:20%;width:24%}
+.mmp-emblema .mm-imagem{aspect-ratio:16/10;object-fit:cover}
+.mmp-atencao{top:86%;height:13.2%}

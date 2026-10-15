@@ -82,3 +82,5 @@ export function ImagemCentral({ mapa }) {
   );
 }
 
+
+export const itemTexto = (i) => itemDe(i).t;
