@@ -24,7 +24,12 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageFilter
+
+try:
+    import numpy as np
+except ImportError:  # sem numpy: não corrige a borda, o resto funciona
+    np = None
 
 RAIZ = Path(__file__).resolve().parent.parent
 ORIGEM_PADRAO = Path("/Volumes/StaziaMed/.tmp-aulas/imagens-temas/v2")
@@ -59,9 +64,36 @@ def recorte_16_9(img: Image.Image) -> Image.Image:
     return img.crop((0, topo, w, topo + nova))
 
 
+def apagar_borda_vertical(img: Image.Image) -> Image.Image:
+    """Alguns PNGs do gerador vêm com uma emenda vertical dura (painel liso à esquerda + foto à direita, ou quina de parede).
+    No cartão, a máscara de esmaecimento não esconde esse degrau e aparece uma linha vertical no tema claro.
+    Aqui a emenda é achada (degrau de brilho consistente na altura toda, entre 20% e 62% da largura) e tudo à esquerda dela
+    vira TRANSPARENTE; a foto ganha um esmaecimento próprio (alfa de 0 a 1 em 12% da largura) a partir da emenda.
+    Assim o cartão (que mostra a foto sobre o branco) não tem mais degrau. Sem emenda: devolve a imagem igual."""
+    if np is None:
+        return img
+    w, h = img.size
+    peq = np.asarray(img.convert("L").resize((w // 4, h // 4))).astype(float)
+    d = np.abs(np.diff(peq, axis=1)).mean(axis=0)
+    lo, hi = int(len(d) * 0.20), int(len(d) * 0.62)
+    i = lo + int(d[lo:hi].argmax())
+    if d[i] < 30 or d[i] < 12 * float(np.median(d)):
+        return img
+    x = (i + 1) * 4
+    a = np.asarray(img.convert("RGB")).copy()
+    a[:, :x, :] = a[:, x : x + 1, :]  # cor sob a transparência = a da borda (evita halo ao reduzir)
+    alfa = np.zeros((h, w), dtype=float)
+    rampa = max(8, int(w * 0.12))
+    alfa[:, x:] = 1.0
+    alfa[:, x : x + rampa] = np.linspace(0, 1, rampa)[None, :]
+    out = Image.fromarray(np.dstack([a, np.clip(alfa * 255, 0, 255).astype("uint8")]).astype("uint8"), "RGBA")
+    out.info["borda_corrigida"] = round((i + 1) / len(d), 3)
+    return out
+
+
 def webp(caminho: Path) -> tuple[bytes, int]:
     with Image.open(caminho) as bruto:
-        img = recorte_16_9(bruto.convert("RGB")).resize((LARGURA, ALTURA), Image.LANCZOS)
+        img = recorte_16_9(apagar_borda_vertical(bruto.convert("RGB"))).resize((LARGURA, ALTURA), Image.LANCZOS)
     q = QUALIDADE_INICIAL
     while True:
         buf = io.BytesIO()
@@ -76,6 +108,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Sincroniza as fotos dos Temas Essenciais.")
     ap.add_argument("--origem", type=Path, default=ORIGEM_PADRAO)
     ap.add_argument("--prompts", type=Path, default=PROMPTS_PADRAO)
+    ap.add_argument("--refazer", action="store_true", help="reconverte também os PNG já convertidos (mantém o estado de cada tema)")
     ap.add_argument("--seco", action="store_true", help="só mostra o que faria")
     a = ap.parse_args()
 
@@ -101,7 +134,7 @@ def main() -> int:
             continue
         imp = impressao(png)
         arquivo = DESTINO / f"{codigo}.webp"
-        if atual and atual.get("origem") == imp and arquivo.is_file():
+        if atual and atual.get("origem") == imp and arquivo.is_file() and not a.refazer:
             pulados += 1
             continue
         try:
@@ -114,7 +147,7 @@ def main() -> int:
             "arquivo": f"/temas/foto/{codigo}.webp",
             "tipo": p.get("tipo"),
             "risco_medico": p.get("risco_medico") or p.get("risco", "baixo"),
-            "estado": PENDENTE,
+            "estado": atual["estado"] if (atual and a.refazer and atual.get("origem") == imp) else PENDENTE,
             "origem": imp,
             "bytes": len(dados),
             "qualidade": q,
