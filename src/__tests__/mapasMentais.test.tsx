@@ -73,7 +73,7 @@ describe("pôster realista (imagem) como visual principal", () => {
     const imgs = Array.from(document.querySelectorAll(".mm-lcard img"));
     for (const i of imgs) { expect(i.className).toBe("mm-lcard-ico"); expect(i.getAttribute("alt")).toBe(""); expect(i.getAttribute("loading")).toBe("lazy"); }
     expect(imgs.length).toBe(MAPAS.filter((m: any) => m.icone?.webp).length);
-    expect(screen.getAllByText(/ramos · revisão rápida e aprofundado/).length).toBe(MAPAS.length);
+    expect(document.querySelectorAll(".mm-lcard-pe .mm-lcard-r").length).toBe(MAPAS.length); // rodapé novo: "n ramos" + Revisão rápida + Aprofundado
     // todos os cartões são iguais: o título completo fica acessível por title e aria-label
     const cartoes = Array.from(document.querySelectorAll("button.mm-lcard"));
     expect(cartoes.length).toBe(MAPAS.length);
