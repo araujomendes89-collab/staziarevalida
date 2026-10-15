@@ -35,6 +35,8 @@ export interface TutorSettings {
   stt_trial_daily_seconds: number | null;
   stt_paid_daily_seconds: number | null;
   stt_account_daily_seconds: number | null;
+  /** Dica do Tutor nas questões do treino (interruptor do painel; a variável TUTOR_QUESTION_HINT=1 também liga). Nasce desligada. */
+  question_hint_enabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: TutorSettings = {
@@ -43,6 +45,7 @@ export const DEFAULT_SETTINGS: TutorSettings = {
   tts_team_only: true, tts_trial_daily_chars: 4500, tts_paid_daily_chars: 4500, tts_account_daily_chars: 4500, tts_account_monthly_chars: 30000,
   tts_price_per_1k_chars_usd: 0, stt_price_per_min_usd: 0,
   stt_team_only: true, stt_trial_daily_seconds: null, stt_paid_daily_seconds: null, stt_account_daily_seconds: null,
+  question_hint_enabled: false,
 };
 
 const cache = new WeakMap<object, { at: number; value: TutorSettings }>();

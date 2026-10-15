@@ -772,6 +772,7 @@ export function AdminTutor() {
         tts_price_per_1k_chars_usd: String(data.tts_price_per_1k_chars_usd ?? 0),
         stt_price_per_min_usd: String(data.stt_price_per_min_usd ?? 0),
         stt_team_only: data.stt_team_only ?? true,
+        question_hint_enabled: data.question_hint_enabled ?? false,
         stt_trial_daily_min: secondsToMinutes(data.stt_trial_daily_seconds),
         stt_paid_daily_min: secondsToMinutes(data.stt_paid_daily_seconds),
         stt_account_daily_min: secondsToMinutes(data.stt_account_daily_seconds),
@@ -813,6 +814,8 @@ export function AdminTutor() {
   const micCapsFilled = [form.stt_trial_daily_min, form.stt_paid_daily_min, form.stt_account_daily_min].every(positive);
   // banco ainda sem a atualização do microfone (…9891 não colada): a tela diz isso em vez de fingir que guarda os tetos
   const micSupported = Object.prototype.hasOwnProperty.call(data, "stt_team_only");
+  // banco ainda sem a coluna da dica (migração …10600 não colada): o interruptor fica travado em vez de fingir que guarda
+  const hintSupported = Object.prototype.hasOwnProperty.call(data, "question_hint_enabled");
   const needsMicCaps = micSupported && !form.stt_team_only && !(micCapsFilled && positive(form.stt_price_per_min_usd));
   const needsVoicePrice = !form.tts_team_only && data.tts_team_only !== false && !positive(form.tts_price_per_1k_chars_usd);
   const blocked = needsPlans || needsMicCaps || needsVoicePrice;
@@ -834,6 +837,7 @@ export function AdminTutor() {
         tts_team_only: form.tts_team_only, tts_trial_daily_chars: n(form.tts_trial_daily_chars), tts_paid_daily_chars: n(form.tts_paid_daily_chars),
         tts_account_daily_chars: n(form.tts_account_daily_chars), tts_account_monthly_chars: n(form.tts_account_monthly_chars),
         tts_price_per_1k_chars_usd: price(form.tts_price_per_1k_chars_usd), stt_price_per_min_usd: price(form.stt_price_per_min_usd),
+        ...(hintSupported ? { question_hint_enabled: form.question_hint_enabled } : {}),
         ...(micSupported
           ? { stt_team_only: form.stt_team_only, stt_trial_daily_seconds: min(form.stt_trial_daily_min), stt_paid_daily_seconds: min(form.stt_paid_daily_min), stt_account_daily_seconds: min(form.stt_account_daily_min) }
           : {}),
@@ -868,6 +872,8 @@ export function AdminTutor() {
           <Switch label="Planos pagos + teste grátis" description="Ligado: quem não assina tem o teste grátis do Tutor (começa no primeiro uso) e depois vê o convite para assinar. Precisa ficar ligado para o Tutor ficar ligado." checked={form.requires_pro} onChange={(e) => set({ requires_pro: e.target.checked })} />
           {needsPlans && <Banner tone="warning">{TUTOR_NEEDS_PLANS}</Banner>}
           <Switch label="Conversa por voz" description="Desligada: só o Chat, por escrito (sem as vozes e sem o microfone)." checked={form.voice_enabled} onChange={(e) => set({ voice_enabled: e.target.checked })} />
+          <Switch label="Dica do Tutor nas questões do treino" description="Dica do Tutor nas questões do treino (não revela a resposta; não aparece em simulados)." checked={form.question_hint_enabled} disabled={!hintSupported} onChange={(e) => set({ question_hint_enabled: e.target.checked })} />
+          {!hintSupported && <Banner tone="warning">A dica do Tutor ainda não pode ser ligada por aqui: falta uma atualização do banco, que o Claude prepara para você colar.</Banner>}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
             <TextField label="Interações de texto por dia (plano pago)" value={form.daily_message_limit} inputMode="numeric" maxLength={3} onChange={(e) => set({ daily_message_limit: e.target.value })} hint="De 1 a 500. É o teto de gasto por aluno." />
             <TextField label="Voz por dia (plano pago, minutos)" value={form.paid_voice_daily_min} inputMode="numeric" maxLength={4} onChange={(e) => set({ paid_voice_daily_min: e.target.value })} />

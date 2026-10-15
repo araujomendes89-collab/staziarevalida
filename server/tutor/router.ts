@@ -72,7 +72,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     // GPT-Live disponível agora? (o navegador manda a oferta WebRTC antes de abrir; se o GPT-Live falhar, o servidor cai no Realtime)
     const plan = planProviders(settings.voice_provider, process.env, vr.live, vr.realtime, true, vr.gemini);
     res.json({
-      ready: status.ready, simulated: status.isMock, question_hint: questionHintEnabled() && settings.enabled && status.ready, neural_voice: voice.ready, realtime_voice: vr.ready && settings.voice_enabled !== false, live_voice: plan.first === "live",
+      ready: status.ready, simulated: status.isMock, question_hint: questionHintEnabled(process.env, settings.question_hint_enabled === true) && settings.enabled && status.ready, neural_voice: voice.ready, realtime_voice: vr.ready && settings.voice_enabled !== false, live_voice: plan.first === "live",
       // qual voz o aplicativo abre primeiro (o Gemini não precisa da oferta WebRTC; o GPT-Live precisa)
       voice_hint: plan.first,
       voice_session_max_seconds: settings.voice_session_max_seconds,
@@ -215,7 +215,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
   });
 
   /**
-   * Dica ANTES de responder (só treino; nasce desligada: TUTOR_QUESTION_HINT=1). body: { question_id }. Nunca traz gabarito, explicação nem fontes.
+   * Dica ANTES de responder (só treino; nasce desligada: interruptor do painel ou TUTOR_QUESTION_HINT=1). body: { question_id }. Nunca traz gabarito, explicação nem fontes.
    */
   router.post("/question-hint", async (req: Authed, res) => {
     try {

@@ -2,7 +2,7 @@
  * Dica do Tutor ANTES de responder (só no treino do Banco de Questões, nunca em simulado). Regras do dono (15/10/2026):
  *  - a dica nunca revela gabarito, explicação nem fontes: o servidor só lê enunciado e alternativas (app_question_hint_context),
  *    e um conferidor por software barra qualquer texto que cite letra de alternativa ou fale em gabarito/resposta correta;
- *  - NASCE DESLIGADA: só funciona com TUTOR_QUESTION_HINT=1 no servidor, com o Tutor ligado e a IA liberada (mesmo caminho do Tutor:
+ *  - NASCE DESLIGADA: só funciona com o interruptor do painel do Tutor ligado OU TUTOR_QUESTION_HINT=1 no servidor, com o Tutor ligado e a IA liberada (mesmo caminho do Tutor:
  *    resolveTutorProvider, aiAllowed, aceite e plano). Sem isso nenhuma chamada de IA acontece e nenhuma chave é usada.
  */
 import { AiInvalidOutput } from "../contentHub/ai/provider";
@@ -22,7 +22,7 @@ const on = (v: string | undefined) => /^(1|true|yes|sim)$/i.test((v ?? "").trim(
 const off = (v: string | undefined) => /^(false|0|off|no)$/i.test((v ?? "").trim());
 
 /** A dica está liberada no servidor? (desligada por padrão) */
-export const questionHintEnabled = (env: NodeJS.ProcessEnv = process.env) => on(env.TUTOR_QUESTION_HINT) && !off(env.TUTOR_ENABLED);
+export const questionHintEnabled = (env: NodeJS.ProcessEnv = process.env, panel = false) => (panel || on(env.TUTOR_QUESTION_HINT)) && !off(env.TUTOR_ENABLED);
 
 /** Texto que entregaria a resposta: letra de alternativa citada, "gabarito" ou "resposta correta". Devolve o motivo ou null. */
 export function hintLeak(text: string): string | null {
@@ -59,8 +59,9 @@ interface HintContext {
 }
 
 export async function questionHint(deps: TutorDeps, user: Identity, questionId: string): Promise<{ hint: string; source: "ia" | "reserva" }> {
-  if (!questionHintEnabled()) throw new TutorError(HINT_OFF, 503);
   const settings = await tutorSettings(deps);
+  // liga pelo interruptor do painel OU pela variável TUTOR_QUESTION_HINT=1; sem nenhum dos dois, nada é lido e nenhuma IA é chamada
+  if (!questionHintEnabled(process.env, settings.question_hint_enabled === true)) throw new TutorError(HINT_OFF, 503);
   if (!settings.enabled) throw new TutorError(HINT_OFF, 503);
   // contexto pelo banco, como o aluno: só questão sem resposta num treino aberto dele (nunca simulado)
   const ctx = await deps.db.asUser<HintContext | null>(user, "app_question_hint_context", { p_question_id: questionId });
