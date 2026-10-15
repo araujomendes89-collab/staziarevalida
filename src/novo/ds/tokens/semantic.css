@@ -1,13 +1,13 @@
 :root{
 --bg-app:var(--gray-50);--surface-card:var(--gray-0);--surface-subtle:var(--gray-25);--surface-sunken:var(--gray-100);--surface-inverse:var(--navy-900);--surface-brand-soft:var(--teal-50);--surface-overlay:rgba(8,18,43,.48);
 --border-subtle:var(--gray-100);--border-default:var(--gray-200);--border-strong:var(--gray-300);--border-brand:var(--teal-500);
---text-primary:var(--navy-900);--text-secondary:var(--gray-600);--text-tertiary:var(--gray-500);--text-disabled:var(--gray-400);--text-inverse:var(--gray-0);--text-brand:var(--teal-800);--text-link:var(--teal-700);--text-link-hover:var(--teal-800);
+--text-primary:var(--brand-navy);--text-secondary:var(--gray-600);--text-tertiary:var(--gray-550);--text-disabled:var(--gray-400);--text-inverse:var(--gray-0);--text-brand:var(--teal-800);--text-link:var(--teal-700);--text-link-hover:var(--teal-800);
 --action-primary:var(--teal-700);--action-primary-hover:var(--teal-800);--action-primary-pressed:var(--teal-900);--action-on-primary:var(--gray-0);
 --action-strong:var(--navy-900);--action-strong-hover:var(--navy-800);--action-on-strong:var(--gray-0);
 --action-secondary-bg:var(--gray-0);--action-secondary-hover:var(--gray-50);--action-secondary-border:var(--gray-200);
 --action-ghost-hover:var(--gray-100);
 --selected-bg:var(--teal-50);--selected-border:var(--teal-600);--selected-text:var(--teal-800);
---focus-ring:0 0 0 3px rgba(0,157,254,.35);--focus-color:var(--teal-500);
+--focus-ring:0 0 0 2px var(--surface-card),0 0 0 4px var(--action-primary);--focus-color:var(--teal-500);
 --success-bg:var(--green-50);--success-border:var(--green-200);--success-text:var(--green-700);--success-solid:var(--green-600);
 --warning-bg:var(--amber-50);--warning-border:var(--amber-200);--warning-text:var(--amber-700);--warning-solid:var(--amber-500);
 --danger-bg:var(--red-50);--danger-border:var(--red-200);--danger-text:var(--red-700);--danger-solid:var(--red-600);
@@ -22,6 +22,9 @@
 /* 5 grandes áreas do Revalida */
 --area-clinica:#2F5FD0;--area-cirurgia:#D9650A;--area-go:#C23A74;--area-pediatria:#0E8A5F;--area-preventiva:#6A47E0;
 --chart-1:var(--teal-500);--chart-2:var(--navy-500);--chart-track:var(--gray-100);
+/* Novas telas (onda 0, 15/10/2026): pastéis por área e degradês do pacote do dono, sempre por token */
+--area-clinica-bg:#EDF2FD;--area-clinica-text:#1C43A8;--area-cirurgia-bg:#FFF2E8;--area-cirurgia-text:#B34A0C;--area-go-bg:#FCEEF5;--area-go-text:#B8336F;--area-pediatria-bg:#EFFAF5;--area-pediatria-text:#0B6B4A;--area-preventiva-bg:#F3EFFE;--area-preventiva-text:#4F28B0;
+--brand-hero-gradient:linear-gradient(160deg,#0752AB 0%,#031A3A 100%);--brand-avatar-gradient:linear-gradient(160deg,#009DFE,#052A5A);
 --brand-gradient:linear-gradient(160deg,#2B9BFF 0%,#0A4FA8 100%);/* @kind color */
 }
 [data-theme="dark"]{
@@ -43,4 +46,6 @@
 --level-1:#8592A6;--level-2:var(--teal-400);--level-3:#7FA2F2;--level-4:#B39BF7;--level-5:#F5C462;--level-6:#F59A5E;--level-7:#FF7FA5;--level-8:#EAF0F7;
 --area-clinica:#7FA2F2;--area-cirurgia:#F59A5E;--area-go:#EE8DBA;--area-pediatria:#6FCF95;--area-preventiva:#B39BF7;
 --chart-1:var(--teal-400);--chart-2:#6F8FD6;--chart-track:#1A2840;
+--area-clinica-bg:rgba(127,162,242,.16);--area-clinica-text:#9DB9F5;--area-cirurgia-bg:rgba(245,154,94,.16);--area-cirurgia-text:#F7B287;--area-go-bg:rgba(238,141,186,.16);--area-go-text:#F2A8CB;--area-pediatria-bg:rgba(111,207,149,.16);--area-pediatria-text:#8FDDAE;--area-preventiva-bg:rgba(179,155,247,.18);--area-preventiva-text:#C8B8FA;
+--brand-hero-gradient:linear-gradient(160deg,#0B5FC4 0%,#08122B 100%);--brand-avatar-gradient:linear-gradient(160deg,#3DA5FF,#0A4FA8);
 }

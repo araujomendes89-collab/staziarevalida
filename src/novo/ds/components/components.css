@@ -32,10 +32,10 @@
 .sm-iconbtn--primary{background:var(--action-primary);color:var(--action-on-primary)}
 .sm-iconbtn--primary:hover{background:var(--action-primary-hover);color:var(--action-on-primary)}
 .sm-iconbtn--sm{width:var(--control-sm);height:var(--control-sm);border-radius:var(--radius-sm)}
-.sm-iconbtn__badge{position:absolute;top:4px;right:4px;min-width:18px;height:18px;padding:0 5px;border-radius:var(--radius-pill);background:var(--danger-solid);color:#fff;font:700 11px/18px var(--font-sans);text-align:center;box-shadow:0 0 0 2px var(--surface-card)}
+.sm-iconbtn__badge{position:absolute;top:4px;right:4px;min-width:18px;height:18px;padding:0 5px;border-radius:var(--radius-pill);background:var(--danger-solid);color:#fff;font:700 12px/18px var(--font-sans);text-align:center;box-shadow:0 0 0 2px var(--surface-card)}
 
 .sm-badge{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 var(--space-2);border-radius:var(--radius-pill);font:600 var(--text-xs)/1 var(--font-sans);border:1px solid transparent;white-space:nowrap}
-.sm-badge--sm{height:20px;padding:0 6px;font-size:11px}
+.sm-badge--sm{height:20px;padding:0 6px;font-size:12px}
 .sm-badge--caps{text-transform:uppercase;letter-spacing:.06em;font-weight:700}
 
 .sm-chip{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 var(--space-3);border-radius:var(--radius-pill);border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-secondary);font:500 var(--text-sm)/1 var(--font-sans);cursor:pointer;transition:all var(--dur-fast) var(--ease-standard)}

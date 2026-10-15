@@ -3,9 +3,9 @@
    (47 usos nas telas); os valores são azuis. Antes (teal): 50 #EEFBF9 · 500 #12A79B · 700 #0B6F68 · 900 #0E4945. */
 --teal-50:#EBF5FF;--teal-100:#D6EBFF;--teal-200:#B3DCFF;--teal-300:#7AC2FF;--teal-400:#3DA5FF;--teal-500:#1B8CF0;--teal-600:#0F7DE4;--teal-700:#0A6FD8;--teal-800:#0B5FC4;--teal-900:#084BA0;
 /* Brand navy — from the logo gradient end + wordmark */
---navy-50:#F1F5FB;--navy-100:#E2E9F5;--navy-200:#C4D1EA;--navy-300:#93A8D3;--navy-400:#5E7DBA;--navy-500:#3A5CA2;--navy-600:#254588;--navy-700:#1A346E;--navy-800:#132858;--navy-900:#0D1C42;--navy-950:#08122B;
+--navy-50:#F1F5FB;--navy-100:#E2E9F5;--navy-200:#C4D1EA;--navy-300:#93A8D3;--navy-400:#5E7DBA;--navy-500:#3A5CA2;--navy-600:#254588;--navy-700:#1A346E;--navy-800:#132858;--navy-900:#0D1C42;--brand-navy:#052A5A;--navy-950:#08122B;
 /* Neutrals — cool slate */
---gray-0:#FFFFFF;--gray-25:#FAFBFC;--gray-50:#F4F6F9;--gray-100:#ECEFF3;--gray-200:#DCE1E8;--gray-300:#C3CBD5;--gray-400:#94A0AF;--gray-500:#687586;--gray-600:#4F5A69;--gray-700:#3A4350;--gray-800:#252C36;--gray-900:#151A21;
+--gray-0:#FFFFFF;--gray-25:#FAFBFC;--gray-50:#F4F6F9;--gray-100:#ECEFF3;--gray-200:#DCE1E8;--gray-300:#C3CBD5;--gray-400:#94A0AF;--gray-500:#687586;--gray-550:#5C6879;--gray-600:#4F5A69;--gray-700:#3A4350;--gray-800:#252C36;--gray-900:#151A21;
 /* Semantic bases */
 --green-50:#EAF7EF;--green-200:#B5E3C6;--green-600:#16803C;--green-700:#126632;
 --amber-50:#FEF5E3;--amber-200:#F8D99A;--amber-500:#E59A0B;--amber-700:#9A5B06;
