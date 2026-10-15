@@ -12,7 +12,7 @@
 import React from "react";
 import { AnswerOption, Badge, Banner, Button, Card, EmptyState, Icon, ProgressBar, SegmentedControl, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
-import { useMobile } from "../Shell.jsx";
+import { useMobile, useMQ } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
 import { areaVars, atualizacaoVars } from "./temaCores.js";
 import { AREA_CHAVE, AreaFiltro } from "./casca.jsx";
@@ -655,6 +655,7 @@ function MobileLista({ items, onOpen, lidas }) {
 export function UpdatesScreen({ go }) {
   const { backend, user } = useSession();
   const mobile = useMobile();
+  const celular = useMQ("(max-width: 719px)"); // celular do modelo novo (até 719 px); o tablet mantém os cartões em duas colunas
   const [area, setArea] = React.useState("");
   const [year, setYear] = React.useState(null);
   const [q, setQ] = React.useState("");
@@ -720,7 +721,7 @@ export function UpdatesScreen({ go }) {
         <div className="at-filtros">
           <div className="at-filtros__linha">
             <div className="ap-busca">
-              <TextField icon="search" aria-label="Buscar atualização" placeholder={mobile ? "Buscar tema, conduta, fármaco…" : "Buscar por tema, conduta, fármaco, vacina ou órgão"} value={q} onChange={(e) => setQ(e.target.value)} />
+              <TextField icon="search" aria-label="Buscar atualização" placeholder={celular ? "Buscar tema, conduta, fármaco…" : "Buscar por tema, conduta, fármaco, vacina ou órgão"} value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
             <SegmentedControl
               label="Ano da mudança"
@@ -750,7 +751,7 @@ export function UpdatesScreen({ go }) {
               <div style={{ marginBottom: 12 }}>
                 <h3 className="at-sec" id="at-destaque">Atualizações em destaque</h3>
               </div>
-              <div className="at-destaques" style={mobile ? undefined : { gridTemplateColumns: `repeat(${Math.min(featured.length, 4)},minmax(0,1fr))` }}>
+              <div className="at-destaques" style={celular ? undefined : { gridTemplateColumns: `repeat(${Math.min(featured.length, 4)},minmax(0,1fr))` }}>
                 {featured.map((i) => <UpdateCard key={i.id} item={i} onOpen={openItem} compact read={Boolean(lidas[i.slug])} />)}
               </div>
             </section>
@@ -766,7 +767,7 @@ export function UpdatesScreen({ go }) {
           ) : view === "tabela" ? (
             <CompareTable items={data.items} onOpen={openItem} mobile={mobile} />
           ) : (
-            mobile ? (
+            celular ? (
               <MobileLista items={data.items} onOpen={openItem} lidas={lidas} />
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,380px),1fr))", gap: 16 }}>
