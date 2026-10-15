@@ -1,5 +1,5 @@
 -- StaziaMed · SIMULADO TRI (ESTIMATIVA STAZIAMED) · CONFERIR (só lê; não altera nada). Rode ANTES (mostra o que falta) e DEPOIS de colar
--- supabase/migrations/20261003009995_simulado_tri.sql.
+-- supabase/migrations/20261003009996_simulado_tri.sql.
 -- Resposta: uma linha. "OK: ..." = tudo no banco. "FALTA: ..." = o que não entrou (mostre ao Claude). Funciona mesmo em banco incompleto.
 with falta (ordem, item) as (
   select 1, 'requisito (migrações anteriores) ' || f from unnest(array['app_start_session(text,jsonb,integer,integer)','question_preliminary_info(text)']) f

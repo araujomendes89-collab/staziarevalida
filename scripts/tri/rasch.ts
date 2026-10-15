@@ -2,7 +2,7 @@
  * Simulado TRI (estimativa StaziaMed) — estimador de Rasch (1 parâmetro: a dificuldade b de cada questão).
  *
  * É a versão em TypeScript do protótipo em Python (scratchpad tri/prototipo/rasch_estimador.py) e faz a MESMA conta da função
- * do banco public.irt_eap (migração …9995_simulado_tri.sql): os testes conferem as duas. Serve para:
+ * do banco public.irt_eap (migração …9996_simulado_tri.sql): os testes conferem as duas. Serve para:
  *   - o script de calibração (scripts/tri/calibrar.ts), que estima os b com as respostas dos alunos (JMLE) e grava pelo banco;
  *   - os testes do estimador (src/__tests__/simuladoTriEstimador.test.ts).
  *

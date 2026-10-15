@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
  * Simulado TRI (estimativa StaziaMed) — o estimador de Rasch em casos conhecidos (scripts/tri/rasch.ts).
- * É a mesma conta da função do banco (irt_eap, migração …9995) e do protótipo em Python (JMLE/EAP).
+ * É a mesma conta da função do banco (irt_eap, migração …9996) e do protótipo em Python (JMLE/EAP).
  * Os números de referência vêm da própria definição do modelo: P(acerto) = 1 / (1 + e^-(θ - b)).
  */
 import { describe, expect, it } from "vitest";

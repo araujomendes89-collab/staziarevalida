@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Simulado TRI (estimativa StaziaMed) no banco — migração …9995_simulado_tri.sql, num Postgres real em memória (PGlite) com
+ * Simulado TRI (estimativa StaziaMed) no banco — migração …9996_simulado_tri.sql, num Postgres real em memória (PGlite) com
  * todas as migrações: a conta EAP do banco (irt_eap / irt_estimar_theta) bate com o estimador em TypeScript; o aluno escolhe
  * o modo TRI ao iniciar; ao finalizar o banco grava θ, erro padrão, faixa de 95%, nota StaziaMed e o desempenho por área;
  * cada aluno só vê o seu; anulada sai da conta; mudança de gabarito recorrige; a matriz de calibração só usa o que vale;
@@ -83,7 +83,7 @@ beforeAll(async () => {
 
 describe("Migração", () => {
   it("pode ser colada de novo sem erro", async () => {
-    await db.exec(fs.readFileSync(path.join(MIGRATIONS, "20261003009995_simulado_tri.sql"), "utf8"));
+    await db.exec(fs.readFileSync(path.join(MIGRATIONS, "20261003009996_simulado_tri.sql"), "utf8"));
   });
 
   it("o SQL de conferência responde OK depois de colar", async () => {
