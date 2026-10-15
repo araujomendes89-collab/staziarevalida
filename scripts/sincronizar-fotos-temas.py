@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Sincroniza as fotos dos Temas Essenciais (imagens geradas, PNG 16:9) com o site.
 
-Para cada GR-xxx.png da pasta de origem:
-  - converte para WebP 1280x720 (corte 16:9 centrado), qualidade 80, baixando a qualidade até caber em 180 KB;
+Para cada GR-xxx.png da pasta de origem (arquivos GR-xxx.vN.png são versões antigas e são ignorados):
+  - converte para WebP 1280x720 (corte 16:9 centrado), qualidade 80, baixando a qualidade até caber em 120 KB;
   - grava em public/temas/foto/GR-xxx.webp;
   - registra no manifesto src/novo/app/study/fotos-temas.json (arquivo, tipo, risco médico, estado, impressão do PNG).
 
@@ -27,13 +27,13 @@ from pathlib import Path
 from PIL import Image
 
 RAIZ = Path(__file__).resolve().parent.parent
-ORIGEM_PADRAO = Path("/Volumes/StaziaMed/.tmp-aulas/imagens-temas/img")
-PROMPTS_PADRAO = Path("/Volumes/StaziaMed/.tmp-aulas/imagens-temas/prompts.json")
+ORIGEM_PADRAO = Path("/Volumes/StaziaMed/.tmp-aulas/imagens-temas/v2")
+PROMPTS_PADRAO = Path("/Volumes/StaziaMed/.tmp-aulas/imagens-temas/v2/estado.json")
 DESTINO = RAIZ / "public" / "temas" / "foto"
 MANIFESTO = RAIZ / "src" / "novo" / "app" / "study" / "fotos-temas.json"
 LARGURA, ALTURA = 1280, 720
-QUALIDADE_INICIAL, QUALIDADE_MINIMA = 80, 50
-LIMITE_BYTES = 180 * 1024
+QUALIDADE_INICIAL, QUALIDADE_MINIMA = 80, 40
+LIMITE_BYTES = 120 * 1024
 PENDENTE = "pendente de revisão médica"
 CODIGO = re.compile(r"^GR-\d{3}$")
 
@@ -84,7 +84,8 @@ def main() -> int:
         return 1
     info = {}
     if a.prompts.is_file():
-        for p in json.loads(a.prompts.read_text(encoding="utf-8")):
+        dados_p = json.loads(a.prompts.read_text(encoding="utf-8"))
+        for p in (dados_p.values() if isinstance(dados_p, dict) else dados_p):
             info[p["codigo"]] = p
     manifesto = json.loads(MANIFESTO.read_text(encoding="utf-8")) if MANIFESTO.is_file() else {}
     DESTINO.mkdir(parents=True, exist_ok=True)
@@ -112,7 +113,7 @@ def main() -> int:
         linha = {
             "arquivo": f"/temas/foto/{codigo}.webp",
             "tipo": p.get("tipo"),
-            "risco_medico": p.get("risco_medico", "baixo"),
+            "risco_medico": p.get("risco_medico") or p.get("risco", "baixo"),
             "estado": PENDENTE,
             "origem": imp,
             "bytes": len(dados),

@@ -256,7 +256,7 @@ describe("foto do tema no cartão", () => {
 });
 
 describe("manifesto real das fotos (scripts/sincronizar-fotos-temas.py)", () => {
-  it("cada linha aponta para um WebP que existe, até 180 KB, com estado e risco válidos", () => {
+  it("cada linha aponta para um WebP que existe, até 120 KB, com estado e risco válidos", () => {
     const m = manifestoDoDisco();
     expect(manifestoReal).toBeTruthy();
     expect(Object.keys(m).length).toBeGreaterThan(0);
@@ -265,11 +265,18 @@ describe("manifesto real das fotos (scripts/sincronizar-fotos-temas.py)", () => 
       expect(f.arquivo).toBe(`/temas/foto/${codigo}.webp`);
       const arq = path.join(RAIZ, "public", f.arquivo);
       expect(fs.existsSync(arq), codigo).toBe(true);
-      expect(fs.statSync(arq).size, codigo).toBeLessThanOrEqual(180 * 1024);
+      expect(fs.statSync(arq).size, codigo).toBeLessThanOrEqual(120 * 1024);
       expect(fs.readFileSync(arq).subarray(8, 12).toString("ascii"), codigo).toBe("WEBP");
-      expect(["pendente de revisão médica", "aprovada", "reprovada"]).toContain(f.estado);
+      expect(["pendente de revisão médica", "aprovada", "reprovada", "retida (aguardando revisão médica)"]).toContain(f.estado);
       expect(["baixo", "alto"]).toContain(f.risco_medico);
     }
+  });
+
+  it("tema com foto retida não mostra foto; os 100 temas têm WebP", () => {
+    const m = manifestoDoDisco();
+    expect(Object.keys(m).length).toBe(100);
+    expect(fotoDoTema("GR-032", m)).toBeNull();
+    expect(fotoDoTema("GR-001", m)?.webp).toBe("/temas/foto/GR-001.webp");
   });
 
   it("nenhum WebP solto fora do manifesto", () => {
