@@ -275,7 +275,10 @@ describe("manifesto real das fotos (scripts/sincronizar-fotos-temas.py)", () => 
   it("tema com foto retida não mostra foto; os 100 temas têm WebP", () => {
     const m = manifestoDoDisco();
     expect(Object.keys(m).length).toBe(100);
-    expect(fotoDoTema("GR-032", m)).toBeNull();
+    expect(fotoDoTema("GR-050", m)).toBeNull();
+    expect(fotoDoTema("GR-064", m)).toBeNull();
+    expect(fotoDoTema("GR-076", m)).toBeNull();
+    expect(fotoDoTema("GR-032", m)?.webp).toBe("/temas/foto/GR-032.webp");
     expect(fotoDoTema("GR-001", m)?.webp).toBe("/temas/foto/GR-001.webp");
   });
 
