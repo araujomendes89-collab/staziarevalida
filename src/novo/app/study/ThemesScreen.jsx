@@ -2,21 +2,15 @@
 // catalogadas (Revalida e ENAMED) ligadas a cada tema. Seleção pedagógica, não é ranking do Inep nem previsão de prova.
 // Os dados vêm de app_grandes_temas (migração 9960); o treino do tema usa o filtro grande_tema do sorteio de questões.
 import React from "react";
-import { Badge, Banner, Button, Card, EmptyState, TextField } from "../../ds";
+import { Banner, EmptyState, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { LoadError, Loading, useDebounced, useLoad } from "../admin/common.jsx";
-import { TutorButton } from "../tutor/TutorDrawer.jsx";
 import { temaVars } from "./temaCores.js";
 import { TemaAula } from "./TemaAula.jsx";
+import { TemaCartao } from "./TemaCartao.jsx";
 import { useInRouterContext, useSearchParams } from "react-router-dom";
 import "./temas.css";
-
-/** Situação do conteúdo de cada tema (o que o aluno pode esperar encontrar). */
-const STATUS = {
-  aula_pronta_aguardando_revisao: { label: "Aula pronta, aguardando revisão médica", tone: "info", icon: "clock" },
-  roteiro_em_validacao: { label: "Roteiro em validação", tone: "neutral", icon: "clock" },
-};
 
 // Sem acento e em minúsculas, para a busca achar "ginecologia" em "Ginecologia" e "pre natal" em "pré-natal".
 const fold = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -49,6 +43,9 @@ export function ThemesScreen({ go }) {
   // Temas com aula PUBLICADA (só o aluno vê o botão nesses). Se a função ainda não existe no banco, simplesmente não há botão.
   const { data: comAula } = useLoad(() => backend.rpc("app_temas_com_aula").catch(() => []), [backend]);
   const temAula = React.useMemo(() => new Set(Array.isArray(comAula) ? comAula : []), [comAula]);
+  // Progresso real da aula (seções estudadas), que a própria aula calcula quando é aberta; fica guardado enquanto a tela vive.
+  const [progresso, setProgresso] = React.useState({});
+  const onProgresso = React.useCallback((id, pct) => setProgresso((p) => (p[id] === pct ? p : { ...p, [id]: pct })), []);
   // Ao voltar da aula, a lista volta para o mesmo ponto (filtro e busca ficam guardados porque esta tela não é desmontada).
   React.useLayoutEffect(() => {
     if (aberta == null && scroll.current != null) window.scrollTo({ top: scroll.current, behavior: "instant" });
@@ -64,7 +61,6 @@ export function ThemesScreen({ go }) {
   const themes = data.themes.filter(
     (t) => (!area || t.area === area) && (!q || fold(`${t.title} ${t.subarea ?? ""} ${t.area_name}`).includes(q))
   );
-  const max = Math.max(1, ...data.themes.map((t) => t.total));
   const groups = data.areas.map((a) => ({ ...a, items: themes.filter((t) => t.area === a.id) })).filter((g) => g.items.length > 0);
 
   const train = async (t) => {
@@ -81,7 +77,7 @@ export function ThemesScreen({ go }) {
 
   const aulaTema = aberta != null ? data.themes.find((t) => t.order === aberta && temAula.has(t.id)) : null;
   if (aulaTema) {
-    return <TemaAula tema={aulaTema} mobile={mobile} onBack={() => setAberta(null)} go={{ train, flash: () => go("flash") }} />;
+    return <TemaAula tema={aulaTema} mobile={mobile} onBack={() => setAberta(null)} go={{ train, flash: () => go("flash") }} onProgresso={onProgresso} />;
   }
 
   return (
@@ -118,48 +114,18 @@ export function ThemesScreen({ go }) {
               {plural(g.themes, "tema", "temas")} · {plural(g.questions, "questão ligada", "questões ligadas")}
             </span>
           </h2>
-          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "repeat(auto-fill,minmax(320px,1fr))", gap: 16 }}>
-            {g.items.map((t) => {
-              const exams = Object.entries(t.by_exam).sort(([a], [b]) => a.localeCompare(b));
-              const aula = temAula.has(t.id);
-              const status = aula ? { label: "Aula disponível", tone: "success", icon: "check" } : STATUS[t.status] ?? STATUS.roteiro_em_validacao;
-              return (
-                <Card key={t.id} className="gt-card" padding={20} style={{ borderRadius: 20, display: "flex", flexDirection: "column", gap: 10, ...temaVars(t.id, t.area) }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    <Badge size="sm" tone={status.tone} icon={status.icon}>
-                      {status.label}
-                    </Badge>
-                    <Badge size="sm" tone={t.total > 0 ? "brand" : "neutral"}>
-                      {t.total > 0 ? `${plural(t.total, "questão", "questões")} · ${plural(exams.length, "prova", "provas")}` : "0 questões"}
-                    </Badge>
-                  </div>
-                  <div style={{ font: "600 16px/1.35 var(--font-sans)", overflowWrap: "anywhere" }}>{t.title}</div>
-                  <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
-                    Tema {t.order}
-                    {t.subarea ? ` · ${t.subarea}` : ""}
-                  </div>
-                  <div className="gt-bar" aria-hidden="true">
-                    <span style={{ width: `${t.total > 0 ? Math.max((t.total / max) * 100, 4) : 0}%` }} />
-                  </div>
-                  {t.total === 0 && <div style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>Ainda não há questão oficial catalogada ligada a este tema.</div>}
-                  <div style={{ marginTop: "auto", paddingTop: 10, borderTop: "1px solid var(--border-subtle)" }}>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                      {aula && (
-                        <Button variant="primary" size="sm" iconRight="chevron-right" onClick={() => openAula(t)}>
-                          Abrir a aula
-                        </Button>
-                      )}
-                      {t.total > 0 && (
-                        <Button variant="link" size="sm" iconRight="chevron-right" loading={starting === t.id} onClick={() => train(t)}>
-                          Treinar este tema
-                        </Button>
-                      )}
-                      <TutorButton request={{ mode: "perguntas", topic: t.title, context: { type: "theme", id: t.id, label: t.title, area: t.area_name } }} label="Me teste" variant="ghost" />
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
+          <div className="gt-grade">
+            {g.items.map((t) => (
+              <TemaCartao
+                key={t.id}
+                t={t}
+                aula={temAula.has(t.id)}
+                progresso={progresso[t.id]}
+                starting={starting === t.id}
+                onAbrir={() => openAula(t)}
+                onTreinar={() => train(t)}
+              />
+            ))}
           </div>
         </section>
       ))}
