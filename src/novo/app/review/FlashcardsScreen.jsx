@@ -9,7 +9,7 @@ import { AREAS, areaLabel, formatWhen } from "../practice/format.js";
 import { FlashcardForm } from "./FlashcardForm.jsx";
 import { intervalLabel, nextSchedule, previewDays } from "./fsrs.js";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
-import { CartaoIlustrado } from "../study/AulaImagem.jsx";
+import { CartaoIlustrado, preCarregarCartao } from "../study/AulaImagem.jsx";
 import { CartaoFlashcard } from "./CartaoFlashcard.jsx";
 
 const RATINGS = [
@@ -61,6 +61,18 @@ export function FlashcardsScreen({ go }) {
       alive = false;
     };
   }, [backend, area, reload]);
+
+  // cartão ilustrado: adianta as imagens do PRÓXIMO cartão (depois das do atual), para "Bom/Fácil…" trocar sem esperar o servidor
+  React.useEffect(() => {
+    const fila = data?.queue ?? [];
+    const proximo = fila[index + 1] && ilustrados[fila[index + 1].id];
+    if (!proximo) return undefined;
+    let alive = true;
+    preCarregarCartao(backend, fila[index] && ilustrados[fila[index].id]).then(() => alive && preCarregarCartao(backend, proximo));
+    return () => {
+      alive = false;
+    };
+  }, [backend, data, ilustrados, index]);
 
   if (!data) return error ? <Banner tone="danger">{error}</Banner> : <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Carregando…</p>;
 

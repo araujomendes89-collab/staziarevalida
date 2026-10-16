@@ -8,7 +8,7 @@ import { useSession } from "../session.jsx";
 import { LoadError, Loading, messageOf, useLoad } from "../admin/common.jsx";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
 import { temaVars } from "./temaCores.js";
-import { ProtectedImage, noMenu } from "./AulaImagem.jsx";
+import { ProtectedImage, noMenu, preCarregarCartao, useVersoPronto } from "./AulaImagem.jsx";
 import { blocoDe, boxOf, celula, cleanHeading, dividirFrases, minutosDeLeitura, mudanca, progressoDaAula, secaoTipo, sobretitulo } from "./aulaPadrao.js";
 import "./aula.css";
 
@@ -162,6 +162,7 @@ function Fixacao({ itens }) {
 function FlashcardIlustrado({ c, temaId, total, on, onFlip }) {
   const [seen, setSeen] = React.useState(on);
   React.useEffect(() => { if (on) setSeen(true); }, [on]);
+  const verso = useVersoPronto(temaId, c.n, seen, Boolean(c.imagem));
   const flip = () => { setSeen(true); onFlip(!on); };
   return (
     <button type="button" className={`al-flip${on ? " on" : ""}${c.imagem ? "" : " al-flip-txt"}`} onClick={flip} aria-label={`Virar flashcard ${c.n} de ${total}`} aria-pressed={on} onContextMenu={noMenu}>
@@ -170,7 +171,7 @@ function FlashcardIlustrado({ c, temaId, total, on, onFlip }) {
           {c.imagem ? <ProtectedImage temaId={temaId} qual="frente" n={c.n} alt={`Flashcard ${c.n}, frente: ${c.frente}`} /> : <div className="txt"><span className="al-face-l">Pergunta</span><span className="al-face-t">{c.frente}</span><span className="al-face-hint">Toque para virar</span></div>}
         </div>
         <div className="al-face back">
-          {c.imagem ? <ProtectedImage temaId={temaId} qual="verso" n={c.n} alt={`Flashcard ${c.n}, verso: ${c.verso}`} enabled={seen} /> : <div className="txt"><span className="al-face-l">Resposta</span><span className="al-face-t">{c.verso}</span></div>}
+          {c.imagem ? <ProtectedImage temaId={temaId} qual="verso" n={c.n} alt={`Flashcard ${c.n}, verso: ${c.verso}`} enabled={verso} /> : <div className="txt"><span className="al-face-l">Resposta</span><span className="al-face-t">{c.verso}</span></div>}
         </div>
       </div>
     </button>
@@ -186,6 +187,16 @@ function Flashcards({ cards, temaId }) {
   const c = cards[Math.min(i, total - 1)];
   const ir = (k) => { setI(((k % total) + total) % total); setOn(false); };
   const flip = (v) => { setOn(v); if (v) setVistos((s) => new Set(s).add(c.n)); };
+  // adianta as imagens do próximo cartão (depois das do atual): "Próximo" troca sem esperar o servidor
+  const { backend } = useSession();
+  const prox = total > 1 ? cards[(Math.min(i, total - 1) + 1) % total] : null;
+  React.useEffect(() => {
+    if (!prox?.imagem) return undefined;
+    let alive = true;
+    const atual = c.imagem ? { tema: temaId, n: c.n } : null;
+    preCarregarCartao(backend, atual).then(() => alive && preCarregarCartao(backend, { tema: temaId, n: prox.n }));
+    return () => { alive = false; };
+  }, [backend, temaId, c.n, c.imagem, prox?.n, prox?.imagem]);
   const onKey = (e) => {
     if (e.key === "ArrowRight") { e.preventDefault(); ir(i + 1); }
     if (e.key === "ArrowLeft") { e.preventDefault(); ir(i - 1); }
