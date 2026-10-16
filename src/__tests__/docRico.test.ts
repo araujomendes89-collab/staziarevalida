@@ -230,7 +230,7 @@ describe("docRico", () => {
 
   // -------------------------------------------------------------------------- 3. Projeção
   describe("3. Projeção", () => {
-    it("projeta parágrafos com marcas de forma idêntica a escrever(ler(t, 'linha'), 'linha') em ~15 exemplos", () => {
+    it("projeta parágrafos: só texto e links (negrito, itálico e sublinhado ficam no rico, fora do text)", () => {
       const exemplos = [
         "Texto simples sem marcas.",
         "Texto com **negrito** no meio.",
@@ -252,8 +252,10 @@ describe("docRico", () => {
       for (const t of exemplos) {
         const bloco = blocoDeTexto(t);
         const proj = textoDoBloco(bloco);
-        const canonicoLinha = escrever(ler(t, "linha"), "linha");
-        expect(proj).toBe(canonicoLinha);
+        // o que se espera: o texto com marcas do mesmo parágrafo sem negrito/itálico/sublinhado (links ficam)
+        const semFormato = ler(t, "linha");
+        for (const b of semFormato.content as any[]) for (const n of b.content ?? []) if (n.marks) { n.marks = n.marks.filter((m: any) => m.type === "link"); if (!n.marks.length) delete n.marks; }
+        expect(proj).toBe(escrever(semFormato, "linha"));
       }
     });
 
@@ -318,7 +320,8 @@ describe("docRico", () => {
         content: [blocoDeTexto("Texto exato com **negrito**")],
       };
       const env = envelope(doc);
-      const valido = ricoValido("Texto exato com **negrito**", env);
+      expect(ricoValido("Texto exato com **negrito**", env)).toBeNull(); // o text de um rico não leva as marcas de formatação
+      const valido = ricoValido("Texto exato com negrito", env);
       expect(valido).not.toBeNull();
       expect(ehEnvelope(valido)).toBe(true);
     });
