@@ -23,6 +23,9 @@ export const SCORING_MODES = [
 
 export const TRI_MIN_QUESTIONS = 30;
 
+/** O TRI só usa questões oficiais do Inep (a nota precisa de itens com calibração oficial); as Questões Inéditas ficam para a correção Clássica. */
+export const TRI_SO_OFICIAIS = "O simulado TRI usa só questões oficiais do Inep: a nota depende da dificuldade medida de cada questão, e as Questões Inéditas ainda não têm essa medida. Para um simulado com as Questões Inéditas, escolha a correção Clássica.";
+
 /** Aviso fixo do rodapé do resultado. */
 export const TRI_NOTICE =
   "O Inep usa o mesmo tipo de modelo, mas não publica a dificuldade das questões; esta estimativa usa as respostas de alunos do StaziaMed e uma régua própria (50 é o meio).";

@@ -14,6 +14,27 @@ transação com ROLLBACK (corpo das 7 funções redefinidas conferido IGUAL ao q
 - Antes de responder: nenhuma função devolve gabarito, explicação, fontes ou códigos novos (o teste confere as chaves devolvidas).
 - Oficiais do Inep: nenhuma mudança (todo filtro novo vale só para `origin = 'staziamed'`; o teste conta 1.200 legíveis para todos).
 
+## Simulado também tem as Inéditas (pedido do dono, 16/10/2026)
+
+"Simulados também entram as questões inéditas." Em 15/10 o dono pediu só que a nota e a calibração do TRI usassem oficiais do Inep
+(migração 010400); a migração 010800 foi além e tirou a prova "Questões Inéditas" de todo simulado. A migração
+`20261003012000_simulado_volta_ineditas.sql` (aditiva; desfazer em `supabase/desfazer/`; roteiro de conferência em
+`supabase/conferir/simulado-ineditas.sql`) devolve o que a 010800 tirou:
+
+- **Simulado clássico** (Rápido, Por área, Geral, Personalizado): a lista "Prova / edição" mostra "Questões Inéditas (20 de 74)" como no
+  treino. Escolhendo-a, o sorteio é só de inéditas e **o limite do plano vale igual** (o sorteio lê `questions` com o papel do aluno e a
+  política só deixa ver as liberadas, mais as já respondidas). Teste vencido, plano vencido e sem assinatura continuam sem simulado.
+- **Sem escolher a prova**, o simulado segue só com oficiais: a sessão nunca mistura as duas coleções (decisão do dono de 11/10, §0 da
+  especificação das Questões Inéditas). **Misturar as inéditas no sorteio geral seria outro pedido** (ver "Decisões do dono", item 5).
+- **Simulado TRI continua só com oficiais**: a nota precisa de questões com calibração oficial e a 010400 já deixa a inédita fora da
+  matriz, da calibração e da nota. O banco recusa TRI com a prova inédita (texto novo: manda escolher a correção Clássica) e a tela
+  avisa antes e não deixa começar.
+- Não mudou: antes de responder o aluno não vê gabarito, explicação, fontes nem códigos; fontes das inéditas fora do servidor (010500);
+  rótulo "Questão Inédita · nº N"; sem dificuldade e sem dica do Tutor no simulado.
+- Atenção (já existia no treino, mas no simulado pesa mais porque as respostas só viram tentativas ao finalizar): se o limite do plano
+  baixar, a carga de questões novas trocar as ainda não respondidas, ou o teste/plano vencer **no meio** de um simulado de inéditas já
+  aberto, as inéditas que deixaram de estar liberadas fazem o "Finalizar" ser recusado (o gatilho de resposta confere o plano).
+
 ## Planos que existem de verdade
 
 `subscriptions.plan` é o enum `plan_code = trial | pro | elite`. **Não existem** "entrada / intermediário / avançado" no banco
@@ -79,3 +100,4 @@ Capturas em `/Volumes/StaziaMed/.tmp-aulas/ineditas-plano/`.
 2. Pro e Elite começam com "todas"; quer limite menor em algum?
 3. Nomes entrada/intermediário/avançado: só existem trial/pro/elite; os novos entram junto com os pacotes.
 4. Texto do convite ("Conhecer os planos") enquanto a assinatura pelo app não existe.
+5. (16/10) Misturar as Inéditas no sorteio do simulado sem o aluno escolher a prova? Hoje não mistura. Se o dono quiser, é um passo à parte: qual parte do simulado (ex.: no máximo 10%), só as liberadas do plano, nunca no TRI.
