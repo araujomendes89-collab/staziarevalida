@@ -16,6 +16,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const backend: any = { rpc: vi.fn(), accessToken: async () => "t" };
+// editor profissional (CampoRico) trocado por textarea: este teste antigo digita nos campos como antes
+vi.mock("../novo/app/editorPro/CampoRico.jsx", () => import("./helpers/campoRicoComoTexto"));
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot: { role: "admin", profile: { name: "Adm" } }, user: { id: "a" } }) }));
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
 // M13 (editor profissional no resumo): nos testes de tela o editor vira um <textarea> com o texto do resumo (sem formatação nova).

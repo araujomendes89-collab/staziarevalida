@@ -79,6 +79,10 @@ const call = async (url: string, token: string, init: RequestInit = {}) => {
 const post = (url: string, token: string, body: unknown = {}) => call(url, token, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 const del = (url: string, token: string) => call(url, token, { method: "DELETE" });
 
+// 013140: salvar o roteiro SEM mudar as falas não derruba mais a aprovação nem o áudio; para o áudio deixar de valer, a edição muda
+// uma fala de fato (cada chamada, um texto diferente)
+let edicoes = 0;
+const editada = (lines: any[]) => lines.map((l, i) => (i === 0 ? { ...l, text: `${l.text} (editada ${++edicoes})` } : l));
 const TEXTO = "Na prova, a pegadinha é tratar a pressão sem pensar no sulfato de magnésio para prevenir convulsão. Hipertensão após 20 semanas com proteinúria define o quadro. ";
 
 /** Episódio pronto até o áudio: fonte de texto, roteiro, aprovação do administrador e áudio simulado. Devolve o caminho do áudio. */
@@ -129,7 +133,7 @@ describe("P08: o áudio que deixou de valer é apagado no evento", () => {
     const { id, audio } = await episodioComAudio();
     expect(await files.exists(audio)).toBe(true);
     const lines = (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines;
-    const edited = await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines, missing: [] } });
+    const edited = await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: editada(lines), missing: [] } });
     expect(edited).toMatchObject({ status: "script_ready", audio_path: null });
     expect((await fila(id))[0]).toMatchObject({ storage_path: audio, reason: "audio_invalidado", status: "pendente" });
     expect(await files.exists(audio)).toBe(true); // a edição é no banco: o arquivo espera o aviso do servidor
@@ -209,7 +213,7 @@ describe("P08: só apaga o que ninguém mais usa", () => {
     const { id, audio } = await episodioComAudio();
     const outro = (await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Outro episódio", topic: "T", area: "CLINICA_MEDICA", target_minutes: 5 } })).id;
     const lines = (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines;
-    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines, missing: [] } }); // o áudio deste episódio deixa de valer: caminho na fila
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: editada(lines), missing: [] } }); // o áudio deste episódio deixa de valer: caminho na fila
     const aula = (await sql(`insert into public.lessons (area, topic, title) values ('PEDIATRIA', 'Asma', 'Asma') returning id`))[0].id;
     const usos: Array<[string, string, string]> = [
       ["outro episódio", `update public.podcasts set audio_path = '${audio}' where id = '${outro}'`, `update public.podcasts set audio_path = null where id = '${outro}'`],
@@ -238,7 +242,7 @@ describe("P08: só apaga o que ninguém mais usa", () => {
     const copia = (await sql(`select storage_path from public.lesson_materials where lesson_id = $1 and kind = 'flashcast'`, [aula]))[0].storage_path;
     expect(await lessonFiles.exists(copia)).toBe(true);
     await rpc(ADMIN, "app_admin_podcast_publish", { p_id: id, p_published: false });
-    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines, missing: [] } });
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: editada((await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines), missing: [] } });
     expect((await post(`${base}/${id}/files/cleanup`, editor)).status).toBe(200);
     expect(await lessonFiles.exists(copia)).toBe(true); // o depósito das aulas não é tocado
     expect(await files.exists(audio)).toBe(false); // o áudio do episódio saiu, a cópia da aula ficou
@@ -357,7 +361,7 @@ describe("Rodada de correções da revisão: a corrida entre conferir e apagar (
     const { id, audio } = await episodioComAudio();
     const outro = (await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Outro", topic: "T", area: "CLINICA_MEDICA", target_minutes: 5 } })).id;
     const aula = (await sql(`insert into public.lessons (area, topic, title) values ('PEDIATRIA', 'Asma', 'Asma') returning id`))[0].id;
-    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines, missing: [] } });
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: editada((await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines), missing: [] } });
     const reservados = await db.service<any[]>("ch_worker_podcast_files_pending", { p_user: EDITOR, p_podcast: null });
     expect(reservados.map((r) => r.path)).toEqual([audio]);
     expect((await dono(id))[0]).toMatchObject({ status: "apagando" });
@@ -378,7 +382,7 @@ describe("Rodada de correções da revisão: a corrida entre conferir e apagar (
 
   it("uma reserva que venceu (servidor que caiu) não trava ninguém e é reavaliada", async () => {
     const { id, audio } = await episodioComAudio();
-    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines, missing: [] } });
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: editada((await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines), missing: [] } });
     const [r] = await db.service<any[]>("ch_worker_podcast_files_pending", { p_user: EDITOR, p_podcast: id });
     await sql(`update public.podcast_files_released set reserved_at = now() - interval '11 minutes' where id = $1`, [r.id]);
     await sql(`insert into public.ch_file_holds (storage_path) values ('${audio}')`); // reserva vencida: não recusa
@@ -408,7 +412,7 @@ describe("Rodada de correções da revisão: a corrida entre conferir e apagar (
   it("o servidor nunca apaga o que o banco não reservou: referência criada ANTES da reserva mantém o arquivo", async () => {
     const { id, audio } = await episodioComAudio(spy);
     const aula = (await sql(`insert into public.lessons (area, topic, title) values ('PEDIATRIA', 'Asma', 'Asma') returning id`))[0].id;
-    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines, missing: [] } });
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: editada((await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines), missing: [] } });
     await sql(`insert into public.lesson_materials (lesson_id, kind, title, storage_path) values ('${aula}', 'flashcast', 'F', '${audio}')`);
     const apagados: string[] = [];
     aoApagar = async (keys) => { apagados.push(...keys); };
@@ -435,7 +439,7 @@ describe("Rodada de correções da revisão: servidor ANTIGO na janela 'SQL novo
   it("o servidor antigo apaga direto (como hoje); o que o SQL novo anotou na fila é confirmado depois, sem erro e sem apagar nada em uso", async () => {
     const { id, audio } = await episodioComAudio();
     await files.remove!([audio]); // o servidor antigo já apagou o arquivo direto
-    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines, missing: [] } });
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: editada((await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines), missing: [] } });
     expect((await post(`${base}/files/cleanup`, editor)).body).toEqual({ ok: true }); // arquivo inexistente: confirma, não quebra
     expect((await fila(id))[0]).toMatchObject({ status: "apagado" });
   });
@@ -497,7 +501,7 @@ describe("Rodada de correções da revisão: fila sem caminho de recuperação (
 
   it("se a confirmação ao banco se perder depois de apagar, a reserva vence e a próxima limpeza confirma e registra uma vez", async () => {
     const { id, audio } = await episodioComAudio();
-    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines, missing: [] } });
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: editada((await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines), missing: [] } });
     const [r] = await db.service<any[]>("ch_worker_podcast_files_pending", { p_user: EDITOR, p_podcast: null });
     await files.remove!([audio]); // o servidor apagou, mas a chamada `done` nunca chegou
     expect(await registro(id)).toHaveLength(0);
@@ -528,7 +532,7 @@ describe("Rodada de correções da revisão: arquivo compartilhado entre episód
 describe("Rodada de correções da revisão: Registro sem duplicar e sem confirmar o que não foi reservado (achado 6)", () => {
   it("confirmar duas vezes o mesmo resultado grava UM item no Registro; id que não foi reservado é ignorado", async () => {
     const { id, audio } = await episodioComAudio();
-    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines, missing: [] } });
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: editada((await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines), missing: [] } });
     const row = (await fila(id))[0];
     const rowId = (await sql(`select id from public.podcast_files_released where podcast_id = $1`, [id]))[0].id;
     // ainda "pendente" (ninguém reservou): a confirmação é ignorada, não apaga nem registra
@@ -545,7 +549,7 @@ describe("Rodada de correções da revisão: Registro sem duplicar e sem confirm
 
   it("duas limpezas ao mesmo tempo: cada arquivo é entregue a UMA delas e o Registro tem um item por arquivo", async () => {
     const { id, audio } = await episodioComAudio();
-    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines, missing: [] } });
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: editada((await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines), missing: [] } });
     const [a, b] = await Promise.all([post(`${base}/files/cleanup`, editor), post(`${base}/files/cleanup`, admin)]);
     expect([a.status, b.status]).toEqual([200, 200]);
     expect(await files.exists(audio)).toBe(false);
@@ -557,7 +561,7 @@ describe("Rodada de correções da revisão: Registro sem duplicar e sem confirm
     const { id, audio } = await episodioComAudio();
     const arq = `podcasts/${id}/src-dddddddddddddddd.pdf`;
     await files.put(arq, Buffer.from("%PDF-1.4"), "application/pdf");
-    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines, missing: [] } });
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: editada((await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines), missing: [] } });
     await sql(`insert into public.podcast_files_released (podcast_id, storage_path, reason) values ($1, $2, 'fonte_tirada')`, [id, arq]);
     const reservados = await db.service<any[]>("ch_worker_podcast_files_pending", { p_user: EDITOR, p_podcast: id });
     expect(reservados).toHaveLength(2);
@@ -573,7 +577,7 @@ describe("Rodada de correções da revisão: Registro sem duplicar e sem confirm
 // 2ª rodada da revisão independente
 // ================================================================================================================================
 const salvaRoteiro = async (id: string) =>
-  rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines, missing: [] } });
+  rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: editada((await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines), missing: [] } });
 const entrada = async (id: string) => (await sql(`select id, status, reserve_token, reserved_at, reavaliar, attempts from public.podcast_files_released where podcast_id = $1 order by id`, [id]));
 const vence = (rowId: number) => sql(`update public.podcast_files_released set reserved_at = now() - interval '11 minutes' where id = $1`, [rowId]);
 const renew = (rowId: number, token: string | null) => db.service<string>("ch_worker_podcast_files_renew", { p_user: EDITOR, p_id: rowId, p_token: token });

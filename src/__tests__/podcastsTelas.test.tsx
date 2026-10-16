@@ -10,6 +10,8 @@ import { MemoryRouter } from "react-router-dom";
 
 const session: { role: string } = { role: "editor" };
 const backend: any = { rpc: vi.fn(), accessToken: async () => "token-de-teste" };
+// editor profissional (CampoRico) trocado por textarea: este teste antigo digita nos campos como antes
+vi.mock("../novo/app/editorPro/CampoRico.jsx", () => import("./helpers/campoRicoComoTexto"));
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot: { role: session.role } }) }));
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false }));
 

@@ -9,6 +9,10 @@
 // documento oficial (registra quem e quando); recusar ou mudar o texto tira do ar. O aviso "Ainda sem conferência médica"
 // do detalhe e o selo "Sem conferência médica" do cartão e da tabela ficam só como proteção, caso algum dia chegue ao aluno
 // algo sem conferência (AT04: o selo aparece em todo lugar onde a conduta aparece, não só no detalhe).
+// Formatação do editor profissional (013130): o detalhe pede à parte só a formatação que o aluno já pode ver
+// (app_guideline_update_formatacao; a das justificativas e do comentário vem com a correção, app_guideline_practice_formatacao).
+// Ela só é usada quando bate com o texto (ricoValido) e é desenhada pelo leitor React (ParagrafoRico), nunca HTML cru e sem o
+// editor (TipTap). Sem formatação, ou se o pedido falhar, a tela fica exatamente como antes.
 import React from "react";
 import { AnswerOption, Badge, Banner, Button, Card, EmptyState, Icon, ProgressBar, SegmentedControl, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
@@ -18,6 +22,8 @@ import { areaVars, atualizacaoVars } from "./temaCores.js";
 import { AREA_CHAVE, AreaFiltro } from "./casca.jsx";
 import { useLidas } from "./atualizacoesLidas.js";
 import { CartaoFlashcard, mesAno } from "../review/CartaoFlashcard.jsx";
+import ParagrafoRico from "../editorPro/leitor/ParagrafoRico.jsx";
+import { chaves, ricoDoCampo } from "../../../shared/atualizacoes/formatacao";
 import "./atualizacoes.css";
 
 const PRIORITY = { 1: ["Prioridade muito alta", "streak"], 2: ["Prioridade alta", "warning"], 3: ["Prioridade moderada", "neutral"], 4: ["Prioridade baixa", "neutral"] };
@@ -61,6 +67,12 @@ export function Texto({ text, className = "at-text" }) {
       )}
     </div>
   );
+}
+
+/** Texto com a formatação do editor quando ela vale para este texto; sem formatação, mostra children (o desenho de sempre). */
+function ComRico({ formatacao, chave, texto, className = "at-text", style, children }) {
+  const rico = ricoDoCampo(formatacao, chave, texto);
+  return rico ? <ParagrafoRico texto={String(texto ?? "")} rico={rico} className={className} style={style} /> : children;
 }
 
 /** Selo da área, na cor da área. */
@@ -279,10 +291,11 @@ function CompareTable({ items, onOpen, mobile }) {
  * O servidor manda só o enunciado e as alternativas; o gabarito, as justificativas e o comentário chegam ao confirmar
  * (app_guideline_practice_check), nunca antes. Se a questão já vier com o gabarito (servidor antigo), corrige aqui mesmo.
  */
-function PracticeQuestion({ q, slug, index }) {
+function PracticeQuestion({ q, slug, index, formatacao }) {
   const { backend } = useSession();
   const [picked, setPicked] = React.useState(null);
   const [result, setResult] = React.useState(null);
+  const [fmtCorrecao, setFmtCorrecao] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState(null);
   const done = Boolean(result);
@@ -298,6 +311,11 @@ function PracticeQuestion({ q, slug, index }) {
       const r = await backend.rpc("app_guideline_practice_check", { p_slug: slug, p_index: index, p_selected: picked });
       if (!r?.answer) throw new Error("sem correção");
       setResult(r);
+      // formatação das justificativas e do comentário: só depois de responder; se falhar, fica o texto de sempre
+      Promise.resolve()
+        .then(() => backend.rpc("app_guideline_practice_formatacao", { p_slug: slug, p_index: index, p_selected: picked }))
+        .then((f) => f && typeof f === "object" && setFmtCorrecao(f))
+        .catch(() => {});
     } catch {
       setError("Não foi possível conferir a resposta. Tente de novo.");
     } finally {
@@ -308,14 +326,20 @@ function PracticeQuestion({ q, slug, index }) {
   const state = (id) => (!done ? (picked === id ? "selected" : "idle") : id === result.answer ? "correct" : id === picked ? "incorrect" : "dimmed");
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p style={{ margin: 0, font: "400 16px/1.6 var(--font-sans)", textWrap: "pretty" }}>{q.statement}</p>
+      <ComRico formatacao={formatacao} chave={chaves.enunciado(index)} texto={q.statement} className="" style={{ margin: 0, font: "400 16px/1.6 var(--font-sans)", textWrap: "pretty" }}>
+        <p style={{ margin: 0, font: "400 16px/1.6 var(--font-sans)", textWrap: "pretty" }}>{q.statement}</p>
+      </ComRico>
       <div role="radiogroup" aria-label="Alternativas" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {(q.options ?? []).filter(Boolean).map((o) => (
           <div key={o.id}>
             <AnswerOption letter={o.id} state={state(o.id)} onClick={() => !done && !busy && setPicked(o.id)}>
-              {o.text}
+              <ComRico formatacao={formatacao} chave={chaves.alt(index, o.id)} texto={o.text} className="">{o.text}</ComRico>
             </AnswerOption>
-            {done && justification(o.id) && <p style={{ margin: "6px 4px 0 44px", font: "var(--type-body-sm)", color: o.id === result.answer ? "var(--success-text)" : "var(--text-secondary)" }}>{justification(o.id)}</p>}
+            {done && justification(o.id) && (
+              <ComRico formatacao={fmtCorrecao} chave={chaves.justificativa(index, o.id)} texto={justification(o.id)} className="" style={{ margin: "6px 4px 0 44px", font: "var(--type-body-sm)", color: o.id === result.answer ? "var(--success-text)" : "var(--text-secondary)" }}>
+                <p style={{ margin: "6px 4px 0 44px", font: "var(--type-body-sm)", color: o.id === result.answer ? "var(--success-text)" : "var(--text-secondary)" }}>{justification(o.id)}</p>
+              </ComRico>
+            )}
           </div>
         ))}
       </div>
@@ -328,7 +352,7 @@ function PracticeQuestion({ q, slug, index }) {
         result.commentary && (
           <div style={{ padding: 14, borderRadius: 14, background: "var(--surface-subtle)", border: "1px solid var(--border-subtle)", font: "var(--type-body-sm)" }}>
             <b>Comentário: </b>
-            {result.commentary}
+            <ComRico formatacao={fmtCorrecao} chave={chaves.comentario(index)} texto={result.commentary} className="">{result.commentary}</ComRico>
           </div>
         )
       )}
@@ -439,6 +463,7 @@ export function UpdateDetail({ slug, go, onBack, lidas: lidasLista, onToggleRead
   const [busy, setBusy] = React.useState(false);
   const [card, setCard] = React.useState(0);
   const [tab, setTab] = React.useState("mudou");
+  const [fmt, setFmt] = React.useState(null);
   const [lidasProprias, alternarPropria] = useLidas(user?.id);
   const lidas = lidasLista ?? lidasProprias;
   const alternarLida = onToggleRead ?? alternarPropria;
@@ -448,6 +473,12 @@ export function UpdateDetail({ slug, go, onBack, lidas: lidasLista, onToggleRead
       .rpc("app_guideline_update", { p_slug: slug })
       .then((r) => alive && (r ? setU(r) : setError("Atualização não encontrada.")))
       .catch(() => alive && setError("Não foi possível abrir a atualização."));
+    // formatação (013130): pedido à parte; se falhar ou não houver, a tela fica como antes
+    setFmt(null);
+    Promise.resolve()
+      .then(() => backend.rpc("app_guideline_update_formatacao", { p_slug: slug }))
+      .then((f) => alive && f && typeof f === "object" && setFmt(f))
+      .catch(() => {});
     return () => {
       alive = false;
     };
@@ -483,7 +514,13 @@ export function UpdateDetail({ slug, go, onBack, lidas: lidasLista, onToggleRead
     (quiz.length > 0 || flash.length > 1) && { value: "quiz", label: "Miniquiz", icon: "list-checks" },
   ].filter(Boolean);
   const longConduct = (u.current_conduct ?? "").length > 700;
-  const timeline = [...(u.timeline ?? [])].sort((a, b) => Number(a.year) - Number(b.year));
+  // i: posição gravada (chave timeline.N da formatação); o banco já grava em ordem de ano
+  const timeline = (u.timeline ?? []).map((t, i) => ({ ...t, i })).sort((a, b) => Number(a.year) - Number(b.year));
+  const T = (chave, texto) => (
+    <ComRico formatacao={fmt} chave={chave} texto={texto}>
+      <Texto text={texto} />
+    </ComRico>
+  );
 
   const panels = {
     mudou: (
@@ -494,13 +531,13 @@ export function UpdateDetail({ slug, go, onBack, lidas: lidasLista, onToggleRead
             <div className="at-box__label">
               <Icon name="history" size={14} /> Antes
             </div>
-            <Texto text={u.before_text} />
+            {T("before_text", u.before_text)}
           </div>
           <div className={`at-box at-box--now${longConduct ? "" : " is-short"}`}>
             <div className="at-box__label">
               <Icon name="circle-check" size={14} /> Agora · conduta vigente
             </div>
-            <Texto text={u.current_conduct} />
+            {T("current_conduct", u.current_conduct)}
             {longConduct && (
               <div style={{ marginTop: 8 }}>
                 <Button size="sm" variant="link" iconRight="chevron-right" onClick={() => setTab("conduta")}>Ler a conduta completa</Button>
@@ -513,11 +550,11 @@ export function UpdateDetail({ slug, go, onBack, lidas: lidasLista, onToggleRead
     conduta: (
       <>
         <PanelTitle icon="stethoscope">Conduta atual</PanelTitle>
-        <Texto text={u.current_conduct} />
+        {T("current_conduct", u.current_conduct)}
         {u.clinical_impact && (
           <>
             <div className="at-subhead">Impacto na prática</div>
-            <Texto text={u.clinical_impact} />
+            {T("clinical_impact", u.clinical_impact)}
           </>
         )}
       </>
@@ -529,7 +566,7 @@ export function UpdateDetail({ slug, go, onBack, lidas: lidasLista, onToggleRead
           <div className="at-callout__title">
             <Icon name="lightbulb" size={16} /> O que lembrar para o Revalida
           </div>
-          <Texto text={u.exam_impact} />
+          {T("exam_impact", u.exam_impact)}
         </div>
       </>
     ),
@@ -540,7 +577,7 @@ export function UpdateDetail({ slug, go, onBack, lidas: lidasLista, onToggleRead
           <div className="at-trap__title">
             <Icon name="triangle-alert" size={16} /> Pegadinha da banca
           </div>
-          <Texto text={u.trap} />
+          {T("trap", u.trap)}
         </div>
       </>
     ),
@@ -551,7 +588,9 @@ export function UpdateDetail({ slug, go, onBack, lidas: lidasLista, onToggleRead
           {timeline.map((t, i) => (
             <li key={`${t.year}-${i}`}>
               <span className="at-timeline__year">{t.year}</span>
-              <span className="at-timeline__text">{t.text}</span>
+              <ComRico formatacao={fmt} chave={chaves.timeline(t.i)} texto={t.text} className="at-timeline__text">
+                <span className="at-timeline__text">{t.text}</span>
+              </ComRico>
             </li>
           ))}
         </ol>
@@ -565,6 +604,8 @@ export function UpdateDetail({ slug, go, onBack, lidas: lidasLista, onToggleRead
             key={card}
             front={flash[card].front}
             back={flash[card].back}
+            frenteRica={ricoDoCampo(fmt, chaves.frente(card), flash[card].front)}
+            versoRica={ricoDoCampo(fmt, chaves.verso(card), flash[card].back)}
             area={u.area}
             topic={u.topic}
             selos={{ essencial: u.priority === 1, atualizado: mesAno(u.reviewed_at ?? u.updated_at) }}
@@ -593,7 +634,7 @@ export function UpdateDetail({ slug, go, onBack, lidas: lidasLista, onToggleRead
           <>
             <div className="at-subhead">Questão de treino</div>
             <p style={{ margin: "0 0 12px", font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Questão escrita pela equipe para fixar a mudança. Não é questão oficial do INEP.</p>
-            {quiz.map((q, i) => q && <PracticeQuestion key={i} q={q} slug={u.slug ?? slug} index={i} />)}
+            {quiz.map((q, i) => q && <PracticeQuestion key={i} q={q} slug={u.slug ?? slug} index={i} formatacao={fmt} />)}
           </>
         )}
       </>
