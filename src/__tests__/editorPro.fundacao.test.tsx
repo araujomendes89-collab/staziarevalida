@@ -91,11 +91,13 @@ describe("Editor Profissional - Fundação", () => {
     editor.commands.setTextSelection({ from: 4, to: 7 }); // título "S" ocupa 0..3
     editor.commands.toggleBold();
     const unit1 = docParaUnidade(sanear(editor.getJSON()), f);
-    expect(unit1.sections[0].paragraphs[0].text).toBe("**ola**");
+    // negrito é só formatação: o text continua "ola" e o negrito vai para o rico
+    expect(unit1.sections[0].paragraphs[0].text).toBe("ola");
+    expect(unit1.sections[0].paragraphs[0].rico.doc.content[0].content[0].marks).toEqual([{ type: "bold" }]);
     
     editor.commands.toggleBulletList();
     const unit2 = docParaUnidade(sanear(editor.getJSON()), f);
-    expect(unit2.sections[0].paragraphs[0].text).toBe("• **ola**");
+    expect(unit2.sections[0].paragraphs[0].text).toBe("• ola");
     expect(unit2.sections[0].paragraphs[0].rico).toBeDefined();
 
     // o rico guardado volta idêntico ao reabrir no editor (não muda o hash à toa)
