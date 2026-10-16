@@ -18,12 +18,12 @@ const env = (d: any) => ({ f: "sdoc", v: 1, doc: d });
 describe("Editor Profissional - M2 Parágrafos", () => {
   it("sanear: guarda só valores fechados e descarta o padrão", () => {
     const d = sanear(doc(p("a", {
-      textAlign: "center", lineHeight: 1.5, spacingBefore: 12, spacingAfter: 24, indent: 2, firstLineIndent: 1, borda: "fina", fundo: "azul",
+      textAlign: "center", lineHeight: 1.5, spacingBefore: 12, spacingAfter: 24, indent: 2, firstLineIndent: 1, borda: "fina", backgroundColor: "azul",
     })));
-    expect(d.content[0].attrs).toEqual({ textAlign: "center", lineHeight: 1.5, spacingBefore: 12, spacingAfter: 24, indent: 2, firstLineIndent: 1, borda: "fina", fundo: "azul" });
+    expect(d.content[0].attrs).toEqual({ textAlign: "center", lineHeight: 1.5, spacingBefore: 12, spacingAfter: 24, indent: 2, firstLineIndent: 1, borda: "fina", backgroundColor: "azul" });
 
     const ruim = sanear(doc(p("a", {
-      textAlign: "left", lineHeight: 1, spacingBefore: -1, spacingAfter: 999, indent: 0, firstLineIndent: 99, borda: "red; x:y", fundo: "url(x)",
+      textAlign: "left", lineHeight: 1, spacingBefore: -1, spacingAfter: 999, indent: 0, firstLineIndent: 99, borda: "red; x:y", backgroundColor: "url(x)",
     })));
     expect(ruim.content[0].attrs).toBeUndefined();
     expect(sanear(doc(p("a", { textAlign: "justify", lineHeight: 9 }))).content[0].attrs).toEqual({ textAlign: "justify" });
@@ -31,7 +31,7 @@ describe("Editor Profissional - M2 Parágrafos", () => {
   });
 
   it("html do PDF aplica o estilo e não aceita CSS livre", () => {
-    const html = htmlDoDoc(doc(p("a", { textAlign: "right", lineHeight: 2, spacingBefore: 8, indent: 2, fundo: "amarelo" })) as any);
+    const html = htmlDoDoc(doc(p("a", { textAlign: "right", lineHeight: 2, spacingBefore: 8, indent: 2, backgroundColor: "amarelo" })) as any);
     expect(html).toContain("text-align:right;");
     expect(html).toContain("line-height:2;");
     expect(html).toContain("margin-top:8px;");

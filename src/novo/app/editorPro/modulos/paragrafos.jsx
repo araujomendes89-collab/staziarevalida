@@ -11,7 +11,7 @@ import {
 
 const TIPOS = ["paragraph", "heading"];
 const LISTAS = ["bulletList", "orderedList"];
-const PADRAO = { textAlign: null, lineHeight: null, spacingBefore: null, spacingAfter: null, indent: null, firstLineIndent: null, borda: null, fundo: null };
+const PADRAO = { textAlign: null, lineHeight: null, spacingBefore: null, spacingAfter: null, indent: null, firstLineIndent: null, borda: null, backgroundColor: null };
 
 const globais = () =>
   Object.entries(ATRIBUTOS_PARAGRAFO).reduce((acc, [nome, d]) => {

@@ -48,7 +48,7 @@ export const ATRIBUTOS_PARAGRAFO = {
   indent: { sanear: inteiroEntre(0, RECUO_MAX), css: cssRecuoEsq, padrao: 0 as Valor },
   firstLineIndent: { sanear: inteiroEntre(0, RECUO_PRIMEIRA_MAX), css: cssRecuoPrimeira, padrao: 0 as Valor },
   borda: { sanear: umDe(Object.keys(BORDAS)), css: cssBorda },
-  fundo: { sanear: umDe(Object.keys(FUNDOS)), css: cssFundo },
+  backgroundColor: { sanear: umDe(Object.keys(FUNDOS)), css: cssFundo },
 };
 
 // Só parágrafo e títulos recebem estes atributos (célula de tabela e item de lista contêm parágrafos, então valem lá também).
