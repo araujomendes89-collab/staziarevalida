@@ -190,9 +190,12 @@ describe("Telas de Nivelamento", () => {
     render(<Nivelamento modo="primeira" go={go} />);
     
     expect(await screen.findByText("Vamos conhecer o seu nível")).toBeTruthy();
-    expect(screen.getByText(/15 questões/)).toBeTruthy();
-    expect(screen.getByText(/30 minutos/)).toBeTruthy();
-    expect(screen.getByText(/não aparecem gabarito, explicação nem dicas/)).toBeTruthy();
+    // textos do modelo do dono (Início do diagnóstico, 16/10)
+    expect(screen.getByText("15 questões agora, 3 de cada grande área")).toBeTruthy();
+    expect(screen.getByText("Cerca de 30 minutos")).toBeTruthy();
+    expect(screen.getByText(/Não aparecem gabarito, explicação nem dicas/)).toBeTruthy();
+    expect(screen.getByText(/não dá XP, Stazia Coins nem pontos da Arena/)).toBeTruthy();
+    expect(screen.getByLabelText("Fechar e fazer depois")).toBeTruthy();
 
     const btnDepois = screen.getByText("Fazer depois");
     fireEvent.click(btnDepois);

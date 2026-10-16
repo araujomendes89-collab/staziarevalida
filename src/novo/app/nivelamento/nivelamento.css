@@ -1,33 +1,131 @@
-/* Nivelamento no padrão das Novas telas (Início + Desempenho). Só tokens do design system; as peças .ev-* e .dp-* vêm de
-   evolucao.css e desempenho.css. Celular até 719 px (uma coluna); tablet e computador com duas colunas. */
+/* Nivelamento. Início do diagnóstico fiel ao modelo do dono (16/10/2026: Web, Tablet 834 px, Mobile); resultado e correção no padrão
+   das Novas telas (Desempenho). Cores pelos tokens do design system; as do cartão azul e dos azulejos vêm do modelo (iguais nos dois
+   temas, como os azulejos de evolucao.css). As peças .ev-* e .dp-* vêm de evolucao.css e desempenho.css. */
+.nv{--nv-az-vermelho:#FDF0EE;--nv-az-lilas:#EEF1FD;--nv-az-verde:#EAF7F1;--nv-az-laranja:#FFF3E6;--nv-az-azul:#EEF3FC;--nv-az-violeta:#F1EEFD;--nv-r:24px;
+  --nv-fundo-item:color-mix(in oklab,var(--surface-card) 60%,var(--bg-app));--nv-sombra:0 1px 2px rgba(13,28,66,.06)}
+[data-theme="dark"] .nv{--nv-az-vermelho:rgba(255,123,114,.16);--nv-az-lilas:rgba(127,162,242,.16);--nv-az-verde:rgba(111,207,149,.15);--nv-az-laranja:rgba(245,154,94,.16);--nv-az-azul:rgba(91,155,245,.16);--nv-az-violeta:rgba(179,155,247,.16);--nv-sombra:none}
 
-/* moldura da primeira tela (antes de entrar no app): barra com o logo e a mesma largura das outras telas */
-.nv--primeira{min-height:100vh;background:var(--bg-app);color:var(--text-primary);font-family:var(--font-sans)}
-.nv-top{background:var(--surface-card);border-bottom:1px solid var(--border-default);position:sticky;top:0;z-index:5}
-.nv-top__in{max-width:1180px;margin:0 auto;padding:12px 32px;display:flex;align-items:center;min-height:68px;box-sizing:border-box}
-.nv-wrap{max-width:1180px;margin:0 auto;padding:28px 32px 56px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px}
+/* moldura da primeira tela (antes de entrar no app): barra de topo do modelo */
+.nv--primeira{min-height:100vh;background:var(--bg-app);color:var(--text-primary);font-family:var(--font-sans);display:flex;flex-direction:column}
+.nv-top{height:72px;flex:none;box-sizing:border-box;background:var(--surface-card);border-bottom:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 48px;position:sticky;top:0;z-index:5}
+.nv-logo img{height:44px;width:auto;display:block}
+.nv-logo__dark{display:none!important}
+[data-theme="dark"] .nv-logo__light{display:none!important}
+[data-theme="dark"] .nv-logo__dark{display:block!important}
+.nv-top__label{display:flex;align-items:center;gap:10px;font:700 12px var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--text-link)}
+.nv-top__label>span{width:8px;height:8px;border-radius:999px;background:var(--action-primary)}
+.nv-top__end{min-width:44px;display:flex;justify-content:flex-end}
+.nv-x{width:44px;height:44px;border-radius:12px;border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.nv-x:hover{background:var(--surface-sunken)}
+.nv-wrap{width:100%;max-width:1184px;margin:0 auto;padding:40px 48px 64px;box-sizing:border-box;display:flex;flex-direction:column;gap:24px}
+.nv-stack{gap:24px}
 
 .nv-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 20px;flex-wrap:wrap}
-.nv-head__text{display:flex;flex-direction:column;gap:4px;min-width:0}
-.nv-head__over{font:500 13px/1.3 var(--font-sans);color:var(--text-secondary)}
-.nv-head__title{margin:0;font:800 32px/1.15 var(--font-sans);letter-spacing:-.025em;color:var(--text-primary)}
+.nv-head__text{display:flex;flex-direction:column;gap:6px;min-width:0}
+.nv-head__over{font:400 14px/1.3 var(--font-sans);color:var(--text-tertiary)}
+.nv-head__title{margin:0;font:800 36px/1.15 var(--font-sans);letter-spacing:-.02em;color:var(--text-primary)}
 .nv-head__title--rota{font-size:22px}
 
-/* apresentação: cartão escuro "Comece aqui" (igual ao do Início) + quadro "Para que serve" */
-.nv-intro{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:20px;align-items:stretch}
-.nv-hero{padding:36px;border-radius:24px;background:var(--navy-900);color:#fff;display:flex;flex-direction:column;gap:14px;min-width:0}
-.nv-hero__over{color:var(--teal-300)}
-.nv-hero__title{margin:0;font:700 30px/1.2 var(--font-sans);letter-spacing:-.015em;color:#fff;text-wrap:balance}
-.nv-hero__stats{display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 4px}
-.nv-stat{display:flex;flex-direction:column;gap:2px;min-width:104px;padding:12px 16px;border-radius:16px;background:color-mix(in oklab,#fff 8%,transparent);border:1px solid color-mix(in oklab,#fff 12%,transparent)}
-.nv-stat b{font-size:28px;font-weight:800;line-height:1.1;letter-spacing:-.02em;color:#fff}
-.nv-stat span{font:600 12.5px/1.3 var(--font-sans);color:var(--navy-200)}
-.nv-hero__actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:6px}
-.nv .nv-hero__cta{background:var(--teal-400);color:var(--navy-950, #06122b);border:0}
-.nv .nv-hero__cta:hover{filter:brightness(1.05)}
-.nv .nv-hero__later{background:transparent;color:#fff;border:1px solid color-mix(in oklab,#fff 28%,transparent)}
-.nv .nv-hero__later:hover{background:color-mix(in oklab,#fff 8%,transparent)}
-.nv-hero__note{margin:0;font:500 13px/1.45 var(--font-sans);color:var(--navy-200)}
+/* início: cartão azul "Comece aqui" + "Para que serve" (computador: lado a lado, 400 px à direita) */
+.nv-intro{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:24px}
+.nv-hero{position:relative;overflow:hidden;border-radius:var(--nv-r);padding:40px 44px;color:#fff;display:flex;flex-direction:column;gap:24px;min-width:0;
+  background:radial-gradient(120% 90% at 100% 0%,rgba(120,180,255,.35) 0%,rgba(120,180,255,0) 55%),linear-gradient(140deg,#1C74E8 0%,#0B4FB8 48%,#0A2766 100%);box-shadow:0 18px 40px -16px rgba(11,79,184,.55)}
+.nv-hero__over{font:700 12px var(--font-sans);letter-spacing:.1em;text-transform:uppercase;color:#BFDBFF}
+.nv-hero__title{margin:-8px 0 0;max-width:560px;font:800 34px/1.18 var(--font-sans);letter-spacing:-.02em;color:#fff}
+.nv-nums{display:flex;gap:12px}
+.nv-num{display:flex;flex-direction:column;gap:2px;min-width:108px;box-sizing:border-box;padding:14px 20px;border-radius:16px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.20)}
+.nv-num b{font:600 28px/1.2 var(--font-mono);color:#fff}
+.nv-num span{font:400 13px/1.3 var(--font-sans);color:#D6E6FF}
+.nv-hero__actions{display:flex;gap:12px;align-items:center;margin-top:4px;flex-wrap:wrap}
+.nv-cta{height:52px;padding:0 24px;border-radius:14px;border:0;background:#fff;color:#0B4FB8;font:700 16px var(--font-sans);display:inline-flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 6px 16px -6px rgba(5,20,60,.5);cursor:pointer}
+.nv-cta:hover{background:#F1F6FF}
+.nv-ghost{height:52px;padding:0 22px;border-radius:14px;border:1px solid rgba(255,255,255,.45);background:transparent;color:#fff;font:600 16px var(--font-sans);cursor:pointer}
+.nv-ghost:hover{background:rgba(255,255,255,.08)}
+.nv-cta:disabled,.nv-ghost:disabled,.nv-link:disabled{opacity:.6;cursor:not-allowed}
+.nv-hero__note{margin:0;font:400 13px/1.5 var(--font-sans);color:#D6E6FF}
+
+.nv-box{background:var(--surface-card);border:1px solid var(--border-default);border-radius:var(--nv-r);box-shadow:var(--nv-sombra);min-width:0}
+.nv-box__t{margin:0;font:800 18px/1.3 var(--font-sans);color:var(--text-primary)}
+.nv-box__head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.nv-box__aside{font:400 13px var(--font-sans);color:var(--text-tertiary)}
+.nv-az{flex:none;border-radius:14px;display:inline-flex;align-items:center;justify-content:center}
+.nv-az--vermelho{background:var(--nv-az-vermelho)}.nv-az--lilas{background:var(--nv-az-lilas)}.nv-az--verde{background:var(--nv-az-verde)}
+.nv-az--laranja{background:var(--nv-az-laranja)}.nv-az--azul{background:var(--nv-az-azul)}.nv-az--violeta{background:var(--nv-az-violeta)}
+.nv-az img{width:58%;height:auto}
+
+.nv-serve{padding:28px;display:flex;flex-direction:column;gap:18px}
+.nv-serve__list{display:flex;flex-direction:column;gap:18px}
+.nv-serve__item{display:flex;gap:14px;align-items:flex-start}
+.nv-serve__item p{margin:0;font:400 15px/1.5 var(--font-sans);color:var(--text-secondary)}
+.nv-nota{margin:0;display:flex;gap:10px;align-items:flex-start;font:400 13px/1.5 var(--font-sans);color:var(--text-tertiary)}
+.nv-nota>.sm-icon{flex:none;margin-top:1px}
+.nv-nota--foot{margin-top:auto;padding-top:16px;border-top:1px solid var(--border-subtle)}
+
+.nv-como{padding:28px;display:flex;flex-direction:column;gap:18px}
+.nv-step{border:1px solid var(--border-subtle);background:var(--nv-fundo-item);border-radius:16px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start;min-width:0}
+.nv-step--areas{align-items:center;justify-content:space-between}
+.nv-step__main{display:flex;gap:16px;align-items:center;flex:1 1 auto;min-width:0}
+.nv-step__text{display:flex;flex-direction:column;gap:4px;min-width:0}
+.nv-step__text b{font:700 15px/1.35 var(--font-sans);color:var(--text-primary)}
+.nv-step__text>span{font:400 14px/1.5 var(--font-sans);color:var(--text-secondary)}
+.nv-chips-areas{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;max-width:520px}
+.nv-area-chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card);font:600 13px var(--font-sans);color:var(--text-primary);white-space:nowrap}
+.nv-area-chip>span{width:8px;height:8px;border-radius:999px}
+.nv-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+
+/* tablet (834 px no modelo): cartão azul na largura toda, "Para que serve" em 3 colunas, passos com o ícone em cima */
+.nv-intro--tablet{grid-template-columns:1fr;gap:20px}
+.nv-intro--tablet .nv-hero{padding:36px;gap:22px}
+.nv-intro--tablet .nv-hero__title{margin-top:-6px;max-width:620px;font-size:30px;line-height:1.2}
+.nv-intro--tablet .nv-nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.nv-intro--tablet .nv-num{min-width:0;padding:14px 18px}
+.nv-intro--tablet .nv-hero__actions{margin-top:0;flex-wrap:nowrap}
+.nv-intro--tablet .nv-cta{flex:1 1 auto}
+.nv-intro--tablet .nv-ghost{padding:0 26px}
+.nv-intro--tablet .nv-serve{padding:26px}
+.nv-intro--tablet .nv-serve__list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.nv-intro--tablet .nv-serve__item{flex-direction:column;gap:12px;padding:16px;border-radius:16px;background:var(--nv-fundo-item);border:1px solid var(--border-subtle)}
+.nv-intro--tablet .nv-serve__item p{font-size:14px}
+.nv-intro--tablet .nv-nota--foot{padding-top:14px}
+.nv-intro--tablet~.nv-como{padding:26px;gap:16px}
+.nv-intro--tablet~.nv-como .nv-step--areas{flex-direction:column;align-items:stretch;gap:14px;padding:18px}
+.nv-intro--tablet~.nv-como .nv-step__main{align-items:flex-start;gap:14px}
+.nv-intro--tablet~.nv-como .nv-chips-areas{justify-content:flex-start;max-width:none;padding-left:58px}
+.nv-intro--tablet~.nv-como .nv-steps{gap:12px}
+.nv-intro--tablet~.nv-como .nv-steps .nv-step{flex-direction:column;gap:12px;padding:18px}
+.nv-intro--tablet~.nv-como .nv-step__text{gap:12px}
+
+/* celular (modelo Mobile, 390 px): cartão azul compacto, "Você sai com", "Como funciona" recolhível e botões fixos embaixo */
+.nv-hero--m{border-radius:22px;padding:22px 20px 18px;gap:12px;box-shadow:none;
+  background:radial-gradient(120% 80% at 100% 0%,rgba(120,180,255,.35) 0%,rgba(120,180,255,0) 55%),linear-gradient(150deg,#1C74E8 0%,#0B4FB8 50%,#0A2766 100%)}
+.nv-hero--m .nv-hero__over{font-size:11px}
+.nv-hero--m .nv-hero__title{margin:0;font-size:25px;line-height:1.2}
+.nv-hero__sub{margin:0;font:400 14px/1.5 var(--font-sans);color:#D6E6FF}
+.nv-nums--m{margin-top:4px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-radius:14px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18)}
+.nv-nums--m .nv-num{min-width:0;padding:10px 12px;gap:1px;border:0;border-radius:0;background:none}
+.nv-nums--m .nv-num+.nv-num{border-left:1px solid rgba(255,255,255,.18)}
+.nv-nums--m .nv-num b{font-size:19px}
+.nv-nums--m .nv-num span{font-size:12px}
+.nv-sai{border-radius:20px;padding:6px 16px}
+.nv-sai__t{margin:12px 0 4px;font:700 13px var(--font-sans);letter-spacing:.06em;text-transform:uppercase;color:var(--text-tertiary)}
+.nv-sai__row{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-subtle);font:600 15px/1.35 var(--font-sans);color:var(--text-primary)}
+.nv-sai__row:last-child{border-bottom:0;padding-bottom:12px}
+.nv-sai__row .nv-az{border-radius:12px}
+.nv-acc{border-radius:20px;overflow:hidden}
+.nv-acc summary{min-height:56px;box-sizing:border-box;padding:0 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;list-style:none;font:700 15px var(--font-sans);color:var(--text-primary)}
+.nv-acc summary::-webkit-details-marker{display:none}
+.nv-acc summary .sm-icon{color:var(--text-tertiary);transition:transform .2s}
+.nv-acc[open] summary .sm-icon{transform:rotate(180deg)}
+.nv-acc ul{list-style:none;margin:0;padding:14px 16px;display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--border-subtle)}
+.nv-acc li{display:flex;gap:10px;align-items:flex-start;font:400 14px/1.45 var(--font-sans);color:var(--text-secondary)}
+.nv-acc li>svg{flex:none}
+.nv-nota--m{padding:0 4px;font-size:12px;gap:8px}
+.nv-nota--m>.sm-icon{width:15px!important;height:15px!important}
+.nv-rodape{flex:none;box-sizing:border-box;background:var(--surface-card);border-top:1px solid var(--border-default);padding:12px 16px 22px;display:flex;flex-direction:column;gap:4px;box-shadow:0 -8px 20px -14px rgba(13,28,66,.25);position:sticky;bottom:0;z-index:4}
+.nv-rodape--inline{position:static;border:1px solid var(--border-default);border-radius:20px;box-shadow:none;padding:12px 16px}
+.nv-cta--azul{width:100%;background:var(--action-primary);color:var(--action-on-primary);box-shadow:0 8px 18px -8px rgba(18,104,220,.7)}
+.nv-cta--azul:hover{background:var(--action-primary-hover)}
+.nv-link{height:44px;border:0;background:transparent;color:var(--text-link);font:600 15px var(--font-sans);cursor:pointer}
 
 .nv-card{padding:22px;display:flex;flex-direction:column;gap:16px}
 .nv-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
@@ -143,24 +241,20 @@
 .nv-sim .nv-sum__level{font-size:22px}
 
 /* tablet: as duas colunas da apresentação viram uma quando a largura útil fica curta */
-@media (max-width:1100px){.nv-intro{grid-template-columns:1fr}.nv-sim{grid-template-columns:1fr}}
+/* barra de topo do tablet (834 px no modelo) */
+@media (max-width:1179px){.nv-top{height:64px;padding:0 28px}.nv-logo img{height:38px}.nv-top__label{display:none}.nv-wrap{padding:32px 32px 56px;gap:20px}.nv-stack{gap:20px}.nv-head__title{font-size:32px}}
+@media (max-width:1100px){.nv-sim{grid-template-columns:1fr}}
 @media (max-width:900px){.nv-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.nv-metric{padding:14px;gap:10px}.nv-metric .dp-metric__value{font-size:22px}}
 
 /* celular */
 @media (max-width:719px){
-  .nv-top__in{padding:10px 16px;min-height:60px}
-  .nv-wrap{padding:18px 16px 40px;gap:16px}
+  .nv-top{height:60px;padding:0 8px 0 16px}
+  .nv-logo img{height:32px}
+  .nv-x{border:0;background:transparent}
+  .nv-wrap{padding:16px 16px 24px;gap:14px}
+  .nv-stack{gap:14px}
   .nv-head__title{font-size:26px}
-  .nv-hero{padding:22px;border-radius:22px;gap:12px}
-  .nv-hero__title{font-size:22px}
-  .nv-hero__stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-  .nv-stat{min-width:0;padding:10px 12px}
-  .nv-stat b{font-size:24px}
-  .nv-hero__actions{flex-direction:column;align-items:stretch}
-  .nv-hero__actions .sm-btn{width:100%;justify-content:center}
   .nv-card{padding:16px}
-  .nv-list--grid{grid-template-columns:1fr}
-  .nv-list--grid .nv-list__item{padding:12px}
   .nv-sum{flex-direction:column;align-items:flex-start;gap:16px;padding:18px}
   /* anel e nível lado a lado; foco, régua e leitura embaixo, na largura toda */
   .nv-sum--narrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 16px;align-items:center}

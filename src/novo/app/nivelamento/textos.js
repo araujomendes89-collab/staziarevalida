@@ -3,26 +3,63 @@
 
 export const TITULO = "Diagnóstico de nivelamento";
 
+// Textos do modelo do dono "Início do diagnóstico" (16/10/2026, Web, Tablet 834 px e Mobile). Onde o modelo muda o texto conforme a
+// largura, a variante fica ao lado (tablet / celular).
 export const APRESENTACAO = {
   titulo: "Vamos conhecer o seu nível",
-  subtitulo: "Antes de começar, um diagnóstico rápido mostra onde você está e por onde estudar primeiro.",
+  antes: "Antes de começar · uma vez só",
+  comeceAqui: "Comece aqui",
+  subtitulo: "Um diagnóstico rápido mostra onde você está e por onde estudar primeiro.",
+  subtituloCelular: "Um teste rápido mostra onde você está e por onde estudar primeiro.",
+  numeros: [
+    { valor: "15", rotulo: "questões" },
+    { valor: "5", rotulo: "grandes áreas", celular: "áreas" },
+    { valor: "~30", rotulo: "minutos" },
+  ],
+  paraQueTitulo: "Para que serve",
   paraQue: [
     "Estimar o seu nível atual de conhecimento médico.",
     "Mostrar em quais das 5 grandes áreas você vai melhor e onde precisa de mais reforço.",
     "Montar o seu plano: o que estudar primeiro e a dificuldade das próximas questões.",
   ],
-  comoFunciona: [
-    "15 questões agora: 3 de cada grande área (Clínica Médica, Cirurgia, Pediatria, Ginecologia e Obstetrícia e Medicina de Família e Comunidade), com dificuldades variadas.",
-    "Leva cerca de 30 minutos (uns 2 minutos por questão). Não há tempo limite: responda no seu ritmo.",
-    "Durante o diagnóstico não aparecem gabarito, explicação nem dicas. O resultado sai no fim.",
-    "Depois das 15, você recebe uma estimativa provisória e pode continuar até 30 questões (6 por área) para um resultado mais informativo.",
-    "Pode parar e continuar depois: as suas respostas ficam salvas.",
+  paraQueTablet: [
+    "Estimar o seu nível atual de conhecimento médico.",
+    "Mostrar em quais das 5 grandes áreas você vai melhor e onde precisa de reforço.",
+    "Montar o seu plano: o que estudar primeiro e a dificuldade das próximas questões.",
+  ],
+  voceSaiComTitulo: "Você sai com",
+  voceSaiCom: ["Seu nível atual estimado", "Áreas fortes e áreas a reforçar", "Um plano: o que estudar primeiro"],
+  comoTitulo: "Como funciona",
+  comoNota: "Sem tempo limite · pode pausar",
+  comoNotaTablet: "Sem tempo limite",
+  como: [
+    { titulo: "15 questões agora, 3 de cada grande área", texto: "Com dificuldades variadas, para medir de onde você parte." },
+    {
+      titulo: "Cerca de 30 minutos",
+      texto: "Uns 2 minutos por questão. Não há tempo limite: responda no seu ritmo.",
+      tablet: "Uns 2 minutos por questão. Responda no seu ritmo.",
+    },
+    { titulo: "Sem gabarito durante o diagnóstico", texto: "Não aparecem gabarito, explicação nem dicas. O resultado sai no fim." },
+    {
+      titulo: "Resultado em duas etapas",
+      texto: "Depois das 15, você recebe uma estimativa provisória e pode seguir até 30 questões (6 por área) para um resultado mais informativo.",
+      tablet: "Depois das 15, uma estimativa provisória. Se quiser, siga até 30 questões (6 por área) para um resultado mais informativo.",
+    },
+    { titulo: "Pode parar e continuar depois", texto: "Suas respostas ficam salvas. Você retoma pelo Início, de onde parou." },
+  ],
+  comoCelular: [
+    "3 questões de cada grande área, com dificuldades variadas.",
+    "Sem tempo limite. Uns 2 minutos por questão.",
+    "Sem gabarito nem dicas até o fim. Depois das 15, siga até 30 se quiser.",
+    "Pode parar quando quiser: as respostas ficam salvas.",
   ],
   separacao: "O nivelamento mede conhecimento. Ele não dá XP, Stazia Coins nem pontos da Arena.",
+  separacaoCelular: "O nivelamento mede conhecimento. Não vale XP, Stazia Coins nem pontos da Arena.",
   comecar: "Começar o diagnóstico",
   continuar: (feitas, total) => `Continuar de onde parei (${feitas} de ${total})`,
   depois: "Fazer depois",
   depoisAviso: "Se preferir começar depois, o convite fica no Início até você concluir.",
+  fechar: "Fechar e fazer depois",
 };
 
 export const QUESTOES = {
