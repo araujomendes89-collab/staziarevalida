@@ -1,0 +1,294 @@
+/* Módulo M8: Histórico do Editor Profissional */
+
+.eph-indicador {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-sans, inherit);
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.eph-indicador--aviso {
+  color: var(--warning-text);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+}
+
+.eph-indicador--perigo {
+  color: var(--danger-text);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+}
+
+.eph-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-family: var(--font-sans, inherit);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.eph-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong, var(--border-default));
+}
+
+.eph-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.eph-btn--primario {
+  background: var(--action-primary);
+  color: var(--action-on-primary, #ffffff);
+  border-color: var(--action-primary);
+}
+
+.eph-btn--primario:hover:not(:disabled) {
+  background: var(--action-primary-hover);
+}
+
+.eph-painel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px;
+  width: 100%;
+  max-width: 320px;
+  box-sizing: border-box;
+  font-family: var(--font-sans, inherit);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.eph-desligado {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 12px 4px;
+}
+
+.eph-estado-bloco {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+}
+
+.eph-estado-bloco--aviso {
+  background: var(--warning-bg);
+  border-color: var(--warning-border);
+  color: var(--warning-text);
+}
+
+.eph-estado-bloco--perigo {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+}
+
+.eph-estado-texto {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.eph-estado-acoes {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.eph-barra-acoes {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -4px;
+}
+
+.eph-secao {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.eph-secao-titulo {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.eph-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.eph-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.eph-item--atual {
+  border-color: var(--border-brand, var(--action-primary));
+  background: var(--surface-brand-soft, var(--surface-subtle));
+}
+
+.eph-item-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.eph-item-titulo {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.eph-item-data {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.eph-item-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.eph-selos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.eph-selo {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.eph-selo--sucesso {
+  background: var(--success-bg);
+  color: var(--success-text);
+  border: 1px solid var(--success-border);
+}
+
+.eph-selo--aviso {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  border: 1px solid var(--warning-border);
+}
+
+.eph-selo--info {
+  background: var(--info-bg);
+  color: var(--info-text);
+  border: 1px solid var(--info-border);
+}
+
+.eph-selo--marca {
+  background: var(--surface-brand-soft, var(--teal-50));
+  color: var(--text-brand, var(--action-primary));
+  border: 1px solid var(--border-brand, var(--teal-500));
+}
+
+.eph-item-acoes {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.eph-previa {
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.eph-previa-cabecalho {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.eph-previa-conteudo {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.eph-previa-secao-titulo {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 4px 0 2px 0;
+}
+
+.eph-mensagem {
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.eph-mensagem--sucesso {
+  background: var(--success-bg);
+  color: var(--success-text);
+  border: 1px solid var(--success-border);
+}
+
+.eph-mensagem--erro {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border: 1px solid var(--danger-border);
+}
+
+.eph-vazio {
+  color: var(--text-tertiary);
+  font-style: italic;
+  font-size: 12px;
+  padding: 4px 0;
+}
