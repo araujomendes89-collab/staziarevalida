@@ -480,7 +480,7 @@ function EliteBenefits({ benefits }) {
 }
 
 export function AccountScreen({ go }) {
-  const { boot, user, signOut, backend } = useSession();
+  const { boot, user, signOut, backend, dupla } = useSession();
   const [benefits, setBenefits] = React.useState(null);
   const isElite = boot.subscription?.plan === "elite";
   // refaz a consulta quando o plano, a situação ou a data do plano pagão mudam (ex.: Elite cancelado ou vencido), e apaga o que estava na tela

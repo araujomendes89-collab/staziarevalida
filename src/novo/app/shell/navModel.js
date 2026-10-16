@@ -81,8 +81,7 @@ export function mobileTabs(phase) {
 }
 
 /** Telas sem menu (tela cheia). */
-// "dupla-sala" (sala do Treinamento em Dupla) ocupa a tela toda: sem menu lateral, sem barra de baixo e sem cabeçalho.
-export const FULL = ["sessao", "estacao", "dupla-sala"];
+export const FULL = ["sessao", "estacao"];
 
 /** Telas do Treinamento em Dupla que pertencem a um item do menu: o item "Praticar" fica marcado. */
 export const NAV_ALIAS = { "dupla-perfil": "dupla", "dupla-sala": "dupla" };

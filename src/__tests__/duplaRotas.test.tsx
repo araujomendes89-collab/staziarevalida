@@ -38,6 +38,7 @@ vi.mock("../novo/app/play/LeaderboardScreen.jsx", () => ({ LeaderboardScreen: ()
 vi.mock("../novo/app/play/MissionsScreen.jsx", () => ({ MissionsScreen: () => null }));
 vi.mock("../novo/app/play/AchievementsScreen.jsx", () => ({ AchievementsScreen: () => null }));
 vi.mock("../novo/app/account/AccountScreen.jsx", () => ({ AccountScreen: () => <div data-testid="tela-conta" /> }));
+vi.mock("../novo/app/plan/PlansScreen.jsx", () => ({ PlansScreen: () => <div data-testid="tela-planos" /> }));
 vi.mock("../novo/app/admin/AdminScreen.jsx", async () => ({
   AdminScreen: () => null,
   isStaffRole: (await import("../novo/app/admin/common.jsx")).isStaffRole,
@@ -115,9 +116,9 @@ function renderApp(path: string, boot: any, dupla: any) {
 const textOf = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
 const AT_HOME = /^\/novo\/?$/;
 const originalMatchMedia = window.matchMedia;
-function setMobile(on: boolean) {
+function setMobile(on: boolean, isPhone = false) {
   window.matchMedia = ((query: string) => ({
-    matches: on && query.includes("860px"),
+    matches: on && (query.includes("860px") || (isPhone && query.includes("719px"))),
     media: query,
     onchange: null,
     addListener: () => {},
@@ -175,7 +176,7 @@ describe("Chave desligada", () => {
 });
 
 describe("Chave ligada, sem plano", () => {
-  it.each(["estacoes", "dupla", "dupla/perfil", "dupla/sala/sala-123"])("/%s mostra o convite do plano e 'Ver planos' leva à Conta", (route) => {
+  it.each(["estacoes", "dupla", "dupla/perfil", "dupla/sala/sala-123"])("/%s mostra o convite do plano e 'Ver planos' leva à tela de planos", (route) => {
     renderApp(`/${route}`, bootOf("student", 1, { subscription: { plan: "trial", status: "trialing", trial_ends_at: "2026-10-13T12:00:00Z", current_period_end: null } }), ABERTO_SEM_PLANO);
     expect(screen.getByRole("heading", { level: 3, name: "Praticar em dupla" })).toBeTruthy();
     expect(screen.getByText("Encontre um colega com os mesmos objetivos e treine as estações da 2ª fase.")).toBeTruthy();
@@ -185,8 +186,8 @@ describe("Chave ligada, sem plano", () => {
     expect(screen.queryByTestId("tela-dupla-perfil")).toBeNull();
     expect(screen.queryByTestId("tela-dupla-sala")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Ver planos/ }));
-    expect(screen.getByTestId("tela-conta")).toBeTruthy();
-    expect(window.location.pathname).toBe("/novo/perfil");
+    expect(screen.getByTestId("tela-planos")).toBeTruthy();
+    expect(window.location.pathname).toBe("/novo/planos");
   });
 
   it("o plano citado é o primeiro de Pro/Elite marcado no painel", () => {
@@ -202,7 +203,7 @@ describe("Chave ligada, com plano", () => {
     expect(screen.queryByTestId("tela-home2")).toBeNull();
     expect(screen.queryByText("Tela em reconstrução")).toBeNull();
 
-    for (const name of ["Início", "Teoria", "Meus PEPs", "Paciente simulado", "Desempenho"]) {
+    for (const name of ["Início", "Teoria", "Meus PEPs", "Treino com IA", "Análise"]) {
       const row = within(rail()).getByText(name).closest("button")!;
       expect(row).toHaveAttribute("aria-disabled", "true");
       expect(textOf(row)).toContain("Em breve");
@@ -242,29 +243,50 @@ describe("Chave ligada, com plano", () => {
 });
 
 describe("Atalhos da 2ª fase", () => {
-  it("aluno: Treinar estação → /estacoes e Praticar → /dupla; sem PEPs e sem Paciente simulado", () => {
-    renderApp("/dupla", bootOf("student", 1), ABERTO_COM_PLANO);
-    const bar = within(dock());
-    expect(bar.getByRole("button", { name: "Treinar estação" })).toBeTruthy();
-    expect(bar.getByRole("button", { name: "Praticar" })).toBeTruthy();
-    expect(bar.queryByRole("button", { name: "PEPs" })).toBeNull();
-    expect(bar.queryByRole("button", { name: /Paciente simulado/ })).toBeNull();
+  it("aluno: Estações → /estacoes e Praticar → /dupla; PEPs e Paciente 'Em breve'", () => {
+    renderApp("/dupla", bootOf("student", 2), ABERTO_COM_PLANO);
+    const side = within(rail());
+    const estacoes = side.getByRole("button", { name: "Estações" });
+    const praticar = side.getByRole("button", { name: "Praticar" });
+    expect(estacoes).not.toHaveAttribute("aria-disabled");
+    expect(praticar).not.toHaveAttribute("aria-disabled");
 
-    fireEvent.click(bar.getByRole("button", { name: "Treinar estação" }));
-    expect(window.location.pathname).toBe("/novo/estacoes");
-    fireEvent.click(within(dock()).getByRole("button", { name: "Praticar" }));
+    // PEPs e Paciente (Treino com IA) ficam "Em breve" para o aluno
+    const peps = side.getByText("Meus PEPs").closest("button")!;
+    const paciente = side.getByText("Treino com IA").closest("button")!;
+    expect(peps).toHaveAttribute("aria-disabled", "true");
+    expect(textOf(peps)).toContain("Em breve");
+    expect(paciente).toHaveAttribute("aria-disabled", "true");
+    expect(textOf(paciente)).toContain("Em breve");
+
+    fireEvent.click(estacoes);
+    expect(window.location.pathname).toBe("/novo"); // para o aluno com a 2ª fase aberta o Banco de estações é a tela inicial (rota padrão)
+    fireEvent.click(within(rail()).getByRole("button", { name: "Praticar" }));
     expect(window.location.pathname).toBe("/novo/dupla");
   });
 
   it("equipe: os mesmos dois mais PEPs e Paciente simulado", () => {
     renderApp("/estacoes", bootOf("admin", 2), FECHADO_EQUIPE);
-    const bar = within(dock());
-    expect(bar.getByRole("button", { name: "Treinar estação" })).toBeTruthy();
-    expect(bar.getByRole("button", { name: "Praticar" })).toBeTruthy();
-    expect(bar.getByRole("button", { name: "PEPs" })).toBeTruthy();
-    expect(bar.getByRole("button", { name: /Paciente simulado/ })).toBeTruthy();
-    fireEvent.click(bar.getByRole("button", { name: "Treinar estação" }));
+    const side = within(rail());
+    const estacoes = side.getByRole("button", { name: "Estações" });
+    const praticar = side.getByRole("button", { name: "Praticar" });
+    const peps = side.getByRole("button", { name: "Meus PEPs" });
+    const paciente = side.getByRole("button", { name: "Treino com IA" });
+
+    expect(estacoes).not.toHaveAttribute("aria-disabled");
+    expect(praticar).not.toHaveAttribute("aria-disabled");
+    expect(peps).not.toHaveAttribute("aria-disabled");
+    expect(paciente).not.toHaveAttribute("aria-disabled");
+    expect(textOf(rail())).not.toContain("Em breve");
+
+    fireEvent.click(estacoes);
     expect(window.location.pathname).toBe("/novo/estacoes");
+    fireEvent.click(within(rail()).getByRole("button", { name: "Praticar" }));
+    expect(window.location.pathname).toBe("/novo/dupla");
+    fireEvent.click(within(rail()).getByRole("button", { name: "Meus PEPs" }));
+    expect(window.location.pathname).toBe("/novo/peps");
+    fireEvent.click(within(rail()).getByRole("button", { name: "Treino com IA" }));
+    expect(window.location.pathname).toBe("/novo/paciente");
   });
 
   it("celular: o menu do aluno tem só Estações e Praticar", () => {
@@ -305,7 +327,7 @@ describe("Rotas novas", () => {
     expect(screen.queryByText("Tela em reconstrução")).toBeNull();
     cleanup();
 
-    setMobile(true);
+    setMobile(true, true);
     renderApp("/dupla/sala/sala-123", bootOf("student", 2), ABERTO_COM_PLANO);
     expect(screen.getByTestId("tela-dupla-sala")).toBeTruthy();
     expect(screen.queryByRole("navigation", { name: "Navegação principal" })).toBeNull();
@@ -318,10 +340,18 @@ describe("Rotas novas", () => {
 
   describe("menu recolhido na sala (Etapa P, Tarefa P5)", () => {
     const toggle = () => within(rail()).getByRole("button", { name: /^(Recolher|Expandir) menu$/ });
-    const largura = () => (rail() as HTMLElement).style.width;
+    const isRecolhido = () => rail().classList.contains("is-collapsed");
     const guardada = () => localStorage.getItem("smf-col");
     const entrarNaSala = () => fireEvent.click(screen.getByText("abrir-sala"));
-    const sairDaSala = () => fireEvent.click(within(rail()).getByRole("button", { name: "Praticar" }));
+    const sairDaSala = () => {
+      const praticar = within(rail()).queryByRole("button", { name: "Praticar" });
+      if (praticar) {
+        fireEvent.click(praticar);
+      } else {
+        fireEvent.click(within(rail()).getByRole("button", { name: "Menu" }));
+        fireEvent.click(within(rail()).getByRole("button", { name: "Praticar" }));
+      }
+    };
     afterEach(() => localStorage.removeItem("smf-col"));
 
     it("na sala o menu abre recolhido; o botão expande; ao sair volta como estava", () => {
@@ -329,39 +359,39 @@ describe("Rotas novas", () => {
       renderApp("/dupla", bootOf("student", 2), ABERTO_COM_PLANO);
       expect(toggle()).toHaveAttribute("aria-label", "Recolher menu");
       expect(toggle()).toHaveAttribute("aria-expanded", "true");
-      expect(largura()).toBe("264px");
+      expect(isRecolhido()).toBe(false);
 
       entrarNaSala();
       expect(screen.getByTestId("tela-dupla-sala")).toBeTruthy();
       expect(toggle()).toHaveAttribute("aria-label", "Expandir menu");
       expect(toggle()).toHaveAttribute("aria-expanded", "false");
-      expect(largura()).toBe("76px");
+      expect(isRecolhido()).toBe(true);
       // A sala continua sem cabeçalho e sem barra de atalhos.
       expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
       expect(screen.queryByRole("toolbar", { name: "Ações rápidas" })).toBeNull();
 
       fireEvent.click(toggle());
       expect(toggle()).toHaveAttribute("aria-label", "Recolher menu");
-      expect(largura()).toBe("264px");
+      expect(isRecolhido()).toBe(false);
       fireEvent.click(toggle());
-      expect(largura()).toBe("76px");
+      expect(isRecolhido()).toBe(true);
 
       sairDaSala();
       expect(screen.getByTestId("tela-dupla")).toBeTruthy();
       expect(toggle()).toHaveAttribute("aria-label", "Recolher menu");
-      expect(largura()).toBe("264px");
+      expect(isRecolhido()).toBe(false);
       expect(guardada()).toBe("0");
     });
 
     it("quem abre a sala direto pelo endereço também vê o menu recolhido, e quem já usava recolhido segue recolhido ao sair", () => {
       localStorage.setItem("smf-col", "1");
       renderApp("/dupla/sala/sala-123", bootOf("student", 2), ABERTO_COM_PLANO);
-      expect(largura()).toBe("76px");
+      expect(isRecolhido()).toBe(true);
       fireEvent.click(toggle());
-      expect(largura()).toBe("264px");
+      expect(isRecolhido()).toBe(false);
       sairDaSala();
       expect(screen.getByTestId("tela-dupla")).toBeTruthy();
-      expect(largura()).toBe("76px");
+      expect(isRecolhido()).toBe(true);
       expect(guardada()).toBe("1");
     });
 
@@ -370,10 +400,10 @@ describe("Rotas novas", () => {
       renderApp("/dupla", bootOf("student", 2), ABERTO_COM_PLANO);
       entrarNaSala();
       fireEvent.click(toggle());
-      expect(largura()).toBe("264px");
+      expect(isRecolhido()).toBe(false);
       sairDaSala();
       entrarNaSala();
-      expect(largura()).toBe("76px");
+      expect(isRecolhido()).toBe(true);
     });
 
     it("fora da sala a preferência de menu não muda sozinha, e o botão continua gravando a escolha", () => {
@@ -381,13 +411,13 @@ describe("Rotas novas", () => {
       renderApp("/dupla", bootOf("student", 2), ABERTO_COM_PLANO);
       fireEvent.click(screen.getByText("abrir-perfil"));
       expect(screen.getByTestId("tela-dupla-perfil")).toBeTruthy();
-      expect(largura()).toBe("264px");
+      expect(isRecolhido()).toBe(false);
       expect(guardada()).toBe("0");
       fireEvent.click(toggle());
-      expect(largura()).toBe("76px");
+      expect(isRecolhido()).toBe(true);
       expect(guardada()).toBe("1");
       fireEvent.click(toggle());
-      expect(largura()).toBe("264px");
+      expect(isRecolhido()).toBe(false);
       expect(guardada()).toBe("0");
     });
 

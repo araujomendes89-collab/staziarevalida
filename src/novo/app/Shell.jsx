@@ -623,6 +623,10 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
     }
   }, [narrowWeb]);
   const setCollapsed = (v) => {
+    if (inRoom) {
+      setRoomOpen(!v);
+      return;
+    }
     userSet.current = true;
     setPref(v);
     try {
@@ -631,7 +635,14 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
       /* sem armazenamento: vale só nesta visita */
     }
   };
-  const collapsed = pref;
+  // Na sala do Treinamento em Dupla (bare) o menu abre recolhido; o botão expande só enquanto a pessoa está na sala (estado em memória,
+  // não grava a preferência dela). Ao sair da sala vale de novo a preferência anterior, e a próxima entrada recolhe outra vez.
+  const inRoom = !!bare && route === "dupla-sala";
+  const [roomOpen, setRoomOpen] = React.useState(false);
+  React.useEffect(() => {
+    if (!inRoom) setRoomOpen(false);
+  }, [inRoom]);
+  const collapsed = inRoom ? !roomOpen : pref;
   const headerKind = kind === "inicio" && mobile && inicioCelular() === "simples" ? "inicio-simples" : kind;
   const marginLeft = full || mobile ? 0 : layout === "tablet" ? 100 : collapsed ? 100 : 280;
   return (
@@ -653,7 +664,7 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
           </div>
         )}
       </main>
-      {!full && mobile && <MobileTabs route={navRoute} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} theme={theme} setTheme={setTheme} more={more} setMore={setMore} />}
+      {!full && !inRoom && mobile && <MobileTabs route={navRoute} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} theme={theme} setTheme={setTheme} more={more} setMore={setMore} />}
     </div>
   );
 }
