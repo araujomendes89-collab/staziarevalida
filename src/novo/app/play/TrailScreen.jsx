@@ -1,87 +1,172 @@
 // Trilha de aprendizado (app_trail): Área → temas mais cobrados → simulado da área.
 // Cada etapa tem estado (bloqueada, disponível, em andamento, concluída, dominada); abrir uma etapa
-// cria um treino só daquele tema (app_start_trail_node). O elemento principal da experiência.
+// cria um treino só daquele tema (app_start_trail_node). Visual do pacote "Novas telas" (onda 6, 15/10/2026):
+// computador = trilha em zigue-zague + coluna com "Próxima etapa"; tablet = uma coluna; celular = áreas com arte,
+// cartão azul primeiro e a lista curta com "Ver as N etapas + simulado". Os dados são os de sempre.
 import React from "react";
-import { Badge, Banner, Button, Card, Icon, ProgressBar } from "../../ds";
+import { Banner, Icon } from "../../ds";
 import { useSession } from "../session.jsx";
-import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
+import { AreaTile, Panel, RichIcon, useBreakpoint } from "../evolucao/ui.jsx";
 import { NODE_STATE } from "./format.js";
 import { PlayError, Skeleton } from "./components.jsx";
 import "./play.css";
+import "./arena.css";
 
-const STATE_STYLE = {
-  locked: { ring: "var(--locked)", fg: "var(--locked)", bg: "var(--locked-bg)" },
-  available: { ring: "var(--action-primary)", fg: "var(--action-primary)", bg: "var(--surface-brand-soft)" },
-  in_progress: { ring: "var(--chart-1)", fg: "var(--text-brand)", bg: "var(--surface-brand-soft)" },
-  completed: { ring: "var(--success-solid)", fg: "var(--success-text)", bg: "var(--success-bg)" },
-  mastered: { ring: "var(--xp)", fg: "var(--xp-text)", bg: "var(--xp-bg)" },
-};
-
-/** Nó grande da trilha, com anel de progresso. */
-export function TrailNode({ node, onOpen, busy, last }) {
-  const st = STATE_STYLE[node.state] ?? STATE_STYLE.locked;
-  const meta = NODE_STATE[node.state] ?? NODE_STATE.locked;
-  const pct = Math.min(100, Math.round((100 * node.answered) / Math.max(1, node.goal)));
-  const locked = node.state === "locked";
+/** Play cheio (o pacote usa o "play" preenchido; é o mesmo desenho do Lucide com preenchimento). */
+export function PlayFilled({ size = 22 }) {
   return (
-    <>
-      <button type="button" className="play-trail-node" disabled={locked || busy} onClick={() => onOpen(node)} aria-label={`${node.topic}: ${meta.label}`}>
-        <span className="play-trail-ring" style={{ background: `conic-gradient(${st.ring} ${node.state === "locked" ? 0 : Math.max(pct, node.state === "available" ? 0 : 4)}%, var(--border-default) 0)` }}>
-          <span style={{ width: 44, height: 44, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: st.bg, color: st.fg }}>
-            <Icon name={meta.icon} size={20} />
-          </span>
-        </span>
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: "block", font: "600 15px var(--font-sans)", color: locked ? "var(--text-tertiary)" : "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{node.topic}</span>
-          <span style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-caption)", color: "var(--text-tertiary)", flexWrap: "wrap" }}>
-            <span style={{ color: st.fg, fontWeight: 600 }}>{meta.label}</span>
-            <span>· {node.answered}/{node.goal} questões</span>
-            {node.accuracy != null && <span>· {node.accuracy}% acertos</span>}
-            <span>· {node.questions} no banco</span>
-          </span>
-        </span>
-        {!locked && <Icon name="chevron-right" size={18} style={{ color: "var(--text-tertiary)", flex: "none" }} />}
-      </button>
-      {!last && <span className={`play-trail-link${node.state === "completed" || node.state === "mastered" ? " play-trail-link--done" : ""}`} aria-hidden="true" />}
-    </>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ display: "block", marginLeft: size * 0.1 }}>
+      <polygon points="6 3 20 12 6 21 6 3" strokeLinejoin="round" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
   );
 }
 
-export function AreaTrail({ area, onOpenNode, onOpenSimulado, busy }) {
-  const sim = area.simulado;
-  const simState = STATE_STYLE[sim.state] ?? STATE_STYLE.locked;
+const stepMeta = (node) => {
+  const parts = [`${node.answered}/${node.goal} questões`];
+  if (node.accuracy != null) parts.push(`${node.accuracy}% acertos`);
+  parts.push(`${node.questions} no banco`);
+  return parts.join(" · ");
+};
+
+/** Uma etapa: o círculo (estado) e o texto. A etapa atual é o círculo azul grande com o play. */
+function Step({ node, current, busy, onOpen, small }) {
+  const meta = NODE_STATE[node.state] ?? NODE_STATE.locked;
+  const locked = node.state === "locked";
+  const cls = current ? "ar-node ar-node--cur" : `ar-node ar-node--${node.state}`;
   return (
-    <div className="play-trail">
-      {area.nodes.map((node, i) => (
-        <TrailNode key={node.topic} node={node} onOpen={onOpenNode} busy={busy} last={false} />
-      ))}
-      <button type="button" className="play-trail-node" disabled={sim.state === "locked" || busy} onClick={onOpenSimulado} aria-label={`Simulado de ${area.label}: ${NODE_STATE[sim.state]?.label}`}>
-        <span className="play-trail-ring" style={{ width: 76, height: 76, background: `conic-gradient(${simState.ring} ${sim.state === "completed" ? 100 : Math.min(100, Math.round((100 * area.done) / Math.max(1, area.total)))}%, var(--border-default) 0)` }}>
-          <span style={{ width: 54, height: 54, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: simState.bg, color: simState.fg }}>
-            <Icon name={sim.state === "locked" ? "lock" : "timer"} size={24} />
+    <li>
+      <button type="button" className={`ar-step${current ? " ar-step--cur" : ""}${locked ? "" : " ar-step--open"}`} disabled={locked || busy} onClick={() => onOpen(node)} aria-label={`${node.topic}: ${meta.label}`}>
+        <span className={cls} aria-hidden="true">
+          {current ? <PlayFilled size={small ? 18 : 24} /> : <Icon name={meta.icon} size={small ? 16 : 20} />}
+        </span>
+        <span className="ar-step__txt">
+          <span className="ar-step__title">{node.topic}</span>
+          <span className="ar-step__meta">
+            <span className={`ar-step__st ar-st--${node.state}`}>{meta.label}</span> · {stepMeta(node)}
           </span>
         </span>
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: "block", font: "700 16px var(--font-sans)", color: sim.state === "locked" ? "var(--text-tertiary)" : "var(--text-primary)" }}>Simulado de {area.label}</span>
-          <span style={{ display: "block", font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
-            {sim.state === "locked" ? `Libera com ${sim.unlock_pct}% das etapas concluídas (${area.done} de ${area.total})` : sim.state === "completed" ? `${sim.done} ${sim.done === 1 ? "simulado feito" : "simulados feitos"} · 30 questões, 90 min` : "30 questões em condições de prova, 90 min"}
-          </span>
-        </span>
-        {sim.state !== "locked" && <Icon name="chevron-right" size={18} style={{ color: "var(--text-tertiary)", flex: "none" }} />}
       </button>
+    </li>
+  );
+}
+
+/** Simulado da área (fim da trilha): troféu em círculo tracejado enquanto bloqueado. */
+function SimStep({ area, busy, onOpen, small }) {
+  const sim = area.simulado;
+  const label = NODE_STATE[sim.state]?.label ?? "Bloqueada";
+  const locked = sim.state === "locked";
+  const meta = locked
+    ? `libera com ${sim.unlock_pct}% das etapas concluídas (${area.done} de ${area.total})`
+    : sim.state === "completed"
+      ? `${sim.done} ${sim.done === 1 ? "simulado feito" : "simulados feitos"} · 30 questões, 90 min`
+      : "30 questões em condições de prova, 90 min";
+  return (
+    <li className="ar-li--final">
+      <button type="button" className="ar-step ar-step--final" disabled={locked || busy} onClick={onOpen} aria-label={`Simulado de ${area.label}: ${label}`}>
+        <span className={`ar-node ar-node--final ${locked ? "is-locked" : sim.state === "completed" ? "is-done" : "is-open"}`} aria-hidden="true">
+          <RichIcon name="trophy" size={small ? 24 : 30} fallback="trophy" />
+        </span>
+        <span className="ar-step__txt">
+          <span className="ar-step__title">Simulado de {area.label}</span>
+          <span className="ar-step__meta">
+            <span className={`ar-step__st ar-st--${sim.state}`}>{label}</span> · {meta}
+          </span>
+        </span>
+      </button>
+    </li>
+  );
+}
+
+function TrailProgress({ area }) {
+  return (
+    <div className="ar-trail__prog">
+      <span className="ar-trail__prog-t">
+        <b>
+          {area.done} de {area.total}
+        </b>{" "}
+        etapas
+      </span>
+      <span className="ar-bar" role="progressbar" aria-label="Etapas concluídas" aria-valuenow={area.done} aria-valuemin={0} aria-valuemax={Math.max(1, area.total)}>
+        <span style={{ width: `${Math.min(100, Math.round((100 * area.done) / Math.max(1, area.total)))}%` }} />
+      </span>
     </div>
   );
 }
 
+/** Cartão azul "Próxima etapa" (a etapa disponível ou em andamento; sem ela, o simulado ou "Trilha concluída"). */
+function NextCard({ area, next, busy, onStart }) {
+  const total = area.nodes.length;
+  const idx = next ? area.nodes.indexOf(next) + 1 : 0;
+  const left = next ? Math.max(0, next.goal - next.answered) : 0;
+  const simOpen = area.simulado.state === "available";
+  return (
+    <section className="ar-hero" aria-label="Próxima etapa">
+      <span className="ar-kicker">{next ? `Próxima etapa · ${idx} de ${total}` : "Próxima etapa"}</span>
+      <h2 className="ar-hero__title">{next ? next.topic : simOpen ? `Simulado de ${area.label}` : "Trilha concluída"}</h2>
+      <span className="ar-hero__sub">
+        {next ? (
+          <>
+            <span className="ar-mono">{left}</span> {left === 1 ? "questão" : "questões"} para concluir a etapa · cerca de <span className="ar-mono">{Math.max(5, left * 2)} min</span>
+          </>
+        ) : simOpen ? (
+          "30 questões em condições de prova."
+        ) : (
+          "Revise as etapas ou escolha outra área."
+        )}
+      </span>
+      <button type="button" className="ar-hero__btn" disabled={busy || (!next && !simOpen)} onClick={() => onStart(next ? next.topic : null)}>
+        Continuar estudando <Icon name="arrow-right" size={18} />
+      </button>
+    </section>
+  );
+}
+
+function HowItWorks({ data, defaultOpen }) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  const id = React.useId();
+  return (
+    <section className="ar-how" aria-label="Como funciona">
+      <button type="button" className="ar-how__btn" aria-expanded={open} aria-controls={id} onClick={() => setOpen((v) => !v)}>
+        <span>Como funciona a trilha</span>
+        <Icon name="chevron-down" size={18} className={`ar-how__chev${open ? " is-open" : ""}`} />
+      </button>
+      {open && (
+        <div className="ar-how__body" id={id}>
+          <ul>
+            <li>Os temas seguem a incidência real nas provas oficiais.</li>
+            <li>
+              Uma etapa conclui com {data.goal} questões do tema e fica <strong>dominada</strong> com {data.mastery_accuracy}% de acerto.
+            </li>
+            <li>Concluir uma etapa libera a seguinte; o simulado da área abre quando a trilha avança.</li>
+            <li>Cada resposta vale XP e conta para a sequência e as missões.</li>
+          </ul>
+          <div className="ar-legend">
+            {Object.entries(NODE_STATE).map(([k, v]) => (
+              <span key={k}>
+                <i className={`ar-lg--${k}`} aria-hidden="true" />
+                {v.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+const AREA_DOT = Object.fromEntries(AREAS.map((a) => [a.id, `var(${a.tone})`]));
+
 export function TrailScreen({ go }) {
   const { backend, boot } = useSession();
-  const mobile = useMobile();
+  const bp = useBreakpoint();
+  const narrow = bp === "narrow";
   const [area, setArea] = React.useState(() => (typeof localStorage !== "undefined" && localStorage.getItem("smn-trail-area")) || AREAS[0].id);
   const [data, setData] = React.useState(null);
   const [error, setError] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   const [tick, setTick] = React.useState(0);
+  const [all, setAll] = React.useState(false);
 
   React.useEffect(() => {
     let alive = true;
@@ -97,6 +182,7 @@ export function TrailScreen({ go }) {
 
   const pick = (id) => {
     setArea(id);
+    setAll(false);
     try {
       localStorage.setItem("smn-trail-area", id);
     } catch {
@@ -119,69 +205,107 @@ export function TrailScreen({ go }) {
   if (error && !data) return <PlayError retry={() => setTick((n) => n + 1)}>{error}</PlayError>;
   if (!data) return <Skeleton height={420} />;
   if (data.enabled === false) return <Banner tone="info">A trilha está desligada no momento.</Banner>;
+  if (!data.areas?.length) return <Banner tone="info">A trilha ainda não tem etapas.</Banner>;
 
   const current = data.areas.find((a) => a.area === area) ?? data.areas[0];
   const next = current.nodes.find((n) => n.state === "available" || n.state === "in_progress");
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "minmax(0,1.4fr) minmax(280px,1fr)", gap: 20, alignItems: "start" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div role="tablist" aria-label="Grande área" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}>
-          {data.areas.map((a) => {
-            const meta = AREAS.find((x) => x.id === a.area);
-            const on = a.area === current.area;
-            return (
-              <button key={a.area} type="button" role="tab" aria-selected={on} className="sm-chip" aria-pressed={on} onClick={() => pick(a.area)} style={{ flex: "none", gap: 8 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: `var(${meta?.tone ?? "--action-primary"})` }} />
-                {a.label}
-                <span className="sm-chip__count">{a.done}/{a.total}</span>
-              </button>
-            );
-          })}
-        </div>
+  const open = (n) => start(n.topic);
+
+  const tabs = narrow ? (
+    <div role="tablist" aria-label="Grande área" className="ar-areas">
+      {data.areas.map((a) => {
+        const on = a.area === current.area;
+        return (
+          <button key={a.area} type="button" role="tab" aria-selected={on} className="ar-area" onClick={() => pick(a.area)}>
+            <AreaTile area={a.area} size={52} />
+            <span className="ar-area__l">{a.label}</span>
+            <span className="ar-area__n">
+              {a.done}/{a.total}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  ) : (
+    <div role="tablist" aria-label="Grande área" className="ar-chips">
+      {data.areas.map((a) => {
+        const on = a.area === current.area;
+        return (
+          <button key={a.area} type="button" role="tab" aria-selected={on} className="ar-chip" onClick={() => pick(a.area)}>
+            <span className="ar-chip__dot" style={{ background: AREA_DOT[a.area] ?? "var(--action-primary)" }} aria-hidden="true" />
+            {a.label}
+            <span className="ar-chip__n">
+              {a.done}/{a.total}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  if (narrow) {
+    // celular: mostra 4 etapas (a partir da anterior à atual) e o simulado; o resto abre em "Ver as N etapas"
+    const curIdx = next ? current.nodes.indexOf(next) : 0;
+    const from = all ? 0 : Math.max(0, Math.min(curIdx - 1, current.nodes.length - 4));
+    const shown = all ? current.nodes : current.nodes.slice(from, from + 4);
+    return (
+      <div className="ev ar">
+        {tabs}
         {error && <Banner tone="danger">{error}</Banner>}
-        <Card style={{ borderRadius: 24 }} padding={mobile ? 18 : 28}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
-            <div>
-              <span className="sm-overline">Trilha</span>
-              <h2 style={{ margin: "4px 0 0", font: `700 ${mobile ? 22 : 26}px/1.2 var(--font-sans)`, letterSpacing: "-0.015em" }}>{current.label}</h2>
-            </div>
-            <div style={{ minWidth: 180, flex: mobile ? "1 1 100%" : "none" }}>
-              <ProgressBar value={current.done} max={Math.max(1, current.total)} height={6} valueLabel={`${current.done} de ${current.total} etapas`} label={current.mastered ? `${current.mastered} dominadas` : "Progresso"} />
-            </div>
+        <NextCard area={current} next={next} busy={busy} onStart={start} />
+        <Panel className="ar-msteps" aria-label={`Trilha de ${current.label}`}>
+          <div className="ar-trail__head">
+            <h2 className="ar-mcard__h">Etapas da trilha</h2>
+            <TrailProgress area={current} />
           </div>
-          <AreaTrail area={current} onOpenNode={(n) => start(n.topic)} onOpenSimulado={() => start(null)} busy={busy} />
-        </Card>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, position: mobile ? "static" : "sticky", top: 24 }}>
-        <Card variant="inverse" style={{ borderRadius: 24 }} padding={24}>
-          <span className="sm-overline" style={{ color: "var(--teal-300)" }}>Próxima etapa</span>
-          <h3 style={{ margin: "8px 0 6px", font: "700 20px/1.25 var(--font-sans)", color: "#fff" }}>{next ? next.topic : current.simulado.state === "available" ? `Simulado de ${current.label}` : "Trilha concluída"}</h3>
-          <p style={{ margin: 0, color: "var(--navy-200)", font: "var(--type-body-sm)" }}>
-            {next ? `${Math.max(0, next.goal - next.answered)} ${next.goal - next.answered === 1 ? "questão" : "questões"} para concluir a etapa. Cerca de ${Math.max(5, (next.goal - next.answered) * 2)} min.` : current.simulado.state === "available" ? "30 questões em condições de prova." : "Revise as etapas ou escolha outra área."}
-          </p>
-          <div style={{ marginTop: 16 }}>
-            <button type="button" className="sm-btn sm-btn--lg" disabled={busy || (!next && current.simulado.state !== "available")} onClick={() => start(next ? next.topic : null)} style={{ background: "var(--teal-400)", color: "var(--navy-950)" }}>
-              Continuar estudando <Icon name="arrow-right" size={18} />
-            </button>
-          </div>
-        </Card>
-        <Card style={{ borderRadius: 24 }} padding={20}>
-          <span className="sm-overline" style={{ color: "var(--text-secondary)" }}>Como funciona</span>
-          <ul style={{ margin: "10px 0 0", paddingLeft: 18, font: "var(--type-body-sm)", color: "var(--text-secondary)", display: "grid", gap: 6 }}>
-            <li>Os temas seguem a incidência real nas provas oficiais.</li>
-            <li>Uma etapa conclui com {data.goal} questões do tema e fica <b>dominada</b> com {data.mastery_accuracy}% de acerto.</li>
-            <li>Concluir uma etapa libera a seguinte; o simulado da área abre quando a trilha avança.</li>
-            <li>Cada resposta vale XP e conta para a sequência e as missões.</li>
-          </ul>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-            {Object.entries(NODE_STATE).map(([k, v]) => (
-              <Badge key={k} size="sm" icon={v.icon}>{v.label}</Badge>
+          <ol className="ar-steps">
+            {shown.map((n) => (
+              <Step key={n.topic} node={n} current={n === next} busy={busy} onOpen={open} small />
             ))}
+            <SimStep area={current} busy={busy} onOpen={() => start(null)} small />
+          </ol>
+          {current.nodes.length > 4 && (
+            <button type="button" className="ar-more" aria-expanded={all} onClick={() => setAll((v) => !v)}>
+              {all ? "Mostrar menos" : `Ver as ${current.nodes.length} etapas + simulado`}
+              <Icon name={all ? "chevron-up" : "chevron-down"} size={16} />
+            </button>
+          )}
+        </Panel>
+        <HowItWorks data={data} defaultOpen={false} />
+        <button type="button" className="ar-link" onClick={() => go("temas")}>
+          Ver Grandes Temas por incidência <Icon name="chevron-right" size={16} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ev ar">
+      {tabs}
+      {error && <Banner tone="danger">{error}</Banner>}
+      <div className="ar-cols">
+        <Panel className="ar-trail" aria-label={`Trilha de ${current.label}`}>
+          <div className="ar-trail__head">
+            <div>
+              <div className="ar-kicker ar-trail__kicker">Trilha</div>
+              <h2 className="ar-trail__name">{current.label}</h2>
+            </div>
+            <TrailProgress area={current} />
           </div>
-        </Card>
-        <Button variant="secondary" fullWidth iconRight="chevron-right" onClick={() => go("temas")}>
-          Ver Grandes Temas por incidência
-        </Button>
+          <ol className="ar-steps">
+            {current.nodes.map((n) => (
+              <Step key={n.topic} node={n} current={n === next} busy={busy} onOpen={open} />
+            ))}
+            <SimStep area={current} busy={busy} onOpen={() => start(null)} />
+          </ol>
+        </Panel>
+        <div className="ar-side" style={bp === "wide" ? undefined : { position: "static", flexBasis: "100%" }}>
+          <NextCard area={current} next={next} busy={busy} onStart={start} />
+          <HowItWorks data={data} defaultOpen />
+          <button type="button" className="ar-link" onClick={() => go("temas")}>
+            Ver Grandes Temas por incidência <Icon name="chevron-right" size={16} />
+          </button>
+        </div>
       </div>
     </div>
   );

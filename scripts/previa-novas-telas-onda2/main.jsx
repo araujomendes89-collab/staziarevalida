@@ -3,6 +3,7 @@
 //   &arena=0 (Stazia Arena desligada)  &semliga=1 (fora do ranking)  &teste=1 (teste grátis: 20 de 74 inéditas)
 //   onda 7: ?rota=conquistas|medalhas  &arte=0 (como o app hoje: sem a arte 3D do pacote)  &ganhas=1 (2 medalhas de TESTE desbloqueadas)
 //           &aba=loja (Recompensas)  &lojavazia=1  &semmoedas=1 (moedas desligadas: sem a aba Recompensas)
+//   Onda 6 (Stazia Arena): ?rota=trilha|missoes|classificacao  &trilhaandamento=1 (etapas feitas)  &missoesfeitas=1  &rankcheio=1 (linhas de TESTE)  &liga=1 (aluno numa liga)
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
@@ -14,6 +15,9 @@ import { AchievementsScreen } from "../../src/novo/app/play/AchievementsScreen.j
 import { MedalhasPadrao } from "../../src/novo/app/play/MedalhasPadrao.jsx";
 import artesDoPacote from "../../src/novo/ds/medalhas-pacote/artes.js";
 import { registrarArtesDoPacote } from "../../src/novo/ds/medalhas-pacote/index.js";
+import { TrailScreen } from "../../src/novo/app/play/TrailScreen.jsx";
+import { MissionsScreen } from "../../src/novo/app/play/MissionsScreen.jsx";
+import { LeaderboardScreen } from "../../src/novo/app/play/LeaderboardScreen.jsx";
 import { useSession } from "./sessaoSimulada.jsx";
 
 const q = new URLSearchParams(location.search);
@@ -38,7 +42,8 @@ function Previa() {
   const info = { name: "João Paulo Mendes", streakDays: 0, flashcardsDue: 0, onSignOut: () => alert("Sair (prévia)"), isStaff: papel === "equipe", isReviewer: papel === "revisor", radarGraves: 0, themeChoice: choice };
   const h = new Date().getHours();
   const arte = q.get("arte") === "0" ? false : undefined;
-  const TITULOS = { home: ["Boa tarde, João.", "Quinta, 15 de outubro"], hoje: ["Plano de Hoje", "Ciclo diário · aprender, praticar, revisar"], conquistas: ["Conquistas", "Stazia Arena · medalhas e recompensas"], medalhas: ["Medalhas e ligas", "Padrão 3D do pacote · só na prévia"] };
+  const TITULOS = { home: ["Boa tarde, João.", "Quinta, 15 de outubro"], hoje: ["Plano de Hoje", "Ciclo diário · aprender, praticar, revisar"], conquistas: ["Conquistas", "Stazia Arena · medalhas e recompensas"], medalhas: ["Medalhas e ligas", "Padrão 3D do pacote · só na prévia"],
+    trilha: ["Minha Trilha", "Stazia Arena · uma etapa de cada vez"], missoes: ["Missões", "Stazia Arena · metas de hoje e da semana"], classificacao: ["Ranking", "Stazia Arena · ranking e liga da semana"] };
   const [title, sub] = TITULOS[nav.route] ?? [nav.route, ""];
   const search = nav.query ? `?${new URLSearchParams(nav.query)}` : "";
   const headerKind = nav.route === "home" ? "inicio" : nav.route === "hoje" ? "plano" : undefined;
@@ -53,6 +58,12 @@ function Previa() {
           <AchievementsScreen arte={arte} aba={q.get("aba") || undefined} />
         ) : nav.route === "medalhas" ? (
           <MedalhasPadrao arte={arte} />
+        ) : nav.route === "trilha" ? (
+          <TrailScreen go={go} />
+        ) : nav.route === "missoes" ? (
+          <MissionsScreen go={go} />
+        ) : nav.route === "classificacao" ? (
+          <LeaderboardScreen go={go} />
         ) : (
           <p>Tela: {nav.route} (fora desta prévia)</p>
         )}
