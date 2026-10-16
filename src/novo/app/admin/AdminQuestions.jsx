@@ -10,6 +10,9 @@ import { QUESTOES_SPEC } from "../../../shared/adminAssistant/questoes";
 import { AssistantLayout } from "./assistant/AssistantLayout.jsx";
 import { TabAssistant } from "./assistant/TabAssistant.jsx";
 import { QuestionFigureCard } from "./QuestionFigureCard.jsx";
+import { CampoRico } from "../editorPro/CampoRico.jsx";
+import { comFormatacao } from "../../../shared/docRico/campos";
+import { formatacaoParaSalvar, textosOficiais } from "../../../shared/questions/formatacao";
 import { QuestionHistory } from "./QuestionHistory.jsx";
 import { QuestionDifficulty } from "./QuestionDifficulty.jsx";
 import { QuestionSourceLinksCard } from "./QuestionSourceLinksCard.jsx";
@@ -75,6 +78,7 @@ function emptyQuestion() {
     expected_conduct: "",
     inep_intent: "",
     needs_image: false,
+    formatacao: null,
   };
 }
 
@@ -100,6 +104,8 @@ function fromRow(q) {
     expected_conduct: q.expected_conduct ?? "",
     inep_intent: q.inep_intent ?? "",
     needs_image: q.needs_image,
+    // editor profissional (013120): a formatação de cada campo (chave → envelope); o texto continua nos campos de sempre
+    formatacao: q.formatacao ?? null,
     images: q.images ?? [],
     official: q.official ?? null,
     explanations_review: q.explanations_review ?? null,
@@ -129,6 +135,9 @@ function payloadOf(form) {
     expected_conduct: form.expected_conduct,
     inep_intent: form.inep_intent,
     needs_image: form.needs_image,
+    // só as entradas que batem com o texto aparado (o banco faz btrim); fica fora de statement/options, então mudar só a
+    // formatação não tira a análise do ar nem manda o comentário para revisão. O gabarito não muda por aqui.
+    formatacao: formatacaoParaSalvar(textosOficiais(form), form.formatacao),
   };
 }
 
@@ -293,13 +302,20 @@ export function QuestionEditor({ id, onClose, onSaved, commentReviewReady = fals
 
   const set = (patch) => (setForm((f) => ({ ...f, ...patch })), setState((s) => ({ ...s, done: false })));
   const setOption = (letter, patch) => set({ options: form.options.map((o) => (o.id === letter ? { ...o, ...patch } : o)) });
+  // campo com o editor profissional: o texto vai para o campo de sempre e a formatação para form.formatacao[chave]
+  const setRico = (chave, aplicar) => ({ texto, rico }) => {
+    setForm((f) => ({ ...f, ...aplicar(f, texto), formatacao: comFormatacao(f.formatacao, chave, rico) }));
+    setState((s) => ({ ...s, done: false }));
+  };
+  const rico = (chave) => form.formatacao?.[chave] ?? null;
+  const setOptionField = (letter, field) => (f, value) => ({ options: f.options.map((o) => (o.id === letter ? { ...o, [field]: value } : o)) });
   const isNew = !form.id;
   const useSuggestion = (field, value) => {
     setForm((f) => ({ ...f, ...QUESTOES_SPEC.patch(f, field, value) }));
     setState((s) => ({ ...s, done: false }));
     setAiUsed(true);
   };
-  const { images: _images, attempts: _attempts, official: _official, explanations_review: _review, comment_review: _cr, comment_can_review: _ccr, comment_review_by: _crb, comment_decision: _cd, ...assistantForm } = form;
+  const { images: _images, attempts: _attempts, official: _official, explanations_review: _review, comment_review: _cr, comment_can_review: _ccr, comment_review_by: _crb, comment_decision: _cd, formatacao: _fmt, ...assistantForm } = form;
   // questão já gravada: gabarito e situação só mudam pelo registro do gabarito oficial (Q02)
   const locked = !isNew;
 
@@ -497,7 +513,7 @@ export function QuestionEditor({ id, onClose, onSaved, commentReviewReady = fals
             <TextField label="Tema" value={form.topic} maxLength={200} onChange={(e) => set({ topic: e.target.value })} />
             <TextField label="Subtema" value={form.subtopic} maxLength={300} onChange={(e) => set({ subtopic: e.target.value })} />
           </div>
-          <TextArea label="Enunciado" rows={7} value={form.statement} onChange={(statement) => set({ statement })} />
+          <CampoRico label="Enunciado" texto={form.statement} rico={rico("statement")} onChange={setRico("statement", (_f, statement) => ({ statement }))} />
         </div>
       </Card>
       <Card>
@@ -509,8 +525,8 @@ export function QuestionEditor({ id, onClose, onSaved, commentReviewReady = fals
                 {o.id}
               </span>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <TextArea label={`Alternativa ${o.id}`} rows={2} value={o.text} onChange={(text) => setOption(o.id, { text })} />
-                <TextArea label={`Explicação da ${o.id} (opcional)`} rows={2} value={o.explanation} onChange={(explanation) => setOption(o.id, { explanation })} />
+                <CampoRico label={`Alternativa ${o.id}`} texto={o.text} rico={rico(`opcao.${o.id}.texto`)} onChange={setRico(`opcao.${o.id}.texto`, setOptionField(o.id, "text"))} />
+                <CampoRico label={`Explicação da ${o.id} (opcional)`} texto={o.explanation} rico={rico(`opcao.${o.id}.explicacao`)} onChange={setRico(`opcao.${o.id}.explicacao`, setOptionField(o.id, "explanation"))} />
               </div>
             </div>
           ))}
@@ -573,8 +589,11 @@ export function QuestionEditor({ id, onClose, onSaved, commentReviewReady = fals
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Comentário</h3>
-          <TextArea label="Conduta esperada" rows={3} value={form.expected_conduct} onChange={(expected_conduct) => set({ expected_conduct })} />
-          <TextArea label="O que a questão avalia" rows={3} value={form.inep_intent} onChange={(inep_intent) => set({ inep_intent })} />
+          <CampoRico label="Conduta esperada" texto={form.expected_conduct} rico={rico("expected_conduct")} onChange={setRico("expected_conduct", (_f, expected_conduct) => ({ expected_conduct }))} />
+          <CampoRico label="O que a questão avalia" texto={form.inep_intent} rico={rico("inep_intent")} onChange={setRico("inep_intent", (_f, inep_intent) => ({ inep_intent }))} />
+          <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
+            Negrito, itálico, cor, listas e alinhamento são só formatação: não mandam o comentário para revisão nem tiram a análise do ar. O aluno vê a formatação do enunciado e das alternativas na questão, e a das explicações e do comentário depois de responder.
+          </div>
         </div>
       </Card>
       {commentChanged.length > 0 && reviewReady === true && (

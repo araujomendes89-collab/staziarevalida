@@ -393,6 +393,8 @@ describe("Migração", () => {
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003012000_simulado_volta_ineditas.sql", import.meta.url)), "utf8"));
     // a 012200 (inéditas misturadas nos simulados) redefine app_start_session e practice_result por cima: colar a 9801 de novo pede colar a 012200 depois
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003012200_simulado_ineditas_misturadas.sql", import.meta.url)), "utf8"));
+    // a 013120 (editor profissional nas questões) redefine practice_question_view e a correção do aluno por cima: colar a 9801 de novo pede colar a 013120 depois
+    await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003013120_editor_pro_questoes.sql", import.meta.url)), "utf8"));
     expect(await snapshot()).toEqual(before);
     // as funções de serviço continuam fechadas e o app só chama as três que devem ser chamadas
     expect(text).toContain("Cole antes as migrações da leva 3");

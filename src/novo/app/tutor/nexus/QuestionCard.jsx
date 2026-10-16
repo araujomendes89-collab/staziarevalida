@@ -4,12 +4,22 @@
 import React from "react";
 import { AnswerOption, Badge, Button } from "../../../ds";
 import { examLabel, splitStatement } from "../../practice/format.js";
+// leitor do aluno (sem TipTap): a formatação do enunciado e das alternativas vem do tutor_question_view (013120)
+import ParagrafoRico from "../../editorPro/leitor/ParagrafoRico.jsx";
+import { ricoDoCampo } from "../../../../shared/questions/formatacao";
+
+/** Texto da alternativa: com a formatação (opcao.X.texto) quando ela bate com o texto; senão, o texto como sempre. */
+function TextoDaOpcao({ option, formatacao }) {
+  const rico = ricoDoCampo(formatacao, `opcao.${option.id}.texto`, option.text);
+  return rico ? <ParagrafoRico texto={option.text} rico={rico} /> : option.text;
+}
 
 export function QuestionCard({ session, marked, busy = false, gate = null, onMark, onAnswer, onHint, onReveal, onNext }) {
   const q = session.question;
   if (!q) return null;
   const open = q.state === "open";
-  const parts = splitStatement(q.statement ?? "");
+  const ricoEnunciado = ricoDoCampo(q.formatacao, "statement", q.statement);
+  const parts = ricoEnunciado ? { stem: q.statement, ask: "" } : splitStatement(q.statement ?? "");
   const answered = session.last_answer;
   const stateOf = (id) => {
     if (open) return id === marked ? "selected" : "idle";
@@ -23,12 +33,12 @@ export function QuestionCard({ session, marked, busy = false, gate = null, onMar
         <span className="nx-q__over">Questão</span>
         <span className="nx-q__ref">{q.exam ? examLabel(q.exam) : "Questão"}{q.number ? ` · nº ${q.number}` : ""}{q.topic ? ` · ${q.topic}` : ""}</span>
       </div>
-      <p className="nx-q__stem">{parts.stem}</p>
+      {ricoEnunciado ? <ParagrafoRico texto={q.statement} rico={ricoEnunciado} className="nx-q__stem" /> : <p className="nx-q__stem">{parts.stem}</p>}
       {parts.ask && <p className="nx-q__ask">{parts.ask}</p>}
       <div role="radiogroup" aria-label="Alternativas" className="nx-q__alts">
         {(q.options ?? []).map((o) => (
           <AnswerOption key={o.id} letter={o.id} state={stateOf(o.id)} onClick={() => open && onMark(o.id)}>
-            {o.text}
+            <TextoDaOpcao option={o} formatacao={q.formatacao} />
           </AnswerOption>
         ))}
       </div>
