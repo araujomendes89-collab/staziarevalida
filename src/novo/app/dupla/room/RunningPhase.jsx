@@ -1,60 +1,67 @@
-// Fase "running" (Room.jsx:71-135 do protótipo): cabeçalho com cronômetro, o que cada papel vê e a barra de baixo.
-// O restante do tempo vem parado do servidor (`remainingMs`); a contagem viva e os eventos são da Etapa 5.
+// Estação (Room.jsx do protótipo de 11/10). Vale para a fase "running" e para a "sala do avaliador" aberta antes do início
+// (fase "setup", `started` falso: o avaliador lê tudo, ajusta o tempo e inicia pelo rodapé; liberar e marcar só depois).
+//  - Avaliador: cabeçalho com o nome da estação; duas colunas com rolagem própria (resumo, orientações do ator, impressos,
+//    anotações, materiais e feedback à esquerda; PEP com a soma à direita) e o rodapé com o cronômetro (D9 do dono).
+//  - Candidato: cabeçalho "Estação N · Área" com a origem (nunca o tema), cronômetro que pode esconder só nesta aba, a folha
+//    (imagem ou texto) e a lista de impressos liberados. Não finaliza a estação (D8): só "Sair da sala".
 import React from "react";
-import { Accordion, Avatar, Badge, Button, Card, IconButton, PepTable, PrintItem, Textarea, Timer } from "../../../ds";
-import { formatDecimal } from "../../../ds/format.js";
+import "./sala.css";
+import { Accordion, Avatar, Badge, Button, Icon, PepTable, PrintImage, PrintItem, ScrollPane, Textarea, Timer } from "../../../ds";
 import { areaVars, sourceLabel } from "../labels.js";
-import { isTaskNote, maxScoreOf, splitActorScript, splitBlocks, splitTasks, toPepItems } from "../content.js";
-import { ActorScript, PressingBody, PressingImage, Scene, roleLabel, stationTitle } from "./parts.jsx";
+import { maxScoreOf, splitActorScript, splitBlocks, splitTasks, toPepItems } from "../content.js";
+import { ActorScript, Scene, roleLabel, stationTitle } from "./parts.jsx";
+import { CandidatePrints, CandidateSheet, PressingMedia, useImageUrl } from "./CandidateSheet.jsx";
+import { EvaluatorFooter } from "./EvaluatorFooter.jsx";
+import { notesKey, readDraft, writeDraft } from "./useRoom.js";
 
-const MIN_KEY = "sz-timer-min";
-const HIDE_KEY = "sz-timer-hidden";
+/** Cronômetro escondido pelo candidato: só nesta aba (sessionStorage); o tempo continua contando. */
+export const HIDE_TIMER_KEY = "smn-dupla-cron-oculto";
+export const NOT_STARTED_HINT = "Disponível depois de iniciar a estação.";
 
-function readFlag(key) {
-  try {
-    return window.localStorage.getItem(key) === "1";
-  } catch {
-    return false;
-  }
-}
-function writeFlag(key, on) {
-  try {
-    window.localStorage.setItem(key, on ? "1" : "0");
-  } catch {
-    /* sem armazenamento: vale só nesta tela */
-  }
-}
-/** Marca guardada no aparelho (minimizar / esconder o cronômetro). */
-function useFlag(key) {
-  const [on, setOn] = React.useState(() => readFlag(key));
+function useTabFlag(key) {
+  const [on, setOn] = React.useState(() => {
+    try {
+      return window.sessionStorage.getItem(key) === "1";
+    } catch {
+      return false;
+    }
+  });
   const toggle = () => {
-    writeFlag(key, !on);
+    try {
+      window.sessionStorage.setItem(key, on ? "0" : "1");
+    } catch {
+      /* sem armazenamento: vale só enquanto a tela está aberta */
+    }
     setOn(!on);
   };
   return [on, toggle];
 }
 
-const overline = { font: "var(--type-overline)", letterSpacing: "var(--tracking-overline)", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 10 };
-
-function RoomHeader({ room, remainingMs, actions }) {
-  const [minimized, toggleMin] = useFlag(MIN_KEY);
-  const [hidden, toggleHide] = useFlag(HIDE_KEY);
+function RoomHeader({ room, remainingMs, started }) {
+  const [hidden, toggleHide] = useTabFlag(HIDE_TIMER_KEY);
   const station = room.station;
   const isEval = room.me.role === "evaluator";
   const paused = typeof room.paused_left_ms === "number";
-  const expired = !paused && Boolean(room.ends_at) && remainingMs === 0;
-  const state = paused ? "paused" : expired ? "expired" : "running";
+  const expired = started && !paused && Boolean(room.ends_at) && remainingMs === 0;
   const origin = sourceLabel(station);
   const vars = areaVars(station?.area_code);
-  const seconds = Math.floor((remainingMs ?? 0) / 1000);
+  const badge = !started
+    ? ["warning", "Aguardando início"]
+    : paused
+      ? ["warning", "Pausada"]
+      : expired
+        ? ["danger", "Tempo esgotado"]
+        : ["success", "Em andamento"];
 
   return (
-    <div
+    <header
+      className="dupla-head"
       style={{
         display: "flex",
         alignItems: "center",
         gap: 16,
         padding: "14px 28px",
+        boxSizing: "border-box",
         background: "var(--surface-card)",
         borderBottom: "1px solid var(--border-subtle)",
         flexWrap: "wrap",
@@ -77,7 +84,7 @@ function RoomHeader({ room, remainingMs, actions }) {
       </span>
       <div style={{ minWidth: 0 }}>
         {/* Avaliador: nome da estação. Candidato: "Estação N · Área" (o tema só aparece no resultado). */}
-        <div style={{ font: "var(--type-h3)", color: "var(--text-primary)" }}>{isEval && station?.name ? station.name : stationTitle(station)}</div>
+        <h1 style={{ margin: 0, font: "var(--type-h3)", color: "var(--text-primary)" }}>{isEval && station?.name ? station.name : stationTitle(station)}</h1>
         <div style={{ font: "var(--text-xs) var(--font-sans)", color: "var(--text-secondary)" }}>{origin ? `${station.area} · ${origin}` : station?.area}</div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 12 }}>
@@ -88,55 +95,63 @@ function RoomHeader({ room, remainingMs, actions }) {
         {roleLabel(room.me.role)}
       </Badge>
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-        <Badge tone={paused ? "warning" : expired ? "danger" : "success"}>{paused ? "Pausada" : expired ? "Tempo esgotado" : "Em andamento"}</Badge>
-        {isEval && !expired && !minimized && !hidden && (
-          <div style={{ display: "flex", alignItems: "center", gap: 4, padding: 3, borderRadius: 10, background: "var(--surface-sunken)" }}>
-            <IconButton icon="minus" label="Reduzir 1 minuto" size="sm" disabled={(remainingMs ?? 0) <= 60000} onClick={() => actions.adjust(-60000)} />
-            <span style={{ font: "600 11px var(--font-sans)", color: "var(--text-secondary)", padding: "0 2px" }}>1 min</span>
-            <IconButton icon="plus" label="Adicionar 1 minuto" size="sm" onClick={() => actions.adjust(60000)} />
-          </div>
-        )}
-        {hidden ? (
-          <button
-            type="button"
-            onClick={toggleHide}
-            aria-label="Mostrar cronômetro"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              height: 40,
-              padding: "0 14px",
-              borderRadius: "var(--radius-md)",
-              border: "2px dashed var(--border-strong)",
-              background: "var(--surface-card)",
-              cursor: "pointer",
-              font: "600 var(--text-sm) var(--font-sans)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Cronômetro oculto · mostrar
-          </button>
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <Timer seconds={seconds} state={state} size={minimized ? 14 : 26} />
-            <IconButton icon={minimized ? "maximize-2" : "minimize-2"} label={minimized ? "Expandir cronômetro" : "Minimizar cronômetro"} size="sm" onClick={toggleMin} />
-            <IconButton icon="eye-off" label="Esconder cronômetro" size="sm" onClick={toggleHide} />
+        <Badge tone={badge[0]}>{badge[1]}</Badge>
+        {!isEval && started && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {!hidden && <Timer seconds={Math.floor((remainingMs ?? 0) / 1000)} state={paused ? "paused" : expired ? "expired" : "running"} size={26} />}
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={hidden ? "eye" : "eye-off"}
+              aria-label={hidden ? "Mostrar cronômetro" : "Esconder cronômetro"}
+              title={hidden ? "Mostrar o tempo restante" : "Esconder apenas nesta tela. O tempo continua contando."}
+              onClick={toggleHide}
+            >
+              {hidden ? "Mostrar cronômetro" : "Ocultar"}
+            </Button>
           </div>
         )}
       </div>
+    </header>
+  );
+}
+
+/** Resumo da estação (Materiais), como a Montagem o grava: texto em parágrafos ou lista. */
+function Summary({ value }) {
+  if (typeof value === "string") return <Scene blocks={splitBlocks(value)} />;
+  const items = (Array.isArray(value) ? value : [])
+    .map((x) => (typeof x === "string" ? x : x?.text ?? x?.content ?? x?.title ?? ""))
+    .filter((x) => String(x).trim());
+  return (
+    <ul style={{ margin: 0, paddingLeft: 18 }}>
+      {items.map((t, i) => (
+        <li key={i}>{t}</li>
+      ))}
+    </ul>
+  );
+}
+const hasSummary = (v) => (typeof v === "string" ? v.trim().length > 0 : Array.isArray(v) && v.length > 0);
+
+function SheetImageForEvaluator({ actions }) {
+  const img = useImageUrl("candidate_sheet", true, actions);
+  if (!img.url) return null;
+  return (
+    <div style={{ marginTop: 12 }}>
+      <PrintImage src={img.url} alt="Folha do candidato: instruções e relato do caso clínico" />
     </div>
   );
 }
 
-function EvaluatorView({ room, content, marks, actions }) {
+function EvaluatorView({ room, content, marks, actions, started }) {
   const st = content.station;
-  const [notes, setNotes] = React.useState("");
+  const notesId = notesKey(room.id, room.round);
+  const [notes, setNotes] = React.useState(() => readDraft(notesId, ""));
+  React.useEffect(() => setNotes(readDraft(notesId, "")), [notesId]);
   const tasks = splitTasks(st.doctor_tasks);
   const released = room.released_pressings || [];
   const items = toPepItems(content.checklist_items);
-  const initial = content.pressings.filter((p) => p.initially_visible);
-  const releasable = content.pressings.filter((p) => !p.initially_visible);
+  const initial = (content.pressings || []).filter((p) => p.initially_visible);
+  const releasable = (content.pressings || []).filter((p) => !p.initially_visible);
 
   const mark = (itemId, grade) => actions.mark(itemId, grade, marks[itemId]?.subitems ?? []);
   const toggleSubitem = (itemId, subId) => {
@@ -145,175 +160,149 @@ function EvaluatorView({ room, content, marks, actions }) {
   };
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 460px), 1fr))", gap: 20, padding: "20px 28px", alignItems: "start" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
-        <Accordion icon="clipboard-list" title="Cenário e tarefas">
-          <Scene blocks={splitBlocks(st.doctor_scene)} />
-          {tasks.length > 0 && <ul style={{ paddingLeft: 18, margin: "10px 0 0" }}>{tasks.map((t, i) => <li key={i}>{t}</li>)}</ul>}
-        </Accordion>
-        <Accordion icon="drama" title="Roteiro do ator" defaultOpen>
-          <ActorScript
-            script={splitActorScript(st.actor_script)}
-            fallback="O roteiro do ator não consta nos documentos enviados. Use o cenário, os impressos e o checklist como referência para interpretar o paciente."
-          />
-        </Accordion>
-        <Accordion
-          icon="files"
-          title="Impressos"
-          defaultOpen
-          meta={<Badge size="sm" tone="brand">{`${releasable.filter((p) => released.includes(p.id)).length}/${releasable.length}`}</Badge>}
-        >
-          {initial.map((p) => (
-            <div key={p.id} style={{ display: "grid", gap: 4 }}>
-              <PrintItem index={p.display_number ?? p.index} sourceNumber={p.source_number} title={p.name} released>
-                <PressingBody pressing={p} actions={actions} />
-              </PrintItem>
-              <div style={{ font: "var(--text-xs) var(--font-sans)", color: "var(--text-secondary)", padding: "0 4px 6px" }}>Este impresso já está visível desde o início.</div>
-            </div>
-          ))}
-          {releasable.map((p) => {
-            const isReleased = released.includes(p.id);
-            return (
-              <PrintItem key={p.id} index={p.display_number ?? p.index} sourceNumber={p.source_number} title={p.name} canRelease released={isReleased} onToggleRelease={() => actions.release(p.id, !isReleased)}>
-                <PressingBody pressing={p} actions={actions} />
-              </PrintItem>
-            );
-          })}
-        </Accordion>
-        <Accordion icon="notebook-pen" title="Anotações">
-          <Textarea rows={3} placeholder="Anote o que observar durante o atendimento" hint="Anotações ficam só neste aparelho." value={notes} onChange={(e) => setNotes(e.target.value)} />
-        </Accordion>
+    <div className="dupla-aval">
+      <div className="dupla-aval__col">
+        <ScrollPane label="Estação: cenário, orientações e impressos">
+          <div className="dupla-aval__left">
+            <Accordion icon="clipboard-list" title="Cenário e tarefas" defaultOpen={!started}>
+              <Scene blocks={splitBlocks(st.doctor_scene)} />
+              {tasks.length > 0 && <ul style={{ paddingLeft: 18, margin: "10px 0 0" }}>{tasks.map((t, i) => <li key={i}>{t}</li>)}</ul>}
+              {st.candidate_sheet?.has_image && <SheetImageForEvaluator actions={actions} />}
+            </Accordion>
+            <Accordion icon="drama" title="Orientações do Ator/Atriz" defaultOpen>
+              <ActorScript
+                script={splitActorScript(st.actor_script)}
+                fallback="O roteiro do ator não consta nos documentos enviados. Use o cenário, os impressos e o checklist como referência para interpretar o paciente."
+              />
+            </Accordion>
+            <Accordion
+              icon="files"
+              title="Impressos"
+              defaultOpen
+              meta={<Badge size="sm" tone="brand">{`${releasable.filter((p) => released.includes(p.id)).length}/${releasable.length}`}</Badge>}
+            >
+              {!started && releasable.length > 0 && (
+                <div className="dupla-hint" style={{ marginBottom: 8 }}>
+                  <Icon name="lock" size={14} />
+                  {NOT_STARTED_HINT}
+                </div>
+              )}
+              {initial.map((p) => (
+                <div key={p.id} style={{ display: "grid", gap: 4 }}>
+                  <PrintItem index={p.display_number ?? p.index} sourceNumber={p.source_number} title={p.name} released>
+                    <PressingMedia pressing={p} actions={actions} />
+                  </PrintItem>
+                  <div style={{ font: "var(--text-xs) var(--font-sans)", color: "var(--text-secondary)", padding: "0 4px 6px" }}>Este impresso já está visível desde o início.</div>
+                </div>
+              ))}
+              {releasable.map((p) => {
+                const isReleased = released.includes(p.id);
+                return (
+                  <PrintItem
+                    key={p.id}
+                    index={p.display_number ?? p.index}
+                    sourceNumber={p.source_number}
+                    title={p.name}
+                    canRelease
+                    released={isReleased}
+                    releaseDisabled={!started}
+                    releaseHint={NOT_STARTED_HINT}
+                    onToggleRelease={() => actions.release(p.id, !isReleased)}
+                  >
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <div style={{ whiteSpace: "pre-wrap" }}>{p.content}</div>
+                      {p.has_image && <PressingMedia pressing={{ ...p, content: "" }} actions={actions} />}
+                    </div>
+                  </PrintItem>
+                );
+              })}
+            </Accordion>
+            <Accordion icon="notebook-pen" title="Anotações">
+              <Textarea
+                rows={3}
+                placeholder="Anote o que observar durante o atendimento"
+                hint="Anotações ficam só neste aparelho."
+                value={notes}
+                onChange={(e) => {
+                  setNotes(e.target.value);
+                  writeDraft(notesId, e.target.value);
+                }}
+              />
+            </Accordion>
+            {hasSummary(st.summary) && (
+              <Accordion icon="book-open" title="Materiais">
+                <div style={{ font: "600 var(--text-sm) var(--font-sans)", color: "var(--text-primary)", marginBottom: 6 }}>Resumo sobre o tema</div>
+                <Summary value={st.summary} />
+              </Accordion>
+            )}
+            <Accordion icon="message-circle" title="Feedback">
+              <div style={{ color: "var(--text-secondary)", font: "var(--type-body-sm)" }}>
+                Registre observações sobre a atuação e revise o feedback após a finalização da estação.
+              </div>
+            </Accordion>
+          </div>
+        </ScrollPane>
       </div>
-      <div style={{ minWidth: 0 }}>
-        <PepTable
-          stationNumber={st.number}
-          area={st.area}
-          items={items}
-          marks={marks}
-          onMark={mark}
-          onToggleSubitem={toggleSubitem}
-          maxScore={maxScoreOf(content.checklist_items) || undefined}
-        />
+      <div className="dupla-aval__col dupla-aval__pep">
+        {!started && (
+          <div className="dupla-hint">
+            <Icon name="lock" size={14} />
+            {NOT_STARTED_HINT}
+          </div>
+        )}
+        <ScrollPane label="Checklist PEP">
+          <PepTable
+            stationNumber={st.number}
+            area={st.area}
+            items={items}
+            marks={marks}
+            onMark={started ? mark : undefined}
+            onToggleSubitem={started ? toggleSubitem : undefined}
+            maxScore={maxScoreOf(content.checklist_items) || undefined}
+          />
+        </ScrollPane>
       </div>
     </div>
   );
 }
 
 function CandidateView({ room, content, actions }) {
-  const st = content.station;
-  const tasks = splitTasks(st.doctor_tasks);
-  const minutes = st.duration_ms / 60000;
-  const total = content.pressing_count;
-  const released = room.released_pressings || [];
-  const initial = content.pressings.filter((p) => p.initially_visible);
-  const sheetImage = st.candidate_sheet?.has_image;
-  let n = 0;
   return (
-    <div style={{ maxWidth: 880, margin: "0 auto", width: "100%", padding: "24px 28px", display: "flex", flexDirection: "column", gap: 16, boxSizing: "border-box" }}>
-      <Card padding={28} style={{ boxShadow: "var(--shadow-sm)" }}>
-        <div style={overline}>Enunciado</div>
-        <Scene blocks={splitBlocks(st.doctor_scene)} style={{ font: "400 var(--text-md)/1.6 var(--font-sans)", color: "var(--text-primary)" }} />
-      </Card>
-      <Card padding={20}>
-        <h2 style={{ margin: "0 0 14px", font: "600 var(--text-base)/1.3 var(--font-sans)", color: "var(--text-primary)" }}>
-          Nos {Number.isInteger(minutes) ? minutes : formatDecimal(minutes, 1)} minutos de duração, execute:
-        </h2>
-        <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
-          {tasks.map((t, i) => {
-            const note = isTaskNote(t);
-            if (!note) n += 1;
-            return (
-              <li key={i} style={{ display: "flex", gap: 12, alignItems: "baseline", color: "var(--text-primary)" }}>
-                {!note && <span style={{ font: "600 var(--text-xs) var(--font-mono)", color: "var(--text-brand)" }}>{String(n).padStart(2, "0")}</span>}
-                {t}
-              </li>
-            );
-          })}
-        </ol>
-        {sheetImage && (
-          <div style={{ marginTop: 14 }}>
-            <PressingImage pressing={{ id: "candidate_sheet", has_image: true, name: "Folha do candidato", content: "" }} actions={actions} />
-          </div>
-        )}
-      </Card>
-      {initial.map((p) => (
-        <Card key={p.id} padding={20}>
-          <div style={overline}>{`Impresso ${p.display_number} · ${p.name}`}</div>
-          <PressingBody pressing={p} actions={actions} />
-        </Card>
-      ))}
-      <Card padding="12px 16px">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "4px 0 8px" }}>
-          <h2 style={{ margin: 0, font: "600 var(--text-base)/1.3 var(--font-sans)", color: "var(--text-primary)" }}>Impressos</h2>
-          <Badge size="sm" tone="brand">{released.length === 1 ? "1 liberado" : `${released.length} liberados`}</Badge>
-        </div>
-        {Array.from({ length: total }, (_, k) => k + 1).map((index) => {
-          const p = content.pressings.find((x) => !x.initially_visible && x.display_number === index);
-          return p ? (
-            <PrintItem key={index} index={index} title={p.name} released>
-              <PressingBody pressing={p} actions={actions} />
-            </PrintItem>
-          ) : (
-            <PrintItem key={index} index={index} title="Aguardando liberação" />
-          );
-        })}
-      </Card>
+    <div className="dupla-cand">
+      <CandidateSheet station={{ ...content.station, duration_ms: room.duration_ms ?? content.station.duration_ms }} content={content} actions={actions} />
+      <div className="dupla-cand__col">
+        <CandidatePrints content={content} actions={actions} />
+      </div>
     </div>
   );
 }
 
-function BottomBar({ room, actions }) {
-  const isEval = room.me.role === "evaluator";
-  const paused = typeof room.paused_left_ms === "number";
-  const link = room.call_link;
+function CandidateBar({ onLeave }) {
   return (
-    <div
-      style={{
-        position: "sticky",
-        bottom: 0,
-        minHeight: 64,
-        display: "flex",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: 10,
-        rowGap: 8,
-        padding: "10px 28px",
-        background: "var(--surface-card)",
-        borderTop: "1px solid var(--border-subtle)",
-        zIndex: 5,
-      }}
-    >
-      <Button variant="secondary" icon="video" disabled={!link} onClick={() => window.open(link, "_blank", "noopener,noreferrer")}>
-        Chamada
-      </Button>
-      {isEval && (
-        <Button variant="ghost" icon={paused ? "play" : "pause"} onClick={() => (paused ? actions.resume() : actions.pause())}>
-          {paused ? "Retomar" : "Pausar"}
-        </Button>
-      )}
-      <div style={{ flex: "1 1 0", minWidth: 0 }} />
-      <Button variant="ghost" icon="log-out" onClick={() => actions.leave()}>
+    <div className="dupla-foot">
+      <div className="dupla-foot__spacer" />
+      <Button variant="ghost" icon="log-out" onClick={onLeave}>
         Sair da sala
       </Button>
-      {isEval && (
-        <Button variant="danger" icon="square" onClick={() => actions.finish()}>
-          Finalizar estação
-        </Button>
-      )}
     </div>
   );
 }
 
-export function RunningPhase({ room, content, marks, actions, remainingMs }) {
+export function RunningPhase({ room, content, marks, actions, remainingMs, started = true, askLeave }) {
   const isEval = room.me.role === "evaluator";
+  const leave = () => (askLeave ? askLeave("sair") : actions.leave());
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: "100%", width: "100%" }}>
-      <RoomHeader room={room} remainingMs={remainingMs} actions={actions} />
-      <div style={{ flex: 1 }}>
+    <div className="dupla-sala">
+      <RoomHeader room={room} remainingMs={remainingMs} started={started} />
+      <div className="dupla-sala__body">
         {content?.station &&
-          (isEval ? <EvaluatorView room={room} content={content} marks={marks} actions={actions} /> : <CandidateView room={room} content={content} actions={actions} />)}
+          (isEval ? (
+            <EvaluatorView room={room} content={content} marks={marks} actions={actions} started={started} />
+          ) : (
+            <CandidateView room={room} content={content} actions={actions} />
+          ))}
       </div>
-      <BottomBar room={room} actions={actions} />
+      {isEval ? <EvaluatorFooter room={room} remainingMs={remainingMs} actions={actions} started={started} onLeave={leave} /> : <CandidateBar onLeave={leave} />}
     </div>
   );
 }

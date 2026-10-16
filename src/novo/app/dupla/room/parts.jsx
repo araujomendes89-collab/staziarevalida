@@ -2,7 +2,7 @@
 // Só cores do app (var(--…)); nada de dado de exemplo.
 import React from "react";
 import { Avatar, Badge, Card, Icon, PrintImage } from "../../../ds";
-import { areaVars, ROOM_ROLE_LABEL } from "../labels.js";
+import { areaVars, ROOM_ROLE_LABEL, sourceLabel } from "../labels.js";
 
 export const pageStyle = {
   maxWidth: 960,
@@ -115,6 +115,16 @@ export function stationTitle(station) {
   if (station.name) return station.number != null ? `Estação ${station.number} · ${station.name}` : station.name;
   const label = station.label || (station.number != null ? `Estação ${station.number}` : "Estação");
   return station.area ? `${label} · ${station.area}` : label;
+}
+
+/**
+ * Título da estação com a origem: "Estação 3 · Clínica Médica · Revalida 2020 · INEP". A origem aparece sempre, também para o
+ * candidato (decisão do dono de 16/10); estação autoral (sem instituição) fica só com o título.
+ */
+export function stationLine(station) {
+  const title = stationTitle(station);
+  const origin = sourceLabel(station);
+  return origin ? `${title} · ${origin}` : title;
 }
 
 /** Imagem do impresso: o endereço assinado vem de `actions.printUrl` (Tarefa 17); sem endereço, nada é mostrado. */

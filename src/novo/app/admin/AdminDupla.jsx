@@ -1,7 +1,8 @@
 // Administração › Configurações › Treinamento em Dupla: abre ou fecha o módulo para os alunos e escolhe quais planos entram.
 // Equipe (administrador e editor) e revisores médicos entram sempre; quem decide o acesso é o banco (dupla_allowed).
 import React from "react";
-import { Banner, Button, Card, Checkbox, Switch } from "../../ds";
+import { Banner, Button, Card, Checkbox, StatTile, Switch } from "../../ds";
+import { formatDecimal } from "../../ds/format.js";
 import { useSession } from "../session.jsx";
 import { LoadError, Loading, messageOf, PLAN_LABEL, useLoad } from "./common.jsx";
 
@@ -12,6 +13,35 @@ const normalize = (raw) => ({
   aberto: raw?.aberto === true,
   planos: Array.isArray(raw?.planos) ? PLANS.filter((plan) => raw.planos.includes(plan)) : DEFAULT.planos,
 });
+
+/**
+ * "Uso do mês" (mês corrente, fuso de Brasília): salas abertas, rodadas avaliadas, alunos que treinaram e impressos liberados
+ * por rodada, de app_admin_dupla_usage (só administrador). Sem dado: "—".
+ */
+export function DuplaUsage() {
+  const { backend } = useSession();
+  const { data, error, reload } = useLoad(() => backend.rpc("app_admin_dupla_usage", {}), [backend]);
+  if (error) return <LoadError error={error} retry={reload} />;
+  if (!data) return <Loading />;
+  const num = (v) => (typeof v === "number" ? String(v) : "—");
+  return (
+    <Card>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Uso do mês</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+          <StatTile label="Salas" value={num(data.salas)} icon="door-open" />
+          <StatTile label="Rodadas avaliadas" value={num(data.rodadas_avaliadas)} icon="list-checks" />
+          <StatTile label="Alunos que treinaram" value={num(data.alunos)} icon="users" />
+          <StatTile
+            label="Impressos por rodada"
+            value={typeof data.impressos_por_rodada === "number" ? formatDecimal(data.impressos_por_rodada, 1) : "—"}
+            icon="files"
+          />
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 export function AdminDupla() {
   const { backend } = useSession();
@@ -62,6 +92,9 @@ export function AdminDupla() {
           </div>
         </div>
       </Card>
+      <div style={{ marginTop: 16 }}>
+        <DuplaUsage />
+      </div>
     </form>
   );
 }

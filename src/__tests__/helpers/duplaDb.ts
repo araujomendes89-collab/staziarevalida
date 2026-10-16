@@ -277,3 +277,18 @@ export async function seen(db: PGlite, uid: string, agoSeconds = 0, status: "liv
     [uid, String(agoSeconds), status]
   );
 }
+
+/**
+ * Arquivos de imagem das estações (`public.station_assets`, da Montagem de estações, migração 6000 de outro ramo). Sem a
+ * tabela no banco, cria uma de teste só com o que o Treino lê (`id uuid`, `storage_path text`); depois grava as linhas.
+ */
+export async function stationAssets(db: PGlite, rows: { id: string; storage_path: string }[]): Promise<void> {
+  const existe = (await db.query<{ t: string | null }>(`select to_regclass('public.station_assets')::text as t`)).rows[0].t;
+  if (!existe) await db.exec(`create table public.station_assets (id uuid primary key, storage_path text not null)`);
+  for (const r of rows) {
+    await db.query(
+      `insert into public.station_assets (id, storage_path) values ($1, $2) on conflict (id) do update set storage_path = excluded.storage_path`,
+      [r.id, r.storage_path]
+    );
+  }
+}
