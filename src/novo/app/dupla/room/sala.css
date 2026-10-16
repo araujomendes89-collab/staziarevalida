@@ -9,6 +9,8 @@
 .dupla-aval{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:24px;padding:20px 28px;align-items:start;box-sizing:border-box}
 .dupla-aval__col{height:calc(100vh - var(--dupla-head-h) - var(--dupla-foot-h) - 40px);display:flex;flex-direction:column;gap:12px;min-width:0}
 .dupla-aval__col > .osce-scroll{flex:1;padding-right:6px}
+/* dentro da coluna com rolagem própria o cabeçalho fixo do PEP gruda no topo da coluna (não abaixo da barra do app) */
+.dupla-aval__pep .sm-pep__head{top:0}
 .dupla-aval__left{display:flex;flex-direction:column;gap:10px}
 .dupla-hint{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--radius-md);background:var(--surface-sunken);color:var(--text-secondary);font:600 var(--text-xs)/1.4 var(--font-sans)}
 @media (max-width:1100px){
@@ -20,6 +22,7 @@
 .dupla-cand{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:24px;padding:24px 28px;align-items:start;box-sizing:border-box}
 .dupla-cand--single{grid-template-columns:minmax(0,880px);justify-content:center}
 .dupla-cand__col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.dupla-sheet .osce-printimg{max-width:none;border:0}
 @media (max-width:900px){.dupla-cand{grid-template-columns:1fr;padding:16px}}
 
 .dupla-foot{position:sticky;bottom:0;z-index:5;min-height:var(--dupla-foot-h);display:flex;align-items:center;flex-wrap:wrap;gap:10px;row-gap:8px;padding:10px 28px;background:var(--surface-card);border-top:1px solid var(--border-subtle);box-sizing:border-box}

@@ -85,9 +85,11 @@ export function CandidateSheet({ station, content, actions }) {
   return (
     <div className="dupla-cand__col">
       {sheet.url ? (
-        <Card padding={8}>
-          <PrintImage src={sheet.url} alt="Instruções para o participante e relato do caso clínico" />
-        </Card>
+        <div className="dupla-sheet">
+          <Card padding={8}>
+            <PrintImage src={sheet.url} alt="Instruções para o participante e relato do caso clínico" />
+          </Card>
+        </div>
       ) : sheet.done ? (
         <SheetText station={station} />
       ) : (

@@ -1,4 +1,4 @@
-// PRÉVIA do Treinamento em Dupla (porta 31960): dados de teste, sem login e sem banco.
+// PRÉVIA do Treinamento em Dupla (porta 31997): dados de teste, sem login e sem banco.
 //   /tela.html?t=praticar|perfil|estacoes|sala|vitrine  [&sala=<fase>-<papel>] [&estacao=<id>] [&perfil=nenhum] [&convite=1] [&tema=escuro]
 import React from "react";
 import { createRoot } from "react-dom/client";
