@@ -56,7 +56,7 @@ function SideGroup({ g, route, go, info, open, current, collapsed, onToggle, up 
     const on = route === g.direct;
     return (
       <button type="button" className={`smn-grp${on ? " is-current" : ""}`} aria-current={on ? "page" : undefined} aria-label={g.label} title={collapsed ? g.label : undefined} onClick={() => go(g.direct)}>
-        <Ic name={g.icon} />
+        <Ic name={g.icon} size={26} />
         {!collapsed && <span className="smn-lbl">{g.label}</span>}
         {g.badgeText && (collapsed ? <span className="smn-dot smn-dot--ai" aria-hidden="true" /> : <Badge b={{ text: g.badgeText, kind: "ai" }} />)}
       </button>
@@ -68,7 +68,7 @@ function SideGroup({ g, route, go, info, open, current, collapsed, onToggle, up 
     <div className={`smn-sub${up ? " smn-sub--up" : ""}`} id={`smn-sub-${g.id}`} role="group" aria-label={g.label}>
       {g.items.map(([id, ic, l]) => (
         <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} onClick={() => go(id)}>
-          <Ic name={ic} size={20} />
+          <Ic name={ic} size={22} />
           <span className="smn-lbl">{l}</span>
           <Badge b={itemBadge(id, info)} />
         </button>
@@ -87,7 +87,7 @@ function SideGroup({ g, route, go, info, open, current, collapsed, onToggle, up 
         title={collapsed ? g.label : undefined}
         onClick={onToggle}
       >
-        <Ic name={g.icon} />
+        <Ic name={g.icon} size={26} />
         {!collapsed && <span className="smn-lbl">{g.label}</span>}
         {gb && !isOpen && (collapsed ? <span className={`smn-dot smn-dot--${gb.kind}`} aria-hidden="true" /> : <Badge b={gb} />)}
         {!collapsed && <Icon name="chevron-right" size={16} className={`smn-chev${up ? " smn-chev--up" : ""}`} />}
@@ -151,7 +151,7 @@ function Sidebar({ route, go, phase, info, theme, collapsed, setCollapsed }) {
         <div className="smn-foot">
           <SideGroup g={config} route={route} go={go} info={info} open={open === "config"} current={current === "config"} collapsed={collapsed} onToggle={onToggle("config")} up />
           <button type="button" className="smn-grp" aria-label="Sair" title={collapsed ? "Sair" : undefined} onClick={() => info.onSignOut && info.onSignOut()}>
-            <Ic name="log-out" />
+            <Ic name="log-out" size={26} />
             {!collapsed && <span className="smn-lbl">Sair</span>}
           </button>
         </div>
