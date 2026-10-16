@@ -8,7 +8,7 @@ import fs from "fs";
 import path from "path";
 import { describe, expect, it } from "vitest";
 import {
-  BASE_NO_TAGS_LINE, EMOTIONAL_STATES, PROFILES, freshMemory, personaPromptLayer, personaTurn, recordReactions, resolveProfile, signalsFromText,
+  BASE_NO_TAGS_LINE, DEFAULT_EXPLOSIVA, EMOTIONAL_STATES, PROFILES, freshMemory, personaPromptLayer, personaTurn, recordReactions, resolveProfile, signalsFromText,
   transition, withReactionPolicy, type ExplosivaChoice, type PersonaMemory, type Signal,
 } from "../../server/tutor/personalityEngine";
 import { personaLanguageViolations, renderReply, unshout } from "../../server/tutor/voiceReactionFilter";
@@ -21,7 +21,7 @@ import { REACTIONS, REACTION_IDS, REACTION_PROFILES, type ReactionId, type React
 
 const ROOT = path.resolve(__dirname, "../..");
 const PLATFORM: { maxProfanity: "off" | "mild" | "moderate"; explosivaEnabled: boolean } = { maxProfanity: "moderate", explosivaEnabled: true };
-const adult = (level: ExplosivaChoice["level"], over: Partial<ExplosivaChoice> = {}): ExplosivaChoice => ({ level, optIn: true, adultConfirmed: true, shouts: true, ...over });
+const adult = (level: ExplosivaChoice["level"], over: Partial<ExplosivaChoice> = {}): ExplosivaChoice => ({ level, shouts: true, profanity: true, adultDeclared: true, ...over });
 const profileOf = (personality: string, explosiva: ExplosivaChoice | null = null, platform = PLATFORM) => resolveProfile({ personality, explosiva, platform });
 /** O dono marcou TODAS as reações para todos os perfis (pior caso para o filtro). */
 const ALL_RULES: ReactionRule[] = REACTION_PROFILES.flatMap((p) => REACTION_IDS.map((reaction) => ({ personality: p.personality, level: p.level, reaction, allowed: true, max_per_reply: 3, max_per_10: 10 })));
@@ -58,11 +58,34 @@ describe("perfis e parâmetros estruturados", () => {
     expect(profileOf("qualquer").profile.key).toBe("direto");
   });
 
-  it("N3/N4 sem ativação explícita OU sem maioridade confirmada caem para N2; com os dois, valem", () => {
-    expect(profileOf("durona", adult("n4", { optIn: false })).profile.key).toBe("durona:n2");
-    expect(profileOf("durona", adult("n3", { adultConfirmed: false })).profile.key).toBe("durona:n2");
-    expect(profileOf("durona", adult("n3", { adultConfirmed: false })).note).toMatch(/ativação explícita/);
+  it("N3/N4 dependem da declaração de 18+ e médico do aceite do Termo; sem ela caem para N2", () => {
+    expect(profileOf("durona", adult("n4", { adultDeclared: false })).profile.key).toBe("durona:n2");
+    expect(profileOf("durona", adult("n3", { adultDeclared: false })).note).toMatch(/Termo/);
     expect(profileOf("durona", adult("n4")).profile.key).toBe("durona:n4");
+    expect(profileOf("durona", adult("n1")).profile.key).toBe("durona:n1");
+  });
+
+  it("padrão do dono (16/10): quem escolhe a Durona e não mexeu nas preferências recebe o N3 com gritos e palavrões", () => {
+    expect(DEFAULT_EXPLOSIVA).toEqual({ level: "n3", shouts: true, profanity: true });
+    const r = profileOf("durona", { ...DEFAULT_EXPLOSIVA, adultDeclared: true });
+    expect(r.profile.key).toBe("durona:n3");
+    expect(r.profanityCap).toBe("moderate");
+    expect(r.shoutsAllowed).toBe(true);
+    // sem escolha nenhuma vinda do banco (ex.: banco fora do ar), o padrão vale mas sem maioridade comprovada: N2
+    expect(profileOf("durona", null).profile.key).toBe("durona:n2");
+  });
+
+  it("o aluno desliga palavrões e/ou gritos sem mudar o nível", () => {
+    const semPalavrao = profileOf("durona", adult("n4", { profanity: false }));
+    expect(semPalavrao.profile.key).toBe("durona:n4");
+    expect(semPalavrao.profanityCap).toBe("off");
+    expect(semPalavrao.shoutsAllowed).toBe(true);
+    const semGrito = profileOf("durona", adult("n4", { shouts: false }));
+    expect(semGrito.shoutsAllowed).toBe(false);
+    expect(semGrito.profanityCap).toBe("moderate");
+    const d = play("durona", adult("n4", { profanity: false }), [{ facts: ["wrong"] }, { facts: ["repeated_error"] }]);
+    expect(d.policy.profanity).toBe("off");
+    expect(personaLanguageViolations("Porra, de novo?", d).map((v) => v.code)).toContain("profanity");
   });
 
   it("Explosiva desligada no painel: vale a Durona de sempre; a escolha do aluno não muda Tranquilo nem Direto", () => {
@@ -180,8 +203,8 @@ describe("limites de linguagem por nível", () => {
       }
     }
   });
-  it("N3 sem ativação vira N2 e não xinga", () => {
-    const d = play("durona", adult("n3", { optIn: false }), [{ facts: ["wrong"] }, { facts: ["repeated_error"] }]);
+  it("N3 sem a declaração do Termo vira N2 e não xinga", () => {
+    const d = play("durona", adult("n3", { adultDeclared: false }), [{ facts: ["wrong"] }, { facts: ["repeated_error"] }]);
     expect(d.profileKey).toBe("durona:n2");
     expect(personaLanguageViolations("Porra, de novo?", d).map((v) => v.code)).toContain("profanity");
   });
@@ -399,7 +422,7 @@ describe("encaixe no prompt e no servidor", () => {
         calls.push(fn);
         if (fn === "ch_worker_tutor_settings") return { max_profanity: "moderate" };
         if (fn === "ch_worker_tutor_voice_reactions") return { explosiva_enabled: true, rules: [rule("durona", "n4", "laughs")] };
-        if (fn === "ch_worker_tutor_explosiva") return { level: "n4", shouts: true, opt_in_at: "2026-10-16T10:00:00Z", adult_confirmed_at: "2026-10-16T10:00:00Z" };
+        if (fn === "ch_worker_tutor_explosiva") return { level: "n4", shouts: true, profanity: true, is_default: false, adult_declared: true };
         return null;
       },
     } as never;
@@ -414,6 +437,17 @@ describe("encaixe no prompt e no servidor", () => {
     const b = await planPersonaTurn({ db: broken }, { userId: "u1", personality: "durona", provider: "elevenlabs", memory: null, studentText: "kkkk" });
     expect(b.profileKey).toBe("durona");
     expect(b.policy.reactions).toEqual([]);
+    forgetReactionConfig({ db: broken });
+    forgetTutorSettings({ db: broken });
+
+    // aluno sem escolha gravada: o banco devolve o padrão (N3) e a maioridade do Termo
+    const padrao = {
+      service: async (fn: string) =>
+        fn === "ch_worker_tutor_voice_reactions" ? { explosiva_enabled: true, rules: [] }
+          : fn === "ch_worker_tutor_explosiva" ? { level: "n3", shouts: true, profanity: true, is_default: true, adult_declared: true }
+            : { max_profanity: "moderate" },
+    } as never;
+    expect((await planPersonaTurn({ db: padrao }, { userId: "u2", personality: "durona", provider: "elevenlabs", memory: null })).profileKey).toBe("durona:n3");
   });
 
   it("estado inicial e memória limpa", () => {

@@ -6,9 +6,13 @@
 --   * tutor_voice_reaction_rules: o DONO escolhe, por professor e por nível da Durona Explosiva, quais reações de voz podem ser
 --     usadas ([laughs], [sighs], [shouts]…) e com que frequência máxima (por fala e a cada 10 falas). Sem linha = não pode.
 --     Nasce VAZIA: nenhuma reação passa até o dono marcar.
---   * tutor_explosiva_config: interruptor da Durona Explosiva para os alunos. NASCE DESLIGADO.
---   * tutor_explosiva_preferences: escolha do aluno (nível N1–N4, gritos ligados/desligados, ativação explícita e confirmação de
---     maioridade para N3/N4). Sem linha = modo não escolhido (vale a Durona de sempre).
+--   * tutor_explosiva_config: interruptor da Durona Explosiva para os alunos. NASCE LIGADO (decisão do dono de 16/10: "ativo para
+--     todos"; todos os alunos são médicos maiores de 18). O administrador pode desligar no painel.
+--   * tutor_explosiva_preferences: escolha do aluno (nível N1–N4, gritos e palavrões ligados/desligados). Sem linha = PADRÃO:
+--     N3 (Estressada), gritos e palavrões LIGADOS. O aluno baixa o nível ou desliga gritos/palavrões nas preferências do Tutor.
+--   * N3 e N4 dependem da declaração de maioridade e de médico gravada no aceite do Termo 2.0 (legal_declarations, migração 011500
+--     do ramo vt-termo). Sem essa declaração (ou antes de o Termo 2.0 existir no banco) o servidor usa N2 e o aluno não grava N3/N4.
+--     Nada é perguntado de novo ao ligar.
 --   * Funções: painel (app_admin_tutor_voice_reactions / app_admin_tutor_save_voice_reactions, só administrador, com motivo e
 --     registro), servidor (ch_worker_tutor_voice_reactions, ch_worker_tutor_explosiva, só serviço) e aluno
 --     (app_tutor_explosiva_preferences / app_tutor_save_explosiva_preferences, só a própria linha).
@@ -34,10 +38,10 @@ create table if not exists public.tutor_voice_reaction_rules (
 alter table public.tutor_voice_reaction_rules enable row level security;
 revoke all on table public.tutor_voice_reaction_rules from anon, authenticated;
 
--- ---------------------------------------------------------------- interruptor da Durona Explosiva
+-- ---------------------------------------------------------------- interruptor da Durona Explosiva (nasce LIGADO)
 create table if not exists public.tutor_explosiva_config (
   id boolean primary key default true check (id),
-  enabled boolean not null default false,
+  enabled boolean not null default true,
   updated_at timestamptz not null default now(),
   updated_by uuid references auth.users (id) on delete set null
 );
@@ -45,21 +49,35 @@ insert into public.tutor_explosiva_config (id) values (true) on conflict (id) do
 alter table public.tutor_explosiva_config enable row level security;
 revoke all on table public.tutor_explosiva_config from anon, authenticated;
 
--- ---------------------------------------------------------------- escolha do aluno
+-- ---------------------------------------------------------------- escolha do aluno (sem linha = padrão N3, gritos e palavrões ligados)
 create table if not exists public.tutor_explosiva_preferences (
   user_id uuid primary key references auth.users (id) on delete cascade,
-  level text not null default 'n1' check (level in ('n1', 'n2', 'n3', 'n4')),
+  level text not null default 'n3' check (level in ('n1', 'n2', 'n3', 'n4')),
   shouts boolean not null default true,
-  opt_in_at timestamptz,
-  adult_confirmed_at timestamptz,
-  updated_at timestamptz not null default now(),
-  constraint tutor_explosiva_n3_n4_ativado check (level in ('n1', 'n2') or (opt_in_at is not null and adult_confirmed_at is not null))
+  profanity boolean not null default true,
+  updated_at timestamptz not null default now()
 );
 alter table public.tutor_explosiva_preferences enable row level security;
 revoke all on table public.tutor_explosiva_preferences from anon, authenticated;
 grant select on table public.tutor_explosiva_preferences to authenticated;
 drop policy if exists "explosiva: ler a própria" on public.tutor_explosiva_preferences;
 create policy "explosiva: ler a própria" on public.tutor_explosiva_preferences for select to authenticated using (user_id = (select auth.uid()));
+
+-- ---------------------------------------------------------------- maioridade e médico: vem do aceite do Termo 2.0
+-- Lê legal_declarations (vt-termo, 011500) só se a tabela existir: esta migração não depende da outra para ser aplicada.
+create or replace function public.tutor_adult_declared(p_user uuid) returns boolean
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  v boolean := false;
+begin
+  if p_user is null or to_regclass('public.legal_declarations') is null then return false; end if;
+  execute 'select exists (select 1 from public.legal_declarations d join public.legal_acceptances a on a.id = d.acceptance_id
+                           where a.user_id = $1 and d.adult and d.physician)' into v using p_user;
+  return coalesce(v, false);
+end
+$$;
+revoke execute on function public.tutor_adult_declared(uuid) from public, anon, authenticated;
 
 -- ---------------------------------------------------------------- painel (administrador)
 create or replace function public.app_admin_tutor_voice_reactions() returns jsonb
@@ -131,8 +149,10 @@ revoke execute on function public.ch_worker_tutor_voice_reactions() from public,
 create or replace function public.ch_worker_tutor_explosiva(p_user uuid) returns jsonb
   language sql stable security definer set search_path = ''
 as $$
-  select jsonb_build_object('level', p.level, 'shouts', p.shouts, 'opt_in_at', p.opt_in_at, 'adult_confirmed_at', p.adult_confirmed_at)
-    from public.tutor_explosiva_preferences p where p.user_id = p_user
+  select jsonb_build_object(
+    'level', coalesce(p.level, 'n3'), 'shouts', coalesce(p.shouts, true), 'profanity', coalesce(p.profanity, true),
+    'is_default', p.user_id is null, 'adult_declared', public.tutor_adult_declared(p_user))
+  from (select 1) one left join public.tutor_explosiva_preferences p on p.user_id = p_user
 $$;
 revoke execute on function public.ch_worker_tutor_explosiva(uuid) from public, anon, authenticated;
 
@@ -142,22 +162,19 @@ create or replace function public.app_tutor_explosiva_preferences() returns json
 as $$
   select jsonb_build_object(
     'available', (select c.enabled from public.tutor_explosiva_config c),
-    'choice', (select jsonb_build_object('level', p.level, 'shouts', p.shouts, 'activated', p.opt_in_at is not null, 'adult_confirmed', p.adult_confirmed_at is not null)
-                 from public.tutor_explosiva_preferences p where p.user_id = (select auth.uid())))
+    'adult_declared', public.tutor_adult_declared((select auth.uid())),
+    'choice', jsonb_build_object('level', coalesce(p.level, 'n3'), 'shouts', coalesce(p.shouts, true), 'profanity', coalesce(p.profanity, true), 'is_default', p.user_id is null))
+  from (select 1) one left join public.tutor_explosiva_preferences p on p.user_id = (select auth.uid())
   where (select auth.uid()) is not null
 $$;
 revoke execute on function public.app_tutor_explosiva_preferences() from public, anon;
 
--- N3 e N4 só com ativação explícita (p_activate) e confirmação de maioridade (p_confirm_adult) nesta chamada ou já gravada.
--- p_level nulo = sair do modo Explosiva (apaga a linha; volta a Durona de sempre).
-create or replace function public.app_tutor_save_explosiva_preferences(p_level text, p_shouts boolean, p_activate boolean, p_confirm_adult boolean) returns jsonb
+-- p_level nulo = voltar ao padrão (apaga a linha). N3/N4 só para quem declarou 18+ e médico no aceite do Termo 2.0.
+create or replace function public.app_tutor_save_explosiva_preferences(p_level text, p_shouts boolean, p_profanity boolean) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
   v_user uuid := (select auth.uid());
-  v_prev public.tutor_explosiva_preferences;
-  v_adult timestamptz;
-  v_optin timestamptz;
 begin
   if v_user is null then raise exception 'Entre na sua conta.' using errcode = '42501'; end if;
   if p_level is null then
@@ -165,20 +182,16 @@ begin
     return public.app_tutor_explosiva_preferences();
   end if;
   if not coalesce((select c.enabled from public.tutor_explosiva_config c), false) then
-    raise exception 'A Durona Explosiva ainda não foi liberada.' using errcode = '42501';
+    raise exception 'A Durona Explosiva está desligada no momento.' using errcode = '42501';
   end if;
   if p_level not in ('n1', 'n2', 'n3', 'n4') then raise exception 'Nível inválido.' using errcode = '22023'; end if;
-  select * into v_prev from public.tutor_explosiva_preferences where user_id = v_user;
-  v_adult := case when coalesce(p_confirm_adult, false) then now() else v_prev.adult_confirmed_at end;
-  v_optin := case when p_level in ('n3', 'n4') then case when coalesce(p_activate, false) then now() else v_prev.opt_in_at end else v_prev.opt_in_at end;
-  if p_level in ('n3', 'n4') and (v_adult is null or v_optin is null) then
-    raise exception 'Os níveis 3 e 4 pedem ativação explícita e a confirmação de que você é maior de 18 anos.' using errcode = '22023';
+  if p_level in ('n3', 'n4') and not public.tutor_adult_declared(v_user) then
+    raise exception 'Os níveis 3 e 4 ficam liberados depois do aceite do Termo com a declaração de maioridade e de médico.' using errcode = '22023';
   end if;
-  insert into public.tutor_explosiva_preferences (user_id, level, shouts, opt_in_at, adult_confirmed_at, updated_at)
-  values (v_user, p_level, coalesce(p_shouts, v_prev.shouts, true), v_optin, v_adult, now())
-  on conflict (user_id) do update set level = excluded.level, shouts = excluded.shouts, opt_in_at = excluded.opt_in_at,
-    adult_confirmed_at = excluded.adult_confirmed_at, updated_at = excluded.updated_at;
+  insert into public.tutor_explosiva_preferences (user_id, level, shouts, profanity, updated_at)
+  values (v_user, p_level, coalesce(p_shouts, true), coalesce(p_profanity, true), now())
+  on conflict (user_id) do update set level = excluded.level, shouts = excluded.shouts, profanity = excluded.profanity, updated_at = excluded.updated_at;
   return public.app_tutor_explosiva_preferences();
 end
 $$;
-revoke execute on function public.app_tutor_save_explosiva_preferences(text, boolean, boolean, boolean) from public, anon;
+revoke execute on function public.app_tutor_save_explosiva_preferences(text, boolean, boolean) from public, anon;

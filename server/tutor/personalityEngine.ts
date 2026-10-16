@@ -15,9 +15,11 @@
  * safety.ts). Em sofrimento ou crise, qualquer professor fica calmo, sem palavrão, sem grito e sem reação de voz.
  *
  * Durona Explosiva (bloco 8): N1 Direta (sem palavrão), N2 Sarcástica (ironia leve, palavrão leve), N3 Estressada (palavrão
- * ocasional, voz elevada pontual), N4 Explosiva (teatral, palavrão espontâneo). N3/N4 só com ativação explícita do aluno e
- * confirmação de maioridade (declaração do termo inicial, decisão do dono de 15/10); sem isso o servidor rebaixa para N2.
- * "Desligar gritos" é opção separada do aluno e vale em qualquer nível. A Durona de hoje (perfil "padrao") continua igual.
+ * ocasional, voz elevada pontual), N4 Explosiva (teatral, palavrão espontâneo). Decisão do dono de 16/10 ("ativo para todos"):
+ * todos os alunos são médicos maiores de 18, então quem escolhe a Durona recebe por PADRÃO o N3 com gritos e palavrões ligados;
+ * o aluno baixa o nível ou desliga gritos/palavrões nas preferências. A maioridade vem da declaração do aceite do Termo 2.0
+ * (nada é perguntado de novo); sem ela, o servidor usa N2. A Durona de sempre (perfil "padrao") só vale se o painel desligar a
+ * Explosiva.
  */
 import { PERSONALITY_LIMITS, type ProfanityLevel } from "./personality";
 import {
@@ -144,16 +146,19 @@ const LEVEL_ORDER: ExplosivaLevel[] = ["n1", "n2", "n3", "n4"];
 const RANK: Record<ProfanityLevel, number> = { off: 0, mild: 1, moderate: 2 };
 const minProfanity = (a: ProfanityLevel, b: ProfanityLevel): ProfanityLevel => (RANK[a] <= RANK[b] ? a : b);
 
-/** Preferência do aluno para a Durona Explosiva (tabela tutor_explosiva_preferences; sem linha = modo desligado). */
+/** Preferência do aluno para a Durona Explosiva (tabela tutor_explosiva_preferences; sem linha = o padrão abaixo). */
 export interface ExplosivaChoice {
   level: ExplosivaLevel;
-  /** Ativou o N3/N4 de forma explícita (data gravada). */
-  optIn: boolean;
-  /** Confirmou ser maior de 18 (declaração do termo inicial). */
-  adultConfirmed: boolean;
-  /** Gritos ligados (opção separada; desligar vale em qualquer nível). */
+  /** Gritos ligados (opção separada do aluno). */
   shouts: boolean;
+  /** Palavrões ligados (opção separada do aluno). */
+  profanity: boolean;
+  /** Declarou 18+ e médico no aceite do Termo 2.0 (vem do banco, nunca do navegador). */
+  adultDeclared: boolean;
 }
+
+/** Padrão do dono (16/10): N3, gritos e palavrões ligados. A maioridade continua vindo do Termo. */
+export const DEFAULT_EXPLOSIVA: Omit<ExplosivaChoice, "adultDeclared"> = { level: "n3", shouts: true, profanity: true };
 
 export interface ProfileInput {
   /** Id do professor; os antigos acolhedor/preguicoso resolvem para Tranquilo. */
@@ -176,27 +181,29 @@ export function publicPersonality(id: string): PublicPersonality {
   return "direto";
 }
 
-/** Perfil desta conversa, com os travamentos do servidor (painel, maioridade, ativação, gritos). */
+/** Perfil desta conversa, com os travamentos do servidor (painel, maioridade do Termo, gritos e palavrões do aluno). */
 export function resolveProfile(input: ProfileInput): ResolvedProfile {
   const personality = publicPersonality(input.personality);
   let key: string = personality;
   let note: string | null = null;
-  const choice = input.explosiva ?? null;
-  if (personality === "durona" && choice && LEVEL_ORDER.includes(choice.level)) {
-    if (!input.platform.explosivaEnabled) note = "A Durona Explosiva ainda não foi liberada no painel: vale a Durona de sempre.";
+  const choice: ExplosivaChoice | null =
+    personality === "durona" ? input.explosiva ?? { ...DEFAULT_EXPLOSIVA, adultDeclared: false } : null;
+  if (choice && LEVEL_ORDER.includes(choice.level)) {
+    if (!input.platform.explosivaEnabled) note = "A Durona Explosiva está desligada no painel: vale a Durona de sempre.";
     else {
       let level = choice.level;
-      if ((level === "n3" || level === "n4") && !(choice.optIn && choice.adultConfirmed)) {
+      if ((level === "n3" || level === "n4") && !choice.adultDeclared) {
         level = "n2";
-        note = "N3 e N4 pedem ativação explícita e confirmação de maioridade: ficou no N2.";
+        note = "N3 e N4 dependem da declaração de maioridade e de médico do aceite do Termo: ficou no N2.";
       }
       key = `durona:${level}`;
     }
   }
   const profile = PROFILES[key];
+  const studentProfanity = choice && key !== "durona" ? choice.profanity !== false : true;
   return {
     profile,
-    profanityCap: minProfanity(profile.profanity_max, input.platform.maxProfanity ?? "off"),
+    profanityCap: studentProfanity ? minProfanity(profile.profanity_max, input.platform.maxProfanity ?? "off") : "off",
     shoutsAllowed: profile.shouts && (choice ? choice.shouts !== false : true),
     note,
   };

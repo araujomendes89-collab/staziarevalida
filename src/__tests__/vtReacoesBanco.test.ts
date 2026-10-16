@@ -2,8 +2,9 @@
 /**
  * Ensaio da migração do Personality Engine (supabase/migrations/…11900_tutor_reacoes_de_voz.sql) num banco local (PGlite), sem
  * tocar no banco real: aditiva, nasce vazia/desligada, só o administrador marca as reações (com motivo e registro), o servidor lê
- * só as liberadas, o aluno só mexe na própria escolha (N3/N4 só com ativação + maioridade), as preferências já salvas do Tutor
- * não mudam, o desfazer remove tudo e a migração pode ser colada de novo. Também ensaia aplicar dentro de BEGIN … ROLLBACK.
+ * só as liberadas; a Durona Explosiva nasce LIGADA com o padrão N3, gritos e palavrões ligados (decisão do dono de 16/10); o aluno
+ * só mexe na própria escolha e N3/N4 dependem da declaração de 18+ e médico do aceite do Termo 2.0 (legal_declarations, ramo
+ * vt-termo — aqui aplicada a migração 011500 de verdade quando o worktree existe); as preferências já salvas do Tutor não mudam, o desfazer remove tudo e a migração pode ser colada de novo. Também ensaia aplicar dentro de BEGIN … ROLLBACK.
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
@@ -37,8 +38,20 @@ async function rpc<T = any>(uid: string | null, fn: string, args: Record<string,
 }
 const salvar = (rules: unknown[], explosiva: boolean | null = null, uid: string | null = ADMIN, reason = MOTIVO) =>
   rpc(uid, "app_admin_tutor_save_voice_reactions", { p_rules: rules, p_explosiva_enabled: explosiva, p_reason: reason });
-const escolher = (uid: string, level: string | null, o: { shouts?: boolean; activate?: boolean; adult?: boolean } = {}) =>
-  rpc(uid, "app_tutor_save_explosiva_preferences", { p_level: level, p_shouts: o.shouts ?? null, p_activate: o.activate ?? false, p_confirm_adult: o.adult ?? false });
+const escolher = (uid: string, level: string | null, o: { shouts?: boolean; profanity?: boolean } = {}) =>
+  rpc(uid, "app_tutor_save_explosiva_preferences", { p_level: level, p_shouts: o.shouts ?? null, p_profanity: o.profanity ?? null });
+const TERMO_V2 = path.resolve(ROOT, "../vt-termo/supabase/migrations/20261003011500_termo_v2_declaracoes.sql");
+/** Estrutura do Termo 2.0 (vt-termo): a migração de verdade quando o worktree existe; senão, a mesma tabela em miniatura. */
+async function termoV2() {
+  if (fs.existsSync(TERMO_V2)) await db.exec(fs.readFileSync(TERMO_V2, "utf8"));
+  else await db.exec(`create table if not exists public.legal_declarations (acceptance_id bigint primary key references public.legal_acceptances (id) on delete cascade,
+    adult boolean not null check (adult), physician boolean not null check (physician), declared_at timestamptz not null default now())`);
+}
+/** O aluno aceitou o Termo declarando 18+ e médico (como a tela de aceite grava). */
+async function declara(uid: string) {
+  const a = await db.query<{ id: number }>(`insert into public.legal_acceptances (user_id, document, version, origin, email_hash) values ($1, 'termo_uso', '2.0-teste', 'tela_aceite', 'x') returning id`, [uid]);
+  await db.query(`insert into public.legal_declarations (acceptance_id, adult, physician) values ($1, true, true)`, [a.rows[0].id]);
+}
 const worker = async () => (await db.query<{ r: any }>(`select public.ch_worker_tutor_voice_reactions() as r`)).rows[0].r;
 const prefsSnapshot = async () => (await db.query(`select * from public.tutor_preferences order by user_id`)).rows;
 const exists = async (name: string) => (await db.query<{ t: string | null }>(`select to_regclass($1)::text as t`, [`public.${name}`])).rows[0].t !== null;
@@ -70,22 +83,28 @@ describe("migração das reações de voz — ensaio no banco local", () => {
     expect(await prefsSnapshot()).toEqual(before);
   });
 
-  it("nasce vazia e com a Durona Explosiva desligada", async () => {
-    expect(await worker()).toEqual({ explosiva_enabled: false, rules: [] });
-    expect(await rpc(ADMIN, "app_admin_tutor_voice_reactions")).toMatchObject({ explosiva_enabled: false, rules: [] });
+  it("nasce sem reação marcada e com a Durona Explosiva LIGADA", async () => {
+    expect(await worker()).toEqual({ explosiva_enabled: true, rules: [] });
+    expect(await rpc(ADMIN, "app_admin_tutor_voice_reactions")).toMatchObject({ explosiva_enabled: true, rules: [] });
+  });
+
+  it("aluno sem escolha recebe o padrão N3 com gritos e palavrões; sem o Termo 2.0 no banco, sem maioridade (o servidor usa N2)", async () => {
+    expect(await rpc(ALUNO, "app_tutor_explosiva_preferences")).toEqual({ available: true, adult_declared: false, choice: { level: "n3", shouts: true, profanity: true, is_default: true } });
+    expect((await db.query<any>(`select public.ch_worker_tutor_explosiva($1) as r`, [ALUNO])).rows[0].r).toEqual({ level: "n3", shouts: true, profanity: true, is_default: true, adult_declared: false });
+    await expect(escolher(ALUNO, "n3")).rejects.toThrow(/aceite do Termo/);
   });
 
   it("aluno, editor e visitante não leem nem salvam as reações do painel", async () => {
     await expect(rpc(null, "app_admin_tutor_voice_reactions")).rejects.toThrow(/permission denied/);
     for (const uid of [ALUNO, EDITOR]) {
       await expect(rpc(uid, "app_admin_tutor_voice_reactions")).rejects.toThrow("Acesso restrito a administradores.");
-      await expect(salvar([r("durona", "n4", "laughs")], true, uid)).rejects.toThrow("Acesso restrito a administradores.");
+      await expect(salvar([r("durona", "n4", "laughs")], false, uid)).rejects.toThrow("Acesso restrito a administradores.");
     }
-    expect(await worker()).toEqual({ explosiva_enabled: false, rules: [] });
+    expect(await worker()).toEqual({ explosiva_enabled: true, rules: [] });
   });
 
   it("o servidor (ch_worker_*) não fica aberto a aluno nem a visitante; as tabelas não são lidas direto", async () => {
-    for (const fn of ["ch_worker_tutor_voice_reactions()", "ch_worker_tutor_explosiva(uuid)"]) {
+    for (const fn of ["ch_worker_tutor_voice_reactions()", "ch_worker_tutor_explosiva(uuid)", "tutor_adult_declared(uuid)"]) {
       const q = await db.query<any>(`select has_function_privilege('anon', 'public.${fn}', 'execute') a, has_function_privilege('authenticated', 'public.${fn}', 'execute') b`);
       expect(q.rows[0]).toEqual({ a: false, b: false });
     }
@@ -100,11 +119,11 @@ describe("migração das reações de voz — ensaio no banco local", () => {
     await expect(salvar([r("direto", "n3", "laughs")])).rejects.toThrow(/Regra de reação inválida/);
     await expect(salvar([r("durona", "n4", "laughs", { max_per_reply: 5 })])).rejects.toThrow(/Regra de reação inválida/);
     await expect(salvar([r("durona", "n4", "angry")])).rejects.toThrow();
-    expect(await worker()).toEqual({ explosiva_enabled: false, rules: [] });
+    expect(await worker()).toEqual({ explosiva_enabled: true, rules: [] });
   });
 
   it("o administrador marca; o servidor vê só as liberadas; o registro guarda o motivo; salvar de novo substitui a lista", async () => {
-    await salvar([r("durona", "n4", "laughs", { max_per_reply: 2, max_per_10: 4 }), r("durona", "n4", "shouts"), r("tranquilo", "padrao", "sighs", { allowed: false })], true);
+    await salvar([r("durona", "n4", "laughs", { max_per_reply: 2, max_per_10: 4 }), r("durona", "n4", "shouts"), r("tranquilo", "padrao", "sighs", { allowed: false })], null);
     const w = await worker();
     expect(w.explosiva_enabled).toBe(true);
     expect(w.rules.map((x: any) => `${x.personality}:${x.level}:${x.reaction}`).sort()).toEqual(["durona:n4:laughs", "durona:n4:shouts"]);
@@ -117,41 +136,46 @@ describe("migração das reações de voz — ensaio no banco local", () => {
     expect((await worker()).explosiva_enabled).toBe(true); // nulo = não mexe no interruptor
   });
 
-  it("aluno: N1/N2 livres; N3/N4 só com ativação explícita e maioridade; gritos desligáveis; lê só a própria escolha", async () => {
-    await escolher(ALUNO, "n2", { shouts: false });
-    expect(await rpc(ALUNO, "app_tutor_explosiva_preferences")).toEqual({ available: true, choice: { level: "n2", shouts: false, activated: false, adult_confirmed: false } });
-    await expect(escolher(ALUNO, "n4")).rejects.toThrow(/ativação explícita/);
-    await expect(escolher(ALUNO, "n4", { activate: true })).rejects.toThrow(/maior de 18/);
-    await escolher(ALUNO, "n4", { activate: true, adult: true });
-    expect((await rpc(ALUNO, "app_tutor_explosiva_preferences")).choice).toEqual({ level: "n4", shouts: false, activated: true, adult_confirmed: true });
-    const srv = (await db.query<any>(`select public.ch_worker_tutor_explosiva($1) as r`, [ALUNO])).rows[0].r;
-    expect(srv).toMatchObject({ level: "n4", shouts: false });
-    expect(srv.opt_in_at).toBeTruthy();
-    // o outro aluno não vê a escolha deste
-    expect((await rpc(OUTRO, "app_tutor_explosiva_preferences")).choice).toBeNull();
+  it("com o Termo 2.0 aceito (18+ e médico): N3/N4 liberados; o aluno baixa o nível e desliga gritos/palavrões; lê só a própria escolha", async () => {
+    await termoV2();
+    expect((await rpc(ALUNO, "app_tutor_explosiva_preferences")).adult_declared).toBe(false);
+    await declara(ALUNO);
+    expect((await rpc(ALUNO, "app_tutor_explosiva_preferences")).adult_declared).toBe(true);
+    expect((await db.query<any>(`select public.ch_worker_tutor_explosiva($1) as r`, [ALUNO])).rows[0].r).toMatchObject({ level: "n3", adult_declared: true, is_default: true });
+    await escolher(ALUNO, "n4");
+    await escolher(ALUNO, "n2", { shouts: false, profanity: false });
+    expect((await rpc(ALUNO, "app_tutor_explosiva_preferences")).choice).toEqual({ level: "n2", shouts: false, profanity: false, is_default: false });
+    expect((await db.query<any>(`select public.ch_worker_tutor_explosiva($1) as r`, [ALUNO])).rows[0].r).toEqual({ level: "n2", shouts: false, profanity: false, is_default: false, adult_declared: true });
+    await expect(escolher(ALUNO, "n9")).rejects.toThrow(/Nível inválido/);
+    // o outro aluno (sem declaração) não grava N3/N4 e não vê a escolha deste
+    await expect(escolher(OUTRO, "n4")).rejects.toThrow(/aceite do Termo/);
+    expect((await rpc(OUTRO, "app_tutor_explosiva_preferences")).choice.is_default).toBe(true);
     const rows = await db.transaction(async (tx) => {
       await tx.exec(`set local role authenticated`);
       await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: OUTRO })]);
       return (await tx.query(`select * from public.tutor_explosiva_preferences`)).rows;
     });
     expect(rows).toEqual([]);
-    // sair do modo apaga a escolha
+    await expect(rpc(null, "app_tutor_save_explosiva_preferences", { p_level: "n1", p_shouts: null, p_profanity: null })).rejects.toThrow(/permission denied/);
+    // voltar ao padrão apaga a escolha
     await escolher(ALUNO, null);
-    expect((await rpc(ALUNO, "app_tutor_explosiva_preferences")).choice).toBeNull();
+    expect((await rpc(ALUNO, "app_tutor_explosiva_preferences")).choice).toEqual({ level: "n3", shouts: true, profanity: true, is_default: true });
   });
 
   it("com a Explosiva desligada no painel o aluno não consegue escolher", async () => {
     await salvar([], false);
-    await expect(escolher(OUTRO, "n1")).rejects.toThrow(/ainda não foi liberada/);
+    await expect(escolher(OUTRO, "n1")).rejects.toThrow(/desligada/);
+    expect((await rpc(OUTRO, "app_tutor_explosiva_preferences")).available).toBe(false);
   });
 
   it("desfazer remove só o que a migração criou; as preferências do Tutor continuam; e dá para aplicar de novo", async () => {
     await db.exec(UNDO);
     for (const t of ["tutor_voice_reaction_rules", "tutor_explosiva_config", "tutor_explosiva_preferences"]) expect(await exists(t)).toBe(false);
-    const fns = (await db.query<{ n: number }>(`select count(*)::int n from pg_proc where proname in ('app_admin_tutor_voice_reactions','app_admin_tutor_save_voice_reactions','ch_worker_tutor_voice_reactions','ch_worker_tutor_explosiva','app_tutor_explosiva_preferences','app_tutor_save_explosiva_preferences')`)).rows[0].n;
+    const fns = (await db.query<{ n: number }>(`select count(*)::int n from pg_proc where proname in ('app_admin_tutor_voice_reactions','app_admin_tutor_save_voice_reactions','ch_worker_tutor_voice_reactions','ch_worker_tutor_explosiva','app_tutor_explosiva_preferences','app_tutor_save_explosiva_preferences','tutor_adult_declared')`)).rows[0].n;
     expect(fns).toBe(0);
     expect(await prefsSnapshot()).toEqual(before);
+    expect(await exists("legal_declarations")).toBe(true); // a estrutura do Termo 2.0 não é tocada pelo desfazer
     await db.exec(SQL);
-    expect(await worker()).toEqual({ explosiva_enabled: false, rules: [] });
+    expect(await worker()).toEqual({ explosiva_enabled: true, rules: [] });
   });
 });

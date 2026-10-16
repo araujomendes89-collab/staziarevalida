@@ -83,8 +83,8 @@ export const REACTION_PROFILES: { key: string; personality: PublicPersonality; l
   { key: "durona", personality: "durona", level: "padrao", label: "Durona (como está hoje)", note: "a Durona atual, sem o modo Explosiva" },
   { key: "durona:n1", personality: "durona", level: "n1", label: "Explosiva · N1 Direta", note: "sem palavrão" },
   { key: "durona:n2", personality: "durona", level: "n2", label: "Explosiva · N2 Sarcástica", note: "ironia leve" },
-  { key: "durona:n3", personality: "durona", level: "n3", label: "Explosiva · N3 Estressada", note: "palavrão ocasional; só com ativação do aluno" },
-  { key: "durona:n4", personality: "durona", level: "n4", label: "Explosiva · N4 Explosiva", note: "teatral e ácida; só com ativação do aluno" },
+  { key: "durona:n3", personality: "durona", level: "n3", label: "Explosiva · N3 Estressada", note: "palavrão ocasional; PADRÃO de quem escolhe a Durona (precisa da declaração de 18+ do Termo)" },
+  { key: "durona:n4", personality: "durona", level: "n4", label: "Explosiva · N4 Explosiva", note: "teatral e ácida; o aluno escolhe (precisa da declaração de 18+ do Termo)" },
 ];
 export const profileKey = (personality: string, level: string) => (level === "padrao" ? personality : `${personality}:${level}`);
 

@@ -65,12 +65,18 @@ export async function reactionConfig(deps: Pick<TutorDeps, "db" | "log">): Promi
 
 export const forgetReactionConfig = (deps: Pick<TutorDeps, "db">) => cache.delete(deps.db);
 
-/** Escolha do aluno para a Durona Explosiva (null = modo não escolhido). Nunca vem do navegador: só do banco. */
+/**
+ * Escolha do aluno para a Durona Explosiva, já com o padrão (N3, gritos e palavrões ligados) e a maioridade declarada no Termo.
+ * Nunca vem do navegador: só do banco. Banco fora do ar = null (o motor usa o padrão sem maioridade, ou seja, N2).
+ */
 export async function explosivaChoice(deps: Pick<TutorDeps, "db" | "log">, userId: string): Promise<ExplosivaChoice | null> {
   try {
-    const raw = await deps.db.service<{ level?: string; shouts?: boolean; opt_in_at?: string | null; adult_confirmed_at?: string | null } | null>("ch_worker_tutor_explosiva", { p_user: userId });
-    if (!raw || !["n1", "n2", "n3", "n4"].includes(String(raw.level))) return null;
-    return { level: raw.level as ExplosivaChoice["level"], shouts: raw.shouts !== false, optIn: Boolean(raw.opt_in_at), adultConfirmed: Boolean(raw.adult_confirmed_at) };
+    const raw = await deps.db.service<{ level?: string; shouts?: boolean; profanity?: boolean; adult_declared?: boolean } | null>("ch_worker_tutor_explosiva", { p_user: userId });
+    if (!raw) return null;
+    return {
+      level: (["n1", "n2", "n3", "n4"].includes(String(raw.level)) ? raw.level : "n3") as ExplosivaChoice["level"],
+      shouts: raw.shouts !== false, profanity: raw.profanity !== false, adultDeclared: raw.adult_declared === true,
+    };
   } catch {
     return null;
   }
