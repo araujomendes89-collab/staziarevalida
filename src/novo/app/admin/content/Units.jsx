@@ -18,6 +18,9 @@ import { FichaRevisor } from "./unidades/Ficha.jsx";
 import { HistoricoUnidade } from "./unidades/Historico.jsx";
 import { ResumoAprovacao } from "./unidades/Resumo.jsx";
 import { dataCurta } from "./unidades/rotulos.js";
+import { ricoValido } from "../../../../shared/docRico";
+import ParagrafoRico from "../../editorPro/leitor/ParagrafoRico.jsx";
+const EditorAula = React.lazy(() => import("../../editorPro/EditorAula.jsx"));
 
 const ORDER = ["awaiting_review", "needs_update", "draft", "approved", "published", "retired"];
 
@@ -356,6 +359,9 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
   const [dirty, setDirty] = React.useState(false);
   const [editando, setEditando] = React.useState(false);
   const [confirmaNova, setConfirmaNova] = React.useState(false);
+  const [docConfig, setDocConfig] = React.useState(version.content.doc_config ?? null);
+  const [completo, setCompleto] = React.useState(false);
+  const [chaveEditorAula, setChaveEditorAula] = React.useState(0);
   const act = useAction();
   const claimLabel = new Map(claims.map((c, i) => [c.id, `A${i + 1}`]));
   const editable = podeEditar && editando; // campos ligados agora
@@ -369,18 +375,30 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
   };
   const cancelar = () => {
     setSections(original());
+    setDocConfig(version.content.doc_config ?? null);
+    setCompleto(false);
     setDirty(false);
     setEditando(false);
   };
   const salvar = () =>
-    act.run(() => backend.rpc("app_ch_save_unit_version", { p_version_id: version.id, p_content: { ...version.content, sections } }), "Texto salvo. As aprovações desta versão deixaram de valer.").then((r) => r && (setDirty(false), setEditando(false), onSaved()));
+    act.run(() => backend.rpc("app_ch_save_unit_version", { p_version_id: version.id, p_content: { ...version.content, sections, ...(docConfig ? { doc_config: docConfig } : {}) } }), "Texto salvo. As aprovações desta versão deixaram de valer.").then((r) => r && (setDirty(false), setEditando(false), onSaved()));
   const criarNova = () => act.run(() => backend.rpc("app_ch_new_version", { p_from_version_id: version.id }), null).then((id) => id && onNewVersion?.(id));
+
+  const alternarModo = () => {
+    if (!completo) setChaveEditorAula(prev => prev + 1);
+    setCompleto(!completo);
+  };
+
   return (
     <Section
       title="Texto da unidade (base revisada)"
       action={
         editable ? (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            <Button size="sm" variant="secondary" onClick={alternarModo}>
+              {completo ? "Editar por parágrafo" : "Editor completo"}
+            </Button>
+            <div style={{ width: 1, background: "var(--border-subtle)", alignSelf: "stretch", margin: "4px 0" }} />
             <Button size="sm" icon="check" disabled={!dirty} loading={act.busy} onClick={salvar}>
               Salvar texto
             </Button>
@@ -416,57 +434,88 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
       )}
       {editable && <p style={{ margin: "0 0 10px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Salvar invalida as aprovações e exige gerar os materiais de novo. Informação clínica nova precisa de afirmação com evidência.</p>}
       {act.feedback}
-      {sections.map((s, si) => (
-        <div key={si} style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 10, marginTop: 10 }}>
-          {editable ? <TextField label="Seção" value={s.heading ?? ""} onChange={(e) => update((x) => (x[si].heading = e.target.value))} /> : <h4 style={{ margin: "0 0 6px", font: "var(--type-h4)", color: "var(--text-brand)" }}>{s.heading}</h4>}
-          {(s.paragraphs ?? []).map((p, pi) => (
-            <div key={pi} style={{ margin: "8px 0", paddingLeft: 10, borderLeft: `3px solid ${p.clinical ? "var(--border-brand)" : "var(--border-default)"}` }}>
-              {editable ? <CampoTexto modo="linha" label={`Parágrafo ${pi + 1}`} value={p.text} onChange={(t) => update((x) => (x[si].paragraphs[pi].text = t))} minRows={3} /> : <p style={{ margin: 0 }}><TextoRico texto={p.text} /></p>}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 4 }}>
-                {editable ? (
-                  <Checkbox label="Conteúdo clínico" checked={Boolean(p.clinical)} onChange={(e) => update((x) => (x[si].paragraphs[pi].clinical = e.target.checked))} />
-                ) : (
-                  p.clinical && <Badge size="sm" tone="brand">clínico</Badge>
-                )}
-                {claims.map((c) => {
-                  const on = (p.claim_ids ?? []).includes(c.id);
-                  if (!editable && !on) return null;
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      title={c.statement}
-                      disabled={!editable}
-                      className={`sm-badge sm-badge--sm`}
-                      style={{ cursor: editable ? "pointer" : "default", background: on ? "var(--selected-bg)" : "var(--surface-sunken)", color: on ? "var(--selected-text)" : "var(--text-tertiary)", borderColor: on ? "var(--selected-border)" : "transparent" }}
-                      onClick={() =>
-                        update((x) => {
-                          const ids = new Set(x[si].paragraphs[pi].claim_ids ?? []);
-                          on ? ids.delete(c.id) : ids.add(c.id);
-                          x[si].paragraphs[pi].claim_ids = [...ids];
-                        })
-                      }
-                    >
-                      {claimLabel.get(c.id)}
-                    </button>
-                  );
-                })}
-                {editable && (
-                  <Button size="sm" variant="ghost" icon="x" onClick={() => update((x) => x[si].paragraphs.splice(pi, 1))}>
-                    Remover
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-          {editable && (
-            <Button size="sm" variant="ghost" icon="plus" onClick={() => update((x) => (x[si].paragraphs = [...(x[si].paragraphs ?? []), { text: "", clinical: false, claim_ids: [] }]))}>
-              Parágrafo
-            </Button>
-          )}
-        </div>
-      ))}
-      {editable && (
+      
+      {editable && completo ? (
+        <React.Suspense fallback={<div style={{ padding: "20px", textAlign: "center" }}>Carregando editor completo...</div>}>
+          <EditorAula
+            key={`editor-aula-${chaveEditorAula}`}
+            content={{ ...version.content, sections, doc_config: docConfig ?? undefined }}
+            aoMudar={(c) => {
+              setSections(c.sections);
+              setDocConfig(c.doc_config ?? null);
+              setDirty(true);
+            }}
+          />
+        </React.Suspense>
+      ) : (
+        sections.map((s, si) => (
+          <div key={si} style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 10, marginTop: 10 }}>
+            {editable ? <TextField label="Seção" value={s.heading ?? ""} onChange={(e) => update((x) => (x[si].heading = e.target.value))} /> : <h4 style={{ margin: "0 0 6px", font: "var(--type-h4)", color: "var(--text-brand)" }}>{s.heading}</h4>}
+            {(s.paragraphs ?? []).map((p, pi) => {
+              const eRico = ricoValido(p.text, p.rico);
+              return (
+                <div key={pi} style={{ margin: "8px 0", paddingLeft: 10, borderLeft: `3px solid ${p.clinical ? "var(--border-brand)" : "var(--border-default)"}` }}>
+                  {editable ? (
+                    eRico ? (
+                      <div style={{ padding: "12px", background: "var(--surface-sunken)", borderRadius: "var(--radius-md)", margin: "8px 0" }}>
+                        <p style={{ margin: "0 0 8px", font: "var(--type-caption)", color: "var(--text-secondary)", fontStyle: "italic" }}>
+                          Este parágrafo tem formatação do editor completo. Para mudar o texto, use o Editor completo.
+                        </p>
+                        <ParagrafoRico texto={p.text} rico={p.rico} />
+                      </div>
+                    ) : (
+                      <CampoTexto modo="linha" label={`Parágrafo ${pi + 1}`} value={p.text} onChange={(t) => update((x) => (x[si].paragraphs[pi].text = t))} minRows={3} />
+                    )
+                  ) : (
+                    <ParagrafoRico texto={p.text} rico={p.rico} style={{ margin: 0 }} />
+                  )}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 4 }}>
+                    {editable ? (
+                      <Checkbox label="Conteúdo clínico" checked={Boolean(p.clinical)} onChange={(e) => update((x) => (x[si].paragraphs[pi].clinical = e.target.checked))} />
+                    ) : (
+                      p.clinical && <Badge size="sm" tone="brand">clínico</Badge>
+                    )}
+                    {claims.map((c) => {
+                      const on = (p.claim_ids ?? []).includes(c.id);
+                      if (!editable && !on) return null;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          title={c.statement}
+                          disabled={!editable}
+                          className={`sm-badge sm-badge--sm`}
+                          style={{ cursor: editable ? "pointer" : "default", background: on ? "var(--selected-bg)" : "var(--surface-sunken)", color: on ? "var(--selected-text)" : "var(--text-tertiary)", borderColor: on ? "var(--selected-border)" : "transparent" }}
+                          onClick={() =>
+                            update((x) => {
+                              const ids = new Set(x[si].paragraphs[pi].claim_ids ?? []);
+                              on ? ids.delete(c.id) : ids.add(c.id);
+                              x[si].paragraphs[pi].claim_ids = [...ids];
+                            })
+                          }
+                        >
+                          {claimLabel.get(c.id)}
+                        </button>
+                      );
+                    })}
+                    {editable && (
+                      <Button size="sm" variant="ghost" icon="x" onClick={() => update((x) => x[si].paragraphs.splice(pi, 1))}>
+                        Remover
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {editable && (
+              <Button size="sm" variant="ghost" icon="plus" onClick={() => update((x) => (x[si].paragraphs = [...(x[si].paragraphs ?? []), { text: "", clinical: false, claim_ids: [] }]))}>
+                Parágrafo
+              </Button>
+            )}
+          </div>
+        ))
+      )}
+      {!completo && editable && (
         <div style={{ marginTop: 10 }}>
           <Button size="sm" variant="secondary" icon="plus" onClick={() => update((x) => x.push({ heading: "Nova seção", paragraphs: [] }))}>
             Seção

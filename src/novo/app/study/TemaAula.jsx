@@ -12,6 +12,8 @@ import { ProtectedImage, noMenu, preCarregarCartao, useVersoPronto } from "./Aul
 import { blocoDe, boxOf, celula, cleanHeading, dividirFrases, minutosDeLeitura, mudanca, progressoDaAula, secaoTipo, sobretitulo } from "./aulaPadrao.js";
 import "./aula.css";
 import { TextoRico } from "../textoRico/TextoRico.jsx";
+import { ricoValido } from "../../../shared/docRico";
+import ParagrafoRico from "../editorPro/leitor/ParagrafoRico.jsx";
 
 export { boxOf };
 
@@ -35,9 +37,14 @@ function Head({ n, icon, over, title, done }) {
 const BOX_ICON = { peg: "triangle-alert", atencao: "circle-alert", nota: "lightbulb" };
 
 /** Parágrafo comum ou caixa (Pegadinha, Atenção, Tome nota). */
-function Bloco({ texto, estilo }) {
+function Bloco({ texto, estilo, rico }) {
   const b = blocoDe(texto, estilo);
-  if (b.kind === "p") return <p className="al-p"><TextoRico texto={texto} /></p>;
+  if (b.kind === "p") {
+    if (ricoValido(texto, rico)) {
+      return <ParagrafoRico texto={texto} rico={rico} className="al-p al-p-rico" />;
+    }
+    return <p className="al-p"><TextoRico texto={texto} /></p>;
+  }
   return (
     <div className={`al-box al-${b.kind}`} role="note">
       <span className="al-box-ico" aria-hidden="true"><Icon name={BOX_ICON[b.kind]} size={18} /></span>
@@ -579,7 +586,7 @@ function Conteudo({ data, tema, go, notes, onBack, onProgresso }) {
                     </div>
                   ))}
                   {tipo === "mudou" && <div className="al-muds">{paras.map((p, j) => <Mudanca key={j} texto={p} />)}</div>}
-                  {tipo === "bloco" && paras.map((p, j) => <Bloco key={j} texto={p} estilo={estilos[j]} />)}
+                  {tipo === "bloco" && paras.map((p, j) => <Bloco key={j} texto={p} estilo={estilos[j]} rico={s.ricos?.[j]} />)}
                   {tipo === "erros" && (
                     <div className="al-chk erro">
                       <div className="al-chk-h">

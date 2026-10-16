@@ -1,11 +1,14 @@
 // Prévia do editor estilo Word: as telas de verdade (Editar aula e Unidades/Revisão) com banco simulado; ao lado, como o aluno vê.
-import React from "react";
+import React, { Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import "../../src/novo/ds/styles.css";
 import { AdminLessons } from "../../src/novo/app/admin/AdminLessons.jsx";
 import { Units } from "../../src/novo/app/admin/content/Units.jsx";
 import { TextoRico } from "../../src/novo/app/textoRico/TextoRico.jsx";
+import ParagrafoRico from "../../src/novo/app/editorPro/leitor/ParagrafoRico.jsx";
 import { carregarDados, estado } from "./sessaoSimulada.jsx";
+
+const EditorAula = React.lazy(() => import("../../src/novo/app/editorPro/EditorAula.jsx"));
 
 function useEstado() {
   const [, set] = React.useState(0);
@@ -34,7 +37,9 @@ function ComoAlunoVe() {
         {(e.unit?.version.content.sections ?? []).map((s, i) => (
           <div key={i}>
             <h4 style={{ margin: "10px 0 4px" }}>{s.heading}</h4>
-            {(s.paragraphs ?? []).map((p, j) => <p key={j} style={{ margin: "0 0 8px", lineHeight: 1.6 }}><TextoRico texto={p.text} /></p>)}
+            {(s.paragraphs ?? []).map((p, j) => (
+              <ParagrafoRico key={j} texto={p.text} rico={p.rico} style={{ margin: "0 0 8px", lineHeight: 1.6 }} />
+            ))}
           </div>
         ))}
       </section>
@@ -49,6 +54,7 @@ function ComoAlunoVe() {
 const ABAS = [
   { id: "aula", label: "Editar aula" },
   { id: "unidades", label: "Unidades e revisão" },
+  { id: "completo", label: "Editor completo (aula inteira)" },
 ];
 
 function Previa() {
@@ -56,6 +62,12 @@ function Previa() {
   const [aba, setAba] = React.useState("aula");
   if (!e.lesson) return <p style={{ padding: 24 }}>Carregando a prévia…</p>;
   const ctx = { params: new URLSearchParams({ versao: "v-previa" }), go: () => {}, isAdmin: true, isStaff: true, reviewerAreas: ["PEDIATRIA"] };
+
+  const gravarEditorCompleto = (novoContent) => {
+    e.unit.version.content = novoContent;
+    estado.ouvintes.forEach((f) => f());
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-app)", color: "var(--text-primary)", padding: "16px clamp(12px, 3vw, 32px)", fontFamily: "var(--font-sans)" }}>
       <header style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
@@ -70,7 +82,15 @@ function Previa() {
         </nav>
       </header>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: 20, alignItems: "start" }}>
-        <div style={{ minWidth: 0 }}>{aba === "aula" ? <AdminLessons /> : <Units {...ctx} />}</div>
+        <div style={{ minWidth: 0, height: aba === "completo" ? "calc(100vh - 100px)" : "auto" }}>
+          {aba === "aula" && <AdminLessons />}
+          {aba === "unidades" && <Units {...ctx} />}
+          {aba === "completo" && (
+            <Suspense fallback={<div>Carregando editor...</div>}>
+              <EditorAula content={e.unit.version.content} aoMudar={gravarEditorCompleto} />
+            </Suspense>
+          )}
+        </div>
         <ComoAlunoVe />
       </div>
     </div>
