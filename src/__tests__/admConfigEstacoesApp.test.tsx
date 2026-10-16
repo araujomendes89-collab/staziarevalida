@@ -49,13 +49,14 @@ vi.mock("../novo/app/admin/AdminScreen.jsx", async () => ({
   isStaffRole: (await import("../novo/app/admin/common.jsx")).isStaffRole, // a regra de verdade
 }));
 vi.mock("../novo/app/fase2/Fase2Home.jsx", () => ({ Fase2Home: () => <div data-testid="tela-home2" /> }));
-vi.mock("../novo/app/fase2/Fase2Stations.jsx", () => ({ Fase2Stations: () => <div data-testid="tela-estacoes" /> }));
 vi.mock("../novo/app/fase2/Fase2Player.jsx", () => ({ Fase2Player: () => <div data-testid="tela-estacao" /> }));
 vi.mock("../novo/app/fase2/Fase2Peps.jsx", () => ({ Fase2Peps: () => <div data-testid="tela-peps" /> }));
 vi.mock("../novo/app/fase2/Fase2Performance.jsx", () => ({ Fase2Performance: () => <div data-testid="tela-desempenho2" /> }));
 vi.mock("../novo/app/fase2/Fase2Patient.jsx", () => ({ Fase2Patient: () => <div data-testid="tela-paciente" /> }));
 vi.mock("../novo/app/fase2/Fase2Theory.jsx", () => ({ Fase2Theory: () => <div data-testid="tela-teoria2" /> }));
-vi.mock("../novo/prototype/Match.jsx", () => ({ Pair: () => <div data-testid="tela-dupla" /> }));
+// Treinamento em Dupla: telas reais (Tarefas 7 e 8), sem o aviso de exemplo
+vi.mock("../novo/app/dupla/StationsScreen.jsx", () => ({ StationsScreen: () => <div data-testid="tela-estacoes" /> }));
+vi.mock("../novo/app/dupla/PracticeScreen.jsx", () => ({ PracticeScreen: () => <div data-testid="tela-dupla" /> }));
 
 import { App } from "../novo/app/App.jsx";
 
@@ -97,8 +98,18 @@ describe("Tela em reconstrução (ES06)", () => {
     }
   });
 
-  it("a tela de Praticar em dupla (ainda maquete) continua com o aviso, uma vez só", () => {
+  it("o Banco de estações (um só, o do pacote de 11/10) e o Praticar em dupla são telas com dados reais: sem o aviso", () => {
     renderApp("/dupla", "admin");
+    expect(screen.getByTestId("tela-dupla")).toBeTruthy();
+    expect(screen.queryByText("Tela em reconstrução")).toBeNull();
+    cleanup();
+    renderApp("/estacoes", "admin");
+    expect(screen.getByTestId("tela-estacoes")).toBeTruthy();
+    expect(screen.queryByText("Tela em reconstrução")).toBeNull();
+  });
+
+  it("uma tela que ainda é de exemplo continua com o aviso, uma vez só", () => {
+    renderApp("/vitrine-dupla", "admin");
     expect(screen.getAllByText("Tela em reconstrução")).toHaveLength(1);
   });
 

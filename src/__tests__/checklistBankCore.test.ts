@@ -6,6 +6,7 @@ import {
   loadEvents,
   loadStations,
   normalizeStation,
+  pressingNumbers,
   toLite,
   validateStation,
 } from "../shared/checklistBank/catalog";
@@ -88,6 +89,84 @@ describe("Banco de Checklists — seed", () => {
     const bad = JSON.parse(JSON.stringify(eventsSeed));
     bad[0].station_ids = ["seed-01", "nao-existe"];
     expect(() => loadEvents(bad, stations)).toThrow(/precisa de 5 estações[\s\S]*estação inexistente/);
+  });
+});
+
+describe("Banco de Checklists — impresso com número de origem e de tela (pacote de 11/10)", () => {
+  const withPressings = (pressings: unknown[]) => ({ ...JSON.parse(JSON.stringify(stationsSeed[0])), pressings });
+  const press = (id: string, extra: Record<string, unknown> = {}) => ({ id, name: `Impresso ${id}`, content: "texto", image_url: null, ...extra });
+
+  it("impresso com source_number, display_number e initially_visible passa pelo normalizeStation sem perder nenhum", () => {
+    const station = normalizeStation(
+      withPressings([
+        press("a", { source_number: 1, display_number: 1, initially_visible: true }),
+        press("b", { source_number: 2, display_number: 1, initially_visible: false }),
+      ])
+    );
+    expect(station.pressings[0]).toMatchObject({ id: "a", source_number: 1, display_number: 1, initially_visible: true });
+    expect(station.pressings[1]).toMatchObject({ id: "b", source_number: 2, display_number: 1, initially_visible: false });
+    expect(validateStation(station)).toEqual([]);
+  });
+
+  it("impresso sem os campos novos: posição vira origem e tela, e não é inicial", () => {
+    const station = normalizeStation(withPressings([press("a"), press("b"), press("c")]));
+    // o dado publicado não ganha chave nova: o padrão é aplicado por pressingNumbers
+    for (const p of station.pressings) {
+      expect(p).not.toHaveProperty("source_number");
+      expect(p).not.toHaveProperty("display_number");
+      expect(p).not.toHaveProperty("initially_visible");
+    }
+    expect(station.pressings.map((p, i) => pressingNumbers(p, i))).toEqual([
+      { source_number: 1, display_number: 1, initially_visible: false },
+      { source_number: 2, display_number: 2, initially_visible: false },
+      { source_number: 3, display_number: 3, initially_visible: false },
+    ]);
+    expect(validateStation(station)).toEqual([]);
+  });
+
+  it("campos inválidos (null, texto, booleano torto) caem no padrão e não viram número", () => {
+    const station = normalizeStation(withPressings([press("a", { source_number: null, display_number: "2", initially_visible: "sim" })]));
+    expect(pressingNumbers(station.pressings[0], 0)).toEqual({ source_number: 1, display_number: 1, initially_visible: false });
+  });
+
+  it("validateStation recusa display_number repetido ou inválido", () => {
+    const repeated = normalizeStation(withPressings([press("a", { display_number: 1 }), press("b", { display_number: 1 })]));
+    expect(validateStation(repeated).join(" ")).toContain("número na tela repetido");
+    for (const bad of [0, -1, 1.5]) {
+      const station = normalizeStation(withPressings([press("a", { display_number: bad })]));
+      expect(validateStation(station).join(" ")).toContain("display_number inválido");
+    }
+    const badSource = normalizeStation(withPressings([press("a", { source_number: 0 })]));
+    expect(validateStation(badSource).join(" ")).toContain("source_number inválido");
+    const repeatedSource = normalizeStation(withPressings([press("a", { source_number: 2 }), press("b", { source_number: 2 })]));
+    expect(validateStation(repeatedSource).join(" ")).toContain("número de origem repetido");
+    // padrão contra explícito também é conferido: o 2º impresso (padrão 2) colide com o 1º explícito 2
+    const collide = normalizeStation(withPressings([press("a", { display_number: 2 }), press("b")]));
+    expect(validateStation(collide).join(" ")).toContain("número na tela repetido");
+  });
+
+  it("o impresso inicial (relato) pode repetir o número da tela do primeiro liberável; dois iniciais não", () => {
+    const ok = normalizeStation(
+      withPressings([
+        press("a", { source_number: 1, display_number: 1, initially_visible: true }),
+        press("b", { source_number: 2, display_number: 1 }),
+      ])
+    );
+    expect(validateStation(ok)).toEqual([]);
+    const two = normalizeStation(
+      withPressings([
+        press("a", { source_number: 1, display_number: 1, initially_visible: true }),
+        press("b", { source_number: 2, display_number: 1, initially_visible: true }),
+      ])
+    );
+    expect(validateStation(two).join(" ")).toContain("número na tela repetido");
+  });
+
+  it("os seeds publicados continuam válidos e sem nenhuma chave nova", () => {
+    for (const s of stations) {
+      expect(validateStation(s)).toEqual([]);
+      for (const p of s.pressings) expect(Object.keys(p).sort()).toEqual(["content", "id", "image_url", "name"]);
+    }
   });
 });
 

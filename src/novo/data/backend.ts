@@ -25,6 +25,22 @@ export interface SignUpExtra {
   declaresPhysician?: boolean;
 }
 
+/** Quem está no canal de Presença (Treino em Dupla): `status` é o que a pessoa mandou no `track()`. */
+export interface PresenceMember {
+  user_id: string;
+  status?: "livre" | "em_estacao";
+}
+
+/** Estado do canal de tempo real, como o Supabase informa no `subscribe()`. */
+export type RealtimeStatus = "SUBSCRIBED" | "CHANNEL_ERROR" | "TIMED_OUT" | "CLOSED";
+
+/** Canal de tempo real aberto: `track`/`untrack` marcam a Presença da pessoa; `close` encerra o canal. */
+export interface RealtimeHandle {
+  track(payload: Record<string, unknown>): void;
+  untrack(): void;
+  close(): void;
+}
+
 export interface Backend {
   readonly mode: "supabase" | "local";
   getUser(): Promise<AuthUser | null>;
@@ -51,6 +67,16 @@ export interface Backend {
    * (XP, posição, sequência). Só existe no Supabase (Realtime); devolve a função para cancelar.
    */
   readonly subscribeStats?: (userId: string, onChange: () => void) => () => void;
+  /**
+   * Treino em Dupla, Praticar: canal privado `dupla:online` com a Presença de quem está procurando dupla e o aviso de convite
+   * novo (INSERT em `study_invites` para `userId`). Só existe no Supabase; sem ele (banco local) as telas consultam as funções
+   * de tempos em tempos. O `joinPresence` da spec é o `track()`/`untrack()` do canal devolvido: o mesmo tópico só aceita `.on()`
+   * antes do `subscribe()`, então um método só abre o canal inteiro.
+   */
+  readonly subscribeInvites?: (
+    userId: string,
+    h: { onInvite(): void; onPresence(members: PresenceMember[]): void; onStatus?(s: RealtimeStatus): void },
+  ) => RealtimeHandle;
   /**
    * Envio direto de um arquivo ao depósito do Supabase com o token de envio assinado que o servidor gerou
    * (aulas: slides e áudios). Com onProgress (0 a 100) o envio é por XMLHttpRequest, para mostrar a porcentagem. Só existe no Supabase; no banco local o arquivo passa pelo servidor.

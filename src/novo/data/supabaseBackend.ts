@@ -1,6 +1,15 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { signedUploadWithProgress } from "./signedUploadXhr";
-import { assertRpcCall, BackendError, signUpMetadata, type AuthUser, type Backend, type BackendErrorCode } from "./backend";
+import {
+  assertRpcCall,
+  BackendError,
+  signUpMetadata,
+  type AuthUser,
+  type Backend,
+  type BackendErrorCode,
+  type PresenceMember,
+  type RealtimeStatus,
+} from "./backend";
 
 function toBackendError(error: { message?: string; code?: string; status?: number } | null): BackendError {
   const message = error?.message ?? "";
@@ -103,6 +112,65 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
         .subscribe();
       return () => {
         client.removeChannel(channel).catch(() => {});
+      };
+    },
+    subscribeInvites(userId, h) {
+      // Canal privado: quem pode entrar é decidido pelas políticas de realtime.messages (migração 9750) e por RLS em study_invites.
+      const channel = client.channel("dupla:online", { config: { private: true, presence: { key: userId } } });
+      let closed = false;
+      let subscribed = false;
+      let tracked: Record<string, unknown> | null = null;
+      const send = () => {
+        if (closed || !subscribed || !tracked) return;
+        channel.track(tracked).catch(() => {});
+      };
+      channel
+        .on("presence", { event: "sync" }, () => {
+          if (closed) return;
+          const seen = new Map<string, PresenceMember>();
+          for (const metas of Object.values(channel.presenceState<{ user_id?: string; status?: PresenceMember["status"] }>())) {
+            for (const meta of metas) {
+              if (meta.user_id && !seen.has(meta.user_id)) seen.set(meta.user_id, { user_id: meta.user_id, status: meta.status });
+            }
+          }
+          h.onPresence([...seen.values()]);
+        })
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "study_invites", filter: `to_user=eq.${userId}` },
+          () => {
+            if (!closed) h.onInvite();
+          },
+        );
+      // O realtime-js só usa o token da sessão se pedirmos antes de assinar (setAuth sem argumento).
+      client.realtime
+        .setAuth()
+        .then(() => {
+          if (closed) return;
+          channel.subscribe((status) => {
+            if (closed) return;
+            subscribed = status === "SUBSCRIBED";
+            if (subscribed) send();
+            h.onStatus?.(status as RealtimeStatus);
+          });
+        })
+        .catch(() => {
+          if (!closed) h.onStatus?.("CHANNEL_ERROR");
+        });
+      return {
+        track(payload) {
+          tracked = payload;
+          send();
+        },
+        untrack() {
+          tracked = null;
+          if (!closed && subscribed) channel.untrack().catch(() => {});
+        },
+        close() {
+          if (closed) return;
+          closed = true;
+          client.removeChannel(channel).catch(() => {});
+        },
       };
     },
   };

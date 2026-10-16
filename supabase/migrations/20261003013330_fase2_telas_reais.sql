@@ -20,7 +20,7 @@
 --     só estas funções leem e gravam. Nada de nota, ranking ou XP: treino sozinho não vale ponto na Arena.
 --   * Sem dado, a tela mostra estado vazio: nenhuma função devolve exemplo.
 -- Esta migração é colada uma vez só. Colada de novo por engano, para no primeiro comando ("already exists") e não muda nada.
--- Para desfazer: supabase/desfazer/20261003012700_fase2_telas_reais.desfazer.sql
+-- Para desfazer: supabase/desfazer/20261003013330_fase2_telas_reais.desfazer.sql
 -- =============================================================================
 
 -- ---------------------------------------------------------------- acesso

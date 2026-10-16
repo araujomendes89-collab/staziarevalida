@@ -52,20 +52,24 @@ vi.mock("../novo/app/admin/AdminScreen.jsx", async () => ({
   isStaffRole: (await import("../novo/app/admin/common.jsx")).isStaffRole, // a regra de verdade
 }));
 vi.mock("../novo/app/fase2/Fase2Home.jsx", () => ({ Fase2Home: () => <div data-testid="tela-home2" /> }));
-vi.mock("../novo/app/fase2/Fase2Stations.jsx", () => ({ Fase2Stations: () => <div data-testid="tela-estacoes" /> }));
 vi.mock("../novo/app/fase2/Fase2Player.jsx", () => ({ Fase2Player: () => <div data-testid="tela-estacao" /> }));
 vi.mock("../novo/app/fase2/Fase2Peps.jsx", () => ({ Fase2Peps: () => <div data-testid="tela-peps" /> }));
 vi.mock("../novo/app/fase2/Fase2Performance.jsx", () => ({ Fase2Performance: () => <div data-testid="tela-desempenho2" /> }));
 vi.mock("../novo/app/fase2/Fase2Patient.jsx", () => ({ Fase2Patient: () => <div data-testid="tela-paciente" /> }));
 vi.mock("../novo/app/fase2/Fase2Theory.jsx", () => ({ Fase2Theory: () => <div data-testid="tela-teoria2" /> }));
-vi.mock("../novo/prototype/Match.jsx", () => ({ Pair: () => <div data-testid="tela-dupla" /> }));
+// Treinamento em Dupla (as telas de verdade têm testes próprios; a ligação das rotas está em duplaRotas.test.tsx)
+vi.mock("../novo/app/dupla/StationsScreen.jsx", () => ({ StationsScreen: () => <div data-testid="tela-estacoes" /> }));
+vi.mock("../novo/app/dupla/PracticeScreen.jsx", () => ({ PracticeScreen: () => <div data-testid="tela-dupla" /> }));
+vi.mock("../novo/app/dupla/StudyProfileScreen.jsx", () => ({ StudyProfileScreen: () => <div data-testid="tela-dupla-perfil" /> }));
+vi.mock("../novo/app/dupla/room/RoomScreen.jsx", () => ({ RoomScreen: () => <div data-testid="tela-dupla-sala" /> }));
 
 import { App } from "../novo/app/App.jsx";
 import { AccountScreen } from "../novo/app/account/AccountScreen.jsx";
 import { SegmentedControl } from "../novo/ds";
 import { isPhase2Locked } from "../novo/app/admin/common.jsx";
 
-const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps", "paciente", "desempenho2"];
+const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "dupla/perfil", "peps", "paciente", "desempenho2"];
+const MARCA = (route: string) => (route === "dupla/perfil" ? "tela-dupla-perfil" : `tela-${route}`);
 
 const bootOf = (role: string, phase = 1, extra: Record<string, unknown> = {}) => ({
   role,
@@ -90,14 +94,14 @@ const bootOf = (role: string, phase = 1, extra: Record<string, unknown> = {}) =>
   ...extra,
 });
 
-function openSession(boot: any) {
+function openSession(boot: any, dupla: any = null) {
   const updateProfile = vi.fn(async (_patch: any) => {});
-  state.session = { status: "ready", boot, user: { email: "ana@teste.dev" }, backend: { rpc: vi.fn(async () => null) }, signOut: vi.fn(), updateProfile };
+  state.session = { status: "ready", boot, dupla, user: { email: "ana@teste.dev" }, backend: { rpc: vi.fn(async () => null) }, signOut: vi.fn(), updateProfile };
   return updateProfile;
 }
 
-function renderApp(path: string, boot: any) {
-  const updateProfile = openSession(boot);
+function renderApp(path: string, boot: any, dupla: any = null) {
+  const updateProfile = openSession(boot, dupla);
   window.history.pushState({}, "", `/novo${path}`);
   render(<App />);
   return { updateProfile };
@@ -146,6 +150,13 @@ describe("Regra da 2ª fase em breve", () => {
     expect(isPhase2Locked("student")).toBe(true);
     expect(isPhase2Locked(undefined)).toBe(true);
     expect(isPhase2Locked(null)).toBe(true);
+  });
+
+  it("com a chave do Treinamento em Dupla ligada o aluno entra (o plano é conferido dentro das telas)", () => {
+    expect(isPhase2Locked("student", { aberto: true })).toBe(false);
+    expect(isPhase2Locked("student", { aberto: false })).toBe(true);
+    expect(isPhase2Locked("student", null)).toBe(true);
+    expect(isPhase2Locked("editor", { aberto: false })).toBe(false);
   });
 });
 
@@ -202,7 +213,7 @@ describe("Seletor de fase · aluno", () => {
   it.each(PHASE2_ROUTES)("o endereço /%s não abre e leva ao início", (route) => {
     renderApp(`/${route}`, bootOf("student"));
     expect(screen.getByTestId("tela-home")).toBeTruthy();
-    expect(screen.queryByTestId(`tela-${route}`)).toBeNull();
+    expect(screen.queryByTestId(MARCA(route))).toBeNull();
     expect(window.location.pathname).toMatch(AT_HOME);
   });
 
@@ -268,7 +279,7 @@ describe("Seletor de fase · equipe", () => {
 
   it.each(PHASE2_ROUTES)("/%s abre para o editor", (route) => {
     renderApp(`/${route}`, bootOf("editor"));
-    expect(screen.getByTestId(`tela-${route}`)).toBeTruthy();
+    expect(screen.getByTestId(MARCA(route))).toBeTruthy();
     expect(window.location.pathname).toBe(`/novo/${route}`);
   });
 });
@@ -295,6 +306,18 @@ describe("Conta · campo Fase", () => {
     expect(second).toHaveAttribute("aria-checked", "false");
     expect(saveButton()).toBeDisabled(); // nada mudou no formulário
     expect(updateProfile).not.toHaveBeenCalled();
+  });
+
+  it("aluno com a chave do Treinamento em Dupla ligada: a opção '2ª fase · prática' fica livre e salva 2", async () => {
+    const updateProfile = openSession(bootOf("student"), { aberto: true, permitido: false, planos: ["pro", "elite"], equipe: false });
+    render(<AccountScreen go={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Estudo e prova/ }));
+    const [, second] = within(screen.getByRole("radiogroup", { name: "Fase" })).getAllByRole("radio");
+    expect(textOf(second)).toBe("2ª fase · prática");
+    expect(second).not.toBeDisabled();
+    fireEvent.click(second);
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledWith({ phase: 2 }));
   });
 
   it("aluno no celular: o campo Fase ocupa a largura toda do cartão e tem o gancho do CSS que empilha as opções em cartão estreito", () => {

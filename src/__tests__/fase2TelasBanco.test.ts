@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
  * Testes do banco da 2ª fase (Postgres real em memória via PGlite).
- * Cobre a migração 20261003012700_fase2_telas_reais.sql e seu desfazer:
+ * Cobre a migração 20261003013330_fase2_telas_reais.sql e seu desfazer:
  *  1. Acesso (estudante e visitante recusados em app_fase2_* e station_attempts trancada; equipe entra)
  *  2. Catálogo (apenas aprovadas, sem conteúdo secreto, contadores zerados)
  *  3. Estado vazio honesto (overview, peps e performance vazios/nulos sem dados inventados)
@@ -21,7 +21,7 @@ import { PGlite } from "@electric-sql/pglite";
 
 const ROOT = path.resolve(__dirname, "../..");
 const MIGRATIONS = path.join(ROOT, "supabase/migrations");
-const DESFAZER = path.join(ROOT, "supabase/desfazer/20261003012700_fase2_telas_reais.desfazer.sql");
+const DESFAZER = path.join(ROOT, "supabase/desfazer/20261003013330_fase2_telas_reais.desfazer.sql");
 
 const ADMIN = "00000000-0000-4000-8000-0000000000ad";
 const EDITOR = "00000000-0000-4000-8000-0000000000e1";
@@ -227,7 +227,7 @@ beforeAll(async () => {
   );
 }, 300_000);
 
-describe("Banco da 2ª Fase (PGlite) - Migração 20261003012700_fase2_telas_reais", () => {
+describe("Banco da 2ª Fase (PGlite) - Migração 20261003013330_fase2_telas_reais", () => {
   it("1. Acesso: aluno e visitante são recusados em todas as funções app_fase2_*; station_attempts e internas são trancadas; equipe entra", async () => {
     // Aluno autenticado é recusado com erro específico em todas as funções
     await expect(rpc(STUDENT, "app_fase2_overview")).rejects.toThrow(/ainda não está aberta/);

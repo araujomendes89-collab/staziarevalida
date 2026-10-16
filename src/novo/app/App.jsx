@@ -1,6 +1,7 @@
 // App novo: sessão, rotas e estrutura reais.
 // As telas ainda não ligadas aos dados usam as do protótipo (src/novo/prototype) no estado
 // "aluno novo" e mostram um aviso; cada etapa substitui um grupo por telas com dados reais.
+// Treinamento em Dupla: /estacoes, /dupla, /dupla/perfil e /dupla/sala/:roomId, dentro do DuplaGate (chave e plano).
 import React from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Banner, Button, EmptyState, SegmentedControl } from "../ds";
@@ -18,15 +19,19 @@ import { LessonsScreen } from "./study/LessonsScreen.jsx";
 import { aulasParaAluno } from "./features.js";
 import { UpdatesScreen } from "./study/UpdatesScreen.jsx";
 import { MapasScreen } from "./mapas/MapasScreen.jsx";
-import { Pair } from "../prototype/Match.jsx";
 // 2ª fase com dados reais (estações aprovadas, tentativas e notas do próprio aluno): ver src/novo/app/fase2/
 import { Fase2Home } from "./fase2/Fase2Home.jsx";
 import { Fase2Theory } from "./fase2/Fase2Theory.jsx";
-import { Fase2Stations } from "./fase2/Fase2Stations.jsx";
 import { Fase2Player } from "./fase2/Fase2Player.jsx";
 import { Fase2Peps } from "./fase2/Fase2Peps.jsx";
 import { Fase2Patient } from "./fase2/Fase2Patient.jsx";
 import { Fase2Performance } from "./fase2/Fase2Performance.jsx";
+// Treino em Dupla (Praticar, perfil de estudo, banco de estações da dupla e sala)
+import { DuplaGate, duplaAllowed } from "./dupla/DuplaGate.jsx";
+import { StationsScreen } from "./dupla/StationsScreen.jsx";
+import { PracticeScreen } from "./dupla/PracticeScreen.jsx";
+import { StudyProfileScreen } from "./dupla/StudyProfileScreen.jsx";
+import { RoomScreen } from "./dupla/room/RoomScreen.jsx";
 import { HomeScreen } from "./home/HomeScreen.jsx";
 import { TodayPlan } from "./home/TodayPlan.jsx";
 import { PlanningScreen } from "./home/PlanningScreen.jsx";
@@ -47,6 +52,9 @@ import { MissionsScreen } from "./play/MissionsScreen.jsx";
 import { AchievementsScreen } from "./play/AchievementsScreen.jsx";
 import { Nivelamento, deveMostrarNivelamento } from "./nivelamento/Nivelamento.jsx";
 import { CelebracoesProvider } from "./play/celebracoes/CelebracoesProvider.jsx";
+
+// Vitrine dos componentes do Treinamento em Dupla: só no servidor de desenvolvimento; sai do build de produção.
+const Vitrine = import.meta.env.DEV ? React.lazy(() => import("./dupla/Vitrine.jsx")) : null;
 
 // [título, subtítulo] de cada rota (o início é montado com nome e data reais).
 const TITLES = {
@@ -71,18 +79,24 @@ const TITLES = {
   planos: ["Meu plano", "Conta · o que cada plano inclui"],
   nivelamento: ["Diagnóstico de nivelamento", "Evolução · o seu nível e por onde começar"],
   teoria2: ["Teoria para a prática", "Esqueletos, documentos médicos e protocolos aplicados às estações"],
-  estacoes: ["Banco de estações", "Estações nas 5 grandes áreas"],
-  dupla: ["Praticar", "Treine em dupla com outro aluno"],
+  estacoes: ["Banco de estações", null],
+  dupla: ["Praticar em dupla", null],
+  "dupla-perfil": ["Meu perfil de estudo", null],
   peps: ["Meus PEPs", "Estações avaliadas"],
   paciente: ["Paciente simulado", "Treine a anamnese com IA"],
   desempenho2: ["Desempenho prático", "Notas pelo PEP"],
   admin: ["Administração", "Gestão da plataforma"],
+  ...(import.meta.env.DEV ? { "vitrine-dupla": ["Vitrine de componentes", "Somente em desenvolvimento · dados de exemplo"] } : {}),
 };
-const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps", "paciente", "desempenho2"];
-const ROUTES = new Set(["home", "home2", "sessao", "estacao", "nivelamento", ...Object.keys(TITLES)]);
+const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "dupla-perfil", "dupla-sala", "peps", "paciente", "desempenho2"];
+// Aluno com o Treino em Dupla aberto: o Banco de estações (um só, decisão do dono de 16/10: o do pacote de 11/10) e o Praticar
+// em dupla abrem; as outras telas da 2ª fase com dados (fase2_allowed, hoje só a equipe) ficam "Em breve" e o endereço leva ao
+// Banco de estações. "estacoes" NÃO entra aqui (entraria em ciclo, mandando o aluno para a própria tela).
+const SOON = ["home2", "teoria2", "estacao", "peps", "paciente", "desempenho2"];
+const ROUTES = new Set(["home", "home2", "sessao", "estacao", "nivelamento", "dupla-sala", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "mapas", "planos", "nivelamento", "home2", "teoria2", "estacoes", "peps", "paciente", "desempenho2"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "mapas", "planos", "nivelamento", "home2", "teoria2", "estacoes", "peps", "paciente", "desempenho2", "dupla", "dupla-perfil", "dupla-sala"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -103,23 +117,32 @@ function resolveTheme(theme) {
   return theme === "dark" ? "dark" : "light";
 }
 
-function Screen() {
-  const { boot, updateProfile, signOut, backend } = useSession();
+function Screen({ view }) {
+  const { boot, dupla, updateProfile, signOut, backend } = useSession();
   const params = useParams();
   const navigate = useNavigate();
   const mobile = useMobile();
   const profile = boot.profile;
   // aviso das mudanças GRAVES do Radar de Evidências: só o administrador pede (para os outros papéis nem chama o banco)
   const radar = useRadarAvisos(boot.role === "admin");
-  // 2ª fase · prática "em breve": por enquanto só a equipe (admin/editor) entra; aluno e revisor médico não
-  const phase2Locked = isPhase2Locked(boot.role);
+  // 2ª fase · prática "em breve": a equipe entra sempre; aluno e revisor médico só com a chave do Treinamento em Dupla ligada
+  // (ou liberados pelo banco). O plano é conferido dentro das telas (DuplaGate).
+  const phase2Locked = isPhase2Locked(boot.role, dupla);
+  // aluno com a 2ª fase aberta: começa no Banco de estações e o resto da 2ª fase fica "Em breve"
+  const studentPhase2 = !phase2Locked && !isStaffRole(boot.role);
 
-  const defaultRoute = profile.phase === 2 && !phase2Locked ? "home2" : "home";
-  const route = params.route ?? defaultRoute;
+  const defaultRoute = profile.phase === 2 && !phase2Locked ? (studentPhase2 ? "estacoes" : "home2") : "home";
+  const route = view ?? params.route ?? defaultRoute;
   const theme = resolveTheme(profile.theme);
 
   React.useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    // novo.html aplica este tema antes da primeira pintura na próxima visita (sem piscar claro → escuro)
+    try {
+      localStorage.setItem("smn-theme", theme);
+    } catch {
+      // armazenamento bloqueado (janela privada): o tema da sessão continua valendo
+    }
   }, [theme]);
 
   // a tela de antes da Conta vai pré-escolhida em "Relatar um problema"
@@ -133,19 +156,22 @@ function Screen() {
   // equipe (admin/editor) ou revisor médico de alguma área (só a revisão da Central de Conteúdo)
   if (route === "admin" && !isStaffRole(boot.role) && !boot.reviewer_areas?.length) return <Navigate to="/" replace />;
   if (phase2Locked && PHASE2_ROUTES.includes(route)) return <Navigate to="/" replace />;
+  if (studentPhase2 && SOON.includes(route)) return <Navigate to="/estacoes" replace />;
   // Aulas fechadas ao aluno por enquanto (ver features.js): quem abrir o endereço antigo cai no início
   if (route === "aulas" && !aulasParaAluno() && !isStaffRole(boot.role)) return <Navigate to="/" replace />;
 
   const go = (next, query) => {
     const target = next;
-    navigate((target === defaultRoute ? "/" : `/${target}`) + (query ? `?${new URLSearchParams(query)}` : ""));
+    if (target === "dupla-perfil") navigate("/dupla/perfil");
+    else if (target === "dupla-sala") navigate(`/dupla/sala/${encodeURIComponent(query?.sala ?? "")}`);
+    else navigate((target === defaultRoute ? "/" : `/${target}`) + (query ? `?${new URLSearchParams(query)}` : ""));
     window.scrollTo(0, 0);
   };
   const phase = PHASE2_ROUTES.includes(route) ? 2 : 1;
   const setPhase = (next) => {
     if (next === 2 && phase2Locked) return; // o botão já fica sem clique; esta é a defesa extra
     updateProfile({ phase: next }).catch(() => {});
-    navigate(next === 2 ? "/home2" : "/home");
+    navigate(next === 2 ? (studentPhase2 ? "/estacoes" : "/home2") : "/home");
     window.scrollTo(0, 0);
   };
   const setTheme = (next) => updateProfile({ theme: next }).catch(() => {});
@@ -183,20 +209,24 @@ function Screen() {
   else if (route === "missoes") body = <MissionsScreen go={go} />;
   else if (route === "conquistas") body = <AchievementsScreen go={go} />;
   else if (route === "home2") body = <Fase2Home go={go} />;
-  else if (route === "estacoes") body = <Fase2Stations go={go} />;
+  // Banco de estações único (sozinho e em dupla), no desenho do pacote de 11/10
+  else if (route === "estacoes") body = <DuplaGate go={go}><StationsScreen go={go} /></DuplaGate>;
   else if (route === "teoria2") body = <Fase2Theory go={go} />;
-  else if (route === "dupla") body = <Pair go={go} />;
+  else if (route === "dupla") body = <DuplaGate go={go}><PracticeScreen go={go} /></DuplaGate>;
+  else if (route === "dupla-perfil") body = <DuplaGate go={go}><StudyProfileScreen go={go} /></DuplaGate>;
+  else if (route === "dupla-sala") body = <DuplaGate go={go}><RoomScreen roomId={params.roomId} go={go} /></DuplaGate>;
   else if (route === "peps") body = <Fase2Peps go={go} />;
   else if (route === "paciente") body = <Fase2Patient go={go} />;
   else if (route === "desempenho2") body = <Fase2Performance go={go} />;
   else if (route === "planos") body = <PlansScreen go={go} />;
   else if (route === "admin") body = <AdminScreen />;
+  else if (import.meta.env.DEV && Vitrine && route === "vitrine-dupla") body = <React.Suspense fallback={null}><Vitrine /></React.Suspense>;
   else body = <AccountScreen go={go} />;
 
   const isHome = route === "home" || route === "home2";
   const [title, sub] = isHome
     ? [greeting(profile.name), route === "home2" ? "2ª fase · habilidades clínicas" : todayLabel(boot.days_to_exam)]
-    : TITLES[route];
+    : (TITLES[route] ?? TITLES.dupla);
 
   const reviewSwitch = (value) => (
     <div>
@@ -222,6 +252,9 @@ function Screen() {
       phase={phase}
       setPhase={setPhase}
       phase2Locked={phase2Locked}
+      soon={studentPhase2 ? SOON : []}
+      studentPhase2={studentPhase2}
+      bare={route === "dupla-sala" && duplaAllowed(boot, dupla)}
       title={title}
       sub={sub}
       headerKind={route === "home" ? "inicio" : route === "hoje" ? "plano" : undefined}
@@ -305,6 +338,9 @@ function Root() {
       <Routes>
         {/* /novo/login: sem sessão, qualquer endereço mostra o login; com sessão, volta para o início */}
         <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/dupla/perfil" element={<Screen view="dupla-perfil" />} />
+        <Route path="/dupla/estacoes" element={<Navigate to="/estacoes" replace />} />
+        <Route path="/dupla/sala/:roomId" element={<Screen view="dupla-sala" />} />
         <Route path="/:route?" element={<Screen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
