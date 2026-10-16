@@ -508,6 +508,7 @@ it("candidato em review: 'Aguardando avaliação', Sair da sala e nenhum botão 
 **Pré-requisito:** Etapa 7 confirmada. **Decisão D6 só trava a moderação de pessoa (C4), não o chat.**
 
 ### Tarefa C1: Migração 9930 — conversas, mensagens, filtro e limites no servidor
+> **Nota (2026-10-12, noite): REVISAR antes de construir.** Decisão posterior do dono (D6): as mensagens **se apagam a cada 24 horas** e a **denúncia** vai à equipe, que lê as conversas denunciadas. Falta aqui: `expires_at = created_at + 24 h`, apagar as vencidas em `dupla_sweep`, e a denúncia guardar uma **cópia** das mensagens (tempo de guarda = valor do dono). Ver spec Stazia Match §12.4. A conversa deve apoiar-se na conexão de **par canônico único** (migração 9973 da frente Stazia Match).
 **Files:**
 - Create: `supabase/migrations/20261003009930_treino_dupla_chat.sql`, `src/__tests__/duplaChatBanco.test.ts`
 - Modify: `src/__tests__/helpers/duplaDb.ts`, `src/__tests__/duplaMigracaoDados.test.ts` (a exportação de dados ganha a chave do chat)
@@ -571,6 +572,7 @@ it("banco local consulta a cada 5 s; com tempo real usa o canal chat:{id} e fech
 **Pré-requisito:** D11 respondida; combinar com o adendo `2026-10-12-treino-dupla-sozinho-e-radar.md` (lista de quem está online) para **não construir duas vezes**.
 
 ### Tarefa V1: Migração 9940 — `app_dupla_invite` e o campo "permitir convites diretos"
+> **Nota (2026-10-12, noite): REVISAR.** O documento completo do dono e o adendo do radar **não** criam conexão (`study_matches`) por convite direto; só curtida recíproca cria. Esta tarefa diz o contrário: decidir (spec Stazia Match §12.7, pergunta 8) antes de construir. Radar **sem bloqueio** de pessoas (decisão do dono).
 **Files:** Create `supabase/migrations/20261003009940_treino_dupla_convite_direto.sql`, `src/__tests__/duplaConviteDiretoBanco.test.ts`; Modify `src/__tests__/helpers/duplaDb.ts`.
 **Interfaces:** `study_profiles.allow_direct_invites boolean not null default true` (nome e padrão a confirmar em D11); `app_dupla_save_profile` e `app_dupla_profile` refeitas (base: 9760) com o campo; `app_dupla_invite(p_to uuid, p_station_id text default null) returns jsonb`: trava o par (`pg_advisory_xact_lock`), `dupla_sweep`, exige: eu e a pessoa com acesso, ela **online** (sinal < 2 min, não "fora"), `radar_visible` e `allow_direct_invites`, **nenhum dos dois em sala aberta**, sem convite pendente entre os dois; cria `study_matches` + `checklist_rooms` (fase `roles`, rodada 1, estação opcional como na `app_dupla_swipe`) + `study_invites` (60 s); a pessoa responde por `app_dupla_answer_invite` (aceita → sala; recusa/vence → fecha). Reaproveita 100% do convite da Etapa 4; **não** conta como "Estudar junto" cruzado. Gancho da cota (Etapa Q): `perform public.dupla_quota_charge(…)` só quando existir.
 - [ ] **Step 1: Write the failing tests** — `it("convida quem está online, visível e aceita convites; recusa quem está invisível, offline, em sala, sem acesso ou consigo mesmo")`, `it("convite pendente duplicado é recusado")`, `it("aceitar abre a sala; recusar e vencer fecham")`, `it("pular não consome e convite recusado não cria match")`, `it("colar duas vezes dá o mesmo banco")`.
@@ -588,6 +590,8 @@ it("banco local consulta a cada 5 s; com tempo real usa o canal chat:{id} e fech
 ---
 
 ## Etapa Q — Cota de matches por pacote (SÓ DEPOIS DE D7; ligada por chave, desligada por padrão)
+
+> **Nota de 2026-10-12 (noite): esta Etapa Q está SUBSTITUÍDA** pelo livro de créditos único da frente "Stazia Match" (`docs/superpowers/specs/2026-10-12-stazia-match-engenharia.md` e `docs/superpowers/plans/2026-10-12-stazia-match-engenharia.md`, Etapas M1 a M4, migrações 9960 em diante). A migração `9950` e a tabela `study_quota_ledger` **não serão usadas**. O dono decidiu (D7) que o match é cobrado do **crédito diário de cada um dos dois**; resta decidir **quando** (no aceite ou no início confirmado). Não construir a Etapa Q como está escrita abaixo. A especificação completa do dono (`/Volumes/StaziaMed/Engenharia Match/…`, analisada no §12 da spec Stazia Match) confirma: cobrança **no início confirmado**, de cada um dos dois, unidade = **sala que começa**; os baldes são diária, bônus e comprados.
 **Pré-requisito:** D7 respondida (pacote = plano atual ou produto novo; quanto por dia; quem é debitado e quando; devolução; validade dos extras). **Nenhum valor é escrito no código.**
 
 ### Tarefa Q1: Migração 9950 — livro de movimentos, checagem e débito no servidor
