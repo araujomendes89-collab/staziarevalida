@@ -61,7 +61,11 @@ export function RolesPhase({ room, actions }) {
       <PairHeader
         room={room}
         title={`Dupla com ${partnerName}`}
-        subtitle={`${station ? stationLine(station) + ". " : ""}Antes de conectar, definam quem será o candidato e quem será o ator/avaliador.`}
+        subtitle={
+          room.round > 1
+            ? `Rodada ${room.round}: ${station ? stationLine(station) + ". " : ""}definam de novo os papéis; a estação precisa ser diferente das que vocês já treinaram nesta sala.`
+            : `${station ? stationLine(station) + ". " : ""}Antes de conectar, definam quem será o candidato e quem será o ator/avaliador.`
+        }
       />
       {room.match_note && (
         <div
@@ -152,6 +156,7 @@ export function RolesPhase({ room, actions }) {
       </div>
       {picking && isEval && (
         <StationPicker
+          roomId={room.id}
           title={station ? "Trocar estação" : "Escolher estação"}
           onClose={() => setPicking(false)}
           onPick={(id) => {

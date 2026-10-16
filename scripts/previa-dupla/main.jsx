@@ -1,5 +1,5 @@
 // PRÉVIA do Treinamento em Dupla (porta 31997): dados de teste, sem login e sem banco.
-//   /tela.html?t=praticar|perfil|estacoes|sala|vitrine  [&sala=<fase>-<papel>] [&estacao=<id>] [&perfil=nenhum] [&convite=1] [&tema=escuro]
+//   /tela.html?t=praticar|perfil|estacoes|sala|vitrine|estacoes-adm  [&sala=<fase>-<papel>] [&estacao=<id>] [&perfil=nenhum] [&convite=1] [&tema=escuro]
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -9,6 +9,7 @@ import { StudyProfileScreen } from "../../src/novo/app/dupla/StudyProfileScreen.
 import { StationsScreen } from "../../src/novo/app/dupla/StationsScreen.jsx";
 import { RoomScreen } from "../../src/novo/app/dupla/room/RoomScreen.jsx";
 import { Vitrine } from "../../src/novo/app/dupla/Vitrine.jsx";
+import { AdminStations } from "../../src/novo/app/admin/AdminPanels.jsx";
 
 const params = new URLSearchParams(location.search);
 const tela = params.get("t") || "praticar";
@@ -45,6 +46,7 @@ function Tela() {
   if (tela === "estacoes") return <StationsScreen go={go} />;
   if (tela === "sala") return <RoomScreen roomId={params.get("sala") || "roles-candidate"} go={go} />;
   if (tela === "vitrine") return <Vitrine />;
+  if (tela === "estacoes-adm") return <AdminStations />;
   return <PracticeScreen go={go} />;
 }
 

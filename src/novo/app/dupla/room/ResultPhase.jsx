@@ -1,8 +1,10 @@
 // Fase "result" (Result.jsx:85-139 do protótipo, com ResultData do servidor): nota, critérios, detalhes e feedback.
 // Nada é calculado aqui além da contagem por nível e dos pontos perdidos: a nota e a % vêm do servidor.
 // Revisão da nota (Tarefa 18): o candidato pede uma vez, com motivo; o avaliador vê o pedido e "Rever a nota" (a sala volta à
-// conferência); depois aparece "Nota revisada". "Treinar novamente — Inverter papéis" abre a rodada seguinte com os papéis
-// trocados; "Encerrar treino" pede confirmação. O nome da estação aparece aos dois só aqui, no resultado.
+// conferência); depois aparece "Nota revisada". "Treinar outra estação" abre a rodada seguinte com o mesmo par, de volta à
+// escolha dos papéis e de uma estação DIFERENTE (decisão do dono de 16/10: não há inverter papéis na mesma estação, porque o
+// novo candidato já viu o tema como avaliador; o banco recusa estação já treinada na sala). "Encerrar treino" pede
+// confirmação. O nome da estação aparece aos dois só aqui, no resultado.
 import React from "react";
 import { Avatar, Badge, Banner, Button, Dialog, Tabs, Textarea } from "../../../ds";
 import { formatDecimal, formatDuration } from "../../../ds/format.js";
@@ -90,7 +92,7 @@ function ReviewRequest({ actions, requested }) {
 
 export function ResultPhase({ room, result, actions, askLeave }) {
   const [filter, setFilter] = React.useState("all");
-  const [swapping, setSwapping] = React.useState(false);
+  const [nexting, setNexting] = React.useState(false);
   if (!result) return null;
   const review = result.review || {};
   const requested = Boolean(review.requested_at);
@@ -132,15 +134,15 @@ export function ResultPhase({ room, result, actions, askLeave }) {
             Encerrar treino
           </Button>
           <Button
-            icon="repeat"
-            disabled={swapping}
+            icon="clipboard-list"
+            disabled={nexting}
             onClick={async () => {
-              setSwapping(true);
-              await actions.swap();
-              setSwapping(false);
+              setNexting(true);
+              await actions.nextStation();
+              setNexting(false);
             }}
           >
-            Treinar novamente — Inverter papéis
+            Treinar outra estação
           </Button>
         </div>
       </header>

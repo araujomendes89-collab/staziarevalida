@@ -130,6 +130,15 @@ function Summary({ value }) {
     </ul>
   );
 }
+/**
+ * Nome do impresso inicial na visão do avaliador, sem número: "Relato do caso (na folha do candidato)". Se a estação tiver mais
+ * de um impresso inicial que não seja o relato, cada um leva o próprio nome, também sem número.
+ */
+export function initialLabel(pressing, count = 1) {
+  const name = String(pressing?.name ?? "").trim();
+  const isReport = count === 1 || /relato/i.test(name);
+  return `${isReport ? "Relato do caso" : name || "Texto inicial"} (na folha do candidato)`;
+}
 const hasSummary = (v) => (typeof v === "string" ? v.trim().length > 0 : Array.isArray(v) && v.length > 0);
 
 function SheetImageForEvaluator({ actions }) {
@@ -187,12 +196,14 @@ function EvaluatorView({ room, content, marks, actions, started }) {
                   {NOT_STARTED_HINT}
                 </div>
               )}
+              {/* Impresso inicial (já está na folha do candidato): sem número, para não repetir o "Impresso 1" dos liberáveis
+                  (decisão do dono de 16/10). Os liberáveis seguem 1, 2, 3, com o número do documento oficial ao lado. */}
               {initial.map((p) => (
                 <div key={p.id} style={{ display: "grid", gap: 4 }}>
-                  <PrintItem index={p.display_number ?? p.index} sourceNumber={p.source_number} title={p.name} released>
+                  <PrintItem index={p.display_number ?? p.index} title={p.name} label={initialLabel(p, initial.length)} released>
                     <PressingMedia pressing={p} actions={actions} />
                   </PrintItem>
-                  <div style={{ font: "var(--text-xs) var(--font-sans)", color: "var(--text-secondary)", padding: "0 4px 6px" }}>Este impresso já está visível desde o início.</div>
+                  <div style={{ font: "var(--text-xs) var(--font-sans)", color: "var(--text-secondary)", padding: "0 4px 6px" }}>O candidato já lê este texto na folha dele, desde o início.</div>
                 </div>
               ))}
               {releasable.map((p) => {
@@ -229,10 +240,12 @@ function EvaluatorView({ room, content, marks, actions, started }) {
                 }}
               />
             </Accordion>
+            {/* Materiais (D9): o servidor só manda o resumo ao avaliador e só depois de aprovado pela revisão médica (013380). */}
             {hasSummary(st.summary) && (
               <Accordion icon="book-open" title="Materiais">
                 <div style={{ font: "600 var(--text-sm) var(--font-sans)", color: "var(--text-primary)", marginBottom: 6 }}>Resumo sobre o tema</div>
                 <Summary value={st.summary} />
+                <div style={{ marginTop: 8, font: "var(--text-xs) var(--font-sans)", color: "var(--text-secondary)" }}>Conferido pela revisão médica. O candidato não vê este resumo.</div>
               </Accordion>
             )}
             <Accordion icon="message-circle" title="Feedback">

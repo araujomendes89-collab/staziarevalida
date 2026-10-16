@@ -203,7 +203,9 @@ export function useRoom(roomId) {
       leave: () => call("app_dupla_leave"),
       requestReview: (reason) => call("app_dupla_request_review", { p_round: round(), p_reason: reason }),
       redoReview: () => call("app_dupla_redo_review", { p_round: round() }),
-      swap: () => call("app_dupla_swap"),
+      // "Treinar outra estação": rodada seguinte com o mesmo par, sem papéis e sem estação (decisão do dono de 16/10: sem
+      // inverter papéis na mesma estação, porque o novo candidato já viu o tema como avaliador).
+      nextStation: () => call("app_dupla_next_station"),
       printUrl: (pressingId) => fetchPrintUrl(backend, roomId, pressingId).catch(() => null),
     };
   }, [backend, roomId, say]);

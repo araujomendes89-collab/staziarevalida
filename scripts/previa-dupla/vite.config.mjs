@@ -2,6 +2,7 @@
 // A estação 1 de teste mostra as imagens do protótipo de 11/10 (folha do candidato e esfregaço) lidas do disco do dono SÓ por
 // este servidor de prévia (/previa-imagens/); nenhuma imagem é copiada para o repositório.
 // Uso (da raiz do projeto): npx vite --config scripts/previa-dupla/vite.config.mjs
+// Outra porta (quando a 31997 já está com outra pasta): PREVIA_PORTA=31998 PREVIA_CACHE=/caminho/do/cache npx vite --config …
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
@@ -47,6 +48,6 @@ export default defineConfig({
   ],
   // as telas leem a sessão pelo mesmo caminho de sempre; aqui recebem o banco simulado
   resolve: { alias: [{ find: /^(\.\.?\/)+session\.jsx$/, replacement: path.join(here, "sessaoSimulada.jsx") }] },
-  server: { port: 31997, strictPort: true, host: "127.0.0.1", fs: { allow: [raiz] } },
-  cacheDir: "/Volumes/StaziaMed/.tmp-aulas/fase2/vite-cache-sala-vivo",
+  server: { port: Number(process.env.PREVIA_PORTA) || 31997, strictPort: true, host: "127.0.0.1", fs: { allow: [raiz] } },
+  cacheDir: process.env.PREVIA_CACHE || "/Volumes/StaziaMed/.tmp-aulas/fase2/vite-cache-sala-vivo",
 });

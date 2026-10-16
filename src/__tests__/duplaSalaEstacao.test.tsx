@@ -125,14 +125,15 @@ describe("impressos e folha do candidato", () => {
 
   it("relato inicial aparece sem liberar, continua depois de recarregar e nunca entra em x/y", async () => {
     await mount();
-    expect(screen.getByText("Este impresso já está visível desde o início.")).toBeTruthy();
+    expect(screen.getByText("O candidato já lê este texto na folha dele, desde o início.")).toBeTruthy();
+    expect(screen.getByText("Relato do caso (na folha do candidato)")).toBeTruthy();
     expect(screen.getByText("0/2")).toBeTruthy();
     cleanup();
     for (let i = 0; i < 2; i++) {
       srv.room = asCandidate(running());
       srv.content = contentOf("candidate");
       await mount();
-      expect(screen.getByText("Impresso 1 · Relato do caso")).toBeTruthy();
+      expect(screen.getByText("Relato do caso")).toBeTruthy(); // na folha, sem número
       expect(screen.getByText("Relato inicial de teste.")).toBeTruthy();
       expect(screen.getByText("0 liberados")).toBeTruthy();
       expect(screen.getAllByText(/Aguardando liberação/)).toHaveLength(2);
@@ -244,6 +245,19 @@ describe("PEP ao vivo", () => {
     fireEvent.click(screen.getByRole("button", { name: /Materiais/ }));
     expect(screen.getByText("Resumo sobre o tema")).toBeTruthy();
     expect(screen.getByText("Resumo de teste da estação.")).toBeTruthy();
+    expect(screen.getByText("Conferido pela revisão médica. O candidato não vê este resumo.")).toBeTruthy();
+    cleanup();
+    // sem resumo aprovado (o servidor manda null): nada de Materiais
+    srv.content = contentOf("evaluator", { summary: null });
+    await mount();
+    expect(screen.queryByRole("button", { name: /Materiais/ })).toBeNull();
+    cleanup();
+    // candidato: nunca há Materiais
+    srv.room = asCandidate(running());
+    srv.content = contentOf("candidate");
+    await mount();
+    expect(screen.queryByRole("button", { name: /Materiais/ })).toBeNull();
+    expect(document.body.textContent).not.toContain("Resumo sobre o tema");
   });
 
   it("o candidato nunca pede marcações nem resultado durante a estação e a tela não mostra roteiro, PEP, número da prova ou o nome", async () => {

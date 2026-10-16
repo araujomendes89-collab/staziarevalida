@@ -37,27 +37,39 @@ let baralho = [
 
 // ----- sala ao vivo SIMULADA (Etapa 5): cada aba guarda a sua sala; o "colega" é simulado (confirma, fica pronto, inicia…) -----
 // O id da sala é "<fase>-<papel>" (de onde a prévia começa). As ações mudam o estado como as funções app_dupla_* do banco.
-const E1 = ESTACOES[0];
-const ST = { ...resumo(E1), area: E1.area };
-const itens = E1.criteria.map((c, i) => ({
-  id: `i${i + 1}`, order: i + 1, content: c.title, tip: c.hint || "",
-  grades: { correct: c.max, partial: c.partial, incorrect: 0 },
-  criteria: {}, subitems: [],
-}));
+// Cada sala começa na estação 1; "Treinar outra estação" (013380) volta aos papéis sem estação, e a estação já treinada na
+// sala fica de fora (como no banco).
+// Resumo sobre o tema (D9): na prévia, TEXTO DE EXEMPLO DE TESTE, só para ver "Materiais" na sala do avaliador. Não é conteúdo
+// médico; no app, o resumo é escrito pela equipe em Administração › Estações e só aparece depois da revisão médica.
+const RESUMO_TESTE =
+  "EXEMPLO DE TESTE (prévia): este texto não é conteúdo médico. Aqui aparece o resumo sobre o tema que a equipe escreve em Administração › Estações.\n\nNa sala, o resumo só aparece ao avaliador e só depois de aprovado por revisor médico da área ou administrador. O candidato nunca vê.";
 // Relato do caso = impresso INICIAL (visível desde o início); os outros são liberáveis, numerados 1, 2, 3 na tela.
 const inicial = (p, i) => i === 0 && /^Relato/i.test(p.title);
-let nTela = 0;
-const impressos = E1.prints.map((p, i) => ({
-  id: `p${i + 1}`, index: i + 1, source_number: i + 1, initially_visible: inicial(p, i),
-  display_number: inicial(p, i) ? 1 : ++nTela, name: p.title, content: p.body, has_image: !inicial(p, i),
-}));
-const liberaveis = impressos.filter((p) => !p.initially_visible);
+const dadosCache = {};
+function dados(estId) {
+  if (dadosCache[estId]) return dadosCache[estId];
+  const E = porId(estId);
+  const ST = { ...resumo(E), area: E.area };
+  const itens = E.criteria.map((c, i) => ({
+    id: `i${i + 1}`, order: i + 1, content: c.title, tip: c.hint || "",
+    grades: { correct: c.max, partial: c.partial, incorrect: 0 },
+    criteria: {}, subitems: [],
+  }));
+  let nTela = 0;
+  const primeira = E.n === 1; // só a estação 1 tem as imagens do protótipo
+  const impressos = E.prints.map((p, i) => ({
+    id: `p${i + 1}`, index: i + 1, source_number: i + 1, initially_visible: inicial(p, i),
+    display_number: inicial(p, i) ? 1 : ++nTela, name: p.title, content: p.body, has_image: primeira && !inicial(p, i) && i === 1,
+  }));
+  const liberaveis = impressos.filter((p) => !p.initially_visible);
+  // O candidato (e quem ainda não tem papel) nunca recebe o nome nem o id da estação antes do resultado.
+  const { id: _id, name: _nome, topic: _tema, ...SEM_TEMA } = ST;
+  return (dadosCache[estId] = { E, ST, itens, impressos, liberaveis, primeira, stParaCandidato: { ...SEM_TEMA, label: `Estação ${ST.number}` } });
+}
+const ESTACAO_INICIAL = resumo(ESTACOES[0]).id;
 const chave = (p) => (p.initially_visible ? "i" : "d") + p.display_number;
 // Imagens do protótipo de 11/10, lidas do disco SÓ pelo servidor da prévia (vite.config.mjs, /previa-imagens/); nada é copiado.
 const IMAGEM = { candidate_sheet: "estacao-01-instrucoes-e-relato-unica.png", d1: "estacao-01-impresso-02-esfregaco-imagem.png", p2: "estacao-01-impresso-02-esfregaco-imagem.png" };
-// O candidato (e quem ainda não tem papel) nunca recebe o nome nem o id da estação antes do resultado.
-const { id: _id, name: _nome, topic: _tema, ...SEM_TEMA } = ST;
-const stParaCandidato = { ...SEM_TEMA, label: `Estação ${ST.number}` };
 const EU = { user_id: "t-eu", public_name: "Aluno de Teste" };
 const ELE = { user_id: "t-1", public_name: "Colega Teste Um" };
 
@@ -70,7 +82,7 @@ function nova(roomId) {
   const meu = papel === "evaluator" ? "evaluator" : "candidate";
   const outro = meu === "candidate" ? "evaluator" : "candidate";
   const s = {
-    id: roomId, rev: 1, phase: fase, round: 1, duration_ms: 600000, papel: meu, outro,
+    id: roomId, rev: 1, phase: fase, round: 1, duration_ms: 600000, papel: meu, outro, estacao: ESTACAO_INICIAL, feitas: [],
     me: { confirmed: fase !== "roles", connected: !["roles", "connecting"].includes(fase), ready: false },
     partner: { confirmed: fase !== "roles", connected: !["roles", "connecting"].includes(fase), ready: fase === "setup" && meu === "evaluator" },
     started_at: null, ends_at: null, paused_left_ms: null, paused_at: null, paused_total_ms: 0, finished_at: null, released: [], closed_reason: null, closed_by: null,
@@ -78,7 +90,7 @@ function nova(roomId) {
   if (fase === "running" || fase === "review") {
     s.started_at = EM(-180000);
     s.ends_at = EM(420000);
-    s.released = meu === "candidate" ? [liberaveis[0]?.id].filter(Boolean) : [];
+    s.released = meu === "candidate" ? [dados(s.estacao).liberaveis[0]?.id].filter(Boolean) : [];
   }
   if (fase === "review" || fase === "result") s.finished_at = EM(-60000);
   if (fase === "closed") Object.assign(s, { closed_reason: "saiu", closed_by: { me: false, public_name: ELE.public_name } });
@@ -97,24 +109,27 @@ const depois = (ms, roomId, patch) => setTimeout(() => muda(roomId, patch), ms);
 function estado(roomId) {
   const s = sala(roomId);
   const comNome = s.papel === "evaluator" || s.phase === "result";
+  const D = s.estacao ? dados(s.estacao) : null;
   return {
     id: roomId, rev: s.rev, phase: s.phase, round: s.round, server_now: NOW(),
-    station: comNome ? ST : stParaCandidato, duration_ms: s.duration_ms,
+    station: D ? (comNome ? D.ST : D.stParaCandidato) : null, duration_ms: s.duration_ms,
     me: { ...EU, role: s.papel, ...s.me, picked_station: false },
     partner: { ...ELE, role: s.outro, ...s.partner, seen_ms_ago: 2000 },
     match_note: s.round === 1 && s.phase === "roles" ? "Definido pelo match: você topa qualquer papel e Colega Teste Um quer ser ator/avaliador. Vocês ainda podem trocar. (dado de teste)" : null,
     invite_pending: false, call_link: null,
     started_at: s.started_at, ends_at: s.ends_at, paused_left_ms: s.paused_left_ms, paused_at: s.paused_at, finished_at: s.finished_at,
-    released_pressings: s.papel === "evaluator" || s.phase === "result" ? s.released : impressos.filter((p) => s.released.includes(p.id)).map(chave),
+    released_pressings: !D ? [] : s.papel === "evaluator" || s.phase === "result" ? s.released : D.impressos.filter((p) => s.released.includes(p.id)).map(chave),
     closed_reason: s.closed_reason, closed_by: s.closed_by,
   };
 }
 function conteudo(roomId) {
   const s = sala(roomId);
+  if (!s.estacao) return { role: null, station: null, pressing_count: 0, pressings: [] };
+  const { E, ST, itens, impressos, liberaveis, primeira } = dados(s.estacao);
   const comNome = s.papel === "evaluator" || s.phase === "result";
-  const min = { ...(comNome ? { id: ST.id, name: ST.name } : {}), label: `Estação ${ST.number}`, area: ST.area, area_code: ST.area_code, number: ST.number, duration_ms: 600000 };
+  const min = { ...(comNome ? { id: ST.id, name: ST.name } : {}), label: `Estação ${ST.number}`, area: ST.area, area_code: ST.area_code, number: ST.number, duration_ms: ST.duration_ms };
   if (s.phase === "roles") return { role: null, station: min, pressing_count: liberaveis.length, pressings: [] };
-  const doc = { version: "teste", doctor_scene: E1.scenario, doctor_tasks: E1.tasks.map((t, i) => `${i + 1}. ${t}`).join("\n"), candidate_sheet: { has_image: true } };
+  const doc = { version: "teste", doctor_scene: E.scenario, doctor_tasks: E.tasks.map((t, i) => `${i + 1}. ${t}`).join("\n"), candidate_sheet: { has_image: primeira } };
   if (s.papel === "candidate") {
     const vistos = impressos.filter((p) => p.initially_visible || s.released.includes(p.id));
     return {
@@ -124,13 +139,15 @@ function conteudo(roomId) {
   }
   return {
     role: "evaluator",
-    station: { ...min, ...doc, actor_script: "", summary: null },
+    // resumo de EXEMPLO DE TESTE, como se já tivesse passado pela revisão médica (no app, só o aprovado chega aqui)
+    station: { ...min, ...doc, actor_script: "", summary: RESUMO_TESTE },
     pressing_count: liberaveis.length, pressings: impressos, checklist_items: itens,
   };
 }
 const pontos = (it, g) => (g ? it.grades[g] ?? 0 : 0);
 function resultado(roomId) {
   const s = sala(roomId);
+  const { ST, itens } = dados(s.estacao ?? ESTACAO_INICIAL);
   const m = marcas[`${roomId}:${s.round}`] ?? {};
   const lista = itens.map((it) => ({ id: it.id, order: it.order, content: it.content, max_points: it.grades.correct, grade: m[it.id]?.grade ?? null, points: pontos(it, m[it.id]?.grade) }));
   const score = lista.reduce((a, b) => a + b.points, 0);
@@ -144,17 +161,25 @@ function resultado(roomId) {
     feedback: feedbackFinal, review: revisao,
   };
 }
+const JA_TREINADA = "Vocês já treinaram esta estação nesta sala. Escolham outra.";
 const sala_acoes = {
   app_dupla_room: ({ p_room_id, p_since_rev }) => (p_since_rev != null && p_since_rev === sala(p_room_id).rev ? null : estado(p_room_id)),
   app_dupla_room_content: ({ p_room_id }) => conteudo(p_room_id),
   app_dupla_marks: ({ p_room_id }) => Object.entries(marcas[`${p_room_id}:${sala(p_room_id).round}`] ?? {}).map(([item_id, v]) => ({ item_id, ...v })),
   app_dupla_result: ({ p_room_id }) => resultado(p_room_id),
+  app_dupla_room_done_stations: ({ p_room_id }) => sala(p_room_id).feitas,
   app_dupla_set_roles: ({ p_room_id, p_candidate_id }) => muda(p_room_id, () => ({ papel: p_candidate_id === EU.user_id ? "candidate" : "evaluator", outro: p_candidate_id === EU.user_id ? "evaluator" : "candidate", me: { ...sala(p_room_id).me, confirmed: false } })),
   app_dupla_draw_roles: ({ p_room_id }) => muda(p_room_id, () => (Math.random() < 0.5 ? { papel: "candidate", outro: "evaluator" } : { papel: "evaluator", outro: "candidate" })),
-  app_dupla_set_station: ({ p_room_id }) => muda(p_room_id, {}),
+  app_dupla_set_station: ({ p_room_id, p_station_id }) => {
+    if (sala(p_room_id).feitas.includes(p_station_id)) throw new Error(JA_TREINADA);
+    return muda(p_room_id, { estacao: p_station_id, duration_ms: dados(p_station_id).ST.duration_ms });
+  },
   app_dupla_confirm_roles: ({ p_room_id }) => {
-    depois(1500, p_room_id, (s) => ({ phase: "connecting", partner: { ...s.partner, confirmed: true } }));
-    return muda(p_room_id, (s) => ({ me: { ...s.me, confirmed: true } }));
+    const s = sala(p_room_id);
+    if (!s.estacao) throw new Error("Escolha a estação antes de confirmar.");
+    if (!s.papel) throw new Error("Definam os papéis antes de confirmar.");
+    depois(1500, p_room_id, (x) => ({ phase: "connecting", partner: { ...x.partner, confirmed: true } }));
+    return muda(p_room_id, (x) => ({ me: { ...x.me, confirmed: true } }));
   },
   app_dupla_connected: ({ p_room_id }) => muda(p_room_id, (s) => ({ phase: "setup", me: { ...s.me, connected: true }, partner: { ...s.partner, connected: true } })),
   app_dupla_ready: ({ p_room_id, p_ready }) => {
@@ -162,7 +187,7 @@ const sala_acoes = {
     if (p_ready && !s.partner.ready) depois(1500, p_room_id, (x) => ({ partner: { ...x.partner, ready: true } }));
     // candidato pronto: o "avaliador" inicia a estação depois de uns segundos
     if (p_ready && s.papel === "candidate") depois(5000, p_room_id, () => ({ phase: "running", started_at: NOW(), ends_at: EM(sala(p_room_id).duration_ms), released: [] }));
-    if (p_ready && s.papel === "candidate") depois(15000, p_room_id, (x) => ({ released: x.phase === "running" ? [liberaveis[0]?.id].filter(Boolean) : x.released }));
+    if (p_ready && s.papel === "candidate") depois(15000, p_room_id, (x) => ({ released: x.phase === "running" ? [dados(x.estacao).liberaveis[0]?.id].filter(Boolean) : x.released }));
     return muda(p_room_id, (x) => ({ me: { ...x.me, ready: Boolean(p_ready) } }));
   },
   app_dupla_set_duration: ({ p_room_id, p_duration_ms }) => muda(p_room_id, { duration_ms: Math.max(60000, Math.min(600000, p_duration_ms)) }),
@@ -188,11 +213,17 @@ const sala_acoes = {
     return muda(p_room_id, {});
   },
   app_dupla_redo_review: ({ p_room_id }) => muda(p_room_id, { phase: "review" }),
-  app_dupla_swap: ({ p_room_id }) =>
-    muda(p_room_id, (s) => ({
-      phase: "roles", round: s.round + 1, papel: s.outro, outro: s.papel, me: { confirmed: false, connected: false, ready: false }, partner: { confirmed: false, connected: false, ready: false },
-      started_at: null, ends_at: null, paused_left_ms: null, paused_at: null, paused_total_ms: 0, finished_at: null, released: [], duration_ms: 600000,
-    })),
+  // "Treinar outra estação" (013380): rodada seguinte, mesmo par, sem papéis e sem estação; a estação desta rodada fica de fora
+  app_dupla_next_station: ({ p_room_id }) => {
+    if (sala(p_room_id).phase !== "result") throw new Error("Esta ação não vale nesta fase da sala.");
+    revisao = { requested_at: null, reason: null, revised_at: null, score_before_review: null };
+    feedbackFinal = { pos: "", neg: "", gen: "" };
+    return muda(p_room_id, (s) => ({
+      phase: "roles", round: s.round + 1, papel: null, outro: null, estacao: null, feitas: [...new Set([...s.feitas, s.estacao].filter(Boolean))],
+      me: { confirmed: false, connected: false, ready: false }, partner: { confirmed: false, connected: false, ready: false },
+      started_at: null, ends_at: null, paused_left_ms: null, paused_at: null, paused_total_ms: 0, finished_at: null, released: [], duration_ms: null,
+    }));
+  },
   app_dupla_leave: ({ p_room_id }) => muda(p_room_id, { phase: "closed", closed_reason: "saiu", closed_by: { me: true, public_name: EU.public_name } }),
 };
 
@@ -227,8 +258,50 @@ const respostasChat = {
   app_dupla_chat_report: () => ({ report_id: "den-teste", messages: mensagens.length }),
   app_dupla_chat_room: () => ({ room_id: "roles-candidate" }),
 };
+// Administração › Estações na prévia: "Resumo sobre o tema" com rascunho → aprovado (013380). Tudo em memória, DADOS DE TESTE;
+// a estação 1 começa com o resumo de EXEMPLO DE TESTE já aprovado (o mesmo que aparece em Materiais na sala).
+const resumos = { [ESTACAO_INICIAL]: { body: RESUMO_TESTE, status: "approved", updated_at: EM(-86400000), approved_at: EM(-3600000) } };
+const resumoDe = (id) => {
+  const r = resumos[id];
+  return {
+    station_id: id, body: r?.body ?? null, status: r?.status ?? null, origin: r ? "equipe" : null,
+    updated_at: r?.updated_at ?? null, updated_by: r ? "Editora de Teste" : null,
+    approved_at: r?.status === "approved" ? r.approved_at : null, approved_by: r?.status === "approved" ? "Revisor de Teste" : null, can_approve: true,
+  };
+};
+const respostasAdm = {
+  app_admin_stations: () =>
+    BANCO.map((b) => ({
+      id: b.id, name: b.name, topic: b.topic ?? "", area: b.area, medical_review: "approved", is_pro_only: false, institution: "INEP",
+      review_note: "Conferência de teste (prévia).", reviewed_at: EM(-86400000), reviewer: "Revisor de Teste", can_review: true,
+      summary_status: resumos[b.id]?.status ?? null, reports: 0, last_reports: [],
+    })),
+  app_admin_station_content: ({ p_station_id }) => {
+    const E = porId(p_station_id);
+    return {
+      doctor_scene: E.scenario, doctor_tasks: E.tasks.join("\n"), actor_script: "",
+      pressings: E.prints.map((p, i) => ({ id: `p${i + 1}`, name: p.title, content: p.body })),
+      checklist_items: E.criteria.map((c, i) => ({ id: `i${i + 1}`, order: i + 1, content: c.title, tip: c.hint || "", grades: { correct: c.max, partial: c.partial, incorrect: 0 }, criteria: {}, subitems: [] })),
+      summary: [],
+    };
+  },
+  app_admin_station_summary: ({ p_station_id }) => resumoDe(p_station_id),
+  app_admin_save_station_summary: ({ p_station_id, p_body }) => {
+    const body = String(p_body ?? "").trim();
+    if (!body) delete resumos[p_station_id];
+    else if (resumos[p_station_id]?.body !== body) resumos[p_station_id] = { body, status: "draft", updated_at: NOW() };
+    return resumoDe(p_station_id);
+  },
+  app_admin_review_station_summary: ({ p_station_id, p_status }) => {
+    const r = resumos[p_station_id];
+    if (!r) throw new Error("Esta estação ainda não tem resumo.");
+    resumos[p_station_id] = { ...r, status: p_status, approved_at: p_status === "approved" ? NOW() : null };
+    return resumoDe(p_station_id);
+  },
+};
 const respostas = {
   ...respostasChat,
+  ...respostasAdm,
   app_dupla_access: () => ({ aberto: true, permitido: true, equipe: true, planos: ["pro", "elite"] }),
   app_dupla_profile: () => ({ profile: perfil, defaults: perfil ? null : { public_name: "Aluno de Teste", exam: "2026/2" }, stats: { done: 3, avg: 7.8 } }),
   app_dupla_save_profile: ({ p_profile }) => {

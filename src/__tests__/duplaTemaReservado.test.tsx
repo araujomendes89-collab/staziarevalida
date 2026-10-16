@@ -95,7 +95,7 @@ describe("Tema reservado: o candidato não recebe nem vê o tema da estação an
     }
   });
 
-  it("depois de inverter (rodada 2) quem agora é candidato também não recebe o nome da nova estação", async () => {
+  it("na rodada seguinte (rodada 2, outra estação) quem agora é candidato também não recebe o nome da nova estação", async () => {
     const sala = await makeRoom(d.db, {
       members: [U.carla, U.fabio], phase: "running", candidate: U.fabio, evaluator: U.carla, station: E2.id, round: 2, extra: ANDAMENTO,
     });

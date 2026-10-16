@@ -122,7 +122,7 @@ const RESULT = {
   review: { requested_at: null, reason: null, revised_at: null, score_before_review: null },
 };
 
-type Scenario = { room: any; content?: any; marks?: any[]; result?: any; stations?: any[] };
+type Scenario = { room: any; content?: any; marks?: any[]; result?: any; stations?: any[]; done?: string[] };
 function serve(s: Scenario) {
   rpc.mockImplementation(async (fn: string) => {
     if (fn === "app_dupla_room") return s.room;
@@ -130,6 +130,7 @@ function serve(s: Scenario) {
     if (fn === "app_dupla_marks") return s.marks ?? [];
     if (fn === "app_dupla_result") return s.result ?? RESULT;
     if (fn === "app_dupla_stations") return s.stations ?? [];
+    if (fn === "app_dupla_room_done_stations") return s.done ?? [];
     if (fn === "app_dupla_heartbeat") return { server_now: NOW };
     throw new Error("função não esperada: " + fn);
   });
@@ -221,6 +222,23 @@ describe("Sala: fases a partir do estado gravado", () => {
     fireEvent.change(within(dialog).getByPlaceholderText("Buscar por estação, tema ou queixa"), { target: { value: "zzz" } });
     expect(within(dialog).getByText("Nenhuma estação encontrada")).toBeTruthy();
     expect(rpc).toHaveBeenCalledWith("app_dupla_stations");
+  });
+
+  it("rodada seguinte (013380): a estação já treinada nesta sala aparece como 'Já treinada nesta sala' e não pode ser escolhida", async () => {
+    const stations = [
+      { id: "s1", name: "Dor torácica", topic: "Cardiologia", area: "Clínica Médica", area_code: "CM", number: 3 },
+      { id: "s2", name: "Apendicite", topic: "Abdome", area: "Cirurgia Geral", area_code: "CR", number: 7 },
+    ];
+    await mount({ room: roles("evaluator", { station: null, round: 2 }), content: contentFor(null), stations, done: ["s1"] });
+    expect(document.body.textContent).toMatch(/Rodada 2: definam de novo os papéis; a estação precisa ser diferente das que vocês já treinaram nesta sala\./);
+    fireEvent.click(screen.getByRole("button", { name: "Escolher estação" }));
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() => expect(within(dialog).getByText("Já treinada nesta sala")).toBeTruthy());
+    expect(rpc).toHaveBeenCalledWith("app_dupla_room_done_stations", { p_room_id: "r1" });
+    const usada = within(dialog).getByText("Estação 3 · Dor torácica").closest("button") as HTMLButtonElement;
+    const livre = within(dialog).getByText("Estação 7 · Apendicite").closest("button") as HTMLButtonElement;
+    expect(usada.disabled).toBe(true);
+    expect(livre.disabled).toBe(false);
   });
 
   it("conexão: 5 etapas com 'Sincronizando com Bruno Lima' e Sair da sala", async () => {
@@ -369,7 +387,9 @@ describe("Sala: fases a partir do estado gravado", () => {
   it("estação (Etapa P): relato inicial visível ao candidato sem liberação e fora da lista; avaliador vê os números da prova", async () => {
     const running = { phase: "running", started_at: "2026-10-11T14:55:00.000Z", ends_at: "2026-10-11T15:04:07.000Z", released_pressings: [] };
     await mount({ room: roles("candidate", running), content: contentFor("candidate", [], true) });
-    expect(screen.getByText("Impresso 1 · Relato do caso")).toBeTruthy();
+    // o relato faz parte da folha, sem número; os impressos numerados são só os liberáveis (decisão do dono de 16/10)
+    expect(screen.getByText("Relato do caso")).toBeTruthy();
+    expect(screen.queryByText("Impresso 1 · Relato do caso")).toBeNull();
     expect(screen.getByText("Relato inicial de teste.")).toBeTruthy();
     expect(screen.getByText("Impresso 1 · Aguardando liberação")).toBeTruthy();
     expect(screen.getByText("Impresso 2 · Aguardando liberação")).toBeTruthy();
@@ -379,7 +399,12 @@ describe("Sala: fases a partir do estado gravado", () => {
     cleanup();
 
     await mount({ room: roles("evaluator", { ...running, released_pressings: ["p1"] }), content: contentFor("evaluator", [], true) });
-    expect(screen.getByText("Este impresso já está visível desde o início.")).toBeTruthy();
+    // pedido 3 do dono (16/10): o relato aparece ao avaliador SEM número, e só os liberáveis levam "Impresso N"
+    expect(screen.getByText("Relato do caso (na folha do candidato)")).toBeTruthy();
+    expect(screen.getByText("O candidato já lê este texto na folha dele, desde o início.")).toBeTruthy();
+    expect(screen.queryByText(/Impresso \d+ · Relato/)).toBeNull();
+    expect(screen.getAllByText(/^Impresso 1 · /)).toHaveLength(1);
+    expect(screen.queryByText("no documento oficial: Impresso 1")).toBeNull();
     expect(screen.getByText("1/2")).toBeTruthy(); // só os liberáveis contam
     expect(screen.getAllByRole("button", { name: /^(Liberar|Ocultar)$/ })).toHaveLength(2); // o relato não tem botão
     expect(screen.getByText("no documento oficial: Impresso 2")).toBeTruthy();
@@ -499,7 +524,8 @@ describe("Sala: fases a partir do estado gravado", () => {
     expect(screen.getByText("3,75 / 10,00")).toBeTruthy();
     expect(screen.getByText("6,25 pt perdidos")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Encerrar treino" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Treinar novamente — Inverter papéis" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Treinar outra estação" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Inverter papéis/ })).toBeNull();
     expect(screen.getByRole("button", { name: "Solicitar revisão da nota" })).toBeTruthy();
     expect(rpc).toHaveBeenCalledWith("app_dupla_result", { p_room_id: "r1", p_round: 1 });
     // aba "Com perda de pontos": só o que perdeu ponto

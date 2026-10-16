@@ -6,7 +6,9 @@ import { Button } from '../core/Button.jsx';
 // o número do impresso no documento oficial; quando ele é diferente de `index`, aparece em linha pequena.
 // Candidato: impresso não liberado mostra só "Impresso {index} · Aguardando liberação" (o título pode revelar o tema).
 // `releaseDisabled` (avaliador antes de iniciar a estação): Liberar/Ocultar desligado, com a dica `releaseHint` no botão.
-export function PrintItem({index,sourceNumber,title,released,canRelease,onToggleRelease,releaseDisabled=false,releaseHint,children}){
+// `label` (opcional) troca a linha "Impresso {index} · {title}" por um texto sem número: o avaliador vê o impresso inicial,
+// que já está na folha do candidato, como "Relato do caso (na folha do candidato)" (decisão do dono de 16/10).
+export function PrintItem({index,sourceNumber,title,label,released,canRelease,onToggleRelease,releaseDisabled=false,releaseHint,children}){
   const [open,setOpen]=useState(false);
   const canSee=!!children&&(released||canRelease);
   const locked=!released&&!canRelease;
@@ -15,7 +17,7 @@ export function PrintItem({index,sourceNumber,title,released,canRelease,onToggle
     <div className="osce-print__row">
       <span className="osce-print__lock"><Icon name={released?'lock-open':'lock'} size={15}/></span>
       <span className="osce-print__title">
-        <span className="osce-print__name">Impresso {index} · {locked?'Aguardando liberação':title}</span>
+        <span className="osce-print__name">{label&&!locked?label:<>Impresso {index} · {locked?'Aguardando liberação':title}</>}</span>
         {showSource&&<small className="osce-print__source">no documento oficial: Impresso {sourceNumber}</small>}
       </span>
       {canRelease&&<Button size="sm" variant={released?'ghost':'secondary'} onClick={onToggleRelease} disabled={releaseDisabled} title={releaseDisabled?releaseHint:undefined}>{released?'Ocultar':'Liberar'}</Button>}

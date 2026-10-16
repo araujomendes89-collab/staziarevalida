@@ -97,7 +97,8 @@ export function CandidateSheet({ station, content, actions }) {
       )}
       {!sheet.url && sheet.done && initial.map((p) => (
         <Card key={p.id} padding={20}>
-          <div style={overline}>{`Impresso ${p.display_number} · ${p.name}`}</div>
+          {/* sem número: o relato faz parte da folha; os impressos numerados (1, 2, 3) são só os liberados */}
+          <div style={overline}>{p.name || "Relato do caso"}</div>
           <PressingMedia pressing={p} actions={actions} />
         </Card>
       ))}

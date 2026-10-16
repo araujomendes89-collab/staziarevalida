@@ -139,6 +139,15 @@ describe("PrintItem", () => {
     expect(screen.queryByText(/Aguardando liberação/)).toBeNull();
   });
 
+  it("com `label` (relato na folha do candidato, visão do avaliador) a linha não tem número; não liberado continua escondendo o título", () => {
+    const { rerender } = render(<PrintItem index={1} title="Relato do caso" label="Relato do caso (na folha do candidato)" released>Texto</PrintItem>);
+    expect(screen.getByText("Relato do caso (na folha do candidato)")).toBeTruthy();
+    expect(screen.queryByText(/Impresso 1/)).toBeNull();
+    rerender(<PrintItem index={1} title="Relato do caso" label="Relato do caso (na folha do candidato)" />);
+    expect(screen.getByText("Impresso 1 · Aguardando liberação")).toBeTruthy();
+    expect(screen.queryByText(/Relato/)).toBeNull();
+  });
+
   it("'Impresso 1 · Esfregaço' e, com sourceNumber 2, 'no documento oficial: Impresso 2'; sem sourceNumber ou igual ao número da tela não escreve a linha", () => {
     const { rerender } = render(<PrintItem index={1} sourceNumber={2} title="Esfregaço" canRelease released />);
     expect(screen.getByText("Impresso 1 · Esfregaço")).toBeTruthy();
