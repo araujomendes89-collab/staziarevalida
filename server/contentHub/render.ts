@@ -19,6 +19,7 @@ import {
   textosDecoracao,
   type CamposPagina,
 } from "../../src/shared/docRico/modulos/pagina";
+import { embutirFiguras } from "../../src/shared/docRico/modulos/imagens";
 
 const run = promisify(execFile);
 const ROOT = process.cwd();
@@ -30,6 +31,8 @@ export interface RenderMeta {
   version: number;
   revisedAt: string;
   contentHash: string;
+  /** Leitor opcional dos bytes das figuras do documento para inclusão no PDF. */
+  imagens?: (id: string) => Promise<{ data: Buffer; mime: string }>;
 }
 
 export interface RenderedFile {
@@ -281,7 +284,8 @@ export async function createRenderer(opts: { python?: string } = {}): Promise<Re
     brandVersion: brand.version,
     newPage: page,
     async render(kind, content, meta) {
-      const html = kind === "lesson" ? lessonHtml(content, meta, brand) : cardsHtml(content, meta, brand);
+      let html = kind === "lesson" ? lessonHtml(content, meta, brand) : cardsHtml(content, meta, brand);
+      if (kind === "lesson") html = await embutirFiguras(html, meta.imagens);
       const p = await page();
       try {
         await p.setContent(html, { waitUntil: "load" });

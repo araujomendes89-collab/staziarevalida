@@ -42,6 +42,7 @@ import { stepQuestionGenerate } from "./questoes/generate";
 import { stepQuestionSource } from "./questoes/source";
 import { AiRequestFailed, AiRequestPending, runAiRequest } from "./aiRequests";
 import { runSimilarity, SimilarityFailed, SimilarityPending } from "./similarity/run";
+import { carregadorDeFiguras } from "./docImagens/figurasPdf";
 
 const run = promisify(execFile);
 
@@ -1162,7 +1163,7 @@ async function stepRender(ctx: Ctx): Promise<Step | null> {
   for (const v of versions) {
     const materials = (await svc<any[]>(ctx, "ch_worker_materials", { p_version_id: v.version_id })).filter((m) => m.kind === "lesson" || m.kind === "visual_cards");
     for (const m of materials) {
-      const out = await renderer.render(m.kind, m.content, { title: v.title, version: v.version, revisedAt: v.created_at, contentHash: m.content_hash });
+      const out = await renderer.render(m.kind, m.content, { title: v.title, version: v.version, revisedAt: v.created_at, contentHash: m.content_hash, imagens: carregadorDeFiguras(ctx.deps, v.version_id) });
       for (const file of out) {
         const key = `renders/${m.id}/${m.content_hash.slice(0, 16)}.${file.format}`;
         await ctx.deps.storage.put(key, file.data, file.contentType);
