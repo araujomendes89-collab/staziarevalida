@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="UTF-8" /><title>Prévia — 2ª fase</title></head>
+<body style="font:16px system-ui;padding:24px;max-width:720px;margin:auto">
+<h1>Prévia · telas da 2ª fase</h1>
+<p>DADOS DE TESTE: banco em memória na sua máquina, nada é real. <b>Com dados</b> = as 10 estações de exemplo aprovadas e algumas já feitas. <b>Vazio</b> = como o banco está hoje (nenhuma estação aprovada).</p>
+<table cellpadding="6"><tr><th></th><th>Com dados</th><th>Vazio</th></tr>
+<script>
+const telas=[["Início","home"],["Teoria para a prática","teoria"],["Banco de estações","estacoes"],["Meus PEPs","peps"],["Paciente simulado","paciente"],["Desempenho prático","desempenho"]];
+for(const [n,t] of telas) document.write(`<tr><td>${n}</td><td><a href="tela.html?t=${t}&db=dados">abrir</a> · <a href="tela.html?t=${t}&db=dados&tema=escuro">noite</a></td><td><a href="tela.html?t=${t}&db=vazio">abrir</a></td></tr>`);
+document.write(`<tr><td>Estação (leitura)</td><td><a href="tela.html?t=estacao&id=seed-01&db=dados">seed-01</a></td><td>-</td></tr>`);
+</script></table></body></html>

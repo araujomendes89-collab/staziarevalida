@@ -18,9 +18,15 @@ import { LessonsScreen } from "./study/LessonsScreen.jsx";
 import { aulasParaAluno } from "./features.js";
 import { UpdatesScreen } from "./study/UpdatesScreen.jsx";
 import { MapasScreen } from "./mapas/MapasScreen.jsx";
-import { Home2, Stations, Station, Peps, Perf2, SimPatient } from "../prototype/Phase2.jsx";
 import { Pair } from "../prototype/Match.jsx";
-import { Theory2 } from "../prototype/Theory2.jsx";
+// 2ª fase com dados reais (estações aprovadas, tentativas e notas do próprio aluno): ver src/novo/app/fase2/
+import { Fase2Home } from "./fase2/Fase2Home.jsx";
+import { Fase2Theory } from "./fase2/Fase2Theory.jsx";
+import { Fase2Stations } from "./fase2/Fase2Stations.jsx";
+import { Fase2Player } from "./fase2/Fase2Player.jsx";
+import { Fase2Peps } from "./fase2/Fase2Peps.jsx";
+import { Fase2Patient } from "./fase2/Fase2Patient.jsx";
+import { Fase2Performance } from "./fase2/Fase2Performance.jsx";
 import { HomeScreen } from "./home/HomeScreen.jsx";
 import { TodayPlan } from "./home/TodayPlan.jsx";
 import { PlanningScreen } from "./home/PlanningScreen.jsx";
@@ -76,7 +82,7 @@ const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", "nivelamento", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "mapas", "planos", "nivelamento"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "mapas", "planos", "nivelamento", "home2", "teoria2", "estacoes", "peps", "paciente", "desempenho2"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -152,19 +158,9 @@ function Screen() {
   if (route === "sessao") forgetShellCounts(backend);
   if (route === "sessao") return <TutorDockProvider go={go}><PracticeSession go={go} /></TutorDockProvider>;
   if (route === "nivelamento" && query.get("etapa") === "questoes") return <Nivelamento modo="rota" go={go} />;
-  // a tela de uma estação abre sem a moldura: o aviso de "em reconstrução" entra aqui, antes dela
-  if (route === "estacao")
-    return (
-      <>
-        <div style={{ maxWidth: 820, margin: "0 auto", padding: "16px 16px 0" }}>
-          <ReconstructionNotice />
-        </div>
-        <Station go={go} />
-      </>
-    );
+  // a tela de uma estação (leitura, atendimento e PEP) abre sem a moldura
+  if (route === "estacao") return <Fase2Player go={go} />;
 
-  // Até cada tela ser ligada aos dados, usa o estado "aluno novo" do design (sem números inventados).
-  const data = "novo";
   let body;
   if (route === "home") body = <HomeScreen go={go} mobile={mobile} />;
   else if (route === "hoje") body = <TodayPlan go={go} />;
@@ -186,13 +182,13 @@ function Screen() {
   else if (route === "classificacao") body = <LeaderboardScreen go={go} />;
   else if (route === "missoes") body = <MissionsScreen go={go} />;
   else if (route === "conquistas") body = <AchievementsScreen go={go} />;
-  else if (route === "home2") body = <Home2 go={go} data={data} mobile={mobile} />;
-  else if (route === "estacoes") body = <Stations go={go} />;
-  else if (route === "teoria2") body = <Theory2 go={go} />;
+  else if (route === "home2") body = <Fase2Home go={go} />;
+  else if (route === "estacoes") body = <Fase2Stations go={go} />;
+  else if (route === "teoria2") body = <Fase2Theory go={go} />;
   else if (route === "dupla") body = <Pair go={go} />;
-  else if (route === "peps") body = <Peps go={go} />;
-  else if (route === "paciente") body = <SimPatient go={go} />;
-  else if (route === "desempenho2") body = <Perf2 go={go} data={data} />;
+  else if (route === "peps") body = <Fase2Peps go={go} />;
+  else if (route === "paciente") body = <Fase2Patient go={go} />;
+  else if (route === "desempenho2") body = <Fase2Performance go={go} />;
   else if (route === "planos") body = <PlansScreen go={go} />;
   else if (route === "admin") body = <AdminScreen />;
   else body = <AccountScreen go={go} />;

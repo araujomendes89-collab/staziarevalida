@@ -51,16 +51,14 @@ vi.mock("../novo/app/admin/AdminScreen.jsx", async () => ({
   AdminScreen: () => null,
   isStaffRole: (await import("../novo/app/admin/common.jsx")).isStaffRole, // a regra de verdade
 }));
-vi.mock("../novo/prototype/Phase2.jsx", () => ({
-  Home2: () => <div data-testid="tela-home2" />,
-  Stations: () => <div data-testid="tela-estacoes" />,
-  Station: () => <div data-testid="tela-estacao" />,
-  Peps: () => <div data-testid="tela-peps" />,
-  Perf2: () => <div data-testid="tela-desempenho2" />,
-  SimPatient: () => <div data-testid="tela-paciente" />,
-}));
+vi.mock("../novo/app/fase2/Fase2Home.jsx", () => ({ Fase2Home: () => <div data-testid="tela-home2" /> }));
+vi.mock("../novo/app/fase2/Fase2Stations.jsx", () => ({ Fase2Stations: () => <div data-testid="tela-estacoes" /> }));
+vi.mock("../novo/app/fase2/Fase2Player.jsx", () => ({ Fase2Player: () => <div data-testid="tela-estacao" /> }));
+vi.mock("../novo/app/fase2/Fase2Peps.jsx", () => ({ Fase2Peps: () => <div data-testid="tela-peps" /> }));
+vi.mock("../novo/app/fase2/Fase2Performance.jsx", () => ({ Fase2Performance: () => <div data-testid="tela-desempenho2" /> }));
+vi.mock("../novo/app/fase2/Fase2Patient.jsx", () => ({ Fase2Patient: () => <div data-testid="tela-paciente" /> }));
+vi.mock("../novo/app/fase2/Fase2Theory.jsx", () => ({ Fase2Theory: () => <div data-testid="tela-teoria2" /> }));
 vi.mock("../novo/prototype/Match.jsx", () => ({ Pair: () => <div data-testid="tela-dupla" /> }));
-vi.mock("../novo/prototype/Theory2.jsx", () => ({ Theory2: () => <div data-testid="tela-teoria2" /> }));
 
 import { App } from "../novo/app/App.jsx";
 import { AccountScreen } from "../novo/app/account/AccountScreen.jsx";
