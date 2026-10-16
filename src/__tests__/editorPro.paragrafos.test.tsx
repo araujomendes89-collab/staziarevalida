@@ -70,7 +70,7 @@ describe("Editor Profissional - M2 Parágrafos", () => {
 
   it("editor: botões registrados e comandos mudam só o que deve", () => {
     const ids = botoesDaAba("inicio").map((b: any) => b.id);
-    for (const id of ["esq", "centro", "dir", "just", "entrelinha", "antes", "depois", "recuoMais", "recuoMenos", "borda", "fundo", "estiloLista"]) expect(ids).toContain(id);
+    for (const id of ["esq", "centro", "dir", "just", "entrelinha", "antes", "depois", "recuoMais", "recuoMenos", "borda", "backgroundColor", "estiloLista"]) expect(ids).toContain(id);
 
     const ed = new Editor({ extensions: extensoesDe({}), content: doc(p("um"), p("dois")) });
     (ed.commands as any).definirParagrafo("textAlign", "justify");
@@ -89,7 +89,7 @@ describe("Editor Profissional - M2 Parágrafos", () => {
     // o segundo parágrafo não foi tocado
     expect(sanear(ed.getJSON()).content[1].attrs).toBeUndefined();
 
-    (ed.commands as any).definirParagrafo("fundo", "verde");
+    (ed.commands as any).definirParagrafo("backgroundColor", "verde");
     (ed.commands as any).limparParagrafo();
     expect(sanear(ed.getJSON()).content[0].attrs).toBeUndefined();
     ed.destroy();

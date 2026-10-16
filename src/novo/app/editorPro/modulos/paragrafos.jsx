@@ -236,7 +236,7 @@ registrarModuloEditor({
     seletor("antes", 350, "espacamento", "Espaço antes do parágrafo", espaco("spacingBefore", "Antes")),
     seletor("depois", 360, "espacamento", "Espaço depois do parágrafo", espaco("spacingAfter", "Depois")),
     { ...seletor("borda", 370, "caixa", "Borda do parágrafo", simples("borda", NOMES_BORDA, "Sem borda")), rotuloGrupo: "Borda e fundo" },
-    seletor("fundo", 380, "caixa", "Sombreamento do parágrafo", simples("fundo", NOMES_FUNDO, "Sem sombreamento")),
+    seletor("backgroundColor", 380, "caixa", "Sombreamento do parágrafo", simples("backgroundColor", NOMES_FUNDO, "Sem sombreamento")),
     botao("limparParagrafo", 390, "eraser", "Limpar formatação do parágrafo", { grupo: "caixa", faz: (e) => e.chain().focus().limparParagrafo().run() }),
   ],
 });
