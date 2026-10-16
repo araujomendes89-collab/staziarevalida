@@ -153,6 +153,21 @@ describe("Corrigido: estados do modelo", () => {
     expect(backend.rpc.mock.calls.find((c: any[]) => c[0] === "app_answer_question")![1].p_option).toBe("C");
   });
 
+  it("treino: o cronômetro 'Respondendo' continua correndo depois de corrigir (dono, 16/10: 'não pode parar')", async () => {
+    await open(session("treino", [question(), question({ id: "q2", number: 14 })]));
+    fireEvent.click(screen.getByRole("radio", { name: /Alternativa C/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar resposta" }));
+    expect(await screen.findByText("Você acertou")).toBeTruthy();
+    const t0 = Date.now();
+    const relogio = vi.spyOn(Date, "now").mockImplementation(() => t0 + 65_000);
+    try {
+      // com a questão já corrigida, o relógio segue: 65 s depois o cabeçalho mostra pelo menos 01:05
+      await waitFor(() => expect(screen.getByRole("timer", { name: /^Tempo respondendo 01:0\d/ })).toBeTruthy(), { timeout: 3000 });
+    } finally {
+      relogio.mockRestore();
+    }
+  });
+
   it("anulada: nenhuma alternativa 'Gabarito', aviso da banca, sem 'Resposta incorreta'", async () => {
     const q = question({ origin: "official", exam: { id: "r", kind: "REVALIDA", year: 2024, semester: 1 }, selected: "A", correction: correction({ origin: "official", annulled: true, correct_option: null, is_correct: null }) });
     const { container } = await open(session("treino", [q]));

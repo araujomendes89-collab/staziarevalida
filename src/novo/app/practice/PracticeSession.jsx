@@ -133,9 +133,16 @@ function Runner({ session, go, onFinished }) {
         ? timer.frozen
         : Math.max(0, Math.ceil((timer.deadline - (now + skew.current)) / 1000));
   const running = !revealed && !confirming;
-  const spent = Math.floor(
-    (questions.reduce((sum, q) => sum + (q.id === question.id && running ? 0 : q.active_ms), 0) + (running ? activeMs() : 0)) / 1000
-  );
+  // Treino: o cronômetro principal ("Respondendo") corre sem parar enquanto a sessão está aberta (dono, 16/10: "o cronômetro
+  // simplesmente para e isso não pode acontecer"; antes ele parava ao corrigir a questão e só voltava na próxima). Começa do tempo
+  // já gasto nas questões (sessão retomada) e soma o relógio desde que a tela abriu. O tempo de cada questão ("Nesta questão" e o
+  // que vai ao banco) continua contando só até responder.
+  const treinoClock = React.useRef({ at: Date.now(), base: session.questions.reduce((sum, q) => sum + (q.active_ms ?? 0), 0) });
+  const spent = sim
+    ? Math.floor(
+        (questions.reduce((sum, q) => sum + (q.id === question.id && running ? 0 : q.active_ms), 0) + (running ? activeMs() : 0)) / 1000
+      )
+    : Math.floor((treinoClock.current.base + Math.max(0, now - treinoClock.current.at)) / 1000);
 
   const finish = React.useCallback(
     async (timeUp = false) => {
