@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Gera a migração SQL com a carga de dados da classificação de dificuldade por agentes
- * (Gemini + conferência Claude), a partir de arquivo CSV.
+ * Gera a migração SQL com a carga da dificuldade na escala do Inep (p de acerto; faixas do Enade),
+ * a partir do CSV montado por scripts/dificuldade/recalibrar.py (medidas dos microdados + estimadas pela rubrica).
  *
  * NÃO altera e NÃO toca em question_difficulty_review (validação humana).
  * Apenas insere ou atualiza question_difficulty_agents.
@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const RAIZ = path.resolve(AQUI, "../..");
-const CSV_PADRAO = "/Volumes/StaziaMed/.tmp-aulas/dificuldade/classificacao.csv";
+const CSV_PADRAO = "/Volumes/StaziaMed/.tmp-aulas/dificuldade/recalibracao/dificuldade-inep.csv";
 const SAIDA_SQL_PADRAO = path.join(
   RAIZ,
   "supabase/migrations/20261003012601_dificuldade_classificada_agentes_dados.sql"
@@ -88,142 +88,84 @@ export function escapeSql(valor) {
   return "'" + String(valor).replace(/'/g, "''") + "'";
 }
 
+const FAIXAS = ["muito_facil", "facil", "medio", "dificil", "muito_dificil"];
+/** Faixa do Inep (Enade, Relatório Síntese de Área 1.5.1) pelo p arredondado a 2 casas: 1 muito fácil ... 5 muito difícil. */
+export function nivelInep(p) {
+  // igual ao check do banco: p é gravado com 4 casas e round(p, 2) arredonda metade para longe do zero
+  const k = Math.round(Number(Number(p).toFixed(4)) * 10000);
+  return k >= 8550 ? 1 : k >= 6050 ? 2 : k >= 4050 ? 3 : k >= 1550 ? 4 : 5;
+}
+const faixaCurta = (n) => (n <= 2 ? "facil" : n === 3 ? "media" : "dificil");
+const num = (v) => (v == null || String(v).trim() === "" ? null : Number(v));
+
 /**
- * Valida os dados de cada linha do CSV e formata os campos para a tupla SQL.
+ * Valida uma linha do CSV (colunas: id, p, p_low, p_high, method, source, n_respondents, irt_b, point_biserial,
+ * confidence, reason, rubric) e devolve o registro já com nível e faixas calculados pelo p.
  */
 export function validarELimparLinha(row) {
-  const id = row.id ? String(row.id).trim() : null;
-  if (!id) {
-    throw new Error(`Linha ${row._linhaCsv}: campo "id" da questão é obrigatório.`);
+  const onde = `Linha ${row._linhaCsv} (questão ${row.id ?? "?"})`;
+  const id = row.id ? String(row.id).trim() : "";
+  if (!id) throw new Error(`Linha ${row._linhaCsv}: campo "id" da questão é obrigatório.`);
+  const p = num(row.p), pLow = num(row.p_low), pHigh = num(row.p_high);
+  if (p == null || !(p >= 0 && p <= 1)) throw new Error(`${onde}: p "${row.p}" inválido (0 a 1).`);
+  const method = String(row.method ?? "").trim();
+  if (!["medida", "estimada"].includes(method)) throw new Error(`${onde}: method deve ser "medida" ou "estimada".`);
+  const source = String(row.source ?? "").trim();
+  if (source.length < 3 || source.length > 400) throw new Error(`${onde}: source ausente ou longo demais.`);
+  const n = num(row.n_respondents), b = num(row.irt_b), pb = num(row.point_biserial);
+  if (method === "medida" && !(Number.isInteger(n) && n > 0)) throw new Error(`${onde}: medida exige n_respondents.`);
+  if (method === "medida" && (pLow != null || pHigh != null)) throw new Error(`${onde}: medida não leva intervalo.`);
+  if (method === "estimada") {
+    if (n != null || b != null || pb != null) throw new Error(`${onde}: estimada não leva n, b nem bisserial.`);
+    if (pLow == null || pHigh == null || !(pLow <= p && p <= pHigh) || pLow < 0 || pHigh > 1)
+      throw new Error(`${onde}: estimada exige intervalo p_low <= p <= p_high.`);
   }
-
-  // Nível final (1 a 5)
-  const rawNota = row.nota_final != null ? String(row.nota_final).trim() : "";
-  const level = parseInt(rawNota, 10);
-  if (!rawNota || isNaN(level) || !Number.isInteger(Number(rawNota)) || level < 1 || level > 5) {
-    throw new Error(
-      `Linha ${row._linhaCsv} (questão ${id}): nota_final "${row.nota_final}" inválida. Deve ser um número inteiro de 1 a 5.`
-    );
+  if (b != null && !(b >= -10 && b <= 10)) throw new Error(`${onde}: irt_b fora de -10 a 10.`);
+  if (pb != null && !(pb >= -1 && pb <= 1)) throw new Error(`${onde}: bisserial fora de -1 a 1.`);
+  const confidence = String(row.confidence ?? "").trim();
+  if (!["alta", "media", "baixa"].includes(confidence)) throw new Error(`${onde}: confiança inválida.`);
+  const reason = row.reason ? String(row.reason).trim().slice(0, 600) : null;
+  let rubric = null;
+  if (row.rubric) {
+    try { rubric = JSON.parse(row.rubric); } catch { throw new Error(`${onde}: rubric não é JSON válido.`); }
   }
-
-  // Faixa (facil, media, dificil)
-  const band = row.faixa != null ? String(row.faixa).trim().toLowerCase() : "";
-  if (!["facil", "media", "dificil"].includes(band)) {
-    throw new Error(
-      `Linha ${row._linhaCsv} (questão ${id}): faixa "${row.faixa}" inválida. Deve ser "facil", "media" ou "dificil".`
-    );
-  }
-
-  // Coerência faixa x nível
-  const coerente =
-    ((level === 1 || level === 2) && band === "facil") ||
-    (level === 3 && band === "media") ||
-    ((level === 4 || level === 5) && band === "dificil");
-  if (!coerente) {
-    throw new Error(
-      `Linha ${row._linhaCsv} (questão ${id}): nível ${level} incompatível com faixa "${band}". Esperado: níveis 1 e 2 = facil, nível 3 = media, níveis 4 e 5 = dificil.`
-    );
-  }
-
-  // Confiança (alta, media, baixa)
-  const confidence = row.confianca != null ? String(row.confianca).trim().toLowerCase() : "";
-  if (!["alta", "media", "baixa"].includes(confidence)) {
-    throw new Error(
-      `Linha ${row._linhaCsv} (questão ${id}): confiança "${row.confianca}" inválida. Deve ser "alta", "media" ou "baixa".`
-    );
-  }
-
-  // Motivo (até 600 caracteres)
-  let reason = row.motivo != null ? String(row.motivo).trim() : null;
-  if (reason === "" || reason === "NULL") reason = null;
-  if (reason && reason.length > 600) {
-    throw new Error(
-      `Linha ${row._linhaCsv} (questão ${id}): motivo excede o limite de 600 caracteres (${reason.length} caracteres).`
-    );
-  }
-
-  // gemini_level: coluna gemini_pro se preenchida, senão gemini_flash
-  const rawGemini =
-    row.gemini_pro != null && String(row.gemini_pro).trim() !== "" && String(row.gemini_pro).trim() !== "NULL"
-      ? String(row.gemini_pro).trim()
-      : row.gemini_flash != null &&
-        String(row.gemini_flash).trim() !== "" &&
-        String(row.gemini_flash).trim() !== "NULL"
-      ? String(row.gemini_flash).trim()
-      : null;
-
-  let geminiLevel = null;
-  if (rawGemini != null) {
-    geminiLevel = parseInt(rawGemini, 10);
-    if (isNaN(geminiLevel) || geminiLevel < 1 || geminiLevel > 5) {
-      throw new Error(
-        `Linha ${row._linhaCsv} (questão ${id}): nível Gemini "${rawGemini}" inválido. Deve ser entre 1 e 5 ou nulo.`
-      );
-    }
-  }
-
-  // Claude: conferido e ajustado
-  const claudeChecked = /^(true|t|1|sim|s)$/i.test(String(row.conferido_claude ?? "").trim());
-  const claudeAdjusted = /^(true|t|1|sim|s)$/i.test(String(row.ajustado_claude ?? "").trim());
-
-  // Modelo
-  let model = row.modelo != null ? String(row.modelo).trim() : null;
-  if (model === "" || model === "NULL") model = null;
-
-  return {
-    questionId: id,
-    level,
-    band,
-    reason,
-    confidence,
-    geminiLevel,
-    claudeChecked,
-    claudeAdjusted,
-    model,
-  };
+  const level = nivelInep(p);
+  return { questionId: id, level, inepBand: FAIXAS[level - 1], band: faixaCurta(level), p, pLow, pHigh, method, source,
+           n, b, pb, confidence, reason, rubric };
 }
 
-/**
- * Constrói o script SQL de inserção/atualização a partir dos registros validados.
- */
+const lit = (v) => (v == null ? "null" : escapeSql(v));
+const numLit = (v, tipo) => (v == null ? `null::${tipo}` : `${v}::${tipo}`);
+
+/** Monta o SQL idempotente (insert ... on conflict do update), só para questões que existem no banco. */
 export function construirSql(registros, caminhoCsv) {
-  const agora = new Date().toISOString();
-  const linhasValores = registros.map((r) => {
-    const qId = escapeSql(r.questionId);
-    const lvl = `${r.level}::smallint`;
-    const bnd = escapeSql(r.band);
-    const rsn = r.reason != null ? escapeSql(r.reason) : "null";
-    const cnf = escapeSql(r.confidence);
-    const gmn = r.geminiLevel != null ? `${r.geminiLevel}::smallint` : "null::smallint";
-    const chk = `${r.claudeChecked}::boolean`;
-    const adj = `${r.claudeAdjusted}::boolean`;
-    const mdl = r.model != null ? escapeSql(r.model) : "null";
+  const cont = { medida: 0, estimada: 0 };
+  for (const r of registros) cont[r.method]++;
+  const linhasValores = registros.map((r) =>
+    `    (${escapeSql(r.questionId)}, ${r.level}::smallint, ${escapeSql(r.inepBand)}, ${escapeSql(r.band)}, ${numLit(r.p.toFixed(4), "numeric")}, ` +
+    `${numLit(r.pLow?.toFixed(4), "numeric")}, ${numLit(r.pHigh?.toFixed(4), "numeric")}, ${escapeSql(r.method)}, ${escapeSql(r.source)}, ` +
+    `${numLit(r.n, "integer")}, ${r.b == null ? "null::text" : "'rasch'"}, ${numLit(r.b, "double precision")}, ${numLit(r.pb, "double precision")}, ` +
+    `${escapeSql(r.confidence)}, ${lit(r.reason)}, ${r.rubric ? `${escapeSql(JSON.stringify(r.rubric))}::jsonb` : "null::jsonb"})`
+  );
+  return `-- Dificuldade das questões na escala do Inep (índice de facilidade p; faixas do Enade) — carga de dados.
+-- NÃO é validação humana. medida = p dos microdados do Inep; estimada = rubrica médica calibrada contra as medidas.
+-- Total de linhas: ${registros.length} (medidas: ${cont.medida}; estimadas: ${cont.estimada})
+-- Origem dos dados: ${path.basename(caminhoCsv)}
+-- Idempotente: pode rodar de novo; só grava questões que existem; não toca na dificuldade validada pela equipe.
 
-    return `    (${qId}, ${lvl}, ${bnd}, ${rsn}, ${cnf}, ${gmn}, ${chk}, ${adj}, ${mdl})`;
-  });
-
-  return `-- Dificuldade das questões CLASSIFICADA POR AGENTES (carga de dados).
--- NÃO é validação humana e NUNCA aparece como "validada pela equipe".
--- Total de linhas: ${registros.length}
--- Data de geração: ${agora}
--- Origem dos dados: ${caminhoCsv}
-
-insert into public.question_difficulty_agents (question_id, level, band, reason, confidence, gemini_level, claude_checked, claude_adjusted, model)
+insert into public.question_difficulty_agents (question_id, level, inep_band, band, p, p_low, p_high, method, source,
+  n_respondents, irt_model, irt_b, point_biserial, confidence, reason, rubric)
 select v.* from (
   values
 ${linhasValores.join(",\n")}
-) as v(question_id, level, band, reason, confidence, gemini_level, claude_checked, claude_adjusted, model)
+) as v(question_id, level, inep_band, band, p, p_low, p_high, method, source, n_respondents, irt_model, irt_b, point_biserial,
+       confidence, reason, rubric)
 join public.questions q on q.id = v.question_id
 on conflict (question_id) do update set
-  level = excluded.level,
-  band = excluded.band,
-  reason = excluded.reason,
-  confidence = excluded.confidence,
-  gemini_level = excluded.gemini_level,
-  claude_checked = excluded.claude_checked,
-  claude_adjusted = excluded.claude_adjusted,
-  model = excluded.model,
-  classified_at = now();
+  level = excluded.level, inep_band = excluded.inep_band, band = excluded.band, p = excluded.p, p_low = excluded.p_low,
+  p_high = excluded.p_high, method = excluded.method, source = excluded.source, n_respondents = excluded.n_respondents,
+  irt_model = excluded.irt_model, irt_b = excluded.irt_b, point_biserial = excluded.point_biserial,
+  confidence = excluded.confidence, reason = excluded.reason, rubric = excluded.rubric, classified_at = now();
 `;
 }
 
@@ -245,7 +187,7 @@ export function executar(caminhoCsv = CSV_PADRAO, caminhoSaida = SAIDA_SQL_PADRA
   }
 
   const registrosValidados = [];
-  const distribuicao = { facil: 0, media: 0, dificil: 0 };
+  const distribuicao = {};
 
   const vistos = new Set();
   for (const row of linhasCruas) {
@@ -256,7 +198,7 @@ export function executar(caminhoCsv = CSV_PADRAO, caminhoSaida = SAIDA_SQL_PADRA
     }
     vistos.add(item.questionId);
     registrosValidados.push(item);
-    distribuicao[item.band] = (distribuicao[item.band] || 0) + 1;
+    distribuicao[`${item.method}:${item.inepBand}`] = (distribuicao[`${item.method}:${item.inepBand}`] || 0) + 1;
   }
 
   const sqlGerado = construirSql(registrosValidados, caminhoCsv);
@@ -265,10 +207,8 @@ export function executar(caminhoCsv = CSV_PADRAO, caminhoSaida = SAIDA_SQL_PADRA
 
   const total = registrosValidados.length;
   console.log(`Sucesso: ${total} linhas geradas a partir do CSV.`);
-  console.log("Distribuição por faixa:");
-  console.log(`- fácil: ${distribuicao.facil} (${((distribuicao.facil / total) * 100).toFixed(1)}%)`);
-  console.log(`- média: ${distribuicao.media} (${((distribuicao.media / total) * 100).toFixed(1)}%)`);
-  console.log(`- difícil: ${distribuicao.dificil} (${((distribuicao.dificil / total) * 100).toFixed(1)}%)`);
+  console.log("Distribuição por origem e faixa do Inep:");
+  for (const [k, v] of Object.entries(distribuicao).sort()) console.log(`- ${k}: ${v} (${((v / total) * 100).toFixed(1)}%)`);
   console.log(`Arquivo SQL gravado em: ${caminhoSaida}`);
 }
 

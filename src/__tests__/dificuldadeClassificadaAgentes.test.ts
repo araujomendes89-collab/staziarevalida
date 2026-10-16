@@ -1,14 +1,12 @@
 // @vitest-environment node
 /**
- * Migração 012600 (dificuldade classificada por agentes), num Postgres real em memória:
- *  - a tabela começa vazia (ou >= 0 se houver carga de dados);
- *  - integridade e restrições: nível 1 a 5, coerência nível x faixa, origem e confiança;
- *  - RLS: só equipe lê; aluno vê lista vazia e não consegue gravar;
- *  - app_admin_difficulty_agents_summary: só equipe executa;
- *  - question_difficulty_effective: resolução de precedência (equipe > agentes > vazia),
- *    não exposta para alunos, sem alterar a validação humana;
- *  - app_question_difficulty: aluno após responder em treino segue sem ver a classificação de agentes;
- *  - ensaio de desfazer: apaga tabela e funções, preserva question_difficulty_review e reaplica com sucesso.
+ * Migrações 012600/012601 (dificuldade na escala do Inep), num Postgres real em memória:
+ *  - integridade: nível = faixa do Inep pelo p (Enade, Relatório Síntese 1.5.1: >=0,86 / 0,61 / 0,41 / 0,16 / <=0,15),
+ *    faixa curta coerente, medida x estimada (n, b, bisserial, intervalo), origem e confiança;
+ *  - RLS: só equipe lê; aluno vê lista vazia e não grava; resumo só para a equipe;
+ *  - question_difficulty_effective: validada da equipe > medida do Inep > estimada pela rubrica; não exposta ao aluno;
+ *  - app_question_difficulty (o que o aluno vê) segue só com a validada;
+ *  - carga 012601: uma linha por questão existente, idempotente, sem tocar na validação humana; desfazer e reaplicar.
  */
 import fs from "fs";
 import path from "path";
@@ -17,363 +15,189 @@ import { openStaziaEnv, USERS, type StaziaEnv } from "./helpers/staziamed";
 
 vi.setConfig({ testTimeout: 120_000 });
 const ROOT = path.resolve(__dirname, "../..");
-const MIGRACAO = fs.readFileSync(
-  path.join(ROOT, "supabase/migrations/20261003012600_dificuldade_classificada_agentes.sql"),
-  "utf8"
-);
-const DESFAZER = fs.readFileSync(
-  path.join(ROOT, "supabase/desfazer/20261003012600_dificuldade_classificada_agentes.desfazer.sql"),
-  "utf8"
-);
-
-const DADOS = fs.readFileSync(
-  path.join(ROOT, "supabase/migrations/20261003012601_dificuldade_classificada_agentes_dados.sql"),
-  "utf8"
-);
-const DESFAZER_DADOS = fs.readFileSync(
-  path.join(ROOT, "supabase/desfazer/20261003012601_dificuldade_classificada_agentes_dados.desfazer.sql"),
-  "utf8"
-);
+const ler = (p: string) => fs.readFileSync(path.join(ROOT, p), "utf8");
+const MIGRACAO = ler("supabase/migrations/20261003012600_dificuldade_classificada_agentes.sql");
+const DESFAZER = ler("supabase/desfazer/20261003012600_dificuldade_classificada_agentes.desfazer.sql");
+const DADOS = ler("supabase/migrations/20261003012601_dificuldade_classificada_agentes_dados.sql");
+const DESFAZER_DADOS = ler("supabase/desfazer/20261003012601_dificuldade_classificada_agentes_dados.desfazer.sql");
 const IDS_DADOS = [...DADOS.matchAll(/^\s+\('([^']+)', \d::smallint/gm)].map((m) => m[1]);
+const FAIXA = ["muito_facil", "facil", "medio", "dificil", "muito_dificil"];
+const CURTA = (n: number) => (n <= 2 ? "facil" : n === 3 ? "media" : "dificil");
 
 let env: StaziaEnv;
 let ids: string[];
 
+/** Grava uma linha "estimada" coerente (ou com os campos trocados por `over`). */
+const estimada = (id: string, level: number, p: number, over: Record<string, unknown> = {}) => {
+  const v = { level, inep_band: FAIXA[level - 1], band: CURTA(level), p, p_low: Math.max(0, p - 0.1), p_high: Math.min(1, p + 0.1),
+              method: "estimada", source: "rubrica de teste", n_respondents: null, irt_model: null, irt_b: null,
+              point_biserial: null, confidence: "media", origin: "classificada_agentes", ...over };
+  return env.sql(
+    `insert into public.question_difficulty_agents (question_id, level, inep_band, band, p, p_low, p_high, method, source,
+       n_respondents, irt_model, irt_b, point_biserial, confidence, origin)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+     on conflict (question_id) do update set level = excluded.level, inep_band = excluded.inep_band, band = excluded.band,
+       p = excluded.p, p_low = excluded.p_low, p_high = excluded.p_high, method = excluded.method, source = excluded.source,
+       n_respondents = excluded.n_respondents, irt_model = excluded.irt_model, irt_b = excluded.irt_b,
+       point_biserial = excluded.point_biserial, confidence = excluded.confidence, origin = excluded.origin`,
+    [id, v.level, v.inep_band, v.band, v.p, v.p_low, v.p_high, v.method, v.source, v.n_respondents, v.irt_model, v.irt_b,
+     v.point_biserial, v.confidence, v.origin]
+  );
+};
+const medida = (id: string, level: number, p: number, over: Record<string, unknown> = {}) =>
+  estimada(id, level, p, { method: "medida", p_low: null, p_high: null, n_respondents: 39256, irt_model: "rasch", irt_b: 0.1,
+                           point_biserial: 0.35, confidence: "alta", source: "microdados de teste", ...over });
+
 beforeAll(async () => {
   env = await openStaziaEnv();
-  ids = (
-    await env.sql<{ id: string }>(
-      `select id from public.questions where origin = 'official' and status = 'valid' order by id limit 3`
-    )
-  ).map((r) => r.id);
+  ids = (await env.sql<{ id: string }>(
+    `select id from public.questions where origin = 'official' and status = 'valid' order by id limit 3`
+  )).map((r) => r.id);
 }, 600_000);
 
 afterAll(async () => {
   await env?.close();
 }, 60_000);
 
-describe("tabela question_difficulty_agents e integridade de dados", () => {
-  it("a tabela question_difficulty_agents começa disponível com contagem maior ou igual a zero", async () => {
-    const rows = await env.sql<{ count: number }>(
-      `select count(*)::int as count from public.question_difficulty_agents`
-    );
-    expect(rows[0].count).toBeGreaterThanOrEqual(0);
+describe("integridade: nível = faixa do Inep pelo p", () => {
+  it("cortes do Enade (p arredondado a 2 casas) e faixa curta do nivelamento", async () => {
+    const casos: Array<[number, number]> = [[0.86, 1], [0.855, 1], [0.85, 2], [0.61, 2], [0.605, 2], [0.6, 3], [0.41, 3],
+      [0.4, 4], [0.16, 4], [0.155, 4], [0.15, 5], [0.02, 5]];
+    for (const [p, nivel] of casos) {
+      await estimada(ids[0], nivel, p, { p_low: 0, p_high: 1 });
+      const [r] = await env.sql<any>(`select level, inep_band, band from public.question_difficulty_agents where question_id = $1`, [ids[0]]);
+      expect([p, r.level, r.inep_band, r.band]).toEqual([p, nivel, FAIXA[nivel - 1], CURTA(nivel)]);
+    }
   });
 
-  it("insert pelo dono do banco com nível 4 e faixa dificil funciona", async () => {
-    await env.sql(`delete from public.question_difficulty_agents where question_id = $1`, [ids[0]]);
-    await env.sql(
-      `insert into public.question_difficulty_agents (question_id, level, band, reason, confidence)
-       values ($1, 4, 'dificil', 'caso clínico complexo', 'alta')`,
-      [ids[0]]
-    );
-
-    const inserted = await env.sql<any>(
-      `select * from public.question_difficulty_agents where question_id = $1`,
-      [ids[0]]
-    );
-    expect(inserted).toHaveLength(1);
-    expect(inserted[0].level).toBe(4);
-    expect(inserted[0].band).toBe("dificil");
-    expect(inserted[0].reason).toBe("caso clínico complexo");
-    expect(inserted[0].confidence).toBe("alta");
-    expect(inserted[0].origin).toBe("classificada_agentes");
+  it("recusa nível que não bate com o p, faixa trocada e faixa curta trocada", async () => {
+    await expect(estimada(ids[1], 3, 0.9)).rejects.toThrow();
+    await expect(estimada(ids[1], 2, 0.7, { inep_band: "medio" })).rejects.toThrow();
+    await expect(estimada(ids[1], 2, 0.7, { band: "media" })).rejects.toThrow();
+    await expect(estimada(ids[1], 6, 0.01)).rejects.toThrow();
+    await expect(estimada(ids[1], 1, 1.2)).rejects.toThrow();
   });
 
-  it("nível 4 com faixa facil é recusado pelo check de coerência", async () => {
-    await expect(
-      env.sql(
-        `insert into public.question_difficulty_agents (question_id, level, band) values ($1, 4, 'facil')`,
-        [ids[1]]
-      )
-    ).rejects.toThrow();
+  it("medida exige n de respondentes e não leva intervalo; estimada exige intervalo e não leva n, b nem bisserial", async () => {
+    await expect(medida(ids[1], 3, 0.5, { n_respondents: null })).rejects.toThrow();
+    await expect(medida(ids[1], 3, 0.5, { p_low: 0.4, p_high: 0.6 })).rejects.toThrow();
+    await expect(estimada(ids[1], 3, 0.5, { p_low: null })).rejects.toThrow();
+    await expect(estimada(ids[1], 3, 0.5, { p_low: 0.55, p_high: 0.6 })).rejects.toThrow();
+    await expect(estimada(ids[1], 3, 0.5, { irt_model: "rasch", irt_b: 0.2 })).rejects.toThrow();
+    await expect(estimada(ids[1], 3, 0.5, { n_respondents: 10 })).rejects.toThrow();
+    await expect(medida(ids[1], 3, 0.5, { irt_model: null })).rejects.toThrow(); // b sem modelo
+    await expect(medida(ids[1], 3, 0.5, { irt_model: "3pl" })).rejects.toThrow(); // o Inep usa Rasch
   });
 
-  it("nível 6 e nível 0 são recusados pelo check de nível", async () => {
-    await expect(
-      env.sql(
-        `insert into public.question_difficulty_agents (question_id, level, band) values ($1, 6, 'dificil')`,
-        [ids[1]]
-      )
-    ).rejects.toThrow();
-
-    await expect(
-      env.sql(
-        `insert into public.question_difficulty_agents (question_id, level, band) values ($1, 0, 'facil')`,
-        [ids[1]]
-      )
-    ).rejects.toThrow();
-  });
-
-  it("origem diferente de 'classificada_agentes' é recusada", async () => {
-    await expect(
-      env.sql(
-        `insert into public.question_difficulty_agents (question_id, level, band, origin)
-         values ($1, 3, 'media', 'outra_origem')`,
-        [ids[1]]
-      )
-    ).rejects.toThrow();
-  });
-
-  it("confiança inválida é recusada", async () => {
-    await expect(
-      env.sql(
-        `insert into public.question_difficulty_agents (question_id, level, band, confidence)
-         values ($1, 3, 'media', 'invalida')`,
-        [ids[1]]
-      )
-    ).rejects.toThrow();
+  it("origem diferente de 'classificada_agentes' e confiança inválida são recusadas", async () => {
+    await expect(estimada(ids[1], 3, 0.5, { origin: "validada" })).rejects.toThrow();
+    await expect(estimada(ids[1], 3, 0.5, { confidence: "total" })).rejects.toThrow();
+    await medida(ids[1], 3, 0.5);
+    const [r] = await env.sql<any>(`select method, irt_model, n_respondents from public.question_difficulty_agents where question_id = $1`, [ids[1]]);
+    expect(r).toEqual({ method: "medida", irt_model: "rasch", n_respondents: 39256 });
   });
 });
 
-describe("RLS e permissões da tabela e resumo de agentes", () => {
-  it("aluno lendo pela sqlAs recebe lista vazia; ADMIN e EDITOR conseguem ler", async () => {
-    await env.sql(`delete from public.question_difficulty_agents where question_id = $1`, [ids[0]]);
-    await env.sql(
-      `insert into public.question_difficulty_agents (question_id, level, band) values ($1, 4, 'dificil')`,
-      [ids[0]]
-    );
-
-    // Aluno recebe lista vazia por RLS
-    const alunoRows = await env.sqlAs(
-      USERS.PRO,
-      `select * from public.question_difficulty_agents where question_id = $1`,
-      [ids[0]]
-    );
-    expect(alunoRows).toEqual([]);
-
-    // ADMIN lê os dados
-    const adminRows = await env.sqlAs<any>(
-      USERS.ADMIN,
-      `select * from public.question_difficulty_agents where question_id = $1`,
-      [ids[0]]
-    );
-    expect(adminRows).toHaveLength(1);
-    expect(adminRows[0].question_id).toBe(ids[0]);
-    expect(adminRows[0].level).toBe(4);
-
-    // EDITOR lê os dados
-    const editorRows = await env.sqlAs<any>(
-      USERS.EDITOR,
-      `select * from public.question_difficulty_agents where question_id = $1`,
-      [ids[0]]
-    );
-    expect(editorRows).toHaveLength(1);
-    expect(editorRows[0].question_id).toBe(ids[0]);
+describe("RLS e permissões", () => {
+  it("aluno lê lista vazia; ADMIN e EDITOR leem", async () => {
+    await medida(ids[0], 4, 0.3);
+    expect(await env.sqlAs(USERS.PRO, `select * from public.question_difficulty_agents where question_id = $1`, [ids[0]])).toEqual([]);
+    for (const u of [USERS.ADMIN, USERS.EDITOR]) {
+      const r = await env.sqlAs<any>(u, `select level, method from public.question_difficulty_agents where question_id = $1`, [ids[0]]);
+      expect(r).toEqual([{ level: 4, method: "medida" }]);
+    }
   });
 
-  it("aluno não consegue gravar na tabela", async () => {
-    await expect(
-      env.sqlAs(
-        USERS.PRO,
-        `insert into public.question_difficulty_agents (question_id, level, band) values ($1, 3, 'media')`,
-        [ids[1]]
-      )
-    ).rejects.toThrow();
+  it("aluno não grava na tabela", async () => {
+    await expect(env.sqlAs(USERS.PRO,
+      `insert into public.question_difficulty_agents (question_id, level, inep_band, band, p, p_low, p_high, method, source)
+       values ($1, 3, 'medio', 'media', 0.5, 0.4, 0.6, 'estimada', 'aluno')`, [ids[2]])).rejects.toThrow();
   });
 
-  it("aluno e anônimo não executam app_admin_difficulty_agents_summary; ADMIN executa e recebe total e rows", async () => {
-    // Aluno é barrado por assert_staff
-    await expect(
-      env.sqlAs(USERS.PRO, `select public.app_admin_difficulty_agents_summary()`)
-    ).rejects.toThrow();
-    await expect(
-      env.rpc(USERS.PRO, "app_admin_difficulty_agents_summary")
-    ).rejects.toThrow();
-
-    // Anônimo é barrado por permissão revogada
-    await expect(
-      env.sqlAs(
-        "00000000-0000-4000-8000-000000000000",
-        `select public.app_admin_difficulty_agents_summary()`
-      )
-    ).rejects.toThrow();
-
-    // ADMIN executa e recebe total numérico e lista de linhas
-    const summary = await env.rpc<{ total: number; rows: any[] }>(
-      USERS.ADMIN,
-      "app_admin_difficulty_agents_summary"
-    );
-    expect(typeof summary.total).toBe("number");
-    expect(summary.total).toBeGreaterThanOrEqual(1);
-    expect(Array.isArray(summary.rows)).toBe(true);
+  it("resumo só para a equipe, com origem medida/estimada e faixa do Inep", async () => {
+    await expect(env.rpc(USERS.PRO, "app_admin_difficulty_agents_summary")).rejects.toThrow();
+    await expect(env.sqlAs("00000000-0000-4000-8000-000000000000", `select public.app_admin_difficulty_agents_summary()`)).rejects.toThrow();
+    const s = await env.rpc<{ total: number; rows: any[] }>(USERS.ADMIN, "app_admin_difficulty_agents_summary");
+    expect(s.total).toBeGreaterThanOrEqual(1);
+    expect(s.rows.some((r) => r.source === "medida_inep" && r.inep_band === "dificil")).toBe(true);
+    for (const r of s.rows) expect(["validada_equipe", "medida_inep", "estimada_rubrica", "sem_dificuldade"]).toContain(r.source);
   });
 });
 
-describe("question_difficulty_effective", () => {
-  it("sem cadastro, devolve zero linhas", async () => {
-    await env.sql(`delete from public.question_difficulty_agents where question_id = $1`, [ids[1]]);
-    await env.sql(`delete from public.question_difficulty_review where question_id = $1`, [ids[1]]);
+describe("question_difficulty_effective: validada > medida > estimada", () => {
+  const ef = (id: string) => env.sql<any>(`select level, band, source, source_order, p::float8 as p, method from public.question_difficulty_effective($1)`, [id]);
 
-    const rows = await env.sql(
-      `select * from public.question_difficulty_effective($1)`,
-      [ids[1]]
-    );
-    expect(rows).toHaveLength(0);
+  it("sem nada, zero linhas; estimada vem com ordem 3; medida com ordem 2", async () => {
+    await env.sql(`delete from public.question_difficulty_agents where question_id = $1`, [ids[2]]);
+    await env.sql(`delete from public.question_difficulty_review where question_id = $1`, [ids[2]]);
+    expect(await ef(ids[2])).toEqual([]);
+    await estimada(ids[2], 2, 0.7);
+    expect(await ef(ids[2])).toEqual([{ level: 2, band: "facil", source: "estimada_rubrica", source_order: 3, p: 0.7, method: "estimada" }]);
+    await medida(ids[2], 4, 0.25);
+    expect(await ef(ids[2])).toEqual([{ level: 4, band: "dificil", source: "medida_inep", source_order: 2, p: 0.25, method: "medida" }]);
   });
 
-  it("só com agentes, devolve source 'classificada_agentes' e source_order 2", async () => {
-    await env.sql(`delete from public.question_difficulty_agents where question_id = $1`, [ids[1]]);
-    await env.sql(`delete from public.question_difficulty_review where question_id = $1`, [ids[1]]);
-
-    await env.sql(
-      `insert into public.question_difficulty_agents (question_id, level, band) values ($1, 2, 'facil')`,
-      [ids[1]]
-    );
-
-    const rows = await env.sql<any>(
-      `select * from public.question_difficulty_effective($1)`,
-      [ids[1]]
-    );
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toEqual({
-      level: 2,
-      band: "facil",
-      source: "classificada_agentes",
-      source_order: 2,
-    });
+  it("com a validada da equipe, só ela aparece, e a tabela dos agentes nunca altera a validação", async () => {
+    await env.rpc(USERS.ADMIN, "app_admin_set_question_difficulty", { p_question_id: ids[2], p_level: 1 });
+    const antes = await env.sql(`select * from public.question_difficulty_review where question_id = $1`, [ids[2]]);
+    expect(await ef(ids[2])).toEqual([{ level: 1, band: "facil", source: "validada_equipe", source_order: 1, p: null, method: null }]);
+    await medida(ids[2], 5, 0.1);
+    expect(await env.sql(`select * from public.question_difficulty_review where question_id = $1`, [ids[2]])).toEqual(antes);
+    await env.rpc(USERS.ADMIN, "app_admin_set_question_difficulty", { p_question_id: ids[2], p_level: null });
   });
 
-  it("com validação da equipe, devolve source 'validada_equipe' e a linha dos agentes não aparece", async () => {
-    // Garante que question_difficulty_agents tem registro
-    await env.sql(
-      `insert into public.question_difficulty_agents (question_id, level, band)
-       values ($1, 2, 'facil')
-       on conflict (question_id) do update set level = 2, band = 'facil'`,
-      [ids[1]]
-    );
-
-    // Equipe valida com nível 5 (faixa dificil)
-    await env.rpc(USERS.ADMIN, "app_admin_set_question_difficulty", {
-      p_question_id: ids[1],
-      p_level: 5,
-      p_note: "validada pelo administrador",
-    });
-
-    const rows = await env.sql<any>(
-      `select * from public.question_difficulty_effective($1)`,
-      [ids[1]]
-    );
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toEqual({
-      level: 5,
-      band: "dificil",
-      source: "validada_equipe",
-      source_order: 1,
-    });
-  });
-
-  it("a tabela question_difficulty_review nunca é alterada por modificações na tabela de agentes", async () => {
-    const reviewBefore = await env.sql<any>(
-      `select question_id, level, note, validated_by from public.question_difficulty_review where question_id = $1`,
-      [ids[1]]
-    );
-    expect(reviewBefore).toHaveLength(1);
-    expect(reviewBefore[0].level).toBe(5);
-
-    // Atualiza a tabela de agentes
-    await env.sql(
-      `update public.question_difficulty_agents set level = 1, band = 'facil' where question_id = $1`,
-      [ids[1]]
-    );
-
-    const reviewAfter = await env.sql<any>(
-      `select question_id, level, note, validated_by from public.question_difficulty_review where question_id = $1`,
-      [ids[1]]
-    );
-    expect(reviewAfter).toEqual(reviewBefore);
-  });
-
-  it("aluno não tem permissão para executar question_difficulty_effective", async () => {
-    await expect(
-      env.sqlAs(USERS.PRO, `select * from public.question_difficulty_effective($1)`, [ids[1]])
-    ).rejects.toThrow();
+  it("aluno não executa a função interna", async () => {
+    await expect(env.sqlAs(USERS.PRO, `select * from public.question_difficulty_effective($1)`, [ids[0]])).rejects.toThrow();
   });
 });
 
 describe("app_question_difficulty (visão do aluno)", () => {
-  it("aluno que respondeu em treino não recebe nível quando só há linha dos agentes; recebe quando validada", async () => {
+  it("após responder em treino, o aluno não vê a dificuldade do Inep/rubrica; só a validada", async () => {
     const difficulty = (uid: string, id: string) =>
       env.sqlAs<{ d: any }>(uid, `select public.app_question_difficulty($1) as d`, [id]).then((r) => r[0].d);
-    // treino real (mesmo fluxo da tela): abre a sessão, pega a questão, responde
     const treino = await env.rpc<{ session_id: string }>(USERS.TESTE, "app_start_session", {
       p_kind: "questoes", p_filters: {}, p_count: 1, p_time_limit_seconds: null,
     });
     const tq = (await env.rpc<any>(USERS.TESTE, "app_get_session", { p_session_id: treino.session_id })).questions[0].id;
     await env.sql(`delete from public.question_difficulty_review where question_id = $1`, [tq]);
-    await env.sql(
-      `insert into public.question_difficulty_agents (question_id, level, band, reason)
-       values ($1, 4, 'dificil', 'análise por agentes')
-       on conflict (question_id) do update set level = 4, band = 'dificil'`,
-      [tq]
-    );
-    await env.rpc(USERS.TESTE, "app_answer_question", {
-      p_session_id: treino.session_id, p_question_id: tq, p_option: "A", p_active_ms: 1000,
-    });
-    // só a classificação por agentes: o aluno continua sem ver nível
+    await medida(tq, 4, 0.3);
+    await env.rpc(USERS.TESTE, "app_answer_question", { p_session_id: treino.session_id, p_question_id: tq, p_option: "A", p_active_ms: 1000 });
     expect(await difficulty(USERS.TESTE, tq)).toBeNull();
-    // com a validação da equipe, passa a ver o nível validado (e não o dos agentes)
     await env.rpc(USERS.ADMIN, "app_admin_set_question_difficulty", { p_question_id: tq, p_level: 2 });
     expect(await difficulty(USERS.TESTE, tq)).toEqual({ level: 2 });
     await env.rpc(USERS.ADMIN, "app_admin_set_question_difficulty", { p_question_id: tq, p_level: null });
   });
 });
 
-describe("carga de dados 012601 (classificação de todas as questões)", () => {
-  const snapshotReview = () =>
-    env.sql(`select question_id, level, validated_by::text as v from public.question_difficulty_review order by question_id`);
-  const contar = async () =>
-    Number((await env.sql<{ n: string }>(`select count(*)::int as n from public.question_difficulty_agents`))[0].n);
+describe("carga de dados 012601", () => {
+  const snapshotReview = () => env.sql(`select question_id, level, validated_by::text as v from public.question_difficulty_review order by question_id`);
+  const contar = async () => Number((await env.sql<{ n: number }>(`select count(*)::int as n from public.question_difficulty_agents`))[0].n);
 
-  it("o arquivo traz uma linha por questão, sem repetição, e só grava questões que existem no banco", async () => {
+  it("uma linha por questão, sem repetição; grava só as que existem; medidas com n, b Rasch e bisserial", async () => {
     expect(IDS_DADOS.length).toBeGreaterThan(1000);
     expect(new Set(IDS_DADOS).size).toBe(IDS_DADOS.length);
     expect(DADOS).not.toMatch(/question_difficulty_review/);
     const antes = await snapshotReview();
     await env.dev.db.exec(DADOS);
-    const existentes = Number(
-      (await env.sql<{ n: string }>(`select count(*)::int as n from public.questions where id = any($1::text[])`, [IDS_DADOS]))[0].n
-    );
+    const existentes = Number((await env.sql<{ n: number }>(`select count(*)::int as n from public.questions where id = any($1::text[])`, [IDS_DADOS]))[0].n);
     expect(existentes).toBeGreaterThan(0);
-    const daCarga = Number(
-      (await env.sql<{ n: string }>(`select count(*)::int as n from public.question_difficulty_agents where question_id = any($1::text[])`, [IDS_DADOS]))[0].n
-    );
-    expect(daCarga).toBe(existentes);
-    // validação humana intacta
+    const daCarga = await env.sql<{ method: string; n: number; sem_b: number }>(
+      `select method, count(*)::int as n, count(*) filter (where irt_b is null)::int as sem_b
+       from public.question_difficulty_agents where question_id = any($1::text[]) group by method order by method`, [IDS_DADOS]);
+    expect(daCarga.reduce((s, r) => s + r.n, 0)).toBe(existentes);
+    const med = daCarga.find((r) => r.method === "medida");
+    if (med) expect(med.sem_b).toBe(0);
     expect(await snapshotReview()).toEqual(antes);
-    // faixa coerente com o nível e origem única
-    const ruins = await env.sql(
-      `select question_id from public.question_difficulty_agents
-       where origin <> 'classificada_agentes'
-          or not ((level in (1,2) and band = 'facil') or (level = 3 and band = 'media') or (level in (4,5) and band = 'dificil'))`
-    );
-    expect(ruins).toEqual([]);
   });
 
-  it("rodar a carga de novo não duplica nem muda nada (idempotente)", async () => {
-    const antes = await env.sql(`select question_id, level, band, reason, confidence from public.question_difficulty_agents order by question_id`);
+  it("rodar a carga de novo não muda nada (idempotente)", async () => {
+    const q = `select question_id, level, p::text, method, source, reason from public.question_difficulty_agents order by question_id`;
+    const antes = await env.sql(q);
     await env.dev.db.exec(DADOS);
-    const depois = await env.sql(`select question_id, level, band, reason, confidence from public.question_difficulty_agents order by question_id`);
-    expect(depois).toEqual(antes);
+    expect(await env.sql(q)).toEqual(antes);
   });
 
-  it("com a carga, a dificuldade validada pela equipe continua mandando", async () => {
-    const [{ id }] = await env.sql<{ id: string }>(
-      `select a.question_id as id from public.question_difficulty_agents a where a.question_id = any($1::text[]) order by 1 limit 1`,
-      [IDS_DADOS]
-    );
-    const nivelAgentes = (await env.sql<{ level: number }>(`select level from public.question_difficulty_agents where question_id = $1`, [id]))[0].level;
-    const outro = nivelAgentes === 5 ? 1 : 5;
-    await env.rpc(USERS.ADMIN, "app_admin_set_question_difficulty", { p_question_id: id, p_level: outro });
-    const ef = await env.sql<any>(`select * from public.question_difficulty_effective($1)`, [id]);
-    expect(ef).toHaveLength(1);
-    expect(ef[0]).toMatchObject({ level: outro, source: "validada_equipe" });
-    await env.rpc(USERS.ADMIN, "app_admin_set_question_difficulty", { p_question_id: id, p_level: null });
-    const ef2 = await env.sql<any>(`select * from public.question_difficulty_effective($1)`, [id]);
-    expect(ef2[0]).toMatchObject({ level: nivelAgentes, source: "classificada_agentes" });
-  });
-
-  it("desfazer da carga apaga só as linhas (tabela fica) e reaplicar restaura", async () => {
+  it("desfazer da carga apaga só as linhas (a tabela fica) e reaplicar restaura", async () => {
     const total = await contar();
     const antes = await snapshotReview();
     await env.dev.db.exec(DESFAZER_DADOS);
@@ -386,53 +210,19 @@ describe("carga de dados 012601 (classificação de todas as questões)", () => 
   });
 });
 
-describe("ensaio de desfazer (reaplica no fim)", () => {
-  it("desfazer apaga a tabela e as 2 funções, question_difficulty_review segue intacta, e reaplicar funciona", async () => {
-    // Garante registros em ambas as tabelas
-    await env.sql(
-      `insert into public.question_difficulty_agents (question_id, level, band)
-       values ($1, 4, 'dificil')
-       on conflict (question_id) do nothing`,
-      [ids[0]]
-    );
-    await env.rpc(USERS.ADMIN, "app_admin_set_question_difficulty", {
-      p_question_id: ids[0],
-      p_level: 4,
-    });
-
-    // Executa desfazer
+describe("ensaio de desfazer da 012600 (reaplica no fim)", () => {
+  it("apaga a tabela e as 2 funções, preserva a validação humana, e reaplicar funciona", async () => {
+    await env.rpc(USERS.ADMIN, "app_admin_set_question_difficulty", { p_question_id: ids[0], p_level: 3 });
+    const antes = await env.sql(`select * from public.question_difficulty_review order by question_id`);
     await env.dev.db.exec(DESFAZER);
-
-    // Verifica que a tabela e as duas funções deixaram de existir
-    const tables = await env.sql(
-      `select 1 from pg_tables where schemaname = 'public' and tablename = 'question_difficulty_agents'`
-    );
-    expect(tables).toHaveLength(0);
-
-    const procs = await env.sql(
-      `select proname from pg_proc where proname in ('question_difficulty_effective', 'app_admin_difficulty_agents_summary')`
-    );
-    expect(procs).toHaveLength(0);
-
-    // question_difficulty_review e seus dados seguem intactos
-    const reviewRows = await env.sql<any>(
-      `select level from public.question_difficulty_review where question_id = $1`,
-      [ids[0]]
-    );
-    expect(reviewRows).toHaveLength(1);
-    expect(reviewRows[0].level).toBe(4);
-
-    // Reaplicar migração funciona perfeitamente
+    expect((await env.sql(`select to_regclass('public.question_difficulty_agents') as t`))[0].t).toBeNull();
+    const fns = await env.sql(`select p.proname from pg_proc p where p.pronamespace = 'public'::regnamespace
+      and p.proname in ('question_difficulty_effective', 'app_admin_difficulty_agents_summary')`);
+    expect(fns).toEqual([]);
+    expect(await env.sql(`select * from public.question_difficulty_review order by question_id`)).toEqual(antes);
     await env.dev.db.exec(MIGRACAO);
-
-    const tablesReapplied = await env.sql(
-      `select 1 from pg_tables where schemaname = 'public' and tablename = 'question_difficulty_agents'`
-    );
-    expect(tablesReapplied).toHaveLength(1);
-
-    const procsReapplied = await env.sql(
-      `select proname from pg_proc where proname in ('question_difficulty_effective', 'app_admin_difficulty_agents_summary')`
-    );
-    expect(procsReapplied).toHaveLength(2);
+    await env.dev.db.exec(DADOS);
+    expect((await env.sql(`select to_regclass('public.question_difficulty_agents') as t`))[0].t).not.toBeNull();
+    await env.rpc(USERS.ADMIN, "app_admin_set_question_difficulty", { p_question_id: ids[0], p_level: null });
   });
 });
