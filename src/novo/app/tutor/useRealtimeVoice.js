@@ -19,6 +19,7 @@ import React from "react";
 import { voiceApi } from "./api.js";
 import { unlockAudio } from "./voice/audioUnlock.js";
 import { openGeminiLive } from "./voice/geminiLive.js";
+import { openGeminiPonte } from "./voice/geminiPonte.js";
 import { refreshVoiceLanguage, TUTOR_SPOKEN_LANGUAGE } from "../../../shared/tutor/voiceLanguage";
 
 const CALLS_URL = "https://api.openai.com/v1/realtime/calls";
@@ -784,9 +785,10 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     };
     cur.connectTimer = setTimeout(() => giveUp("timeout"), CONNECT_TIMEOUT_MS);
     try {
-      const gem = await openGeminiLive({
-        token: data.gemini_token,
-        model: data.model,
+      // Vertex (preferido): o servidor mandou a ponte e o bilhete; senão, o caminho antigo com a chave temporária
+      const abrir = data.gemini_ponte ? openGeminiPonte : openGeminiLive;
+      const gem = await abrir({
+        ...(data.gemini_ponte ? { ponte: data.gemini_ponte } : { token: data.gemini_token, model: data.model }),
         stream,
         volume: cur.volume ?? 1,
         handlers: {

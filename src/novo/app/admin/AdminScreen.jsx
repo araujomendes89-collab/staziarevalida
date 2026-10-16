@@ -16,6 +16,7 @@ import { AdminUpdates } from "./AdminUpdates.jsx";
 import { AdminPodcasts } from "./AdminPodcasts.jsx";
 import { AdminAI } from "./ai/AdminAI.jsx";
 import { OfficialVoicesPanel } from "./OfficialVoicesPanel.jsx";
+import { VoiceReactionsPanel } from "./VoiceReactionsPanel.jsx";
 import { RadarFila } from "./radar/RadarFila.jsx";
 import { useRadarAvisos } from "./radar/useRadarAvisos.js";
 import { isStaffRole } from "./common.jsx";
@@ -74,7 +75,12 @@ export function AdminScreen() {
           <AdminTutor />
         </div>
       )}
-      {tab === "vozes" && <OfficialVoicesPanel />}
+      {tab === "vozes" && (
+        <>
+          <OfficialVoicesPanel />
+          <VoiceReactionsPanel />
+        </>
+      )}
       {tab === "registro" && <AdminAudit />}
     </>
   );

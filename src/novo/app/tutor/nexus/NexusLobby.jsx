@@ -23,7 +23,9 @@ export function voiceLine(nexus, personalityId) {
   return { text: "Professor por escrito hoje", label: "Por escrito" };
 }
 
-export function NexusLobby({ status, nexus, request = null, busy = false, error = null, onStart, onHistory, onListen, onClose = null }) {
+// `duronaSettings`: o "Jeito da Durona" (ExplosivaPreferences) aparece embaixo dos cartões quando a Durona está escolhida. Só é
+// passado quando a conversa de voz com o Personality Engine for ligada; até lá a entrada fica exatamente como está.
+export function NexusLobby({ status, nexus, request = null, busy = false, error = null, onStart, onHistory, onListen, onClose = null, duronaSettings = null }) {
   const professors = status.personalities ?? [];
   const [choice, setChoice] = React.useState(() => (professors.some((p) => p.id === status.preferences?.personality_id) ? status.preferences.personality_id : professors[0]?.id));
   const [mode, setMode] = React.useState("livre");
@@ -77,6 +79,8 @@ export function NexusLobby({ status, nexus, request = null, busy = false, error 
             );
           })}
         </div>
+
+        {duronaSettings && choice === "durona" ? <div className="nx-lobby__durona">{duronaSettings}</div> : null}
 
         {request ? (
           <p className="nx-locked"><span className="nx-overline">Modo</span> {modeLabel(request.mode)}{request.context?.label ?? request.topic ? ` · ${request.context?.label ?? request.topic}` : ""}</p>

@@ -11,7 +11,10 @@ import { runTutorTool, TOOL_NAMES } from "./tools";
 import { delegateVoice, sayVoice, type Letter } from "./delegate";
 import { tutorSettings } from "./settings";
 import { questionHint, questionHintEnabled } from "./questionHint";
-import { planProviders } from "./voiceProviders";
+import { geminiVoiceConfig, planProviders, vertexPonteConfig } from "./voiceProviders";
+import { relatorioConfere } from "../vozPonte/bilhete";
+import { planPersonaTurn } from "./voiceReactions";
+import { personaPromptLayer } from "./personalityEngine";
 import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
 import { samplePath } from "./voicePreview";
 import { elevenAccessOf, nexusStatus, openNexus, type TtsQuota } from "./nexus";
@@ -39,6 +42,30 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     try {
       // a tarefa diária também aplica a retenção das transcrições da voz (painel)
       res.json({ expired: await sweepVoice(deps), purged_transcripts: await purgeVoiceTranscripts(deps).catch(() => 0) });
+    } catch (error) {
+      fail(res, 500, shown(error));
+    }
+  });
+
+  /**
+   * Relatório de uso da PONTE de voz (Cloud Run → app), no fim de cada ligação pelo Vertex: tokens e custo estimado vão para o
+   * registro de custos (ai_usage_ledger). Sem login de aluno: assinatura HMAC com VOZ_PONTE_SEGREDO (a mesma do bilhete).
+   */
+  router.post("/voice/ponte-uso", async (req, res) => {
+    const ponte = vertexPonteConfig();
+    const corpo = typeof (req as Request & { rawBody?: string }).rawBody === "string" ? (req as Request & { rawBody?: string }).rawBody! : JSON.stringify(req.body ?? {});
+    if (!deps || !ponte || !relatorioConfere(corpo, String(req.headers["x-stazia-ponte-assinatura"] ?? ""), ponte.segredo)) return fail(res, 401, "Não autorizado.");
+    try {
+      const b = JSON.parse(corpo) as { vc?: string; u?: string; modelo?: string; duracao_s?: number; uso?: Record<string, number>; custo_usd?: number; t?: number };
+      if (!uuid.test(String(b.vc ?? "")) || !uuid.test(String(b.u ?? "")) || Math.abs(Date.now() - Number(b.t ?? 0)) > 10 * 60_000) return fail(res, 400, "Relatório inválido.");
+      const v = await voiceCall(deps, String(b.u), String(b.vc));
+      const n = (x: unknown) => (Number.isFinite(Number(x)) ? Math.max(0, Math.round(Number(x))) : 0);
+      await deps.db.service("ch_worker_tutor_ledger", { p_user: b.u, p_session_id: v.session_id, p_entry: {
+        feature: "tutor_voice_gemini", provider: "google-vertex", model: String(b.modelo ?? "").slice(0, 60),
+        input_text_tokens: n(b.uso?.textoEntrada), input_audio_tokens: n(b.uso?.audioEntrada), output_text_tokens: n(b.uso?.textoSaida), output_audio_tokens: n(b.uso?.audioSaida),
+        duration_seconds: n(b.duracao_s), estimated_cost_usd: Math.max(0, Number(b.custo_usd) || 0), meta: { voice_call: b.vc, via: "vertex-ponte", por: "tokens" },
+      } });
+      res.json({ ok: true });
     } catch (error) {
       fail(res, 500, shown(error));
     }
@@ -338,7 +365,18 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       args = {};
     }
     const persona = await deps!.db.service<{ personality: { id: string } } | null>("ch_worker_tutor_context", { p_user: req.user!.id, p_session_id: v.session_id });
-    return { output: await runTutorTool({ deps: deps!, userId: req.user!.id, sessionId: v.session_id, personaId: persona?.personality.id ?? "direto", remember: (t) => rememberEvidence(id, t) }, name, args) };
+    const output = await runTutorTool({ deps: deps!, userId: req.user!.id, sessionId: v.session_id, personaId: persona?.personality.id ?? "direto", remember: (t) => rememberEvidence(id, t) }, name, args);
+    // voz do Gemini pelo Vertex: depois da correção, o tom novo do professor vem do Personality Engine (acerto ou erro)
+    if (name === "submit_answer" && v.provider === "gemini" && geminiVoiceConfig().via === "vertex" && output && typeof output === "object" && "result" in output) {
+      try {
+        const correct = Boolean((output as { result?: { is_correct?: boolean } }).result?.is_correct);
+        const d = await planPersonaTurn(deps!, { userId: req.user!.id, personality: persona?.personality.id ?? "direto", provider: "gemini_live", memory: null, facts: [correct ? "correct" : "wrong"] });
+        (output as Record<string, unknown>).tom_do_professor = personaPromptLayer(d);
+      } catch {
+        // sem o motor no banco: fica o "tone" de sempre
+      }
+    }
+    return { output };
   }));
 
   // corpo grande demais no express.raw da transcrição: o mesmo aviso, em JSON
