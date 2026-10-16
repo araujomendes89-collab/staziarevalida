@@ -1,11 +1,11 @@
 /* Montagem do treino e do simulado. */
 
-/* Tipo de simulado em tela estreita: as quatro opções não cabem numa linha; viram duas linhas de duas. */
-@media (max-width: 480px) {
-  .qb-simtype .sm-seg--full {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
+/* Tipo de simulado no celular: as quatro opções ficam numa linha só (como no pacote) e a linha rola para o lado se não couber. */
+@media (max-width:719px){
+  .qb-simtype{overflow-x:auto;margin:0 -16px;padding:0 16px;scrollbar-width:none}
+  .qb-simtype::-webkit-scrollbar{display:none}
+  .qb-simtype .sm-seg--full{width:max-content;min-width:100%}
+  .qb-simtype .sm-seg--full .sm-seg__opt{flex:1 0 auto}
 }
 
 /* ===== Novas telas, onda 3 (15/10/2026): Banco de Questões e Simulados no visual do pacote do dono (só tokens do design system) ===== */
@@ -18,8 +18,11 @@
 .qb-grid{display:grid;gap:20px;grid-template-columns:minmax(0,1fr);align-items:start}
 .qb-aside{display:contents}
 @media (min-width:1181px){
-  .qb-grid{grid-template-columns:minmax(0,1fr) 340px}
+  /* G5.1/G5.3: resumo com 388 px (como no pacote) que cresce até 460 px nas telas largas, para o painel não ficar 4 vezes maior que ele */
+  .qb-grid{grid-template-columns:minmax(0,1fr) clamp(388px,26%,460px)}
   .qb-aside{display:flex;flex-direction:column;gap:14px;position:sticky;top:16px}
+  /* conteúdo do painel no máximo da largura das 6 áreas (6 x 180 + 5 x 10), para busca, Prova/Status e quantidade não esticarem */
+  .qb-main>*{max-width:1130px}
 }
 .qb-main{display:flex;flex-direction:column;gap:22px;padding:24px;border-radius:24px;background:var(--surface-card);border:1px solid var(--border-default);min-width:0}
 .qb-label{font:800 14px/1.3 var(--font-sans);color:var(--text-primary);margin:0 0 10px;padding:0}
@@ -46,7 +49,16 @@ fieldset.qb-set{margin:0;padding:0;border:0;min-width:0}
 .qb-area[aria-checked="true"]{border:2px solid var(--action-primary);padding:11px;background:var(--selected-bg)}
 .qb-area__name{font:800 13px/1.2 var(--font-sans)}
 .qb-area__n{font:500 12px var(--font-mono);color:var(--text-tertiary)}
-@media (max-width:1180px){.qb-areas{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* G5.1: cartões de área em pé (até 180 px de largura e 130 px de altura) no computador */
+@media (min-width:1181px){
+  .qb-areas{grid-template-columns:repeat(6,minmax(0,180px))}
+  .qb-area{min-height:130px}
+}
+/* G5.5: tablet largo (900 a 1180 px) também com 6 áreas numa linha; abaixo disso, 3 colunas como no pacote do tablet */
+@media (max-width:899px){.qb-areas{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:900px) and (max-width:1180px){
+  .qb-summary__go.sm-btn{max-width:480px;align-self:flex-start}
+}
 
 /* "Como corrigir?" */
 .qb-corr{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -72,6 +84,8 @@ fieldset.qb-set{margin:0;padding:0;border:0;min-width:0}
 .qb-summary__note b{font-family:var(--font-mono);font-weight:600}
 .qb-summary__note--warn{color:#FFE2A8}
 .qb-summary__go{margin-top:12px}
+/* G5.3: botão do resumo com 50 px e 15/800, como no pacote */
+.qb-summary__go.sm-btn--lg{height:50px;font-size:15px}
 .qb-summary__go.sm-btn{background:#fff;color:#052A5A;font-weight:800;border-color:#fff}
 .qb-summary__go.sm-btn:hover:not(:disabled){background:#EBF5FF}
 .qb-summary .sm-banner{margin-top:8px}
@@ -113,7 +127,7 @@ fieldset.qb-set{margin:0;padding:0;border:0;min-width:0}
 .qb-pick .sm-areaart{outline:2px solid transparent;outline-offset:2px}
 .qb-pick[aria-checked="true"] .sm-areaart{outline-color:var(--action-primary)}
 .qb-pick:focus-visible{outline:none;box-shadow:var(--focus-ring);border-radius:12px}
-.qb-pick__name{font:700 12px/1.2 var(--font-sans);text-align:center}
+.qb-pick__name{font:700 12px/1.2 var(--font-sans);text-align:center;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .qb-pick[aria-checked="true"] .qb-pick__name{color:var(--action-primary)}
 .qb-pick__n{font:500 12px var(--font-mono);color:var(--text-tertiary)}
 .qb-more{border:1px solid var(--border-default);border-radius:16px;overflow:hidden}
@@ -122,6 +136,8 @@ fieldset.qb-set{margin:0;padding:0;border:0;min-width:0}
 .qb-more__body{display:flex;flex-direction:column;gap:20px;padding:4px 16px 16px}
 @media (max-width:719px){
   .qb-main{padding:16px;border-radius:20px;gap:20px}
+  /* G5.4: no simulado do celular o formulário fica direto no fundo, sem cartão (como no pacote) */
+  .qb--sim .qb-main{padding:0;border:0;border-radius:0;background:none}
   .qb-two{grid-template-columns:minmax(0,1fr)}
   .qb-topics{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}
   .qb-topics::-webkit-scrollbar{display:none}
@@ -131,3 +147,12 @@ fieldset.qb-set{margin:0;padding:0;border:0;min-width:0}
 .qb .sm-field__label small{font-size:inherit;font-weight:500}
 .qb-row .sm-badge{white-space:nowrap;flex:none}
 @media (max-width:719px){.qb .sm-seg__opt{padding:0 8px;white-space:nowrap}}
+
+/* G5.2 (escolha D7): cartão "Questões Inéditas" do Banco no celular em uma linha (título, contador e botão) */
+.qb-ined.sm-card{display:flex;align-items:center;gap:12px;border-radius:20px}
+.qb-ined__t{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.qb-ined__n{font:700 16px/1.25 var(--font-sans);letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.qb-ined__plans{min-height:24px;padding:0;border:0;background:none;cursor:pointer;font:600 13px/1.3 var(--font-sans);color:var(--action-primary);text-decoration:underline;text-underline-offset:2px}
+.qb-ined__plans:focus-visible{outline:none;box-shadow:var(--focus-ring);border-radius:4px}
+.qb-ined .sm-btn{flex:none;white-space:nowrap}
+.qb-ined .sm-overline{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

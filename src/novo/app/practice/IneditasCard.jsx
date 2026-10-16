@@ -45,7 +45,8 @@ const TEXTS = {
 };
 
 /**
- * Cartão "Questões Inéditas". variant "banco" (grande, no Banco de Questões) ou "inicio" (compacto, no Início e no Plano de Hoje).
+ * Cartão "Questões Inéditas". variant "banco" (grande, no Banco de Questões), "linha" (Banco no celular), "inicio" (compacto, no Início)
+ * ou "plano" (Plano de Hoje).
  * onOpen({ status }) abre a resolução (status "unanswered" enquanto houver pendentes, "all" depois); onPlans abre a tela de planos.
  */
 export function IneditasCard({ ineditas, onOpen, onPlans, variant = "banco", busy = false }) {
@@ -86,6 +87,33 @@ export function IneditasCard({ ineditas, onOpen, onPlans, variant = "banco", bus
           )}
         </span>
       </section>
+    );
+  }
+  if (variant === "linha") {
+    // Banco de Questões no celular (G5.2, escolha D7): uma linha com título, contador e botão (sem o ícone, para o título caber inteiro),
+    // para "Área" aparecer na primeira tela.
+    // Estilos em practice.css (.qb-ined).
+    return (
+      <Card variant="brand" padding="14px 14px 14px 16px" className="qb-ined" role="region" aria-label="Questões Inéditas">
+        <span className="qb-ined__t">
+          <span className="sm-overline">Questões Inéditas</span>
+          <span className="qb-ined__n">{counterText(ineditas)}</span>
+          {!locked && missing > 0 && onPlans && (
+            <button type="button" className="qb-ined__plans" onClick={onPlans}>
+              Conhecer os planos
+            </button>
+          )}
+        </span>
+        {locked ? (
+          <Button size="sm" icon="lock" onClick={onPlans} disabled={!onPlans}>
+            Ver planos
+          </Button>
+        ) : (
+          <Button size="sm" onClick={() => onOpen?.({ status: pending > 0 ? "unanswered" : "all" })} loading={busy} disabled={!onOpen}>
+            {pending > 0 || answered === 0 ? "Resolver inéditas" : "Rever inéditas"}
+          </Button>
+        )}
+      </Card>
     );
   }
   const primary = locked ? (

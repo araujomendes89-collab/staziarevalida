@@ -30,6 +30,8 @@ const SIM_TYPES = [
 const PACE = { prova: 180, acelerado: 72 };
 // Atalhos do tempo personalizado (minutos); o aluno também digita horas e minutos.
 const DURATION_PRESETS = [30, 60, 90, 120, 180, 300];
+// Nomes curtos no seletor de área do simulado no celular (como no pacote e no filtro de área do Aprender); o nome inteiro fica no aria-label.
+const PICK_LABEL = { CLINICA_MEDICA: "Clínica", GINECOLOGIA_OBSTETRICIA: "GO", MEDICINA_FAMILIA_COMUNIDADE: "Preventiva" };
 
 function useDebounced(value, delay) {
   const [debounced, setDebounced] = React.useState(value);
@@ -50,7 +52,7 @@ function ScoringChoice({ value, onChange, compact }) {
         <div id="sim-correcao" className="qb-label">
           Correção
         </div>
-        <div className="qb-num">
+        <div className="qb-corrseg">
           <SegmentedControl fullWidth label="Como corrigir?" value={value} onChange={onChange} options={SCORING_MODES.map((m) => ({ value: m.value, label: m.value === "irt" ? "TRI · estimativa" : "Clássico" }))} />
         </div>
         <p className="sm-field__hint" style={{ margin: "10px 0 0" }}>
@@ -315,9 +317,9 @@ export function QuestionBuilder({ go, mode }) {
         const on = form.area === area.id;
         const count = counts ? (area.id ? counts.by_area[area.id] ?? 0 : counts.total) : null;
         return (
-          <button key={area.id || "todas"} type="button" role="radio" aria-checked={on} onClick={() => edit({ area: area.id })} className="qb-pick">
+          <button key={area.id || "todas"} type="button" role="radio" aria-checked={on} aria-label={`${area.label} ${count === null ? "…" : count}`} onClick={() => edit({ area: area.id })} className="qb-pick">
             <AreaArtTile area={area.id} size={52} />
-            <span className="qb-pick__name">{area.label}</span>
+            <span className="qb-pick__name">{PICK_LABEL[area.id] ?? area.label}</span>
             <span className="qb-pick__n">{count === null ? "…" : count}</span>
           </button>
         );
@@ -340,7 +342,7 @@ export function QuestionBuilder({ go, mode }) {
   );
 
   const searchField = (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div className="qb-search" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <TextField label={<>Tema ou assunto <small style={{ fontWeight: 500, color: "var(--text-tertiary)" }}>(opcional)</small></>} icon="search" placeholder="Ex.: asma, sepse, pré-eclâmpsia" value={form.search} onChange={(e) => edit({ search: e.target.value })} />
       {topics.length > 0 && (
         <div className="qb-topics">
@@ -447,13 +449,13 @@ export function QuestionBuilder({ go, mode }) {
   const recentBlock = recent.length > 0 && !onlyNew && <RecentSessions sessions={recent} go={go} sim={sim} />;
 
   return (
-    <div className={`qb${compact ? " qb-compact" : ""}`}>
+    <div className={`qb${sim ? " qb--sim" : ""}${compact ? " qb-compact" : ""}`}>
       {lock && (
         <Banner tone="warning" icon="lock" title={lock.title} action={<Button size="sm" variant="secondary" onClick={() => go("planos")}>Ver planos</Button>}>
           {lock.text}
         </Banner>
       )}
-      {!sim && ineditas && <IneditasCard ineditas={ineditas} onOpen={openIneditas} onPlans={() => go("planos")} busy={starting} />}
+      {!sim && ineditas && <IneditasCard ineditas={ineditas} variant={compact ? "linha" : "banco"} onOpen={openIneditas} onPlans={() => go("planos")} busy={starting} />}
       {compact && sim && (
         <div className="qb-tabs" role="tablist" aria-label="Simulados">
           <button type="button" role="tab" className="qb-tab" aria-selected={simTab === "novo"} onClick={() => setSimTab("novo")}>
