@@ -74,8 +74,10 @@ function SheetText({ station }) {
 }
 
 /**
- * Folha do candidato: a imagem (instruções e relato) quando a Montagem a enviou; senão o texto completo. Depois, os impressos
- * iniciais (visíveis desde o início, sem liberação), cada um em imagem ou texto.
+ * Folha do candidato: a imagem ÚNICA (instruções e relato do caso, como a do protótipo de 11/10) quando a Montagem a enviou;
+ * senão o texto completo: cenário, tarefas e os impressos iniciais (visíveis desde o início, sem liberação), cada um em imagem
+ * ou texto. Com a imagem única os impressos iniciais não se repetem embaixo (já estão nela).
+ * TODO(dono): confirmar com a Montagem que a imagem "candidate_sheet" sempre traz o relato junto.
  */
 export function CandidateSheet({ station, content, actions }) {
   const sheet = useImageUrl("candidate_sheet", Boolean(station.candidate_sheet?.has_image), actions);
@@ -91,7 +93,7 @@ export function CandidateSheet({ station, content, actions }) {
       ) : (
         <div aria-busy="true" style={{ minHeight: 120 }} />
       )}
-      {initial.map((p) => (
+      {!sheet.url && sheet.done && initial.map((p) => (
         <Card key={p.id} padding={20}>
           <div style={overline}>{`Impresso ${p.display_number} · ${p.name}`}</div>
           <PressingMedia pressing={p} actions={actions} />

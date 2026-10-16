@@ -148,6 +148,7 @@ describe("impressos e folha do candidato", () => {
     const img = screen.getByAltText("Instruções para o participante e relato do caso clínico");
     expect(img.getAttribute("src")).toBe("https://deposito.test/candidate_sheet.png");
     expect(screen.queryByText("Enunciado")).toBeNull();
+    expect(screen.queryByText("Relato inicial de teste.")).toBeNull(); // o relato está na imagem única
     cleanup();
 
     // a rota diz que não há imagem (404): o texto é a folha
@@ -155,6 +156,7 @@ describe("impressos e folha do candidato", () => {
     await mount();
     expect(screen.getByText("Enunciado")).toBeTruthy();
     expect(screen.getByText("Nos 10 minutos de duração, execute:")).toBeTruthy();
+    expect(screen.getByText("Relato inicial de teste.")).toBeTruthy();
     cleanup();
 
     srv.content = contentOf("candidate");
