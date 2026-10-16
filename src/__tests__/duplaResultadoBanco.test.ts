@@ -119,6 +119,9 @@ describe("Migração 013360: resultado, revisão da nota, inverter papéis e uso
     await expect(act(U.bruno, "redo_review", id, { p_round: 2 })).rejects.toThrow(FASE);
     const s = await act(U.bruno, "redo_review", id, { p_round: 1 });
     expect(s.phase).toBe("review");
+    // na conferência de novo, o candidato não lê o resultado (que traz o nome da estação); o avaliador lê
+    await expect(d.rpc(U.ana, "app_dupla_result", { p_room_id: id, p_round: 1 })).rejects.toThrow("Resultado ainda não liberado.");
+    expect((await d.rpc(U.bruno, "app_dupla_result", { p_room_id: id, p_round: 1 })).viewer).toBe("evaluator");
     // as marcações da rodada continuam; o avaliador corrige e finaliza de novo
     expect((await d.rpc(U.bruno, "app_dupla_marks", { p_room_id: id })).map((m: any) => [m.item_id, m.grade])).toEqual([["i1", "partial"], ["i2", "correct"]]);
     await act(U.bruno, "mark", id, { p_item_id: "i3", p_grade: "correct" });
@@ -133,6 +136,22 @@ describe("Migração 013360: resultado, revisão da nota, inverter papéis e uso
     expect(Number(res.review.score_before_review)).toBe(3.75);
     // uma vez só
     await expect(act(U.bruno, "redo_review", id, { p_round: 1 })).rejects.toThrow(UMA_VEZ);
+  });
+
+  it("tempo esgotado não fecha a sala: com os dois dando sinal ela segue em andamento e vai à conferência pelo avaliador", async () => {
+    const id = await salaPronta();
+    for (const u of [U.ana, U.bruno]) await d.sql(`insert into public.study_profiles (user_id, public_name, last_seen_at) values ($1, 'Pessoa de teste', now()) on conflict (user_id) do update set last_seen_at = now()`, [u]);
+    await act(U.ana, "confirm_roles", id);
+    await act(U.bruno, "confirm_roles", id);
+    await act(U.ana, "connected", id);
+    await act(U.bruno, "connected", id);
+    await act(U.ana, "ready", id, { p_ready: true });
+    await act(U.bruno, "ready", id, { p_ready: true });
+    await act(U.bruno, "start", id);
+    // o cronômetro zerou há 5 minutos e a sala não mudou há 5 minutos
+    await d.sql(`update public.checklist_rooms set ends_at = now() - interval '5 minutes', updated_at = now() - interval '5 minutes' where id = $1`, [id]);
+    expect((await d.rpc(U.ana, "app_dupla_room", { p_room_id: id })).phase).toBe("running");
+    expect((await act(U.bruno, "finish", id)).phase).toBe("review");
   });
 
   // ------------------------------------------------------------------ inverter papéis

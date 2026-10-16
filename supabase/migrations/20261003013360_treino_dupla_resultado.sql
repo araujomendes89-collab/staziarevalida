@@ -18,8 +18,12 @@
 --     escolheu a estação (station_chosen_by) fica como está, então quem escolheu e agora é candidato recebe
 --     me.picked_station = true. O link da chamada fica. Dois cliques (duas abas): o segundo recusa pela fase, não pula rodada.
 --  4) app_admin_dupla_usage (painel, só administrador): uso de um mês de Brasília.
+--  5) app_dupla_result (resultado de uma rodada, com o nome da estação): o CANDIDATO só o recebe com a sala no resultado
+--     daquela rodada (ou de uma rodada que já passou). Antes, bastava a avaliação existir: com "Rever a nota" a sala volta à
+--     conferência e a avaliação já existe, então o candidato leria o tema fora do resultado. O avaliador continua lendo.
 --
--- FUNÇÕES REDEFINIDAS E A BASE DE CADA UMA: nenhuma. Todas são novas. Usadas sem mudar: dupla_assert_access (013300);
+-- FUNÇÕES REDEFINIDAS E A BASE DE CADA UMA: app_dupla_result(uuid, integer) ← 013310 (igual, mais a trava do item 5). As
+--   outras são novas. Usadas sem mudar: dupla_assert_access (013300);
 --   dupla_room_state (013350); dupla_room_for_action, dupla_room_need (013350); assert_admin (…1300).
 --
 -- DECISÕES PEQUENAS (o dono pode mudar)
@@ -167,6 +171,85 @@ begin
 
   return jsonb_build_object('month', v_month, 'salas', v_salas, 'rodadas_avaliadas', v_rodadas, 'alunos', v_alunos,
                             'impressos_por_rodada', v_impressos);
+end
+$$;
+
+-- ---------------------------------------------------------------- 5) resultado da rodada (base: 013310)
+-- Só depois de a avaliação existir e só para os dois dela. O candidato, além disso, só com a sala no resultado da rodada pedida
+-- (ou numa rodada que já passou, depois de inverter os papéis): na conferência (inclusive "Rever a nota") o tema segue reservado.
+create or replace function public.app_dupla_result(p_room_id uuid, p_round integer) returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := public.dupla_assert_access();
+  s public.checklist_study_sessions;
+  r public.checklist_rooms;
+  st public.checklist_stations;
+  c jsonb;
+  v_meta jsonb;
+  v_items jsonb;
+  v_prev integer;
+begin
+  select * into s from public.checklist_study_sessions where room_id = p_room_id and round = p_round;
+  if not found or (v_uid is distinct from s.doctor_id and v_uid is distinct from s.actor_id) then
+    raise exception 'Resultado ainda não liberado.' using errcode = '42501';
+  end if;
+  if v_uid = s.doctor_id and v_uid is distinct from s.actor_id then
+    select * into r from public.checklist_rooms where id = p_room_id;
+    if found and r.round = p_round and r.phase <> 'result' then
+      raise exception 'Resultado ainda não liberado.' using errcode = '42501';
+    end if;
+  end if;
+  select * into st from public.checklist_stations where id = s.station_id;
+  select k.content into c from public.checklist_station_contents k where k.station_id = s.station_id;
+  v_meta := public.dupla_station_meta(s.station_id);
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'id', i.e ->> 'id',
+           'order', coalesce(i.e -> 'order', to_jsonb(i.n)),
+           'content', coalesce(i.e ->> 'content', ''),
+           'max_points', coalesce((i.e -> 'grades' ->> 'correct')::numeric, 0),
+           'grade', a.grade,
+           'points', case when a.grade is null then 0 else coalesce((i.e -> 'grades' ->> a.grade)::numeric, 0) end
+         ) order by i.n), '[]'::jsonb)
+    into v_items
+  from jsonb_array_elements(case when jsonb_typeof(c -> 'checklist_items') = 'array' then c -> 'checklist_items' else '[]'::jsonb end)
+       with ordinality as i(e, n)
+  left join lateral (
+    select lower(x ->> 'grade') as grade
+    from jsonb_array_elements(case when jsonb_typeof(s.checklist_answers) = 'array' then s.checklist_answers else '[]'::jsonb end) x
+    where x ->> 'id' = i.e ->> 'id' and lower(x ->> 'grade') in ('correct', 'partial', 'incorrect')
+    limit 1
+  ) a on true;
+
+  select round(p.correctness)::integer into v_prev
+    from public.checklist_study_sessions p
+   where p.doctor_id = s.doctor_id and p.station_id = s.station_id and p.id <> s.id
+     and (p.finished_at, p.created_at, p.id) < (s.finished_at, s.created_at, s.id)
+   order by p.finished_at desc, p.created_at desc, p.id desc
+   limit 1;
+
+  return jsonb_build_object(
+    'round', s.round,
+    'viewer', case when v_uid = s.doctor_id then 'candidate' else 'evaluator' end,
+    'station', jsonb_build_object(
+      'id', st.id, 'name', st.name, 'area', st.area, 'area_code', public.dupla_area_code(st.area),
+      'number', v_meta -> 'number', 'edition', v_meta -> 'edition', 'reapplication', v_meta -> 'reapplication',
+      'institution', st.institution, 'duration_ms', st.duration_ms
+    ),
+    'score', s.score,
+    'max_score', s.max_score,
+    'pct', case when s.max_score > 0 then round(s.score / s.max_score * 100)::integer else 0 end,
+    'previous_pct', v_prev,
+    'items', v_items,
+    'evaluator', jsonb_build_object('user_id', s.actor_id, 'public_name', public.dupla_public_name(s.actor_id)),
+    'candidate', jsonb_build_object('user_id', s.doctor_id, 'public_name', public.dupla_public_name(s.doctor_id)),
+    'finished_at', s.finished_at,
+    'used_ms', s.used_ms,
+    'feedback', jsonb_build_object('pos', s.feedback_pos, 'neg', s.feedback_neg, 'gen', s.feedback_gen),
+    'review', jsonb_build_object('requested_at', s.review_requested_at, 'reason', s.review_reason,
+                                 'revised_at', s.revised_at, 'score_before_review', s.score_before_review)
+  );
 end
 $$;
 
