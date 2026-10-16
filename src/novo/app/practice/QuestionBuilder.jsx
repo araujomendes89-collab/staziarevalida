@@ -12,7 +12,7 @@ import "./practice.css";
 import { AREAS, SIM_MAX_MINUTES, STAZIAMED_NOTICE, areaLabel, examLabel, formatClock, formatMinutes, formatWhen, paceLabel, parseDuration, percent } from "./format.js";
 import { IneditasQuota, isIneditasLimited, quotaText } from "./IneditasQuota.jsx";
 import { IneditasCard } from "./IneditasCard.jsx";
-import { SCORING_MODES, TRI_MIN_QUESTIONS } from "./tri.js";
+import { SCORING_MODES, TRI_MIN_QUESTIONS, TRI_SO_OFICIAIS } from "./tri.js";
 
 const STATUS_OPTIONS = [
   { value: "unanswered", label: "Não resolvidas" },
@@ -171,7 +171,7 @@ export function QuestionBuilder({ go, mode }) {
     return {
       area: AREAS.some((a) => a.id === area) ? area : "",
       search: params.get("tema") ?? "",
-      exam: !sim && params.get("prova") === "staziamed" ? "staziamed" : "",
+      exam: params.get("prova") === "staziamed" ? "staziamed" : "",
       status: sim ? "all" : STATUS_OPTIONS.some((o) => o.value === status) ? status : "unanswered",
       count: sim ? "30" : "20",
       timer: "prova",
@@ -252,6 +252,8 @@ export function QuestionBuilder({ go, mode }) {
   const ineditas = (options?.exams ?? []).find((e) => e.id === "staziamed") ?? null;
   const onIneditas = form.exam === "staziamed";
   const lockedIneditas = onIneditas && (ineditas?.locked === true || !ineditas);
+  // TRI + prova "Questões Inéditas": o banco recusa (a nota TRI e a calibração são só de questões oficiais); a tela avisa antes e não deixa começar
+  const triOnIneditas = tri && onIneditas;
   const lockMessage = ineditas?.lock_message || "As Questões Inéditas são abertas a quem tem plano pago ou teste grátis em dia. As questões das provas oficiais continuam abertas.";
   // limite do plano (ex.: teste grátis): a tela mostra o total existente e quantas o plano libera
   // no Banco de Questões o cartão "Questões Inéditas" do topo já mostra o contador; no Simulado o quadro aparece junto do filtro
@@ -261,7 +263,7 @@ export function QuestionBuilder({ go, mode }) {
     setStarting(true);
     setError(null);
     try {
-      const filters = { area: form.area, exam_id: sim && form.exam === "staziamed" ? "" : form.exam, search: form.search.trim(), status: form.status };
+      const filters = { area: form.area, exam_id: form.exam, search: form.search.trim(), status: form.status };
       const started = tri
         ? await backend.rpc("app_start_simulado_tri", { p_filters: filters, p_count: requested, p_time_limit_seconds: limitSeconds })
         : await backend.rpc("app_start_session", { p_kind: kind, p_filters: filters, p_count: requested, p_time_limit_seconds: limitSeconds });
@@ -306,7 +308,7 @@ export function QuestionBuilder({ go, mode }) {
     tri && "correção TRI (estimativa)",
   ].filter(Boolean);
   const noun = total === 1 ? "questão" : "questões";
-  const canStart = Boolean(available) && !customInvalid && !lock && !lockedIneditas && !triTooFew;
+  const canStart = Boolean(available) && !customInvalid && !lock && !lockedIneditas && !triTooFew && !triOnIneditas;
   const startLabel = sim ? "Iniciar simulado" : "Começar treino";
   const onlyNew = compact && sim && simTab === "novo";
   const onlyMine = compact && sim && simTab === "meus";
@@ -361,7 +363,7 @@ export function QuestionBuilder({ go, mode }) {
       label="Prova / edição"
       value={form.exam}
       onChange={(e) => edit({ exam: e.target.value })}
-      options={[{ value: "", label: "Todas as provas oficiais" }, ...(options?.exams ?? []).filter((e) => !sim || e.id !== "staziamed").map((e) => ({ value: e.id, label: e.id === "staziamed" && e.locked ? `${examLabel(e)} (indisponível no seu plano agora)` : e.id === "staziamed" && isIneditasLimited(e) ? `${examLabel(e)} (${e.released} de ${e.total})` : examLabel(e) }))]}
+      options={[{ value: "", label: "Todas as provas oficiais" }, ...(options?.exams ?? []).map((e) => ({ value: e.id, label: e.id === "staziamed" && e.locked ? `${examLabel(e)} (indisponível no seu plano agora)` : e.id === "staziamed" && isIneditasLimited(e) ? `${examLabel(e)} (${e.released} de ${e.total})` : examLabel(e) }))]}
     />
   );
   const timerField = (
@@ -383,7 +385,7 @@ export function QuestionBuilder({ go, mode }) {
     <>
       {onIneditas && !lockedIneditas && (
         <Banner tone="info" icon="shield-check" title="Questões Inéditas">
-          {STAZIAMED_NOTICE} Aqui "inéditas" quer dizer escritas pela StaziaMed; não é o mesmo que "ainda não respondidas" (isso é o filtro Status).
+          {STAZIAMED_NOTICE} Aqui "inéditas" quer dizer escritas pela StaziaMed; não é o mesmo que "ainda não respondidas"{sim ? "." : " (isso é o filtro Status)."}
         </Banner>
       )}
       {sim && onIneditas && limitedIneditas && <IneditasQuota ineditas={ineditas} onPlans={() => go("planos")} />}
@@ -439,11 +441,13 @@ export function QuestionBuilder({ go, mode }) {
                 ? `Só há ${available} com esses filtros.`
                 : `${available} disponíveis com esses filtros.`;
   const triNote = tri
-    ? triTooFew
-      ? `O simulado TRI precisa de pelo menos ${TRI_MIN_QUESTIONS} questões. Escolha mais questões ou tire filtros.`
-      : total < 100
-        ? `Correção TRI (estimativa StaziaMed): com ${total} questões a faixa de incerteza fica larga; com 100 fica mais precisa.`
-        : "Correção TRI (estimativa StaziaMed): o resultado mostra a nota de 0 a 100 com a faixa de incerteza."
+    ? triOnIneditas
+      ? TRI_SO_OFICIAIS
+      : triTooFew
+        ? `O simulado TRI precisa de pelo menos ${TRI_MIN_QUESTIONS} questões. Escolha mais questões ou tire filtros.`
+        : total < 100
+          ? `Correção TRI (estimativa StaziaMed): com ${total} questões a faixa de incerteza fica larga; com 100 fica mais precisa.`
+          : "Correção TRI (estimativa StaziaMed): o resultado mostra a nota de 0 a 100 com a faixa de incerteza."
     : null;
 
   const recentBlock = recent.length > 0 && !onlyNew && <RecentSessions sessions={recent} go={go} sim={sim} />;
@@ -541,7 +545,7 @@ export function QuestionBuilder({ go, mode }) {
                 </span>
               )}
               {triNote && (
-                <span className={`qb-summary__note${triTooFew ? " qb-summary__note--warn" : ""}`} aria-live="polite">
+                <span className={`qb-summary__note${triTooFew || triOnIneditas ? " qb-summary__note--warn" : ""}`} aria-live="polite">
                   {triNote}
                 </span>
               )}

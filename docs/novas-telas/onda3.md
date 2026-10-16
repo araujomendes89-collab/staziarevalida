@@ -11,7 +11,7 @@ Prévia navegável (dados simulados, sem login): `npx vite --config scripts/prev
 | Tela do pacote | Arquivo do app | Situação |
 |---|---|---|
 | BancoWeb / BancoTablet / BancoMobile | `src/novo/app/practice/QuestionBuilder.jsx` (modo `q`) + `practice.css` | refeita (visual), mesmos dados (`app_question_filters`, `app_count_questions`, `app_recent_sessions`) |
-| SimuladosWeb / SimuladosTablet / SimuladosMobile | `QuestionBuilder.jsx` (modo `sim`) | refeita (visual), mesmas regras (Rápido/Por área/Geral/Personalizado, Clássico ou TRI, cronômetro, sem inéditas no simulado) |
+| SimuladosWeb / SimuladosTablet / SimuladosMobile | `QuestionBuilder.jsx` (modo `sim`) | refeita (visual), mesmas regras (Rápido/Por área/Geral/Personalizado, Clássico ou TRI, cronômetro; a prova "Questões Inéditas" voltou à lista do simulado em 16/10, só na correção Clássica: o TRI usa só oficiais) |
 | Main (antes de responder, web) | `practice/PracticeSession.jsx` + `practice/tela/*` | já estava no modelo; ajustes finos (seção 3) |
 | Respondida (depois, web) | `practice/tela/QuestionSheet.jsx`, `Correction.jsx` | já estava; sem mudança além da pergunta à esquerda |
 | TabletQuestao / TabletRespondida | `practice/tela/*` + `tela-questao.css` | feitas: cabeçalho do tablet, A−/A+, "Ver caso completo", duas colunas depois de responder |
@@ -90,5 +90,5 @@ Legenda: igual = mesmo ícone Lucide ou mesmo SVG no pacote e no app; trocado = 
 
 - Novos: `src/__tests__/novasTelasOnda3.test.tsx` (4 testes: A−/A+, Ver caso completo, arte das áreas, pausar/continuar). Achou e corrigiu um erro do tamanho padrão do texto.
 - Rodados e verdes: `simuladoCronometro` (texto do histórico ajustado de propósito: "4/30 · hoje… faltam 35:00"), `simuladoTriTela`, `questoesStaziaMedAluno`, `ineditasCartaoTela`, `planosRevisaoTelas`, `planosTesteVencidoTelas`, `segundaFaseEmBreve`, `telaQuestaoModelo`, `dificuldadeValidadaTela`, `correcoesQuestoesTela`, `leva3Q*Tela`, `atualizacoesQuestaoDeTreino`, `tutorDicaInterruptorTela`, `fontesVinculadasTela`, `novoPracticeFormat`.
-- **Já falhavam antes (não são da onda)**: `ineditasPorPlanoTelas` (2 testes) esperam "Questões Inéditas" no seletor de prova do simulado, que o commit 143005f2 tirou de propósito. Conferido rodando com o arquivo do commit anterior.
+- **Já falhavam antes (não são da onda)**: `ineditasPorPlanoTelas` (2 testes) esperavam "Questões Inéditas" no seletor de prova do simulado, que o commit 143005f2 tirou. Resolvido em 16/10/2026: o dono pediu que os simulados também tenham as inéditas, a prova voltou à lista do simulado (ramo `simulado-ineditas`, migração 012000) e os testes voltaram a valer.
 - `vite build`: passa.
