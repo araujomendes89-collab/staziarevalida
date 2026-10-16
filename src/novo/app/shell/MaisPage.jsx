@@ -1,40 +1,16 @@
 // Páginas "Mais" e "Preferências" do celular e do tablet (Novas telas, onda 2, 15/10/2026): HomeMais, HomePrefs, TabletMais, TabletPrefs, MobileMais.
-// Sem a caixa "Buscar no app" (fora da 1ª entrega, decisão do dono). Os números vêm do banco (app_gamification_summary e app_today); sem resposta, o selo some.
+// Sem a caixa "Buscar no app" (fora da 1ª entrega, decisão do dono). Os números vêm do banco (useShellCounts: app_gamification_summary e app_today); sem resposta, o selo some.
+// A folha "Mais" do celular (pacote MobileMais) está em MaisSheet.jsx.
 import React from "react";
 import { Avatar, Icon } from "../../ds";
 import { AppRealIcon } from "../AppIcons.jsx";
-import { useOptionalSession } from "../session.jsx";
+import { useShellCounts } from "./useShellCounts.js";
 import { badgeOf, maisSections } from "./navModel.js";
 import "./mais.css";
 
-/** Score, nível, tarefas do plano e missões de hoje. Nada de exemplo: o que não vier do banco fica de fora. */
-function useMaisData() {
-  const session = useOptionalSession();
-  const backend = session?.backend;
-  const play = session?.boot?.play?.enabled !== false;
-  const [data, setData] = React.useState({});
-  React.useEffect(() => {
-    if (!backend) return undefined;
-    let alive = true;
-    Promise.allSettled([play ? backend.rpc("app_gamification_summary") : Promise.resolve(null), backend.rpc("app_today")]).then(([s, t]) => {
-      if (!alive) return;
-      const summary = s.status === "fulfilled" ? s.value : null;
-      const today = t.status === "fulfilled" ? t.value : null;
-      setData({
-        score: summary && summary.enabled !== false && Number.isFinite(Number(summary.score)) ? Number(summary.score) : null,
-        level: summary?.level?.name ?? null,
-        scoreName: summary?.names?.score ?? null,
-        planDone: today?.total ? today.done : null,
-        planTotal: today?.total ? today.total : null,
-        missionsDone: summary?.missions?.total ? summary.missions.done : null,
-        missionsTotal: summary?.missions?.total ? summary.missions.total : null,
-      });
-    });
-    return () => {
-      alive = false;
-    };
-  }, [backend, play]);
-  return data;
+/** Score, nível, tarefas do plano e missões de hoje: os mesmos números dos selos da casca (useShellCounts). Nada de exemplo. */
+function useMaisData(route) {
+  return useShellCounts(route);
 }
 
 const PHASES = [
@@ -131,7 +107,7 @@ function Row({ onClick, children }) {
   );
 }
 
-function PrefsView({ info, phase, setPhase, phase2Locked, themeChoice, setTheme, onBack, onPick, onSignOut }) {
+export function PrefsView({ info, phase, setPhase, phase2Locked, themeChoice, setTheme, onBack, onPick, onSignOut }) {
   const choice = themeChoice || "light";
   const adminLabel = info.isStaff ? "Administração" : info.isReviewer ? "Revisão médica" : null;
   return (
@@ -206,7 +182,7 @@ function PrefsView({ info, phase, setPhase, phase2Locked, themeChoice, setTheme,
 export function MaisPage({ route, go, info, phase, setPhase, phase2Locked, themeChoice, setTheme, variant, initialView = "mais", symbol, onClose }) {
   const [view, setView] = React.useState(initialView);
   const ref = React.useRef(null);
-  const data = useMaisData();
+  const data = useMaisData(route);
   React.useEffect(() => {
     const first = ref.current && ref.current.querySelector("h1");
     if (first) first.focus();

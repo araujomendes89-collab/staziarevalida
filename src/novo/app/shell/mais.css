@@ -65,3 +65,36 @@
 .smm-out{display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;border-radius:16px;border:1px solid var(--danger-border);background:var(--surface-card);color:var(--danger-text);font:800 15px var(--font-sans);cursor:pointer}
 .smm :is(button):focus-visible{outline:none;box-shadow:var(--focus-ring)}
 @media (prefers-reduced-motion:reduce){.smm *{transition:none!important;animation:none!important}}
+
+/* ---------- folha "Mais" do celular (pacote MobileMais) ---------- */
+.sms-back{position:fixed;left:0;right:0;top:0;bottom:calc(var(--smn-tabs-h,76px) + env(safe-area-inset-bottom));z-index:58;background:rgba(8,18,43,.48)}
+.sms{position:fixed;left:0;right:0;bottom:calc(var(--smn-tabs-h,76px) + env(safe-area-inset-bottom));z-index:59;max-height:calc(100dvh - var(--smn-tabs-h,76px) - 84px - env(safe-area-inset-bottom));display:flex;flex-direction:column;border-radius:28px 28px 0 0;background:var(--surface-card);color:var(--text-primary);box-shadow:0 -12px 32px -8px rgba(13,28,66,.25);font-family:var(--font-sans);animation:sms-up var(--dur-base,.24s) var(--ease-out,ease-out)}
+@keyframes sms-up{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
+.sms-grab{display:block;width:40px;height:5px;margin:10px auto 4px;border-radius:999px;background:var(--border-default)}
+.sms-head{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 8px 20px}
+.sms-head h2{margin:0;font:800 20px var(--font-sans);letter-spacing:-.02em;outline:none}
+.sms-x{width:44px;height:44px;border-radius:12px;border:0;background:transparent;color:var(--text-secondary);display:grid;place-items:center;cursor:pointer}
+.sms-x:hover{background:var(--action-ghost-hover)}
+.sms-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 16px 16px;display:flex;flex-direction:column;gap:18px}
+.sms-body--prefs{padding-top:12px}
+.sms-body--prefs h1{margin:0;font:800 24px/1.15 var(--font-sans);letter-spacing:-.02em}
+.sms-user{display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;border:1px solid var(--border-subtle);background:var(--surface-subtle)}
+.sms-user-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.sms-user-t b{font:700 15px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sms-user-t small{display:inline-flex;align-items:center;gap:5px;font:600 12px var(--font-sans);color:var(--text-brand,var(--action-primary))}
+.sms-user-t small i{width:6px;height:6px;border-radius:999px;background:var(--teal-400,#009dfe)}
+.sms-swap{min-height:44px;padding:0 4px;border:0;background:none;color:var(--action-primary);font:700 13px var(--font-sans);cursor:pointer}
+.sms-soon{font:600 12px var(--font-sans);color:var(--text-tertiary);text-align:right}
+.sms-sec{display:flex;flex-direction:column;gap:10px}
+.sms-sec h3{margin:0;font:700 12px var(--font-sans);letter-spacing:.1em;text-transform:uppercase;color:var(--text-secondary)}
+.sms-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.sms-tile{position:relative;min-height:96px;padding:14px 6px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:16px;border:1px solid var(--border-subtle);background:var(--surface-subtle);color:var(--text-primary);cursor:pointer;font-family:var(--font-sans)}
+.sms-tile:hover{border-color:var(--border-strong)}
+.sms-tile[aria-current="page"]{border:1.5px solid var(--focus-color,#009dfe);background:var(--selected-bg)}
+.sms-ico{display:grid;place-items:center;width:32px;height:32px}
+.sms-lbl{font:600 12.5px/1.25 var(--font-sans);text-align:center}
+.sms-badge{position:absolute;top:8px;right:8px;font:600 12px/1.3 var(--font-mono);padding:1px 6px;border-radius:999px;background:var(--surface-sunken);color:var(--text-secondary)}
+.sms-badge--danger{background:var(--danger-bg);color:var(--danger-text)}
+.sms-out{min-height:48px;display:flex;align-items:center;justify-content:center;gap:10px;border-radius:14px;border:1px solid var(--danger-border);background:var(--surface-card);color:var(--danger-text);font:700 15px var(--font-sans);cursor:pointer}
+.sms :is(button,h2):focus-visible{outline:none;box-shadow:var(--focus-ring)}
+@media (prefers-reduced-motion:reduce){.sms{animation:none}}

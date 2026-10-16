@@ -2,7 +2,7 @@
    Só tokens do design system. Alvos de toque >= 44 px; foco visível; sem animação com "reduzir movimento". */
 .smn-skip{position:fixed;left:16px;top:-80px;z-index:100;padding:12px 16px;border-radius:12px;background:var(--action-primary);color:var(--action-on-primary);font:700 14px var(--font-sans);text-decoration:none}
 .smn-skip:focus{top:16px}
-.smn{--smn-tabs-h:70px}
+.smn{--smn-tabs-h:76px}
 .smn button{font-family:var(--font-sans)}
 .smn :is(button,a):focus-visible{outline:none;box-shadow:var(--focus-ring)}
 
@@ -50,10 +50,18 @@
 .smn-fly .smn-item{min-height:48px;border-radius:12px;font-size:15px}
 
 /* ---------- barra de baixo (celular) ---------- */
-.smn-tabs{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;align-items:stretch;justify-content:space-around;padding:6px 6px calc(6px + env(safe-area-inset-bottom));background:var(--surface-card);border-top:1px solid var(--border-default);box-shadow:0 -8px 24px -12px rgba(13,28,66,.18)}
-.smn-tab{flex:1;min-width:0;min-height:56px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0;border-radius:14px;background:transparent;color:var(--text-secondary);font:600 12px/1.1 var(--font-sans);cursor:pointer}
-.smn-tab.is-current{color:var(--text-brand);background:var(--selected-bg);font-weight:700}
-.smn-tab .smn-badge{position:absolute;top:2px;left:calc(50% + 6px)}
+.smn-tabs{position:fixed;left:0;right:0;bottom:0;z-index:60;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:end;height:calc(var(--smn-tabs-h) + env(safe-area-inset-bottom));padding:8px 6px calc(8px + env(safe-area-inset-bottom));box-sizing:border-box;background:color-mix(in srgb,var(--surface-card) 94%,transparent);border-top:1px solid var(--border-subtle);box-shadow:0 -8px 24px -12px rgba(13,28,66,.18);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.smn-tab{min-width:0;height:58px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;padding:0;border:0;border-radius:14px;background:transparent;color:var(--text-secondary);font:600 12px/1 var(--font-sans);cursor:pointer}
+.smn-tab-pill{position:relative;width:60px;height:32px;border-radius:999px;display:grid;place-items:center;transition:background var(--dur-base) var(--ease-standard)}
+.smn-tab.is-current .smn-tab-pill{background:var(--selected-bg)}
+.smn-tab.is-current{color:var(--text-primary);font-weight:800}
+.smn-tab-l{white-space:nowrap}
+.smn-tab-badge{position:absolute;top:-3px;right:8px;min-width:18px;height:18px;box-sizing:border-box;padding:0 5px;border-radius:999px;background:var(--danger-solid);color:#fff;font:600 12px/18px var(--font-mono);text-align:center;box-shadow:0 0 0 2px var(--surface-card)}
+.smn-tab--fab .smn-tab-l{color:var(--violet-700,#5230c9);font-weight:800}
+[data-theme="dark"] .smn-tab--fab .smn-tab-l{color:var(--ai-text)}
+.smn-fab{position:absolute;top:-26px;left:50%;margin-left:-29px;width:58px;height:58px;border-radius:999px;display:grid;place-items:center;color:#fff;background:linear-gradient(155deg,#7a58ee,#5230c9);box-shadow:0 10px 22px -6px rgba(82,48,201,.6),0 0 0 5px var(--surface-card)}
+.smn-tab--fab:focus-visible{box-shadow:none!important}
+.smn-tab--fab:focus-visible .smn-fab{box-shadow:0 0 0 5px var(--surface-card),0 0 0 8px var(--focus-color)}
 
 /* ---------- "Mais" (celular e tablet) ---------- */
 .smn-more-back{position:fixed;inset:0;z-index:60;background:rgba(13,28,66,.45)}
@@ -119,3 +127,39 @@
 .smn-mtop .smn-phase{padding:3px;gap:3px}
 .smn-mtop .smn-phase button{padding:0 10px;white-space:nowrap;font-size:13px}
 @media (max-width:370px){.smn-mtop-logo .wm{display:none}.smn-mtop-logo .sym{display:block}}
+
+/* ---------- casca final (15/10/2026): selos e sanfona como no pacote (Sidebar.html), trilho do tablet, Início simples ---------- */
+.smn-badge{font:600 12px/20px var(--font-mono)}
+.smn-badge--neutral{background:var(--surface-sunken);color:var(--text-secondary)}
+.smn-badge--danger{background:var(--danger-bg);color:var(--danger-text)}
+.smn-badge--ai{font:800 11px/20px var(--font-sans)}
+.smn-dot--neutral{background:var(--gray-400,#94a0af)}
+.smn-dot--danger{background:var(--danger-solid)}
+.smn-dot--ai{background:var(--violet-600)}
+.smn-dot{top:6px;right:12px;width:9px;height:9px}
+.smn-grpwrap{display:flex;flex-direction:column}
+.smn-list{gap:4px}
+.smn-grp{color:var(--text-primary);font-weight:600}
+.smn-grp.is-open{background:transparent;color:var(--text-primary);font-weight:700}
+.smn-sub{margin:2px 0 6px 21px;border-left:2px solid var(--border-subtle)}
+.smn-sub--up{margin:2px 0 6px 21px}
+.smn-chev--up{transform:rotate(-90deg)}
+.smn-grp[aria-expanded="true"] .smn-chev--up{transform:rotate(90deg)}
+.smn-item{min-height:44px}
+.smn-userwrap{padding:0 12px 12px}
+.smn-user{margin:0;width:100%;border-color:var(--border-subtle)}
+.smn-user small{color:var(--text-brand);font-weight:600}
+.smn-phase-dot{width:6px;height:6px;border-radius:999px;background:var(--teal-400)}
+.smn-side.is-collapsed .smn-userwrap{padding:0 12px 12px}
+.smn-side.is-collapsed .smn-user{margin:0;width:100%;padding:8px 0;min-height:52px;border-color:var(--border-subtle)}
+.smn-foot{padding:8px 12px 14px;gap:4px}
+.smn-foot .smn-grp{min-height:44px}
+/* trilho do tablet */
+.smn-rail-av{width:52px;height:52px;margin-bottom:6px;border-radius:999px;box-shadow:0 0 0 2px var(--surface-card),0 0 0 4px var(--teal-200)}
+.smn-rail-hr{width:40px;margin:6px 0;border:0;border-top:1px solid var(--border-subtle)}
+.smn-rb-badge{position:absolute;top:2px;right:12px;min-width:18px;height:18px;box-sizing:border-box;padding:0 5px;border-radius:999px;background:var(--danger-solid);color:#fff;font:600 12px/18px var(--font-mono);text-align:center;box-shadow:0 0 0 2px var(--surface-card)}
+/* Início do celular "simples" (pacote MobileMenu) */
+.smn-stop{display:flex;align-items:center;gap:8px;margin:-24px -18px 4px;padding:0 16px;height:64px;background:var(--surface-card);border-bottom:1px solid var(--border-default)}
+.smn-stop .smn-mtop-logo img{height:30px}
+.smn-ph--simples{gap:14px}
+.smn-ph-h1--simples{margin-top:2px;font-size:26px!important}

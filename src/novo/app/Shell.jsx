@@ -6,7 +6,10 @@ import React from "react";
 import { Icon, Avatar, IconButton } from "../ds";
 import { RI_CSS } from "../prototype/RealIcons.jsx";
 import { AppRealIcon } from "./AppIcons.jsx";
-import { FULL, badgeOf, configItems, groupBadge, groupOfRoute, groupsOf, mobileTabs } from "./shell/navModel.js";
+import { FULL, badgeKind, badgeOf, configItems, groupBadge, groupOfRoute, groupsOf, mobileTabs } from "./shell/navModel.js";
+import { MaisSheet } from "./shell/MaisSheet.jsx";
+import { inicioCelular, maisCelular } from "./shell/cascaConfig.js";
+import { useShellCounts } from "./shell/useShellCounts.js";
 import { MaisPage } from "./shell/MaisPage.jsx";
 import { useLayout, useMQ, useMobile } from "./shell/useLayout.js";
 import "./shell/shell.css";
@@ -18,11 +21,21 @@ const Ic = ({ name, size = 22 }) => <span className="smn-ic" aria-hidden="true">
 const phaseLabel = (phase) => (phase === 1 ? "1ª fase · objetiva" : "2ª fase · prática");
 const logoSrc = (theme, kind) => (kind === "symbol" ? (theme === "dark" ? "/brand/simbolo-escuro-64w.png" : "/brand/simbolo-64w.png") : theme === "dark" ? "/brand/horizontal-escuro-480w.png" : "/brand/horizontal-480w.png");
 
-function Badge({ n, ai }) {
-  if (ai) return <span className="smn-badge smn-badge--ai">IA</span>;
-  if (n == null) return null;
-  return <span className="smn-badge" aria-label={`${n} pendentes`}>{n}</span>;
+/** Selo no desenho do pacote: cinza (progresso do dia, ex. 0/2), vermelho (pendências, ex. erros a revisar) ou violeta (IA). */
+function Badge({ b }) {
+  if (!b || b.text == null) return null;
+  if (b.kind === "ai") return <span className="smn-badge smn-badge--ai">IA</span>;
+  const label = b.kind === "danger" ? `${b.text} pendentes` : `${b.text} feitas hoje`;
+  return (
+    <span className={`smn-badge smn-badge--${b.kind || "neutral"}`} aria-label={label}>
+      {b.text}
+    </span>
+  );
 }
+const itemBadge = (id, info) => {
+  const text = badgeOf(id, info);
+  return text == null ? null : { text, kind: badgeKind(id) };
+};
 
 // ---------------------------------------------------------------- computador: barra lateral em sanfona (recolhível)
 const COL_KEY = "smf-col";
@@ -36,159 +49,114 @@ function readCollapsed(narrow) {
   }
   return narrow; // padrão: expandido; em tela web estreita (até 1280 px) começa recolhido
 }
+
+/** Grupo da sanfona (botão + itens). No rodapé ("Configurações") os itens abrem para cima, como no pacote. */
+function SideGroup({ g, route, go, info, open, current, collapsed, onToggle, up = false }) {
+  if (g.direct) {
+    const on = route === g.direct;
+    return (
+      <button type="button" className={`smn-grp${on ? " is-current" : ""}`} aria-current={on ? "page" : undefined} aria-label={g.label} title={collapsed ? g.label : undefined} onClick={() => go(g.direct)}>
+        <Ic name={g.icon} />
+        {!collapsed && <span className="smn-lbl">{g.label}</span>}
+        {g.badgeText && (collapsed ? <span className="smn-dot smn-dot--ai" aria-hidden="true" /> : <Badge b={{ text: g.badgeText, kind: "ai" }} />)}
+      </button>
+    );
+  }
+  const isOpen = !collapsed && open;
+  const gb = groupBadge(g, info);
+  const sub = isOpen && (
+    <div className={`smn-sub${up ? " smn-sub--up" : ""}`} id={`smn-sub-${g.id}`} role="group" aria-label={g.label}>
+      {g.items.map(([id, ic, l]) => (
+        <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} onClick={() => go(id)}>
+          <Ic name={ic} size={20} />
+          <span className="smn-lbl">{l}</span>
+          <Badge b={itemBadge(id, info)} />
+        </button>
+      ))}
+    </div>
+  );
+  return (
+    <div className="smn-grpwrap">
+      {up && sub}
+      <button
+        type="button"
+        className={`smn-grp${current && !isOpen ? " is-current" : ""}${isOpen ? " is-open" : ""}`}
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? `smn-sub-${g.id}` : undefined}
+        aria-label={g.label}
+        title={collapsed ? g.label : undefined}
+        onClick={onToggle}
+      >
+        <Ic name={g.icon} />
+        {!collapsed && <span className="smn-lbl">{g.label}</span>}
+        {gb && !isOpen && (collapsed ? <span className={`smn-dot smn-dot--${gb.kind}`} aria-hidden="true" /> : <Badge b={gb} />)}
+        {!collapsed && <Icon name="chevron-right" size={16} className={`smn-chev${up ? " smn-chev--up" : ""}`} />}
+      </button>
+      {!up && sub}
+    </div>
+  );
+}
+
 function Sidebar({ route, go, phase, info, theme, collapsed, setCollapsed }) {
   const groups = groupsOf(phase, { staff: info.isStaff });
-  const current = groupOfRoute(route, phase);
+  const config = { id: "config", label: "Configurações", icon: "settings", items: [...configItems(info), ["perfil", "settings", "Preferências"]] };
+  const current = groupOfRoute(route, phase) || (config.items.some(([id]) => id === route) ? "config" : null);
   const [open, setOpen] = React.useState(current);
-  const [fly, setFly] = React.useState(null); // {id, top}: submenu flutuante do menu recolhido
-  const btnRefs = React.useRef({});
-  const flyRef = React.useRef(null);
   React.useEffect(() => {
     if (current) setOpen(current);
   }, [current]);
-  React.useEffect(() => setFly(null), [route, collapsed]);
-  React.useEffect(() => {
-    if (!fly) return undefined;
-    const first = flyRef.current && flyRef.current.querySelector("button");
-    if (first) first.focus();
-    const key = (e) => {
-      if (e.key === "Escape") {
-        const id = fly.id;
-        setFly(null);
-        btnRefs.current[id] && btnRefs.current[id].focus();
-      }
-    };
-    document.addEventListener("keydown", key);
-    return () => document.removeEventListener("keydown", key);
-  }, [fly]);
-  const cfg = configItems(info);
-  const tutorGo = phase === 2 ? "paciente" : "tutor";
-  const tutorLabel = phase === 2 ? "Paciente simulado" : "Perguntar ao tutor";
   const toggleLabel = collapsed ? "Expandir menu" : "Recolher menu";
-  const opened = fly && groups.find((g) => g.id === fly.id);
-  const tip = (l) => (collapsed ? l : undefined);
-
-  const onGroup = (g) => {
-    if (g.direct) return go(g.direct);
+  // pacote: com o menu recolhido, tocar num grupo abre o menu e o grupo
+  const onToggle = (id) => () => {
     if (collapsed) {
-      if (fly && fly.id === g.id) return setFly(null);
-      const el = btnRefs.current[g.id];
-      const top = el ? Math.max(12, Math.min(el.getBoundingClientRect().top - 8, window.innerHeight - 70 - g.items.length * 44)) : 16;
-      return setFly({ id: g.id, top });
+      setCollapsed(false);
+      return setOpen(id);
     }
-    setOpen(open === g.id ? null : g.id);
+    setOpen(open === id ? null : id);
   };
+  const phaseText = phase === 1 ? "1ª fase · Objetiva" : "2ª fase · Prática";
 
   return (
-    <>
-      <nav className={`smn-side${collapsed ? " is-collapsed" : ""}`} aria-label="Navegação principal">
-        <style>{RI_CSS}</style>
-        <button type="button" className="smn-toggle" onClick={() => setCollapsed(!collapsed)} aria-label={toggleLabel} title={toggleLabel} aria-expanded={!collapsed} aria-controls="smn-side-body">
-          <Icon name="chevron-left" size={14} className="smn-toggle-ic" />
-        </button>
-        <button type="button" className="smn-logo" onClick={() => go(phase === 2 ? "home2" : "home")} aria-label="StaziaMed, início" title={tip("StaziaMed, início")}>
-          {collapsed ? <img src={logoSrc(theme, "symbol")} alt="" style={{ height: 36, width: "auto" }} /> : <img src={logoSrc(theme)} alt="StaziaMed Revalida" />}
-        </button>
-        <div id="smn-side-body" style={{ display: "contents" }}>
-          <button type="button" className="smn-user" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}, ${phaseLabel(phase)}`} title={tip(info.name)}>
+    <nav className={`smn-side${collapsed ? " is-collapsed" : ""}`} aria-label="Navegação principal">
+      <style>{RI_CSS}</style>
+      <button type="button" className="smn-toggle" onClick={() => setCollapsed(!collapsed)} aria-label={toggleLabel} title={toggleLabel} aria-expanded={!collapsed} aria-controls="smn-side-body">
+        <Icon name="chevron-left" size={14} className="smn-toggle-ic" />
+      </button>
+      <button type="button" className="smn-logo" onClick={() => go(phase === 2 ? "home2" : "home")} aria-label="StaziaMed, início" title={collapsed ? "StaziaMed, início" : undefined}>
+        {collapsed ? <img src={logoSrc(theme, "symbol")} alt="" style={{ height: 36, width: "auto" }} /> : <img src={logoSrc(theme)} alt="StaziaMed Revalida" />}
+      </button>
+      <div id="smn-side-body" style={{ display: "contents" }}>
+        <div className="smn-userwrap">
+          <button type="button" className="smn-user" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}, ${phaseLabel(phase)}`} title={collapsed ? info.name : undefined}>
             <Avatar name={info.name} size={36} />
             {!collapsed && (
               <>
                 <span className="smn-grow">
                   <b>{info.name}</b>
-                  <small><Icon name="repeat" size={12} />{phaseLabel(phase)}</small>
+                  <small>
+                    <i className="smn-phase-dot" aria-hidden="true" />
+                    {phaseText}
+                  </small>
                 </span>
-                <Icon name="chevron-right" size={16} style={{ color: "var(--text-tertiary)" }} />
+                <Icon name="chevrons-up-down" size={16} style={{ color: "var(--text-tertiary)" }} />
               </>
             )}
           </button>
-          <div className="smn-list">
-            {groups.map((g) => {
-              if (g.direct) {
-                const on = route === g.direct;
-                return (
-                  <button key={g.id} type="button" className={`smn-grp${on ? " is-current" : ""}`} aria-current={on ? "page" : undefined} aria-label={g.label} title={tip(g.label)} onClick={() => go(g.direct)}>
-                    <Ic name={g.icon} />
-                    {!collapsed && <span className="smn-lbl">{g.label}</span>}
-                    {!collapsed && <Badge ai={Boolean(g.badgeText)} />}
-                  </button>
-                );
-              }
-              const isOpen = !collapsed && open === g.id;
-              const hasCurrent = current === g.id;
-              const gb = groupBadge(g, info);
-              return (
-                <div key={g.id}>
-                  <button
-                    ref={(el) => (btnRefs.current[g.id] = el)}
-                    type="button"
-                    className={`smn-grp${hasCurrent && !isOpen ? " is-current" : ""}`}
-                    aria-expanded={collapsed ? Boolean(fly && fly.id === g.id) : isOpen}
-                    aria-haspopup={collapsed ? "true" : undefined}
-                    aria-controls={collapsed ? undefined : `smn-sub-${g.id}`}
-                    aria-label={g.label}
-                    title={tip(g.label)}
-                    onClick={() => onGroup(g)}
-                  >
-                    <Ic name={g.icon} />
-                    {!collapsed && <span className="smn-lbl">{g.label}</span>}
-                    {!isOpen && (collapsed ? gb != null && <span className="smn-dot" aria-label={`${gb} pendentes`} /> : <Badge n={gb} />)}
-                    {!collapsed && <Icon name="chevron-right" size={16} className="smn-chev" />}
-                  </button>
-                  {isOpen && (
-                    <div className="smn-sub" id={`smn-sub-${g.id}`}>
-                      {g.items.map(([id, ic, l]) => (
-                        <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} onClick={() => go(id)}>
-                          <Ic name={ic} size={20} />
-                          <span className="smn-lbl">{l}</span>
-                          <Badge n={badgeOf(id, info)} />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div className="smn-foot">
-            <button type="button" className="smn-cta" onClick={() => go(tutorGo)} aria-label={tutorLabel} title={tip(tutorLabel)}>
-              <Icon name="sparkles" size={18} />
-              {!collapsed && tutorLabel}
-            </button>
-            {cfg.map(([id, ic, l]) => (
-              <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} aria-label={l} title={tip(l)} onClick={() => go(id)}>
-                <Ic name={ic} size={20} />
-                {!collapsed && <span className="smn-lbl">{l}</span>}
-                {!collapsed && <Badge n={badgeOf(id, info)} />}
-              </button>
-            ))}
-            <button type="button" className="smn-item" aria-current={route === "perfil" ? "page" : undefined} aria-label="Preferências" title={tip("Preferências")} onClick={() => go("perfil")}>
-              <Ic name="settings" size={20} />
-              {!collapsed && <span className="smn-lbl">Preferências</span>}
-            </button>
-            <button type="button" className="smn-item" aria-label="Sair" title={tip("Sair")} onClick={() => info.onSignOut && info.onSignOut()}>
-              <Ic name="log-out" size={20} />
-              {!collapsed && <span className="smn-lbl">Sair</span>}
-            </button>
-          </div>
         </div>
-      </nav>
-      {opened && (
-        <>
-          <div className="smn-more-back" style={{ background: "transparent", zIndex: 44 }} onClick={() => setFly(null)} aria-hidden="true" />
-          <div className="smn-fly" ref={flyRef} role="group" aria-label={opened.label} style={{ top: fly.top, left: 116 }}>
-            <h2>{opened.label}</h2>
-            {opened.items.map(([id, ic, l]) => (
-              <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} onClick={() => go(id)}>
-                <Ic name={ic} size={22} />
-                <span className="smn-lbl">{l}</span>
-                <Badge n={badgeOf(id, info)} />
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </>
+        <div className="smn-list">
+          {groups.map((g) => (
+            <SideGroup key={g.id} g={g} route={route} go={go} info={info} open={open === g.id} current={current === g.id} collapsed={collapsed} onToggle={onToggle(g.id)} />
+          ))}
+        </div>
+        <div className="smn-foot">
+          <SideGroup g={config} route={route} go={go} info={info} open={open === "config"} current={current === "config"} collapsed={collapsed} onToggle={onToggle("config")} up />
+          <button type="button" className="smn-grp" aria-label="Sair" title={collapsed ? "Sair" : undefined} onClick={() => info.onSignOut && info.onSignOut()}>
+            <Ic name="log-out" />
+            {!collapsed && <span className="smn-lbl">Sair</span>}
+          </button>
+        </div>
+      </div>
+    </nav>
   );
 }
 
@@ -235,7 +203,7 @@ function Rail({ route, go, phase, setPhase, phase2Locked, info, theme, setTheme 
         <button type="button" className="smn-logo" onClick={() => go(phase === 2 ? "home2" : "home")} aria-label="StaziaMed, início">
           <img src={logoSrc(theme, "symbol")} alt="" />
         </button>
-        <button type="button" className="smn-hdr-btn" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`} style={{ marginBottom: 6 }}>
+        <button type="button" className="smn-hdr-btn smn-rail-av" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`}>
           <Avatar name={info.name} size={40} />
         </button>
         {groups.map((g) => {
@@ -255,11 +223,16 @@ function Rail({ route, go, phase, setPhase, phase2Locked, info, theme, setTheme 
             >
               <Ic name={g.icon} size={26} />
               <span>{g.short}</span>
-              <Badge n={gb} />
+              {gb && gb.kind === "danger" && (
+                <span className="smn-rb-badge" aria-label={`${gb.text} pendentes`}>
+                  {gb.text}
+                </span>
+              )}
             </button>
           );
         })}
         <div className="smn-rail-sp" />
+        <hr className="smn-rail-hr" aria-hidden="true" />
         <button type="button" className={`smn-rb${more === "mais" ? " is-current" : ""}`} aria-label="Mais" aria-expanded={more === "mais"} onClick={() => { setOpenId(null); setMore((m) => (m === "mais" ? false : "mais")); }}>
           <MoreGrid />
           <span>Mais</span>
@@ -278,7 +251,7 @@ function Rail({ route, go, phase, setPhase, phase2Locked, info, theme, setTheme 
               <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} onClick={() => go(id)}>
                 <Ic name={ic} size={22} />
                 <span className="smn-lbl">{l}</span>
-                <Badge n={badgeOf(id, info)} />
+                <Badge b={itemBadge(id, info)} />
               </button>
             ))}
           </div>
@@ -302,6 +275,8 @@ function MoreGrid({ size = 24 }) {
 }
 
 // ---------------------------------------------------------------- celular: barra de abas
+// Pacote (HomeMobileCompact): Início, Questões, Tutor (botão redondo roxo no meio), Revisar (selo vermelho = questões erradas a revisar), Mais.
+// "Mais" abre a folha que sobe de baixo (MobileMais) ou a página "Mais" (HomeMais), conforme cascaConfig.js.
 function MobileTabs({ route, go, phase, setPhase, phase2Locked, info, theme, setTheme }) {
   const [more, setMore] = React.useState(false);
   const close = React.useCallback(() => setMore(false), []);
@@ -309,27 +284,43 @@ function MobileTabs({ route, go, phase, setPhase, phase2Locked, info, theme, set
   const tabs = mobileTabs(phase);
   const current = groupOfRoute(route, phase);
   const onTab = (t) => t[3] != null && t[3] === current;
-  const moreOn = phase === 1 && !tabs.some(onTab);
+  const moreOn = phase === 1 && !tabs.some(onTab) && !tabs.some((t) => t[0] === route);
+  const sheet = maisCelular() === "folha";
+  const moreProps = { route, go, info, phase, setPhase, phase2Locked, themeChoice: info.themeChoice, setTheme, symbol: logoSrc(theme, "symbol"), onClose: close };
   return (
     <>
-      {more && phase === 1 && <MaisPage route={route} go={go} info={info} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} themeChoice={info.themeChoice} setTheme={setTheme} variant="mobile" symbol={logoSrc(theme, "symbol")} onClose={close} />}
+      {more && phase === 1 && (sheet ? <MaisSheet {...moreProps} /> : <MaisPage {...moreProps} variant="mobile" />)}
       <nav className="smn-tabs" aria-label="Navegação principal">
         {tabs.map((t) => {
-          const [id, ic, l] = t;
+          const [id, ic, l, , badgeFrom] = t;
           const on = onTab(t) || route === id;
-          const b = badgeOf(id, info);
+          const n = badgeFrom ? badgeOf(badgeFrom, info) : null;
+          if (id === "tutor") {
+            return (
+              <button key={id} type="button" className={`smn-tab smn-tab--fab${on ? " is-current" : ""}`} aria-label={l} aria-current={on ? "page" : undefined} onClick={() => go(id)}>
+                <span className="smn-fab" aria-hidden="true">
+                  <Icon name="sparkles" size={26} />
+                </span>
+                <span className="smn-tab-l">{l}</span>
+              </button>
+            );
+          }
           return (
-            <button key={id} type="button" className={`smn-tab${on ? " is-current" : ""}`} aria-label={l} aria-current={on ? "page" : undefined} onClick={() => go(id)}>
-              {AppRealIcon({ name: ic, size: 26 }) || <Icon name={ic} size={22} />}
-              <span>{l}</span>
-              <Badge n={b} />
+            <button key={id} type="button" className={`smn-tab${on ? " is-current" : ""}`} aria-label={n ? `${l}, ${n} ${n === 1 ? "questão errada" : "questões erradas"} para revisar` : l} aria-current={on ? "page" : undefined} onClick={() => go(id)}>
+              <span className="smn-tab-pill">
+                {AppRealIcon({ name: ic, size: 24 }) || <Icon name={ic} size={22} />}
+                {n ? <span className="smn-tab-badge" aria-hidden="true">{n}</span> : null}
+              </span>
+              <span className="smn-tab-l">{l}</span>
             </button>
           );
         })}
         {phase === 1 && (
-          <button type="button" className={`smn-tab${more || moreOn ? " is-current" : ""}`} aria-label="Mais" aria-expanded={more} onClick={() => setMore((m) => !m)}>
-            <MoreGrid />
-            <span>Mais</span>
+          <button type="button" className={`smn-tab${more || moreOn ? " is-current" : ""}`} aria-label="Mais" aria-haspopup="dialog" aria-expanded={more} onClick={() => setMore((m) => !m)}>
+            <span className="smn-tab-pill">
+              <MoreGrid />
+            </span>
+            <span className="smn-tab-l">Mais</span>
           </button>
         )}
       </nav>
@@ -405,7 +396,30 @@ function MobileTopBar({ theme, go, phase, setPhase, phase2Locked, info }) {
   );
 }
 
+// Início do celular "simples" (pacote MobileMenu): barra branca com logo, sequência e conta; depois a data e a saudação.
+function SimpleTopHeader({ title, sub, theme, go, phase, info }) {
+  return (
+    <header className="smn-ph smn-ph--simples">
+      <div className="smn-stop">
+        <button type="button" className="smn-mtop-logo" onClick={() => go(phase === 2 ? "home2" : "home")} aria-label="StaziaMed, início">
+          <img className="wm" src={theme === "dark" ? "/brand/horizontal-escuro-320w.png" : "/brand/horizontal-320w.png"} alt="StaziaMed Revalida" width="97" height="30" />
+        </button>
+        <span style={{ flex: 1 }} />
+        <StreakChip info={info} go={go} />
+        <button type="button" className="smn-hdr-btn" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`}>
+          <Avatar name={info.name} size={36} />
+        </button>
+      </div>
+      <div>
+        {sub && <div className="smn-ph-date">{sub}</div>}
+        <h1 className="smn-ph-h1 smn-ph-h1--simples">{title}</h1>
+      </div>
+    </header>
+  );
+}
+
 function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, phase, setPhase, phase2Locked, info }) {
+  if (kind === "inicio-simples") return <SimpleTopHeader title={title} sub={sub} theme={theme} go={go} phase={phase} info={info} />;
   if (kind === "inicio") {
     return (
       <header className="smn-ph">
@@ -419,7 +433,6 @@ function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, phase, setP
             <div className="smn-ph-r">
               {sub && <span className="smn-ph-date">{sub}</span>}
               <PhaseSwitch phase={phase} setPhase={setPhase} mobile={false} phase2Locked={phase2Locked} />
-              <IconButton icon={theme === "dark" ? "sun" : "moon"} label={theme === "dark" ? "Tema claro" : "Tema escuro"} variant="secondary" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} style={{ minWidth: 44, minHeight: 44 }} />
             </div>
           )}
         </div>
@@ -454,7 +467,7 @@ function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, phase, setP
 }
 
 function Header({ title, sub, theme, setTheme, go, mobile, phase, setPhase, phase2Locked, info, kind }) {
-  if (kind === "inicio" || kind === "plano") return <PageHeader kind={kind} title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />;
+  if (kind === "inicio" || kind === "inicio-simples" || kind === "plano") return <PageHeader kind={kind} title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />;
   return (
     <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
       <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -487,8 +500,10 @@ function Header({ title, sub, theme, setTheme, go, mobile, phase, setPhase, phas
   );
 }
 
-function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phase = 1, setPhase, phase2Locked = false, info, headerKind }) {
+function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phase = 1, setPhase, phase2Locked = false, info: baseInfo, headerKind: kind }) {
   const layout = useLayout();
+  const counts = useShellCounts(route);
+  const info = { ...counts, ...baseInfo };
   const full = FULL.includes(route);
   const mobile = layout === "mobile";
   const narrowWeb = useMQ("(max-width: 1280px)");
@@ -513,6 +528,7 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
     }
   };
   const collapsed = pref;
+  const headerKind = kind === "inicio" && mobile && inicioCelular() === "simples" ? "inicio-simples" : kind;
   const marginLeft = full || mobile ? 0 : layout === "tablet" ? 116 : collapsed ? 116 : 304;
   return (
     <div className="smn" style={{ minHeight: "100vh", background: "var(--bg-app)" }}>
