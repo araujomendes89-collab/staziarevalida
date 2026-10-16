@@ -39,6 +39,7 @@ import { TrailScreen } from "./play/TrailScreen.jsx";
 import { LeaderboardScreen } from "./play/LeaderboardScreen.jsx";
 import { MissionsScreen } from "./play/MissionsScreen.jsx";
 import { AchievementsScreen } from "./play/AchievementsScreen.jsx";
+import { Nivelamento, deveMostrarNivelamento } from "./nivelamento/Nivelamento.jsx";
 
 // [título, subtítulo] de cada rota (o início é montado com nome e data reais).
 const TITLES = {
@@ -70,7 +71,7 @@ const TITLES = {
   admin: ["Administração", "Gestão da plataforma"],
 };
 const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps", "paciente", "desempenho2"];
-const ROUTES = new Set(["home", "home2", "sessao", "estacao", ...Object.keys(TITLES)]);
+const ROUTES = new Set(["home", "home2", "sessao", "estacao", "nivelamento", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
 const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "mapas", "planos"]);
@@ -145,6 +146,7 @@ function Screen() {
   // (ao sair da sessão os selos do menu, como o do Caderno de Erros, são perguntados de novo ao banco)
   if (route === "sessao") forgetShellCounts(backend);
   if (route === "sessao") return <TutorDockProvider go={go}><PracticeSession go={go} /></TutorDockProvider>;
+  if (route === "nivelamento") return <Nivelamento modo="rota" go={go} />;
   // a tela de uma estação abre sem a moldura: o aviso de "em reconstrução" entra aqui, antes dela
   if (route === "estacao")
     return (
@@ -293,6 +295,7 @@ function Root() {
   if (session.recovery) return <NewPasswordScreen />;
   // Aluno sem aceite do Termo vigente ou sem WhatsApp: a tela de aceite vem antes de qualquer rota (o servidor decide em gate_required)
   if (session.boot?.legal?.gate_required) return <AcceptanceScreen />;
+  if (deveMostrarNivelamento(session.boot)) return <Nivelamento modo="primeira" go={() => {}} />;
 
   return (
     <Routes>

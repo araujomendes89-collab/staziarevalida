@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Prévia - Diagnóstico de Nivelamento</title>
+    <style>
+      body { margin: 0; padding: 0; background: var(--bg-app); font-family: var(--font-sans); }
+      #aviso-previa { background: #ffd54f; color: #000; text-align: center; padding: 8px; font-size: 14px; font-weight: 600; position: sticky; top: 0; z-index: 1000; }
+    </style>
+  </head>
+  <body>
+    <div id="aviso-previa">Prévia com dados simulados — as questões são oficiais do Inep; nada é gravado.</div>
+    <div id="root"></div>
+    <script type="module" src="./main.jsx"></script>
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("tema") === "escuro") {
+        document.documentElement.dataset.theme = "dark";
+      } else {
+        document.documentElement.dataset.theme = "light";
+      }
+    </script>
+  </body>
+</html>

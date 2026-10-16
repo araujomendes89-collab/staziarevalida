@@ -1,12 +1,15 @@
 // Textos do plano do dia, montados a partir do que o banco devolve (app_today / app_home).
 import { areaLabel } from "../practice/format.js";
 
+import { fmt1 } from "../nivelamento/calculo.js";
+
 export const KIND_LABEL = { estudar: "Estudar", praticar: "Praticar", revisar: "Revisar" };
 
 /** Por que esta tarefa está no plano, em uma frase. */
 export function reasonText(task) {
-  const { reason, attempts = 0, accuracy } = task.ref ?? {};
+  const { reason, attempts = 0, accuracy, proficiencia } = task.ref ?? {};
   if (reason === "diagnostic") return "10 questões oficiais para calcular sua acurácia nas 5 grandes áreas e montar o plano dos próximos dias.";
+  if (reason === "nivelamento") return `É a área com maior prioridade de estudo pelo seu nivelamento (proficiência estimada de ${fmt1(proficiencia)}%).`;
   if (reason === "untrained") {
     if (attempts === 0) return "Você ainda não respondeu questões desta área.";
     return `Você respondeu ${attempts === 1 ? "só 1 questão" : `só ${attempts} questões`} desta área até agora.`;

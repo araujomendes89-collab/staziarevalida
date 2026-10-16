@@ -19,6 +19,8 @@ import { PlayError, usePlayHome } from "../play/PlayDashboard.jsx";
 import { ScoreExplainer } from "../play/components.jsx";
 import { usePlayLoad } from "../play/usePlay.js";
 import { inicioCelular } from "../shell/cascaConfig.js";
+import { NivelamentoConvite } from "../nivelamento/NivelamentoConvite.jsx";
+import { CONVITE } from "../nivelamento/textos.js";
 
 const DIAGNOSTIC_SIZE = 10;
 const R = { borderRadius: 24 };
@@ -53,29 +55,41 @@ function TrialBanner({ trial, attempts, go }) {
   );
 }
 
-function HomeNew({ go, mobile, home, profile, startDiagnostic, busy, extra }) {
-  const started = home.attempts > 0 || home.open_session;
+function HomeNew({ go, mobile, home, profile, startDiagnostic, busy, extra, boot }) {
+  const niv = boot.nivelamento;
+  const nivAplicavel = niv?.aplicavel;
+  const nivPendente = nivAplicavel && (niv.situacao === "novo" || niv.situacao === "adiado" || niv.situacao === "bloco1");
+  const nivConcluido = nivAplicavel && (niv.situacao === "parcial" || niv.situacao === "bloco2" || niv.situacao === "concluido");
+  
+  const started = nivAplicavel ? (niv.situacao === "bloco1") : (home.attempts > 0 || home.open_session);
+  const diagDone = nivAplicavel ? nivConcluido : (home.attempts >= DIAGNOSTIC_SIZE);
+
   const steps = [
     ["Personalizar rotina", profile.daily_minutes != null, () => go("hoje", { ajustar: 1 })],
-    ["Diagnóstico inicial", home.attempts >= DIAGNOSTIC_SIZE, startDiagnostic],
+    ["Diagnóstico inicial", diagDone, startDiagnostic],
     ["Definir data da prova", profile.exam_date != null, () => go("hoje", { ajustar: 1 })],
   ];
   return (
     <>
+      {/* pendente: o cartão grande abaixo já é o convite; com a parte 1 feita, o cartão do nivelamento oferece as outras 15 */}
+      {niv?.convite && !nivPendente && <NivelamentoConvite estado={niv} go={go} />}
       {home.trial && <TrialBanner trial={home.trial} attempts={home.attempts} go={go} />}
       <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "minmax(0,1.55fr) minmax(0,1fr)", gap: 20 }}>
         <div style={{ padding: mobile ? 24 : 36, borderRadius: 24, background: "var(--navy-900)", color: "#fff", display: "flex", flexDirection: "column", gap: 14 }}>
           <span className="sm-overline" style={{ color: "var(--teal-300)" }}>
             Comece aqui
           </span>
-          <h2 style={{ margin: 0, font: `700 ${mobile ? 24 : 30}px/1.2 var(--font-sans)`, letterSpacing: "-0.015em", color: "#fff" }}>Faça o diagnóstico inicial</h2>
+          <h2 style={{ margin: 0, font: `700 ${mobile ? 24 : 30}px/1.2 var(--font-sans)`, letterSpacing: "-0.015em", color: "#fff" }}>
+            {nivPendente ? "Faça o diagnóstico de nivelamento" : nivConcluido ? "Seu plano já está montado" : "Faça o diagnóstico inicial"}
+          </h2>
           <p style={{ margin: 0, color: "var(--navy-200)", maxWidth: 480 }}>
-            {DIAGNOSTIC_SIZE} questões oficiais, cerca de 20 minutos. Com elas calculamos sua acurácia nas 5 grandes áreas do Revalida e montamos seu plano.
-            {home.attempts > 0 && ` Você já respondeu ${home.attempts} de ${DIAGNOSTIC_SIZE}.`}
+            {nivPendente ? CONVITE.novo.texto : nivConcluido ? "O seu plano de hoje começa pela área de maior prioridade do seu nivelamento." : (
+              <>{DIAGNOSTIC_SIZE} questões oficiais, cerca de 20 minutos. Com elas calculamos sua acurácia nas 5 grandes áreas do Revalida e montamos seu plano.{home.attempts > 0 && ` Você já respondeu ${home.attempts} de ${DIAGNOSTIC_SIZE}.`}</>
+            )}
           </p>
           <div>
             <button type="button" className="sm-btn sm-btn--lg" onClick={startDiagnostic} disabled={busy} style={{ background: "var(--teal-400)", color: "var(--navy-950)", marginTop: 8 }}>
-              {started ? "Continuar diagnóstico" : "Começar diagnóstico"} <Icon name="arrow-right" size={18} />
+              {nivConcluido ? "Começar o plano de hoje" : started ? "Continuar diagnóstico" : "Começar diagnóstico"} <Icon name="arrow-right" size={18} />
             </button>
           </div>
         </div>
@@ -642,6 +656,14 @@ export function HomeScreen({ go, mobile }) {
   // equipe (administrador ou editor) e revisor médico têm acesso completo: sem aviso de teste grátis
   const home = hasFullAccess(boot) ? { ...data.home, trial: null } : data.home;
   const startDiagnostic = () => {
+    const niv = boot.nivelamento;
+    if (niv?.aplicavel && (niv.situacao === "novo" || niv.situacao === "adiado" || niv.situacao === "bloco1")) {
+      return go("nivelamento");
+    }
+    if (niv?.aplicavel && ["parcial", "bloco2", "concluido"].includes(niv.situacao)) {
+      const nivTask = plan.tasks.find((t) => t.ref?.reason === "nivelamento" && !t.done);
+      return nivTask ? startTask(nivTask) : go("hoje");
+    }
     if (home.open_session) return go("sessao", { s: home.open_session.id });
     const task = plan.tasks.find((t) => t.ref?.reason === "diagnostic");
     return task ? startTask(task) : go("questoes");
@@ -668,9 +690,12 @@ export function HomeScreen({ go, mobile }) {
         </Banner>
       )}
       {home.attempts < DIAGNOSTIC_SIZE ? (
-        <HomeNew go={go} mobile={mobile} home={home} profile={boot.profile} startDiagnostic={startDiagnostic} busy={busy} extra={ineditasCard} />
+        <HomeNew go={go} mobile={mobile} home={home} profile={boot.profile} startDiagnostic={startDiagnostic} busy={busy} extra={ineditasCard} boot={boot} />
       ) : (
-        <HomeActive go={go} home={home} plan={plan} startTask={startTask} busy={busy} play={play} startNode={play.startNode} ineditas={data.ineditas} arenaOn={boot.play?.enabled !== false} />
+        <>
+          {boot.nivelamento?.convite && <NivelamentoConvite estado={boot.nivelamento} go={go} />}
+          <HomeActive go={go} home={home} plan={plan} startTask={startTask} busy={busy} play={play} startNode={play.startNode} ineditas={data.ineditas} arenaOn={boot.play?.enabled !== false} />
+        </>
       )}
     </>
   );
