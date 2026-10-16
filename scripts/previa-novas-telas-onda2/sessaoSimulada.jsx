@@ -62,12 +62,12 @@ const ranking = ({ p_kind }) =>
   RANK_CHEIO
     ? { enabled: true, kind: p_kind, total: 5, offset: 0, limit: 50, rows: [testeRow(1, "A", 512), testeRow(2, "B", 470), testeRow(3, "C", 383, { name: "Você", avatar: "João Paulo Mendes", is_me: true }), testeRow(4, "D", 301), testeRow(5, "E", 250)], me: { rank: 3, total: 5, value: 383, percentile: 60, week_change: 2, next: [{ rank: 2, gap: 87 }] } }
     : { enabled: true, kind: p_kind, total: 0, offset: 0, limit: 50, rows: [], me: null };
-const LIGAS = [["bronze", "Bronze", 1, "medal"], ["prata", "Prata", 2, "medal"], ["ouro", "Ouro", 3, "medal"], ["platina", "Platina", 4, "gem"], ["diamante", "Diamante", 5, "gem"], ["elite", "Elite", 6, "crown"], ["revalida_master", "Revalida Master", 7, "trophy"]].map(([slug, name, position, icon]) => ({ slug, name, position, icon, color_token: `--league-${slug === "revalida_master" ? "master" : slug}` }));
+const LIGAS_ARENA = [["bronze", "Bronze", 1, "medal"], ["prata", "Prata", 2, "medal"], ["ouro", "Ouro", 3, "medal"], ["platina", "Platina", 4, "gem"], ["diamante", "Diamante", 5, "gem"], ["elite", "Elite", 6, "crown"], ["revalida_master", "Revalida Master", 7, "trophy"]].map(([slug, name, position, icon]) => ({ slug, name, position, icon, color_token: `--league-${slug === "revalida_master" ? "master" : slug}` }));
 const liga = () =>
   q.get("liga")
-    ? { enabled: true, joined: true, season: { starts_on: "2026-10-12", ends_on: "2026-10-18" }, league: LIGAS[0], leagues: LIGAS, group_no: 1, promote: 5, relegate: 5, min_group_for_relegation: 10, group_size: 30,
+    ? { enabled: true, joined: true, season: { starts_on: "2026-10-12", ends_on: "2026-10-18" }, league: LIGAS_ARENA[0], leagues: LIGAS_ARENA, group_no: 1, promote: 5, relegate: 5, min_group_for_relegation: 10, group_size: 30,
         rows: Array.from({ length: 12 }, (_, i) => ({ ...testeRow(i + 1, String.fromCharCode(65 + i), 0), position: i + 1, weekly_xp: 300 - i * 20, ...(i === 6 ? { name: "Você", avatar: "João Paulo Mendes", is_me: true } : {}) })), history: [] }
-    : { enabled: true, joined: false, ends_on: "2026-10-18", leagues: LIGAS };
+    : { enabled: true, joined: false, ends_on: "2026-10-18", leagues: LIGAS_ARENA };
 const nodes = (n) => Array.from({ length: n }, (_, i) => ({ topic: i === 0 ? "Coloproctologia" : `Tema ${i}`, state: i === 0 ? "in_progress" : "locked", answered: i === 0 ? 1 : 0, goal: 8 }));
 const RPC = {
   app_bootstrap: () => boot(),
@@ -123,7 +123,6 @@ const RPC = {
   app_my_access: () => ({ locked: false }),
   // onda 7 (Conquistas e Medalhas): as 41 medalhas, 7 ligas e a loja como o banco as semeia
   app_gamification_achievements: () => conquistas(),
-  app_league_current: () => ({ enabled: true, joined: false, leagues: LIGAS }),
   app_gamification_rewards: () => loja(),
   app_claim_reward: () => loja(),
 };
