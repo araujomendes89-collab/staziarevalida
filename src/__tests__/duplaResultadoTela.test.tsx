@@ -1,5 +1,6 @@
 /**
- * Treinamento em Dupla · etapa 6 · tarefa 18 (tela): resultado com revisão da nota, inverter papéis, encerrar e "Uso do mês".
+ * Treinamento em Dupla · etapa 6 · tarefa 18 (tela): resultado com revisão da nota, "Treinar outra estação" (013380: sem
+ * inverter papéis na mesma estação), encerrar e "Uso do mês".
  * Servidor simulado (helpers/duplaSala). Pessoas, estação e notas de teste.
  */
 import React from "react";
@@ -96,18 +97,27 @@ describe("Resultado: revisão da nota", () => {
     expect(screen.queryByRole("button", { name: "Rever a nota" })).toBeNull();
   });
 
-  it("Inverter papéis e Encerrar treino com confirmação", async () => {
-    srv.steps.app_dupla_swap = () => ({ ...asCandidate(srv.room), phase: "roles", round: 2, finished_at: null });
-    srv.content = () => (srv.room.me.role === "candidate" ? contentOf("candidate") : contentOf("evaluator"));
+  it("Treinar outra estação (sem inverter papéis): volta à escolha dos papéis e da estação; Encerrar treino com confirmação", async () => {
+    // a rodada 2 começa sem papéis e sem estação (app_dupla_next_station)
+    srv.steps.app_dupla_next_station = () => ({
+      phase: "roles", round: 2, finished_at: null, station: null, duration_ms: null,
+      me: { ...srv.room.me, role: null, confirmed: false, connected: false, ready: false, picked_station: false },
+      partner: { ...srv.room.partner, role: null, confirmed: false, connected: false, ready: false },
+    });
+    srv.content = () => ({ role: null, station: null, pressing_count: 0, pressings: [] });
     await mount();
-    const swap = screen.getByRole("button", { name: "Treinar novamente — Inverter papéis" });
-    fireEvent.click(swap);
-    fireEvent.click(swap);
+    expect(screen.queryByRole("button", { name: /Inverter papéis/ })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Inverter/);
+    const next = screen.getByRole("button", { name: "Treinar outra estação" });
+    fireEvent.click(next);
+    fireEvent.click(next);
     await advance(0);
-    expect(calls("app_dupla_swap")).toHaveLength(1);
+    expect(calls("app_dupla_next_station")).toHaveLength(1);
+    expect(calls("app_dupla_swap")).toHaveLength(0);
     await advance(0);
     expect(screen.getByText("Papéis desta rodada")).toBeTruthy();
-    expect(document.body.textContent).not.toContain(STATION.name); // na rodada 2 o novo candidato não vê o nome
+    expect(document.body.textContent).toMatch(/Rodada 2: definam de novo os papéis; a estação precisa ser diferente/);
+    expect(document.body.textContent).not.toContain(STATION.name);
     cleanup();
 
     srv.room = baseRoom({ phase: "result", finished_at: NOW });

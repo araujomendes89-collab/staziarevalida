@@ -1,5 +1,7 @@
 // Janela para escolher a estação da sala: busca e lista "Estação {n} · {nome}" por área (Stations.jsx:43 do protótipo).
-// As estações vêm de app_dupla_stations (só as aprovadas que a pessoa pode usar).
+// As estações vêm de app_dupla_stations (só as aprovadas que a pessoa pode usar). Com `roomId`, as estações que a dupla já
+// treinou nesta sala (rodadas anteriores, app_dupla_room_done_stations) aparecem como "Já treinada nesta sala" e não podem ser
+// escolhidas (decisão do dono de 16/10; o banco também recusa).
 import React from "react";
 import { Button, Dialog, Icon, TextField } from "../../../ds";
 import { AREAS } from "../labels.js";
@@ -13,9 +15,10 @@ function normalize(value) {
     .toLowerCase();
 }
 
-export function StationPicker({ title, onPick, onClose }) {
+export function StationPicker({ title, onPick, onClose, roomId = null }) {
   const { backend } = useSession();
   const [stations, setStations] = React.useState(null);
+  const [done, setDone] = React.useState([]);
   const [error, setError] = React.useState(null);
   const [query, setQuery] = React.useState("");
 
@@ -29,6 +32,17 @@ export function StationPicker({ title, onPick, onClose }) {
       alive = false;
     };
   }, [backend]);
+  React.useEffect(() => {
+    if (!roomId) return undefined;
+    let alive = true;
+    backend.rpc("app_dupla_room_done_stations", { p_room_id: roomId }).then(
+      (ids) => alive && setDone(Array.isArray(ids) ? ids : []),
+      () => undefined // sem a lista, o banco ainda recusa a estação já treinada
+    );
+    return () => {
+      alive = false;
+    };
+  }, [backend, roomId]);
 
   const q = normalize(query.trim());
   const shown = (stations || []).filter((s) => !q || normalize([stationTitle(s), s.name, s.topic, s.area].join(" ")).includes(q));
@@ -50,25 +64,34 @@ export function StationPicker({ title, onPick, onClose }) {
           {groups.map(({ area, list }) => (
             <section key={area.code} aria-label={area.card} style={{ display: "grid", gap: 6 }}>
               <h3 style={{ margin: 0, font: "var(--type-overline)", letterSpacing: "var(--tracking-overline)", textTransform: "uppercase", color: "var(--text-tertiary)" }}>{area.card}</h3>
-              {list.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => onPick(s.id)}
-                  style={{
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    borderRadius: "var(--radius-md)",
-                    border: "1px solid var(--border-default)",
-                    background: "var(--surface-card)",
-                    color: "var(--text-primary)",
-                    font: "var(--type-body-sm)",
-                    cursor: "pointer",
-                  }}
-                >
-                  {stationTitle(s)}
-                </button>
-              ))}
+              {list.map((s) => {
+                const used = done.includes(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    disabled={used}
+                    onClick={() => onPick(s.id)}
+                    style={{
+                      textAlign: "left",
+                      padding: "10px 12px",
+                      borderRadius: "var(--radius-md)",
+                      border: "1px solid var(--border-default)",
+                      background: "var(--surface-card)",
+                      color: "var(--text-primary)",
+                      font: "var(--type-body-sm)",
+                      cursor: used ? "not-allowed" : "pointer",
+                      opacity: used ? 0.6 : 1,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <span>{stationTitle(s)}</span>
+                    {used && <span style={{ font: "600 var(--text-xs) var(--font-sans)", color: "var(--text-secondary)", whiteSpace: "nowrap" }}>Já treinada nesta sala</span>}
+                  </button>
+                );
+              })}
             </section>
           ))}
         </div>
