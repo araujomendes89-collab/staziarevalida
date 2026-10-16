@@ -150,7 +150,8 @@ describe("App.jsx: a vitrine só existe em desenvolvimento", () => {
 
   it("toda linha de código que cita a vitrine tem import.meta.env.DEV na mesma linha", () => {
     const citam = code.filter((l) => /vitrine/i.test(l));
-    expect(citam.length).toBeGreaterThanOrEqual(4);
+    // 3 desde o merge do main de 16/10 (a lista CONNECTED saiu do App.jsx): import preguiçoso, título e rota.
+    expect(citam.length).toBeGreaterThanOrEqual(3);
     for (const linha of citam) expect(linha, linha).toContain("import.meta.env.DEV");
   });
 

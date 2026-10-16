@@ -1,7 +1,7 @@
 // Fase "roles" (Setup.jsx:13-27 do protótipo): definir quem é o candidato e quem é o ator/avaliador, e a estação.
 import React from "react";
 import { Button, Icon } from "../../../ds";
-import { CardBlock, PairHeader, ROLE_COLORS, pageStyle, roleLabel, stationTitle, strong } from "./parts.jsx";
+import { CardBlock, PairHeader, ROLE_COLORS, firstName, pageStyle, roleLabel, stationTitle, strong } from "./parts.jsx";
 import { StationPicker } from "./StationPicker.jsx";
 
 const ROLE_CARDS = [
@@ -52,6 +52,9 @@ export function RolesPhase({ room, actions }) {
   const station = room.station;
   const partnerName = room.partner.public_name;
   const ready = Boolean(station && room.me.role);
+  // Só o avaliador escolhe ou troca a estação (o candidato não pode saber o tema antes do resultado).
+  const isEval = room.me.role === "evaluator";
+  const evaluatorName = room.partner.role === "evaluator" ? partnerName : null;
 
   return (
     <main style={pageStyle}>
@@ -103,9 +106,20 @@ export function RolesPhase({ room, actions }) {
         )}
       </CardBlock>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <Button variant="secondary" icon="clipboard-list" onClick={() => setPicking(true)}>
-          {station ? "Trocar estação" : "Escolher estação"}
-        </Button>
+        {isEval ? (
+          <Button variant="secondary" icon="clipboard-list" onClick={() => setPicking(true)}>
+            {station ? "Trocar estação" : "Escolher estação"}
+          </Button>
+        ) : (
+          <div role="status" style={{ display: "flex", alignItems: "center", gap: 8, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+            <Icon name={station ? "clipboard-list" : "info"} size={16} />
+            {station
+              ? stationTitle(station)
+              : evaluatorName
+                ? `Aguardando ${firstName(evaluatorName)} escolher a estação.`
+                : "Definam os papéis antes de escolher a estação."}
+          </div>
+        )}
         {room.me.confirmed ? (
           <Button size="lg" variant="secondary" icon="loader" disabled>
             Aguardando {partnerName} confirmar os papéis
@@ -116,7 +130,7 @@ export function RolesPhase({ room, actions }) {
           </Button>
         )}
       </div>
-      {picking && (
+      {picking && isEval && (
         <StationPicker
           title={station ? "Trocar estação" : "Escolher estação"}
           onClose={() => setPicking(false)}

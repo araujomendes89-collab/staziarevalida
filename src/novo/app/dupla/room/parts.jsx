@@ -106,9 +106,15 @@ export function StationChip({ station }) {
   );
 }
 
-/** "Estação {n} · {nome}" (sem número: só o nome). */
+/**
+ * Título da estação. Com o nome (avaliador, resultado e o catálogo): "Estação {n} · {nome}" (sem número: só o nome).
+ * Sem o nome (o candidato nunca recebe o tema antes do resultado): "Estação {n} · {área}" (Etapa P, migração 012900).
+ */
 export function stationTitle(station) {
-  return station.number != null ? `Estação ${station.number} · ${station.name}` : station.name;
+  if (!station) return "";
+  if (station.name) return station.number != null ? `Estação ${station.number} · ${station.name}` : station.name;
+  const label = station.label || (station.number != null ? `Estação ${station.number}` : "Estação");
+  return station.area ? `${label} · ${station.area}` : label;
 }
 
 /** Imagem do impresso: o endereço assinado vem de `actions.printUrl` (Tarefa 17); sem endereço, nada é mostrado. */

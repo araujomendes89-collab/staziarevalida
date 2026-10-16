@@ -1,9 +1,9 @@
 // Fase "setup" (Setup.jsx:28-88 do protótipo): link da chamada, prontidão, cronômetro e leitura prévia do avaliador.
 import React from "react";
-import { Avatar, Badge, Button, Icon, IconButton, SegmentedControl, TextField, useToast } from "../../../ds";
+import { Avatar, Badge, Button, Card, Icon, IconButton, SegmentedControl, TextField, useToast } from "../../../ds";
 import { formatDecimal } from "../../../ds/format.js";
 import { splitActorScript, splitBlocks, splitTasks } from "../content.js";
-import { ActorScript, CardBlock, PairHeader, RoleBand, Scene, firstName, pageStyle } from "./parts.jsx";
+import { ActorScript, CardBlock, PairHeader, RoleBand, Scene, firstName, pageStyle, stationTitle } from "./parts.jsx";
 
 const LINK_RE = /^https:\/\/[^\s/.]+\.[^\s]+$/;
 const clock = (ms) => {
@@ -93,7 +93,7 @@ function ReadyCard({ room, actions }) {
           </div>
         ))}
         <Button variant="secondary" icon={room.me.ready ? "x" : "hand"} onClick={() => actions.setReady(!room.me.ready)}>
-          {room.me.ready ? "Cancelar" : "Estou pronto para iniciar"}
+          {room.me.ready ? (room.partner.ready ? "Cancelar" : "Pronto · aguardando o colega") : "Estou pronto para iniciar"}
         </Button>
       </div>
     </CardBlock>
@@ -154,6 +154,8 @@ function PreReading({ room, content }) {
   if (!st) return null;
   const station = room.station;
   const tasks = splitTasks(st.doctor_tasks);
+  const initial = content.pressings.filter((p) => p.initially_visible);
+  const releasable = content.pressings.filter((p) => !p.initially_visible);
   return (
     <CardBlock title="Leitura prévia do avaliador" action={<Badge size="sm" tone="actor" icon="eye-off">O candidato não vê</Badge>}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16, font: "var(--type-body-sm)", lineHeight: 1.6, color: "var(--text-primary)" }}>
@@ -190,18 +192,50 @@ function PreReading({ room, content }) {
             fallback="O roteiro do ator não consta nos documentos enviados. Use o cenário, os impressos e o checklist PEP como referência."
           />
         </div>
-        {content.pressings.length > 0 && (
+        {initial.length > 0 && (
+          <div>
+            <div style={label}>Visíveis ao candidato desde o início</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {initial.map((p) => (
+                <Badge key={p.id} size="md" icon="file-text">{pressingLabel(p)}</Badge>
+              ))}
+            </div>
+          </div>
+        )}
+        {releasable.length > 0 && (
           <div>
             <div style={label}>Impressos que você vai liberar</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {content.pressings.map((p) => (
-                <Badge key={p.id} size="md" icon="file-text">{`Impresso ${p.index} · ${p.name}`}</Badge>
+              {releasable.map((p) => (
+                <Badge key={p.id} size="md" icon="file-text">{pressingLabel(p)}</Badge>
               ))}
             </div>
           </div>
         )}
       </div>
     </CardBlock>
+  );
+}
+
+/** "Impresso {tela} · {nome}"; quando o número da prova é outro: "· no documento oficial: Impresso {origem}" (só o avaliador). */
+function pressingLabel(p) {
+  const shown = p.display_number ?? p.index;
+  const source = p.source_number != null && p.source_number !== shown ? ` · no documento oficial: Impresso ${p.source_number}` : "";
+  return `Impresso ${shown} · ${p.name}${source}`;
+}
+
+/** Candidato: só "Estação N · Área", sem o tema; o enunciado aparece quando o avaliador iniciar (pacote: Sala · Configuração). */
+function CandidateWaiting({ room }) {
+  const station = room.station;
+  if (!station) return null;
+  return (
+    <Card padding={20}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <Icon name="stethoscope" size={22} style={{ color: "var(--text-brand)" }} />
+        <div style={{ ...overline, marginBottom: 0 }}>{stationTitle(station)}</div>
+      </div>
+      <p style={{ margin: "10px 0 0", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>O enunciado aparece quando o avaliador iniciar a estação.</p>
+    </Card>
   );
 }
 
@@ -223,7 +257,7 @@ export function SetupPhase({ room, content, actions }) {
       <LinkCard room={room} actions={actions} />
       <ReadyCard room={room} actions={actions} />
       <ClockCard room={room} official={official} actions={actions} />
-      {isEval && <PreReading room={room} content={content} />}
+      {isEval ? <PreReading room={room} content={content} /> : <CandidateWaiting room={room} />}
       <div
         style={{
           display: "flex",
@@ -244,15 +278,20 @@ export function SetupPhase({ room, content, actions }) {
               ? "Dupla conectada. Você é o avaliador: inicie quando o candidato estiver pronto."
               : `Dupla conectada. Aguardando ${firstName(partner)} (avaliador) iniciar a estação…`}
         </div>
-        {isEval ? (
-          <Button size="lg" icon="play" disabled={!both} onClick={() => actions.start()}>
-            Iniciar estação
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <Button variant="ghost" icon="log-out" onClick={() => actions.leave()}>
+            Sair da sala
           </Button>
-        ) : (
-          <Badge tone={both ? "success" : "neutral"} icon="lock">
-            Só o avaliador inicia
-          </Badge>
-        )}
+          {isEval ? (
+            <Button size="lg" icon="play" disabled={!both} onClick={() => actions.start()}>
+              Iniciar estação
+            </Button>
+          ) : (
+            <Badge tone={both ? "success" : "neutral"} icon="lock">
+              Só o avaliador inicia
+            </Badge>
+          )}
+        </div>
       </div>
     </main>
   );

@@ -5,7 +5,7 @@ import { Accordion, Avatar, Badge, Button, Card, IconButton, PepTable, PrintItem
 import { formatDecimal } from "../../../ds/format.js";
 import { areaVars, sourceLabel } from "../labels.js";
 import { isTaskNote, maxScoreOf, splitActorScript, splitBlocks, splitTasks, toPepItems } from "../content.js";
-import { ActorScript, PressingBody, Scene, roleLabel } from "./parts.jsx";
+import { ActorScript, PressingBody, PressingImage, Scene, roleLabel, stationTitle } from "./parts.jsx";
 
 const MIN_KEY = "sz-timer-min";
 const HIDE_KEY = "sz-timer-hidden";
@@ -76,7 +76,8 @@ function RoomHeader({ room, remainingMs, actions }) {
         {station?.area_code}
       </span>
       <div style={{ minWidth: 0 }}>
-        <div style={{ font: "var(--type-h3)", color: "var(--text-primary)" }}>{station?.name}</div>
+        {/* Avaliador: nome da estação. Candidato: "Estação N · Área" (o tema só aparece no resultado). */}
+        <div style={{ font: "var(--type-h3)", color: "var(--text-primary)" }}>{isEval && station?.name ? station.name : stationTitle(station)}</div>
         <div style={{ font: "var(--text-xs) var(--font-sans)", color: "var(--text-secondary)" }}>{origin ? `${station.area} · ${origin}` : station?.area}</div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 12 }}>
@@ -134,6 +135,8 @@ function EvaluatorView({ room, content, marks, actions }) {
   const tasks = splitTasks(st.doctor_tasks);
   const released = room.released_pressings || [];
   const items = toPepItems(content.checklist_items);
+  const initial = content.pressings.filter((p) => p.initially_visible);
+  const releasable = content.pressings.filter((p) => !p.initially_visible);
 
   const mark = (itemId, grade) => actions.mark(itemId, grade, marks[itemId]?.subitems ?? []);
   const toggleSubitem = (itemId, subId) => {
@@ -158,19 +161,27 @@ function EvaluatorView({ room, content, marks, actions }) {
           icon="files"
           title="Impressos"
           defaultOpen
-          meta={<Badge size="sm" tone="brand">{`${released.length}/${content.pressings.length}`}</Badge>}
+          meta={<Badge size="sm" tone="brand">{`${releasable.filter((p) => released.includes(p.id)).length}/${releasable.length}`}</Badge>}
         >
-          {content.pressings.map((p) => {
+          {initial.map((p) => (
+            <div key={p.id} style={{ display: "grid", gap: 4 }}>
+              <PrintItem index={p.display_number ?? p.index} sourceNumber={p.source_number} title={p.name} released>
+                <PressingBody pressing={p} actions={actions} />
+              </PrintItem>
+              <div style={{ font: "var(--text-xs) var(--font-sans)", color: "var(--text-secondary)", padding: "0 4px 6px" }}>Este impresso já está visível desde o início.</div>
+            </div>
+          ))}
+          {releasable.map((p) => {
             const isReleased = released.includes(p.id);
             return (
-              <PrintItem key={p.id} index={p.index} title={p.name} canRelease released={isReleased} onToggleRelease={() => actions.release(p.id, !isReleased)}>
+              <PrintItem key={p.id} index={p.display_number ?? p.index} sourceNumber={p.source_number} title={p.name} canRelease released={isReleased} onToggleRelease={() => actions.release(p.id, !isReleased)}>
                 <PressingBody pressing={p} actions={actions} />
               </PrintItem>
             );
           })}
         </Accordion>
         <Accordion icon="notebook-pen" title="Anotações">
-          <Textarea rows={3} placeholder="Observações privadas sobre o atendimento" hint="Anotações ficam só neste aparelho." value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <Textarea rows={3} placeholder="Anote o que observar durante o atendimento" hint="Anotações ficam só neste aparelho." value={notes} onChange={(e) => setNotes(e.target.value)} />
         </Accordion>
       </div>
       <div style={{ minWidth: 0 }}>
@@ -194,6 +205,8 @@ function CandidateView({ room, content, actions }) {
   const minutes = st.duration_ms / 60000;
   const total = content.pressing_count;
   const released = room.released_pressings || [];
+  const initial = content.pressings.filter((p) => p.initially_visible);
+  const sheetImage = st.candidate_sheet?.has_image;
   let n = 0;
   return (
     <div style={{ maxWidth: 880, margin: "0 auto", width: "100%", padding: "24px 28px", display: "flex", flexDirection: "column", gap: 16, boxSizing: "border-box" }}>
@@ -217,14 +230,25 @@ function CandidateView({ room, content, actions }) {
             );
           })}
         </ol>
+        {sheetImage && (
+          <div style={{ marginTop: 14 }}>
+            <PressingImage pressing={{ id: "candidate_sheet", has_image: true, name: "Folha do candidato", content: "" }} actions={actions} />
+          </div>
+        )}
       </Card>
+      {initial.map((p) => (
+        <Card key={p.id} padding={20}>
+          <div style={overline}>{`Impresso ${p.display_number} · ${p.name}`}</div>
+          <PressingBody pressing={p} actions={actions} />
+        </Card>
+      ))}
       <Card padding="12px 16px">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "4px 0 8px" }}>
           <h2 style={{ margin: 0, font: "600 var(--text-base)/1.3 var(--font-sans)", color: "var(--text-primary)" }}>Impressos</h2>
-          <Badge size="sm" tone="brand">{released.length} liberados</Badge>
+          <Badge size="sm" tone="brand">{released.length === 1 ? "1 liberado" : `${released.length} liberados`}</Badge>
         </div>
         {Array.from({ length: total }, (_, k) => k + 1).map((index) => {
-          const p = content.pressings.find((x) => x.index === index);
+          const p = content.pressings.find((x) => !x.initially_visible && x.display_number === index);
           return p ? (
             <PrintItem key={index} index={index} title={p.name} released>
               <PressingBody pressing={p} actions={actions} />
@@ -260,7 +284,7 @@ function BottomBar({ room, actions }) {
       }}
     >
       <Button variant="secondary" icon="video" disabled={!link} onClick={() => window.open(link, "_blank", "noopener,noreferrer")}>
-        Abrir chamada externa
+        Chamada
       </Button>
       {isEval && (
         <Button variant="ghost" icon={paused ? "play" : "pause"} onClick={() => (paused ? actions.resume() : actions.pause())}>

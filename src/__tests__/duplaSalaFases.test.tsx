@@ -37,8 +37,13 @@ function roomState(over: Record<string, any> = {}) {
   };
 }
 
+// Etapa P (012900): o candidato (e quem ainda não tem papel) recebe a estação sem o nome e sem o id, com "label".
+const { id: _id, name: _name, ...SEM_TEMA } = STATION;
+const CAND_STATION = { ...SEM_TEMA, label: "Estação 3" };
+
 const roles = (me: "candidate" | "evaluator" | null, over: Record<string, any> = {}) =>
   roomState({
+    station: me === "evaluator" ? STATION : CAND_STATION,
     ...over,
     me: { ...roomState().me, role: me, ...(over.me || {}) },
     partner: { ...roomState().partner, role: me ? (me === "candidate" ? "evaluator" : "candidate") : null, ...(over.partner || {}) },
@@ -67,20 +72,28 @@ const SCENE = "Cenário de teste, bloco um.\n\nCenário de teste, bloco dois.";
 const TASKS = "1. Fazer a anamnese.\n2. Pedir exames.";
 const SCRIPT = "Dados pessoais:\nPaciente de teste, 40 anos.\n\nSó se perguntado:\nNenhuma alergia conhecida.";
 
-const minimal = { id: STATION.id, name: STATION.name, area: STATION.area, area_code: "CM", number: 3, duration_ms: 600000 };
+const minimal = { id: STATION.id, name: STATION.name, label: "Estação 3", area: STATION.area, area_code: "CM", number: 3, duration_ms: 600000 };
+const { id: _mid, name: _mname, ...minimalCand } = minimal;
 
-function contentFor(role: "candidate" | "evaluator" | null, released: string[] = []) {
-  if (!role) return { role: null, station: minimal, pressing_count: 2, pressings: [] };
+/** `initial`: com um impresso inicial (relato) visível desde o início, fora da contagem e da liberação. */
+function contentFor(role: "candidate" | "evaluator" | null, released: string[] = [], initial = false) {
+  if (!role) return { role: null, station: minimalCand, pressing_count: 2, pressings: [] };
+  const relato = { id: "p0", index: 1, display_number: 1, source_number: 1, initially_visible: true, name: "Relato do caso", content: "Relato inicial de teste.", has_image: false };
   const all = [
-    { id: "p1", index: 1, name: "Hemograma", content: "Hb 9,0 g/dL\n\nLiberação: quando o candidato pedir o hemograma.", has_image: false },
-    { id: "p2", index: 2, name: "Imagem de tórax", content: "Radiografia de tórax.", has_image: true },
+    ...(initial ? [relato] : []),
+    { id: "p1", index: initial ? 2 : 1, display_number: 1, source_number: initial ? 2 : 1, initially_visible: false, name: "Hemograma", content: "Hb 9,0 g/dL\n\nLiberação: quando o candidato pedir o hemograma.", has_image: false },
+    { id: "p2", index: initial ? 3 : 2, display_number: 2, source_number: initial ? 3 : 2, initially_visible: false, name: "Imagem de tórax", content: "Radiografia de tórax.", has_image: true },
   ];
   if (role === "candidate") {
+    // o servidor manda ao candidato a chave de tela ('i<n>' inicial, 'd<n>' liberável), sem source_number
+    const key = (p: any) => (p.initially_visible ? "i" : "d") + p.display_number;
     return {
       role,
-      station: { ...minimal, version: "1.0", doctor_scene: SCENE, doctor_tasks: TASKS },
+      station: { ...minimalCand, version: "1.0", doctor_scene: SCENE, doctor_tasks: TASKS, candidate_sheet: { has_image: false } },
       pressing_count: 2,
-      pressings: all.filter((p) => released.includes(p.id)).map((p) => ({ ...p, content: p.content.replace(/\n\nLiberação:.*$/s, "") })),
+      pressings: all
+        .filter((p) => p.initially_visible || released.includes(key(p)))
+        .map(({ source_number: _s, index: _i, ...p }) => ({ ...p, id: key(p), content: p.content.replace(/\n\nLiberação:.*$/s, "") })),
     };
   }
   return {
@@ -139,7 +152,9 @@ describe("Sala: fases a partir do estado gravado", () => {
     const note = "Definido pelo match: você quer ser médico(a) e Bruno topa qualquer papel. Vocês ainda podem trocar.";
     await mount({ room: roles("candidate", { match_note: note, invite_pending: true }), content: contentFor("candidate") });
     expect(screen.getByText("Dupla com Bruno Lima")).toBeTruthy();
-    expect(screen.getByText(/Estação 3 · Estação de teste\./)).toBeTruthy();
+    // candidato: "Estação 3 · Clínica Médica", nunca o nome da estação
+    expect(screen.getByText(/Estação 3 · Clínica Médica\./)).toBeTruthy();
+    expect(document.body.textContent).not.toContain("Estação de teste");
     expect(screen.getByText(/Antes de conectar, definam quem será o candidato e quem será o ator\/avaliador\./)).toBeTruthy();
     expect(screen.getByText(note)).toBeTruthy();
     expect(screen.getByText("Aguardando Bruno Lima entrar na sala")).toBeTruthy();
@@ -149,19 +164,33 @@ describe("Sala: fases a partir do estado gravado", () => {
     expect(screen.getByRole("button", { name: /^Candidato/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: /^Ator\/Avaliador/ }).getAttribute("aria-pressed")).toBe("false");
     expect(screen.getByText(/^Bruno Lima será/).textContent).toBe("Bruno Lima será Ator/Avaliador.");
-    expect(screen.getByRole("button", { name: "Trocar estação" })).toBeTruthy();
+    // só o avaliador escolhe ou troca a estação
+    expect(screen.queryByRole("button", { name: "Trocar estação" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Escolher estação" })).toBeNull();
     expect(screen.getByRole("button", { name: "Confirmar papéis e conectar" })).toBeTruthy();
     cleanup();
 
+    // candidato sem estação: aguarda o avaliador escolher
+    await mount({ room: roles("candidate", { station: null }), content: contentFor(null) });
+    expect(screen.getByText("Aguardando Bruno escolher a estação.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Escolher estação" })).toBeNull();
+    cleanup();
+
+    // avaliador: Trocar estação com o nome
+    await mount({ room: roles("evaluator"), content: contentFor(null) });
+    expect(screen.getByText(/Estação 3 · Estação de teste\./)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Trocar estação" })).toBeTruthy();
+    cleanup();
+
     // sem estação, sem papéis, sem convite pendente e sem faixa do match
     await mount({ room: roles(null, { station: null }), content: contentFor(null) });
-    expect(screen.getByRole("button", { name: "Escolher estação" })).toBeTruthy();
+    expect(screen.getByText("Definam os papéis antes de escolher a estação.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Escolher estação" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Trocar estação" })).toBeNull();
     expect(screen.queryByText(/^Bruno Lima será/)).toBeNull();
     expect(screen.queryByText(/Aguardando Bruno Lima entrar/)).toBeNull();
     expect(screen.queryByText(/Definido pelo match/)).toBeNull();
-    expect(screen.queryByText(/^Estação/)).toBeNull();
+    expect(screen.queryByText(/^Estação \d/)).toBeNull();
     cleanup();
 
     // confirmado por mim
@@ -176,7 +205,7 @@ describe("Sala: fases a partir do estado gravado", () => {
       { id: "s2", name: "Apendicite", topic: "Abdome", area: "Cirurgia Geral", area_code: "CR", number: 7 },
       { id: "s3", name: "Estação autoral", topic: "Autoral", area: "Pediatria", area_code: "PED", number: null },
     ];
-    await mount({ room: roles(null, { station: null }), content: contentFor(null), stations });
+    await mount({ room: roles("evaluator", { station: null }), content: contentFor(null), stations });
     fireEvent.click(screen.getByRole("button", { name: "Escolher estação" }));
     const dialog = await screen.findByRole("dialog");
     expect(await within(dialog).findByText("Estação 3 · Dor torácica")).toBeTruthy();
@@ -277,26 +306,28 @@ describe("Sala: fases a partir do estado gravado", () => {
     for (const t of ["Cenário e tarefas", "Roteiro do ator", "Impressos", "Anotações"]) expect(screen.getByRole("button", { name: new RegExp(t) })).toBeTruthy();
     expect(screen.getByText("1/2")).toBeTruthy();
     expect(screen.getByText("Paciente de teste, 40 anos.")).toBeTruthy();
-    expect(screen.getByPlaceholderText("Observações privadas sobre o atendimento")).toBeTruthy();
+    expect(screen.getByPlaceholderText("Anote o que observar durante o atendimento")).toBeTruthy();
     expect(screen.getByText("Anotações ficam só neste aparelho.")).toBeTruthy();
     expect(screen.getByRole("radiogroup", { name: "Item 1" })).toBeTruthy();
     expect(screen.getByRole("radiogroup", { name: "Item 3" })).toBeTruthy();
     expect(screen.queryByText("PEP oficial (INEP)")).toBeNull();
     expect(screen.queryByText("Sinalizar problema")).toBeNull();
-    expect(screen.getByRole("button", { name: "Abrir chamada externa" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Chamada" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Pausar" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Finalizar estação" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Sair da sala" })).toBeTruthy();
     cleanup();
 
     // candidato: só o 1 liberado, sem a linha "Liberação"; o 2 aguarda
-    await mount({ room: roles("candidate", running), content: contentFor("candidate", ["p1"]) });
+    await mount({ room: roles("candidate", { ...running, released_pressings: ["d1"] }), content: contentFor("candidate", ["d1"]) });
+    expect(document.body.textContent).not.toContain("Estação de teste");
+    expect(screen.getByText("Estação 3 · Clínica Médica")).toBeTruthy();
     expect(screen.getByText("Enunciado")).toBeTruthy();
     expect(screen.getByText("Cenário de teste, bloco um.")).toBeTruthy();
     expect(screen.getByText("Nos 10 minutos de duração, execute:")).toBeTruthy();
     expect(screen.getByText("01")).toBeTruthy();
     expect(screen.getByText("Fazer a anamnese.")).toBeTruthy();
-    expect(screen.getByText("1 liberados")).toBeTruthy();
+    expect(screen.getByText("1 liberado")).toBeTruthy();
     expect(screen.getByText("Impresso 1 · Hemograma")).toBeTruthy();
     expect(screen.getByText("Impresso 2 · Aguardando liberação")).toBeTruthy();
     expect(screen.queryByText("Roteiro do ator")).toBeNull();
@@ -332,6 +363,41 @@ describe("Sala: fases a partir do estado gravado", () => {
     fireEvent.click(screen.getByRole("button", { name: "Minimizar cronômetro" }));
     expect(window.localStorage.getItem("sz-timer-min")).toBe("1");
     expect(screen.getByRole("button", { name: "Expandir cronômetro" })).toBeTruthy();
+  });
+
+  it("estação (Etapa P): relato inicial visível ao candidato sem liberação e fora da lista; avaliador vê os números da prova", async () => {
+    const running = { phase: "running", started_at: "2026-10-11T14:55:00.000Z", ends_at: "2026-10-11T15:04:07.000Z", released_pressings: [] };
+    await mount({ room: roles("candidate", running), content: contentFor("candidate", [], true) });
+    expect(screen.getByText("Impresso 1 · Relato do caso")).toBeTruthy();
+    expect(screen.getByText("Relato inicial de teste.")).toBeTruthy();
+    expect(screen.getByText("Impresso 1 · Aguardando liberação")).toBeTruthy();
+    expect(screen.getByText("Impresso 2 · Aguardando liberação")).toBeTruthy();
+    expect(screen.getByText("0 liberados")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("Estação de teste");
+    expect(document.body.textContent).not.toContain("documento oficial");
+    cleanup();
+
+    await mount({ room: roles("evaluator", { ...running, released_pressings: ["p1"] }), content: contentFor("evaluator", [], true) });
+    expect(screen.getByText("Este impresso já está visível desde o início.")).toBeTruthy();
+    expect(screen.getByText("1/2")).toBeTruthy(); // só os liberáveis contam
+    expect(screen.getAllByRole("button", { name: /Liberar|Ocultar/ })).toHaveLength(2); // o relato não tem botão
+    expect(document.body.textContent).toContain("Impresso 2");
+  });
+
+  it("preparação (Etapa P): candidato vê só 'Estação N · Área' e 'O enunciado aparece quando o avaliador iniciar a estação.'", async () => {
+    const setup = { phase: "setup", call_link: null };
+    await mount({ room: roles("candidate", setup), content: contentFor("candidate", [], true) });
+    expect(screen.getByText("Estação 3 · Clínica Médica")).toBeTruthy();
+    expect(screen.getByText("O enunciado aparece quando o avaliador iniciar a estação.")).toBeTruthy();
+    expect(screen.queryByText("Leitura prévia do avaliador")).toBeNull();
+    expect(screen.getByRole("button", { name: "Sair da sala" })).toBeTruthy();
+    expect(document.body.textContent).not.toContain("Estação de teste");
+    cleanup();
+
+    await mount({ room: roles("evaluator", setup), content: contentFor("evaluator", [], true) });
+    expect(screen.getByText("Leitura prévia do avaliador")).toBeTruthy();
+    expect(screen.getByText("Visíveis ao candidato desde o início")).toBeTruthy();
+    expect(screen.getByText("Impresso 1 · Hemograma · no documento oficial: Impresso 2")).toBeTruthy();
   });
 
   it("conferência: avaliador com nota provisória e pendentes; candidato com 'Aguardando avaliação' e Sair da sala", async () => {
