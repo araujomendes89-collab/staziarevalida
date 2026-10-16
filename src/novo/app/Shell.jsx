@@ -59,7 +59,16 @@ function SideGroup({ g, route, go, info, open, current, collapsed, onToggle, up 
       <button type="button" className={`smn-grp${on ? " is-current" : ""}`} aria-current={on ? "page" : undefined} aria-label={g.label} title={collapsed ? g.label : undefined} onClick={() => go(g.direct)}>
         <Ic name={g.icon} size={26} />
         {!collapsed && <span className="smn-lbl">{g.label}</span>}
-        {g.badgeText && (collapsed ? <span className="smn-dot smn-dot--ai" aria-hidden="true" /> : <Badge b={{ text: g.badgeText, kind: "ai" }} />)}
+        {g.badgeText &&
+          (collapsed ? (
+            <span className="smn-dot smn-dot--ai" aria-hidden="true" />
+          ) : (
+            <>
+              <Badge b={{ text: g.badgeText, kind: "ai" }} />
+              {/* mesmo espaço da seta dos outros grupos: o selo "IA" fica na mesma coluna dos selos 0/2, 7 e 0/3 */}
+              <span className="smn-chev-slot" aria-hidden="true" />
+            </>
+          ))}
       </button>
     );
   }
