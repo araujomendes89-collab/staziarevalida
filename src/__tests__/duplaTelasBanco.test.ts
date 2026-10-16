@@ -186,7 +186,7 @@ describe("Migração 9760 — leituras das telas, perfil de estudo e chave no pa
         id: sala, rev: 4, phase: "roles", round: 1, duration_ms: 480000, invite_pending: false, call_link: null, started_at: null,
         ends_at: null, paused_left_ms: null, paused_at: null, finished_at: null, released_pressings: [], closed_reason: null, closed_by: null,
         station: {
-          id: "teste-dupla-e01", name: STATION.name, area: "Clínica Médica", area_code: "CM", number: null, edition: null, reapplication: false,
+          label: "Estação", area: "Clínica Médica", area_code: "CM", number: null, edition: null, reapplication: false,
           institution: null, duration_ms: 600000, is_pro_only: false,
         },
         me: { user_id: U.carla, public_name: "Carla Dias", role: "candidate", confirmed: true, connected: true, ready: false },
@@ -196,7 +196,11 @@ describe("Migração 9760 — leituras das telas, perfil de estudo e chave no pa
       expect(new Date(carla.server_now).getTime()).toBeGreaterThan(Date.now() - 60_000);
       expect(carla.partner.seen_ms_ago).toBeGreaterThanOrEqual(14_000);
       expect(carla.partner.seen_ms_ago).toBeLessThan(120_000);
+      // Etapa P (012900): o candidato não recebe o nome nem o id da estação; o avaliador recebe.
+      expect(carla.station).not.toHaveProperty("name");
+      expect(carla.station).not.toHaveProperty("id");
       const fabio = await d.rpc(U.fabio, "app_dupla_room", { p_room_id: sala });
+      expect(fabio.station).toMatchObject({ id: "teste-dupla-e01", name: STATION.name, label: "Estação" });
       expect(fabio.me).toMatchObject({ user_id: U.fabio, role: "evaluator", confirmed: false, ready: true });
       expect(fabio.partner).toMatchObject({ user_id: U.carla, public_name: "Carla Dias", role: "candidate", confirmed: true });
       expect(fabio.match_note).toBe("Definido pelo match: você topa qualquer papel e Carla quer ser médico(a). Vocês ainda podem trocar.");
@@ -446,6 +450,10 @@ describe("Migração 9760 — leituras das telas, perfil de estudo e chave no pa
     });
     const antes = await retrato();
     await d.db.exec(SQL);
+    // As do Treino que vêm depois refazem funções desta (a 012900 refaz dupla_room_state): colar de novo na ordem.
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.includes("treino_dupla") && f > MIGRACAO).sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect(await retrato()).toEqual(antes);
     expect((antes.indices as any[]).map((i) => i.indexname)).toEqual(expect.arrayContaining(["checklist_rooms_open_idx", "study_invites_pending_idx"]));
   });

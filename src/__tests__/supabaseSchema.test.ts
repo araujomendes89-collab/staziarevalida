@@ -292,10 +292,11 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
       for (const proibido of ["actor_script", "checklist_items", "Liberação:", "Radiografia", "Dados pessoais", "Só se perguntado", "Subitem", "Adequado"]) expect(json, proibido).not.toContain(proibido);
       expect(cand.role).toBe("candidate");
       expect(cand.pressing_count).toBe(2);
-      expect(cand.pressings).toEqual([{ id: "p1", index: 1, name: "Hemograma", content: "Hb 9,0 g/dL", has_image: false }]);
+      // Etapa P (012900): chave de tela 'd<n>', sem o nome nem o id da estação, com a folha do candidato.
+      expect(cand.pressings).toEqual([{ id: "d1", display_number: 1, initially_visible: false, name: "Hemograma", content: "Hb 9,0 g/dL", has_image: false }]);
       expect(cand.station).toEqual({
-        id: STATION.id, name: STATION.name, area: "Clínica Médica", area_code: "CM", number: null, duration_ms: 600000, version: "1.0",
-        doctor_scene: STATION.doctor_scene, doctor_tasks: STATION.doctor_tasks,
+        label: "Estação", area: "Clínica Médica", area_code: "CM", number: null, duration_ms: 600000, version: "1.0",
+        doctor_scene: STATION.doctor_scene, doctor_tasks: STATION.doctor_tasks, candidate_sheet: { has_image: false },
       });
 
       const aval = await d.rpc(U.bruno, "app_dupla_room_content", { p_room_id: sala });
@@ -322,7 +323,9 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
       for (const uid of [U.ana, U.bruno]) {
         const r = await d.rpc(uid, "app_dupla_room_content", { p_room_id: roles });
         expect(r.role).toBeNull();
-        expect(Object.keys(r.station).sort()).toEqual(["area", "area_code", "duration_ms", "id", "name", "number"]);
+        // Etapa P (012900): só o avaliador (Bruno) recebe o nome e o id da estação.
+        const chaves = ["area", "area_code", "duration_ms", "label", "number", ...(uid === U.bruno ? ["id", "name"] : [])].sort();
+        expect(Object.keys(r.station).sort()).toEqual(chaves);
         expect(r.pressing_count).toBe(2);
         expect(r.pressings).toEqual([]);
         expect(JSON.stringify(r)).not.toMatch(/actor_script|checklist_items|Hb 9|Radiografia|doctor_scene/);
@@ -391,7 +394,8 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
     const [convite] = await d.sql<{ id: string }>(`insert into public.study_invites (from_user, to_user, room_id) values ($1, $2, $3) returning id`, [U.diego, U.eva, sala]);
 
     for (const uid of [U.diego, U.eva]) {
-      expect((await d.asUser(uid, `select id from public.checklist_rooms where id = $1`, [sala])).length, "sala").toBe(1);
+      // Etapa P (012900): a sala só é lida pelas funções (a leitura direta entregava a estação ao candidato).
+      expect((await d.asUser(uid, `select id from public.checklist_rooms where id = $1`, [sala])).length, "sala").toBe(0);
       expect((await d.asUser(uid, `select id from public.study_matches`)).length, "match").toBe(1);
       expect((await d.asUser(uid, `select id from public.study_invites`)).length, "convite").toBe(1);
       expect((await d.asUser(uid, `select from_user from public.study_swipes`)).map((r) => r.from_user), "escolhas").toEqual([uid]);
@@ -399,7 +403,7 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
     for (const t of ["checklist_rooms", "study_matches", "study_invites", "study_swipes"]) {
       expect(await d.asUser(U.fabio, `select * from public.${t}`), t).toEqual([]);
     }
-    expect((await d.asUser(U.diego, `select phase, candidate_id from public.checklist_rooms where id = $1`, [sala]))[0]).toEqual({ phase: "roles", candidate_id: null });
+    expect((await d.sql(`select phase, candidate_id from public.checklist_rooms where id = $1`, [sala]))[0]).toEqual({ phase: "roles", candidate_id: null });
 
     // Ninguém cria nem altera direto.
     await expect(d.asUser(U.diego, `insert into public.checklist_rooms (member_ids) values ($1)`, [[U.diego, U.eva]])).rejects.toThrow(/row-level security/);
@@ -439,7 +443,7 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
     // A avaliação fica, sem o vínculo; o parceiro (avaliador) continua lendo, e a sala também.
     expect(await d.sql(`select actor_id, doctor_id from public.checklist_study_sessions where id = 'sessao-gil'`)).toEqual([{ actor_id: U.fabio, doctor_id: null }]);
     expect(await d.asUser(U.fabio, `select id from public.checklist_study_sessions`)).toEqual([{ id: "sessao-gil" }]);
-    expect((await d.asUser(U.fabio, `select candidate_id from public.checklist_rooms where id = $1`, [sala]))).toEqual([{ candidate_id: null }]);
+    expect(await d.sql(`select candidate_id from public.checklist_rooms where id = $1`, [sala])).toEqual([{ candidate_id: null }]);
     expect(await d.asUser(U.fabio, `select item_id from public.checklist_room_marks`)).toEqual([{ item_id: "i1" }]);
   });
 
@@ -479,6 +483,9 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
     for (const f of funcoes) {
       if (f.proname.startsWith("app_dupla_")) expect(f, f.proname).toMatchObject({ anon: false, authenticated: true });
       else if (["dupla_me_allowed", "dupla_room_member"].includes(f.proname)) expect(f, f.proname).toMatchObject({ anon: false, authenticated: true });
+      // dupla_export_rooms (Etapa P, 012900): só as salas de quem chama (visitante: lista vazia); a exportação, que roda com os
+      // direitos de quem chama, inclusive do visitante, precisa dela.
+      else if (f.proname === "dupla_export_rooms") expect(f, f.proname).toMatchObject({ anon: true, authenticated: true });
       else expect(f, f.proname).toMatchObject({ anon: false, authenticated: false });
       // Toda função do módulo roda com caminho de busca vazio (security definer ou, nas puras, só por segurança).
       expect(f.config, f.proname).toEqual(['search_path=""']);

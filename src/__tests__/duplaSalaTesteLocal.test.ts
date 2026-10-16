@@ -148,7 +148,11 @@ describe("Rota /dupla/sala-teste", () => {
     const a = await rpc(aval, "app_dupla_room", { p_room_id: id });
     expect(c.phase).toBe(fase);
     expect(a.phase).toBe(fase);
-    expect(c.station).toMatchObject({ id: "teste-inep2020-e01", area_code: "CM" });
+    // Etapa P: o candidato só recebe o nome e o id da estação no resultado; o avaliador sempre.
+    if (fase === "result") expect(c.station).toMatchObject({ id: "teste-inep2020-e01", area_code: "CM" });
+    else expect(c.station).toEqual(expect.not.objectContaining({ id: expect.anything(), name: expect.anything() }));
+    expect(c.station).toMatchObject({ label: "Estação 1", area_code: "CM" });
+    expect(a.station).toMatchObject({ id: "teste-inep2020-e01", area_code: "CM" });
     expect(c.me).toMatchObject({ public_name: "Candidato de teste", role: "candidate" });
     expect(c.partner).toMatchObject({ public_name: "Avaliador de teste", role: "evaluator" });
     expect(a.me).toMatchObject({ role: "evaluator" });
@@ -167,7 +171,8 @@ describe("Rota /dupla/sala-teste", () => {
       expect(c.started_at).toBeTruthy();
       expect(new Date(c.ends_at).getTime() - new Date(c.server_now).getTime()).toBeGreaterThan(0);
       expect(c.finished_at).toBeNull();
-      expect(c.released_pressings).toEqual(["teste-inep2020-e01-p1"]);
+      expect(c.released_pressings).toEqual(["d1"]); // o esfregaço (Impresso 1 na tela); o relato é inicial
+      expect(a.released_pressings).toEqual(["teste-inep2020-e01-p2"]);
     }
     if (fase === "review" || fase === "result") {
       expect(c.finished_at).toBeTruthy();
@@ -188,7 +193,7 @@ describe("Rota /dupla/sala-teste", () => {
       expect(conteudoC.station.actor_script).toBeUndefined();
       expect(conteudoA.station.actor_script).toBeDefined();
       expect(conteudoA.pressings).toHaveLength(2);
-      expect(conteudoC.pressings.map((p: any) => p.id)).toEqual(fase === "running" ? ["teste-inep2020-e01-p1"] : []);
+      expect(conteudoC.pressings.map((p: any) => p.id)).toEqual(fase === "running" ? ["i1", "d1"] : ["i1"]);
     }
 
     // marcações do PEP: poucas durante a estação, todas na conferência e no resultado; só o avaliador as lê

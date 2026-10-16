@@ -113,6 +113,7 @@ export async function criarSalaTeste(dev: DevDatabase, fase: unknown, motivo: un
   const { content, duration_ms: duracao, max_score: maxScore } = estacao.rows[0];
   const itens = content!.checklist_items ?? [];
   const impressos = content!.pressings ?? [];
+  const liberavel = impressos.find((p: any) => !p.initially_visible);
 
   const contas: Record<"candidato" | "avaliador", string> = { candidato: "", avaliador: "" };
   for (const [papel, conta] of [["candidato", CANDIDATO], ["avaliador", AVALIADOR]] as const) {
@@ -165,7 +166,8 @@ export async function criarSalaTeste(dev: DevDatabase, fase: unknown, motivo: un
       started_at: comRelogio ? iso(terminada ? -7 * 60_000 : -2 * 60_000) : null,
       ends_at: comRelogio ? iso(terminada ? duracao - 7 * 60_000 : duracao - 2 * 60_000) : null,
       finished_at: terminada ? iso(-60_000) : null,
-      released_pressings: phase === "running" && impressos[0] ? [impressos[0].id] : [],
+      // Impresso inicial (relato) nunca entra na lista de liberados (Etapa P): libera o 1º liberável.
+      released_pressings: phase === "running" && liberavel ? [liberavel.id] : [],
       closed_reason: phase === "closed" ? motivo : null,
       updated_by: phase === "closed" && (motivo === "saiu" || motivo === "convite_recusado") ? avaliador : null,
       rev: 1,

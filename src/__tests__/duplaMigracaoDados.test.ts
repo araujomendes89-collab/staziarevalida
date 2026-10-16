@@ -67,6 +67,7 @@ describe("Migração 9750 sobre o estado de produção", () => {
   let depoisDa2a: Retrato;
   let exportAntes: any;
   let exportDepois: any;
+  let exportFinal: any;
   const velha = { sala: "", convite: "" };
 
   beforeAll(async () => {
@@ -93,6 +94,11 @@ describe("Migração 9750 sobre o estado de produção", () => {
     exportDepois = await d.rpc(U.carla, "app_export_my_data");
     await d.db.exec(SQL);
     depoisDa2a = await retrato(d);
+    // As outras do Treino, na ordem (a 012900 recoloca a exportação mais nova do main, com "declarations").
+    for (const f of migrationFiles().filter((f) => f.includes("treino_dupla") && f !== MIGRACAO)) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
+    exportFinal = await d.rpc(U.carla, "app_export_my_data");
   }, 120_000);
   afterAll(async () => {
     await d?.db.close();
@@ -103,9 +109,10 @@ describe("Migração 9750 sobre o estado de produção", () => {
     for (const n of ["20261003008000", "20261003009550", "20261003009600", "20261003009610", "20261003009630"]) {
       expect(antesDaNossa.some((f) => f.startsWith(n)), n).toBe(true);
     }
-    // A 9750 é a primeira do módulo; as das etapas seguintes (9760 e adiante) vêm depois dela.
+    // A 9750 é a primeira do módulo; as das etapas seguintes (9760 e adiante) vêm depois dela. O main já passou da 9750 (9900 a
+    // 012800, entre elas a 011500 do Termo 2.0): o "estado de produção" aqui são TODAS as migrações que não são do Treino.
     expect(migrationFiles().filter((f) => f.includes("treino_dupla"))[0]).toBe(MIGRACAO);
-    expect(antesDaNossa.every((f) => f < MIGRACAO)).toBe(true);
+    expect(antesDaNossa.some((f) => f.startsWith("20261003011500"))).toBe(true);
   });
 
   it("colar duas vezes dá o mesmo banco (funções, políticas, regras, colunas, gatilhos, índices, permissões e dados)", () => {
@@ -200,9 +207,11 @@ describe("Migração 9750 sobre o estado de produção", () => {
     expect(Object.keys(depoisDa1a.tabelas).filter((t) => !(t in antes.tabelas)).sort()).toEqual(["checklist_room_marks", "study_matches", "study_profiles", "study_swipes"]);
   });
 
-  it("a exportação antiga continua inteira (mesmas chaves e mesmos valores) e ganha só as quatro chaves do Treino", () => {
+  it("depois de todas as do Treino, a exportação antiga continua inteira (com declarations) e ganha só as quatro chaves do Treino", () => {
+    expect(exportAntes).toHaveProperty("declarations");
+    expect(exportDepois).toBeTruthy();
     const { exported_at: _a, ...velho } = exportAntes;
-    const { exported_at: _b, ...novo } = exportDepois;
+    const { exported_at: _b, ...novo } = exportFinal;
     for (const k of Object.keys(velho)) expect(novo[k], k).toEqual(velho[k]);
     expect(Object.keys(novo).filter((k) => !(k in velho)).sort()).toEqual(["checklist_rooms", "study_matches", "study_profile", "study_swipes"]);
   });
