@@ -1,11 +1,14 @@
 // Fase "review" (Result.jsx:15-61 do protótipo, sem "Voltar ao checklist"): conferência da avaliação, só do avaliador.
-// O candidato vê "Aguardando avaliação" e "Sair da sala". As marcações vêm do servidor; as ações agem na Etapa 5.
+// O candidato vê "Aguardando avaliação" e "Sair da sala" (não finaliza: D8). As marcações vêm do servidor; mudar uma nota aqui
+// vai ao servidor como na estação (300 ms). O feedback digitado fica em rascunho no aparelho (por sala e rodada) e só some
+// depois de finalizar: recarregar a página ou o celular descartar a aba não perde o texto.
 import React from "react";
 import { Avatar, Button, Dialog, Icon, Textarea } from "../../../ds";
 import { formatDecimal } from "../../../ds/format.js";
 import { areaVars } from "../labels.js";
 import { maxScoreOf } from "../content.js";
 import { StationChip, firstName, pageStyle } from "./parts.jsx";
+import { feedbackKey, readDraft, writeDraft } from "./useRoom.js";
 
 // Cada nível: rótulo na lista, rótulo completo (leitor de tela) e a cor do tema de pontuação.
 const LEVELS = [
@@ -28,7 +31,7 @@ function pointsOf(item, grade) {
   return typeof value === "number" ? value : 0;
 }
 
-function Waiting({ room, actions }) {
+function Waiting({ room, actions, askLeave }) {
   return (
     <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", width: "100%", boxSizing: "border-box" }}>
       <div style={{ width: "100%", maxWidth: 440, display: "flex", flexDirection: "column", alignItems: "center", gap: 18, textAlign: "center" }}>
@@ -41,7 +44,7 @@ function Waiting({ room, actions }) {
           <Icon name="hourglass" size={28} style={{ color: "var(--text-brand)" }} />
           <h1 style={{ margin: 0, font: "700 var(--text-lg) var(--font-sans)", color: "var(--text-primary)" }}>Aguardando avaliação</h1>
         </div>
-        <Button variant="ghost" icon="log-out" onClick={() => actions.leave()}>
+        <Button variant="ghost" icon="log-out" onClick={() => (askLeave ? askLeave("sair") : actions.leave())}>
           Sair da sala
         </Button>
       </div>
@@ -97,7 +100,12 @@ function Evaluation({ room, content, marks, actions }) {
   const max = maxScoreOf(items);
   const [filter, setFilter] = React.useState("all");
   const [confirm, setConfirm] = React.useState(false);
-  const [fb, setFb] = React.useState({ pos: "", neg: "", gen: "" });
+  const draftKey = feedbackKey(room.id, room.round);
+  const [fb, setFbState] = React.useState(() => ({ pos: "", neg: "", gen: "", ...readDraft(draftKey, {}) }));
+  const setFb = (next) => {
+    setFbState(next);
+    writeDraft(draftKey, next);
+  };
 
   const rows = items.map((item) => ({ item, grade: marks[item.id]?.grade ?? null }));
   const pending = rows.filter((row) => !row.grade);
@@ -323,7 +331,7 @@ function Evaluation({ room, content, marks, actions }) {
   );
 }
 
-export function ReviewPhase({ room, content, marks, actions }) {
-  if (room.me.role !== "evaluator") return <Waiting room={room} actions={actions} />;
+export function ReviewPhase({ room, content, marks, actions, askLeave }) {
+  if (room.me.role !== "evaluator") return <Waiting room={room} actions={actions} askLeave={askLeave} />;
   return <Evaluation room={room} content={content} marks={marks} actions={actions} />;
 }

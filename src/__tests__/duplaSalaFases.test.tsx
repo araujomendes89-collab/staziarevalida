@@ -130,6 +130,7 @@ function serve(s: Scenario) {
     if (fn === "app_dupla_marks") return s.marks ?? [];
     if (fn === "app_dupla_result") return s.result ?? RESULT;
     if (fn === "app_dupla_stations") return s.stations ?? [];
+    if (fn === "app_dupla_heartbeat") return { server_now: NOW };
     throw new Error("função não esperada: " + fn);
   });
 }
@@ -144,6 +145,7 @@ async function mount(s: Scenario, go = vi.fn()) {
 beforeEach(() => {
   rpc.mockReset();
   window.localStorage.clear();
+  window.sessionStorage.clear();
 });
 afterEach(() => cleanup());
 
@@ -226,93 +228,92 @@ describe("Sala: fases a partir do estado gravado", () => {
     expect(screen.getByText("Preparando a sala…")).toBeTruthy();
     const steps = screen.getAllByRole("listitem");
     expect(steps).toHaveLength(5);
-    expect(steps.map((s) => s.getAttribute("data-state"))).toEqual(["todo", "todo", "todo", "todo", "todo"]);
+    // a estação já está no estado; o acesso (sessão) ainda não foi conferido aqui (os eventos são testados em duplaSalaPreparo)
+    expect(steps.map((s) => s.getAttribute("data-state"))).toEqual(["done", "run", "todo", "todo", "todo"]);
     expect(screen.getByText("Carregando a estação")).toBeTruthy();
     expect(screen.getByText("Validando acesso")).toBeTruthy();
     expect(screen.getByText("Separando conteúdo por papel")).toBeTruthy();
     expect(screen.getByText("Criando sala privada")).toBeTruthy();
     expect(screen.getByText("Sincronizando com Bruno Lima")).toBeTruthy();
-    expect(screen.getByText("0%")).toBeTruthy();
+    expect(screen.getByText("20%")).toBeTruthy();
     expect(screen.getByText("Você e Bruno")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Sair da sala" })).toBeTruthy();
   });
 
-  it("preparação: avaliador vê a leitura prévia e Iniciar desligado; candidato vê 'Só o avaliador inicia' e não vê roteiro", async () => {
+  it("preparação: só a prontidão; avaliador abre a sala do avaliador com os dois prontos; candidato vê 'Só o avaliador inicia'", async () => {
     // avaliador
     await mount({ room: roles("evaluator", { phase: "setup" }), content: contentFor("evaluator") });
     expect(screen.getByText("Sala com Bruno Lima")).toBeTruthy();
-    expect(screen.getByText("Conecte-se pela chamada externa e confirmem a prontidão.")).toBeTruthy();
+    expect(screen.getByText("Confirmem a prontidão para iniciar a estação.")).toBeTruthy();
     expect(screen.getByText("Aguardando prontidão")).toBeTruthy();
     expect(screen.getByText("Papéis definidos")).toBeTruthy();
     expect(screen.getByText(/Você é/).textContent).toBe("Você é Ator/Avaliador · Bruno Lima é Candidato");
-    expect(screen.getByLabelText("Link da reunião")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Compartilhar link" })).toBeTruthy();
+    expect(screen.getByText("1. Prontidão")).toBeTruthy();
     expect(screen.getByText("Ana Souza (você)")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Estou pronto para iniciar" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Reduzir 30 segundos" })).toBeTruthy();
-    expect(screen.getByText("Leitura prévia do avaliador")).toBeTruthy();
-    expect(screen.getByText("O candidato não vê")).toBeTruthy();
-    expect(screen.getByText("Cenário de teste, bloco um.")).toBeTruthy();
-    expect(screen.getByText("Cenário de teste, bloco dois.")).toBeTruthy();
-    expect(screen.getByText("Fazer a anamnese.")).toBeTruthy();
-    expect(screen.getByText("Paciente de teste, 40 anos.")).toBeTruthy();
-    expect(screen.getByText("Só se perguntado")).toBeTruthy();
-    expect(screen.getByText("Impresso 1 · Hemograma")).toBeTruthy();
+    // sem link da chamada (D3), sem leitura prévia e sem cronômetro na preparação (vai ao rodapé da sala do avaliador)
+    expect(screen.queryByLabelText("Link da reunião")).toBeNull();
+    expect(screen.queryByText("Leitura prévia do avaliador")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reduzir 30 segundos" })).toBeNull();
+    expect(screen.queryByText("Paciente de teste, 40 anos.")).toBeNull();
     expect(screen.getByText("Aguardando os dois confirmarem prontidão")).toBeTruthy();
-    const start = screen.getByRole("button", { name: "Iniciar estação" }) as HTMLButtonElement;
-    expect(start.disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Abrir sala do avaliador" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("button", { name: "Iniciar estação" })).toBeNull();
     cleanup();
 
     // candidato
     await mount({ room: roles("candidate", { phase: "setup", me: { ready: true } }), content: contentFor("candidate") });
     expect(screen.getByText("Só o avaliador inicia")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Iniciar estação" })).toBeNull();
-    expect(screen.queryByText("Leitura prévia do avaliador")).toBeNull();
+    expect(screen.getByRole("button", { name: "Pronto · aguardando o colega" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Abrir sala do avaliador" })).toBeNull();
     expect(screen.queryByText("Paciente de teste, 40 anos.")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Reduzir 30 segundos" })).toBeNull();
-    expect(screen.getByText("10:00")).toBeTruthy();
-    expect(screen.getByText(/Tempo oficial · definido por Bruno \(avaliador\)/)).toBeTruthy();
+    expect(screen.queryByText("Cenário de teste, bloco um.")).toBeNull();
     cleanup();
 
-    // os dois prontos: selo some e o avaliador pode iniciar
-    await mount({
-      room: roles("evaluator", { phase: "setup", me: { ready: true }, partner: { ready: true }, call_link: "https://meet.google.com/abc-defg-hij", duration_ms: 480000 }),
-      content: contentFor("evaluator"),
-    });
+    // os dois prontos: selo some e o avaliador abre a sala do avaliador
+    await mount({ room: roles("evaluator", { phase: "setup", me: { ready: true }, partner: { ready: true } }), content: contentFor("evaluator") });
     expect(screen.queryByText("Aguardando prontidão")).toBeNull();
-    expect((screen.getByRole("button", { name: "Iniciar estação" }) as HTMLButtonElement).disabled).toBe(false);
-    expect(screen.getByRole("button", { name: "Atualizar link" })).toBeTruthy();
-    expect(screen.getByText("Tempo reduzido")).toBeTruthy();
-    expect(screen.getByText("08:00")).toBeTruthy();
+    expect(screen.getByText("Prontidão confirmada. Entre na sala do avaliador para controlar o cronômetro.")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Abrir sala do avaliador" }) as HTMLButtonElement).disabled).toBe(false);
+    cleanup();
+
+    await mount({ room: roles("candidate", { phase: "setup", me: { ready: true }, partner: { ready: true } }), content: contentFor("candidate") });
+    expect(screen.getByText("Dupla conectada. Aguardando Bruno (avaliador) iniciar a estação…")).toBeTruthy();
   });
 
-  it("preparação: o link da chamada só aceita https://", async () => {
-    await mount({ room: roles("evaluator", { phase: "setup" }), content: contentFor("evaluator") });
-    fireEvent.change(screen.getByLabelText("Link da reunião"), { target: { value: "meet.google.com/abc" } });
-    fireEvent.click(screen.getByRole("button", { name: "Compartilhar link" }));
-    expect(screen.getByText("Use um endereço válido começando com https://")).toBeTruthy();
+  it("sem link da chamada em nenhuma fase (os dois conversam fora do app)", async () => {
+    for (const phase of ["setup", "running"]) {
+      for (const me of ["evaluator", "candidate"] as const) {
+        await mount({ room: roles(me, { phase, ends_at: "2026-10-11T15:04:07.000Z" }), content: contentFor(me) });
+        expect(screen.queryByLabelText("Link da reunião")).toBeNull();
+        expect(screen.queryByRole("button", { name: /Chamada|Abrir chamada|Compartilhar link/ })).toBeNull();
+        cleanup();
+      }
+    }
   });
 
   it("estação: avaliador com PEP e impressos; candidato sem roteiro, sem PEP e com 'Aguardando liberação'", async () => {
-    const running = { phase: "running", started_at: "2026-10-11T14:55:00.000Z", ends_at: "2026-10-11T15:04:07.000Z", call_link: "https://meet.google.com/abc-defg-hij", released_pressings: ["p1"] };
+    const running = { phase: "running", started_at: "2026-10-11T14:55:00.000Z", ends_at: "2026-10-11T15:04:07.000Z", released_pressings: ["p1"] };
     // avaliador
     await mount({ room: roles("evaluator", running), content: contentFor("evaluator") });
-    expect(screen.getByText("Estação de teste")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Estação de teste" })).toBeTruthy();
     expect(screen.getByText("Clínica Médica · Revalida 2020 · INEP")).toBeTruthy();
-    expect(screen.getByText("Em andamento")).toBeTruthy();
-    expect(screen.getByRole("timer").textContent).toContain("04:07");
-    expect(screen.getByRole("button", { name: "Reduzir 1 minuto" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Adicionar 1 minuto" })).toBeTruthy();
-    for (const t of ["Cenário e tarefas", "Roteiro do ator", "Impressos", "Anotações"]) expect(screen.getByRole("button", { name: new RegExp(t) })).toBeTruthy();
+    expect(screen.getAllByText("Em andamento").length).toBeGreaterThan(0);
+    // o cronômetro do avaliador fica no rodapé (o tempo vem do servidor)
+    expect(screen.getByRole("button", { name: /^Ajustar tempo, 04:0[67]$/ })).toBeTruthy();
+    for (const t of ["Cenário e tarefas", "Orientações do Ator/Atriz", "Impressos", "Anotações", "Feedback"]) expect(screen.getByRole("button", { name: new RegExp(t) })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Materiais/ })).toBeNull(); // sem resumo, sem Materiais (D9)
     expect(screen.getByText("1/2")).toBeTruthy();
     expect(screen.getByText("Paciente de teste, 40 anos.")).toBeTruthy();
     expect(screen.getByPlaceholderText("Anote o que observar durante o atendimento")).toBeTruthy();
     expect(screen.getByText("Anotações ficam só neste aparelho.")).toBeTruthy();
     expect(screen.getByRole("radiogroup", { name: "Item 1" })).toBeTruthy();
     expect(screen.getByRole("radiogroup", { name: "Item 3" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Checklist PEP" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Estação: cenário, orientações e impressos" })).toBeTruthy();
     expect(screen.queryByText("PEP oficial (INEP)")).toBeNull();
     expect(screen.queryByText("Sinalizar problema")).toBeNull();
-    expect(screen.getByRole("button", { name: "Chamada" })).toBeTruthy();
+    expect(screen.queryByText("TutorIA")).toBeNull();
     expect(screen.getByRole("button", { name: "Pausar" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Finalizar estação" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Sair da sala" })).toBeTruthy();
@@ -321,7 +322,7 @@ describe("Sala: fases a partir do estado gravado", () => {
     // candidato: só o 1 liberado, sem a linha "Liberação"; o 2 aguarda
     await mount({ room: roles("candidate", { ...running, released_pressings: ["d1"] }), content: contentFor("candidate", ["d1"]) });
     expect(document.body.textContent).not.toContain("Estação de teste");
-    expect(screen.getByText("Estação 3 · Clínica Médica")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Estação 3 · Clínica Médica" })).toBeTruthy();
     expect(screen.getByText("Enunciado")).toBeTruthy();
     expect(screen.getByText("Cenário de teste, bloco um.")).toBeTruthy();
     expect(screen.getByText("Nos 10 minutos de duração, execute:")).toBeTruthy();
@@ -330,7 +331,7 @@ describe("Sala: fases a partir do estado gravado", () => {
     expect(screen.getByText("1 liberado")).toBeTruthy();
     expect(screen.getByText("Impresso 1 · Hemograma")).toBeTruthy();
     expect(screen.getByText("Impresso 2 · Aguardando liberação")).toBeTruthy();
-    expect(screen.queryByText("Roteiro do ator")).toBeNull();
+    expect(screen.queryByText("Orientações do Ator/Atriz")).toBeNull();
     expect(screen.queryByRole("radiogroup", { name: "Item 1" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Pausar" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Finalizar estação" })).toBeNull();
@@ -340,29 +341,29 @@ describe("Sala: fases a partir do estado gravado", () => {
     expect(document.body.textContent).not.toContain("Nenhuma alergia");
   });
 
-  it("estação: pausada, tempo esgotado e cronômetro escondido ou minimizado (guardado no aparelho)", async () => {
-    const base = { phase: "running", call_link: "https://meet.google.com/abc-defg-hij" };
+  it("estação: pausada, tempo esgotado e cronômetro do candidato escondido só nesta aba", async () => {
+    const base = { phase: "running" };
     await mount({ room: roles("evaluator", { ...base, ends_at: null, paused_left_ms: 125000, paused_at: NOW }), content: contentFor("evaluator") });
-    expect(screen.getByText("Pausada")).toBeTruthy();
-    expect(screen.getByRole("timer").textContent).toContain("02:05");
+    expect(screen.getAllByText("Pausada").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Ajustar tempo, 02:05" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Retomar" })).toBeTruthy();
     cleanup();
 
     await mount({ room: roles("evaluator", { ...base, ends_at: "2026-10-11T14:59:00.000Z" }), content: contentFor("evaluator") });
-    expect(screen.getByText("Tempo esgotado")).toBeTruthy();
-    expect(screen.getByRole("timer").textContent).toContain("00:00");
-    expect(screen.queryByRole("button", { name: "Reduzir 1 minuto" })).toBeNull();
+    expect(screen.getAllByText("Tempo esgotado").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Ajustar tempo, 00:00" })).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Pausar" }) as HTMLButtonElement).disabled).toBe(true);
     cleanup();
 
     await mount({ room: roles("candidate", { ...base, ends_at: "2026-10-11T15:05:00.000Z" }), content: contentFor("candidate") });
+    expect(screen.getByRole("timer")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Minimizar cronômetro" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Esconder cronômetro" }));
-    expect(window.localStorage.getItem("sz-timer-hidden")).toBe("1");
+    expect(window.sessionStorage.getItem("smn-dupla-cron-oculto")).toBe("1");
     expect(screen.queryByRole("timer")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Mostrar cronômetro" }));
-    expect(window.localStorage.getItem("sz-timer-hidden")).toBe("0");
-    fireEvent.click(screen.getByRole("button", { name: "Minimizar cronômetro" }));
-    expect(window.localStorage.getItem("sz-timer-min")).toBe("1");
-    expect(screen.getByRole("button", { name: "Expandir cronômetro" })).toBeTruthy();
+    expect(window.sessionStorage.getItem("smn-dupla-cron-oculto")).toBe("0");
+    expect(screen.getByRole("timer")).toBeTruthy();
   });
 
   it("estação (Etapa P): relato inicial visível ao candidato sem liberação e fora da lista; avaliador vê os números da prova", async () => {
@@ -380,8 +381,8 @@ describe("Sala: fases a partir do estado gravado", () => {
     await mount({ room: roles("evaluator", { ...running, released_pressings: ["p1"] }), content: contentFor("evaluator", [], true) });
     expect(screen.getByText("Este impresso já está visível desde o início.")).toBeTruthy();
     expect(screen.getByText("1/2")).toBeTruthy(); // só os liberáveis contam
-    expect(screen.getAllByRole("button", { name: /Liberar|Ocultar/ })).toHaveLength(2); // o relato não tem botão
-    expect(document.body.textContent).toContain("Impresso 2");
+    expect(screen.getAllByRole("button", { name: /^(Liberar|Ocultar)$/ })).toHaveLength(2); // o relato não tem botão
+    expect(screen.getByText("no documento oficial: Impresso 2")).toBeTruthy();
   });
 
   it("preparação (Etapa P): candidato vê só 'Estação N · Área' e 'O enunciado aparece quando o avaliador iniciar a estação.'", async () => {
@@ -395,9 +396,8 @@ describe("Sala: fases a partir do estado gravado", () => {
     cleanup();
 
     await mount({ room: roles("evaluator", setup), content: contentFor("evaluator", [], true) });
-    expect(screen.getByText("Leitura prévia do avaliador")).toBeTruthy();
-    expect(screen.getByText("Visíveis ao candidato desde o início")).toBeTruthy();
-    expect(screen.getByText("Impresso 1 · Hemograma · no documento oficial: Impresso 2")).toBeTruthy();
+    expect(screen.queryByText("Leitura prévia do avaliador")).toBeNull();
+    expect(screen.getByRole("button", { name: "Abrir sala do avaliador" })).toBeTruthy();
   });
 
   it("decisões do dono (16/10): origem sempre visível ao candidato e aviso a quem escolheu a estação e ficou como candidato", async () => {
@@ -593,7 +593,11 @@ describe("Sala: fases a partir do estado gravado", () => {
 describe("Sala: arquivos", () => {
   const FILES = [
     "RoomScreen", "RolesPhase", "ConnectingPhase", "SetupPhase", "RunningPhase", "ReviewPhase", "ResultPhase", "ClosedPhase", "StationPicker", "parts",
-  ].map((n) => `src/novo/app/dupla/room/${n}.jsx`).concat(["src/novo/app/dupla/room/useRoom.js", "src/novo/app/dupla/content.js"]);
+    "EvaluatorFooter", "CandidateSheet",
+  ].map((n) => `src/novo/app/dupla/room/${n}.jsx`).concat([
+    "src/novo/app/dupla/room/useRoom.js", "src/novo/app/dupla/content.js", "src/novo/app/dupla/clock.js", "src/novo/app/dupla/printsApi.js",
+    "src/novo/app/dupla/room/sala.css",
+  ]);
   const read = (rel: string) => fs.readFileSync(path.join(ROOT, rel), "utf8");
 
   it("sem cor escrita, sem lucide-react e sem IA", () => {
@@ -609,7 +613,7 @@ describe("Sala: arquivos", () => {
   it("toda variável de estilo usada existe nos tokens", () => {
     const tokens = ["base", "colors", "dupla", "effects", "fonts", "semantic", "spacing", "typography"]
       .map((n) => read(`src/novo/ds/tokens/${n}.css`)).join("\n");
-    const defined = new Set([...tokens.matchAll(/(--[a-z0-9-]+)\s*:/gi)].map((m) => m[1]));
+    const defined = new Set([...(tokens + read("src/novo/app/dupla/room/sala.css")).matchAll(/(--[a-z0-9-]+)\s*:/gi)].map((m) => m[1]));
     for (const f of FILES) {
       for (const m of read(f).matchAll(/var\((--[a-z0-9-]+)/gi)) {
         expect(defined.has(m[1]), `${f}: ${m[1]}`).toBe(true);

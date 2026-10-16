@@ -8,6 +8,10 @@ export interface PrintItemProps {
   /** Avaliador: mostra "Liberar"/"Ocultar" */
   canRelease?: boolean;
   onToggleRelease?: () => void;
+  /** Avaliador antes de iniciar a estação: Liberar/Ocultar desligado */
+  releaseDisabled?: boolean;
+  /** Dica do botão desligado, ex.: "Disponível depois de iniciar a estação." */
+  releaseHint?: string;
   /** Conteúdo do impresso; só aparece liberado (ou para quem pode liberar), atrás de "Ver conteúdo" */
   children?: React.ReactNode;
 }

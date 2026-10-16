@@ -1,12 +1,14 @@
-// Fase "connecting" (Loading.jsx do protótipo): anel de progresso e as 5 etapas da sala.
-// Nesta tarefa as etapas aparecem "a fazer"; a Tarefa 16 liga os eventos de cada uma.
+// Fase "connecting" (Loading.jsx do protótipo): anel de progresso e as 5 etapas da sala, cada uma por um evento real:
+// estação no estado; acesso (sessão: módulo permitido ou equipe); conteúdo do meu papel recebido; canal da sala pronto
+// (tempo real assinado, ou a 1ª consulta no banco local); parceiro presente. Com as 5 prontas, avisa o servidor uma vez só
+// (app_dupla_connected); quando os dois avisam, o servidor passa a sala à preparação.
 import React from "react";
 import { Avatar, Button, Icon } from "../../../ds";
 import { firstName, stationLine } from "./parts.jsx";
 
 const RING = 2 * Math.PI * 34;
 
-export function ConnectingPhase({ room, actions }) {
+export function ConnectingPhase({ room, content, actions, progress = {}, askLeave }) {
   const partner = room.partner.public_name;
   const steps = [
     ["Carregando a estação", room.station ? stationLine(room.station) : ""],
@@ -15,9 +17,24 @@ export function ConnectingPhase({ room, actions }) {
     ["Criando sala privada", "Sala exclusiva da dupla"],
     ["Sincronizando com " + partner, "Cronômetro e estado da rodada"],
   ];
-  const done = 0; // etapas concluídas (Tarefa 16)
+  const checks = [
+    Boolean(room.station),
+    Boolean(progress.access),
+    Boolean(room.me.role) && content?.role === room.me.role,
+    Boolean(progress.channelReady),
+    Boolean(progress.partnerPresent),
+  ];
+  const first = checks.indexOf(false);
+  const done = first === -1 ? steps.length : first;
   const pct = Math.round((Math.min(done, steps.length) / steps.length) * 100);
   const finished = done >= steps.length;
+  const sent = React.useRef(false);
+  React.useEffect(() => {
+    if (finished && !room.me.connected && !sent.current) {
+      sent.current = true;
+      actions.connected();
+    }
+  }, [finished, room.me.connected, actions]);
 
   return (
     <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", width: "100%", boxSizing: "border-box" }}>
@@ -60,7 +77,7 @@ export function ConnectingPhase({ room, actions }) {
           }}
         >
           {steps.map(([title, sub], k) => {
-            const state = k < done ? "done" : "todo"; // "run" entra com a Tarefa 16
+            const state = k < done ? "done" : k === done ? "run" : "todo";
             return (
               <li key={title} data-state={state} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", opacity: state === "todo" ? 0.55 : 1 }}>
                 <span
@@ -73,11 +90,12 @@ export function ConnectingPhase({ room, actions }) {
                     alignItems: "center",
                     justifyContent: "center",
                     background: state === "done" ? "var(--success-solid)" : "transparent",
-                    border: state === "done" ? 0 : "2px solid var(--border-strong)",
+                    border: state === "done" ? 0 : state === "run" ? "2px solid var(--action-primary)" : "2px solid var(--border-strong)",
                     color: "var(--surface-card)",
                   }}
                 >
                   {state === "done" && <Icon name="check" size={13} />}
+                  {state === "run" && <Icon name="loader" size={12} style={{ color: "var(--text-brand)" }} />}
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ font: "500 var(--text-sm) var(--font-sans)", color: "var(--text-primary)" }}>{title}</div>
@@ -93,7 +111,7 @@ export function ConnectingPhase({ room, actions }) {
           <Avatar name={partner} size={28} />
           Você e {firstName(partner)}
         </div>
-        <Button variant="ghost" icon="log-out" onClick={() => actions.leave()}>
+        <Button variant="ghost" icon="log-out" onClick={() => (askLeave ? askLeave("sair") : actions.leave())}>
           Sair da sala
         </Button>
       </div>
