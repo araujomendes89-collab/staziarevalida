@@ -1,4 +1,4 @@
--- DESFAZER da 20261003012500_fase2_telas_reais.sql (2ª fase: telas de verdade).
+-- DESFAZER da 20261003012700_fase2_telas_reais.sql (2ª fase: telas de verdade).
 -- ATENÇÃO: apaga as tentativas de estação feitas sozinho (station_attempts). As estações feitas em dupla
 -- (checklist_study_sessions) e o catálogo de estações NÃO são tocados.
 drop function if exists public.app_fase2_performance();
