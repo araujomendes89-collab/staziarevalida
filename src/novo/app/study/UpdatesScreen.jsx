@@ -274,33 +274,61 @@ function CompareTable({ items, onOpen, mobile }) {
   );
 }
 
-/** Questão de treino da equipe (não é questão oficial do INEP): marcar, confirmar e ver o comentário. */
-function PracticeQuestion({ q }) {
+/**
+ * Questão de treino da equipe (não é questão oficial do INEP): marcar, confirmar e ver o comentário.
+ * O servidor manda só o enunciado e as alternativas; o gabarito, as justificativas e o comentário chegam ao confirmar
+ * (app_guideline_practice_check), nunca antes. Se a questão já vier com o gabarito (servidor antigo), corrige aqui mesmo.
+ */
+function PracticeQuestion({ q, slug, index }) {
+  const { backend } = useSession();
   const [picked, setPicked] = React.useState(null);
-  const [done, setDone] = React.useState(false);
-  const state = (id) => (!done ? (picked === id ? "selected" : "idle") : id === q.answer ? "correct" : id === picked ? "incorrect" : "dimmed");
+  const [result, setResult] = React.useState(null);
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState(null);
+  const done = Boolean(result);
+  const confirm = async () => {
+    if (!picked || busy) return;
+    setError(null);
+    if (q.answer) {
+      setResult({ answer: q.answer, options: q.options, commentary: q.commentary });
+      return;
+    }
+    setBusy(true);
+    try {
+      const r = await backend.rpc("app_guideline_practice_check", { p_slug: slug, p_index: index, p_selected: picked });
+      if (!r?.answer) throw new Error("sem correção");
+      setResult(r);
+    } catch {
+      setError("Não foi possível conferir a resposta. Tente de novo.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const justification = (id) => (result?.options ?? []).find((o) => o?.id === id)?.justification;
+  const state = (id) => (!done ? (picked === id ? "selected" : "idle") : id === result.answer ? "correct" : id === picked ? "incorrect" : "dimmed");
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <p style={{ margin: 0, font: "400 16px/1.6 var(--font-sans)", textWrap: "pretty" }}>{q.statement}</p>
       <div role="radiogroup" aria-label="Alternativas" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {q.options.map((o) => (
+        {(q.options ?? []).filter(Boolean).map((o) => (
           <div key={o.id}>
-            <AnswerOption letter={o.id} state={state(o.id)} onClick={() => !done && setPicked(o.id)}>
+            <AnswerOption letter={o.id} state={state(o.id)} onClick={() => !done && !busy && setPicked(o.id)}>
               {o.text}
             </AnswerOption>
-            {done && o.justification && <p style={{ margin: "6px 4px 0 44px", font: "var(--type-body-sm)", color: o.id === q.answer ? "var(--success-text)" : "var(--text-secondary)" }}>{o.justification}</p>}
+            {done && justification(o.id) && <p style={{ margin: "6px 4px 0 44px", font: "var(--type-body-sm)", color: o.id === result.answer ? "var(--success-text)" : "var(--text-secondary)" }}>{justification(o.id)}</p>}
           </div>
         ))}
       </div>
       {!done ? (
-        <div>
-          <Button disabled={!picked} iconRight="check" onClick={() => setDone(true)}>Confirmar</Button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
+          <Button disabled={!picked} loading={busy} iconRight="check" onClick={confirm}>Confirmar</Button>
+          {error && <Banner tone="danger">{error}</Banner>}
         </div>
       ) : (
-        q.commentary && (
+        result.commentary && (
           <div style={{ padding: 14, borderRadius: 14, background: "var(--surface-subtle)", border: "1px solid var(--border-subtle)", font: "var(--type-body-sm)" }}>
             <b>Comentário: </b>
-            {q.commentary}
+            {result.commentary}
           </div>
         )
       )}
@@ -565,7 +593,7 @@ export function UpdateDetail({ slug, go, onBack, lidas: lidasLista, onToggleRead
           <>
             <div className="at-subhead">Questão de treino</div>
             <p style={{ margin: "0 0 12px", font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Questão escrita pela equipe para fixar a mudança. Não é questão oficial do INEP.</p>
-            {quiz.map((q, i) => <PracticeQuestion key={i} q={q} />)}
+            {quiz.map((q, i) => q && <PracticeQuestion key={i} q={q} slug={u.slug ?? slug} index={i} />)}
           </>
         )}
       </>

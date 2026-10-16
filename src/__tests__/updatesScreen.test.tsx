@@ -34,7 +34,8 @@ beforeEach(() => {
   detail = {
     ...ITEM, timeline: [{ year: 2025, text: "Mudança de 2025 de teste." }], clinical_impact: "Impacto de teste.", exam_impact: "Como cai de teste.", trap: "Pegadinha de teste.",
     flashcards: [{ front: "Frente de teste?", back: "Verso de teste" }],
-    practice_questions: [{ statement: "Enunciado de teste com mais de vinte caracteres.", answer: "B", commentary: "Comentário de teste.", options: ["A", "B", "C", "D"].map((id) => ({ id, text: `Alternativa ${id}`, justification: `Justificativa ${id}` })) }],
+    // o servidor manda só enunciado e alternativas; a correção vem de app_guideline_practice_check (013200)
+    practice_questions: [{ statement: "Enunciado de teste com mais de vinte caracteres.", options: ["A", "B", "C", "D"].map((id) => ({ id, text: `Alternativa ${id}` })) }],
     questions_count: 4,
   };
   backend.rpc.mockReset();
@@ -42,6 +43,8 @@ beforeEach(() => {
     if (fn === "app_guideline_updates") return list;
     if (fn === "app_guideline_update") return args.p_slug === "has" ? { ...detail, ...OTHER, flashcards: [], practice_questions: [] } : detail;
     if (fn === "app_start_guideline_questions") return { session_id: "s-7", count: 4 };
+    if (fn === "app_guideline_practice_check")
+      return { index: args.p_index, selected: args.p_selected, answer: "B", correct: args.p_selected === "B", commentary: "Comentário de teste.", options: ["A", "B", "C", "D"].map((id) => ({ id, justification: `Justificativa ${id}` })) };
     throw new Error(`rpc não simulada: ${fn}`);
   });
 });
@@ -141,9 +144,14 @@ describe("Detalhe", () => {
     expect(screen.getByText("Frente de teste?")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "Miniquiz" }));
     fireEvent.click(screen.getByRole("radio", { name: /Alternativa A/ }));
+    // antes de confirmar: nada de gabarito, justificativa ou comentário (nem pedido ao servidor)
+    expect(screen.queryByText(/Comentário de teste\./)).toBeNull();
+    expect(screen.queryByText(/Justificativa/)).toBeNull();
+    expect(backend.rpc.mock.calls.some((c: any[]) => c[0] === "app_guideline_practice_check")).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: /Confirmar/ }));
     expect(await screen.findByText(/Comentário de teste\./)).toBeTruthy();
     expect(screen.getByText("Justificativa B")).toBeTruthy();
+    expect(backend.rpc).toHaveBeenCalledWith("app_guideline_practice_check", { p_slug: ITEM.slug, p_index: 0, p_selected: "A" });
     fireEvent.click(screen.getByRole("button", { name: /Treinar questões deste tema/ }));
     await waitFor(() => expect(go).toHaveBeenCalledWith("sessao", { s: "s-7" }));
   });
