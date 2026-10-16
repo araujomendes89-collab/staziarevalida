@@ -15,6 +15,7 @@ import { TutorError, type TutorDeps } from "./engine";
 import { realKey } from "./speech";
 import { tutorSettings, type TutorSettings } from "./settings";
 import { voiceCall } from "./realtime";
+import { assertAiAllowed } from "./limits";
 
 export interface SttConfig {
   ready: boolean;
@@ -99,6 +100,8 @@ const failed = () => Object.assign(new TutorError(STT_FAILED, 502), { code: "stt
 
 /** Transcreve um áudio já conferido pela rota (tamanho, duração, conversa de voz e aceite). Nunca registra áudio nem texto. */
 export async function transcribe(deps: TutorDeps, userId: string, voiceCallId: string, audio: Buffer, mime: string, seconds: number): Promise<{ text: string }> {
+  // Fase 0 (L4): IA desligada no painel ou no ambiente: o áudio não sai do servidor
+  await assertAiAllowed(deps);
   const cfg = deps.stt ?? sttConfig();
   if (!cfg.ready || !cfg.key) throw new TutorError("A transcrição não está ligada no servidor.", 503);
   const ext = audioExtension(mime);
