@@ -25,11 +25,12 @@
 --  8. As 5 brechas da auditoria:
 --     G01 simulado só vale com 30+ questões, 80% respondidas sem chute, 1 por dia;
 --     G02 plano do dia só vale no dia de hoje;
---     G04 o tempo que vale é o do navegador limitado ao medido pelo servidor (desde a resposta anterior ou o início da sessão);
+--     G04 o tempo que vale é o do navegador limitado ao medido pelo servidor (no treino, desde a resposta anterior ou o início
+--         da sessão; no simulado, a soma das questões não passa do tempo da sessão aberta, sem as pausas);
 --         sem tempo não vale; os minutos do dia têm teto de 10 min por resposta;
 --     G05 gravação direta nas tabelas de estudo pela API é recusada (só funções app_*/tutor_*); horários sempre do servidor;
 --     G06 flashcards: XP só de cartão oficial, "não lembrei" não vale, 40 por minuto no máximo, consolidado conferido pela
---         data da 1ª revisão; missão e fila contam cartões diferentes.
+--         data da 1ª revisão; missão e fila contam só cartões OFICIAIS diferentes (cartão pessoal não conta).
 --  9. Questão anulada ou gabarito trocado: o XP já ganho fica (decisão do dono). NADA é retroativo: XP, moedas e eventos antigos
 --     não são recalculados.
 -- O que mudou fica registrado em public.gamification_jobs (job 'regras_1610'), com os valores de antes.
@@ -170,9 +171,9 @@ begin
     end if;
     if tg_op = 'INSERT' then
       if tg_table_name = 'question_attempts' then
-        new.answered_at := now();
+        new.answered_at := clock_timestamp();   -- igual ao gatilho de correção: horário real de cada resposta
       elsif tg_table_name = 'flashcard_reviews' then
-        new.reviewed_at := now();
+        new.reviewed_at := clock_timestamp();
       elsif tg_table_name = 'practice_sessions' then
         new.started_at := now();
         new.finished_at := null;
@@ -207,7 +208,7 @@ create trigger study_write_guard before insert or update or delete on public.fla
 
 -- ---------------------------------------------------------------- 3. tempo medido pelo servidor (base: 20261003004300; brecha G04)
 -- O tempo de cada resposta é o que o navegador manda, mas nunca mais que o tempo que o servidor viu passar desde a resposta
--- anterior da sessão (ou do início). No simulado, cada questão acumula no máximo o tempo desde o último salvamento.
+-- anterior da sessão (ou do início). No simulado (dá para ir e voltar), a soma das questões não passa do tempo da sessão aberta.
 create or replace function public.app_answer_question(
   p_session_id uuid,
   p_question_id text,
@@ -224,6 +225,7 @@ declare
   v_ms integer;          -- 16/10: tempo que vale = o do navegador, mas nunca mais que o medido pelo servidor
   v_ref timestamptz;
   v_gap bigint;
+  v_others bigint;
 begin
   select * into s from public.practice_sessions where id = p_session_id;
   if not found then
@@ -248,11 +250,11 @@ begin
   end if;
 
   if s.kind = 'simulado' then
-    -- tempo do servidor desde o último salvamento do simulado (ou do início); o da questão acumula no máximo isso por visita
-    select greatest(s.started_at, max((d.value ->> 'at')::timestamptz)) into v_ref from jsonb_each(s.answers) d;
-    v_gap := greatest(floor(extract(epoch from (now() - coalesce(v_ref, s.started_at))) * 1000), 0)::bigint;
-    v_ms := least(case when v_client > 0 then v_client else 86400000 end,
-                  coalesce((s.answers -> p_question_id ->> 'ms')::bigint, 0) + v_gap, 86400000)::integer;
+    -- o simulado deixa ir e voltar entre as questões: a soma dos tempos de todas as questões nunca passa do tempo que o
+    -- servidor viu a sessão aberta (sem as pausas); a desta questão fica com no máximo o que sobra das outras
+    v_gap := greatest(floor(extract(epoch from (now() - s.started_at)) * 1000) - coalesce(s.paused_ms, 0), 0)::bigint;
+    select coalesce(sum((d.value ->> 'ms')::bigint), 0) into v_others from jsonb_each(s.answers) d where d.key <> p_question_id;
+    v_ms := least(case when v_client > 0 then v_client else 86400000 end, greatest(v_gap - v_others, 0), 86400000)::integer;
     update public.practice_sessions
       set answers = answers || jsonb_build_object(p_question_id, jsonb_build_object('option', p_option, 'ms', v_ms, 'at', now()))
       where id = s.id;
@@ -533,8 +535,9 @@ begin
         perform public.gam_award(new.user_id, 'FLASHCARD_MASTERED', 'flashcard', new.card_id::text, public.gam_num('xp.flashcard_mastered', 4)::int, 0, '{}'::jsonb);
       end if;
     end if;
-    -- fila do dia zerada (com pelo menos 5 cartões diferentes hoje)
+    -- fila do dia zerada (com pelo menos 5 cartões OFICIAIS diferentes hoje; cartão pessoal não conta)
     select count(distinct r.card_id)::int into v_reviews from public.flashcard_reviews r
+      join public.flashcards c on c.id = r.card_id and c.owner_id is null
       where r.user_id = new.user_id and (r.reviewed_at at time zone public.gam_tz(new.user_id))::date = v_day::date;
     if v_reviews >= 5 and not exists (select 1 from public.flashcard_states s where s.user_id = new.user_id and s.state > 0 and s.due <= now() and s.card_id <> new.card_id) then
       perform public.gam_award(new.user_id, 'SPACED_REVIEW_DONE', 'day', v_day, public.gam_num('xp.spaced_review_done', 12)::int, 0, jsonb_build_object('reviews', v_reviews));
@@ -629,7 +632,7 @@ as $$
     'areas_list', (select coalesce(jsonb_agg(distinct area), '[]'::jsonb) from a),
     'review', (select count(*) filter (where was_wrong)::int from a),
     'fixed', (select count(*) filter (where was_wrong and is_correct)::int from a),
-    'flashcards', (select count(distinct r.card_id)::int from public.flashcard_reviews r
+    'flashcards', (select count(distinct r.card_id)::int from public.flashcard_reviews r join public.flashcards c on c.id = r.card_id and c.owner_id is null
                    where r.user_id = p_user and r.reviewed_at >= (select t0 from span) and r.reviewed_at < (select t1 from span)),
     'simulados', (select count(*)::int from public.gamification_events e
                   where e.user_id = p_user and e.event_type = 'SIMULATION_COMPLETED'

@@ -267,6 +267,33 @@ describe("simulado (brecha G01) e plano do dia (brecha G02)", () => {
     return sid;
   }
 
+  it("simulado com ida e volta: a questão lida antes e respondida depois não vira chute (segunda opinião do Gemini)", async () => {
+    const qs = novas("GINECOLOGIA_OBSTETRICIA", 30);
+    const sid = await sessao(DORA, "simulado", qs);
+    await passa(sid, 30_000);
+    await rpc(DORA, "app_answer_question", { p_session_id: sid, p_question_id: qs[0], p_option: "B", p_active_ms: 30_000 });
+    await passa(sid, 60_000); // lê a 2ª por 60 s, não responde, vai para a 3ª
+    await passa(sid, 10_000);
+    await rpc(DORA, "app_answer_question", { p_session_id: sid, p_question_id: qs[2], p_option: "B", p_active_ms: 10_000 });
+    // volta e responde a 2ª na hora: o navegador soma 62 s nela
+    await rpc(DORA, "app_answer_question", { p_session_id: sid, p_question_id: qs[1], p_option: "B", p_active_ms: 62_000 });
+    for (const id of qs.slice(3)) {
+      await passa(sid, 30_000);
+      await rpc(DORA, "app_answer_question", { p_session_id: sid, p_question_id: id, p_option: "B", p_active_ms: 30_000 });
+    }
+    // e quem tenta somar mais tempo do que a sessão ficou aberta: limitado ao que sobra
+    await rpc(DORA, "app_finish_session", { p_session_id: sid });
+    const a2 = (await sql(`select active_ms from public.question_attempts where session_id = $1 and question_id = $2`, [sid, qs[1]]))[0];
+    expect(a2.active_ms).toBeGreaterThanOrEqual(55_000);
+    expect(a2.active_ms).toBeLessThanOrEqual(62_000);
+    const total = (await sql(`select sum(active_ms)::int as t from public.question_attempts where session_id = $1`, [sid]))[0].t;
+    expect(total).toBeLessThanOrEqual(30_000 + 70_000 + 27 * 30_000 + 2_000);
+    const reasons = await sql(`select e.fraud_reason from public.gamification_events e join public.question_attempts a on a.id::text = e.source_id
+                               where a.session_id = $1 and e.source_type = 'question_attempt' and not e.is_valid`, [sid]);
+    expect(reasons).toHaveLength(0);
+    expect((await events(DORA, "SIMULATION_COMPLETED")).length).toBe(1);
+  });
+
   it("simulado de 1 questão não vale XP de simulado", async () => {
     await simulado(ANA, novas("MEDICINA_FAMILIA_COMUNIDADE", 1), () => true);
     expect((await events(ANA, "SIMULATION_COMPLETED")).length).toBe(0);
@@ -317,6 +344,10 @@ describe("flashcards (brecha G06)", () => {
     }
     expect(await events(EDU, "FLASHCARD_REVIEWED")).toHaveLength(0);
     expect(await events(EDU, "FLASHCARD_MASTERED")).toHaveLength(0);
+    // segunda opinião (Gemini): 5 cartões pessoais não zeram a "fila do dia" nem contam na missão de flashcards
+    expect(await events(EDU, "SPACED_REVIEW_DONE")).toHaveLength(0);
+    const hojeEdu = (await sql(`select public.gam_today($1) as d`, [EDU]))[0].d;
+    expect((await sql(`select (public.gam_facts($1, $2, $2) ->> 'flashcards')::int as n`, [EDU, hojeEdu]))[0].n).toBe(0);
     const [o1] = await sql(`insert into public.flashcards (area, topic, front, back, published) values ('PEDIATRIA', 't', 'oficial 1', 'v', true) returning id`);
     const [o2] = await sql(`insert into public.flashcards (area, topic, front, back, published) values ('PEDIATRIA', 't', 'oficial 2', 'v', true) returning id`);
     await rpc(EDU, "app_review_flashcard", { p_card_id: o1.id, p_rating: 3, p_next: next() });
