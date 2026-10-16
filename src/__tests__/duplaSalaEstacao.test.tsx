@@ -125,14 +125,15 @@ describe("impressos e folha do candidato", () => {
 
   it("relato inicial aparece sem liberar, continua depois de recarregar e nunca entra em x/y", async () => {
     await mount();
-    expect(screen.getByText("Este impresso já está visível desde o início.")).toBeTruthy();
+    expect(screen.getByText("O candidato já lê este texto na folha dele, desde o início.")).toBeTruthy();
+    expect(screen.getByText("Relato do caso (na folha do candidato)")).toBeTruthy();
     expect(screen.getByText("0/2")).toBeTruthy();
     cleanup();
     for (let i = 0; i < 2; i++) {
       srv.room = asCandidate(running());
       srv.content = contentOf("candidate");
       await mount();
-      expect(screen.getByText("Impresso 1 · Relato do caso")).toBeTruthy();
+      expect(screen.getByText("Relato do caso")).toBeTruthy(); // na folha, sem número
       expect(screen.getByText("Relato inicial de teste.")).toBeTruthy();
       expect(screen.getByText("0 liberados")).toBeTruthy();
       expect(screen.getAllByText(/Aguardando liberação/)).toHaveLength(2);

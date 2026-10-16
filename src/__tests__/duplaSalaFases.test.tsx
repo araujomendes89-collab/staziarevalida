@@ -387,7 +387,9 @@ describe("Sala: fases a partir do estado gravado", () => {
   it("estação (Etapa P): relato inicial visível ao candidato sem liberação e fora da lista; avaliador vê os números da prova", async () => {
     const running = { phase: "running", started_at: "2026-10-11T14:55:00.000Z", ends_at: "2026-10-11T15:04:07.000Z", released_pressings: [] };
     await mount({ room: roles("candidate", running), content: contentFor("candidate", [], true) });
-    expect(screen.getByText("Impresso 1 · Relato do caso")).toBeTruthy();
+    // o relato faz parte da folha, sem número; os impressos numerados são só os liberáveis (decisão do dono de 16/10)
+    expect(screen.getByText("Relato do caso")).toBeTruthy();
+    expect(screen.queryByText("Impresso 1 · Relato do caso")).toBeNull();
     expect(screen.getByText("Relato inicial de teste.")).toBeTruthy();
     expect(screen.getByText("Impresso 1 · Aguardando liberação")).toBeTruthy();
     expect(screen.getByText("Impresso 2 · Aguardando liberação")).toBeTruthy();
@@ -397,7 +399,12 @@ describe("Sala: fases a partir do estado gravado", () => {
     cleanup();
 
     await mount({ room: roles("evaluator", { ...running, released_pressings: ["p1"] }), content: contentFor("evaluator", [], true) });
-    expect(screen.getByText("Este impresso já está visível desde o início.")).toBeTruthy();
+    // pedido 3 do dono (16/10): o relato aparece ao avaliador SEM número, e só os liberáveis levam "Impresso N"
+    expect(screen.getByText("Relato do caso (na folha do candidato)")).toBeTruthy();
+    expect(screen.getByText("O candidato já lê este texto na folha dele, desde o início.")).toBeTruthy();
+    expect(screen.queryByText(/Impresso \d+ · Relato/)).toBeNull();
+    expect(screen.getAllByText(/^Impresso 1 · /)).toHaveLength(1);
+    expect(screen.queryByText("no documento oficial: Impresso 1")).toBeNull();
     expect(screen.getByText("1/2")).toBeTruthy(); // só os liberáveis contam
     expect(screen.getAllByRole("button", { name: /^(Liberar|Ocultar)$/ })).toHaveLength(2); // o relato não tem botão
     expect(screen.getByText("no documento oficial: Impresso 2")).toBeTruthy();
