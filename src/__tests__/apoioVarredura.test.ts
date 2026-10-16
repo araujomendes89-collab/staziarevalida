@@ -122,7 +122,14 @@ async function analisePublicada(qid: string, extra: Record<string, unknown> = {}
   return a as string;
 }
 
-beforeAll(async () => {
+/**
+ * Monta o banco com todas as migrações e o mundo da apostila. Roda de novo antes da varredura do visitante (2026-10-15): o PGlite
+ * (Postgres em WebAssembly) acumula pilha a cada erro capturado, e as duas varreduras juntas (milhares de chamadas recusadas)
+ * passaram do limite ("stack depth limit exceeded"), deixando a transação abortada e derrubando os testes seguintes.
+ * Com um banco novo, cada varredura começa do zero; o que é conferido não muda.
+ */
+async function montarMundo() {
+  if (db) await db.close().catch(() => {});
   db = new PGlite();
   await db.exec(fs.readFileSync(path.join(ROOT, "supabase/tests/bootstrap.sql"), "utf8"));
   for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort()) await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
@@ -206,7 +213,8 @@ beforeAll(async () => {
   tutorId = (await sql(`insert into public.tutor_sessions (user_id, mode, title, personality_id, intensity, question_id) values ($1, 'questao', 'Hepatite B', 'direto', 3, $2) returning id`, [ALUNO, QID]))[0].id;
   await sql(`select public.ch_worker_tutor_append($1, $2, 'Por que a B?', 'Porque protege o recém-nascido.', $3::jsonb, '{}'::jsonb)`,
     [ALUNO, tutorId, JSON.stringify({ grounding: "source", sources: [{ ref: "F1", label: `${OFI_TITLE} · ${OFI_ORGAN} · p. 12` }] })]);
-}, 180_000);
+}
+beforeAll(montarMundo, 180_000);
 
 // =====================================================================================================================
 // (a)(c) varredura das funções
@@ -376,6 +384,7 @@ describe("varredura sistemática como ALUNO", () => {
 });
 
 describe("varredura sistemática como VISITANTE (anon)", () => {
+  beforeAll(montarMundo, 180_000); // banco novo: ver montarMundo
   it("toda função e tabela que o visitante alcança: nada da apostila", async () => {
     const f = await varrerFuncoes(null);
     const t = await varrerTabelas(null);

@@ -21,7 +21,7 @@ const ASMA = {
   publication_label: "24/03/2026 (Portaria de teste)", institution: "Ministério da Saúde (teste)", document_title: "PCDT de teste", source_url: "https://www.gov.br/teste",
   before_text: "Texto antigo da asma.", current_conduct: "1. Primeiro passo.\n2. Segundo passo.", reviewed: true, reviewed_at: "2026-10-06T12:00:00Z", published: true,
 };
-const ATLS = { ...ASMA, id: "2", slug: "atual-2026-10-14-atls-11", area: "CIRURGIA_GERAL", topic: "ATLS 11ª edição", subtopic: "Trauma", years: [2020], priority: 2, institution: "ACS (teste)", publication_label: "2025" };
+const ATLS = { ...ASMA, id: "2", slug: "atual-2026-10-14-atls-11", area: "CIRURGIA_GERAL", topic: "ATLS 11ª edição", subtopic: "Trauma", years: [2025], priority: 2, institution: "ACS (teste)", publication_label: "2025" };
 const DETALHE = {
   timeline: [{ year: 2025, text: "Evento de 2025." }, { year: 2023, text: "Evento de 2023." }], clinical_impact: "Impacto de teste.", exam_impact: "Cai assim na prova.", trap: "Armadilha de teste.",
   flashcards: [{ front: "Pergunta 1?", back: "Resposta 1" }, { front: "Pergunta 2?", back: "Resposta 2" }], practice_questions: [], questions_count: 0,
@@ -30,7 +30,7 @@ let list: any;
 
 beforeEach(() => {
   window.localStorage.clear();
-  list = { total: 2, by_area: { CLINICA_MEDICA: 1, CIRURGIA_GERAL: 1 }, years: [2020, ANO], items: [ASMA, ATLS] };
+  list = { total: 2, by_area: { CLINICA_MEDICA: 1, CIRURGIA_GERAL: 1 }, years: [2025, ANO], items: [ASMA, ATLS] }; // 15/10/2026: o aluno só vê 2025 e 2026 (o ATLS era de 2020 e sumia)
   backend.rpc.mockReset();
   backend.rpc.mockImplementation(async (fn: string, args: any) => {
     if (fn === "app_guideline_updates") {

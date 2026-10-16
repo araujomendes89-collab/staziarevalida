@@ -183,7 +183,9 @@ describe("migração e conexões", () => {
     expect(sql).not.toMatch(/\b(update|insert into|delete from)\s+public\.(questions|lessons|guideline_updates|question_official_answers)\b/);
   });
   it("o menu e o Início do administrador usam o contador", () => {
-    expect(readFileSync("src/novo/app/Shell.jsx", "utf8")).toContain("info.radarGraves");
+    // Novas telas (onda 1): o selo do menu saiu do Shell para o modelo do menu (shell/navModel.js); o Shell só repassa `info`
+    expect(readFileSync("src/novo/app/shell/navModel.js", "utf8")).toContain('if (id === "admin") return info.radarGraves');
+    expect(readFileSync("src/novo/app/Shell.jsx", "utf8")).toContain("badgeOf(id, info)");
     expect(readFileSync("src/novo/app/home/HomeScreen.jsx", "utf8")).toContain('boot.role === "admin" && <RadarAvisoFaixa');
     expect(readFileSync("src/novo/app/App.jsx", "utf8")).toContain('useRadarAvisos(boot.role === "admin")');
   });

@@ -41,26 +41,39 @@ function openBuilder(staz: any, mode: "q" | "sim" = "q") {
 
 describe("Montador: limite do plano", () => {
   it("teste grátis: mostra o total, as liberadas, as respondidas e o convite, sem preço nem gabarito", async () => {
-    const go = openBuilder(TESTE, "sim"); // o quadro com o detalhe do limite aparece junto do filtro do Simulado
+    // 143005f2 (15/10/2026): o Simulado nunca sorteia Questões Inéditas; elas e o quadro do limite ficam só no Banco de questões (treino)
+    const go = openBuilder(TESTE, "q");
     const select = (await screen.findByLabelText("Prova / edição")) as HTMLSelectElement;
     expect([...select.options].map((o) => o.textContent)).toContain("Questões Inéditas (20 de 74)");
     fireEvent.change(select, { target: { value: "staziamed" } });
-    expect((await screen.findAllByText(/20 de 74 liberadas no seu plano/)).length).toBeGreaterThan(1);
-    expect(screen.getByText("3 respondidas")).toBeTruthy();
-    expect(screen.getByText(/As outras 54 estão bloqueadas/)).toBeTruthy();
+    // no treino quem mostra o limite é o cartão "Questões Inéditas" (58778717): total, liberadas, respondidas e o convite
+    expect((await screen.findAllByText(/20 de 74 liberadas no seu plano/)).length).toBeGreaterThan(0); // linha "disponíveis com esses filtros"
+    const cartao = screen.getByRole("region", { name: "Questões Inéditas" });
+    expect(cartao.textContent).toContain("20 de 74 liberadas");
+    expect(cartao.textContent).toMatch(/Respondidas\s*3 de 20/);
+    expect(cartao.textContent).toContain("as outras abrem em um plano com mais acesso");
     expect(document.body.textContent).not.toMatch(/R\$|reais|por mês/i);
     fireEvent.click(screen.getByRole("button", { name: "Conhecer os planos" }));
     expect(go).toHaveBeenCalledWith("planos");
   });
 
   it("plano com todas (sem limite): nada de bloqueio nem convite", async () => {
-    openBuilder({ ...TESTE, released: 74, limited: false }, "sim");
+    openBuilder({ ...TESTE, released: 74, limited: false }, "q");
     const select = (await screen.findByLabelText("Prova / edição")) as HTMLSelectElement;
     expect([...select.options].map((o) => o.textContent)).toContain("Questões Inéditas");
     fireEvent.change(select, { target: { value: "staziamed" } });
     await screen.findByText(/disponíveis com esses filtros/);
     expect(screen.queryByText("Conhecer os planos")).toBeNull();
-    expect(screen.queryByText(/liberadas no seu plano/)).toBeNull();
+    // sem aviso de limite: nada de "X de Y liberadas" nem de bloqueadas (o cartão das inéditas da onda 3 diz só "Todas as 74 liberadas")
+    expect(document.body.textContent).not.toMatch(/\d+ de \d+ liberadas|bloqueadas/);
+    expect(screen.getByText("Todas as 74 liberadas")).toBeTruthy();
+  });
+
+  it("simulado: a prova inédita nem aparece na lista (regra do dono: inéditas fora do simulado)", async () => {
+    openBuilder(TESTE, "sim");
+    const select = (await screen.findByLabelText("Prova / edição")) as HTMLSelectElement;
+    expect([...select.options].map((o) => o.value)).not.toContain("staziamed");
+    expect([...select.options].map((o) => o.textContent).join(" ")).not.toMatch(/Inéditas/);
   });
 
   it("sem acesso: continua o aviso, e o total de inéditas aparece", async () => {

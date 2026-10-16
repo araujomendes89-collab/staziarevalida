@@ -10,11 +10,14 @@
  *     vetor ficam, com confiança baixa;
  *   - duplicata exata pela impressão digital do texto; níveis de confiança.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   CONFIDENCE, confidenceLevel, decide, decideAll, MAX_SAME_TOPIC, NO_TAXONOMY_CAP, scorePair, statementSim, taxonomySim, termListSim, textSim, WEIGHTS, norm,
 } from "../../server/contentHub/similarity/engine";
 import { cosseno, ladoDoPerfil, perfisReais, vetorDoTexto } from "./helpers/similaridade";
+
+// todos os pares dos ~180 perfis reais: sozinho leva ~4 s; com a suíte inteira (máquina cheia) passava dos 5 s do padrão
+vi.setConfig({ testTimeout: 60_000 });
 
 const reais = perfisReais();
 const comTax = reais.map((e) => ladoDoPerfil(e, { taxonomia: true }));

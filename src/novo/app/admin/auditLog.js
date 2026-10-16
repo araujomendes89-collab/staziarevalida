@@ -33,6 +33,7 @@ export const ACTION_LABEL = {
   "user.delete": "Usuário excluído",
   "plan.save": "Plano editado",
   "plan.benefits": "Benefícios do Elite alterados",
+  "plan.ineditas_limits": "Limite de Questões Inéditas por plano alterado", // 010300
   "settings.save": "Configurações salvas",
   "support.contact": "Contato de suporte alterado",
   "report.resolve": "Relato de aluno atendido",
