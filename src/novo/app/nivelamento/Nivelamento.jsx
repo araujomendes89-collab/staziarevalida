@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSession } from "../session.jsx";
-import { Banner, Button, Icon } from "../../ds";
-import { TITULO, APRESENTACAO, QUESTOES, RESULTADO, CORRECAO, CONVITE } from "./textos.js";
-import { fmt1, interpretar, avisoIncerteza, nomeArea, AVISO_NAO_E_NOTA } from "./calculo.js";
+import { Button, Icon } from "../../ds";
+import { QUESTOES } from "./textos.js";
 import { QuestionHeader } from "../practice/tela/QuestionHeader.jsx";
 import { QuestionSheet, Alternatives, QuestionFooter, ReportQuestion } from "../practice/tela/QuestionSheet.jsx";
-import "./nivelamento.css";
+import { Panel, RichIcon, Tile, useNarrow } from "../evolucao/ui.jsx";
+import { Apresentacao, Carregando, Correcao, ErroBanner, Moldura, Resultado } from "./NivelamentoTelas.jsx";
 
 /** Relógio que só conta para cima (o diagnóstico não tem tempo limite): segundos no bloco e na questão atual. */
 function useRelogio(chaveQuestao, ativo) {
@@ -28,17 +28,9 @@ export function deveMostrarNivelamento(boot) {
   return Boolean(boot?.nivelamento?.primeira_tela);
 }
 
-function ErroBanner({ erro }) {
-  if (!erro) return null;
-  return (
-    <div style={{ padding: "0 24px" }}>
-      <Banner tone="danger">{String(erro.message || erro)}</Banner>
-    </div>
-  );
-}
-
 export function Nivelamento({ modo, go }) {
   const { backend, refresh, boot } = useSession();
+  const narrow = useNarrow();
   
   const [estado, setEstado] = useState(null);
   const [fase, setFase] = useState("carregando"); // carregando, apresentacao, questoes, resultado, correcao
@@ -57,11 +49,17 @@ export function Nivelamento({ modo, go }) {
 
   // Correcao
   const [correcao, setCorrecao] = useState(null);
-  const [mostrarCalculo, setMostrarCalculo] = useState(false);
+  const [filtroArea, setFiltroArea] = useState("todas");
 
   useEffect(() => {
     carregarEstado();
   }, []);
+
+  // cada etapa começa do topo (a correção abre a partir do fim do resultado)
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && /jsdom/i.test(navigator.userAgent)) return;
+    window.scrollTo?.(0, 0);
+  }, [fase]);
 
   const carregarEstado = async () => {
     try {
@@ -135,6 +133,9 @@ export function Nivelamento({ modo, go }) {
       setRespostasLocais(locais);
       setIdxQuestao(Math.min(proxIdx, s.itens.length - 1));
       
+      if (modo === "rota") {
+        go("nivelamento", { etapa: "questoes" });
+      }
       setFase("questoes");
     } catch (err) {
       setErro(err);
@@ -173,6 +174,9 @@ export function Nivelamento({ modo, go }) {
     try {
       const st = await backend.rpc("app_nivelamento_finalizar");
       setEstado(st);
+      if (modo === "rota") {
+        go("nivelamento"); // Remove ?etapa=questoes
+      }
       setFase("resultado");
     } catch (err) {
       setErro(err);
@@ -187,6 +191,7 @@ export function Nivelamento({ modo, go }) {
     try {
       const c = await backend.rpc("app_nivelamento_correcao");
       setCorrecao(c);
+      setFiltroArea("todas");
       setFase("correcao");
     } catch (err) {
       setErro(err);
@@ -195,125 +200,56 @@ export function Nivelamento({ modo, go }) {
     }
   };
 
-  const renderApresentacao = () => {
-    const andamento = estado?.situacao === "bloco1" || estado?.situacao === "bloco2";
-    
-    return (
-      <div className="nivelamento-layout">
-        <div className="nivelamento-content">
-          <ErroBanner erro={erro} />
-          <div className="nivelamento-apresentacao">
-            <h2>{APRESENTACAO.titulo}</h2>
-            <p className="sub">{APRESENTACAO.subtitulo}</p>
-            
-            <div className="nivelamento-secao" style={{ marginTop: 16 }}>
-              <h3>Para que serve</h3>
-              <ul>
-                {APRESENTACAO.paraQue.map((t, i) => <li key={i}>{t}</li>)}
-              </ul>
-            </div>
-            
-            <div className="nivelamento-secao">
-              <h3>Como funciona</h3>
-              <ul>
-                {APRESENTACAO.comoFunciona.map((t, i) => <li key={i}>{t}</li>)}
-              </ul>
-            </div>
-            
-            <p className="separacao">{APRESENTACAO.separacao}</p>
-            
-            <div className="nivelamento-acoes">
-              <button 
-                className="primario" 
-                onClick={() => iniciarOuContinuarSessao("iniciar")}
-                disabled={loadingAction}
-              >
-                {andamento ? APRESENTACAO.continuar(estado.respondidas, estado.total_bloco) : APRESENTACAO.comecar}
-              </button>
-              <button 
-                className="secundario" 
-                onClick={adiar}
-                disabled={loadingAction}
-              >
-                {APRESENTACAO.depois}
-              </button>
-            </div>
-            {modo === "primeira" && (
-              <p style={{ fontSize: 13, color: "var(--text-tertiary)", marginTop: -8 }}>
-                {APRESENTACAO.depoisAviso}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const renderQuestoes = () => {
     if (!sessao) return null;
     
     if (confirmarSair) {
       return (
-        <div className="nivelamento-layout">
-          <div className="nivelamento-header">
-            <h1>{QUESTOES.rotulo(sessao.bloco)}</h1>
-          </div>
-          <div className="nivelamento-content" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 24 }}>
-            <h2 style={{ margin: 0, fontSize: 24 }}>{QUESTOES.sairTitulo}</h2>
-            <p style={{ margin: 0, color: "var(--text-secondary)" }}>{QUESTOES.sairTexto}</p>
-            <div style={{ display: "flex", gap: 16 }}>
-              <Button variant="secondary" onClick={() => setConfirmarSair(false)} disabled={loadingAction}>{QUESTOES.sairNao}</Button>
-              <Button variant="danger" onClick={sairDasQuestoes} disabled={loadingAction}>{QUESTOES.sairSim}</Button>
+        <Moldura modo="primeira" overline={QUESTOES.rotulo(sessao.bloco)} titulo={QUESTOES.sairTitulo}>
+          <Panel className="nv-card nv-pausa">
+            <Tile tone="blue" size={52} radius={16}>
+              <RichIcon name="clipboard" size={32} />
+            </Tile>
+            <p className="nv-sum__text" style={{ margin: 0 }}>{QUESTOES.sairTexto}</p>
+            <div className="nv-actions">
+              <Button iconRight="arrow-right" onClick={() => setConfirmarSair(false)} disabled={loadingAction}>{QUESTOES.sairNao}</Button>
+              <Button variant="secondary" onClick={sairDasQuestoes} disabled={loadingAction}>{QUESTOES.sairSim}</Button>
             </div>
-          </div>
-        </div>
+          </Panel>
+        </Moldura>
       );
     }
-    
+
     if (painelFaltam) {
-      const faltam = sessao.itens.filter(i => !respostasLocais[i.ordem]);
+      const faltam = sessao.itens.filter((i) => !respostasLocais[i.ordem]);
       return (
-        <div className="nivelamento-layout">
-          <div className="nivelamento-header">
-            <h1>{QUESTOES.rotulo(sessao.bloco)}</h1>
-            <button className="nivelamento-close" onClick={() => setConfirmarSair(true)} aria-label="Sair">
-              <Icon name="x" size={24} />
-            </button>
-          </div>
-          <div className="nivelamento-content">
-            <h2 style={{ fontSize: 20, marginBottom: 16 }}>Resumo do bloco</h2>
-            <p style={{ color: "var(--danger-text)", marginBottom: 24 }}>{QUESTOES.faltam(faltam.length)}</p>
-            
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 32 }}>
+        <Moldura modo="primeira" overline={QUESTOES.rotulo(sessao.bloco)} titulo="Resumo do bloco">
+          <Panel className="nv-card">
+            <p className="nv-faltam">
+              <Icon name="info" size={16} />
+              {QUESTOES.faltam(faltam.length)}
+            </p>
+            <ul className="nv-blocos">
               {sessao.itens.map((it, i) => {
                 const resp = respostasLocais[it.ordem];
                 return (
-                  <button 
-                    key={it.ordem}
-                    onClick={() => { setIdxQuestao(i); setPainelFaltam(false); }}
-                    style={{ 
-                      display: "flex", justifyContent: "space-between", alignItems: "center", 
-                      padding: 16, background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", 
-                      borderRadius: 8, cursor: "pointer", textAlign: "left"
-                    }}
-                  >
-                    <span style={{ fontWeight: 500 }}>Questão {it.posicao}</span>
-                    {resp ? (
-                      <span style={{ color: "var(--success-text)", fontSize: 14 }}>Respondida ({resp})</span>
-                    ) : (
-                      <span style={{ color: "var(--danger-text)", fontSize: 14 }}>Em branco</span>
-                    )}
-                  </button>
+                  <li key={it.ordem}>
+                    <button type="button" className={`nv-bloco${resp ? " is-done" : ""}`} onClick={() => { setIdxQuestao(i); setPainelFaltam(false); }}>
+                      <span className="ev-mono">{it.posicao}</span>
+                      <small>{resp ? `Resposta ${resp}` : "Em branco"}</small>
+                    </button>
+                  </li>
                 );
               })}
+            </ul>
+            <div className="nv-actions">
+              <Button icon="arrow-left" variant="secondary" onClick={() => setPainelFaltam(false)}>Voltar às questões</Button>
             </div>
-            
-            <Button onClick={() => setPainelFaltam(false)}>Voltar às questões</Button>
-          </div>
-        </div>
+          </Panel>
+        </Moldura>
       );
     }
-    
+
     const item = sessao.itens[idxQuestao];
     const respondida = respostasLocais[item.ordem];
     const selecionada = escolha || respondida;
@@ -407,234 +343,31 @@ export function Nivelamento({ modo, go }) {
     );
   };
 
-  const renderResultado = () => {
-    const res = estado.resultado;
-    if (!res) return null; // Fallback
-    
-    const { status } = res;
-    
-    const acertosGerais = RESULTADO.acertos(res.acertos, res.total, fmt1(res.percentual_bruto));
-    const primeiraPrioridade = res.prioridades?.[0] ? nomeArea(res.prioridades[0]) : null;
 
-    return (
-      <div className="nivelamento-layout">
-        <div className="nivelamento-header">
-          <h1>{RESULTADO.titulo}</h1>
-        </div>
-        <div className="nivelamento-content">
-          <ErroBanner erro={erro} />
-          <div className="nivelamento-resultado">
-            
-            <div className="nivelamento-pg-container">
-              {status !== "DADOS_INSUFICIENTES" && <div className="nivelamento-selo">{RESULTADO.selo}</div>}
-              
-              {status === "DADOS_INSUFICIENTES" ? (
-                <div style={{ fontSize: 16, color: "var(--text-secondary)", marginTop: 16, padding: "0 24px" }}>
-                  {RESULTADO.insuficiente}
-                </div>
-              ) : (
-                <>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                    {RESULTADO.rotuloPG}
-                  </div>
-                  <div className="nivelamento-pg">{fmt1(res.score)}%</div>
-                  <div className="nivelamento-nivel">Nível {res.nivel} · {res.nivel_nome}</div>
-                  <div className="nivelamento-foco">{res.nivel_foco}</div>
-                </>
-              )}
-              
-              <div className="nivelamento-acertos" style={{ marginTop: 24 }}>
-                <Icon name="target" size={16} /> {acertosGerais}
-              </div>
-            </div>
-
-            <div className="nivelamento-secao">
-              <h3>{RESULTADO.porArea}</h3>
-              <div className="nivelamento-barras">
-                {res.perfil.map(p => (
-                  <div key={p.area} className="nivelamento-barra">
-                    <div className="nivelamento-barra-head">
-                      <span>{p.nome}</span>
-                      <span>{fmt1(p.proficiencia)}%</span>
-                    </div>
-                    <div className="nivelamento-barra-bg">
-                      <div className="nivelamento-barra-fill" style={{ width: `${Math.max(0, Math.min(100, p.proficiencia))}%` }} />
-                    </div>
-                    <div className="nivelamento-barra-sub">{p.acertos} de {p.total}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {res.prioridades && res.prioridades.length > 0 && (
-              <div className="nivelamento-secao">
-                <h3>{RESULTADO.prioridades}</h3>
-                <div className="nivelamento-prioridades">
-                  {res.prioridades.map((areaId, i) => {
-                    const p = res.perfil.find(x => x.area === areaId);
-                    return (
-                      <div key={areaId} className="nivelamento-prioridade-item">
-                        <div className="nivelamento-prioridade-numero">{i + 1}</div>
-                        <span>{RESULTADO.prioridadeItem(p.nome, fmt1(p.prioridade))}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="nivelamento-interpretacao">
-              {interpretar(res, { pessoa: "voce" })}
-            </div>
-            
-            <div className="nivelamento-aviso">
-              <Icon name="info" size={16} style={{ float: "left", marginRight: 8, marginTop: 2 }} />
-              {avisoIncerteza(res)}
-            </div>
-
-            <div className="nivelamento-calculo-box">
-              <button 
-                className="nivelamento-calculo-btn" 
-                onClick={() => setMostrarCalculo(!mostrarCalculo)}
-                aria-expanded={mostrarCalculo}
-              >
-                <span>{RESULTADO.comoCalculamosTitulo}</span>
-                <Icon name={mostrarCalculo ? "chevron-up" : "chevron-down"} size={20} />
-              </button>
-              {mostrarCalculo && (
-                <div className="nivelamento-calculo-content">
-                  <ul>
-                    {RESULTADO.comoCalculamos.map((item, i) => <li key={i}>{item}</li>)}
-                  </ul>
-                  <div style={{ marginTop: 16 }}>{RESULTADO.acertosNota}</div>
-                </div>
-              )}
-            </div>
-
-            <div className="nivelamento-aviso">
-              <Icon name="triangle-alert" size={16} style={{ float: "left", marginRight: 8, marginTop: 2 }} />
-              {AVISO_NAO_E_NOTA}
-            </div>
-
-            {primeiraPrioridade && status !== "DADOS_INSUFICIENTES" && (
-              <div style={{ fontSize: 15, fontWeight: 500, textAlign: "center", color: "var(--action-primary)", marginTop: 8 }}>
-                {RESULTADO.planoComeca(primeiraPrioridade)}
-              </div>
-            )}
-
-            <div className="nivelamento-acoes" style={{ marginTop: 0 }}>
-              {estado.situacao === "parcial" && (
-                <button 
-                  className="primario" 
-                  onClick={() => iniciarOuContinuarSessao("continuar")}
-                  disabled={loadingAction}
-                  style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center", padding: "12px 16px" }}
-                >
-                  <span>{RESULTADO.continuar30}</span>
-                  <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.9 }}>{RESULTADO.continuar30Texto}</span>
-                </button>
-              )}
-              <button 
-                className={estado.situacao === "parcial" ? "secundario" : "primario"} 
-                onClick={async () => {
-                  if (modo === "primeira") await refresh();
-                  else go("home");
-                }}
-                disabled={loadingAction}
-              >
-                {modo === "primeira" ? RESULTADO.entrar : RESULTADO.inicio}
-              </button>
-            </div>
-            
-            <div style={{ textAlign: "center" }}>
-              <Button variant="ghost" onClick={verCorrecao} disabled={loadingAction}>{RESULTADO.verCorrecao}</Button>
-            </div>
-
-          </div>
-        </div>
-      </div>
-    );
+  const entrar = async () => {
+    if (modo === "primeira") await refresh();
+    else go("home");
   };
 
-  const renderCorrecao = () => {
-    if (!correcao) return null;
-    return (
-      <div className="nivelamento-layout" style={{ background: "var(--bg-app)" }}>
-        <div className="nivelamento-header">
-          <h1>{CORRECAO.titulo}</h1>
-          <button className="nivelamento-close" onClick={() => setFase("resultado")} aria-label={RESULTADO.ocultarCorrecao}>
-            <Icon name="x" size={24} />
-          </button>
-        </div>
-        <div className="nivelamento-content" style={{ maxWidth: 800 }}>
-          <ErroBanner erro={erro} />
-          
-          <div style={{ marginBottom: 24 }}>
-            <Button variant="secondary" onClick={() => setFase("resultado")}>
-              <Icon name="arrow-left" size={16} /> Voltar ao resultado
-            </Button>
-          </div>
-          
-          <div>
-            {correcao.itens.map((item, i) => {
-              const certa = item.correta;
-              return (
-                <div key={item.ordem} className="nivelamento-correcao-item">
-                  <div className={`nivelamento-correcao-badge ${certa ? "certa" : "errada"}`}>
-                    <Icon name={certa ? "check" : "x"} size={16} />
-                    {certa ? CORRECAO.certa : CORRECAO.errada}
-                  </div>
-                  
-                  <div style={{ marginBottom: 24, fontSize: 13, color: "var(--text-tertiary)" }}>
-                    Bloco {item.bloco} · Questão {item.posicao}
-                  </div>
-                  
-                  <QuestionSheet
-                    compact
-                    revealed
-                    question={item.questao}
-                    alternatives={
-                      <Alternatives
-                        options={item.questao.options}
-                        revealed
-                        chosen={item.resposta}
-                        stateOf={(id) => {
-                          if (id === item.gabarito) return "correct";
-                          if (id === item.resposta && !item.correta) return "incorrect";
-                          return "dimmed";
-                        }}
-                      />
-                    }
-                  />
-                  
-                  <div className="nivelamento-comentario">
-                    <h4>{CORRECAO.comentario}</h4>
-                    <p className="nivelamento-comentario-texto">
-                      {item.comentario || CORRECAO.semComentario}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  if (fase === "carregando") {
-    return (
-      <div className="nivelamento-layout" style={{ alignItems: "center", justifyContent: "center" }}>
-        <ErroBanner erro={erro} />
-        {!erro && <p style={{ color: "var(--text-tertiary)" }}>Carregando...</p>}
-      </div>
-    );
-  }
-
-  if (fase === "apresentacao") return renderApresentacao();
+  if (fase === "carregando") return <Carregando modo={modo} erro={erro} />;
+  if (fase === "apresentacao")
+    return <Apresentacao modo={modo} estado={estado} ocupado={loadingAction} erro={erro} onComecar={() => iniciarOuContinuarSessao("iniciar")} onDepois={adiar} />;
   if (fase === "questoes") return renderQuestoes();
-  if (fase === "resultado") return renderResultado();
-  if (fase === "correcao") return renderCorrecao();
-  
-  return null;
+  if (fase === "resultado" && estado?.resultado)
+    return (
+      <Resultado
+        modo={modo}
+        estado={estado}
+        res={estado.resultado}
+        narrow={narrow}
+        ocupado={loadingAction}
+        erro={erro}
+        onContinuar30={() => iniciarOuContinuarSessao("continuar")}
+        onEntrar={entrar}
+        onCorrecao={verCorrecao}
+      />
+    );
+  if (fase === "correcao" && correcao)
+    return <Correcao modo={modo} correcao={correcao} filtro={filtroArea} setFiltro={setFiltroArea} erro={erro} onVoltar={() => setFase("resultado")} />;
+  return <Carregando modo={modo} erro={erro} />;
 }

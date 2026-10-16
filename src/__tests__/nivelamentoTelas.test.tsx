@@ -246,8 +246,11 @@ describe("Telas de Nivelamento", () => {
     // Resultado
     expect(await screen.findByText("57,5%")).toBeTruthy();
     expect(screen.getByText(/Intermediário/)).toBeTruthy();
-    expect(screen.getByText(/Acertos: 18 de 30 \(60,0%\)/)).toBeTruthy();
-    expect(screen.getByText(/Cirurgia · prioridade 62,5/)).toBeTruthy();
+    expect(screen.getByText(/18 de 30/)).toBeTruthy();
+    // 1ª prioridade: Cirurgia (prioridade 62,5), depois GO; a régua dos níveis não repete os nomes
+    expect(screen.getByText("prioridade 62,5")).toBeTruthy();
+    expect(screen.getByLabelText("Nível 3 de 5")).toBeTruthy();
+    expect(screen.getAllByText("Cirurgia").length).toBeGreaterThan(0);
     expect(screen.getByText(/Resultado inicial sujeito a revisão por novas questões/)).toBeTruthy();
     expect(screen.getByText("Provisório")).toBeTruthy();
 
@@ -272,7 +275,7 @@ describe("Telas de Nivelamento", () => {
     
     expect(await screen.findByText("Correção do diagnóstico")).toBeTruthy();
     expect(screen.queryAllByText(/^Gabarito/).length).toBeGreaterThan(0);
-    expect(screen.getByText("Você errou")).toBeTruthy();
+    expect(screen.getAllByText("Você errou").length).toBeGreaterThan(0);
   });
 
   it("deveMostrarNivelamento and Convite", () => {
@@ -281,7 +284,7 @@ describe("Telas de Nivelamento", () => {
 
     // Convite novo
     const { rerender } = render(<NivelamentoConvite estado={{ convite: true, situacao: "novo" }} go={go} />);
-    expect(screen.getByText("Diagnóstico de nivelamento")).toBeTruthy();
+    expect(screen.getAllByText("Diagnóstico de nivelamento").length).toBeGreaterThan(0);
     
     rerender(<NivelamentoConvite estado={{ convite: true, situacao: "parcial", resultado: { nivel: 3, nivel_nome: "Intermediário" } }} go={go} />);
     expect(screen.getByText(/Nível 3 · Intermediário/)).toBeTruthy();

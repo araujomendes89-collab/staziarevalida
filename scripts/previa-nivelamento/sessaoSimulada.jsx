@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, createContext, useMemo } from "react";
+import { AREAS, calcularPorContagem, EXEMPLO_ESPECIFICACAO } from "../../src/novo/app/nivelamento/calculo.js";
 
 const SessionContext = createContext(null);
 
@@ -21,25 +22,24 @@ export function SessionProvider({ children }) {
 
     if (estadoInicial === "parcial" || estadoInicial === "concluido") {
       situacao = estadoInicial;
-      resultado = {
-        status: "PROVISORIO", score: 57.5, nivel: 3, nivel_nome: "Intermediário",
-        nivel_foco: "Fortalecer raciocínio clínico e tomada de decisão",
-        acertos: 18, total: 30, percentual_bruto: 60.0,
-        faixa_indicativa: [40, 70],
-        prioridades: ["CIRURGIA_GERAL", "GINECOLOGIA_OBSTETRICIA", "MEDICINA_FAMILIA_COMUNIDADE", "PEDIATRIA", "CLINICA_MEDICA"],
-        perfil: [
-          { area: "CLINICA_MEDICA", nome: "Clínica Médica", proficiencia: 75.0, acertos: 5, total: 6, prioridade: 25.0 },
-          { area: "CIRURGIA_GERAL", nome: "Cirurgia", proficiencia: 37.5, acertos: 2, total: 6, prioridade: 62.5 },
-          { area: "PEDIATRIA", nome: "Pediatria", proficiencia: 62.5, acertos: 4, total: 6, prioridade: 37.5 },
-          { area: "GINECOLOGIA_OBSTETRICIA", nome: "Ginecologia e Obstetrícia", proficiencia: 50.0, acertos: 3, total: 6, prioridade: 50.0 },
-          { area: "MEDICINA_FAMILIA_COMUNIDADE", nome: "Medicina de Família e Comunidade", proficiencia: 62.5, acertos: 4, total: 6, prioridade: 37.5 }
-        ]
-      };
+      // conta de verdade (calculo.js): parcial = 15 questões (3 por área); concluído = exemplo da especificação (18 de 30)
+      resultado = calcularPorContagem(
+        estadoInicial === "parcial"
+          ? [
+              { area: "CLINICA_MEDICA", acertos: 3, total: 3 },
+              { area: "CIRURGIA_GERAL", acertos: 1, total: 3 },
+              { area: "PEDIATRIA", acertos: 2, total: 3 },
+              { area: "GINECOLOGIA_OBSTETRICIA", acertos: 1, total: 3 },
+              { area: "MEDICINA_FAMILIA_COMUNIDADE", acertos: 2, total: 3 },
+            ]
+          : EXEMPLO_ESPECIFICACAO
+      );
     }
 
     let questoesBase = [];
     try {
-      fetch("/dados.json").then(r => r.json()).then(d => { questoesBase = d; });
+      // dados.json vem em blocos de 6 por área, na ordem de AREAS (como o banco devolve: a questão traz a área)
+      fetch("/dados.json").then(r => r.json()).then(d => { questoesBase = d.map((q, i) => ({ ...q, area: q.area ?? AREAS[Math.floor(i / 6)]?.id })); });
     } catch(e) {}
 
     const delay = (ms) => new Promise(res => setTimeout(res, ms));
@@ -155,10 +155,19 @@ export function SessionProvider({ children }) {
           if (situacao === "concluido") {
              fim = 30;
           }
-          const itens = questoesBase.slice(0, fim).map((q, i) => {
+          // prévia aberta direto no resultado (?estado=...): respostas de mentira coerentes com a conta (acertos por área do resultado)
+          const simulada = estadoInicial && !Object.keys(respostasBloco1).length;
+          const base = simulada && fim === 15 ? AREAS.flatMap((_, k) => questoesBase.slice(k * 6, k * 6 + 3)) : questoesBase.slice(0, fim);
+          const vistos = {};
+          const itens = base.map((q, i) => {
             const ordem = i + 1;
             const b = ordem <= 15 ? 1 : 2;
-            const resposta = b === 1 ? respostasBloco1[ordem] : respostasBloco2[ordem];
+            let resposta = b === 1 ? respostasBloco1[ordem] : respostasBloco2[ordem];
+            if (simulada && resultado) {
+              const j = (vistos[q.area] = (vistos[q.area] ?? -1) + 1);
+              const acertos = resultado.perfil.find((p) => p.area === q.area)?.acertos ?? 0;
+              resposta = j < acertos ? q.gabarito : ["A", "B", "C", "D"].find((l) => l !== q.gabarito);
+            }
             return {
               ordem,
               bloco: b,

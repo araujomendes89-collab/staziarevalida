@@ -63,6 +63,7 @@ const TITLES = {
   conquistas: ["Conquistas", "Stazia Arena · medalhas e recompensas"],
   perfil: ["Minha conta", "Dados, segurança e privacidade"],
   planos: ["Meu plano", "Conta · o que cada plano inclui"],
+  nivelamento: ["Diagnóstico de nivelamento", "Evolução · o seu nível e por onde começar"],
   teoria2: ["Teoria para a prática", "Esqueletos, documentos médicos e protocolos aplicados às estações"],
   estacoes: ["Banco de estações", "Estações nas 5 grandes áreas"],
   dupla: ["Praticar", "Treine em dupla com outro aluno"],
@@ -75,7 +76,7 @@ const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", "nivelamento", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "mapas", "planos"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "mapas", "planos", "nivelamento"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -143,11 +144,14 @@ function Screen() {
   };
   const setTheme = (next) => updateProfile({ theme: next }).catch(() => {});
 
+  const { search } = useLocation();
+  const query = new URLSearchParams(search);
+
   // o Tutor abre em qualquer tela de estudo, com o contexto que a tela já conhece
   // (ao sair da sessão os selos do menu, como o do Caderno de Erros, são perguntados de novo ao banco)
   if (route === "sessao") forgetShellCounts(backend);
   if (route === "sessao") return <TutorDockProvider go={go}><PracticeSession go={go} /></TutorDockProvider>;
-  if (route === "nivelamento") return <Nivelamento modo="rota" go={go} />;
+  if (route === "nivelamento" && query.get("etapa") === "questoes") return <Nivelamento modo="rota" go={go} />;
   // a tela de uma estação abre sem a moldura: o aviso de "em reconstrução" entra aqui, antes dela
   if (route === "estacao")
     return (
@@ -164,6 +168,7 @@ function Screen() {
   let body;
   if (route === "home") body = <HomeScreen go={go} mobile={mobile} />;
   else if (route === "hoje") body = <TodayPlan go={go} />;
+  else if (route === "nivelamento") body = <Nivelamento go={go} modo="rota" />;
   else if (route === "aulas") body = <LessonsScreen go={go} />;
   else if (route === "temas") body = <ThemesScreen go={go} />;
   else if (route === "atualizacoes") body = <UpdatesScreen go={go} />;
