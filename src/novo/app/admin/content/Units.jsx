@@ -363,6 +363,32 @@ function Editor({ version, titulo, claims, editable: podeEditar, canNewVersion =
   const [completo, setCompleto] = React.useState(false);
   const [chaveEditorAula, setChaveEditorAula] = React.useState(0);
   const act = useAction();
+  // trava de edição (migração 013060): enquanto edita, a tela segura a trava com o hash da versão que abriu; o banco recusa
+  // salvar por cima de quem está editando ou de uma versão que outra pessoa salvou depois. Sem a 013060 no banco: segue como antes.
+  const [trava, setTrava] = React.useState(null); // null | { quem, desde } (outra pessoa) | { mudou: true }
+  const sinalTrava = React.useCallback(() => {
+    Promise.resolve()
+      .then(() => backend.rpc("app_ch_doc_trava", { p_version_id: version.id, p_base_hash: version.content_hash }))
+      .then((r) => {
+        if (!r) return;
+        if (r.minha === false) setTrava({ quem: r.quem || "outra pessoa", desde: r.desde ?? null });
+        else if (r.mudou) setTrava({ mudou: true });
+        else setTrava(null);
+      })
+      .catch(() => {});
+  }, [backend, version.id, version.content_hash]);
+  React.useEffect(() => {
+    if (!editando) return undefined;
+    sinalTrava();
+    const t = setInterval(sinalTrava, 30000);
+    return () => {
+      clearInterval(t);
+      setTrava(null);
+      Promise.resolve()
+        .then(() => backend.rpc("app_ch_doc_trava_soltar", { p_version_id: version.id }))
+        .catch(() => {});
+    };
+  }, [editando, sinalTrava, backend, version.id]);
   const claimLabel = new Map(claims.map((c, i) => [c.id, `A${i + 1}`]));
   // versão no ar: só a formatação pode mudar (decisão do dono 16/10; o banco confere — migração 013080)
   const soFormatoNoAr = !podeEditar && podeFormatar;
@@ -403,6 +429,12 @@ function Editor({ version, titulo, claims, editable: podeEditar, canNewVersion =
     if (!completo) setChaveEditorAula(prev => prev + 1);
     setCompleto(!completo);
   };
+  // ao voltar do editor completo o módulo do histórico solta a trava: a tela pega de novo logo depois (sem esperar 30 s)
+  React.useEffect(() => {
+    if (!editando || completo) return undefined;
+    const t = setTimeout(sinalTrava, 400);
+    return () => clearTimeout(t);
+  }, [completo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Section
@@ -418,7 +450,7 @@ function Editor({ version, titulo, claims, editable: podeEditar, canNewVersion =
                 <div style={{ width: 1, background: "var(--border-subtle)", alignSelf: "stretch", margin: "4px 0" }} />
               </>
             )}
-            <Button size="sm" icon="check" disabled={!dirty || (soFormatoNoAr && !soFormato)} loading={act.busy} onClick={salvar}>
+            <Button size="sm" icon="check" disabled={!dirty || (soFormatoNoAr && !soFormato) || Boolean(trava)} loading={act.busy} onClick={salvar}>
               {soFormatoNoAr ? "Salvar formatação" : "Salvar texto"}
             </Button>
             <Button size="sm" variant="secondary" disabled={act.busy} onClick={cancelar}>
@@ -475,6 +507,22 @@ function Editor({ version, titulo, claims, editable: podeEditar, canNewVersion =
             ? "Até agora você só mudou a formatação: ao salvar, as aprovações continuam valendo."
             : "Mudar o texto, imagens ou links invalida as aprovações e exige gerar os materiais de novo; mudar só a formatação não. Informação clínica nova precisa de afirmação com evidência."}
         </p>
+      )}
+      {editable && trava && (
+        <div style={{ marginBottom: 10 }}>
+          {trava.mudou ? (
+            <Banner tone="danger" icon="refresh-cw" title="Esta aula foi salva por outra pessoa">
+              <p style={{ margin: "0 0 8px" }}>Depois que você começou a editar, outra pessoa salvou esta versão. Para não salvar por cima, recarregue a aula (o que você mudou aqui se perde).</p>
+              <Button size="sm" variant="secondary" icon="refresh-cw" onClick={onSaved}>
+                Recarregar
+              </Button>
+            </Banner>
+          ) : (
+            <Banner tone="warning" icon="lock" title={`${trava.quem} está editando esta aula`}>
+              {`Edição aberta${trava.desde ? ` desde ${new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(trava.desde))}` : ""}. Para não salvar por cima, espere a outra pessoa salvar ou sair do editor.`}
+            </Banner>
+          )}
+        </div>
       )}
       {act.feedback}
       

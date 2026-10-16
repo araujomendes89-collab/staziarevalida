@@ -14,6 +14,8 @@ import "./editorPro.css";
  * valor: documento rico ({ type: "doc", content }) · aoMudar(doc saneado, com "ref" nos blocos)
  * config / aoMudarConfig: configuração do documento inteiro (página, estilos...), uma chave por módulo.
  * contexto: dados da tela para os módulos (ex.: { versionId }). aoCriar(editor): para testes e telas que precisam do editor.
+ * Os botões e painéis recebem ctx = { config, mudarConfig, contexto, somenteLeitura, abrirPainel(id), fecharPainel(), painelAberto }.
+ * Painel com "atalho" (ex.: "Mod-f") abre com Ctrl/Cmd + a tecla, com o cursor no primeiro campo.
  */
 export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarConfig, contexto, somenteLeitura = false, rotulo, id, aoCriar }) {
   const [aba, setAba] = React.useState("inicio");
@@ -53,7 +55,37 @@ export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarCo
     if (editor && editor.isEditable === somenteLeitura) editor.setEditable(!somenteLeitura);
   }, [editor, somenteLeitura]);
 
-  const ctx = { config, mudarConfig: (chave, v) => aoMudarConfig?.({ ...config, [chave]: v }), contexto, somenteLeitura };
+  // painel lateral aberto por botão de módulo ou atalho (ex.: Ctrl+F abre "Localizar e substituir" e põe o cursor no campo)
+  const painelRef = React.useRef(null);
+  const [focarPainel, setFocarPainel] = React.useState(0);
+  const abrirPainel = (pid, { focar = true } = {}) => {
+    if (!paineis().some((p) => p.id === pid)) return false;
+    setPainel(pid);
+    if (focar) setFocarPainel((n) => n + 1);
+    return true;
+  };
+  React.useEffect(() => {
+    if (!focarPainel) return;
+    const campo = painelRef.current?.querySelector("input:not([disabled]), textarea:not([disabled]), select:not([disabled])");
+    campo?.focus();
+    campo?.select?.();
+  }, [focarPainel]);
+  const aoTeclar = (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+    const tecla = String(e.key || "").toLowerCase();
+    const alvo = paineis().find((p) => typeof p.atalho === "string" && p.atalho.toLowerCase() === `mod-${tecla}`);
+    if (alvo && abrirPainel(alvo.id)) e.preventDefault();
+  };
+
+  const ctx = {
+    config,
+    mudarConfig: (chave, v) => aoMudarConfig?.({ ...config, [chave]: v }),
+    contexto,
+    somenteLeitura,
+    abrirPainel,
+    fecharPainel: () => setPainel(null),
+    painelAberto: painel,
+  };
   if (!editor) return null;
 
   const abas = ABAS.filter((a) => botoesDaAba(a.id).length > 0);
@@ -67,7 +99,7 @@ export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarCo
   const aberto = listaPaineis.find((p) => p.id === painel);
 
   return (
-    <div className="ep-container" id={id}>
+    <div className="ep-container" id={id} onKeyDown={aoTeclar}>
       <div className="ep-toolbar">
         <div className="ep-tablist" role="tablist" aria-label="Abas do editor">
           {abas.map((a) => (
@@ -78,7 +110,7 @@ export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarCo
           {listaPaineis.length > 0 && (
             <div className="ep-paineis-btn">
               {listaPaineis.map((p) => (
-                <Botao key={p.id} icon={p.icone} label={p.titulo} ativo={painel === p.id} onClick={() => setPainel(painel === p.id ? null : p.id)} />
+                <Botao key={p.id} icon={p.icone} label={p.atalho ? `${p.titulo} (${p.atalho.replace(/^mod-/i, "Ctrl+").toUpperCase().replace("CTRL+", "Ctrl+")})` : p.titulo} ativo={painel === p.id} onClick={() => setPainel(painel === p.id ? null : p.id)} />
               ))}
             </div>
           )}
@@ -99,7 +131,7 @@ export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarCo
           <EditorContent editor={editor} />
         </div>
         {aberto && (
-          <aside className="ep-painel" aria-label={aberto.titulo}>
+          <aside className="ep-painel" aria-label={aberto.titulo} ref={painelRef}>
             <div className="ep-painel-header">
               {aberto.titulo}
               <button type="button" className="ep-painel-fechar" onClick={() => setPainel(null)} aria-label="Fechar painel">

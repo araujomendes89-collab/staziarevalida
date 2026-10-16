@@ -50,7 +50,13 @@ registrarModuloEditor({
   extensoes: () => [Localizar, Autocorrecao, OrtografiaNavegador],
   botoes: [
     {
-      id: "revisaoLocalizarProx", aba: "revisao", grupo: "localizar", rotuloGrupo: "Localizar", ordem: 10,
+      id: "revisaoLocalizarAbrir", aba: "revisao", grupo: "localizar", rotuloGrupo: "Localizar", ordem: 5,
+      Componente: ({ ctx }) => (
+        <Botao icon="search" label="Localizar e substituir (Ctrl+F)" ativo={ctx.painelAberto === "revisao-localizar"} onClick={() => ctx.abrirPainel?.("revisao-localizar")} />
+      ),
+    },
+    {
+      id: "revisaoLocalizarProx", aba: "revisao", grupo: "localizar", ordem: 10,
       Componente: ({ editor }) => (
         <Botao icon="chevron-down" label="Próximo resultado da busca" disabled={estadoLocalizar(editor.state).achados.length === 0} onClick={() => editor.commands.buscarProximo()} />
       ),
@@ -67,12 +73,12 @@ registrarModuloEditor({
         <Botao icon="eraser" label="Limpar marcações da busca" disabled={!estadoLocalizar(editor.state).termo} onClick={() => editor.commands.limparBusca()} />
       ),
     },
-    { id: "revisaoOrtografia", aba: "revisao", grupo: "correcao", rotuloGrupo: "Correção", ordem: 10, Componente: () => <BotaoPref chave="ortografia" icon="spell-check" label="Ortografia do navegador" /> },
-    { id: "revisaoAutocorrecao", aba: "revisao", grupo: "correcao", ordem: 20, Componente: () => <BotaoPref chave="autocorrecao" icon="wand-sparkles" label="Autocorreção de símbolos" /> },
-    { id: "revisaoPalavras", aba: "revisao", grupo: "contagem", rotuloGrupo: "Contagem", ordem: 10, Componente: ResumoPalavras },
+    { id: "revisaoOrtografia", aba: "revisao", grupo: "correcao", rotuloGrupo: "Correção", ordem: 110, Componente: () => <BotaoPref chave="ortografia" icon="spell-check" label="Ortografia do navegador" /> },
+    { id: "revisaoAutocorrecao", aba: "revisao", grupo: "correcao", ordem: 120, Componente: () => <BotaoPref chave="autocorrecao" icon="wand-sparkles" label="Autocorreção de símbolos" /> },
+    { id: "revisaoPalavras", aba: "revisao", grupo: "contagem", rotuloGrupo: "Contagem", ordem: 210, Componente: ResumoPalavras },
   ],
   paineis: [
-    { id: "revisao-localizar", titulo: "Localizar e substituir", icone: "search", Componente: PainelLocalizar },
+    { id: "revisao-localizar", titulo: "Localizar e substituir", icone: "search", atalho: "Mod-f", Componente: PainelLocalizar },
     { id: "revisao-contagem", titulo: "Contagem e correção", icone: "spell-check", Componente: PainelRevisao },
   ],
 });
