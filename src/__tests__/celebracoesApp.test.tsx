@@ -170,7 +170,8 @@ describe("Do banco para o catálogo (funções puras)", () => {
     const lote = [{ id: "novo-nivel", dados: {}, nivelSlug: "explorador" }, { id: "streak-7", dados: { n: 7 } }];
     expect(precisaResumo(lote)).toBe(true);
     const pronto = completarComResumo(lote, { level: { slug: "explorador", name: "Explorador", description: "Explorando." }, streak: { longest: 12 } });
-    expect(pronto[0]).toMatchObject({ dados: { nivel: "Explorador" }, complemento: "Explorando.", rotulo: "Novo nível: Explorador" });
+    expect(pronto[0]).toMatchObject({ dados: { nivel: "Explorador" }, rotulo: "Novo nível: Explorador" });
+    expect(pronto[0].complemento).toBeUndefined();
     expect(pronto[1].dados).toEqual({ n: 7, recorde: 12 });
     expect(completarComResumo(lote, { level: { slug: "outro", name: "Outro" } })[0].dados).toEqual({});
     expect(textoCompartilhar({ id: "streak-30", dados: { n: 30 } })).toBe("Estou há 30 dias seguidos estudando para o Revalida no StaziaMed!");

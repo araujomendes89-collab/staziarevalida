@@ -185,12 +185,13 @@ export function precisaResumo(eventos) {
   return eventos.some((e) => (e.id === "novo-nivel" && !e.dados?.nivel) || (/^streak-\d+$/.test(e.id) && e.dados?.recorde == null));
 }
 
-/** Completa com o resumo lido do banco DEPOIS da resposta (nunca recalcula): nome/descrição do nível e maior sequência. */
+/** Completa com o resumo lido do banco DEPOIS da resposta (nunca recalcula): nome do nível e maior sequência. */
 export function completarComResumo(eventos, resumo) {
   if (!resumo) return eventos;
   return eventos.map((e) => {
     if (e.id === "novo-nivel" && !e.dados?.nivel && resumo.level?.slug && resumo.level.slug === e.nivelSlug && resumo.level.name) {
-      return { ...e, dados: { ...e.dados, nivel: resumo.level.name }, complemento: resumo.level.description || e.complemento, rotulo: `Novo nível: ${resumo.level.name}` };
+      // o nome entra no detalhe do catálogo ("Agora você é {nivel}"); sem complemento, para não repetir o nome na tela
+      return { ...e, dados: { ...e.dados, nivel: resumo.level.name }, rotulo: `Novo nível: ${resumo.level.name}` };
     }
     const maior = Number(resumo.streak?.longest);
     if (/^streak-\d+$/.test(e.id) && e.dados?.recorde == null && Number.isFinite(maior) && maior >= Number(e.dados?.n)) {
