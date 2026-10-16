@@ -266,7 +266,10 @@ describe("Unidade didática, materiais, aprovação e publicação", () => {
     expect(visible).toHaveLength(1);
     expect(visible[0]).toMatchObject({ title: "Pré-eclâmpsia grave", version: 1 });
     expect(Object.keys(visible[0].materials).sort()).toEqual(["flashcards", "lesson"]);
-    await expect(rpc(EDITOR, "app_ch_save_unit_version", { p_version_id: version, p_content: content(claimDose) })).rejects.toThrow(/publicada não se edita/);
+    // versão publicada: conteúdo não se edita; só formatação pode (decisão do dono 16/10, migração 013080) — o mesmo conteúdo não muda nada
+    await expect(rpc(EDITOR, "app_ch_save_unit_version", { p_version_id: version, p_content: content(claimDose, " Repetir se necessário.") })).rejects.toThrow(/publicada não se edita/);
+    expect((await rpc(EDITOR, "app_ch_save_unit_version", { p_version_id: version, p_content: content(claimDose) })).so_formatacao).toBe(true);
+    expect((await one(`select status from public.ch_unit_versions where id = $1`, [version])).status).toBe("published");
   });
 
   it("fonte atualizada: evidência vira desatualizada, a unidade publicada fica 'requer atualização' e nasce uma candidata", async () => {
