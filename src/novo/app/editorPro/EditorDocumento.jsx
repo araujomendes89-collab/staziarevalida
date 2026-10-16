@@ -110,7 +110,7 @@ export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarCo
           {listaPaineis.length > 0 && (
             <div className="ep-paineis-btn">
               {listaPaineis.map((p) => (
-                <Botao key={p.id} icon={p.icone} label={p.atalho ? `${p.titulo} (${p.atalho.replace(/^mod-/i, "Ctrl+").toUpperCase().replace("CTRL+", "Ctrl+")})` : p.titulo} ativo={painel === p.id} onClick={() => setPainel(painel === p.id ? null : p.id)} />
+                <Botao key={p.id} icon={p.icone} label={p.titulo} ativo={painel === p.id} onClick={() => setPainel(painel === p.id ? null : p.id)} />
               ))}
             </div>
           )}

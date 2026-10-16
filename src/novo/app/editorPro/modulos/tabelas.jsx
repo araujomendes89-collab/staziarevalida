@@ -1,7 +1,9 @@
 // Módulo "tabelas" do editor profissional (M4): linhas/colunas acima e abaixo, mesclar e dividir células, cabeçalho de linha/coluna,
 // largura da coluna, cor da célula e janela "Inserir tabela". Os atributos são saneados em src/shared/docRico/modulos/tabelas.ts.
 import React from "react";
-import { Extension } from "@tiptap/core";
+import { Extension, findParentNodeClosestToPos } from "@tiptap/core";
+import { TextSelection } from "@tiptap/pm/state";
+import { addColumnAfter, addColumnBefore, deleteColumn, mergeCells, splitCell } from "@tiptap/pm/tables";
 import { registrarModuloEditor } from "../registroEditor.js";
 import { Botao, Seletor } from "../ui.jsx";
 import { cssSeguro } from "../../../../shared/docRico";
@@ -41,6 +43,63 @@ const AtributosCelula = Extension.create({
   },
 });
 
+// "colwidth" guardado é um NÚMERO (px da célula, §8 do PLANO); o prosemirror-tables espera uma LISTA (um valor por coluna
+// coberta) ao mesclar, dividir e pôr/tirar coluna, e quebrava ("colwidth.slice is not a function"). Esses comandos passam a
+// converter número -> lista antes e lista -> número (soma) depois, na MESMA transação: o documento nunca sai com lista.
+function larguraParaLista(tr) {
+  tr.doc.descendants((n, pos) => {
+    if (!CELULAS.includes(n.type.name) || typeof n.attrs.colwidth !== "number") return;
+    const cs = Math.max(1, Number(n.attrs.colspan) || 1);
+    const parte = Math.round(n.attrs.colwidth / cs);
+    tr.setNodeMarkup(pos, null, { ...n.attrs, colwidth: Array.from({ length: cs }, () => parte) });
+  });
+}
+function larguraParaNumero(tr) {
+  tr.doc.descendants((n, pos) => {
+    if (!CELULAS.includes(n.type.name) || !Array.isArray(n.attrs.colwidth)) return;
+    const soma = n.attrs.colwidth.reduce((t, w) => t + (Number(w) > 0 ? Number(w) : 0), 0);
+    tr.setNodeMarkup(pos, null, { ...n.attrs, colwidth: soma > 0 ? soma : null });
+  });
+}
+function comLarguraEmLista(fazer) {
+  return () => ({ tr, state, dispatch }) => {
+    if (dispatch) void state.tr; // relê doc/seleção (comando anterior na mesma corrente)
+    if (!fazer(state)) return false; // só confere (sem mexer no documento)
+    if (!dispatch) return true;
+    larguraParaLista(tr);
+    void state.tr; // o "state" encadeado do TipTap só relê doc/seleção da transação quando alguém pede state.tr
+    const ok = fazer(state, () => {});
+    larguraParaNumero(tr);
+    return ok;
+  };
+}
+function manterCursorNaTabela(tr, posTabela) {
+  const pos = tr.mapping.map(posTabela);
+  const ainda = findParentNodeClosestToPos(tr.selection.$from, (n) => n.type.name === "table");
+  if (ainda?.pos === pos) return;
+  const t = tr.doc.nodeAt(pos);
+  if (t) tr.setSelection(TextSelection.near(tr.doc.resolve(pos + t.nodeSize - 1), -1));
+}
+const ComandosLargura = Extension.create({
+  name: "comandosTabelaLargura",
+  priority: 50, // depois da tabela do núcleo: estes comandos substituem os de mesmo nome
+  addCommands() {
+    return {
+      mergeCells: comLarguraEmLista(mergeCells),
+      splitCell: comLarguraEmLista(splitCell),
+      mergeOrSplit: comLarguraEmLista((st, d) => mergeCells(st, d) || splitCell(st, d)),
+      addColumnBefore: comLarguraEmLista(addColumnBefore),
+      addColumnAfter: comLarguraEmLista(addColumnAfter),
+      deleteColumn: () => (props) => {
+        const t = findParentNodeClosestToPos(props.state.selection.$from, (n) => n.type.name === "table");
+        const ok = comLarguraEmLista(deleteColumn)()(props);
+        if (ok && props.dispatch && t) manterCursorNaTabela(props.tr, t.pos);
+        return ok;
+      },
+    };
+  },
+});
+
 const naTabela = (e) => e.isActive("table");
 const btn = (id, grupo, ordem, icon, label, { pode, ativo, faz }) => ({
   id,
@@ -69,7 +128,7 @@ const larguraAtual = (editor) => {
 
 registrarModuloEditor({
   id: "tabelas",
-  extensoes: () => [AtributosCelula],
+  extensoes: () => [AtributosCelula, ComandosLargura],
   paineis: [{ id: "tabela-inserir", titulo: "Inserir tabela", icone: "table-properties", Componente: PainelTabela }],
   botoes: [
     btn("tb-linhaAcima", "tabela", 160, "between-horizontal-start", "Linha acima", { pode: naTabela, faz: (c) => c.addRowBefore() }),

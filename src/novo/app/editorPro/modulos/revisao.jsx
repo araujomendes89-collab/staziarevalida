@@ -52,7 +52,7 @@ registrarModuloEditor({
     {
       id: "revisaoLocalizarAbrir", aba: "revisao", grupo: "localizar", rotuloGrupo: "Localizar", ordem: 5,
       Componente: ({ ctx }) => (
-        <Botao icon="search" label="Localizar e substituir (Ctrl+F)" ativo={ctx.painelAberto === "revisao-localizar"} onClick={() => ctx.abrirPainel?.("revisao-localizar")} />
+        <Botao icon="search" label="Localizar (Ctrl+F)" ativo={ctx.painelAberto === "revisao-localizar"} onClick={() => ctx.abrirPainel?.("revisao-localizar")} />
       ),
     },
     {
