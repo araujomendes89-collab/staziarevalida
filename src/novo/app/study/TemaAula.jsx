@@ -14,6 +14,7 @@ import "./aula.css";
 import { TextoRico } from "../textoRico/TextoRico.jsx";
 import { ricoValido } from "../../../shared/docRico";
 import ParagrafoRico from "../editorPro/leitor/ParagrafoRico.jsx";
+import { ricoDoMaterial, ricoDoPonto } from "../../../shared/aulas/camposRicos";
 
 export { boxOf };
 
@@ -102,20 +103,23 @@ function Table({ t }) {
 
 const duracao = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : null);
 
+// Legenda e transcrição com formatação (migração 013160): só quando o rico bate com o texto; senão, exatamente como antes.
 function Media({ m }) {
   const audio = m.tipo === "audio";
+  const ricoLegenda = ricoDoMaterial(m.formatacao, "legenda", m.legenda);
+  const ricoTranscricao = ricoDoMaterial(m.formatacao, "transcricao", m.transcricao);
   return (
     <figure className="al-fig al-mediafig">
       <iframe className={`al-media${audio ? " al-media-a" : ""}`} src={m.embed_url} title={m.titulo} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; encrypted-media; picture-in-picture" />
       <figcaption className="al-cap">
         <strong>{m.titulo}</strong>
         <span> · {audio ? "Áudio" : "Vídeo"}{duracao(m.duracao_segundos) ? ` · ${duracao(m.duracao_segundos)}` : ""}</span>
-        {m.legenda && <span className="al-cap-l">{m.legenda}</span>}
+        {m.legenda && (ricoLegenda ? <ParagrafoRico texto={m.legenda} rico={ricoLegenda} className="al-cap-l al-p-rico" /> : <span className="al-cap-l">{m.legenda}</span>)}
       </figcaption>
       {m.transcricao && (
         <details className="al-det">
           <summary>Ler a transcrição</summary>
-          <p className="al-p">{m.transcricao}</p>
+          {ricoTranscricao ? <ParagrafoRico texto={m.transcricao} rico={ricoTranscricao} className="al-p al-p-rico" /> : <p className="al-p">{m.transcricao}</p>}
         </details>
       )}
     </figure>
@@ -540,7 +544,7 @@ function Conteudo({ data, tema, go, notes, onBack, onProgresso }) {
                 <div className="al-sechead-t"><span className="al-over">Antes de começar</span><h2 className="al-sectab" id="al-resumo-h">Em resumo</h2></div>
               </div>
               {cab && !cabCurto && <p className="al-p al-lead">{cab}</p>}
-              {pontos.length > 0 && <ul className="al-pontos">{pontos.map((p, i) => <li key={i}><Icon name="circle-check" size={18} /><span><TextoRico texto={p} /></span></li>)}</ul>}
+              {pontos.length > 0 && <ul className="al-pontos">{pontos.map((p, i) => <li key={i}><Icon name="circle-check" size={18} /><ParagrafoRico texto={p} rico={ricoDoPonto(data.pontos_chave_ricos, i, p)} como="span" /></li>)}</ul>}
             </section>
           )}
 

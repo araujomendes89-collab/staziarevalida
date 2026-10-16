@@ -46,6 +46,8 @@ export const ACAO_HISTORICO = {
   "unit.material.insert": "Material inserido",
   "unit.material.retire": "Material retirado",
   "unit.material.restore": "Material devolvido à lista",
+  "unit.material.edit": "Legenda ou transcrição alterada",
+  "unit.material.format": "Formatação da legenda ou transcrição alterada (aprovações mantidas)",
   "approve.medical": "Aprovação médica",
   "approve.editorial": "Aprovação editorial",
   "approval.invalidate": "Aprovações deixaram de valer",
