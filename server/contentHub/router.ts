@@ -17,6 +17,7 @@ import { DEFAULT_MAX_SEARCHES, functionChecks, invalidateAiConfig, loadAiConfig 
 import { aiAllowed } from "./ai/registry";
 import { runScheduledReanalysis } from "./reanalysisRun";
 import { mountQuestoesStaziaMed } from "./questoes/routes";
+import { mountPreviaPdf } from "./previaPdf";
 import { DEFAULT_EMBEDDING_MODEL, embedderAllowed, embeddingsConfig, queryEmbedding } from "./embeddings";
 import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 
@@ -66,6 +67,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
     if (!me || !(me.staff || me.reviewer_areas.length)) throw new Error("Acesso restrito à equipe de conteúdo.");
     return me;
   };
+  mountPreviaPdf(router, deps!, asUser, requireStaff);
 
   /**
    * Situação da configuração: o que está pronto e o que é pendência real. Quem lê os PDFs, faz OCR e gera os arquivos

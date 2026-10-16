@@ -12,6 +12,13 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import { htmlInline, textoPuro } from "../../src/shared/textoRico";
 import { htmlDoDoc, ricoValido } from "../../src/shared/docRico";
+import {
+  sanearPagina,
+  cssPagina,
+  htmlMarcaDagua,
+  textosDecoracao,
+  type CamposPagina,
+} from "../../src/shared/docRico/modulos/pagina";
 
 const run = promisify(execFile);
 const ROOT = process.cwd();
@@ -98,6 +105,29 @@ export function referenceLine(r: any): string {
     .join(" · ") + (r.simulated ? " [evidência simulada — desenvolvimento]" : "");
 }
 
+export function paginaDaAula(content: any) {
+  return sanearPagina(content?.doc_config?.pagina);
+}
+
+export function opcoesPdfAula(content: any, meta: RenderMeta) {
+  const pg = paginaDaAula(content);
+  if (pg) {
+    return {
+      printBackground: true,
+      preferCSSPageSize: true,
+      displayHeaderFooter: false,
+    };
+  }
+  return {
+    format: "A5" as const,
+    printBackground: true,
+    displayHeaderFooter: true,
+    headerTemplate: "<span></span>",
+    footerTemplate: `<div style="font-size:7px;color:#687586;width:100%;padding:0 13mm;display:flex;justify-content:space-between;font-family:Arial,sans-serif"><span>StaziaMed · ${esc(meta.title).slice(0, 60)} · versão ${meta.version} de ${esc(dateBr(meta.revisedAt))}</span><span>página <span class="pageNumber"></span> de <span class="totalPages"></span></span></div>`,
+    margin: { top: "16mm", bottom: "18mm", left: "13mm", right: "13mm" },
+  };
+}
+
 export function lessonHtml(content: any, meta: RenderMeta, brand: Brand): string {
   const sections = (content.sections ?? [])
     .map((s: any) => {
@@ -109,8 +139,17 @@ export function lessonHtml(content: any, meta: RenderMeta, brand: Brand): string
     })
     .join("");
   const refs = (content.references ?? []).map((r: any) => `<li>${esc(referenceLine(r))}</li>`).join("");
+  const pg = sanearPagina(content?.doc_config?.pagina);
+  const campos: CamposPagina = {
+    titulo: content.title ?? meta.title,
+    versao: meta.version,
+    data: dateBr(meta.revisedAt),
+  };
+  const pageCss = pg ? cssPagina(pg, campos) : "@page{size:A5;margin:16mm 13mm 18mm}";
+  const marcaDagua = pg ? htmlMarcaDagua(pg) : "";
+
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(content.title ?? meta.title)}</title><style>${brand.fontFaces}${CSS_TOKENS}
-@page{size:A5;margin:16mm 13mm 18mm}
+${pageCss}
 body{font-size:11pt;line-height:1.55}
 header{border-bottom:2px solid var(--teal-500);padding-bottom:10px;margin-bottom:14px}
 header img{height:34px;width:auto;display:block;margin-bottom:10px}
@@ -123,7 +162,7 @@ p{margin:0 0 8px}
 .refs{margin-top:18px;border-top:1px solid var(--gray-200);padding-top:8px}
 .refs h2{color:var(--navy-900)}
 .refs li{font-size:8.5pt;color:var(--gray-600);margin-bottom:4px}
-</style></head><body>
+</style></head><body>${marcaDagua}
 <header>${brand.logo ? `<img src="${brand.logo}" alt="StaziaMed Revalida">` : ""}<div class="overline">Aula StaziaMed</div><h1>${esc(content.title ?? meta.title)}</h1>
 <div class="meta">${esc(content.label ?? "Material StaziaMed")} · conteúdo original, não é material oficial do Inep · versão ${meta.version} de ${esc(dateBr(meta.revisedAt))}</div>
 ${content.scope_note ? `<div class="scope">${esc(content.scope_note)}</div>` : ""}</header>
@@ -168,9 +207,30 @@ const squash = (s: string) => String(s ?? "").normalize("NFKC").replace(/­/g, "
 /** Compara o texto extraído do PDF com o que o material contém. */
 const FOOTER_LINES = [/^StaziaMed · /, /^página \d+ de \d+$/];
 
-export function comparePdfText(extracted: { pages: number; page_texts: string[]; empty_pages: number[] }, expected: { texts: string[]; references: string[] }, kind: string) {
+export function comparePdfText(
+  extracted: { pages: number; page_texts: string[]; empty_pages: number[] },
+  expected: { texts: string[]; references: string[] },
+  kind: string,
+  /** Layout de página (M5): textos de cabeçalho, rodapé, numeração e marca-d'água de cada página. */
+  decoracoes?: (pagina: number, total: number) => string[]
+) {
   // o rodapé de cada página não pode partir um parágrafo que continua na página seguinte
-  const body = extracted.page_texts.map((t) => t.split("\n").filter((line) => !FOOTER_LINES.some((r) => r.test(line.trim()))).join("\n"));
+  const body = extracted.page_texts.map((t, i) => {
+    if (!decoracoes) return t.split("\n").filter((line) => !FOOTER_LINES.some((r) => r.test(line.trim()))).join("\n");
+    // com layout de página: o texto compactado (sem espaços, então tanto faz se a caixa quebrou linha) perde, no começo e no
+    // fim da página, cada texto de decoração desta página (o Chromium escreve as caixas da margem antes do corpo e a
+    // marca-d'água depois)
+    const tirar = decoracoes(i + 1, extracted.pages).map(squash).filter(Boolean);
+    let s = squash(t);
+    for (let mudou = true; mudou; ) {
+      mudou = false;
+      for (const d of tirar) {
+        if (s.startsWith(d)) (s = s.slice(d.length)), (mudou = true);
+        if (s.endsWith(d)) (s = s.slice(0, s.length - d.length)), (mudou = true);
+      }
+    }
+    return s;
+  });
   const all = squash(body.join("\n"));
   const missingTexts = expected.texts.filter((t) => !all.includes(squash(t)));
   const missingReferences = expected.references.filter((r) => !all.includes(squash(r)));
@@ -227,20 +287,20 @@ export async function createRenderer(opts: { python?: string } = {}): Promise<Re
         await p.setContent(html, { waitUntil: "load" });
         // texto que não coube no card (cortado) é falha de conferência
         const overflow: number[] = kind === "visual_cards" ? await p.$$eval(".body", (els) => els.map((e, i) => (e.scrollHeight > e.clientHeight + 1 ? i + 1 : 0)).filter(Boolean)) : [];
+        const pg = kind === "lesson" ? paginaDaAula(content) : null;
         const pdf =
           kind === "lesson"
-            ? await p.pdf({
-                format: "A5",
-                printBackground: true,
-                displayHeaderFooter: true,
-                headerTemplate: "<span></span>",
-                footerTemplate: `<div style="font-size:7px;color:#687586;width:100%;padding:0 13mm;display:flex;justify-content:space-between;font-family:Arial,sans-serif"><span>StaziaMed · ${esc(meta.title).slice(0, 60)} · versão ${meta.version} de ${esc(dateBr(meta.revisedAt))}</span><span>página <span class="pageNumber"></span> de <span class="totalPages"></span></span></div>`,
-                margin: { top: "16mm", bottom: "18mm", left: "13mm", right: "13mm" },
-              })
+            ? await p.pdf(opcoesPdfAula(content, meta))
             : await p.pdf({ width: "108mm", height: "135mm", printBackground: true, preferCSSPageSize: true });
         let check: RenderedFile["check"];
         try {
-          check = comparePdfText(await extractPdf(Buffer.from(pdf), python), expectedTexts(kind, content), kind);
+          const campos: CamposPagina = {
+            titulo: content.title ?? meta.title,
+            versao: meta.version,
+            data: dateBr(meta.revisedAt),
+          };
+          const decoracoes = kind === "lesson" && pg ? (n: number, total: number) => textosDecoracao(pg, campos, n, total) : undefined;
+          check = comparePdfText(await extractPdf(Buffer.from(pdf), python), expectedTexts(kind, content), kind, decoracoes);
         } catch (error) {
           check = { ok: false, reason: `Conferência do PDF indisponível: ${(error as Error).message.slice(0, 200)}` };
         }

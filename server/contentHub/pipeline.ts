@@ -1107,7 +1107,7 @@ async function stepMaterials(ctx: Ctx): Promise<Step | null> {
     const payload = { tema: v.title, afirmacoes: claims.map((c) => ({ id: c.id, text: base.get(c.id), context: c.context })) };
 
     // aula: montada por software a partir da base revisada (sem texto novo)
-    await save(v.version_id, "lesson", { title: v.title, sections: v.content.sections, references: lessonReferences(claims), scope_note: v.scope_note, label: "Material StaziaMed" }, null);
+    await save(v.version_id, "lesson", { title: v.title, sections: v.content.sections, references: lessonReferences(claims), scope_note: v.scope_note, label: "Material StaziaMed", ...(v.content.doc_config ? { doc_config: v.content.doc_config } : {}) }, null);
 
     const summary = await ai<any>(ctx, "summary", payload, (o) =>
       o.items.flatMap((it: any, k: number) => (supported(it.text, it.claim_ids) ? [] : [{ where: `items[${k}]`, reason: "tópico sem sustentação exata (afirmação, número ou condição)" }]))

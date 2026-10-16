@@ -1,0 +1,233 @@
+/* Indicador visual de quebra de página dentro da folha do editor */
+.ep-folha [data-quebra-pagina="true"] {
+  position: relative;
+  margin-top: 2rem;
+  border-top: 1.5px dashed var(--border-default, #DCE1E8);
+  padding-top: 0.5rem;
+}
+
+.ep-folha [data-quebra-pagina="true"]::before {
+  content: "Quebra de página";
+  position: absolute;
+  top: -0.75rem;
+  left: 1rem;
+  background: var(--surface-card, #ffffff);
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary, #4F5A69);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+}
+
+/* Painel de Página e PDF */
+.ep-pg-painel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.ep-pg-secao {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border-default, #DCE1E8);
+  padding-bottom: 1rem;
+}
+
+.ep-pg-secao:last-of-type {
+  border-bottom: none;
+}
+
+.ep-pg-titulo-secao {
+  font-weight: 700;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary, #4F5A69);
+  margin-bottom: 0.25rem;
+}
+
+.ep-pg-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ep-pg-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.ep-pg-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.ep-pg-campo label {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #4F5A69);
+}
+
+.ep-pg-input,
+.ep-pg-select {
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--border-default, #DCE1E8);
+  border-radius: 4px;
+  background: var(--surface-card, #ffffff);
+  color: var(--text-primary, #1A202C);
+  font-size: 0.875rem;
+}
+
+.ep-pg-input:focus,
+.ep-pg-select:focus {
+  outline: none;
+  border-color: var(--teal-600, #0D9488);
+}
+
+.ep-pg-checkbox-linha {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.8125rem;
+}
+
+.ep-pg-checkbox-linha input[type="checkbox"] {
+  margin-top: 0.15rem;
+  cursor: pointer;
+}
+
+.ep-pg-sugestoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+}
+
+.ep-pg-sugestao-btn {
+  font-size: 0.6875rem;
+  padding: 0.2rem 0.4rem;
+  background: var(--surface-subtle, #F1F5F9);
+  border: 1px solid var(--border-default, #DCE1E8);
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--text-secondary, #4F5A69);
+}
+
+.ep-pg-sugestao-btn:hover {
+  background: var(--border-default, #DCE1E8);
+}
+
+.ep-pg-aviso {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #4F5A69);
+  background: var(--surface-subtle, #F8FAFC);
+  border-left: 3px solid var(--teal-600, #0D9488);
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.ep-pg-aviso--alerta {
+  border-left-color: var(--amber-500, #F59E0B);
+  background: var(--amber-50, #FFFBEB);
+  color: var(--amber-800, #92400E);
+}
+
+.ep-pg-acoes {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.ep-pg-btn-restaurar {
+  padding: 0.4rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--border-default, #DCE1E8);
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  color: var(--text-secondary, #4F5A69);
+}
+
+.ep-pg-btn-restaurar:hover:not(:disabled) {
+  background: var(--surface-subtle, #F1F5F9);
+}
+
+.ep-pg-btn-previa {
+  flex: 1;
+  padding: 0.4rem 0.75rem;
+  background: var(--teal-600, #0D9488);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ep-pg-btn-previa:hover:not(:disabled) {
+  background: var(--teal-700, #0F766E);
+}
+
+.ep-pg-btn-imprimir {
+  padding: 0.35rem 0.65rem;
+  background: var(--teal-600, #0D9488);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ep-pg-btn-previa:disabled,
+.ep-pg-btn-restaurar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ep-pg-previa-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.ep-pg-previa-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ep-pg-link-externo {
+  font-size: 0.75rem;
+  color: var(--teal-600, #0D9488);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ep-pg-iframe {
+  width: 100%;
+  height: 70vh;
+  border: 1px solid var(--border-default, #DCE1E8);
+  border-radius: 4px;
+  background: #ffffff;
+}
+
+.ep-pg-erro {
+  font-size: 0.8125rem;
+  color: var(--danger-text, #B91C1C);
+  background: var(--danger-bg, #FEF2F2);
+  border: 1px solid var(--danger-border, #FCA5A5);
+  padding: 0.5rem;
+  border-radius: 4px;
+}
