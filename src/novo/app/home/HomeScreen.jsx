@@ -18,6 +18,7 @@ import { IneditasCard, ineditasState } from "../practice/IneditasCard.jsx";
 import { PlayError, usePlayHome } from "../play/PlayDashboard.jsx";
 import { ScoreExplainer } from "../play/components.jsx";
 import { usePlayLoad } from "../play/usePlay.js";
+import { inicioCelular } from "../shell/cascaConfig.js";
 
 const DIAGNOSTIC_SIZE = 10;
 const R = { borderRadius: 24 };
@@ -258,6 +259,80 @@ function PriorityCard({ topics, go, compact }) {
   );
 }
 
+/** Etapa atual da trilha (a mesma escolha do cartão "Sua trilha"). */
+function trailPick(trail) {
+  if (!trail.data || trail.error || trail.data.enabled === false) return null;
+  let pick = null;
+  for (const a of trail.data.areas) {
+    const n = a.nodes.find((x) => x.state === "in_progress") ?? a.nodes.find((x) => x.state === "available");
+    if (n && (!pick || n.state === "in_progress")) pick = { area: a, node: n };
+    if (pick?.node.state === "in_progress") break;
+  }
+  return pick;
+}
+
+/**
+ * Início do celular "simples" (pacote MobileMenu, "Mobile · Início"): cartão "Próximo passo", Stazia Score e Meta de hoje lado a lado,
+ * e a Trilha de aprendizado. Mesmos dados do Início completo; Score, Meta, missões e trilha só com a Stazia Arena ligada.
+ * Escolha em shell/cascaConfig.js (INICIO_CELULAR = "simples").
+ */
+function HomeSimples({ hero, busy, sum, arenaOn, trail, startNode, top, setExplain }) {
+  const today = sum?.streak?.today ?? {};
+  const goalQ = today.min_questions ?? 10;
+  const doneQ = sum?.streak?.today_done ? goalQ : Math.min(today.questions ?? 0, goalQ);
+  const missions = arenaOn && sum?.missions?.total > 0 ? sum.missions : null;
+  const pick = arenaOn ? trailPick(trail) : null;
+  const scoreName = sum?.names?.score ?? "Stazia Score";
+  return (
+    <div className="ih ih--m ih--simples">
+      {top}
+      <section className="ihs-next" aria-label={hero.kicker}>
+        <span className="ihs-k">{hero.kicker === "Continue de onde parou" ? "Próximo passo" : hero.kicker}</span>
+        <h2>{hero.title}</h2>
+        <span className="ihs-sub">{hero.sub}</span>
+        <button type="button" className="ihs-cta ih-press" onClick={hero.run} disabled={busy}>
+          {hero.cta} <Icon name="arrow-right" size={16} />
+        </button>
+      </section>
+      {sum && (
+        <div className="ihs-two">
+          <button type="button" className="ihs-box ih-press" onClick={() => setExplain(true)} aria-label={`${scoreName} ${sum.score} de 1000${sum.level?.name ? `, ${sum.level.name}` : ""}. Ver como é calculado`}>
+            <span className="ihs-over">{scoreName}</span>
+            <span>
+              <b className="ihs-n">{sum.score}</b>
+              <small className="ihs-of"> /1000</small>
+            </span>
+            <span className="ihs-bar"><i style={{ width: `${Math.min(100, Math.round(sum.score / 10))}%` }} /></span>
+            {sum.level?.name && <span className="ihs-foot">{sum.level.name}</span>}
+          </button>
+          <div className="ihs-box" role="group" aria-label={`Meta de hoje: ${doneQ} de ${goalQ} questões`}>
+            <span className="ihs-over">Meta de hoje</span>
+            <span>
+              <b className="ihs-n">{doneQ}</b>
+              <small className="ihs-of"> /{goalQ} q.</small>
+            </span>
+            <span className="ihs-bar"><i style={{ width: `${Math.round((100 * doneQ) / Math.max(1, goalQ))}%` }} /></span>
+            {missions && (
+              <span className="ihs-foot">
+                <Mono>{missions.done}/{missions.total}</Mono> missões
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+      {pick && (
+        <button type="button" className="ihs-box ihs-trail ih-press" onClick={() => startNode(pick.area.area, pick.node.topic)} aria-label={`Trilha de aprendizado: ${pick.node.topic}. Continuar`}>
+          <span className="ihs-over ihs-over--brand">Trilha de aprendizado</span>
+          <b className="ihs-t">{pick.node.topic}</b>
+          <span className="ihs-foot">
+            {pick.area.label} · <Mono>{pick.node.answered}/{pick.node.goal}</Mono> questões da etapa
+          </span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas, arenaOn }) {
   const compact = useLayout() === "mobile";
   const { backend } = useSession();
@@ -382,6 +457,53 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas
     );
   };
 
+  // Faixa de números em blocos com ícone/gráfico (pacote HomeMobileCompact); a mesma no computador e no tablet (pedido do dono, 15/10/2026).
+  // Missões, liga/ranking e Stazia Score só com a Stazia Arena ligada (mesma regra de antes).
+  const kpiTiles = (
+    <>
+      <button type="button" className="ih-mk ih-mk--rev ih-press" onClick={() => go("erros")} aria-label={`${home.wrong_pending} para revisar`}>
+        <span className="ih-mk-ic">
+          {AppRealIcon({ name: "notebook-pen", size: 28 })}
+          {home.wrong_pending > 0 && <span className="ih-mk-badge">{home.wrong_pending}</span>}
+        </span>
+        <small>Revisar</small>
+      </button>
+      {sum && (
+        <button type="button" className="ih-mk ih-press" onClick={() => setExplain(true)} aria-label={`Stazia Score ${sum.score}. Ver como é calculado`}>
+          <b>{sum.score}</b>
+          <span className="ih-bar"><i style={{ width: `${Math.min(100, Math.round(sum.score / 10))}%` }} /></span>
+          <small>Score</small>
+        </button>
+      )}
+      <button type="button" className="ih-mk ih-press" onClick={() => go("desempenho")} aria-label={`${accuracy}% de acerto`}>
+        <Ring value={accuracy} total={100} size={34} stroke={4} color="var(--success-solid)" track="var(--chart-track)">{null}</Ring>
+        <small><b style={{ font: "600 12px var(--font-mono)", color: "var(--success-text)" }}>{accuracy}%</b> acerto</small>
+      </button>
+      <button type="button" className="ih-mk ih-press" onClick={() => go("desempenho")} aria-label={`${home.week.attempts} itens na semana, ${activeDays} ${activeDays === 1 ? "dia ativo" : "dias ativos"}`}>
+        <b>{home.week.attempts}</b>
+        <small>
+          na semana
+          <br />
+          {activeDays} {activeDays === 1 ? "dia ativo" : "dias ativos"}
+        </small>
+      </button>
+      {missionsKpi && (
+        <button type="button" className="ih-mk ih-press" onClick={() => go("missoes")} aria-label={`${missionsKpi.done} de ${missionsKpi.total} missões de hoje`}>
+          <span className="ih-mk-ic">{AppRealIcon({ name: "target", size: 26 })}</span>
+          <b style={{ lineHeight: "22px" }}>{missionsKpi.done}/{missionsKpi.total}</b>
+          <small>missões</small>
+        </button>
+      )}
+      {rankKpi && (
+        <button type="button" className="ih-mk ih-press" onClick={() => go("classificacao")} aria-label={`${rankLabel}. Abrir o Ranking`}>
+          <span className="ih-mk-ic">{AppRealIcon({ name: "trophy", size: 26 })}</span>
+          {rankKpi.n && <b style={{ lineHeight: "22px" }}>{rankKpi.n}</b>}
+          <small>{rankKpi.n ? rankKpi.l : <strong style={{ color: "var(--action-primary)" }}>{rankKpi.l}</strong>}</small>
+        </button>
+      )}
+    </>
+  );
+
   const planEl = plan.tasks.length > 0 && (
     compact ? (
       <section aria-label="Plano de hoje" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -413,6 +535,15 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas
   const trailEl = arenaOn ? <TrailCard trail={trail} onStart={startNode} busy={play.busy} go={go} /> : null;
   const priorityEl = <PriorityCard topics={home.priority_topics} go={go} compact={compact} />;
 
+  // ---- celular "simples" (pacote MobileMenu), escolhido em shell/cascaConfig.js
+  if (compact && inicioCelular() === "simples") {
+    return (
+      <>
+        <HomeSimples hero={hero} busy={busy || play.busy} sum={sum} arenaOn={arenaOn} trail={trail} startNode={startNode} top={top} setExplain={setExplain} />
+        {explain && sum && <ScoreExplainer summary={sum} onClose={() => setExplain(false)} />}
+      </>
+    );
+  }
   // ---- celular: faixa de 4 números, "Para você" em carrossel e tema prioritário
   if (compact) {
     const trailOn = arenaOn && !(trail.error || trail.data?.enabled === false);
@@ -429,46 +560,7 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas
         {heroEl}
         {planEl}
         <section className="ih-mkpis" aria-label="Seu desempenho">
-          <button type="button" className="ih-mk ih-mk--rev ih-press" onClick={() => go("erros")} aria-label={`${home.wrong_pending} para revisar`}>
-            <span className="ih-mk-ic">
-              {AppRealIcon({ name: "notebook-pen", size: 28 })}
-              {home.wrong_pending > 0 && <span className="ih-mk-badge">{home.wrong_pending}</span>}
-            </span>
-            <small>Revisar</small>
-          </button>
-          {sum && (
-            <button type="button" className="ih-mk ih-press" onClick={() => setExplain(true)} aria-label={`Stazia Score ${sum.score}. Ver como é calculado`}>
-              <b>{sum.score}</b>
-              <span className="ih-bar"><i style={{ width: `${Math.min(100, Math.round(sum.score / 10))}%` }} /></span>
-              <small>Score</small>
-            </button>
-          )}
-          <button type="button" className="ih-mk ih-press" onClick={() => go("desempenho")} aria-label={`${accuracy}% de acerto`}>
-            <Ring value={accuracy} total={100} size={34} stroke={4} color="var(--success-solid)" track="var(--chart-track)">{null}</Ring>
-            <small><b style={{ font: "600 12px var(--font-mono)", color: "var(--success-text)" }}>{accuracy}%</b> acerto</small>
-          </button>
-          <button type="button" className="ih-mk ih-press" onClick={() => go("desempenho")} aria-label={`${home.week.attempts} itens na semana, ${activeDays} ${activeDays === 1 ? "dia ativo" : "dias ativos"}`}>
-            <b>{home.week.attempts}</b>
-            <small>
-              na semana
-              <br />
-              {activeDays} {activeDays === 1 ? "dia ativo" : "dias ativos"}
-            </small>
-          </button>
-          {missionsKpi && (
-            <button type="button" className="ih-mk ih-press" onClick={() => go("missoes")} aria-label={`${missionsKpi.done} de ${missionsKpi.total} missões de hoje`}>
-              <span className="ih-mk-ic">{AppRealIcon({ name: "target", size: 26 })}</span>
-              <b style={{ lineHeight: "22px" }}>{missionsKpi.done}/{missionsKpi.total}</b>
-              <small>missões</small>
-            </button>
-          )}
-          {rankKpi && (
-            <button type="button" className="ih-mk ih-press" onClick={() => go("classificacao")} aria-label={`${rankLabel}. Abrir o Ranking`}>
-              <span className="ih-mk-ic">{AppRealIcon({ name: "trophy", size: 26 })}</span>
-              {rankKpi.n && <b style={{ lineHeight: "22px" }}>{rankKpi.n}</b>}
-              <small>{rankKpi.n ? rankKpi.l : <strong style={{ color: "var(--action-primary)" }}>{rankKpi.l}</strong>}</small>
-            </button>
-          )}
+          {kpiTiles}
         </section>
         {cards.length > 0 && (
         <section aria-label="Para você" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -499,37 +591,8 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas
         {heroEl}
         {planEl}
       </div>
-      <section className="ih-kpis" aria-label="Seu desempenho">
-        <button type="button" className="ih-kpi ih-kpi--rev" onClick={() => go("erros")}>
-          <b>{home.wrong_pending}</b>
-          <span>para revisar</span>
-        </button>
-        {sum && (
-          <button type="button" className="ih-kpi" onClick={() => setExplain(true)} aria-label={`Stazia Score ${sum.score}. Ver como é calculado`}>
-            <b>{sum.score}</b>
-            <span>{sum.names?.score ?? "Stazia Score"}</span>
-          </button>
-        )}
-        <div className="ih-kpi ih-kpi--ok">
-          <b>{accuracy}%</b>
-          <span>acurácia</span>
-        </div>
-        <div className="ih-kpi">
-          <b>{home.week.attempts}</b>
-          <span>itens na semana</span>
-        </div>
-        {missionsKpi && (
-          <button type="button" className="ih-kpi" onClick={() => go("missoes")} aria-label={`${missionsKpi.done} de ${missionsKpi.total} missões de hoje. Abrir Missões`}>
-            <b>{missionsKpi.done}/{missionsKpi.total}</b>
-            <span>missões</span>
-          </button>
-        )}
-        {rankKpi && (
-          <button type="button" className="ih-kpi" onClick={() => go("classificacao")} aria-label={`${rankLabel}. Abrir o Ranking`}>
-            {rankKpi.n && <b>{rankKpi.n}</b>}
-            <span className={rankKpi.n ? undefined : "ih-kpi-cta"}>{rankKpi.l}</span>
-          </button>
-        )}
+      <section className="ih-mkpis ih-mkpis--wide" aria-label="Seu desempenho">
+        {kpiTiles}
       </section>
       <div className="ih-cards">
         {trailEl}
