@@ -30,6 +30,7 @@ const conferir = [
   "supabase/conferir/editor-pro-historico.sql",
 ].map((p) => [p, ler(path.join(ROOT, p))] as const);
 const CONFERIR_013080 = "/Volumes/StaziaMed/.tmp-aulas/editor-pro/sql/013080-conferir.sql";
+const CONTAR_APROVACOES = "/Volumes/StaziaMed/.tmp-aulas/editor-pro/sql/contar-aprovacoes.sql";
 
 async function montar(ordemEditor: string[] | null) {
   const db = new PGlite();
@@ -86,6 +87,13 @@ async function conferirTudo(db: PGlite) {
     expect(res[0]).toEqual({ tem_hash_de_conteudo: true, tem_registro_formatacao: true, salvar_usa_conteudo: true, publicar_confere_conteudo: true, aula_confere_conteudo: true });
     expect(Number(res[1].versoes_com_hash_diferente)).toBe(0);
   }
+  // a consulta só-leitura de antes/depois da 013080 roda (e conta igual ao 013080-conferir)
+  if (fs.existsSync(CONTAR_APROVACOES)) {
+    const res = await db.exec(ler(CONTAR_APROVACOES));
+    expect(res).toHaveLength(3);
+    expect(res[0].rows[0]).toHaveProperty("aprovacoes_validas");
+    expect(res[2].rows[0]).toHaveProperty("versoes_com_aprovacao_valida");
+  }
 }
 
 describe("Editor profissional, onda 1: ordem das migrações (ed-integra)", () => {
@@ -112,7 +120,7 @@ describe("Editor profissional, onda 1: ordem das migrações (ed-integra)", () =
     await conferirTudo(producao);
   }, 300_000);
 
-  it("nenhuma migração do editor redefine função mexida depois no main (nivelamento 012300, voz 012800, reserva 013010)", () => {
+  it("nenhuma migração do editor redefine função mexida depois no main (nivelamento 012300, voz 012800, gamificação 013000, reserva 013010)", () => {
     const funcoes = (f: string) => new Set([...ler(path.join(MIG, f)).matchAll(/function\s+public\.([a-z0-9_]+)\s*\(/gi)].map((m) => m[1].toLowerCase()));
     const doMain = todas.filter((f) => f >= "20261003012300" && !doEditor.has(f)).flatMap((f) => [...funcoes(f)]);
     for (const f of doEditor) for (const fn of funcoes(f)) expect(doMain, `${f} redefine ${fn}`).not.toContain(fn);
