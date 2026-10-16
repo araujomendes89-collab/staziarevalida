@@ -99,7 +99,7 @@ function SideGroup({ g, route, go, info, open, current, collapsed, onToggle, up 
 }
 
 function Sidebar({ route, go, phase, info, theme, collapsed, setCollapsed }) {
-  const groups = groupsOf(phase, { staff: info.isStaff });
+  const groups = groupsOf(phase);
   const config = { id: "config", label: "Configurações", icon: "settings", items: [...configItems(info), ["perfil", "settings", "Preferências"]] };
   const current = groupOfRoute(route, phase) || (config.items.some(([id]) => id === route) ? "config" : null);
   const [open, setOpen] = React.useState(current);
@@ -163,7 +163,7 @@ function Sidebar({ route, go, phase, info, theme, collapsed, setCollapsed }) {
 
 // ---------------------------------------------------------------- tablet: trilho de ícones com painel
 function Rail({ route, go, phase, setPhase, phase2Locked, info, theme, setTheme }) {
-  const groups = groupsOf(phase, { staff: info.isStaff });
+  const groups = groupsOf(phase);
   const current = groupOfRoute(route, phase);
   const [openId, setOpenId] = React.useState(null);
   const [top, setTop] = React.useState(16);

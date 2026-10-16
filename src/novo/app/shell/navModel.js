@@ -20,11 +20,15 @@ export const GROUPS_FASE2 = [
   { id: "analise2", label: "Análise", short: "Análise", icon: "chart-column", direct: "desempenho2", items: [["desempenho2", "chart-column", "Desempenho"]] },
 ];
 
-/** Grupos da fase, sem "Aulas" quando as aulas estão fechadas ao aluno (features.js; lido na hora de desenhar). */
-export function groupsOf(phase, { staff = false } = {}) {
+/**
+ * Grupos da fase, sem "Aulas" quando as aulas estão fechadas ao aluno (features.js; lido na hora de desenhar). Fechadas, "Aulas" some
+ * do menu para TODOS, equipe inclusive (decisão do dono de 14/10, lembrada em 16/10: "saiu da tela inicial"); a equipe continua
+ * abrindo pelo endereço /novo/aulas e preparando as aulas na Administração.
+ */
+export function groupsOf(phase) {
   const base = phase === 2 ? GROUPS_FASE2 : GROUPS_FASE1;
   return base
-    .map((g) => ({ ...g, items: g.items.filter(([id]) => id !== "aulas" || aulasParaAluno() || staff) }))
+    .map((g) => ({ ...g, items: g.items.filter(([id]) => id !== "aulas" || aulasParaAluno()) }))
     .filter((g) => g.items.length > 0);
 }
 
@@ -82,12 +86,12 @@ export const FULL = ["sessao", "estacao"];
 /**
  * Seções da página "Mais" (celular e tablet), no desenho do pacote: Estudar, Aprender, Stazia Arena, Minha evolução.
  * Cada item: [rota, ícone, nome, selo-chave]; o selo-chave ("hoje", "missoes", "flash") diz qual contagem real mostrar (ou nenhuma).
- * "Aulas" só entra quando o app já a mostra ao aluno (ou para a equipe); o que o pacote não põe em tela (Banco de Questões, Flashcards
+ * "Aulas" só entra quando as aulas estão abertas ao aluno (nem a equipe a vê fechada; ver groupsOf); o que o pacote não põe em tela (Banco de Questões, Flashcards
  * e Caderno de Erros, que ficam nas abas) vai numa seção a mais para nada ficar sem caminho. 2ª fase: os grupos do próprio menu.
  */
-export function maisSections(phase, { staff = false } = {}) {
-  if (phase === 2) return groupsOf(2, { staff }).map((g) => ({ id: g.id, label: g.label, tone: "estudar", items: g.items.map(([id, ic, l]) => [id, ic, l, null]) }));
-  const aulas = aulasParaAluno() || staff;
+export function maisSections(phase) {
+  if (phase === 2) return groupsOf(2).map((g) => ({ id: g.id, label: g.label, tone: "estudar", items: g.items.map(([id, ic, l]) => [id, ic, l, null]) }));
+  const aulas = aulasParaAluno();
   return [
     { id: "estudar", label: "Estudar", tone: "estudar", items: [["hoje", "list-checks", "Plano de Hoje", "hoje"], ["trilha", "route", "Minha Trilha", null], ["simulados", "timer", "Simulados", null]] },
     {
@@ -110,8 +114,8 @@ export function maisSections(phase, { staff = false } = {}) {
  */
 export function maisSheetSections(phase, info = {}) {
   const cfg = [...configItems(info).filter(([id]) => id === "admin"), ["planos", "crown", "Meu Plano"], ["prefs", "settings", "Preferências"]];
-  if (phase === 2) return [...groupsOf(2, { staff: info.isStaff }).map((g) => ({ id: g.id, label: g.label, items: g.items })), { id: "config", label: "Configurações", items: cfg }];
-  const aulas = aulasParaAluno() || info.isStaff;
+  if (phase === 2) return [...groupsOf(2).map((g) => ({ id: g.id, label: g.label, items: g.items })), { id: "config", label: "Configurações", items: cfg }];
+  const aulas = aulasParaAluno();
   return [
     { id: "jornada", label: "Jornada e prática", items: [["hoje", "list-checks", "Plano de Hoje"], ["trilha", "route", "Minha Trilha"], ["simulados", "timer", "Simulados"]] },
     { id: "aprender", label: "Aprender", items: [...(aulas ? [["aulas", "tv", "Aulas"]] : []), ["temas", "book-open", "Temas Essenciais"], ["atualizacoes", "newspaper", "Diretrizes e Atualizações"], ["mapas", "network", "Mapas Mentais"]] },

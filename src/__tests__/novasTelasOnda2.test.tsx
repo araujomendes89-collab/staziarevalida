@@ -237,7 +237,8 @@ describe("Mais e ícones", () => {
     expect(s.map((x) => x.label)).toEqual(["Estudar", "Aprender", "Stazia Arena", "Minha evolução", "Praticar e revisar"]);
     expect(s[0].items.map((i) => i[2])).toEqual(["Plano de Hoje", "Minha Trilha", "Simulados"]);
     expect(s[1].items.map((i) => i[2])).not.toContain("Aulas");
-    expect(maisSections(1, { staff: true })[1].items.map((i) => i[2])).toContain("Aulas");
+    // aulas fechadas: nem a equipe vê "Aulas" no menu (decisão do dono de 14/10, lembrada em 16/10); abre pelo endereço
+    expect(maisSections(1, { staff: true })[1].items.map((i) => i[2])).not.toContain("Aulas");
     expect(maisSections(2, {}).some((x) => x.items.some((i) => i[0] === "estacoes"))).toBe(true);
   });
 

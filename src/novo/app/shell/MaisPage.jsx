@@ -50,7 +50,7 @@ function Tile({ item, tone, info, data, onPick, current }) {
 }
 
 function MaisView({ route, info, phase, setPhase, phase2Locked, data, symbol, onPick, onOpenPrefs, variant }) {
-  const sections = maisSections(phase, { staff: info.isStaff });
+  const sections = maisSections(phase);
   const sub = data.score != null ? (
     <>
       {data.scoreName || "Stazia Score"} <b>{data.score}</b>
