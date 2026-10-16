@@ -1,6 +1,8 @@
 // PRÉVIA do Início e do Plano de Hoje (onda 2). Dados de TESTE, sem banco. Parâmetros:
 //   ?rota=home|hoje  &tema=escuro  &fase=1|2  &papel=aluno|equipe|revisor  &abrir=1 (Personalizar plano aberto)  &vazio=1  &tudofeito=1
 //   &arena=0 (Stazia Arena desligada)  &semliga=1 (fora do ranking)  &teste=1 (teste grátis: 20 de 74 inéditas)
+//   Casca final (15/10/2026): ?rota=login (login novo; &login=atual mostra o de antes; senha "errada" mostra o erro)
+//   &inicio=simples (Início do celular do pacote MobileMenu)  &mais=pagina (botão Mais do celular abre a página em vez da folha)
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
@@ -8,6 +10,7 @@ import "../../src/novo/ds/styles.css";
 import { AppShell } from "../../src/novo/app/Shell.jsx";
 import { HomeScreen } from "../../src/novo/app/home/HomeScreen.jsx";
 import { TodayPlan } from "../../src/novo/app/home/TodayPlan.jsx";
+import { LoginScreen } from "../../src/novo/app/auth/LoginScreen.jsx";
 import { useSession } from "./sessaoSimulada.jsx";
 
 const q = new URLSearchParams(location.search);
@@ -28,6 +31,7 @@ function Previa() {
     setTheme(next === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : next);
     updateProfile({ theme: next });
   };
+  if (nav.route === "login") return <LoginScreen go={(r) => alert(`Prévia: abriria "${r}" (recuperar senha, criar conta)`)} />;
   const info = { name: "João Paulo Mendes", streakDays: 0, flashcardsDue: 0, onSignOut: () => alert("Sair (prévia)"), isStaff: papel === "equipe", isReviewer: papel === "revisor", radarGraves: 0, themeChoice: choice };
   const h = new Date().getHours();
   const title = nav.route === "home" ? "Boa tarde, João." : "Plano de Hoje";
