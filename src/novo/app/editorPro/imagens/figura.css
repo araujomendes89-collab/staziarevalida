@@ -1,0 +1,197 @@
+/* Estilos do nó "figura" para o editor profissional e leitor do aluno */
+
+.dr-figura {
+  position: relative;
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 12px 0;
+  transition: outline 0.15s ease;
+}
+
+/* Seleção no editor */
+.dr-figura--selecionada {
+  outline: 2px solid var(--teal-500, #14b8a6);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Barra rápida de ferramentas flutuante ao selecionar no editor */
+.dr-figura-barra {
+  position: absolute;
+  top: -42px;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-subtle, #cbd5e1);
+  border-radius: 6px;
+  padding: 4px 6px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  user-select: none;
+}
+
+.dr-figura-barra .ep-btn {
+  height: 28px;
+  padding: 0 6px;
+  font-size: 12px;
+}
+
+.dr-figura-barra .ep-select {
+  height: 28px;
+  font-size: 12px;
+  padding: 0 6px;
+}
+
+/* Legenda da figura */
+.dr-figura-legenda {
+  font-size: 13px;
+  color: var(--text-secondary, #475569);
+  text-align: center;
+  margin-top: 6px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* Aviso de falta de texto alternativo */
+.dr-figura-aviso {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #fef3c7;
+  color: #78350f;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.dr-figura-aviso-btn {
+  background: #d97706;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dr-figura-aviso-btn:hover {
+  background: #b45309;
+}
+
+/* Caixas de carregamento e erro */
+.dr-figura-carregando {
+  height: 120px;
+  background: var(--surface-subtle, #f1f5f9);
+  color: var(--text-secondary, #64748b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.dr-figura-erro {
+  height: 120px;
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px dashed #fca5a5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+/* Botão de zoom no leitor do aluno */
+.dr-figura-zoom {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: zoom-in;
+  text-align: inherit;
+}
+
+/* Overlay do zoom ampliado */
+.dr-figura-ampliar {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.dr-figura-ampliar-conteudo {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.dr-figura-ampliar-img {
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  background: #ffffff;
+}
+
+.dr-figura-ampliar-legenda {
+  margin-top: 10px;
+  color: #f1f5f9;
+  font-size: 14px;
+  text-align: center;
+  max-width: 600px;
+  background: rgba(15, 23, 42, 0.75);
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+
+.dr-figura-ampliar-fechar {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dr-figura-ampliar-fechar:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* Regra do celular para disposição em quadrado */
+@media (max-width: 640px) {
+  .dr-figura--quadrado {
+    float: none !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+}

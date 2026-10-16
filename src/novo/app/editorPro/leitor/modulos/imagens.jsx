@@ -1,3 +1,6 @@
-// Leitura do aluno do módulo "imagens" (dono: agente do módulo imagens). Só para nós que precisam de desenho próprio:
-// registrarLeitor(nomeDoNo, Componente) de ../registroLeitor.js. Componente recebe { no, filhos }. Sem TipTap aqui.
-export {};
+// Leitura do aluno do módulo "imagens": renderiza o nó "figura".
+// Sem TipTap aqui.
+import { registrarLeitor } from "../registroLeitor.js";
+import { FiguraLeitor } from "../../imagens/FiguraLeitor.jsx";
+
+registrarLeitor("figura", FiguraLeitor);
