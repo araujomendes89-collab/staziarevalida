@@ -18,8 +18,8 @@ const STYLE = `
 .dupla-chat__title h2{margin:0;font:750 19px/1.35 var(--font-sans);color:var(--text-primary);overflow-wrap:anywhere}
 .dupla-chat__avatar{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:42px;height:42px;border-radius:50%;font:700 14px var(--font-sans);background:var(--teal-100);color:var(--teal-800)}
 .dupla-chat__safety{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px 24px;background:var(--surface-brand-soft);color:var(--teal-800);font:12px/1.5 var(--font-sans);flex-shrink:0}
-.dupla-chat__safety>span{flex:1 1 220px}
-.dupla-chat__safety>.dupla-chat__tools{display:flex;gap:4px;flex:0 0 auto}
+.dupla-chat__safety-text{flex:1 1 220px}
+.dupla-chat__tools{display:flex;gap:4px;flex:0 0 auto}
 .dupla-chat__tool{border:0;background:transparent;color:var(--teal-800);font:600 12px var(--font-sans);padding:4px 8px;border-radius:8px;cursor:pointer;text-decoration:underline}
 .dupla-chat__tool:hover{background:var(--teal-50)}
 .dupla-chat__tool:disabled{opacity:.5;cursor:default}
@@ -324,7 +324,7 @@ export function ChatDialog({ chatId, onClose, onOpenRoom }) {
       {header}
       <div className="dupla-chat__safety">
         <Icon name="shield" size={18} />
-        <span>Um espaço para treinar juntos. Sem ofensas, divulgação ou contatos externos.</span>
+        <span className="dupla-chat__safety-text">Um espaço para treinar juntos. Sem ofensas, divulgação ou contatos externos.</span>
         {summary && summary.partner?.user_id && view === "chat" && (
           <span className="dupla-chat__tools">
             {summary.blocked_by_me ? (

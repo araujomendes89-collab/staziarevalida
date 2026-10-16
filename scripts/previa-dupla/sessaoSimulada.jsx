@@ -116,7 +116,35 @@ let convites = [];
 if (new URLSearchParams(location.search).get("convite") === "1") {
   convites = [{ id: "cv-1", room_id: "roles-candidate", from: { user_id: "t-1", public_name: "Colega Teste Um" }, expires_at: EM(10 * 60000) }];
 }
+// Chat de estudo (Etapa C) na prévia: uma conversa com o colega de teste, em memória. O filtro de verdade é do servidor
+// (migração 013370); aqui só "idiota" é recusada, para ver o aviso na tela.
+let bloqueado = false;
+let mensagens = [];
+const conversa = () => ({
+  chat_id: "chat-teste", partner: { user_id: "t-1", public_name: "Colega Teste Um" }, room_id: null, blocked_by_me: bloqueado, can_send: !bloqueado,
+  last: mensagens.length ? { body: mensagens.at(-1).body, created_at: mensagens.at(-1).created_at, mine: true } : null,
+});
+const respostasChat = {
+  app_dupla_chats: () => ({ chats: [conversa()], server_now: NOW() }),
+  app_dupla_chat_open: () => conversa(),
+  app_dupla_chat_messages: () => ({ chat: conversa(), messages: mensagens, max: 600, server_now: NOW() }),
+  app_dupla_chat_send: ({ p_text }) => {
+    const texto = String(p_text ?? "").trim();
+    if (!texto) throw new Error("Escreva uma mensagem para combinar o treino.");
+    if (/idiota/i.test(texto)) throw new Error("Essa mensagem contém uma palavra não permitida. Reformule com respeito e mantenha o foco no treino.");
+    const m = { id: "m-" + (mensagens.length + 1), body: texto, created_at: NOW(), expires_at: EM(86400000), mine: true, author: "Aluno de Teste" };
+    mensagens = [...mensagens, m];
+    return m;
+  },
+  app_dupla_chat_block: ({ p_block }) => {
+    bloqueado = Boolean(p_block);
+    return conversa();
+  },
+  app_dupla_chat_report: () => ({ report_id: "den-teste", messages: mensagens.length }),
+  app_dupla_chat_room: () => ({ room_id: "roles-candidate" }),
+};
 const respostas = {
+  ...respostasChat,
   app_dupla_access: () => ({ aberto: true, permitido: true, equipe: true, planos: ["pro", "elite"] }),
   app_dupla_profile: () => ({ profile: perfil, defaults: perfil ? null : { public_name: "Aluno de Teste", exam: "2026/2" }, stats: { done: 3, avg: 7.8 } }),
   app_dupla_save_profile: ({ p_profile }) => {
