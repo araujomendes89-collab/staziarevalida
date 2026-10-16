@@ -11,7 +11,7 @@ import "../tabelas/tabelas.css";
 
 const CELULAS = ["tableCell", "tableHeader"];
 
-// Atributos "fundo" e "largura" nas células (o JSON do TipTap é o formato guardado; o saneador do documento decide o que vale).
+// Atributos "cellBackground" e "colwidth" nas células (o JSON do TipTap é o formato guardado; o saneador do documento decide o que vale).
 const AtributosCelula = Extension.create({
   name: "atributosCelula",
   addGlobalAttributes() {
@@ -19,21 +19,21 @@ const AtributosCelula = Extension.create({
       {
         types: CELULAS,
         attributes: {
-          fundo: {
+          cellBackground: {
             default: null,
             parseHTML: (el) => el.style?.backgroundColor || null,
             renderHTML: (a) => {
-              const st = a.fundo ? cssSeguro({ "background-color": a.fundo }) : "";
+              const st = a.cellBackground ? cssSeguro({ "background-color": a.cellBackground }) : "";
               return st ? { style: st } : {};
             },
           },
-          largura: {
+          colwidth: {
             default: null,
             parseHTML: (el) => {
               const n = parseInt(el.style?.width, 10);
               return Number.isFinite(n) ? n : null;
             },
-            renderHTML: (a) => (Number(a.largura) > 0 ? { style: `width:${Number(a.largura)}px;min-width:${Number(a.largura)}px` } : {}),
+            renderHTML: (a) => (Number(a.colwidth) > 0 ? { style: `width:${Number(a.colwidth)}px;min-width:${Number(a.colwidth)}px` } : {}),
           },
         },
       },
@@ -59,11 +59,11 @@ const btn = (id, grupo, ordem, icon, label, { pode, ativo, faz }) => ({
 });
 
 const corAtual = (editor) => {
-  const a = editor.getAttributes("tableCell").fundo ?? editor.getAttributes("tableHeader").fundo;
+  const a = editor.getAttributes("tableCell").cellBackground ?? editor.getAttributes("tableHeader").cellBackground;
   return a && CORES_CELULA.some((c) => c.valor === a) ? a : "";
 };
 const larguraAtual = (editor) => {
-  const a = editor.getAttributes("tableCell").largura ?? editor.getAttributes("tableHeader").largura;
+  const a = editor.getAttributes("tableCell").colwidth ?? editor.getAttributes("tableHeader").colwidth;
   return a && LARGURAS.some((c) => c.valor === String(a)) ? String(a) : "";
 };
 
@@ -85,11 +85,11 @@ registrarModuloEditor({
       ordem: 220,
       Componente: ({ editor, ctx }) => (
         <Seletor
-          label="Cor de fundo da célula"
+          label="Cor de cellBackground da célula"
           value={corAtual(editor)}
           opcoes={CORES_CELULA}
           disabled={ctx.somenteLeitura || !naTabela(editor)}
-          onChange={(v) => editor.chain().focus().setCellAttribute("fundo", v || null).run()}
+          onChange={(v) => editor.chain().focus().setCellAttribute("cellBackground", v || null).run()}
         />
       ),
     },

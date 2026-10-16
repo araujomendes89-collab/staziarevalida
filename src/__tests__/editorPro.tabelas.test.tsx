@@ -43,7 +43,7 @@ function posicoesCelulas(e: Editor) {
 const selecionar = (e: Editor, a: number, b: number) => e.view.dispatch(e.state.tr.setSelection(CellSelection.create(e.state.doc, a, b)));
 
 describe("M4 - saneamento das células", () => {
-  it("colspan/rowspan/fundo/largura: limites e valores perigosos", () => {
+  it("colspan/rowspan/cellBackground/colwidth: limites e valores perigosos", () => {
     const d = sanear({
       type: "doc",
       content: [
@@ -53,9 +53,9 @@ describe("M4 - saneamento das células", () => {
             {
               type: "tableRow",
               content: [
-                cel("a", { colspan: 2, rowspan: 3, fundo: "#fde68a", largura: 120 }),
-                cel("b", { colspan: 99, rowspan: 0, fundo: "red; background:url(x)", largura: 5000 }),
-                cel("c", { colspan: "2", fundo: "expression(alert(1))", largura: "abc", colwidth: [100] }, "tableHeader"),
+                cel("a", { colspan: 2, rowspan: 3, cellBackground: "#fde68a", colwidth: 120 }),
+                cel("b", { colspan: 99, rowspan: 0, cellBackground: "red; background:url(x)", colwidth: 5000 }),
+                cel("c", { colspan: "2", cellBackground: "expression(alert(1))", colwidth: "abc", colwidth: [100] }, "tableHeader"),
               ],
             },
           ],
@@ -63,7 +63,7 @@ describe("M4 - saneamento das células", () => {
       ],
     });
     const [a, b, c] = d.content[0].content![0].content!;
-    expect(a.attrs).toEqual({ colspan: 2, rowspan: 3, fundo: "#fde68a", largura: 120 });
+    expect(a.attrs).toEqual({ colspan: 2, rowspan: 3, cellBackground: "#fde68a", colwidth: 120 });
     expect(b.attrs).toBeUndefined();
     expect(c.attrs).toEqual({ colspan: 2 });
   });
@@ -71,7 +71,7 @@ describe("M4 - saneamento das células", () => {
   it("HTML do PDF escreve colspan, rowspan e cor; sem script", () => {
     const html = htmlDoDoc({
       type: "doc",
-      content: [{ type: "table", content: [{ type: "tableRow", content: [cel("x<script>", { colspan: 2, fundo: "#bfdbfe", largura: 100 }, "tableHeader"), cel("y", { rowspan: 2 })] }] }],
+      content: [{ type: "table", content: [{ type: "tableRow", content: [cel("x<script>", { colspan: 2, cellBackground: "#bfdbfe", colwidth: 100 }, "tableHeader"), cel("y", { rowspan: 2 })] }] }],
     } as any);
     expect(html).toContain('<th colspan="2" style="background-color:#bfdbfe;width:100px;min-width:100px;"><p>x&lt;script&gt;</p></th>');
     expect(html).toContain('<td rowspan="2"><p>y</p></td>');
@@ -104,20 +104,20 @@ describe("M4 - editor de verdade", () => {
     // cor
     pos = posicoesCelulas(e);
     selecionar(e, pos[4], pos[5]);
-    e.chain().setCellAttribute("fundo", "#bbf7d0").run();
+    e.chain().setCellAttribute("cellBackground", "#bbf7d0").run();
     // largura da coluna 1 (todas as linhas)
     selecionar(e, pos[1], pos[1]);
     expect(definirLarguraColuna(e, 140)).toBe(true);
     t = sanear(e.getJSON()).content.find((n) => n.type === "table")!;
     const linhas = t.content!;
-    expect(linhas[1].content![1].attrs).toMatchObject({ fundo: "#bbf7d0", largura: 140 });
-    expect(linhas[1].content![2].attrs).toMatchObject({ fundo: "#bbf7d0" });
-    expect(linhas.every((l) => l.content![1].attrs?.largura === 140)).toBe(true);
+    expect(linhas[1].content![1].attrs).toMatchObject({ cellBackground: "#bbf7d0", colwidth: 140 });
+    expect(linhas[1].content![2].attrs).toMatchObject({ cellBackground: "#bbf7d0" });
+    expect(linhas.every((l) => l.content![1].attrs?.colwidth === 140)).toBe(true);
     // tirar a cor
     selecionar(e, pos[4], pos[4]);
-    e.chain().setCellAttribute("fundo", null).run();
+    e.chain().setCellAttribute("cellBackground", null).run();
     t = sanear(e.getJSON()).content.find((n) => n.type === "table")!;
-    expect(t.content![1].content![1].attrs?.fundo).toBeUndefined();
+    expect(t.content![1].content![1].attrs?.cellBackground).toBeUndefined();
     // cabeçalho de coluna
     e.chain().toggleHeaderColumn().run();
     expect(JSON.stringify(e.getJSON())).toContain("tableHeader");
@@ -154,7 +154,7 @@ describe("M4 - leitor do aluno", () => {
   it("tabela com mesclagem e cor, em quadro rolável, sem HTML cru", () => {
     const doc = {
       type: "doc",
-      content: [{ type: "table", content: [{ type: "tableRow", content: [cel("Cab", { colspan: 2, fundo: "#fde68a", largura: 200 }, "tableHeader")] }, { type: "tableRow", content: [cel("a"), cel("b", { rowspan: 1, fundo: "url(x)" })] }] }],
+      content: [{ type: "table", content: [{ type: "tableRow", content: [cel("Cab", { colspan: 2, cellBackground: "#fde68a", colwidth: 200 }, "tableHeader")] }, { type: "tableRow", content: [cel("a"), cel("b", { rowspan: 1, cellBackground: "url(x)" })] }] }],
     };
     const { container } = render(<LeitorDoc doc={doc} />);
     expect(container.querySelector(".tr-tabela-rolagem table")).toBeTruthy();

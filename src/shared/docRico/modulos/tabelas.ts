@@ -1,6 +1,6 @@
 // Módulo tabelas do editor profissional (M4): células mescladas, largura de coluna e cor de fundo da célula.
 // Os nós table/tableRow/tableCell/tableHeader já nascem no núcleo; aqui só entram os atributos das células.
-// Atributos (mesmo nome da extensão TipTap): colspan, rowspan (mesclagem), fundo (cor de fundo) e largura (px, só uma dica de largura).
+// Atributos (nomes fixados pelo líder, §8 do PLANO): colspan/rowspan (conteúdo); cellBackground e colwidth em px, valor simples (só formatação).
 import { atributosDe, cssSeguro, corCss, defNo, inteiroEntre, registrarAtributo, type Css, type NoDoc } from "../registro";
 
 const CELULAS = ["tableCell", "tableHeader"] as const;
@@ -13,7 +13,7 @@ for (const alvo of CELULAS) {
   registrarAtributo({ alvo, nome: "rowspan", sanear: inteiroEntre(1, 50), padrao: 1 });
   registrarAtributo({
     alvo,
-    nome: "fundo",
+    nome: "cellBackground",
     sanear: (v) => {
       const c = corCss()(v);
       return c === "inherit" ? undefined : c; // "sem cor" = atributo ausente
@@ -22,7 +22,7 @@ for (const alvo of CELULAS) {
   });
   registrarAtributo({
     alvo,
-    nome: "largura",
+    nome: "colwidth",
     sanear: larguraPx,
     css: (v) => ({ width: `${v}px`, "min-width": `${v}px` }),
   });

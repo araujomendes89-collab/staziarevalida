@@ -38,7 +38,7 @@ export function definirLarguraColuna(editor, px) {
       vistos.add(pos);
       const no = state.doc.nodeAt(tableStart + pos);
       if (!no || Number(no.attrs.colspan ?? 1) !== 1) continue;
-      tr.setNodeMarkup(tableStart + pos, null, { ...no.attrs, largura: px ?? null });
+      tr.setNodeMarkup(tableStart + pos, null, { ...no.attrs, colwidth: px ?? null });
     }
   }
   if (!tr.docChanged) return false;
