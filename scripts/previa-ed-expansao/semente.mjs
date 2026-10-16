@@ -108,9 +108,9 @@ export async function semear({ sql, rpc, U, raiz }) {
     dados.tema = "GR-001";
     // um vídeo com legenda e transcrição (inserido direto no banco de teste, sem os gatilhos: a versão já está no ar)
     await sql(`alter table public.ch_unit_materials disable trigger user`);
-    await sql(`insert into public.ch_unit_materials (unit_version_id, kind, title, visibility, origin, source, position, url, content)
+    await sql(`insert into public.ch_unit_materials (unit_version_id, kind, title, visibility, origin, source, position, url, embed_url, content)
                values ($1, 'video', 'Vídeo: tratamento da tuberculose em 3 minutos', 'aluno', 'inserido', 'link', 1, 'https://www.youtube.com/watch?v=previa',
-                       $2::jsonb)`, [versao, JSON.stringify({
+                       'https://www.youtube-nocookie.com/embed/previa', $2::jsonb)`, [versao, JSON.stringify({
       legenda: "Esquema básico: 2 meses de RHZE e 4 meses de RH, com tomada diária supervisionada.",
       transcricao: "Neste vídeo revisamos o esquema básico da tuberculose pulmonar em adultos. A fase intensiva dura 2 meses e a de manutenção, 4 meses.",
     })]);

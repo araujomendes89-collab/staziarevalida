@@ -79,7 +79,7 @@ function bancoDeTeste() {
 
 export default defineConfig({
   root: here,
-  publicDir: path.join(raiz, "public"),
+  publicDir: path.resolve(here, "../../public"), // ícones e imagens do ramo novo (no antes também: mesma versão dos ícones)
   plugins: [react(), bancoDeTeste()],
   resolve: {
     alias: [

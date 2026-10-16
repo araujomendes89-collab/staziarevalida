@@ -105,7 +105,7 @@ export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarCo
   const aberto = listaPaineis.find((p) => p.id === painel);
 
   return (
-    <div className={`ep-container${compacto ? " ep-container--compacto" : ""}`} id={id} onKeyDown={aoTeclar}>
+    <div className={`ep-container${compacto ? " ep-container--compacto" : ""}${aberto ? " ep-container--painel" : ""}`} id={id} onKeyDown={aoTeclar}>
       <div className="ep-toolbar">
         <div className="ep-tablist" role="tablist" aria-label="Abas do editor">
           {abas.map((a) => (

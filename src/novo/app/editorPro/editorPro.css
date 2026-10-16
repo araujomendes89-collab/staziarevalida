@@ -176,3 +176,9 @@
 /* Campo curto com o editor (CampoRico): sem "folha", altura pequena */
 .ep-container--compacto .ep-area-texto { padding: 0; background: transparent; }
 .ep-container--compacto .ep-folha { max-width: none; min-height: 3.2em; margin: 0; padding: 10px 14px; box-shadow: none; border-radius: 0 0 10px 10px; }
+/* Campo curto: parece um campo de formulário; a barra do editor só aparece com o campo em uso (cursor dentro ou painel aberto),
+   para a tela com muitos campos (questão, atualização) não virar uma pilha de barras. */
+.ep-container--compacto { border: 1px solid var(--border-default); border-radius: 10px; overflow: hidden; background: var(--surface-card); }
+.ep-container--compacto:focus-within { border-color: var(--border-brand); }
+.ep-container--compacto:not(:focus-within):not(.ep-container--painel) > .ep-toolbar { display: none; }
+.ep-container--compacto:not(:focus-within):not(.ep-container--painel) .ep-folha { border-radius: 10px; }
