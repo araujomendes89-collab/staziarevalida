@@ -172,3 +172,7 @@
     height: 50%;
   }
 }
+
+/* Campo curto com o editor (CampoRico): sem "folha", altura pequena */
+.ep-container--compacto .ep-area-texto { padding: 0; background: transparent; }
+.ep-container--compacto .ep-folha { max-width: none; min-height: 3.2em; margin: 0; padding: 10px 14px; box-shadow: none; border-radius: 0 0 10px 10px; }
