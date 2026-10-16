@@ -172,7 +172,9 @@ function preAnswer() {
   const estado = params.get("estado");
   if (!estado || estado === "respondendo") return;
   const first = SETS[setName].first;
-  const letra = estado === "errado" ? "B" : estado === "certo" ? SETS[setName].correction.correct_option : "A";
+  // "errado" marca uma letra diferente do gabarito (antes era sempre B, que é o gabarito da oficial: a prévia mostrava "Você acertou")
+  const gab = SETS[setName].correction.correct_option;
+  const letra = estado === "errado" ? (gab === "B" ? "C" : "B") : estado === "certo" ? gab : "A";
   if (kind === "simulado") {
     state.selected[first.id] = letra;
     return;
