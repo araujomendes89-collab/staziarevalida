@@ -4,6 +4,8 @@
 import React from "react";
 import { Badge, Banner, Button, Card, Chip, EmptyState, StatCard } from "../../ds";
 import { useSession } from "../session.jsx";
+import { diaLocal, useCelebracoesApp } from "../play/celebracoes/CelebracoesProvider.jsx";
+import { eventoDosFlashcards } from "../play/celebracoes/eventos.js";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel, formatWhen } from "../practice/format.js";
 import { FlashcardForm } from "./FlashcardForm.jsx";
@@ -33,6 +35,9 @@ export function FlashcardsScreen({ go }) {
   const [reload, setReload] = React.useState(0);
   const [ilustrados, setIlustrados] = React.useState({});
   const keys = React.useRef(() => {});
+  // comemoração do Stazi quando a revisão do dia zera (todas as áreas): conferida pela fila recarregada do banco, não pelo navegador
+  const { enviar: comemorar } = useCelebracoesApp();
+  const fimDaFila = React.useRef(null);
 
   React.useEffect(() => {
     let alive = true;
@@ -51,6 +56,9 @@ export function FlashcardsScreen({ go }) {
           }
         }
         if (!alive) return;
+        const fim = fimDaFila.current;
+        fimDaFila.current = null;
+        if (fim && !area && (result?.queue ?? []).length === 0) comemorar(eventoDosFlashcards(fim.revisados, diaLocal()));
         setIlustrados(map);
         setData(result);
         setIndex(0);
@@ -89,7 +97,10 @@ export function FlashcardsScreen({ go }) {
       setReviewed((n) => n + 1);
       setFlipped(false);
       if (index + 1 < queue.length) setIndex(index + 1);
-      else setReload((n) => n + 1); // fim da fila: atualiza contagens e próxima revisão
+      else {
+        fimDaFila.current = { revisados: reviewed + 1 };
+        setReload((n) => n + 1); // fim da fila: atualiza contagens e próxima revisão
+      }
       refresh().catch(() => {});
     } catch {
       setError("Não foi possível registrar a revisão. Tente de novo.");

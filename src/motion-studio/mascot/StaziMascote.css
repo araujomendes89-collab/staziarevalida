@@ -1,0 +1,4 @@
+.ms-stazi{display:inline-block;max-width:none;user-select:none;-webkit-user-drag:none}
+@keyframes ms-breathe{0%,100%{transform:scale(1,1) rotate(-.5deg)}50%{transform:scale(1.012,1.022) rotate(.5deg)}}
+.ms-stazi--idle{animation:ms-breathe 3.6s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.ms-stazi--idle{animation:none}}

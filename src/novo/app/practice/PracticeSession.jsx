@@ -15,7 +15,9 @@ import { useSession } from "../session.jsx";
 import { CorrectionBody, CorrectionSide, answerState, isAnnulled, useCorrectionData } from "./Correction.jsx";
 import { SessionResult } from "./SessionResult.jsx";
 import { areaLabel, formatClock } from "./format.js";
-import { XPToast, useTurnFeedback } from "../play/PlayFeedback.jsx";
+import { XPToast } from "../play/PlayFeedback.jsx";
+import { diaLocal, useCelebracoesApp, useSegurarCelebracoes } from "../play/celebracoes/CelebracoesProvider.jsx";
+import { eventoDoSimulado, eventosDaResposta, serieDeAcertos } from "../play/celebracoes/eventos.js";
 import { QuestionHeader, timerLevel } from "./tela/QuestionHeader.jsx";
 import { TutorHint, useHintAvailable } from "./tela/TutorHint.jsx";
 import { Alternatives, QuestionFooter, QuestionSheet, ReportQuestion } from "./tela/QuestionSheet.jsx";
@@ -101,7 +103,11 @@ function Runner({ session, go, onFinished }) {
   const [error, setError] = React.useState(null);
   const saving = React.useRef(Promise.resolve());
   const finishing = React.useRef(false);
-  const feedback = useTurnFeedback(); // Stazia Play: novo nível e medalhas viram modais curtos
+  // Comemorações do Stazi: durante a sessão só a faixa pequena do acerto/erro; sequência, nível, medalhas, missões e a série de
+  // acertos esperam o fim (ou a saída) da sessão. No simulado, nada aparece até o resultado.
+  const celebracoes = useCelebracoesApp();
+  useSegurarCelebracoes(`sessao:${session.id}`, sim ? "simulado" : "atividade");
+  const seguidas = React.useRef(0);
   const [sessionXp, setSessionXp] = React.useState(0);
 
   const total = questions.length;
@@ -217,7 +223,11 @@ function Runner({ session, go, onFinished }) {
         const { play, ...rest } = result;
         patch(question.id, { selected: rest.selected, correction: rest, play, active_ms: ms });
         if (play?.xp?.valid) setSessionXp((n) => n + (play.xp.total ?? 0) + (play.bonus ?? []).reduce((sum, b) => sum + (b.xp ?? 0), 0));
-        feedback.push(play);
+        const anulada = isAnnulled(rest);
+        const acertou = typeof rest.is_correct === "boolean" ? rest.is_correct : null;
+        const serie = serieDeAcertos(seguidas.current, { acertou, anulada, sessao: session.id });
+        seguidas.current = serie.seguidas;
+        if (play) celebracoes.enviar([...eventosDaResposta(play, { acertou, anulada, hoje: diaLocal() }), ...(serie.evento ? [serie.evento] : [])]);
       }
       setPicked(null);
     } catch (e) {
@@ -465,13 +475,13 @@ function Runner({ session, go, onFinished }) {
           </>
         )}
       </main>
-      {feedback.modal}
     </div>
   );
 }
 
 export function PracticeSession({ go }) {
   const { backend, refresh } = useSession();
+  const { enviar: comemorar } = useCelebracoesApp();
   const [params] = useSearchParams();
   const id = params.get("s");
   const [view, setView] = React.useState({ status: "loading", session: null, timeUp: false });
@@ -505,11 +515,15 @@ export function PracticeSession({ go }) {
     };
   }, [backend, id]);
 
-  const onFinished = React.useCallback((session, timeUp) => {
-    setView({ status: "ready", session, timeUp });
-    window.scrollTo(0, 0);
-    refreshRef.current().catch(() => {}); // sequência de dias no menu
-  }, []);
+  const onFinished = React.useCallback(
+    (session, timeUp) => {
+      setView({ status: "ready", session, timeUp });
+      window.scrollTo(0, 0);
+      refreshRef.current().catch(() => {}); // sequência de dias no menu
+      comemorar(eventoDoSimulado(session)); // simulado: comemoração do placar (sai quando a sessão fecha, com o que esperou o fim)
+    },
+    [comemorar]
+  );
 
   if (!id) return <Navigate to="/questoes" replace />;
   if (view.status === "loading") {

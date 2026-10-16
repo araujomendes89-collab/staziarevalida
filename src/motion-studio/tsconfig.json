@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "noEmit": true, "skipLibCheck": true, "resolveJsonModule": true, "types": ["vite/client", "vitest/globals", "node"] },
+  "include": ["./**/*.ts", "./**/*.tsx"],
+  "exclude": ["./preview/e2e.mjs"]
+}

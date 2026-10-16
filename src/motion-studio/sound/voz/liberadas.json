@@ -1,0 +1,467 @@
+{
+ "comentario": "So estas falas tocam (<= 1,5 s). Falas sem nenhuma versao curta ficam DESLIGADAS por padrao (pendentes de encurtar, ver pendentes).",
+ "liberadas": [
+  "durona/acertou-seguimos-v1",
+  "durona/aula-feita-bora-fixar-v1",
+  "durona/constancia-raro-de-ver-v3",
+  "durona/da-pra-melhorar-v1",
+  "durona/elite-sem-discussao-v3",
+  "durona/ficou-podia-subir-v1",
+  "durona/finalmente-ne-v1",
+  "durona/finalmente-ne-v2",
+  "durona/finalmente-ne-v3",
+  "durona/mais-um-pra-conta-v1",
+  "durona/podio-nada-mal-v1",
+  "durona/recorde-vai-com-calma-v3",
+  "durona/revisa-e-volta-v1",
+  "durona/sessenta-quem-diria-v1",
+  "durona/sessenta-quem-diria-v3",
+  "durona/subiu-nao-se-acostume-v2",
+  "durona/ta-bom-essa-eu-aplaudo-v1",
+  "durona/tres-dias-e-tendencia-v1",
+  "durona/um-ano-sem-discussao-v1",
+  "durona/um-ano-sem-discussao-v2",
+  "durona/um-ano-sem-discussao-v3",
+  "durona/voltou-sem-drama-v1",
+  "durona_forte/bom-prova-e-outra-coisa-v1",
+  "durona_forte/catorze-continua-doutor-v1",
+  "durona_forte/catorze-continua-doutor-v2",
+  "durona_forte/certo-era-o-minimo-v1",
+  "durona_forte/cinco-nao-relaxa-v1",
+  "durona_forte/de-novo-abre-o-livro-v1",
+  "durona_forte/demorou-mas-foi-v1",
+  "durona_forte/demorou-mas-foi-v2",
+  "durona_forte/desceu-abre-o-livro-v1",
+  "durona_forte/dez-agora-vinte-v1",
+  "durona_forte/mais-um-dia-segue-v1",
+  "durona_forte/meta-amanha-de-novo-v1",
+  "durona_forte/plano-feito-proximo-v1",
+  "durona_forte/plano-feito-proximo-v2",
+  "durona_forte/podio-mantem-o-ritmo-v1",
+  "durona_forte/subiu-agora-segura-v1",
+  "durona_forte/vinte-nao-se-ache-v1",
+  "durona_forte/voltou-agora-fica-v1",
+  "durona_forte/xp-aproveita-v1",
+  "stazi/aula-na-conta-v1",
+  "stazi/bateu-o-recorde-v1",
+  "stazi/bateu-o-recorde-v3",
+  "stazi/bem-vindo-de-volta-v1",
+  "stazi/cai-na-conta-v1",
+  "stazi/cem-dias-lendario-v2",
+  "stazi/chegou-a-elite-v1",
+  "stazi/chegou-a-elite-v2",
+  "stazi/chegou-chegando-v1",
+  "stazi/chegou-chegando-v2",
+  "stazi/chegou-chegando-v3",
+  "stazi/cinco-seguidas-v1",
+  "stazi/comecou-doutor-v1",
+  "stazi/comecou-doutor-v2",
+  "stazi/comecou-doutor-v3",
+  "stazi/constancia-e-isso-v1",
+  "stazi/constancia-e-isso-v2",
+  "stazi/constancia-e-isso-v3",
+  "stazi/da-pra-subir-v1",
+  "stazi/dez-seguidas-doutor-v1",
+  "stazi/dois-dias-doutor-v1",
+  "stazi/dois-meses-doutor-v1",
+  "stazi/dois-meses-doutor-v2",
+  "stazi/dois-meses-doutor-v3",
+  "stazi/duas-semanas-hein-v1",
+  "stazi/lendario-sem-discussao-v2",
+  "stazi/mais-um-pra-conta-v1",
+  "stazi/mandou-bem-doutor-v1",
+  "stazi/missao-dada-missao-cumprida-v1",
+  "stazi/missao-dada-missao-cumprida-v2",
+  "stazi/no-podio-doutor-v1",
+  "stazi/plano-na-mao-v1",
+  "stazi/plano-na-mao-v2",
+  "stazi/plano-na-mao-v3",
+  "stazi/recuo-tatico-continua-v1",
+  "stazi/salvou-pelo-gelo-v1",
+  "stazi/segurou-a-posicao-v1",
+  "stazi/subiu-de-liga-doutor-v1",
+  "stazi/subiu-de-liga-doutor-v2",
+  "stazi/subiu-de-liga-doutor-v3",
+  "stazi/subiu-doutor-v1",
+  "stazi/subiu-doutor-v2",
+  "stazi/subiu-doutor-v3",
+  "stazi/subiu-no-ranking-v1",
+  "stazi/ta-pago-v1",
+  "stazi/ta-pago-v2",
+  "stazi/ta-pago-v3",
+  "stazi/tenho-uma-dica-v1",
+  "stazi/tres-seguidos-v1",
+  "stazi/trinta-dias-respeito-v1",
+  "stazi/um-ano-sem-discussao-v1",
+  "stazi/um-ano-sem-discussao-v2",
+  "stazi/um-ano-sem-discussao-v3"
+ ],
+ "pendentes": [
+  {
+   "estilo": "durona",
+   "texto": "Bom resultado. Não relaxa.",
+   "menor_dur_s": 1.73,
+   "eventos": [
+    "simulado-alto"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Cem dias. Eu me rendo.",
+   "menor_dur_s": 1.63,
+   "eventos": [
+    "streak-100"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Cinco seguidas. Ritmo pegou.",
+   "menor_dur_s": 2.47,
+   "eventos": [
+    "serie-acertos-5"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Congelamento usado. Cuidado.",
+   "menor_dur_s": 1.75,
+   "eventos": [
+    "congelamento-usado"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Dez seguidas. Assustador.",
+   "menor_dur_s": 1.7,
+   "eventos": [
+    "serie-acertos-10"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Dica na mesa. Aproveita.",
+   "menor_dur_s": 1.85,
+   "eventos": [
+    "dica-disponivel"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Dois dias. Já é rotina.",
+   "menor_dur_s": 1.61,
+   "eventos": [
+    "dia-2"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Duas semanas. Constância.",
+   "menor_dur_s": 1.61,
+   "eventos": [
+    "streak-14"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Errou? Faz parte. Revisa.",
+   "menor_dur_s": 1.8,
+   "eventos": [
+    "erro-encorajador"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Mais um dia. Constância.",
+   "menor_dur_s": 1.68,
+   "eventos": [
+    "streak-dia-comum"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Meta batida. O mínimo.",
+   "menor_dur_s": 1.78,
+   "eventos": [
+    "meta-diaria"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Missão cumprida. Raro.",
+   "menor_dur_s": 1.56,
+   "eventos": [
+    "missao-cumprida"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Plano cumprido. Surpreendente.",
+   "menor_dur_s": 1.8,
+   "eventos": [
+    "plano-finalizado"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Primeiro dia. Agora repete.",
+   "menor_dur_s": 1.63,
+   "eventos": [
+    "primeiro-dia"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Primeiro lugar. Sem discussão.",
+   "menor_dur_s": 1.92,
+   "eventos": [
+    "liga-primeiro-lugar"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Recuo tático. Continua.",
+   "menor_dur_s": 1.66,
+   "eventos": [
+    "liga-rebaixamento"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Revisão feita. Milagre.",
+   "menor_dur_s": 1.78,
+   "eventos": [
+    "flashcards-dia"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Sete dias. Já é começo.",
+   "menor_dur_s": 1.75,
+   "eventos": [
+    "streak-7"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Subiu de liga. Merecido.",
+   "menor_dur_s": 1.75,
+   "eventos": [
+    "liga-promocao-ouro",
+    "liga-promocao-platina",
+    "liga-promocao-prata"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Subiu no ranking. Segura.",
+   "menor_dur_s": 1.97,
+   "eventos": [
+    "ranking-subiu"
+   ]
+  },
+  {
+   "estilo": "durona",
+   "texto": "Vinte seguidas. Impressionou.",
+   "menor_dur_s": 1.66,
+   "eventos": [
+    "serie-acertos-20"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Assistiu. Agora pratica.",
+   "menor_dur_s": 3.05,
+   "eventos": [
+    "aula-concluida"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Cem. Tá, essa eu aplaudo.",
+   "menor_dur_s": 1.58,
+   "eventos": [
+    "streak-100"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Conquista. Não se empolgue.",
+   "menor_dur_s": 1.54,
+   "eventos": [
+    "conquista-desbloqueada"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Cumpriu. Não se acostume.",
+   "menor_dur_s": 2.09,
+   "eventos": [
+    "missao-cumprida"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Dia um. Amanhã aparece.",
+   "menor_dur_s": 1.68,
+   "eventos": [
+    "primeiro-dia"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Dica. Usa direito.",
+   "menor_dur_s": 1.51,
+   "eventos": [
+    "dica-disponivel"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Doeu? Revisa e volta.",
+   "menor_dur_s": 1.68,
+   "eventos": [
+    "simulado-baixo"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Dois dias. Não foi sorte.",
+   "menor_dur_s": 1.8,
+   "eventos": [
+    "dia-2"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Elite. Não se acostume.",
+   "menor_dur_s": 1.61,
+   "eventos": [
+    "liga-promocao-diamante",
+    "liga-promocao-elite",
+    "liga-promocao-master"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Ficou onde está. Bora.",
+   "menor_dur_s": 1.68,
+   "eventos": [
+    "liga-permanencia"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Foi salvo pelo gelo.",
+   "menor_dur_s": 1.54,
+   "eventos": [
+    "congelamento-usado"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Liga nova. Não escorrega.",
+   "menor_dur_s": 1.78,
+   "eventos": [
+    "liga-promocao-ouro",
+    "liga-promocao-platina",
+    "liga-promocao-prata"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Mediano. Revisa os erros.",
+   "menor_dur_s": 2.98,
+   "eventos": [
+    "simulado-medio"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Primeiro. E não foi fácil.",
+   "menor_dur_s": 1.56,
+   "eventos": [
+    "liga-primeiro-lugar"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Recorde. Agora mantém.",
+   "menor_dur_s": 1.54,
+   "eventos": [
+    "novo-recorde"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Revisou. Quem diria.",
+   "menor_dur_s": 1.56,
+   "eventos": [
+    "flashcards-dia"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Sessenta. Não vacila agora.",
+   "menor_dur_s": 1.73,
+   "eventos": [
+    "streak-60"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Sete dias. Sem relaxar.",
+   "menor_dur_s": 1.7,
+   "eventos": [
+    "streak-7"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Subiu. Agora aguenta.",
+   "menor_dur_s": 1.68,
+   "eventos": [
+    "ranking-subiu"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Trinta dias. Surpreendente.",
+   "menor_dur_s": 1.92,
+   "eventos": [
+    "streak-30"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Três dias. Segue assim.",
+   "menor_dur_s": 1.8,
+   "eventos": [
+    "dia-3"
+   ]
+  },
+  {
+   "estilo": "durona_forte",
+   "texto": "Um ano. Respeito. Raro.",
+   "menor_dur_s": 1.63,
+   "eventos": [
+    "streak-365"
+   ]
+  },
+  {
+   "estilo": "stazi",
+   "texto": "Meta batida, doutor!",
+   "menor_dur_s": 1.51,
+   "eventos": [
+    "meta-diaria"
+   ]
+  },
+  {
+   "estilo": "stazi",
+   "texto": "Vinte seguidas, doutor!",
+   "menor_dur_s": 2.64,
+   "eventos": [
+    "serie-acertos-20"
+   ]
+  }
+ ]
+}

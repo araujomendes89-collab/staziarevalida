@@ -1,0 +1,353 @@
+{
+ "base": {
+  "file": "base.webp",
+  "w": 438,
+  "h": 720,
+  "ax": 265.6,
+  "ay": 716.0,
+  "kb": 48.2,
+  "q": 82
+ },
+ "acenando": {
+  "file": "acenando.webp",
+  "w": 450,
+  "h": 738,
+  "ax": 257.0,
+  "ay": 734.0,
+  "kb": 52.2,
+  "q": 82
+ },
+ "agachar": {
+  "file": "agachar.webp",
+  "w": 474,
+  "h": 648,
+  "ax": 253.7,
+  "ay": 644.0,
+  "kb": 48.9,
+  "q": 82
+ },
+ "bomber-acao": {
+  "file": "bomber-acao.webp",
+  "w": 400,
+  "h": 660,
+  "ax": 244.5,
+  "ay": 656.0,
+  "kb": 39.7,
+  "q": 82
+ },
+ "bomber-celebra": {
+  "file": "bomber-celebra.webp",
+  "w": 374,
+  "h": 562,
+  "ax": 208.0,
+  "ay": 559.0,
+  "kb": 33.4,
+  "q": 82
+ },
+ "bomber-cruzado": {
+  "file": "bomber-cruzado.webp",
+  "w": 455,
+  "h": 748,
+  "ax": 276.4,
+  "ay": 744.0,
+  "kb": 46.6,
+  "q": 82
+ },
+ "bone-acao": {
+  "file": "bone-acao.webp",
+  "w": 492,
+  "h": 750,
+  "ax": 275.8,
+  "ay": 746.0,
+  "kb": 52.0,
+  "q": 82
+ },
+ "bone-celebra": {
+  "file": "bone-celebra.webp",
+  "w": 504,
+  "h": 831,
+  "ax": 303.7,
+  "ay": 826.0,
+  "kb": 59.0,
+  "q": 82
+ },
+ "bone-cruzado": {
+  "file": "bone-cruzado.webp",
+  "w": 457,
+  "h": 768,
+  "ax": 276.8,
+  "ay": 764.0,
+  "kb": 51.0,
+  "q": 82
+ },
+ "comemorando": {
+  "file": "comemorando.webp",
+  "w": 506,
+  "h": 685,
+  "ax": 227.0,
+  "ay": 681.0,
+  "kb": 53.7,
+  "q": 82
+ },
+ "danca": {
+  "file": "danca.webp",
+  "w": 473,
+  "h": 735,
+  "ax": 190.0,
+  "ay": 730.0,
+  "kb": 51.5,
+  "q": 82
+ },
+ "dormindo": {
+  "file": "dormindo.webp",
+  "w": 446,
+  "h": 724,
+  "ax": 270.1,
+  "ay": 720.0,
+  "kb": 46.3,
+  "q": 82
+ },
+ "doutor-acao": {
+  "file": "doutor-acao.webp",
+  "w": 603,
+  "h": 751,
+  "ax": 362.2,
+  "ay": 746.0,
+  "kb": 50.2,
+  "q": 82
+ },
+ "doutor-celebra": {
+  "file": "doutor-celebra.webp",
+  "w": 432,
+  "h": 714,
+  "ax": 264.1,
+  "ay": 710.0,
+  "kb": 42.1,
+  "q": 82
+ },
+ "doutor-cruzado": {
+  "file": "doutor-cruzado.webp",
+  "w": 460,
+  "h": 762,
+  "ax": 280.5,
+  "ay": 757.0,
+  "kb": 45.8,
+  "q": 82
+ },
+ "emocionado": {
+  "file": "emocionado.webp",
+  "w": 439,
+  "h": 716,
+  "ax": 264.8,
+  "ay": 712.0,
+  "kb": 45.2,
+  "q": 82
+ },
+ "esports-acao": {
+  "file": "esports-acao.webp",
+  "w": 445,
+  "h": 719,
+  "ax": 265.4,
+  "ay": 715.0,
+  "kb": 48.8,
+  "q": 82
+ },
+ "esports-celebra": {
+  "file": "esports-celebra.webp",
+  "w": 459,
+  "h": 710,
+  "ax": 261.9,
+  "ay": 706.0,
+  "kb": 53.0,
+  "q": 82
+ },
+ "esports-cruzado": {
+  "file": "esports-cruzado.webp",
+  "w": 434,
+  "h": 712,
+  "ax": 262.6,
+  "ay": 708.0,
+  "kb": 51.0,
+  "q": 82
+ },
+ "fone-acao": {
+  "file": "fone-acao.webp",
+  "w": 435,
+  "h": 717,
+  "ax": 266.0,
+  "ay": 713.0,
+  "kb": 41.2,
+  "q": 82
+ },
+ "fone-celebra": {
+  "file": "fone-celebra.webp",
+  "w": 484,
+  "h": 742,
+  "ax": 274.3,
+  "ay": 738.0,
+  "kb": 47.2,
+  "q": 82
+ },
+ "fone-cruzado": {
+  "file": "fone-cruzado.webp",
+  "w": 432,
+  "h": 717,
+  "ax": 262.5,
+  "ay": 713.0,
+  "kb": 43.9,
+  "q": 82
+ },
+ "livro": {
+  "file": "livro.webp",
+  "w": 498,
+  "h": 719,
+  "ax": 266.6,
+  "ay": 715.0,
+  "kb": 47.6,
+  "q": 82
+ },
+ "orgulhosa": {
+  "file": "orgulhosa.webp",
+  "w": 438,
+  "h": 723,
+  "ax": 266.4,
+  "ay": 719.0,
+  "kb": 45.2,
+  "q": 82
+ },
+ "pensativo": {
+  "file": "pensativo.webp",
+  "w": 447,
+  "h": 738,
+  "ax": 273.0,
+  "ay": 734.0,
+  "kb": 48.5,
+  "q": 82
+ },
+ "plantao-acao": {
+  "file": "plantao-acao.webp",
+  "w": 506,
+  "h": 749,
+  "ax": 274.1,
+  "ay": 745.0,
+  "kb": 42.1,
+  "q": 82
+ },
+ "plantao-celebra": {
+  "file": "plantao-celebra.webp",
+  "w": 541,
+  "h": 745,
+  "ax": 275.1,
+  "ay": 741.0,
+  "kb": 46.3,
+  "q": 82
+ },
+ "plantao-cruzado": {
+  "file": "plantao-cruzado.webp",
+  "w": 432,
+  "h": 713,
+  "ax": 260.8,
+  "ay": 709.0,
+  "kb": 40.8,
+  "q": 82
+ },
+ "polegar": {
+  "file": "polegar.webp",
+  "w": 441,
+  "h": 713,
+  "ax": 263.2,
+  "ay": 709.0,
+  "kb": 46.6,
+  "q": 82
+ },
+ "pouso": {
+  "file": "pouso.webp",
+  "w": 610,
+  "h": 690,
+  "ax": 289.0,
+  "ay": 685.0,
+  "kb": 48.3,
+  "q": 82
+ },
+ "social-acao": {
+  "file": "social-acao.webp",
+  "w": 441,
+  "h": 731,
+  "ax": 269.5,
+  "ay": 727.0,
+  "kb": 40.9,
+  "q": 82
+ },
+ "social-celebra": {
+  "file": "social-celebra.webp",
+  "w": 493,
+  "h": 767,
+  "ax": 287.6,
+  "ay": 762.0,
+  "kb": 49.1,
+  "q": 82
+ },
+ "social-cruzado": {
+  "file": "social-cruzado.webp",
+  "w": 466,
+  "h": 769,
+  "ax": 284.4,
+  "ay": 764.0,
+  "kb": 43.9,
+  "q": 82
+ },
+ "surpreso": {
+  "file": "surpreso.webp",
+  "w": 452,
+  "h": 709,
+  "ax": 269.8,
+  "ay": 705.0,
+  "kb": 45.6,
+  "q": 82
+ },
+ "triste": {
+  "file": "triste.webp",
+  "w": 453,
+  "h": 722,
+  "ax": 267.0,
+  "ay": 718.0,
+  "kb": 48.1,
+  "q": 82
+ },
+ "trofeu": {
+  "file": "trofeu.webp",
+  "w": 541,
+  "h": 864,
+  "ax": 302.4,
+  "ay": 859.0,
+  "kb": 65.8,
+  "q": 82
+ },
+ "varsity-acao": {
+  "file": "varsity-acao.webp",
+  "w": 322,
+  "h": 532,
+  "ax": 196.6,
+  "ay": 529.0,
+  "kb": 29.4,
+  "q": 82
+ },
+ "varsity-celebra": {
+  "file": "varsity-celebra.webp",
+  "w": 484,
+  "h": 750,
+  "ax": 276.5,
+  "ay": 746.0,
+  "kb": 49.4,
+  "q": 82
+ },
+ "varsity-cruzado": {
+  "file": "varsity-cruzado.webp",
+  "w": 441,
+  "h": 729,
+  "ax": 269.8,
+  "ay": 725.0,
+  "kb": 46.4,
+  "q": 82
+ }
+}

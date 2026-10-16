@@ -13,12 +13,14 @@ import { ReportProblem } from "../support/ReportProblem.jsx";
 import { SupportMail, useSupportEmail } from "../support/supportContact.jsx";
 import { useMobile } from "../Shell.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
+import { CelebracoesPreferencias } from "../play/celebracoes/CelebracoesPreferencias.jsx";
 import { COUNTRIES, normalizePhone, phoneError, splitPhone } from "../legal/phone.js";
 import "./account.css";
 
 const SECTIONS = [
   { id: "conta", label: "Minha conta", sub: "Nome, e-mail, WhatsApp e aparência", icon: "user" },
   { id: "play", label: "Minha Stazia Arena", sub: "Nível, score, ranking e visibilidade", icon: "trophy" },
+  { id: "comemoracoes", label: "Comemorações e sons", sub: "Sons, voz da Durona e animações", icon: "party-popper" },
   { id: "estudo", label: "Estudo e prova", sub: "Fase, prova-alvo e rotina", icon: "graduation-cap" },
   { id: "seg", label: "Segurança", sub: "Senha e sessão", icon: "shield-check" },
   { id: "priv", label: "Privacidade e dados", sub: "Exportação e exclusão (LGPD)", icon: "file-lock" },
@@ -574,6 +576,7 @@ export function AccountScreen({ go }) {
         <Card padding={mobile ? 20 : 28}>
           {section === "conta" && <AccountSection email={user?.email} />}
           {section === "play" && <PlayProfileSection go={go} />}
+          {section === "comemoracoes" && <CelebracoesPreferencias />}
           {section === "estudo" && <StudySection />}
           {section === "seg" && <SecuritySection />}
           {section === "priv" && <PrivacySection />}

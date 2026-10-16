@@ -1,0 +1,253 @@
+{
+ "comentario": "Creditos de cada som gravado usado (licenca que libera uso comercial sem pedir permissao: CC0 ou dominio publico). Credito nao e obrigatorio, mas fica registrado.",
+ "fontes": {
+  "kenney__glass_001": {
+   "fonte": "Kenney.nl",
+   "titulo": "Interface Sounds (glass_001.ogg)",
+   "autor": "Kenney Vleugels (Kenney.nl)",
+   "licenca": "CC0 1.0",
+   "url": "https://kenney.nl/assets/interface-sounds",
+   "arquivo": "glass_001.ogg"
+  },
+  "kenney__impactBell_heavy_003": {
+   "fonte": "Kenney.nl",
+   "titulo": "Impact Sounds (impactBell_heavy_003.ogg)",
+   "autor": "Kenney Vleugels (Kenney.nl)",
+   "licenca": "CC0 1.0",
+   "url": "https://kenney.nl/assets/impact-sounds",
+   "arquivo": "impactBell_heavy_003.ogg"
+  },
+  "kenney__powerUp12": {
+   "fonte": "Kenney.nl",
+   "titulo": "Digital Audio (powerUp12.ogg)",
+   "autor": "Kenney Vleugels (Kenney.nl)",
+   "licenca": "CC0 1.0",
+   "url": "https://kenney.nl/assets/digital-audio",
+   "arquivo": "powerUp12.ogg"
+  },
+  "commons__218318_splicesound_referee-whistle-blow-gymnasium": {
+   "fonte": "Wikimedia Commons",
+   "titulo": "File:218318 splicesound referee-whistle-blow-gymnasium.wav",
+   "autor": "SpliceSound",
+   "licenca": "CC0",
+   "url": "https://commons.wikimedia.org/wiki/File:218318_splicesound_referee-whistle-blow-gymnasium.wav",
+   "arquivo": "https://upload.wikimedia.org/wikipedia/commons/7/7d/218318_splicesound_referee-whistle-blow-gymnasium.wav?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  "commons__Agogo": {
+   "fonte": "Wikimedia Commons",
+   "titulo": "File:Agogo.ogg",
+   "autor": "Freddythehat at English Wikipedia",
+   "licenca": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Agogo.ogg",
+   "arquivo": "https://upload.wikimedia.org/wikipedia/commons/e/e7/Agogo.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  "commons__Applause_ii": {
+   "fonte": "Wikimedia Commons",
+   "titulo": "File:Applause ii.ogg",
+   "autor": "thore",
+   "licenca": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Applause_ii.ogg",
+   "arquivo": "https://upload.wikimedia.org/wikipedia/commons/0/09/Applause_ii.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  "commons__Cash_register": {
+   "fonte": "Wikimedia Commons",
+   "titulo": "File:Cash register.ogg",
+   "autor": "Me",
+   "licenca": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Cash_register.ogg",
+   "arquivo": "https://upload.wikimedia.org/wikipedia/commons/7/70/Cash_register.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  "commons__Clapping_hurray_cropped_": {
+   "fonte": "Wikimedia Commons",
+   "titulo": "File:Clapping hurray (cropped).oga",
+   "autor": "Starlite",
+   "licenca": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Clapping_hurray_(cropped).oga",
+   "arquivo": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Clapping_hurray_%28cropped%29.oga?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  "commons__Drum_Roll_Intro": {
+   "fonte": "Wikimedia Commons",
+   "titulo": "File:Drum Roll Intro.ogg",
+   "autor": "Iwan Sounds and DIY",
+   "licenca": "CC0",
+   "url": "https://commons.wikimedia.org/wiki/File:Drum_Roll_Intro.ogg",
+   "arquivo": "https://upload.wikimedia.org/wikipedia/commons/c/c4/Drum_Roll_Intro.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  "commons__Finger_clicks": {
+   "fonte": "Wikimedia Commons",
+   "titulo": "File:Finger clicks.ogg",
+   "autor": "cori",
+   "licenca": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Finger_clicks.ogg",
+   "arquivo": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Finger_clicks.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  "commons__Luftr_ssel": {
+   "fonte": "Wikimedia Commons",
+   "titulo": "File:Luftrüssel.ogg",
+   "autor": "Flo Sorg",
+   "licenca": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Luftr%C3%BCssel.ogg",
+   "arquivo": "https://upload.wikimedia.org/wikipedia/commons/e/e0/Luftr%C3%BCssel.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  "commons__Pedal_tone_demonstration": {
+   "fonte": "Wikimedia Commons",
+   "titulo": "File:Pedal tone demonstration.ogg",
+   "autor": "Ovinus Real",
+   "licenca": "CC0",
+   "url": "https://commons.wikimedia.org/wiki/File:Pedal_tone_demonstration.ogg",
+   "arquivo": "https://upload.wikimedia.org/wikipedia/commons/f/f1/Pedal_tone_demonstration.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  "commons__Trombone-multiphonics": {
+   "fonte": "Wikimedia Commons",
+   "titulo": "File:Trombone-multiphonics.ogg",
+   "autor": "User:Jaser 12345",
+   "licenca": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Trombone-multiphonics.ogg",
+   "arquivo": "https://upload.wikimedia.org/wikipedia/commons/a/ab/Trombone-multiphonics.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  "commons__Tuba-range-C-low": {
+   "fonte": "Wikimedia Commons",
+   "titulo": "File:Tuba-range-C-low.ogg",
+   "autor": "No machine-readable author provided. AntoineVE~commonswiki assumed (based on copyright claims).",
+   "licenca": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Tuba-range-C-low.ogg",
+   "arquivo": "https://upload.wikimedia.org/wikipedia/commons/3/30/Tuba-range-C-low.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  "oga__boing": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "boing.flac",
+   "autor": "aeva",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/boing",
+   "arquivo": "https://opengameart.org/sites/default/files/boing.flac"
+  },
+  "oga__bing_01_0": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "bing_01_0.mp3",
+   "autor": "ezduzziteh",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/boings",
+   "arquivo": "https://opengameart.org/sites/default/files/bing_01_0.mp3"
+  },
+  "oga__bing_02": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "bing_02.mp3",
+   "autor": "ezduzziteh",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/boings",
+   "arquivo": "https://opengameart.org/sites/default/files/bing_02.mp3"
+  },
+  "oga__bung_01": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "bung_01.mp3",
+   "autor": "ezduzziteh",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/boings",
+   "arquivo": "https://opengameart.org/sites/default/files/bung_01.mp3"
+  },
+  "oga__blah": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "blah.mp3",
+   "autor": "ezduzziteh",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/silly-sound-effects",
+   "arquivo": "https://opengameart.org/sites/default/files/blah.mp3"
+  },
+  "oga__bloop": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "bloop.mp3",
+   "autor": "ezduzziteh",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/silly-sound-effects",
+   "arquivo": "https://opengameart.org/sites/default/files/bloop.mp3"
+  },
+  "oga__blung_0": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "blung_0.mp3",
+   "autor": "ezduzziteh",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/silly-sound-effects",
+   "arquivo": "https://opengameart.org/sites/default/files/blung_0.mp3"
+  },
+  "oga__booleh": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "booleh.mp3",
+   "autor": "ezduzziteh",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/silly-sound-effects",
+   "arquivo": "https://opengameart.org/sites/default/files/booleh.mp3"
+  },
+  "oga__plup": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "plup.mp3",
+   "autor": "ezduzziteh",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/silly-sound-effects",
+   "arquivo": "https://opengameart.org/sites/default/files/plup.mp3"
+  },
+  "oga__uah": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "uah.mp3",
+   "autor": "ezduzziteh",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/silly-sound-effects",
+   "arquivo": "https://opengameart.org/sites/default/files/uah.mp3"
+  },
+  "oga__bicycle-horn-1": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "bicycle-horn-1.wav",
+   "autor": "OGA (bicycle-horn)",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/bicycle-horn",
+   "arquivo": "https://opengameart.org/sites/default/files/bicycle-horn-1.wav"
+  },
+  "oga__bicycle_horn-1": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "bicycle_horn-1.ogg",
+   "autor": "OGA (bicycle-sounds)",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/bicycle-sounds",
+   "arquivo": "https://opengameart.org/sites/default/files/bicycle_horn-1.ogg"
+  },
+  "oga__rotating_bicycle_bell-1": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "rotating_bicycle_bell-1.ogg",
+   "autor": "OGA (bicycle-sounds)",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/bicycle-sounds",
+   "arquivo": "https://opengameart.org/sites/default/files/rotating_bicycle_bell-1.ogg"
+  },
+  "oga__steam_whistle": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "steam_whistle.wav",
+   "autor": "OGA (steam-whistle)",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/steam-whistle",
+   "arquivo": "https://opengameart.org/sites/default/files/steam_whistle.wav"
+  },
+  "oga__SFX": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "SFX.zip",
+   "autor": "OGA (random-sfx)",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/random-sfx",
+   "arquivo": "https://opengameart.org/sites/default/files/SFX.zip"
+  },
+  "oga__sound_effects": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "sound_effects.zip",
+   "autor": "bart",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/18-random-video-game-sound-effects",
+   "arquivo": "https://opengameart.org/sites/default/files/sound_effects.zip"
+  },
+  "oga__sound_effects/boing": {
+   "fonte": "OpenGameArt.org",
+   "titulo": "18 random video game sound effects (boing.wav)",
+   "autor": "bart",
+   "licenca": "CC0 1.0",
+   "url": "https://opengameart.org/content/18-random-video-game-sound-effects",
+   "arquivo": "sound_effects.zip/boing.wav"
+  }
+ }
+}

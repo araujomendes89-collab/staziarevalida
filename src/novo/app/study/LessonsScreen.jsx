@@ -9,6 +9,8 @@ import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
 import { XPToast } from "../play/PlayFeedback.jsx";
+import { useCelebracoesApp } from "../play/celebracoes/CelebracoesProvider.jsx";
+import { eventoDaAula } from "../play/celebracoes/eventos.js";
 import { durationLabel, lessonFileUrl, lessonsAvailable, materialTitle, sizeLabel, videoEmbed } from "./lessonsApi.js";
 import { canMeasureEnd, clearPendingEnd, createWatchTracker, flushPendingEnds, isMissingFunction, MEASURE_TIMEOUT_MS, parsePlayerMessage, savePendingEnd, subscribeToPlayer, withPlayerApi, xpNote } from "./lessonWatch.js";
 import { PodcastsSection } from "../podcasts/PodcastsSection.jsx";
@@ -302,6 +304,10 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState(null);
   const [play, setPlay] = React.useState(null);
+  // comemoração do Stazi ao concluir (marcar como concluída, ou o fim do vídeo confirmado com XP): uma vez por aula
+  const { enviar: comemorar } = useCelebracoesApp();
+  const comemorarRef = React.useRef(comemorar);
+  comemorarRef.current = comemorar;
   const c = AREA_COLOR[lesson.area] ?? "#0A6FD8";
   const done = Boolean(lesson.progress?.completed_at);
   const embed = videoEmbed(lesson.video_url);
@@ -312,14 +318,17 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
   const tracker = React.useRef(createWatchTracker());
   const sent = React.useRef({ max: 0, ended: false });
   const live = React.useRef({});
-  live.current = { backend, id: lesson.id, uid: user?.id ?? null };
+  live.current = { backend, id: lesson.id, uid: user?.id ?? null, title: lesson.title };
   const retry = React.useRef({ timer: null, n: 0 });
   const mounted = React.useRef(true);
   const confirmed = React.useCallback((r) => {
     if (!mounted.current) return;
     setWatch((w) => ({ ...w, endedAt: r.watched_to_end_at ?? w.endedAt }));
     setLesson((l) => ({ ...l, progress: { ...(l.progress ?? {}), ...r } }));
-    if (r.xp) setPlay({ xp: { total: r.xp, valid: true }, bonus: [], coins: 0 });
+    if (r.xp) {
+      setPlay({ xp: { total: r.xp, valid: true }, bonus: [], coins: 0 });
+      comemorarRef.current(eventoDaAula({ id: live.current.id, title: live.current.title }, r.xp));
+    }
   }, []);
   const report = React.useCallback(async () => {
     const { backend: b, id, uid } = live.current;
@@ -411,6 +420,7 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
       setLesson(next);
       onChanged?.(next);
       if (p.xp) setPlay({ xp: { total: p.xp, valid: true }, bonus: [], coins: 0 });
+      if (p?.completed_at || next.progress?.completed_at) comemorar(eventoDaAula(lesson, p?.xp));
     } catch {
       setError("Não foi possível registrar a conclusão. Tente de novo.");
     }

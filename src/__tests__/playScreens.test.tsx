@@ -171,26 +171,19 @@ describe("Feedback da resposta", () => {
     expect(screen.getByText("Resposta rápida demais para contar.")).toBeTruthy();
   });
 
-  it("novo nível e medalha viram a animação de conquista, uma depois da outra", async () => {
+  it("sem o provedor das comemorações a resposta segue sem quebrar (as comemorações do Stazi estão em celebracoesApp.test.tsx)", () => {
     function Harness() {
       const f = useTurnFeedback();
       return (
-        <>
-          <button type="button" onClick={() => f.push({ level_up: { from: "iniciante", to: "explorador" }, achievements_unlocked: [{ slug: "x", name: "Primeiros Passos", description: "10 questões.", icon: "footprints", rarity: "comum", xp: 10, coins: 5 }] }, [{ slug: "explorador", name: "Explorador", icon: "compass", color_token: "--level-2", description: "Explorando." }])}>
-            disparar
-          </button>
-          {f.modal}
-        </>
+        <button type="button" onClick={() => f.push({ level_up: { from: "iniciante", to: "explorador" }, achievements_unlocked: [{ slug: "x", name: "Primeiros Passos", description: "10 questões.", icon: "footprints", rarity: "comum", xp: 10, coins: 5 }] }, [{ slug: "explorador", name: "Explorador" }])}>
+          disparar
+        </button>
       );
     }
     render(<Harness />);
     fireEvent.click(screen.getByText("disparar"));
-    // animação de conquista (Celebration.jsx): um depois do outro; durante o esmaecer, o anterior ainda está na tela
-    const level = screen.getByRole("dialog", { name: "Novo nível: Explorador" });
-    fireEvent.click(within(level).getByRole("button", { name: "Continuar" }));
-    const medal = await screen.findByRole("dialog", { name: "Medalha desbloqueada: Primeiros Passos" });
-    fireEvent.click(within(medal).getByRole("button", { name: "Continuar" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(useTurnFeedback).toBeTypeOf("function");
   });
 });
 

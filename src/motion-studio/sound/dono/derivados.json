@@ -1,0 +1,12 @@
+{
+  "hee-hee-2": {
+    "dur_s": 0.784,
+    "pico_db": -11.3,
+    "receita": "derivado do hee hee do dono: +3 semitons, -2 dB, reamostragem + fades (original intacto)"
+  },
+  "hee-hee-3": {
+    "dur_s": 1.109,
+    "pico_db": -12.4,
+    "receita": "derivado do hee hee do dono: -3 semitons, -3 dB, reamostragem + fades (original intacto)"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "_comentario": "Mapa evento -> arquivo de som, editavel SEM mexer no codigo. Chave = id do evento do catalogo; valor = arquivo (relativo a esta pasta: lyria/<cue>.mp3 ou dono/<arquivo>.mp3), momento da coreografia e ganho (0 a 1). Se o evento esta aqui, este arquivo TOCA NO LUGAR dos sons padrao do catalogo. Remova a linha para voltar ao padrao. Nota (rodada 4): o hee hee agora FECHA tambem a missao cumprida, as conquistas, as promocoes de liga e o nivel por mixagem no catalogo (hee-hee, hee-hee-2, hee-hee-3 no fim do som); este mapa fica so para o desafio (hee hee sozinho).",
+  "desafio-acertado": {
+    "arquivo": "dono/hee-hee.mp3",
+    "momento": "climax",
+    "gain": 1,
+    "origem": "fonte do dono (hee hee.mp3); direitos confirmados pelo dono em 15/10/2026"
+  },
+  "_voz": {
+    "_comentario": "Voz da Stazia (Gemini TTS no Vertex, voz fixa). Estilo padrao Durona (persona dura do Tutor): nivel moderada (ironia firme, sem humilhar) quando o aluno nao tem durona_level; forte = mais seca; sem_filtro so se o aluno ou a Administracao ligarem (usa as falas 'forte': os limites de respeito nunca mudam). O aluno pode trocar para 'stazi' (malandro) ou 'desligada'; os efeitos (moeda, metais, hee hee) tocam sempre.",
+    "estilo_padrao": "durona",
+    "durona_nivel_padrao": "moderada",
+    "estilos": [
+      "durona",
+      "stazi",
+      "desligada"
+    ],
+    "niveis_durona": [
+      "moderada",
+      "forte",
+      "sem_filtro"
+    ]
+  },
+  "_voz_por_evento": {
+    "_comentario": "'ligado' | 'desligado' por evento (so a fala; os efeitos continuam). Evento ausente = ligado quando o catalogo tem fala."
+  },
+  "_coins": {
+    "principal": "coins-grande",
+    "curta": "coins-cascata",
+    "escolhida_pelo_dono": "coins-grande (cascata de moedas + hee hee agudo, 1,45 s) foi ESCOLHIDA pelo dono em 15/10/2026 como o som principal do Stazia Coins; coins-cascata e a mesma cascata, curta e sem o hee hee, para ganhos repetidos e micro-eventos. Para trocar o som de Coins de um evento: acrescente a chave do evento acima com arquivo lyria/<cue>.mp3."
+  }
+}
