@@ -1,6 +1,6 @@
 // Rodapé da sala do avaliador (Room.jsx:205-250 do protótipo de 11/10): cronômetro com o painel "Ajustar tempo", Iniciar,
 // Pausar/Retomar, Finalizar estação e Sair da sala. O tempo mostrado vem do servidor (`remainingMs`); antes do início, a duração
-// escolhida para a rodada. Sem "Sinalizar problema" (D10: a janela de suporte é outra tarefa).
+// escolhida para a rodada. Sem o botão de sinalizar problema (D10: a janela de suporte é outra tarefa).
 import React from "react";
 import { Button, Icon, IconButton, SegmentedControl } from "../../../ds";
 import { formatDecimal } from "../../../ds/format.js";
