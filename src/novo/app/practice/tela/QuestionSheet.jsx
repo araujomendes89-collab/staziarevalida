@@ -9,6 +9,9 @@ import { QuestionFigures } from "../QuestionFigures.jsx";
 import { SupportTable } from "../SupportTable.jsx";
 import { PreliminarySeal } from "../Correction.jsx";
 import { areaLabel, areaOf, isStaziamed, questionRef, splitStatement } from "../format.js";
+// leitor do aluno (sem TipTap): só com formatação que o banco mandou e que bate com o texto; sem ela, a tela é a de sempre
+import ParagrafoRico from "../../editorPro/leitor/ParagrafoRico.jsx";
+import { ricoDoCampo } from "../../../../shared/questions/formatacao";
 import "./tela-questao.css";
 
 export const OFFICIAL_NOTICE = "Não é questão oficial do Inep";
@@ -72,7 +75,9 @@ function useTextSize() {
 
 /** Enunciado: "Caso clínico", figuras e tabela de apoio, e a caixa "Pergunta" (a última frase, quando dá para separar). */
 export function QuestionStatement({ question, hint = null, revealed = false, size = 1, changeSize = () => {} }) {
-  const { stem, ask } = splitStatement(question.statement);
+  // enunciado com formatação (editor profissional): vai inteiro, sem separar a "Pergunta" (a formatação é do texto todo)
+  const ricoEnunciado = ricoDoCampo(question.formatacao, "statement", question.statement);
+  const { stem, ask } = ricoEnunciado ? { stem: question.statement, ask: "" } : splitStatement(question.statement);
   const [caseOpen, setCaseOpen] = React.useState(false);
   // tablet/celular, depois de responder: o caso fica em 3 linhas com "Ver caso completo" (no computador o caso aparece inteiro)
   const clamp = revealed && !caseOpen;
@@ -90,9 +95,15 @@ export function QuestionStatement({ question, hint = null, revealed = false, siz
             </button>
           </span>
         </div>
-        <p id={`tq-stem-${question.id}`} className="tq-stem" data-clamp={clamp ? "true" : "false"} lang="pt-BR" style={{ textAlign: "justify", hyphens: "auto" }}>
-          {stem}
-        </p>
+        {ricoEnunciado ? (
+          <div id={`tq-stem-${question.id}`} className="tq-stem tq-rico" data-clamp={clamp ? "true" : "false"} lang="pt-BR" style={{ textAlign: "justify", hyphens: "auto" }}>
+            <ParagrafoRico texto={question.statement} rico={ricoEnunciado} />
+          </div>
+        ) : (
+          <p id={`tq-stem-${question.id}`} className="tq-stem" data-clamp={clamp ? "true" : "false"} lang="pt-BR" style={{ textAlign: "justify", hyphens: "auto" }}>
+            {stem}
+          </p>
+        )}
         {revealed && (
           <button type="button" className="tq-more" aria-expanded={caseOpen} aria-controls={`tq-stem-${question.id}`} onClick={() => setCaseOpen(!caseOpen)}>
             {caseOpen ? "Mostrar menos" : "Ver caso completo"}
@@ -116,11 +127,17 @@ export function QuestionStatement({ question, hint = null, revealed = false, siz
   );
 }
 
+/** Texto da alternativa: com a formatação do banco (opcao.X.texto) quando ela bate com o texto; senão, o texto como sempre. */
+function TextoDaAlternativa({ option, formatacao }) {
+  const rico = ricoDoCampo(formatacao, `opcao.${option.id}.texto`, option.text);
+  return rico ? <ParagrafoRico texto={option.text} rico={rico} className="tq-rico" /> : option.text;
+}
+
 /**
  * Alternativas. stateOf(id): idle | selected | correct | incorrect | dimmed. `revealed` trava tudo e mostra os selos
  * "Gabarito" e "Sua resposta". Riscar é só da tela (nada vai ao banco).
  */
-export function Alternatives({ options, stateOf, chosen = null, struck = [], revealed = false, locked = false, onPick, onStrike, strikeDisabled = () => false }) {
+export function Alternatives({ options, formatacao = null, stateOf, chosen = null, struck = [], revealed = false, locked = false, onPick, onStrike, strikeDisabled = () => false }) {
   return (
     <div role="radiogroup" aria-label="Alternativas" className="tq-alts">
       {options.map((option) => {
@@ -133,7 +150,9 @@ export function Alternatives({ options, stateOf, chosen = null, struck = [], rev
           <div key={option.id} className="tq-alt" data-state={state} data-struck={isStruck ? "true" : "false"}>
             <button type="button" className="tq-alt__main" role="radio" aria-checked={state === "selected" || (revealed && mine)} disabled={lock} onClick={() => onPick?.(option.id)}>
               <span className="tq-alt__letter">{option.id}</span>
-              <span className="tq-alt__text">{option.text}</span>
+              <span className="tq-alt__text">
+                <TextoDaAlternativa option={option} formatacao={formatacao} />
+              </span>
               {badge && (
                 <span className="tq-alt__badge">
                   <Icon name={state === "correct" ? "circle-check" : "circle-alert"} size={20} />

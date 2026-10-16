@@ -9,6 +9,8 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 const backend: any = { rpc: vi.fn(), accessToken: async () => "t" };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot: { role: "admin", profile: { name: "Adm" } }, user: { id: "a" } }) }));
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
+// editor profissional (013120): nos testes antigos o campo vira um textarea com o mesmo rótulo
+vi.mock("../novo/app/editorPro/CampoRico.jsx", () => import("./helpers/campoRicoComoTexto"));
 
 import { QuestionEditor } from "../novo/app/admin/AdminQuestions.jsx";
 

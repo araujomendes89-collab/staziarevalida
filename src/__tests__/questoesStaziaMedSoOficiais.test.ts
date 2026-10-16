@@ -115,6 +115,12 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   app_draft_question_detail: { classe: "as_duas", como: "historico" }, // mostra a questão oficial mais parecida
   app_staziamed_preview: { classe: "as_duas", como: "historico" }, // prévia do administrador: lê a questão publicada para o número
   app_staziamed_publish: { classe: "as_duas", como: "historico" }, // grava a Questão StaziaMed (origem 'staziamed'), nunca oficial
+  // 013120 (editor profissional): salvar SÓ a formatação de um rascunho já publicado leva a formatação à Questão StaziaMed dele
+  // (pelo question_id do rascunho; origem 'staziamed'), sem mexer em texto nem gabarito
+  app_draft_question_save: { classe: "as_duas", como: "historico" },
+  // 012600 (dificuldade classificada por agentes): resumo só para a equipe (assert_staff), não grava nada. Faltava no catálogo
+  // desde a 012600 (o teste já estava vermelho antes da 013120)
+  app_admin_difficulty_agents_summary: { classe: "as_duas", como: "equipe" },
   app_staziamed_retire: { classe: "as_duas", como: "historico" }, // recolhe a Questão StaziaMed
   draft_situation: { classe: "as_duas", como: "historico" }, // rascunho publicado: lê a questão para saber se foi recolhida
   ch_worker_similarity_corpus: { classe: "so_oficiais", como: "filtra" }, // corpus oficial = origin 'official'; as StaziaMed vêm dos rascunhos
@@ -329,6 +335,8 @@ describe("Migração", () => {
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003010500_tela_questao_modelo.sql", import.meta.url)), "utf8"));
     // a 012200 (inéditas misturadas nos simulados) redefine practice_result por cima da 9801: colar a 9801 de novo pede colar a 012200 depois
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003012200_simulado_ineditas_misturadas.sql", import.meta.url)), "utf8"));
+    // a 013120 (editor profissional nas questões) redefine as visões do aluno e o salvar por cima: colar a 9801 de novo pede colar a 013120 depois
+    await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003013120_editor_pro_questoes.sql", import.meta.url)), "utf8"));
     expect(await snap()).toEqual(before);
   });
 });

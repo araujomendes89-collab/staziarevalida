@@ -17,6 +17,7 @@ const EVENT = {
   importada: "Importada do gerador antigo",
   gerada: "Gerada pelo servidor",
   editada: "Editada",
+  formatada: "Só a formatação mudou (aprovação mantida)",
   fonte_proposta: "Fonte oficial proposta",
   fonte_aceita: "Fontes oficiais aplicadas",
   conferida: "Conferida",
@@ -26,6 +27,13 @@ const EVENT = {
   recolhida: "Recolhida",
 };
 const isFresh = (c) => typeof c?.passage_id === "string";
+// resposta do app_draft_question_save (013120) em português simples para quem editou
+const savedNoteOf = (r) =>
+  r?.changed === false
+    ? { tone: "info", title: "Nada mudou.", text: "O rascunho continua como estava." }
+    : r?.so_formatacao
+      ? { tone: "success", title: "Salvo: só a formatação mudou.", text: "A aprovação e as conferências continuam valendo. Se esta versão já está publicada, o aluno já vê a formatação nova." }
+      : { tone: "warning", title: "Salvo: o texto mudou.", text: "As conferências e a revisão médica voltaram a zero: a questão voltou para a revisão médica." };
 
 export function DraftDetail({ item, isAdmin, isStaff, onChanged }) {
   const { backend } = useSession();
@@ -34,6 +42,8 @@ export function DraftDetail({ item, isAdmin, isStaff, onChanged }) {
   const [loadError, setLoadError] = React.useState(null);
   const [editing, setEditing] = React.useState(false);
   const [notice, setNotice] = React.useState(null);
+  // depois de salvar no editor: o que o banco decidiu (só formatação mantém a aprovação; texto novo volta para a revisão médica)
+  const [savedNote, setSavedNote] = React.useState(null);
   const [note, setNote] = React.useState("");
   const [sourcesChecked, setSourcesChecked] = React.useState(false);
   const [pending, setPending] = React.useState(null); // { kind: "conferir" | "fonte", estimate }
@@ -107,14 +117,16 @@ export function DraftDetail({ item, isAdmin, isStaff, onChanged }) {
               <Badge size="sm" tone={TRIAGE[item.triage]?.[1]}>{TRIAGE[item.triage]?.[0] ?? item.triage}</Badge> <span style={{ color: "var(--text-tertiary)" }}>{TRIAGE_NOTE}</span>
             </div>
           )}
+          {savedNote && !editing && <Banner tone={savedNote.tone} title={savedNote.title}>{savedNote.text}</Banner>}
           {editing ? (
             <DraftEditor
               draft={d}
               notice={notice}
               onCancel={() => setEditing(false)}
-              onSaved={() => {
+              onSaved={(r) => {
                 setEditing(false);
                 setNotice(null);
+                setSavedNote(savedNoteOf(r));
                 refresh();
               }}
             />

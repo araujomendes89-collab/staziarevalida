@@ -367,8 +367,10 @@ describe("aluno e visitante sem acesso novo", () => {
     await t.db.exec(f);
     await t.db.exec(f);
     // a 9990 (portão de atualidade) redefine app_admin_comment_review_approve_exam e a 010500 (tela de questão no modelo) redefine a correção do
-    // aluno, as duas por cima da 9920: colar a 9920 de novo pede colar a 9990 e a 010500 depois
-    for (const depois of ["20261003009990_portao_atualidade.sql", "20261003010500_tela_questao_modelo.sql"]) await t.db.exec(fs.readFileSync(path.join(ROOT, "supabase/migrations", depois), "utf8"));
+    // aluno, as duas por cima da 9920: colar a 9920 de novo pede colar a 9990 e a 010500 depois (e a 013120, editor profissional nas
+    // questões, que redefine a correção do aluno por cima da 010500); a 9990 também devolve ao app o draft_approval_blockers, que
+    // a 010900 fecha de novo
+    for (const depois of ["20261003009990_portao_atualidade.sql", "20261003010500_tela_questao_modelo.sql", "20261003010900_fecha_draft_approval_blockers.sql", "20261003013120_editor_pro_questoes.sql"]) await t.db.exec(fs.readFileSync(path.join(ROOT, "supabase/migrations", depois), "utf8"));
     expect(await fns()).toBe(antes);
     expect(JSON.stringify(await t.sql(`select * from public.questions order by id`))).toBe(dados);
   });

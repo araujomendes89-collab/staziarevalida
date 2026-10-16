@@ -13,6 +13,8 @@ const backend: any = { rpc: vi.fn(), accessToken: async () => "token" };
 let boot: any = { role: "admin", profile: { name: "Adm" }, reviewer_areas: [] };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot, user: { id: "a" } }) }));
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
+// editor profissional (013120): nos testes antigos o campo vira um textarea com o mesmo rótulo
+vi.mock("../novo/app/editorPro/CampoRico.jsx", () => import("./helpers/campoRicoComoTexto"));
 
 import { ContentHub } from "../novo/app/admin/content/ContentHub.jsx";
 import { MATERIAL_KIND } from "../novo/app/admin/content/labels.js";
@@ -219,7 +221,7 @@ describe("Rascunho aberto", () => {
     rpcs.app_draft_question_save = (a) => ({ id: a.p_id, content_hash: "b".repeat(64), status: "awaiting_medical_review", changed: true });
     await open();
     fireEvent.click(await screen.findByRole("button", { name: "Editar" }));
-    expect(await screen.findByText("Salvar zera as conferências e a revisão médica deste rascunho.")).toBeTruthy();
+    expect(await screen.findByText("Mudar o texto zera as conferências e a revisão médica deste rascunho.")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Enunciado"), { target: { value: "Enunciado editado pela equipe, com mais detalhes do caso." } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(call("app_draft_question_save")).toHaveLength(1));

@@ -15,7 +15,7 @@ export function QuestionReview({ question, selected, correction, go = null, tuto
         question={question}
         topic={correction.topic}
         alternatives={
-          <Alternatives options={question.options} chosen={selected} revealed stateOf={(id) => answerState(id, selected, correction)} />
+          <Alternatives options={question.options} formatacao={question.formatacao ?? correction?.formatacao} chosen={selected} revealed stateOf={(id) => answerState(id, selected, correction)} />
         }
         answer={<CorrectionBody selected={selected} correction={correction} question={question} data={data} />}
       />
