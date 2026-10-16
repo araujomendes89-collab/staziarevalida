@@ -37,6 +37,16 @@ export interface TutorSettings {
   stt_account_daily_seconds: number | null;
   /** Dica do Tutor nas questões do treino (interruptor do painel; a variável TUTOR_QUESTION_HINT=1 também liga). Nasce desligada. */
   question_hint_enabled: boolean;
+  /**
+   * Voz ao vivo para os alunos (migração …012800): tetos da CONTA INTEIRA (segundos e US$ por dia e US$ por mês, somando todos), o preço
+   * por minuto usado quando o relatório de tokens da ponte não chega e os limites de frequência por aluno. Quem aplica é o banco (abrir, renovar e
+   * ch_worker_tutor_rate_hit); aqui é só leitura para o painel e o registro.
+   */
+  live_account_daily_seconds: number;
+  live_account_daily_usd: number;
+  live_account_monthly_usd: number;
+  live_price_per_min_usd: number;
+  voice_rate_limits: Record<string, number>;
 }
 
 export const DEFAULT_SETTINGS: TutorSettings = {
@@ -46,6 +56,7 @@ export const DEFAULT_SETTINGS: TutorSettings = {
   tts_price_per_1k_chars_usd: 0, stt_price_per_min_usd: 0,
   stt_team_only: true, stt_trial_daily_seconds: null, stt_paid_daily_seconds: null, stt_account_daily_seconds: null,
   question_hint_enabled: false,
+  live_account_daily_seconds: 3600, live_account_daily_usd: 5, live_account_monthly_usd: 50, live_price_per_min_usd: 0.039, voice_rate_limits: {},
 };
 
 const cache = new WeakMap<object, { at: number; value: TutorSettings }>();

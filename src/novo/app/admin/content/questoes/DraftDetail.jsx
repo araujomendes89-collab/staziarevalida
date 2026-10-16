@@ -54,7 +54,8 @@ export function DraftDetail({ item, isAdmin, isStaff, onChanged }) {
   const ai = d.ai_review;
   const pedagogy = ai?.pedagogia;
   const issues = [...(ai?.medical?.critical_issues ?? []), ...(ai?.pedagogical?.critical_issues ?? [])];
-  const canEdit = item.can_edit && item.status !== "rejected";
+  const inReserve = item.status === "reserve";
+  const canEdit = item.can_edit && item.status !== "rejected" && !inReserve;
 
   const decide = (decision, done) =>
     act.run(() => backend.rpc("app_draft_question_decide", { p_id: item.id, p_decision: decision, p_note: note || null, p_hash: item.content_hash, p_sources_checked: sourcesChecked }), done).then((r) => {
@@ -70,6 +71,7 @@ export function DraftDetail({ item, isAdmin, isStaff, onChanged }) {
         setPending(null);
       }, pending?.kind === "conferir" ? "Conferência pedida: a tarefa entra na fila." : "Busca de fonte pedida: a tarefa entra na fila.")
       .then(() => load());
+  const unreserve = () => act.run(() => backend.rpc("app_draft_unreserve", { p_ids: [item.id] }), "Voltou para a fila de revisão.").then((r) => r && refresh());
   const balance = () => act.run(() => backend.rpc("app_draft_balance_answer", { p_id: item.id, p_hash: item.content_hash }), "Gabarito equilibrado. As conferências e a revisão voltaram a zero.").then((r) => r && refresh());
 
   return (
@@ -282,7 +284,7 @@ export function DraftDetail({ item, isAdmin, isStaff, onChanged }) {
               <ul style={{ margin: 0, paddingLeft: 18, font: "var(--type-body-sm)" }}>
                 {detail.events.map((e, i) => (
                   <li key={i}>
-                    {when(e.at)} · {EVENT[e.kind] ?? e.kind}
+                    {when(e.at)} · {e.details?.decisao === "reserva" || e.details?.decisao === "volta_da_reserva" ? "Reserva" : (EVENT[e.kind] ?? e.kind)}
                     {e.actor_email ? ` · ${e.actor_email}` : ""}
                     {e.note ? ` — ${e.note}` : ""}
                   </li>
@@ -297,7 +299,23 @@ export function DraftDetail({ item, isAdmin, isStaff, onChanged }) {
             </p>
           )}
 
-          {item.can_edit && !editing && (
+          {inReserve && (
+            <Banner tone="info" title="Na reserva: fora do banco do aluno e fora da fila de revisão">
+              <div>
+                Repete outra questão que segue na fila{item.reserve?.group ? ` (grupo ${item.reserve.group})` : ""}. Guardada para uso futuro, por exemplo como versão alternativa num simulado.
+                {item.reserve?.reason ? ` Motivo: ${item.reserve.reason}` : ""}
+                {item.reserve?.sibling_code ? ` Irmã que ficou: ${item.reserve.sibling_code}.` : ""}
+              </div>
+              {item.can_edit && (
+                <div style={{ marginTop: 8 }}>
+                  <Button size="sm" variant="secondary" icon="arrow-left" loading={act.busy} onClick={unreserve}>
+                    Voltar à fila
+                  </Button>
+                </div>
+              )}
+            </Banner>
+          )}
+          {item.can_edit && !editing && !inReserve && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
               {canEdit && (
                 <Button size="sm" variant="secondary" icon="pencil" onClick={() => setEditing(true)}>
@@ -331,7 +349,7 @@ export function DraftDetail({ item, isAdmin, isStaff, onChanged }) {
             </div>
           )}
 
-          {item.can_review ? (
+          {inReserve ? null : item.can_review ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
               {blockers.length > 0 && (
                 <Banner tone="warning" title="Ainda não dá para aprovar">

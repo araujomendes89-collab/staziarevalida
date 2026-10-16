@@ -52,7 +52,11 @@ export function SessionProvider({ children }) {
             return;
           }
           try {
-            const boot = await backend.rpc("app_bootstrap");
+            const [boot, nivelamento] = await Promise.all([
+              backend.rpc("app_bootstrap"),
+              backend.rpc("app_nivelamento_estado").catch(() => null)
+            ]);
+            boot.nivelamento = nivelamento;
             if (alive) setState({ status: "ready", backend, user, boot, error: null, recovery: recoveryRef.current });
           } catch (error) {
             if (alive) setState({ status: "error", backend, user, boot: null, error, recovery: recoveryRef.current });
@@ -81,12 +85,16 @@ export function SessionProvider({ children }) {
       /** Recarrega os dados de abertura (ex.: depois de responder questões). */
       async refresh() {
         if (!backend || !state.user) return;
-        const boot = await backend.rpc("app_bootstrap");
+        const [boot, nivelamento] = await Promise.all([
+          backend.rpc("app_bootstrap"),
+          backend.rpc("app_nivelamento_estado").catch(() => null)
+        ]);
+        boot.nivelamento = nivelamento;
         setState((s) => ({ ...s, boot }));
       },
       async updateProfile(patch) {
         const boot = await backend.rpc("app_update_profile", { p_patch: patch });
-        setState((s) => ({ ...s, boot }));
+        setState((s) => ({ ...s, boot: { ...boot, nivelamento: boot.nivelamento ?? s.boot?.nivelamento } }));
       },
       /**
        * Registra o aceite de um documento (document: "termo_uso" ou "tutor_ia"; origin: "google", "tela_aceite" ou "tutor") e
@@ -106,7 +114,7 @@ export function SessionProvider({ children }) {
         const boot = declarations
           ? await backend.rpc("app_accept_terms_declared", { ...args, p_adult: declarations.adult === true, p_physician: declarations.physician === true })
           : await backend.rpc("app_accept_terms", args);
-        setState((s) => ({ ...s, boot }));
+        setState((s) => ({ ...s, boot: { ...boot, nivelamento: boot.nivelamento ?? s.boot?.nivelamento } }));
       },
       async signOut() {
         await backend.signOut();

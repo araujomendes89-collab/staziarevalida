@@ -8,6 +8,7 @@ export const SITUACAO = {
   published: ["Publicada", "success"],
   retired: ["Recolhida", "neutral"],
   rejected: ["Recusada", "danger"],
+  reserve: ["Reserva (repetida)", "neutral"],
 };
 
 /** Opções do filtro de situação. */
@@ -19,6 +20,7 @@ export const SITUACAO_FILTRO = [
   { value: "published", label: "Publicadas" },
   { value: "retired", label: "Recolhidas" },
   { value: "rejected", label: "Recusadas" },
+  { value: "reserve", label: "Reserva" },
 ];
 
 export const LAYER = {
