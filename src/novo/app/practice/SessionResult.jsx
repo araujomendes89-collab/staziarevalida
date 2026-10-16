@@ -55,6 +55,8 @@ export function SessionResult({ session, go, timeUp = false }) {
   const blank = result.total - result.answered;
   const annulled = session.questions.filter((question) => stateOf(question) === "annulled").length;
   const score = percent(result.correct, base);
+  // quantas eram Questões Inéditas (à parte do placar): só aparece quando a sessão mistura as duas coleções
+  const ineditas = result.ineditas && result.ineditas.total > 0 && result.ineditas.total < result.total ? result.ineditas : null;
 
   const [filter, setFilter] = React.useState("all");
   const [openId, setOpenId] = React.useState(null);
@@ -97,6 +99,11 @@ export function SessionResult({ session, go, timeUp = false }) {
                   ? `${result.correct} de ${base} ${sim ? "questões" : base === 1 ? "respondida" : "respondidas"} · ${areaLabel(session.filters?.area)}`
                   : "Nenhuma questão respondida nesta sessão."}
               </p>
+              {ineditas && (
+                <p style={{ margin: "6px 0 0", color: "var(--text-secondary)" }}>
+                  Questões Inéditas: {ineditas.total} {ineditas.total === 1 ? "questão" : "questões"} neste {sim ? "simulado" : "treino"} · {ineditas.correct} {ineditas.correct === 1 ? "certa" : "certas"} de {ineditas.answered} {ineditas.answered === 1 ? "respondida" : "respondidas"}
+                </p>
+              )}
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <Button iconRight="arrow-right" onClick={() => go(back)}>

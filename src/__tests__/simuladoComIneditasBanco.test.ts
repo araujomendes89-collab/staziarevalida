@@ -12,7 +12,7 @@
  * 6. A matriz de calibração do TRI inclui apenas questões oficiais, ignorando simulados de inéditas.
  * 7. O aluno não vê gabarito, explicações, conduta nem códigos GR antes de responder; após finalizar, fontes de inéditas são vazias.
  * 8. Resoluções de questões inéditas em simulado contam na cota respondida do plano.
- * 9. Limitação conhecida (documentada): se o limite do plano baixar com um simulado de inéditas aberto, o Finalizar é recusado até o limite voltar.
+ * 9. Baixar o limite com um simulado de inéditas aberto não derruba o Finalizar (corrigido na 012200).
  * 10. A migração é idempotente e o script de desfazer restaura o bloqueio com segurança.
  *
  * Primeira versão escrita pelo Gemini CLI (Vertex); conferida, ajustada e completada por Claude.
@@ -55,19 +55,7 @@ afterAll(async () => {
 }, 60_000);
 
 describe("Simulado com Questões Inéditas no Banco de Dados", () => {
-  it("simulado sem escolher prova, por área, por tema ou por prova oficial sorteia apenas questões oficiais", async () => {
-    // Busca o tema oficial mais comum no banco
-    const [{ topic: topicoOficial, count: totalTopico }] = await env.sql<{ topic: string; count: number }>(
-      `select topic, count(*)::int as count
-       from public.questions
-       where origin = 'official' and topic is not null
-       group by topic
-       order by count(*) desc
-       limit 1`
-    );
-    const pedidoTema = Math.min(totalTopico, 10);
-
-    // Busca uma prova oficial qualquer do banco
+  it("simulado de uma prova oficial escolhida sorteia apenas questões oficiais daquela prova (Rápido, Geral, área e tema misturam inéditas desde a 012200: ver simuladoIneditasMisturadasBanco)", async () => {
     const [{ exam_id: examIdOficial, count: totalProva }] = await env.sql<{ exam_id: string; count: number }>(
       `select exam_id, count(*)::int as count
        from public.questions
@@ -77,85 +65,7 @@ describe("Simulado com Questões Inéditas no Banco de Dados", () => {
        limit 1`
     );
     const pedidoProva = Math.min(totalProva, 30);
-
     for (const uid of [USERS.PRO, USERS.TESTE]) {
-      // 1. Simulado Rápido de 30 (sem escolher prova)
-      const rapido = await env.rpc<{ session_id: string; count: number }>(uid, "app_start_session", {
-        p_kind: "simulado",
-        p_filters: { area: "", exam_id: "", search: "", status: "all" },
-        p_count: 30,
-      });
-      expect(rapido.count).toBe(30);
-      const [{ question_ids: idsRapido }] = await env.sql<{ question_ids: string[] }>(
-        `select question_ids from public.practice_sessions where id = $1`,
-        [rapido.session_id]
-      );
-      expect(idsRapido.length).toBe(30);
-      const qsRapido = await env.sql<{ id: string; origin: string }>(
-        `select id, origin from public.questions where id = any($1)`,
-        [idsRapido]
-      );
-      expect(qsRapido.length).toBe(30);
-      expect(qsRapido.every((q) => q.origin === "official")).toBe(true);
-
-      // 2. Simulado Geral de 100 (sem escolher prova)
-      const geral = await env.rpc<{ session_id: string; count: number }>(uid, "app_start_session", {
-        p_kind: "simulado",
-        p_filters: { area: "", exam_id: "", search: "", status: "all" },
-        p_count: 100,
-      });
-      expect(geral.count).toBe(100);
-      const [{ question_ids: idsGeral }] = await env.sql<{ question_ids: string[] }>(
-        `select question_ids from public.practice_sessions where id = $1`,
-        [geral.session_id]
-      );
-      expect(idsGeral.length).toBe(100);
-      const qsGeral = await env.sql<{ id: string; origin: string }>(
-        `select id, origin from public.questions where id = any($1)`,
-        [idsGeral]
-      );
-      expect(qsGeral.length).toBe(100);
-      expect(qsGeral.every((q) => q.origin === "official")).toBe(true);
-
-      // 3. Simulado por área (PEDIATRIA, 50 questões)
-      const porArea = await env.rpc<{ session_id: string; count: number }>(uid, "app_start_session", {
-        p_kind: "simulado",
-        p_filters: { area: "PEDIATRIA", exam_id: "", search: "", status: "all" },
-        p_count: 50,
-      });
-      expect(porArea.count).toBe(50);
-      const [{ question_ids: idsArea }] = await env.sql<{ question_ids: string[] }>(
-        `select question_ids from public.practice_sessions where id = $1`,
-        [porArea.session_id]
-      );
-      expect(idsArea.length).toBe(50);
-      const qsArea = await env.sql<{ id: string; origin: string; area: string }>(
-        `select id, origin, area from public.questions where id = any($1)`,
-        [idsArea]
-      );
-      expect(qsArea.length).toBe(50);
-      expect(qsArea.every((q) => q.origin === "official" && q.area === "PEDIATRIA")).toBe(true);
-
-      // 4. Simulado por tema (o mais comum das oficiais)
-      const porTema = await env.rpc<{ session_id: string; count: number }>(uid, "app_start_session", {
-        p_kind: "simulado",
-        p_filters: { area: "", exam_id: "", topic: topicoOficial, search: "", status: "all" },
-        p_count: pedidoTema,
-      });
-      expect(porTema.count).toBe(pedidoTema);
-      const [{ question_ids: idsTema }] = await env.sql<{ question_ids: string[] }>(
-        `select question_ids from public.practice_sessions where id = $1`,
-        [porTema.session_id]
-      );
-      expect(idsTema.length).toBe(pedidoTema);
-      const qsTema = await env.sql<{ id: string; origin: string; topic: string }>(
-        `select id, origin, topic from public.questions where id = any($1)`,
-        [idsTema]
-      );
-      expect(qsTema.length).toBe(pedidoTema);
-      expect(qsTema.every((q) => q.origin === "official" && q.topic === topicoOficial)).toBe(true);
-
-      // 5. Simulado de prova oficial
       const porProva = await env.rpc<{ session_id: string; count: number }>(uid, "app_start_session", {
         p_kind: "simulado",
         p_filters: { area: "", exam_id: examIdOficial, search: "", status: "all" },
@@ -166,11 +76,7 @@ describe("Simulado com Questões Inéditas no Banco de Dados", () => {
         `select question_ids from public.practice_sessions where id = $1`,
         [porProva.session_id]
       );
-      expect(idsProva.length).toBe(pedidoProva);
-      const qsProva = await env.sql<{ id: string; origin: string; exam_id: string }>(
-        `select id, origin, exam_id from public.questions where id = any($1)`,
-        [idsProva]
-      );
+      const qsProva = await env.sql<{ id: string; origin: string; exam_id: string }>(`select id, origin, exam_id from public.questions where id = any($1)`, [idsProva]);
       expect(qsProva.length).toBe(pedidoProva);
       expect(qsProva.every((q) => q.origin === "official" && q.exam_id === examIdOficial)).toBe(true);
     }
@@ -594,12 +500,10 @@ describe("Simulado com Questões Inéditas no Banco de Dados", () => {
     expect(idsNovo.every((id) => liberadasAntes.includes(id))).toBe(true);
   });
 
-  it("limitação conhecida: se o limite baixar com um simulado de inéditas aberto, o Finalizar é recusado até o limite voltar (as respostas ficam guardadas na sessão)", async () => {
-    // O simulado guarda as respostas na própria sessão e só grava as tentativas ao finalizar; é nesse momento que o gatilho de resposta
-    // confere o plano. Hoje isso vale também para a carga de questões novas (troca as ainda não respondidas) e para o fim do teste grátis.
-    // Se um dia isto for tratado (ex.: a sessão aberta manter o acesso às questões que já sorteou), troque as expectativas abaixo.
-    // "unanswered": sorteia só entre as liberadas que ele ainda não respondeu (as 10 respondidas no teste anterior continuariam liberadas
-    // com o limite em 0 e o resultado dependeria do sorteio)
+  it("baixar o limite com um simulado de inéditas aberto não derruba o Finalizar (corrigido na 012200): a resposta da inédita fora do plano só não é gravada", async () => {
+    // O simulado guarda as respostas na sessão e grava as tentativas ao finalizar. Na 012000 o gatilho de resposta das inéditas recusava o
+    // Finalizar inteiro se o plano já não liberasse a questão; a 012200 pula essas respostas e o simulado termina.
+    // "unanswered": sorteia só entre as liberadas ainda não respondidas (com limite 0 as já respondidas continuariam liberadas)
     const aberto = await env.rpc<{ session_id: string; count: number }>(USERS.TESTE, "app_start_session", {
       p_kind: "simulado",
       p_filters: { area: "", exam_id: "staziamed", search: "", status: "unanswered" },
@@ -613,16 +517,14 @@ describe("Simulado com Questões Inéditas no Banco de Dados", () => {
     }
     try {
       await env.rpc(USERS.ADMIN, "app_admin_save_ineditas_limits", { p_limits: { trial: 0 } });
-      await expect(env.rpc(USERS.TESTE, "app_finish_session", { p_session_id: aberto.session_id })).rejects.toThrow(/não está liberada no seu plano/);
-      const [sessao] = await env.sql<{ finished_at: string | null; answers: Record<string, unknown> }>(`select finished_at, answers from public.practice_sessions where id = $1`, [aberto.session_id]);
-      expect(sessao.finished_at).toBeNull();
-      expect(Object.keys(sessao.answers).sort()).toEqual([...question_ids].sort());
+      const fim = await env.rpc<any>(USERS.TESTE, "app_finish_session", { p_session_id: aberto.session_id });
+      expect(fim.finished_at).toBeTruthy();
+      expect(fim.result).toMatchObject({ total: 5, answered: 0 });
+      const gravadas = await env.sql(`select 1 from public.question_attempts where session_id = $1`, [aberto.session_id]);
+      expect(gravadas.length).toBe(0);
     } finally {
       await env.rpc(USERS.ADMIN, "app_admin_save_ineditas_limits", { p_limits: { trial: 20 } });
     }
-    const fim = await env.rpc<any>(USERS.TESTE, "app_finish_session", { p_session_id: aberto.session_id });
-    expect(fim.finished_at).toBeTruthy();
-    expect(fim.result).toMatchObject({ total: 5, answered: 5, correct: 5 });
   });
 
   it("reaplicar a migração é idempotente e o roteiro de desfazer restaura o bloqueio com segurança", async () => {
@@ -675,8 +577,9 @@ describe("Simulado com Questões Inéditas no Banco de Dados", () => {
       const [conferirOk2] = await env.sql<{ resultado: string }>(sqlConferir);
       expect(conferirOk2.resultado).toMatch(/^OK:/);
     } finally {
-      // Garante que o estado final do banco mantenha a migração aplicada
+      // Garante que o estado final do banco mantenha as migrações aplicadas (a 012200 redefine app_start_session por cima da 012000)
       await env.dev.db.exec(sqlMigracao);
+      await env.dev.db.exec(fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261003012200_simulado_ineditas_misturadas.sql"), "utf8"));
     }
   });
 });

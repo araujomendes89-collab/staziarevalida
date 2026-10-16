@@ -254,6 +254,8 @@ export function QuestionBuilder({ go, mode }) {
   const lockedIneditas = onIneditas && (ineditas?.locked === true || !ineditas);
   // TRI + prova "Questões Inéditas": o banco recusa (a nota TRI e a calibração são só de questões oficiais); a tela avisa antes e não deixa começar
   const triOnIneditas = tri && onIneditas;
+  // Simulado comum (nenhuma prova escolhida) mistura algumas Questões Inéditas liberadas no plano (o percentual é do administrador); o TRI não
+  const mixIneditas = sim && !tri && form.exam === "" && Boolean(ineditas) && ineditas.locked !== true && ineditas.released !== 0;
   const lockMessage = ineditas?.lock_message || "As Questões Inéditas são abertas a quem tem plano pago ou teste grátis em dia. As questões das provas oficiais continuam abertas.";
   // limite do plano (ex.: teste grátis): a tela mostra o total existente e quantas o plano libera
   // no Banco de Questões o cartão "Questões Inéditas" do topo já mostra o contador; no Simulado o quadro aparece junto do filtro
@@ -363,7 +365,7 @@ export function QuestionBuilder({ go, mode }) {
       label="Prova / edição"
       value={form.exam}
       onChange={(e) => edit({ exam: e.target.value })}
-      options={[{ value: "", label: "Todas as provas oficiais" }, ...(options?.exams ?? []).map((e) => ({ value: e.id, label: e.id === "staziamed" && e.locked ? `${examLabel(e)} (indisponível no seu plano agora)` : e.id === "staziamed" && isIneditasLimited(e) ? `${examLabel(e)} (${e.released} de ${e.total})` : examLabel(e) }))]}
+      options={[{ value: "", label: mixIneditas ? "Todas as provas (oficiais e algumas Inéditas)" : "Todas as provas oficiais" }, ...(options?.exams ?? []).map((e) => ({ value: e.id, label: e.id === "staziamed" && e.locked ? `${examLabel(e)} (indisponível no seu plano agora)` : e.id === "staziamed" && isIneditasLimited(e) ? `${examLabel(e)} (${e.released} de ${e.total})` : examLabel(e) }))]}
     />
   );
   const timerField = (
@@ -387,6 +389,11 @@ export function QuestionBuilder({ go, mode }) {
         <Banner tone="info" icon="shield-check" title="Questões Inéditas">
           {STAZIAMED_NOTICE} Aqui "inéditas" quer dizer escritas pela StaziaMed; não é o mesmo que "ainda não respondidas"{sim ? "." : " (isso é o filtro Status)."}
         </Banner>
+      )}
+      {mixIneditas && (
+        <p className="sm-field__hint" style={{ margin: 0 }}>
+          Algumas questões deste simulado podem ser Questões Inéditas liberadas no seu plano (aparecem como “Questão Inédita”). O simulado TRI usa só questões oficiais.
+        </p>
       )}
       {sim && onIneditas && limitedIneditas && <IneditasQuota ineditas={ineditas} onPlans={() => go("planos")} />}
       {lockedIneditas && (
