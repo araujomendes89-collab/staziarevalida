@@ -113,7 +113,8 @@ describe("Termo — versões vigentes, tabela de aceites e permissões", () => {
        where n.nspname = 'public' and p.proname in ('legal_email_hash', 'legal_is_student', 'legal_record')
          and has_function_privilege('service_role', p.oid, 'execute')`
     );
-    expect(server.rows[0].n).toBe(3);
+    // 4: legal_record tem também a versão com as declarações (7 parâmetros, …11500_termo_v2_declaracoes), fechada do mesmo jeito
+    expect(server.rows[0].n).toBe(4);
   });
 });
 
