@@ -68,6 +68,13 @@ describe("A regra: só formatação × conteúdo (banco e tela dão a mesma resp
     ["sobrescrito (10⁵ ≠ 105)", C(P()), C(P({ rico: par([txt("Febre e "), txt("guia", [link, { type: "superscript" }]), txt(" hoje")]) })), false],
     ["tachado", C(P()), C(P({ rico: par([txt("Febre e "), txt("guia", [link, { type: "strike" }]), txt(" hoje")]) })), false],
     ["virou título (nível)", C(P()), C(P({ rico: envelope({ type: "doc", content: [{ type: "heading", attrs: { level: 3 }, content: [txt("Febre e "), txt("guia", [link]), txt(" hoje")] }] } as any) })), false],
+    ["estilo da numeração/marcador (listStyle) e borda de parágrafo",
+      C(P({ text: "• Febre e [guia](https://www.gov.br/saude) hoje", rico: envelope({ type: "doc", content: [{ type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [txt("Febre e "), txt("guia", [link]), txt(" hoje")] }] }] }] } as any) })),
+      C(P({ text: "• Febre e [guia](https://www.gov.br/saude) hoje", rico: envelope({ type: "doc", content: [{ type: "bulletList", attrs: { listStyle: "square" }, content: [{ type: "listItem", content: [{ type: "paragraph", attrs: { borda: "fina" }, content: [txt("Febre e "), txt("guia", [link]), txt(" hoje")] }] }] }] } as any) })), true],
+    ["aninhar lista continua sendo conteúdo",
+      C(P({ text: "• Febre e [guia](https://www.gov.br/saude) hoje", rico: envelope({ type: "doc", content: [{ type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [txt("Febre e "), txt("guia", [link]), txt(" hoje")] }] }] }] } as any) })),
+      // aninhar muda a projeção do texto ("• • ..."), por isso o text guardado muda e conta como conteúdo
+      C(P({ text: "• • Febre e [guia](https://www.gov.br/saude) hoje", rico: envelope({ type: "doc", content: [{ type: "bulletList", content: [{ type: "listItem", content: [{ type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [txt("Febre e "), txt("guia", [link]), txt(" hoje")] }] }] }] }] }] } as any) })), false],
     ["rico estranho", C(P()), C(P({ rico: { f: "outro", doc: {} } })), false],
     ["nota de rodapé (nó de módulo com texto)", C(P()), C(P({ rico: envelope({ type: "doc", content: [{ type: "paragraph", content: [txt("Febre e "), txt("guia", [link]), txt(" hoje"), { type: "notaRodape", content: [txt("ver diretriz")] }] }] } as any) })), false],
   ];

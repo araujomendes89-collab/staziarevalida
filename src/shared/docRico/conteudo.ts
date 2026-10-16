@@ -7,7 +7,7 @@ export const FORMATO_MARCAS = ["bold", "italic", "underline", "textStyle", "high
 export const FORMATO_ATRIBUTOS = [
   "ref", "textAlign", "lineHeight", "indent", "firstLineIndent", "spacingBefore", "spacingAfter", "marginTop", "marginBottom",
   "color", "backgroundColor", "fontFamily", "fontSize", "colwidth", "cellBackground", "borderColor", "borderStyle",
-  "largura", "alinhamento", "disposicao", "borda", "cantos", "sombra",
+  "largura", "alinhamento", "disposicao", "borda", "cantos", "sombra", "listStyle",
 ];
 export const NOS_DO_TEXTO = ["doc", "paragraph", "text", "hardBreak", "heading", "bulletList", "orderedList", "listItem", "blockquote", "table", "tableRow", "tableCell", "tableHeader"];
 

@@ -7,8 +7,8 @@
 --   * Continua igual por obrigação: "text" de todos os parágrafos (o texto oficial, que já traz os links), ordem e número de
 --     seções e parágrafos, títulos, "clinical", afirmações (claims/claim_ids), campos pdf_*, referências e qualquer outra chave.
 --   * Do "rico" só é formatação: as marcas bold, italic, underline, textStyle (cor/fonte/tamanho), highlight e os atributos da lista
---     public.ch_formato_atributos() (alinhamento, entrelinha, recuos, espaços, cor, fonte, tamanho, largura de coluna, largura /
---     alinhamento / disposição / borda / cantos / sombra de imagem). TODO o resto conta como conteúdo: nó de módulo (imagem, nota,
+--     public.ch_formato_atributos() (alinhamento, entrelinha, recuos, espaços, cor, fonte, tamanho, largura de coluna, borda de
+--     parágrafo, estilo do marcador/numeração da lista, largura / alinhamento / disposição / borda / cantos / sombra de imagem). TODO o resto conta como conteúdo: nó de módulo (imagem, nota,
 --     citação, fórmula...) com seus atributos (arquivo, legenda, texto alternativo, recorte, giro...), texto dentro deles, links
 --     (destino), sobrescrito/subscrito (10⁵ ≠ 105), tachado, nível de título, células mescladas e qualquer coisa nova. Na dúvida,
 --     é conteúdo.
@@ -31,7 +31,7 @@ create or replace function public.ch_formato_atributos() returns text[]
   language sql immutable set search_path = ''
 as $$ select array['ref', 'textAlign', 'lineHeight', 'indent', 'firstLineIndent', 'spacingBefore', 'spacingAfter', 'marginTop', 'marginBottom',
                    'color', 'backgroundColor', 'fontFamily', 'fontSize', 'colwidth', 'cellBackground', 'borderColor', 'borderStyle',
-                   'largura', 'alinhamento', 'disposicao', 'borda', 'cantos', 'sombra']::text[] $$;
+                   'largura', 'alinhamento', 'disposicao', 'borda', 'cantos', 'sombra', 'listStyle']::text[] $$;
 
 -- Nós do núcleo cujo texto já está no "text" do parágrafo (a projeção). Nó fora desta lista é conteúdo, e o texto dentro dele também.
 create or replace function public.ch_nos_do_texto() returns text[]
