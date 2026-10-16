@@ -126,12 +126,19 @@ describe("Migração 013360 (+013380): resultado, revisão da nota, treinar outr
     expect(s.phase).toBe("review");
     // na conferência de novo, o candidato não lê o resultado (que traz o nome da estação); o avaliador lê
     await expect(d.rpc(U.ana, "app_dupla_result", { p_room_id: id, p_round: 1 })).rejects.toThrow("Resultado ainda não liberado.");
+    // pedido 2 do dono (16/10): enquanto o avaliador revê a nota, a candidata volta a ver só "Estação N", sem o nome nem o tema
+    const naRevisao = [await d.rpc(U.ana, "app_dupla_room", { p_room_id: id }), await d.rpc(U.ana, "app_dupla_room_content", { p_room_id: id })];
+    expect(naRevisao[0].station).toMatchObject({ label: "Estação 8" });
+    expect(naRevisao[0].station).not.toHaveProperty("name");
+    expect(vaza(naRevisao)).toEqual([]);
     expect((await d.rpc(U.bruno, "app_dupla_result", { p_room_id: id, p_round: 1 })).viewer).toBe("evaluator");
     // as marcações da rodada continuam; o avaliador corrige e finaliza de novo
     expect((await d.rpc(U.bruno, "app_dupla_marks", { p_room_id: id })).map((m: any) => [m.item_id, m.grade])).toEqual([["i1", "partial"], ["i2", "correct"]]);
     await act(U.bruno, "mark", id, { p_item_id: "i3", p_grade: "correct" });
     const fim = await act(U.bruno, "finalize", id, { p_feedback: { gen: "Revisado." } });
     expect(fim.phase).toBe("result");
+    // revisão terminada: o nome volta para a candidata
+    expect((await d.rpc(U.ana, "app_dupla_room", { p_room_id: id })).station.name).toBe(SECRETA.name);
     expect(await d.sql(`select count(*)::int as n from public.checklist_study_sessions where room_id = $1`, [id])).toEqual([{ n: 1 }]);
     const sess = await sessao(id, 1);
     expect(sess).toMatchObject({ score_n: 8.75, antes_n: 3.75, pct: 87.5, feedback_gen: "Revisado." });
