@@ -249,3 +249,21 @@
 .smn-side .smn-item{min-height:var(--smn-sub)}
 .smn-chev-slot{flex:none;width:16px;height:16px}
 @media (max-height:720px){.smn-side .smn-sub{margin-bottom:3px}}
+
+/* ---------- Ajuste 2 (16/10/2026): topo do Início e do Plano de Hoje no celular ---------- */
+/* Início: saudação e data numa coluna só, com a sequência à direita; o cartão azul sobe (era y=148) */
+.smn-ph-hd{display:flex;flex-direction:column;gap:1px;min-width:0}
+@media (max-width:719px){
+  .smn-ph.smn-ph--inicio:not(.smn-ph--plan):not(.smn-ph--root){gap:4px;margin-bottom:-8px}
+  .smn-ph--inicio .smn-ph-date--m{padding:0;line-height:16px}
+}
+/* Plano de Hoje: "‹ Início" à esquerda e o lema à direita, na linha curta de cima; título e "Ajustar" na mesma linha */
+.smn-ph-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.smn-ph-topo .smn-ph-eyebrow--m{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+@media (max-width:719px){
+  .smn-ph--plan{gap:2px;margin-bottom:-7px}
+  .smn-ph--plan .smn-ph-back{min-height:22px;height:22px}
+  .smn-ph--plan .smn-ph-back::after{inset:-11px 0}
+  .smn-ph--plan .smn-ph-row--plan .smn-ph-btn{position:relative;min-height:36px;height:36px}
+  .smn-ph--plan .smn-ph-row--plan .smn-ph-btn::after{content:"";position:absolute;inset:-4px 0}
+}

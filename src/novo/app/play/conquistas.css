@@ -104,3 +104,16 @@
 @media (max-width:719px){.md-leagues{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:16px}.md-leagues::-webkit-scrollbar{display:none}.md-league{flex:0 0 112px;scroll-snap-align:start}.md-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.md-card{padding:14px 8px}}
 
 @media (prefers-reduced-motion:reduce){.cq-chip,.cq-card{transition:none}}
+
+/* Ajuste 2 (16/10/2026): cartões do computador mais baixos (eram 261×167 em 1440 e 250×185 em 1920; alvo ~139 de altura).
+   Menos espaço por dentro, barra de progresso curta ao lado do texto (em vez de uma linha só para ela) e, nas telas largas,
+   colunas de no mínimo 290 px (5 colunas de ~302 px em 1920 em vez de 6 de 250 px, que quebravam o texto em mais linhas). */
+.cq-card{padding:12px 12px;gap:10px}
+.cq-card__body{gap:3px}
+.cq-card .cq-name{line-height:1.2}
+.cq-card .cq-req{line-height:1.3}
+.cq-card .cq-prog{flex-direction:row;align-items:center;gap:6px;margin-top:2px}
+.cq-card .cq-prog .cq-bar{flex:0 0 36px;height:5px}
+.cq-card .cq-prog__text{flex:1;min-width:0;font-size:11.5px;line-height:1.25}
+.cq-card .cq-done{font-size:11.5px;line-height:1.25}
+@media (min-width:1600px){.cq-grid{grid-template-columns:repeat(auto-fill,minmax(290px,1fr))}}
