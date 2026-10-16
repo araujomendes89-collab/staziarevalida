@@ -1,5 +1,5 @@
 -- DESFAZER da 20261003011500_termo_v2_declaracoes.sql. NÃO aplicado em produção (ensaiado no PGlite com rollback).
--- ANTES: se a ativação foi colada, cole primeiro supabase/desfazer/20261003011500_termo_v2.ativar.desfazer.sql (volta o Termo 1.0).
+-- ANTES: se a ativação foi colada, cole primeiro supabase/desfazer/20261003011510_termo_v2_ativar.desfazer.sql (volta o Termo 1.0).
 -- Volta as funções ao corpo de antes (…5300 e …9732), apaga a função de aceitar com declarações, a de 7 parâmetros, a tabela das
 -- declarações (PERDE a prova das declarações já feitas — exporte antes se houver alguma) e a coluna requires_declarations.
 

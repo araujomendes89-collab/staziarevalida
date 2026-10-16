@@ -87,7 +87,7 @@ afterAll(async () => {
 
 describe("Cadastro — banco local do navegador", () => {
   it("cadastro local com WhatsApp e versão do termo já abre sem a tela de aceite", async () => {
-    const result = await backend.signUp("Ana Lima", "ana@teste.dev", "senha-segura", { phone: PHONE, termsVersion: "1.0", userAgent: "T" });
+    const result = await backend.signUp("Ana Lima", "ana@teste.dev", "senha-segura", { phone: PHONE, termsVersion: "2.0", declaresAdult: true, declaresPhysician: true, userAgent: "T" });
     expect(result.needsEmailConfirmation).toBe(false);
 
     const boot = await backend.rpc<any>("app_bootstrap");
@@ -96,12 +96,12 @@ describe("Cadastro — banco local do navegador", () => {
       student: true,
       phone_missing: false,
       gate_required: false,
-      termo_uso: { current: "1.0", accepted: "1.0", accepted_at: expect.any(String) },
+      termo_uso: { current: "2.0", accepted: "2.0", accepted_at: expect.any(String) },
     });
 
     // o aceite veio do cadastro, não da tela de aceite
     const exported = await backend.rpc<any>("app_export_my_data");
-    expect(exported.acceptances).toEqual([{ document: "termo_uso", version: "1.0", accepted_at: expect.any(String), origin: "cadastro", user_agent: "T" }]);
+    expect(exported.acceptances).toEqual([{ document: "termo_uso", version: "2.0", accepted_at: expect.any(String), origin: "cadastro", user_agent: "T" }]);
   });
 
   it("cadastro sem versão do termo pede a tela de aceite", async () => {
@@ -119,6 +119,12 @@ describe("Cadastro — banco local do navegador", () => {
     expect(boot.legal).toMatchObject({ phone_missing: true, gate_required: true });
   });
 
+  it("versão vigente sem as declarações de maioridade e de médico não vale como aceite", async () => {
+    await backend.signUp("Lia Souza", "lia2@teste.dev", "senha-segura", { phone: PHONE, termsVersion: TERMO_VERSAO, declaresAdult: true, userAgent: "T" });
+    const boot = await backend.rpc<any>("app_bootstrap");
+    expect(boot.legal).toMatchObject({ gate_required: true, declarations_required: true, termo_uso: { accepted: null } });
+  });
+
   it("versão do termo que não é a vigente não vale como aceite", async () => {
     await backend.signUp("Davi Melo", "davi@teste.dev", "senha-segura", { phone: PHONE, termsVersion: "0.9", userAgent: "T" });
     const boot = await backend.rpc<any>("app_bootstrap");
@@ -127,24 +133,28 @@ describe("Cadastro — banco local do navegador", () => {
 
   it("aceitar depois, com os argumentos da sessão, fecha a tela de aceite (e repetir não duplica)", async () => {
     await backend.signUp("Eva Costa", "eva@teste.dev", "senha-segura");
-    const args = { p_document: "termo_uso", p_version: TERMO_VERSAO, p_origin: "tela_aceite", p_phone: PHONE, p_user_agent: "UA/1" };
+    const args = { p_document: "termo_uso", p_version: TERMO_VERSAO, p_origin: "tela_aceite", p_phone: PHONE, p_user_agent: "UA/1", p_adult: true, p_physician: true };
 
-    const boot = await backend.rpc<any>("app_accept_terms", args);
+    const boot = await backend.rpc<any>("app_accept_terms_declared", args);
     expect(boot.profile.phone).toBe(PHONE);
-    expect(boot.legal).toMatchObject({ phone_missing: false, gate_required: false, termo_uso: { accepted: "1.0" } });
-    await backend.rpc("app_accept_terms", { ...args, p_phone: null });
+    expect(boot.legal).toMatchObject({ phone_missing: false, gate_required: false, termo_uso: { accepted: "2.0" } });
+    await backend.rpc("app_accept_terms_declared", { ...args, p_phone: null });
 
     expect((await backend.rpc<any>("app_export_my_data")).acceptances).toEqual([
-      { document: "termo_uso", version: "1.0", accepted_at: expect.any(String), origin: "tela_aceite", user_agent: "UA/1" },
+      { document: "termo_uso", version: "2.0", accepted_at: expect.any(String), origin: "tela_aceite", user_agent: "UA/1" },
     ]);
   });
 
   it("versão desatualizada e WhatsApp inválido são recusados com as mensagens do spec, sem gravar nada", async () => {
     await backend.signUp("Rui Neto", "rui@teste.dev", "senha-segura");
-    const args = { p_document: "termo_uso", p_version: TERMO_VERSAO, p_origin: "tela_aceite", p_phone: PHONE, p_user_agent: "UA/1" };
+    const args = { p_document: "termo_uso", p_version: TERMO_VERSAO, p_origin: "tela_aceite", p_phone: PHONE, p_user_agent: "UA/1", p_adult: true, p_physician: true };
 
-    await expect(backend.rpc("app_accept_terms", { ...args, p_version: "0.9" })).rejects.toThrow("Versão desatualizada do termo.");
-    await expect(backend.rpc("app_accept_terms", { ...args, p_phone: "41999998888" })).rejects.toThrow("Informe o WhatsApp com código do país.");
+    await expect(backend.rpc("app_accept_terms_declared", { ...args, p_version: "0.9" })).rejects.toThrow("Versão desatualizada do termo.");
+    await expect(backend.rpc("app_accept_terms_declared", { ...args, p_phone: "41999998888" })).rejects.toThrow("Informe o WhatsApp com código do país.");
+    // Termo 2.0: sem as duas declarações não há aceite (nem pela função antiga, nem com uma só)
+    const { p_adult: _a, p_physician: _p, ...semDeclaracao } = args;
+    await expect(backend.rpc("app_accept_terms", semDeclaracao)).rejects.toThrow("Confirme que você tem 18 anos ou mais e que é médico(a).");
+    await expect(backend.rpc("app_accept_terms_declared", { ...args, p_physician: false })).rejects.toThrow("Confirme que você tem 18 anos ou mais e que é médico(a).");
 
     const boot = await backend.rpc<any>("app_bootstrap");
     expect(boot.profile.phone).toBeNull();
@@ -158,7 +168,7 @@ describe("Cadastro — banco local do navegador", () => {
   });
 
   it("os dados de antes continuam: e-mail repetido e senha curta valem para quem manda os dados novos", async () => {
-    const extra = { phone: PHONE, termsVersion: "1.0", userAgent: "T" };
+    const extra = { phone: PHONE, termsVersion: "2.0", declaresAdult: true, declaresPhysician: true, userAgent: "T" };
     await expect(backend.signUp("Ana 2", "ana@teste.dev", "senha-segura", extra)).rejects.toMatchObject({ code: "email_taken" });
     await expect(backend.signUp("Fábio", "fabio@teste.dev", "curta", extra)).rejects.toMatchObject({ code: "weak_password" });
     await expect(backend.signUp("Fábio", "sem-arroba", "senha-segura", extra)).rejects.toMatchObject({ code: "invalid_email" });
@@ -169,14 +179,16 @@ describe("Cadastro — createAccount do banco local (usado pelo servidor de dese
   it("grava os metadados na conta e o gatilho cria o aceite 'cadastro' com o navegador e o e-mail em código", async () => {
     const user = await core.createAccount(" Gabi Souza ", " Gabi@Teste.dev ", "senha-segura", false, {
       phone: PHONE,
-      terms_version: "1.0",
+      terms_version: "2.0",
+      declares_adult: "true",
+      declares_physician: "true",
       user_agent: "UA/Gabi",
     });
     expect(user.email).toBe("gabi@teste.dev");
-    expect(await metaOf(user.id)).toEqual({ name: "Gabi Souza", phone: PHONE, terms_version: "1.0", user_agent: "UA/Gabi" });
+    expect(await metaOf(user.id)).toEqual({ name: "Gabi Souza", phone: PHONE, terms_version: "2.0", declares_adult: "true", declares_physician: "true", user_agent: "UA/Gabi" });
     expect(await profileOf(user.id)).toEqual({ name: "Gabi Souza", phone: PHONE });
     expect(await acceptances(user.id)).toEqual([
-      { document: "termo_uso", version: "1.0", origin: "cadastro", user_agent: "UA/Gabi", email_hash: sha256("gabi@teste.dev") },
+      { document: "termo_uso", version: "2.0", origin: "cadastro", user_agent: "UA/Gabi", email_hash: sha256("gabi@teste.dev") },
     ]);
   });
 
@@ -198,16 +210,16 @@ describe("Cadastro — createAccount do banco local (usado pelo servidor de dese
 describe("Cadastro — servidor de desenvolvimento (/api/dev-db)", () => {
   it("o app de desenvolvimento leva WhatsApp, versão do termo e navegador ao banco", async () => {
     const devBackend = createDevServerBackend(base);
-    const result = await devBackend.signUp("Jade Rocha", "jade@teste.dev", "senha-segura", { phone: "+351912345678", termsVersion: "1.0", userAgent: "UA/Jade" });
+    const result = await devBackend.signUp("Jade Rocha", "jade@teste.dev", "senha-segura", { phone: "+351912345678", termsVersion: "2.0", declaresAdult: true, declaresPhysician: true, userAgent: "UA/Jade" });
     expect(result.needsEmailConfirmation).toBe(false);
 
     const boot = await devBackend.rpc<any>("app_bootstrap");
     expect(boot.profile).toMatchObject({ name: "Jade Rocha", phone: "+351912345678" });
-    expect(boot.legal).toMatchObject({ phone_missing: false, gate_required: false, termo_uso: { accepted: "1.0" } });
+    expect(boot.legal).toMatchObject({ phone_missing: false, gate_required: false, termo_uso: { accepted: "2.0" } });
 
     const id = (await devBackend.getUser())!.id;
     expect(await acceptances(id)).toEqual([
-      { document: "termo_uso", version: "1.0", origin: "cadastro", user_agent: "UA/Jade", email_hash: sha256("jade@teste.dev") },
+      { document: "termo_uso", version: "2.0", origin: "cadastro", user_agent: "UA/Jade", email_hash: sha256("jade@teste.dev") },
     ]);
   });
 
@@ -244,11 +256,11 @@ describe("Cadastro — Supabase (produção)", () => {
     supabase.signUp.mockResolvedValueOnce({ data: { session: null }, error: null });
     const sb = createSupabaseBackend("https://x.supabase.test", "chave-anonima", REDIRECT);
 
-    const result = await sb.signUp("Nina Alves", "nina@teste.dev", "senha-segura", { phone: PHONE, termsVersion: "1.0", userAgent: "UA/Nina" });
+    const result = await sb.signUp("Nina Alves", "nina@teste.dev", "senha-segura", { phone: PHONE, termsVersion: "2.0", declaresAdult: true, declaresPhysician: true, userAgent: "UA/Nina" });
     expect(supabase.signUp).toHaveBeenLastCalledWith({
       email: "nina@teste.dev",
       password: "senha-segura",
-      options: { data: { name: "Nina Alves", phone: PHONE, terms_version: "1.0", user_agent: "UA/Nina" }, emailRedirectTo: REDIRECT },
+      options: { data: { name: "Nina Alves", phone: PHONE, terms_version: "2.0", user_agent: "UA/Nina", declares_adult: "true", declares_physician: "true" }, emailRedirectTo: REDIRECT },
     });
     expect(result).toEqual({ needsEmailConfirmation: true }); // sem sessão: o e-mail precisa ser confirmado
   });
@@ -279,6 +291,6 @@ describe("Cadastro — Supabase (produção)", () => {
   it("erro do Supabase continua virando o erro do app", async () => {
     supabase.signUp.mockResolvedValueOnce({ data: { session: null }, error: { code: "user_already_exists", message: "User already registered" } });
     const sb = createSupabaseBackend("https://x.supabase.test", "chave-anonima", REDIRECT);
-    await expect(sb.signUp("Quin", "quin@teste.dev", "senha-segura", { phone: PHONE, termsVersion: "1.0" })).rejects.toMatchObject({ code: "email_taken" });
+    await expect(sb.signUp("Quin", "quin@teste.dev", "senha-segura", { phone: PHONE, termsVersion: "2.0" })).rejects.toMatchObject({ code: "email_taken" });
   });
 });

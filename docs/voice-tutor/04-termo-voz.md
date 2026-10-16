@@ -1,6 +1,6 @@
 # 04 — Termo de Aceite e Uso 2.0 e Política de Privacidade (Tutor de voz)
 
-**Situação:** pronto para ativar quando o dono decidir. Nada foi publicado e nada foi aplicado no banco real.
+**Situação:** ATIVAÇÃO AUTORIZADA pelo dono em 16/10/2026 ("pode"; a voz nova vem depois). O ramo já está com `TERMO_VERSAO = "2.0"` e a ativação virou a migração 011510. Aplicar no banco e publicar é com o coordenador.
 **Revisão jurídica:** não é etapa obrigatória antes de ativar (decisão do dono, 16/10/2026). Os pontos sensíveis ficam
 registrados como **riscos conhecidos** na seção 6.
 **Data:** 16/10/2026 · **Ramo:** `vt-termo` (a partir do `main` c71bb6f9) · **Pedido do dono:** 15/10/2026, decisões finais em 16/10/2026.
@@ -14,8 +14,8 @@ registrados como **riscos conhecidos** na seção 6.
 3. Traz o **consentimento de voz** (o microfone é opcional, para que serve o áudio, como retirar o consentimento).
 4. **Palavrões e humor adulto vêm LIGADOS POR PADRÃO para todos** (Durona e nível Explosiva), porque todos são médicos 18+;
    o aluno pode **desligar quando quiser** nas preferências do tutor. O aceite específico do Tutor (§34) muda junto (versão 2.0).
-5. O código está pronto e testado, mas **não liga sozinho**: a 2.0 só passa a valer quando o dono colar o SQL de ativação. Aí
-   todo aluno aceita de novo no próximo login (Termo e, no Tutor, o §34).
+5. A 2.0 passa a valer quando as migrações 011500 e 011510 forem coladas e o site deste ramo publicado. Aí todo aluno aceita
+   de novo no próximo login (Termo e, no Tutor, o §34).
 
 ### Decisões do dono (16/10/2026)
 
@@ -396,20 +396,21 @@ Dados podem ser compartilhados com fornecedores de hospedagem, banco de dados, a
   grava pelo navegador; só "sim" é aceito), `legal_record` com as declarações (a antiga passa por ela e recusa quando a versão exige),
   `app_accept_terms_declared`, cadastro lendo `declares_adult`/`declares_physician` dos metadados, `app_legal_state` com
   `declarations_required` só quando a versão pede, exportação dos dados com `declarations`.
-- `supabase/ativar/20261003011500_termo_v2.ativar.sql` — **o interruptor**: Termo vigente = 2.0 com declarações; aceite dos Tutores
+- `supabase/migrations/20261003011510_termo_v2_ativar.sql` (migração, colada logo depois da 011500) — **o interruptor**: Termo vigente = 2.0 com declarações; aceite dos Tutores
   (§34) = 2.0; retenção da transcrição em **7 dias**. É isto que faz todo aluno aceitar de novo no próximo login (a tela de aceite e o
   cartão do Tutor já existiam e reagem à versão do banco).
-- `supabase/desfazer/…_termo_v2.ativar.desfazer.sql` (volta Termo e §34 para 1.0 sem prender ninguém; retenção volta a 180) e
+- `supabase/desfazer/20261003011510_termo_v2_ativar.desfazer.sql` (volta Termo e §34 para 1.0 sem prender ninguém; retenção volta a 180) e
   `supabase/desfazer/…_termo_v2_declaracoes.desfazer.sql` (apaga a estrutura; perde as declarações gravadas).
 - Site: a tela de aceite mostra o texto **da versão que o banco diz** e as duas declarações quando o banco pede
   (`AcceptanceScreen.jsx`, `documentos.js`); o cartão do Tutor mostra o §34 da versão que o banco diz (`TutorConsentCard.jsx`); o
   cadastro (e-mail e Google) pede as declarações quando `TERMO_VERSAO` for "2.0" (`AuthScreens.jsx`, `googleAcceptance.js`,
-  `backend.ts`, `server/devDb/router.ts`); `session.acceptTerms` usa `app_accept_terms_declared` só nesse caso. `TERMO_VERSAO`
-  **continua "1.0"**: o site deste ramo pode ir ao ar sem mudar o texto que o aluno vê.
+  `backend.ts`, `server/devDb/router.ts`); `session.acceptTerms` usa `app_accept_terms_declared` só nesse caso. `TERMO_VERSAO` e `TUTOR_IA_VERSAO` = **"2.0"** (16/10, com o "pode" do dono).
 
-**Ordem para ativar:** (1) resolver 3A e 3B (Vertex na voz ao vivo; palavrões ligados por padrão com opção de desligar);
-(2) colar a migração 011500; (3) colar o SQL de ativação; (4) trocar `TERMO_VERSAO` para "2.0" em
-`src/novo/app/legal/versions.js` e publicar o site. Entre (3) e (4) nada quebra: quem se cadastrar passa pela tela de aceite ao entrar.
+**Ordem para ativar (16/10):** (1) colar `20261003011500_termo_v2_declaracoes.sql`; (2) colar `20261003011510_termo_v2_ativar.sql`;
+(3) publicar o site deste ramo. Entre (2) e (3) nada quebra: quem se cadastrar passa pela tela de aceite ao entrar. A voz ao vivo
+continua desligada (3A fica para quando a voz nova vier). **3B continua pendente no código**: o Termo diz que palavrões e humor adulto
+vêm ligados por padrão, mas o padrão do aluno hoje é desligado — o texto promete mais do que o app faz até a frente de
+personalidade mudar o padrão.
 
 **Testes (fila, PGlite e jsdom):** `termoV2Declaracoes.test.ts` (ensaio: migração aplicada duas vezes sem mudar colunas, políticas
 e permissões que existiam, nem o estado do aluno; ativação; recusas; cadastro; RLS; exportação; conta apagada; desfazer da ativação;

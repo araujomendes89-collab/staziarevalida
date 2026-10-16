@@ -14,6 +14,7 @@ import { AcceptanceScreen } from "../novo/app/legal/AcceptanceScreen.jsx";
 import { documentosDa, DECLARACAO_ADULTO, DECLARACAO_MEDICO } from "../novo/app/legal/documentos.js";
 import { rememberGoogleAcceptance, takeGoogleAcceptance, takeGoogleAcceptanceFull } from "../novo/app/legal/googleAcceptance.js";
 import { signUpMetadata } from "../novo/data/backend";
+import { TERMO_VERSAO } from "../novo/app/legal/versions.js";
 import { TUTOR_CONSENT_TEXTS } from "../novo/app/tutor/TutorConsentCard.jsx";
 
 const FRASE = /Declaro que li e compreendi/;
@@ -58,8 +59,10 @@ describe("Termo 2.0 — textos por versão", () => {
     expect(v1.termo).toContain(TUTOR_CONSENT_TEXTS["1.0"]);
     expect(JSON.stringify(v2.privacidade)).toContain("ElevenLabs");
     expect(JSON.stringify(v1.privacidade)).not.toContain("ElevenLabs");
-    // versão desconhecida cai na de versions.js (hoje 1.0)
-    expect(documentosDa("9.9")).toBe(v1);
+    // sem versão, ou versão desconhecida, cai na de versions.js: a 2.0 desde a ativação
+    expect(TERMO_VERSAO).toBe("2.0");
+    expect(documentosDa()).toBe(v2);
+    expect(documentosDa("9.9")).toBe(v2);
   });
 });
 

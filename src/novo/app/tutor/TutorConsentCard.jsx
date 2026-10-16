@@ -9,7 +9,7 @@ export const TUTOR_CONSENT_TEXT =
 /**
  * Texto do §34 por versão do aceite dos Tutores (a versão vem do banco, status.consent_version). A 2.0 acompanha o Termo 2.0
  * (palavrões e humor adulto ligados por padrão, decisão do dono de 16/10) e só aparece depois de colar
- * supabase/ativar/20261003011500_termo_v2.ativar.sql. Versão desconhecida mostra a 1.0.
+ * supabase/migrations/20261003011510_termo_v2_ativar.sql. Versão desconhecida mostra a 1.0.
  */
 export const TUTOR_CONSENT_TEXTS = {
   "1.0": TUTOR_CONSENT_TEXT,

@@ -1,6 +1,6 @@
 /*
  * Política de Privacidade que acompanha o Termo 2.0 (Tutor de voz). AINDA NÃO está em vigor: aparece só quando o banco diz que o
- * Termo vigente é o 2.0 (supabase/ativar/20261003011500_termo_v2.ativar.sql). Decisões do dono e riscos conhecidos em
+ * Termo vigente é o 2.0 (supabase/migrations/20261003011510_termo_v2_ativar.sql). Decisões do dono e riscos conhecidos em
  * docs/voice-tutor/04-termo-voz.md. Mesma forma de privacidade.js; as seções 1, 3 e 4 mudam, as demais são iguais.
  * "atualizada": trocar pela data do dia da ativação, se for outra.
  */

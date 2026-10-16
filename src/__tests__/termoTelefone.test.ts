@@ -58,9 +58,9 @@ describe("WhatsApp — lista de países e versões", () => {
     for (const c of COUNTRIES.slice(0, -1)) expect(c.label.endsWith(c.code)).toBe(true);
   });
 
-  it("as versões vigentes dos documentos", () => {
-    expect(TERMO_VERSAO).toBe("1.0");
-    expect(TUTOR_IA_VERSAO).toBe("1.0");
+  it("as versões vigentes dos documentos (Termo 2.0 e aceite dos Tutores 2.0, ativados juntos em …11510)", () => {
+    expect(TERMO_VERSAO).toBe("2.0");
+    expect(TUTOR_IA_VERSAO).toBe("2.0");
   });
 });
 

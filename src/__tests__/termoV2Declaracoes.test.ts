@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Termo 2.0 (Tutor de voz): migração …11500_termo_v2_declaracoes (estrutura), a ativação em supabase/ativar e os dois desfazer.
+ * Termo 2.0 (Tutor de voz): migração …11500_termo_v2_declaracoes (estrutura), a ativação (migração …11510_termo_v2_ativar) e os dois desfazer.
  * Também é o ENSAIO da migração no PGlite: aplicada duas vezes, sem mudar nada para o aluno enquanto a 2.0 não é ativada, e
  * desfeita dentro de uma transação com rollback. Nada aqui toca o banco real.
  * Texto e decisões: docs/voice-tutor/04-termo-voz.md.
@@ -14,10 +14,11 @@ import { PGlite } from "@electric-sql/pglite";
 const ROOT = path.resolve(__dirname, "../..");
 const MIGRATIONS = path.join(ROOT, "supabase/migrations");
 const NOVA = "20261003011500_termo_v2_declaracoes.sql";
+const ATIVACAO = "20261003011510_termo_v2_ativar.sql";
 const ler = (rel: string) => fs.readFileSync(path.join(ROOT, rel), "utf8");
 const NOVA_SQL = ler(`supabase/migrations/${NOVA}`);
-const ATIVAR = ler("supabase/ativar/20261003011500_termo_v2.ativar.sql");
-const DESFAZER_ATIVAR = ler("supabase/desfazer/20261003011500_termo_v2.ativar.desfazer.sql");
+const ATIVAR = ler(`supabase/migrations/${ATIVACAO}`);
+const DESFAZER_ATIVAR = ler("supabase/desfazer/20261003011510_termo_v2_ativar.desfazer.sql");
 const DESFAZER = ler("supabase/desfazer/20261003011500_termo_v2_declaracoes.desfazer.sql");
 
 const PHONE = "+5541999998888";
@@ -99,7 +100,7 @@ let antes: Awaited<ReturnType<typeof fotografia>>;
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(ler("supabase/tests/bootstrap.sql"));
-  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== NOVA).sort()) {
+  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== NOVA && f !== ATIVACAO).sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
   // um aluno com o Termo 1.0 aceito antes da migração
@@ -152,7 +153,7 @@ describe("Termo 2.0 — ensaio: a migração sozinha não muda nada para o aluno
   });
 });
 
-describe("Termo 2.0 — ativado (supabase/ativar)", () => {
+describe("Termo 2.0 — ativado (migração 011510)", () => {
   beforeAll(async () => {
     await db.exec(ATIVAR);
   });

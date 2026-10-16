@@ -1,6 +1,6 @@
 // Textos de cada versão do Termo (e da Política que vai junto). A tela de aceite mostra o texto da versão que o BANCO diz que está
 // vigente (boot.legal.termo_uso.current); o cadastro e as páginas públicas, o da versão de versions.js (TERMO_VERSAO).
-// Assim o banco é quem liga uma versão nova: o 2.0 só aparece depois de colar supabase/ativar/…11500_termo_v2.ativar.sql.
+// Assim o banco é quem liga uma versão nova: o 2.0 só aparece depois de colar supabase/migrations/…11510_termo_v2_ativar.sql.
 import termoV1 from "./termo-uso-v1.0.md?raw";
 import termoV2 from "./termo-uso-v2.0.md?raw";
 import { PRIVACIDADE } from "./privacidade.js";

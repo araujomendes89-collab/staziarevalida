@@ -1,4 +1,4 @@
--- DESFAZER a ativação do Termo 2.0 (supabase/ativar/20261003011500_termo_v2.ativar.sql). NÃO aplicado em produção.
+-- DESFAZER a ativação do Termo 2.0 (supabase/migrations/20261003011510_termo_v2_ativar.sql). 
 -- Volta o Termo 1.0 sem exigir as declarações e o aceite dos Tutores (§34) 1.0. Quem tinha aceitado o 1.0 não vê a tela de novo (app_legal_state considera a versão
 -- vigente aceita, mesmo que a pessoa tenha aceitado a 2.0 depois). Quem só aceitou a 2.0 vê a tela uma vez e aceita a 1.0.
 -- As provas da 2.0 (aceites e declarações) ficam guardadas.

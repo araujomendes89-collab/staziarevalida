@@ -19,6 +19,9 @@ const SEM_LOGIN = "Entre na sua conta.";
 const VERSAO_VELHA = "Versão desatualizada do termo.";
 const TELEFONE_RUIM = "Informe o WhatsApp com código do país.";
 const ORIGEM_RUIM = "Origem do aceite inválida.";
+// Termo vigente 2.0 (…11510_termo_v2_ativar): o aceite do termo só vale com as declarações de maioridade e de médico.
+const DECL = { declares_adult: "true", declares_physician: "true" };
+const SIM = { p_adult: true, p_physician: true };
 
 let db: PGlite;
 let seq = 0;
@@ -82,10 +85,10 @@ beforeAll(async () => {
 }, 120_000);
 
 describe("Termo — versões vigentes, tabela de aceites e permissões", () => {
-  it("as versões começam em 1.0 e a prova não guarda endereço de internet", async () => {
+  it("as versões vigentes são a 2.0 (Termo e Tutores) e a prova não guarda endereço de internet", async () => {
     expect((await db.query<any>(`select document, version from public.legal_versions order by document`)).rows).toEqual([
-      { document: "termo_uso", version: "1.0" },
-      { document: "tutor_ia", version: "1.0" },
+      { document: "termo_uso", version: "2.0" },
+      { document: "tutor_ia", version: "2.0" },
     ]);
     const columns = await db.query<any>(
       `select column_name from information_schema.columns where table_schema = 'public' and table_name = 'legal_acceptances' order by ordinal_position`
@@ -120,7 +123,7 @@ describe("Termo — versões vigentes, tabela de aceites e permissões", () => {
 
 describe("Termo — cadastro (gatilho de criação da conta)", () => {
   it("cadastro com metadados grava telefone e aceite 'cadastro' da versão vigente (sem sessão)", async () => {
-    const { id } = await signUp({ name: "Ana", phone: PHONE, terms_version: "1.0", user_agent: "Teste/1" }, " Ana@Teste.dev ");
+    const { id } = await signUp({ name: "Ana", phone: PHONE, terms_version: "2.0", ...DECL, user_agent: "Teste/1" }, " Ana@Teste.dev ");
 
     expect(await profile(id)).toEqual({ name: "Ana", phone: PHONE });
     const rows = await acceptances(id);
@@ -128,7 +131,7 @@ describe("Termo — cadastro (gatilho de criação da conta)", () => {
     expect(rows[0]).toMatchObject({
       user_id: id,
       document: "termo_uso",
-      version: "1.0",
+      version: "2.0",
       origin: "cadastro",
       user_agent: "Teste/1",
       email_hash: sha256("ana@teste.dev"),
@@ -152,7 +155,7 @@ describe("Termo — cadastro (gatilho de criação da conta)", () => {
     expect(await profile(velha.id)).toEqual({ name: "Velha", phone: PHONE });
 
     // telefone fora do formato: fica vazio, mas o aceite da versão vigente entra
-    const ruim = await signUp({ name: "Ruim", phone: "abc", terms_version: "1.0" });
+    const ruim = await signUp({ name: "Ruim", phone: "abc", terms_version: "2.0", ...DECL });
     expect((await profile(ruim.id)).phone).toBeNull();
     expect(await acceptances(ruim.id)).toHaveLength(1);
 
@@ -162,7 +165,7 @@ describe("Termo — cadastro (gatilho de criação da conta)", () => {
     expect(await acceptances(tipos.id)).toHaveLength(0);
 
     // navegador gigante: o aceite entra com os 300 primeiros caracteres
-    const longo = await signUp({ terms_version: "1.0", user_agent: "x".repeat(500) });
+    const longo = await signUp({ terms_version: "2.0", ...DECL, user_agent: "x".repeat(500) });
     expect((await acceptances(longo.id))[0].user_agent).toBe("x".repeat(300));
 
     // sem metadados (nulos ou vazios): perfil, papel e teste criados, nenhum aceite
@@ -186,7 +189,7 @@ describe("Termo — cadastro (gatilho de criação da conta)", () => {
     // o aceite falha (restrição que sempre recusa): conta e telefone entram, aceite não
     await db.exec(`alter table public.legal_acceptances add constraint teste_aceite_sempre_falha check (false) not valid`);
     try {
-      const a = await signUp({ name: "A", phone: PHONE, terms_version: "1.0" });
+      const a = await signUp({ name: "A", phone: PHONE, terms_version: "2.0", ...DECL });
       expect(await profile(a.id)).toEqual({ name: "A", phone: PHONE });
       expect(await acceptances(a.id)).toHaveLength(0);
       expect((await db.query<any>(`select 1 from public.user_roles where user_id = $1`, [a.id])).rows).toHaveLength(1);
@@ -197,7 +200,7 @@ describe("Termo — cadastro (gatilho de criação da conta)", () => {
     // o telefone falha (restrição que sempre recusa): conta e aceite entram, telefone não
     await db.exec(`alter table public.profiles add constraint teste_sem_telefone check (phone is null) not valid`);
     try {
-      const b = await signUp({ name: "B", phone: PHONE, terms_version: "1.0" });
+      const b = await signUp({ name: "B", phone: PHONE, terms_version: "2.0", ...DECL });
       expect(await profile(b.id)).toEqual({ name: "B", phone: null });
       expect(await acceptances(b.id)).toHaveLength(1);
       expect((await db.query<any>(`select 1 from public.subscriptions where user_id = $1`, [b.id])).rows).toHaveLength(1);
@@ -211,80 +214,85 @@ describe("Termo — função de aceitar", () => {
   it("app_accept_terms: login, versão vigente, origem, telefone e repetição", async () => {
     const { id, email } = await signUp({ name: "Gabi" });
 
-    expect(await recusa(rpc(null, "app_accept_terms", { p_document: "termo_uso", p_version: "1.0" }))).toEqual({ message: SEM_LOGIN, code: "28000" });
-    expect(await recusa(rpc(id, "app_accept_terms", { p_document: "termo_uso", p_version: "0.9" }))).toEqual({ message: VERSAO_VELHA, code: "22023" });
-    expect(await recusa(rpc(id, "app_accept_terms", { p_document: "termo_uso", p_version: "1.0", p_origin: "cadastro" }))).toEqual({ message: ORIGEM_RUIM, code: "22023" });
-    expect(await recusa(rpc(id, "app_accept_terms", { p_document: "termo_uso", p_version: "1.0", p_origin: "qualquer" }))).toEqual({ message: ORIGEM_RUIM, code: "22023" });
-    expect(await recusa(rpc(id, "app_accept_terms", { p_document: "tutor_ia", p_version: "1.0", p_origin: "tela_aceite" }))).toEqual({ message: ORIGEM_RUIM, code: "22023" });
-    expect(await recusa(rpc(id, "app_accept_terms", { p_document: "tutor_ia", p_version: "1.0", p_origin: "google" }))).toEqual({ message: ORIGEM_RUIM, code: "22023" });
+    expect(await recusa(rpc(null, "app_accept_terms_declared", { ...SIM, p_document: "termo_uso", p_version: "2.0" }))).toEqual({ message: SEM_LOGIN, code: "28000" });
+    expect(await recusa(rpc(id, "app_accept_terms_declared", { ...SIM, p_document: "termo_uso", p_version: "0.9" }))).toEqual({ message: VERSAO_VELHA, code: "22023" });
+    expect(await recusa(rpc(id, "app_accept_terms_declared", { ...SIM, p_document: "termo_uso", p_version: "2.0", p_origin: "cadastro" }))).toEqual({ message: ORIGEM_RUIM, code: "22023" });
+    expect(await recusa(rpc(id, "app_accept_terms_declared", { ...SIM, p_document: "termo_uso", p_version: "2.0", p_origin: "qualquer" }))).toEqual({ message: ORIGEM_RUIM, code: "22023" });
+    expect(await recusa(rpc(id, "app_accept_terms", { p_document: "tutor_ia", p_version: "2.0", p_origin: "tela_aceite" }))).toEqual({ message: ORIGEM_RUIM, code: "22023" });
+    expect(await recusa(rpc(id, "app_accept_terms", { p_document: "tutor_ia", p_version: "2.0", p_origin: "google" }))).toEqual({ message: ORIGEM_RUIM, code: "22023" });
     for (const phone of ["123", "", "5541999998888", "+55 41 99999-8888"]) {
-      expect(await recusa(rpc(id, "app_accept_terms", { p_document: "termo_uso", p_version: "1.0", p_phone: phone }))).toEqual({ message: TELEFONE_RUIM, code: "22023" });
+      expect(await recusa(rpc(id, "app_accept_terms_declared", { ...SIM, p_document: "termo_uso", p_version: "2.0", p_phone: phone }))).toEqual({ message: TELEFONE_RUIM, code: "22023" });
     }
     // documento que não existe
-    expect(await recusa(rpc(id, "app_accept_terms", { p_document: "outro", p_version: "1.0" }))).toEqual({ message: "Documento inválido.", code: "22023" });
+    expect(await recusa(rpc(id, "app_accept_terms", { p_document: "outro", p_version: "2.0" }))).toEqual({ message: "Documento inválido.", code: "22023" });
+    // Termo 2.0: a versão velha (1.0) é recusada e, sem as duas declarações (18+ e médico), o aceite também
+    expect(await recusa(rpc(id, "app_accept_terms_declared", { ...SIM, p_document: "termo_uso", p_version: "1.0" }))).toEqual({ message: VERSAO_VELHA, code: "22023" });
+    const SEM_DECLARACAO = { message: "Confirme que você tem 18 anos ou mais e que é médico(a).", code: "22023" };
+    expect(await recusa(rpc(id, "app_accept_terms", { p_document: "termo_uso", p_version: "2.0" }))).toEqual(SEM_DECLARACAO);
+    expect(await recusa(rpc(id, "app_accept_terms_declared", { p_document: "termo_uso", p_version: "2.0", p_adult: true, p_physician: false }))).toEqual(SEM_DECLARACAO);
     // nenhuma recusa deixou rastro: nem aceite, nem telefone
     expect(await acceptances(id)).toHaveLength(0);
     expect((await profile(id)).phone).toBeNull();
 
-    const args = { p_document: "termo_uso", p_version: "1.0", p_origin: "tela_aceite", p_phone: PHONE, p_user_agent: "Navegador/2" };
-    const first = await rpc(id, "app_accept_terms", args);
+    const args = { ...SIM, p_document: "termo_uso", p_version: "2.0", p_origin: "tela_aceite", p_phone: PHONE, p_user_agent: "Navegador/2" };
+    const first = await rpc(id, "app_accept_terms_declared", args);
     expect(first).toHaveProperty("profile");
     expect(first.profile).toMatchObject({ id, phone: PHONE });
     expect(first.role).toBe("student");
 
     // repetir não duplica, e a primeira prova é a que vale
-    const second = await rpc(id, "app_accept_terms", { ...args, p_origin: "google", p_user_agent: "Outro/3" });
+    const second = await rpc(id, "app_accept_terms_declared", { ...args, p_origin: "google", p_user_agent: "Outro/3" });
     expect(second.profile.phone).toBe(PHONE);
     const rows = await acceptances(id);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ document: "termo_uso", version: "1.0", origin: "tela_aceite", user_agent: "Navegador/2", email_hash: sha256(email!.toLowerCase()) });
+    expect(rows[0]).toMatchObject({ document: "termo_uso", version: "2.0", origin: "tela_aceite", user_agent: "Navegador/2", email_hash: sha256(email!.toLowerCase()) });
 
     // sem telefone na chamada, o que já está no perfil não muda
-    await rpc(id, "app_accept_terms", { p_document: "tutor_ia", p_version: "1.0", p_origin: "tutor" });
+    await rpc(id, "app_accept_terms", { p_document: "tutor_ia", p_version: "2.0", p_origin: "tutor" });
     expect((await profile(id)).phone).toBe(PHONE);
   });
 
   it("as origens que valem: google e tela_aceite para o termo, só tutor para o Tutor", async () => {
     const google = await signUp({ name: "G" });
-    await rpc(google.id, "app_accept_terms", { p_document: "termo_uso", p_version: "1.0", p_origin: "google" });
+    await rpc(google.id, "app_accept_terms_declared", { ...SIM, p_document: "termo_uso", p_version: "2.0", p_origin: "google" });
     expect((await acceptances(google.id)).map((r) => [r.document, r.origin])).toEqual([["termo_uso", "google"]]);
 
     const tutor = await signUp({ name: "T" });
-    await rpc(tutor.id, "app_accept_terms", { p_document: "tutor_ia", p_version: "1.0", p_origin: "tutor" });
-    expect((await acceptances(tutor.id)).map((r) => [r.document, r.version, r.origin])).toEqual([["tutor_ia", "1.0", "tutor"]]);
+    await rpc(tutor.id, "app_accept_terms", { p_document: "tutor_ia", p_version: "2.0", p_origin: "tutor" });
+    expect((await acceptances(tutor.id)).map((r) => [r.document, r.version, r.origin])).toEqual([["tutor_ia", "2.0", "tutor"]]);
   });
 
   it("versão nova do termo: a antiga é recusada, a nova grava outra linha e o cadastro velho não grava", async () => {
-    const { id } = await signUp({ name: "Antes", terms_version: "1.0" });
+    const { id } = await signUp({ name: "Antes", terms_version: "2.0", ...DECL });
     const stamp = async () => (await db.query<any>(`select updated_at from public.legal_versions where document = 'termo_uso'`)).rows[0].updated_at as Date;
     const before = await stamp();
-    await db.query(`update public.legal_versions set version = '1.1' where document = 'termo_uso'`);
+    await db.query(`update public.legal_versions set version = '2.1' where document = 'termo_uso'`);
     try {
       // trocar a versão vigente atualiza a data da linha
       expect((await stamp()).getTime()).toBeGreaterThan(before.getTime());
 
-      const velho = await signUp({ name: "Velho", terms_version: "1.0" });
+      const velho = await signUp({ name: "Velho", terms_version: "2.0", ...DECL });
       expect(await acceptances(velho.id)).toHaveLength(0);
-      const novo = await signUp({ name: "Novo", terms_version: "1.1" });
-      expect((await acceptances(novo.id)).map((r) => r.version)).toEqual(["1.1"]);
+      const novo = await signUp({ name: "Novo", terms_version: "2.1", ...DECL });
+      expect((await acceptances(novo.id)).map((r) => r.version)).toEqual(["2.1"]);
 
-      expect(await recusa(rpc(id, "app_accept_terms", { p_document: "termo_uso", p_version: "1.0" }))).toEqual({ message: VERSAO_VELHA, code: "22023" });
-      await rpc(id, "app_accept_terms", { p_document: "termo_uso", p_version: "1.1" });
+      expect(await recusa(rpc(id, "app_accept_terms_declared", { ...SIM, p_document: "termo_uso", p_version: "2.0" }))).toEqual({ message: VERSAO_VELHA, code: "22023" });
+      await rpc(id, "app_accept_terms_declared", { ...SIM, p_document: "termo_uso", p_version: "2.1" });
       expect((await acceptances(id)).map((r) => [r.version, r.origin])).toEqual([
-        ["1.0", "cadastro"],
-        ["1.1", "tela_aceite"],
+        ["2.0", "cadastro"],
+        ["2.1", "tela_aceite"],
       ]);
     } finally {
-      await db.query(`update public.legal_versions set version = '1.0' where document = 'termo_uso'`);
+      await db.query(`update public.legal_versions set version = '2.0' where document = 'termo_uso'`);
     }
   });
 });
 
 describe("Termo — quem grava e quem lê", () => {
   it("ninguém grava aceite pelo navegador e cada um só lê os próprios", async () => {
-    const ana = await signUp({ name: "Ana", terms_version: "1.0" });
-    const bruno = await signUp({ name: "Bruno", terms_version: "1.0" });
-    const insert = `insert into public.legal_acceptances (user_id, document, version, origin, email_hash) values ($1, 'tutor_ia', '1.0', 'tutor', 'x')`;
+    const ana = await signUp({ name: "Ana", terms_version: "2.0", ...DECL });
+    const bruno = await signUp({ name: "Bruno", terms_version: "2.0", ...DECL });
+    const insert = `insert into public.legal_acceptances (user_id, document, version, origin, email_hash) values ($1, 'tutor_ia', '2.0', 'tutor', 'x')`;
 
     // gravar, alterar e apagar: nada passa
     expect((await recusa(asUser(ana.id, insert, [ana.id]))).message).toMatch(/row-level security/);
@@ -303,11 +311,12 @@ describe("Termo — quem grava e quem lê", () => {
     expect((await asUser(ana.id, `select * from public.legal_versions`)).rows).toEqual([]);
     expect((await asUser(ana.id, `update public.legal_versions set version = '9.9'`)).affectedRows).toBe(0);
     expect((await recusa(asUser(ana.id, `insert into public.legal_versions (document, version) values ('termo_uso', '9.9')`))).message).toMatch(/row-level security|duplicate key/);
-    expect((await db.query<any>(`select version from public.legal_versions order by document`)).rows).toEqual([{ version: "1.0" }, { version: "1.0" }]);
+    expect((await db.query<any>(`select version from public.legal_versions order by document`)).rows).toEqual([{ version: "2.0" }, { version: "2.0" }]);
 
     // funções de apoio: só o servidor executa
     const calls: [string, unknown[]][] = [
-      [`select public.legal_record($1, 'termo_uso', '1.0', 'google', null)`, [ana.id]],
+      [`select public.legal_record($1, 'termo_uso', '2.0', 'google', null)`, [ana.id]],
+      [`select public.legal_record($1, 'termo_uso', '2.0', 'google', null, true, true)`, [ana.id]],
       [`select public.legal_is_student($1)`, [ana.id]],
       [`select public.legal_email_hash('a@b.c')`, []],
     ];
@@ -389,9 +398,9 @@ describe("Termo — Minha conta (app_update_profile)", () => {
 
 describe("Termo — conta apagada", () => {
   it("conta apagada mantém a prova sem a pessoa", async () => {
-    const { id } = await signUp({ name: "Davi", phone: PHONE, terms_version: "1.0", user_agent: "UA/D" }, "Davi@Teste.dev");
+    const { id } = await signUp({ name: "Davi", phone: PHONE, terms_version: "2.0", ...DECL, user_agent: "UA/D" }, "Davi@Teste.dev");
     const [antes] = await acceptances(id);
-    expect(antes).toMatchObject({ document: "termo_uso", version: "1.0", origin: "cadastro", email_hash: sha256("davi@teste.dev") });
+    expect(antes).toMatchObject({ document: "termo_uso", version: "2.0", origin: "cadastro", email_hash: sha256("davi@teste.dev") });
 
     expect(await rpc(id, "app_delete_my_account", { p_confirm: "EXCLUIR" })).toBe(true);
     expect((await db.query<any>(`select 1 from public.profiles where id = $1`, [id])).rows).toHaveLength(0);
@@ -409,14 +418,14 @@ describe("Termo — conta apagada", () => {
   });
 
   it("conta criada de novo com o mesmo e-mail aceita de novo e a prova antiga continua", async () => {
-    const velha = await signUp({ name: "Eva", terms_version: "1.0" }, "Eva@Teste.dev");
+    const velha = await signUp({ name: "Eva", terms_version: "2.0", ...DECL }, "Eva@Teste.dev");
     await rpc(velha.id, "app_delete_my_account", { p_confirm: "EXCLUIR" });
 
-    const nova = await signUp({ name: "Eva", terms_version: "1.0" }, " eva@teste.dev");
+    const nova = await signUp({ name: "Eva", terms_version: "2.0", ...DECL }, " eva@teste.dev");
     const rows = (await db.query<any>(`select user_id, version, origin from public.legal_acceptances where email_hash = $1 order by id`, [sha256("eva@teste.dev")])).rows;
     expect(rows).toEqual([
-      { user_id: null, version: "1.0", origin: "cadastro" },
-      { user_id: nova.id, version: "1.0", origin: "cadastro" },
+      { user_id: null, version: "2.0", origin: "cadastro" },
+      { user_id: nova.id, version: "2.0", origin: "cadastro" },
     ]);
   });
 });
@@ -457,21 +466,21 @@ describe("Termo — funções de apoio (só o servidor)", () => {
   it("legal_record: versão vigente, sem duplicar e só para quem existe", async () => {
     const { id } = await signUp({ name: "Record" }, "Record@Teste.dev");
     const record = (user: string | null, document: string, version: string, origin = "google", ua: string | null = "UA/R") =>
-      db.query(`select public.legal_record($1, $2, $3, $4, $5)`, [user, document, version, origin, ua]);
+      db.query(`select public.legal_record($1, $2, $3, $4, $5, true, true)`, [user, document, version, origin, ua]);
 
     expect(await recusa(record(id, "termo_uso", "0.9"))).toEqual({ message: VERSAO_VELHA, code: "22023" });
-    expect(await recusa(record(id, "outro", "1.0"))).toEqual({ message: "Documento inválido.", code: "22023" });
-    expect(await recusa(record(null, "termo_uso", "1.0"))).toEqual({ message: SEM_LOGIN, code: "28000" });
-    expect(await recusa(record("00000000-0000-4000-8000-0000ffffffff", "termo_uso", "1.0"))).toEqual({ message: SEM_LOGIN, code: "28000" });
+    expect(await recusa(record(id, "outro", "2.0"))).toEqual({ message: "Documento inválido.", code: "22023" });
+    expect(await recusa(record(null, "termo_uso", "2.0"))).toEqual({ message: SEM_LOGIN, code: "28000" });
+    expect(await recusa(record("00000000-0000-4000-8000-0000ffffffff", "termo_uso", "2.0"))).toEqual({ message: SEM_LOGIN, code: "28000" });
     expect(await acceptances(id)).toHaveLength(0);
 
-    await record(id, "termo_uso", "1.0");
-    await record(id, "termo_uso", "1.0", "tela_aceite", "UA/Outro");
-    await record(id, "tutor_ia", "1.0", "tutor", null);
+    await record(id, "termo_uso", "2.0");
+    await record(id, "termo_uso", "2.0", "tela_aceite", "UA/Outro");
+    await record(id, "tutor_ia", "2.0", "tutor", null);
     const rows = await acceptances(id);
     expect(rows.map((r) => [r.document, r.version, r.origin, r.user_agent])).toEqual([
-      ["termo_uso", "1.0", "google", "UA/R"],
-      ["tutor_ia", "1.0", "tutor", null],
+      ["termo_uso", "2.0", "google", "UA/R"],
+      ["tutor_ia", "2.0", "tutor", null],
     ]);
     expect(rows.every((r) => r.email_hash === sha256("record@teste.dev"))).toBe(true);
   });
@@ -485,33 +494,34 @@ describe("Termo — dados de abertura do app (app_bootstrap → legal)", () => {
     // conta recém-criada, sem nada (como a do Google): precisa da tela
     const nova = await signUp({ name: "Nova" });
     expect(await legal(nova.id)).toEqual({
-      termo_uso: { current: "1.0", accepted: null, accepted_at: null },
-      tutor_ia: { current: "1.0", accepted: null, accepted_at: null },
+      termo_uso: { current: "2.0", accepted: null, accepted_at: null },
+      tutor_ia: { current: "2.0", accepted: null, accepted_at: null },
       student: true,
       phone_missing: true,
       gate_required: true,
+      declarations_required: true,
     });
 
     // com WhatsApp e sem aceite: precisa
     const soTelefone = await signUp({ name: "So telefone", phone: PHONE });
     expect(await legal(soTelefone.id)).toMatchObject({
-      termo_uso: { current: "1.0", accepted: null, accepted_at: null },
+      termo_uso: { current: "2.0", accepted: null, accepted_at: null },
       student: true,
       phone_missing: false,
       gate_required: true,
     });
 
     // com aceite e sem WhatsApp: precisa
-    const soAceite = await signUp({ name: "So aceite", terms_version: "1.0" });
+    const soAceite = await signUp({ name: "So aceite", terms_version: "2.0", ...DECL });
     const semZap = await legal(soAceite.id);
     expect(semZap).toMatchObject({ student: true, phone_missing: true, gate_required: true });
-    expect(semZap.termo_uso).toMatchObject({ current: "1.0", accepted: "1.0" });
+    expect(semZap.termo_uso).toMatchObject({ current: "2.0", accepted: "2.0" });
 
     // com os dois: não precisa; a versão aceita e a data vêm da prova gravada
-    const completo = await signUp({ name: "Completo", phone: PHONE, terms_version: "1.0" });
+    const completo = await signUp({ name: "Completo", phone: PHONE, terms_version: "2.0", ...DECL });
     const ok = await legal(completo.id);
     expect(ok).toMatchObject({ student: true, phone_missing: false, gate_required: false });
-    expect(ok.termo_uso).toMatchObject({ current: "1.0", accepted: "1.0", accepted_at: expect.any(String) });
+    expect(ok.termo_uso).toMatchObject({ current: "2.0", accepted: "2.0", accepted_at: expect.any(String) });
     const [prova] = await acceptances(completo.id);
     expect(new Date(ok.termo_uso.accepted_at).getTime()).toBe(new Date(prova.accepted_at).getTime());
     expect(Math.abs(Date.now() - new Date(ok.termo_uso.accepted_at).getTime())).toBeLessThan(60_000);
@@ -519,61 +529,61 @@ describe("Termo — dados de abertura do app (app_bootstrap → legal)", () => {
 
   it("abertura: o aceite dos Tutores é separado e não libera nem trava a tela", async () => {
     // termo + WhatsApp bastam para a tela de aceite; o Tutor tem cartão próprio
-    const { id } = await signUp({ name: "Tutor", phone: PHONE, terms_version: "1.0" });
+    const { id } = await signUp({ name: "Tutor", phone: PHONE, terms_version: "2.0", ...DECL });
     const antes = await legal(id);
-    expect(antes.tutor_ia).toEqual({ current: "1.0", accepted: null, accepted_at: null });
+    expect(antes.tutor_ia).toEqual({ current: "2.0", accepted: null, accepted_at: null });
     expect(antes.gate_required).toBe(false);
 
-    await rpc(id, "app_accept_terms", { p_document: "tutor_ia", p_version: "1.0", p_origin: "tutor" });
+    await rpc(id, "app_accept_terms", { p_document: "tutor_ia", p_version: "2.0", p_origin: "tutor" });
     const depois = await legal(id);
-    expect(depois.tutor_ia).toMatchObject({ current: "1.0", accepted: "1.0", accepted_at: expect.any(String) });
-    expect(depois.termo_uso.accepted).toBe("1.0");
+    expect(depois.tutor_ia).toMatchObject({ current: "2.0", accepted: "2.0", accepted_at: expect.any(String) });
+    expect(depois.termo_uso.accepted).toBe("2.0");
     expect(depois.gate_required).toBe(false);
 
     // só o aceite do Tutor não libera a tela do termo
     const soTutor = await signUp({ name: "So Tutor", phone: PHONE });
-    await rpc(soTutor.id, "app_accept_terms", { p_document: "tutor_ia", p_version: "1.0", p_origin: "tutor" });
+    await rpc(soTutor.id, "app_accept_terms", { p_document: "tutor_ia", p_version: "2.0", p_origin: "tutor" });
     const l = await legal(soTutor.id);
-    expect(l.tutor_ia.accepted).toBe("1.0");
+    expect(l.tutor_ia.accepted).toBe("2.0");
     expect(l.termo_uso.accepted).toBeNull();
     expect(l.gate_required).toBe(true);
   });
 
   it("abertura: versão nova do termo pede o aceite de novo, e desfazer a troca não prende ninguém", async () => {
-    const antigo = await signUp({ name: "Antigo", phone: PHONE, terms_version: "1.0" });
+    const antigo = await signUp({ name: "Antigo", phone: PHONE, terms_version: "2.0", ...DECL });
     expect((await legal(antigo.id)).gate_required).toBe(false);
 
-    await db.query(`update public.legal_versions set version = '1.1' where document = 'termo_uso'`);
+    await db.query(`update public.legal_versions set version = '2.1' where document = 'termo_uso'`);
     try {
-      // versão nova: a pessoa continua com a 1.0 aceita (a versão aceita aparece como é) e a tela volta
+      // versão nova: a pessoa continua com a 2.0 aceita (a versão aceita aparece como é) e a tela volta
       const velha = await legal(antigo.id);
-      expect(velha.termo_uso).toMatchObject({ current: "1.1", accepted: "1.0", accepted_at: expect.any(String) });
+      expect(velha.termo_uso).toMatchObject({ current: "2.1", accepted: "2.0", accepted_at: expect.any(String) });
       expect(velha.gate_required).toBe(true);
 
       // aceitou a nova: a tela some, e a resposta do aceite já traz isso
-      const aceitou = await rpc(antigo.id, "app_accept_terms", { p_document: "termo_uso", p_version: "1.1" });
-      expect(aceitou.legal.termo_uso).toMatchObject({ current: "1.1", accepted: "1.1" });
+      const aceitou = await rpc(antigo.id, "app_accept_terms_declared", { ...SIM, p_document: "termo_uso", p_version: "2.1" });
+      expect(aceitou.legal.termo_uso).toMatchObject({ current: "2.1", accepted: "2.1" });
       expect(aceitou.legal.gate_required).toBe(false);
 
-      // cadastro feito já com a 1.1 (a vigente na hora)
-      const novo = await signUp({ name: "Novo", phone: PHONE, terms_version: "1.1" });
+      // cadastro feito já com a 2.1 (a vigente na hora)
+      const novo = await signUp({ name: "Novo", phone: PHONE, terms_version: "2.1", ...DECL });
       expect((await legal(novo.id)).gate_required).toBe(false);
 
-      // a troca é desfeita (volta a 1.0): quem aceitou a 1.0 continua aceito, mesmo tendo aceitado a 1.1 depois
-      await db.query(`update public.legal_versions set version = '1.0' where document = 'termo_uso'`);
+      // a troca é desfeita (volta a 2.0): quem aceitou a 2.0 continua aceito, mesmo tendo aceitado a 2.1 depois
+      await db.query(`update public.legal_versions set version = '2.0' where document = 'termo_uso'`);
       const volta = await legal(antigo.id);
-      expect(volta.termo_uso).toMatchObject({ current: "1.0", accepted: "1.0" });
+      expect(volta.termo_uso).toMatchObject({ current: "2.0", accepted: "2.0" });
       expect(volta.gate_required).toBe(false);
 
-      // quem só tinha a 1.1 vê a tela e, ao aceitar a 1.0, ela some (não fica num ciclo sem saída)
+      // quem só tinha a 2.1 vê a tela e, ao aceitar a 2.0, ela some (não fica num ciclo sem saída)
       const so11 = await legal(novo.id);
-      expect(so11.termo_uso).toMatchObject({ current: "1.0", accepted: "1.1" });
+      expect(so11.termo_uso).toMatchObject({ current: "2.0", accepted: "2.1" });
       expect(so11.gate_required).toBe(true);
-      const livre = await rpc(novo.id, "app_accept_terms", { p_document: "termo_uso", p_version: "1.0" });
-      expect(livre.legal.termo_uso).toMatchObject({ current: "1.0", accepted: "1.0" });
+      const livre = await rpc(novo.id, "app_accept_terms_declared", { ...SIM, p_document: "termo_uso", p_version: "2.0" });
+      expect(livre.legal.termo_uso).toMatchObject({ current: "2.0", accepted: "2.0" });
       expect(livre.legal.gate_required).toBe(false);
     } finally {
-      await db.query(`update public.legal_versions set version = '1.0' where document = 'termo_uso'`);
+      await db.query(`update public.legal_versions set version = '2.0' where document = 'termo_uso'`);
     }
   });
 
@@ -588,11 +598,12 @@ describe("Termo — dados de abertura do app (app_bootstrap → legal)", () => {
     // sem aceite e sem WhatsApp, e a tela não vale para eles
     for (const pessoa of [admin, editor, revisor]) {
       expect(await legal(pessoa.id)).toEqual({
-        termo_uso: { current: "1.0", accepted: null, accepted_at: null },
-        tutor_ia: { current: "1.0", accepted: null, accepted_at: null },
+        termo_uso: { current: "2.0", accepted: null, accepted_at: null },
+        tutor_ia: { current: "2.0", accepted: null, accepted_at: null },
         student: false,
         phone_missing: true,
         gate_required: false,
+        declarations_required: true,
       });
     }
 
@@ -616,20 +627,20 @@ describe("Termo — dados de abertura do app (app_bootstrap → legal)", () => {
   });
 
   it("abertura: sem login, legal é nulo e cada pessoa só vê o próprio estado", async () => {
-    const ana = await signUp({ name: "Ana", phone: PHONE, terms_version: "1.0" });
+    const ana = await signUp({ name: "Ana", phone: PHONE, terms_version: "2.0", ...DECL });
     const bruno = await signUp({ name: "Bruno" });
 
     expect(await abertura(null)).toHaveProperty("legal", null);
     expect(await rpc(null, "app_legal_state")).toBeNull();
 
-    expect(await rpc(ana.id, "app_legal_state")).toMatchObject({ gate_required: false, phone_missing: false, termo_uso: { accepted: "1.0" } });
+    expect(await rpc(ana.id, "app_legal_state")).toMatchObject({ gate_required: false, phone_missing: false, termo_uso: { accepted: "2.0" } });
     expect(await rpc(bruno.id, "app_legal_state")).toMatchObject({ gate_required: true, phone_missing: true, termo_uso: { accepted: null } });
     // a abertura traz o mesmo estado que a função
     expect(await legal(ana.id)).toEqual(await rpc(ana.id, "app_legal_state"));
   });
 
   it("abertura mantém todas as chaves de antes", async () => {
-    const { id } = await signUp({ name: "Chaves", phone: PHONE, terms_version: "1.0" });
+    const { id } = await signUp({ name: "Chaves", phone: PHONE, terms_version: "2.0", ...DECL });
     const antes = ["profile", "role", "reviewer_areas", "subscription", "has_pro", "streak_days", "flashcards_due", "days_to_exam", "totals", "play"];
 
     const boot = await abertura(id);
@@ -673,19 +684,19 @@ describe("Termo — dados de abertura do app (app_bootstrap → legal)", () => {
     // tela de aceite: termo e WhatsApp numa chamada
     const { id } = await signUp({ name: "Fluxo" });
     expect((await legal(id)).gate_required).toBe(true);
-    const aceitou = await rpc(id, "app_accept_terms", { p_document: "termo_uso", p_version: "1.0", p_origin: "google", p_phone: PHONE });
+    const aceitou = await rpc(id, "app_accept_terms_declared", { ...SIM, p_document: "termo_uso", p_version: "2.0", p_origin: "google", p_phone: PHONE });
     expect(aceitou.legal).toMatchObject({
       student: true,
       phone_missing: false,
       gate_required: false,
-      termo_uso: { current: "1.0", accepted: "1.0", accepted_at: expect.any(String) },
+      termo_uso: { current: "2.0", accepted: "2.0", accepted_at: expect.any(String) },
     });
 
     // aluno que aceitou o termo no cadastro e ainda está sem WhatsApp: Minha conta tira a tela
-    const semZap = await signUp({ name: "Sem zap", terms_version: "1.0" });
+    const semZap = await signUp({ name: "Sem zap", terms_version: "2.0", ...DECL });
     expect((await legal(semZap.id)).gate_required).toBe(true);
     const salvou = await rpc(semZap.id, "app_update_profile", { p_patch: { phone: PHONE } });
-    expect(salvou.legal).toMatchObject({ phone_missing: false, gate_required: false, termo_uso: { accepted: "1.0" } });
+    expect(salvou.legal).toMatchObject({ phone_missing: false, gate_required: false, termo_uso: { accepted: "2.0" } });
   });
 
   it("app_legal_state abre para quem entra e roda com os direitos do servidor; a abertura e a exportação seguem com os de quem chama", async () => {
@@ -716,13 +727,13 @@ describe("Termo — exportação dos dados (app_export_my_data → acceptances)"
   const acceptanceKeys = ["accepted_at", "document", "origin", "user_agent", "version"];
 
   it("exportação inclui os aceites da pessoa", async () => {
-    const { id } = await signUp({ name: "Export", phone: PHONE, terms_version: "1.0", user_agent: "UA/Export" });
-    await rpc(id, "app_accept_terms", { p_document: "tutor_ia", p_version: "1.0", p_origin: "tutor", p_user_agent: "UA/Tutor" });
+    const { id } = await signUp({ name: "Export", phone: PHONE, terms_version: "2.0", ...DECL, user_agent: "UA/Export" });
+    await rpc(id, "app_accept_terms", { p_document: "tutor_ia", p_version: "2.0", p_origin: "tutor", p_user_agent: "UA/Tutor" });
 
     const data = await rpc(id, "app_export_my_data");
     expect(data.acceptances).toEqual([
-      { document: "termo_uso", version: "1.0", accepted_at: expect.any(String), origin: "cadastro", user_agent: "UA/Export" },
-      { document: "tutor_ia", version: "1.0", accepted_at: expect.any(String), origin: "tutor", user_agent: "UA/Tutor" },
+      { document: "termo_uso", version: "2.0", accepted_at: expect.any(String), origin: "cadastro", user_agent: "UA/Export" },
+      { document: "tutor_ia", version: "2.0", accepted_at: expect.any(String), origin: "tutor", user_agent: "UA/Tutor" },
     ]);
     // a data exportada é a da prova gravada
     const provas = await acceptances(id);
@@ -731,23 +742,23 @@ describe("Termo — exportação dos dados (app_export_my_data → acceptances)"
   });
 
   it("exportação: em ordem de data, só da pessoa, e sem aceites o campo vem vazio", async () => {
-    const eu = await signUp({ name: "Eu", phone: PHONE, terms_version: "1.0", user_agent: "UA/Eu" }, "eu@teste.dev");
-    const outra = await signUp({ name: "Outra", phone: PHONE, terms_version: "1.0", user_agent: "UA/Outra" }, "outra@teste.dev");
-    const apagada = await signUp({ name: "Apagada", terms_version: "1.0", user_agent: "UA/Apagada" }, "apagada@teste.dev");
+    const eu = await signUp({ name: "Eu", phone: PHONE, terms_version: "2.0", ...DECL, user_agent: "UA/Eu" }, "eu@teste.dev");
+    const outra = await signUp({ name: "Outra", phone: PHONE, terms_version: "2.0", ...DECL, user_agent: "UA/Outra" }, "outra@teste.dev");
+    const apagada = await signUp({ name: "Apagada", terms_version: "2.0", ...DECL, user_agent: "UA/Apagada" }, "apagada@teste.dev");
     await rpc(apagada.id, "app_delete_my_account", { p_confirm: "EXCLUIR" });
 
     // gravado por último, mas com data de antes: a ordem é pela data, não pela ordem de gravação
     await db.query(
       `insert into public.legal_acceptances (user_id, document, version, origin, email_hash, accepted_at)
-       values ($1, 'tutor_ia', '1.0', 'tutor', 'x', now() - interval '2 days'),
+       values ($1, 'tutor_ia', '2.0', 'tutor', 'x', now() - interval '2 days'),
               ($1, 'termo_uso', '0.9', 'google', 'x', now() - interval '30 days')`,
       [eu.id]
     );
     const data = await rpc(eu.id, "app_export_my_data");
     expect(data.acceptances.map((a: any) => [a.document, a.version, a.origin])).toEqual([
       ["termo_uso", "0.9", "google"],
-      ["tutor_ia", "1.0", "tutor"],
-      ["termo_uso", "1.0", "cadastro"],
+      ["tutor_ia", "2.0", "tutor"],
+      ["termo_uso", "2.0", "cadastro"],
     ]);
     const datas = data.acceptances.map((a: any) => new Date(a.accepted_at).getTime());
     expect(datas).toEqual([...datas].sort((a, b) => a - b));
@@ -773,7 +784,7 @@ describe("Termo — exportação dos dados (app_export_my_data → acceptances)"
   });
 
   it("exportação mantém todas as chaves de antes e sem login continua nula", async () => {
-    const { id } = await signUp({ name: "Antes", terms_version: "1.0" });
+    const { id } = await signUp({ name: "Antes", terms_version: "2.0", ...DECL });
     const antes = [
       "exported_at", "account", "profile", "role", "subscription", "practice_sessions", "question_attempts", "question_bookmarks",
       "error_notes", "plan_tasks", "flashcards", "flashcard_states", "flashcard_reviews", "checklist_favorites",

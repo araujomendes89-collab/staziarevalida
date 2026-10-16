@@ -7,8 +7,8 @@
 --
 -- ESTA MIGRAÇÃO SOZINHA NÃO MUDA NADA PARA O ALUNO: só cria a estrutura. Enquanto nenhuma versão vigente pedir as declarações
 -- (legal_versions.requires_declarations = false, o padrão), tudo funciona exatamente como hoje (Termo 1.0).
--- Quem liga a versão 2.0 e o reaceite é o arquivo separado supabase/ativar/20261003011500_termo_v2.ativar.sql, colado quando o
--- dono decidir, junto com a publicação do site com TERMO_VERSAO = "2.0".
+-- Quem liga a versão 2.0 e o reaceite é a migração seguinte, supabase/migrations/20261003011510_termo_v2_ativar.sql (colada logo
+-- depois desta, junto com a publicação do site com TERMO_VERSAO = "2.0").
 --
 --   * legal_versions.requires_declarations: a versão vigente exige as declarações (maioridade e médico);
 --   * legal_declarations: a prova das declarações, uma por aceite (ligada a legal_acceptances.id). Ao apagar a conta, o aceite
