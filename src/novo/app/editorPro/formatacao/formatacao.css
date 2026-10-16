@@ -1,0 +1,11 @@
+.ep-paleta { position: relative; display: inline-flex; }
+.ep-paleta-pop { position: absolute; top: 100%; left: 0; z-index: 30; margin-top: 4px; padding: 8px; min-width: 160px; background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--radius-md); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+.ep-paleta-grade { display: grid; grid-template-columns: repeat(5, 24px); gap: 6px; }
+.ep-amostra { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border-strong); cursor: pointer; padding: 0; }
+.ep-amostra:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ep-amostra[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--surface-card), 0 0 0 4px var(--action-primary); }
+.ep-paleta-auto { margin-top: 8px; width: 100%; padding: 4px 8px; font: 500 12px var(--font-sans); border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: transparent; color: var(--text-primary); cursor: pointer; }
+.ep-paleta-barra { display: block; height: 3px; margin-top: -4px; border-radius: 2px; }
+.ep-pincel-armado { cursor: copy; }
+.ep-select--fonte { max-width: 190px; }
+.ep-select--tamanho { width: 74px; }

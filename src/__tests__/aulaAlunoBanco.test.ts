@@ -78,11 +78,30 @@ describe("Publicada (SÓ no banco de simulação): o aluno vê o que é dele", (
   it("traz seções, fixação, flashcards, Revisão da Aula e o id para anotações", async () => {
     expect(aula.lesson_id).toBe(aulaId);
     expect(aula.secoes).toHaveLength(PACOTE.aula.sections.length);
+    // editor profissional (migração 013020): "ricos" alinhado aos parágrafos (null sem formatação nova), "doc_config" nulo sem configuração
+    for (const s of aula.secoes) expect(s.ricos).toEqual(s.paragrafos.map(() => null));
+    expect(aula.doc_config).toBeNull();
     expect(aula.questoes.itens).toHaveLength(3);
     expect(aula.flashcards.cartoes).toHaveLength(9);
     expect(aula.flashcards.cartoes.every((c: any) => c.imagem)).toBe(true);
     expect(aula.revisao_aula.titulo).toBe("Revisão da Aula");
     expect(aula.titulo).toBe(PACOTE.titulo);
+  });
+
+  it("editor profissional (013020): o rico de um parágrafo chega alinhado ao parágrafo; o texto continua igual", async () => {
+    const rico = { f: "sdoc", v: 1, doc: { type: "doc", content: [{ type: "paragraph", attrs: { textAlign: "center" }, content: [{ type: "text", text: "x" }] }] } };
+    const antes = await rpc(ALUNO, "app_tema_aula", { p_tema_id: "GR-001" });
+    const [{ v }] = await sql(`select l.ch_version_id v from public.lessons l where l.id = $1`, [aulaId]);
+    await sql(`update public.ch_unit_versions set content = jsonb_set(jsonb_set(content, '{sections,0,paragraphs,0,rico}', $2::jsonb), '{doc_config}', '{"pagina": {"tamanho": "A4"}}'::jsonb) where id = $1`, [v, JSON.stringify(rico)]);
+    try {
+      const depois = await rpc(ALUNO, "app_tema_aula", { p_tema_id: "GR-001" });
+      expect(depois.secoes.map((s: any) => s.paragrafos)).toEqual(antes.secoes.map((s: any) => s.paragrafos));
+      expect(depois.secoes[0].ricos[0]).toEqual(rico);
+      expect(depois.secoes[0].ricos.slice(1).every((r: any) => r === null)).toBe(true);
+      expect(depois.doc_config).toEqual({ pagina: { tamanho: "A4" } });
+    } finally {
+      await sql(`update public.ch_unit_versions set content = (content #- '{sections,0,paragraphs,0,rico}') - 'doc_config' where id = $1`, [v]);
+    }
   });
 
   it("não leva PDF, equipe, caminho de arquivo, afirmação, fonte, referência nem o código GR", async () => {

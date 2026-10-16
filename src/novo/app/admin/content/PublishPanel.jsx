@@ -2,6 +2,7 @@
 // A prévia não grava nada. Só o administrador chega aqui (o banco confere de novo). Publicação ligada e modo sombra desligado
 // são decisões da Configuração; sem isso o botão fica desligado e o motivo aparece.
 import React from "react";
+import { TextoRico } from "../../textoRico/TextoRico.jsx";
 import { Badge, Banner, Button, Checkbox } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { LoadError, Loading, useLoad } from "../common.jsx";
@@ -119,7 +120,7 @@ export function PublishPanel({ version, onPublished, onClose, publishFn = "app_c
               ) : (
                 <ol style={{ margin: 0, paddingLeft: 20 }}>
                   {data.student_key_points.map((p, i) => (
-                    <li key={i}>{p}</li>
+                    <li key={i}><TextoRico texto={p} /></li>
                   ))}
                 </ol>
               )}

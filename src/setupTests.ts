@@ -43,3 +43,21 @@ Object.defineProperty(window, 'matchMedia', {
   }),
 });
 }
+
+// Editor estilo Word (TipTap) nas telas da Administração: nos testes de TELA ele vira um <textarea> simples com o mesmo texto com
+// marcas (value/onChange iguais), para os testes continuarem digitando com fireEvent.change. O editor de verdade (barra, negrito,
+// tabela, desfazer) tem os próprios testes em textoRicoEditor.test.tsx, que importam EditorTexto.jsx direto (sem este mock).
+vi.mock('./novo/app/textoRico/CampoTexto.jsx', async () => {
+  const React = await import('react');
+  function CampoTexto({ value, onChange, label, hint, disabled, minRows = 3, maxLength }: any) {
+    const id = React.useId();
+    return React.createElement(
+      'div',
+      { className: 'sm-field' },
+      label ? React.createElement('label', { className: 'sm-field__label', htmlFor: id }, label) : null,
+      React.createElement('textarea', { id, value: value ?? '', rows: minRows, maxLength, disabled, onChange: (e: any) => onChange?.(e.target.value) }),
+      hint ? React.createElement('span', { className: 'sm-field__hint' }, hint) : null,
+    );
+  }
+  return { CampoTexto, default: CampoTexto };
+});

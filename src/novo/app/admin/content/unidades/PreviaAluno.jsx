@@ -1,6 +1,7 @@
 // "Pré-visualizar como aluno": a página da aula como o aluno vai ver, com os materiais que ele vê. Nada é publicado.
 // Só o que o banco devolve em app_ch_unit_student_preview (itens ativos e visíveis ao aluno; nunca PDF, equipe ou arquivo para baixar).
 import React from "react";
+import { TextoRico } from "../../../textoRico/TextoRico.jsx";
 import { Badge, Banner } from "../../../../ds";
 import { useSession } from "../../../session.jsx";
 import { LoadError, Loading, useLoad } from "../../common.jsx";
@@ -119,7 +120,7 @@ export function PaginaDaAula({ p }) {
           <h3 style={{ margin: "18px 0 6px", font: "var(--type-h4)", color: "var(--text-brand)" }}>{s.titulo}</h3>
           {(s.paragrafos ?? []).map((t, j) => (
             <p key={j} style={{ margin: "0 0 10px", lineHeight: 1.55 }}>
-              {t}
+              <TextoRico texto={t} />
             </p>
           ))}
           {pos(i + 1)}
@@ -131,7 +132,7 @@ export function PaginaDaAula({ p }) {
           <h3 style={{ margin: "18px 0 6px", font: "var(--type-h4)" }}>Pontos-chave</h3>
           <ul style={{ margin: 0, paddingLeft: 20 }}>
             {p.pontos_chave.map((t, i) => (
-              <li key={i}>{t}</li>
+              <li key={i}><TextoRico texto={t} /></li>
             ))}
           </ul>
         </section>

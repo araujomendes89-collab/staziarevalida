@@ -3,12 +3,14 @@
 import React from "react";
 import { Badge, Banner, Button, Checkbox, EmptyState, SegmentedControl, TextField } from "../../../ds";
 import { useSession } from "../../session.jsx";
-import { ListRow, LoadError, Loading, TextArea, useLoad } from "../common.jsx";
+import { ListRow, LoadError, Loading, useLoad } from "../common.jsx";
 import { hubAvailable, hubBlobUrl } from "./api.js";
 import { AREA_LABEL, isMockModel, MATERIAL_KIND, UNIT_STATUS } from "./labels.js";
 import { openFileInTab } from "./openFile.js";
 import { PublishPanel } from "./PublishPanel.jsx";
 import { TemaDaUnidade } from "./vigilancia/TemasVigiados.jsx";
+import { CampoTexto } from "../../textoRico/CampoTexto.jsx";
+import { TextoRico } from "../../textoRico/TextoRico.jsx";
 import { ClaimCard, Label, ModelBadge, Pre, Section, shortHash, StatusBadge, useAction, when } from "./ui.jsx";
 import { CabecalhoUnidade, CaminhoAtePublicar, useVisaoGeral } from "./unidades/Topo.jsx";
 import { MateriaisUnidade } from "./unidades/Materiais.jsx";
@@ -16,6 +18,9 @@ import { FichaRevisor } from "./unidades/Ficha.jsx";
 import { HistoricoUnidade } from "./unidades/Historico.jsx";
 import { ResumoAprovacao } from "./unidades/Resumo.jsx";
 import { dataCurta } from "./unidades/rotulos.js";
+import { ricoValido, soFormatacao } from "../../../../shared/docRico";
+import ParagrafoRico from "../../editorPro/leitor/ParagrafoRico.jsx";
+const EditorAula = React.lazy(() => import("../../editorPro/EditorAula.jsx"));
 
 const ORDER = ["awaiting_review", "needs_update", "draft", "approved", "published", "retired"];
 
@@ -179,7 +184,7 @@ function UnitVersion({ id, go, isAdmin, isStaff, reviewerAreas }) {
       <ReviewFlags flags={v.review_flags} />
       <Decisions data={data} isAdmin={isAdmin} isStaff={isStaff} reviewerAreas={reviewerAreas} onChanged={recarrega} onPublish={() => setPublishing(true)} go={go} hideLegacyPublish={Boolean(visao)} />
       {publishing && isAdmin && v.status === "approved" && <PublishPanel version={v} publishFn={visao ? "app_ch_unit_publish" : "app_ch_publish"} onClose={() => setPublishing(false)} onPublished={(msg) => (setPublishing(false), setNotice(msg), recarrega())} />}
-      <Editor key={v.content_hash} version={v} claims={data.claims} editable={editable} canNewVersion={isStaff && ["published", "needs_update"].includes(v.status)} onNewVersion={(novo) => go("unidades", { versao: novo })} onSaved={reload} />
+      <Editor key={v.content_hash} version={v} titulo={data.title} claims={data.claims} editable={editable} canNewVersion={isStaff && ["published", "needs_update"].includes(v.status)} podeFormatar={isStaff && v.status === "published"} onNewVersion={(novo) => go("unidades", { versao: novo })} onSaved={reload} />
       <Materials data={data} canRegenerate={editable} onChanged={recarrega} />
       <Section title={`Afirmações e evidências (${data.claims.length})`}>
         <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Lista só da equipe: cada afirmação com a fonte, a página e a citação literal. O aluno nunca vê esta lista.</p>
@@ -199,7 +204,7 @@ function UnitVersion({ id, go, isAdmin, isStaff, reviewerAreas }) {
             {a.area_code && <span>· {AREA_LABEL[a.area_code] ?? a.area_code}</span>}
             <span>· {when(a.decided_at)}</span>
             <code>· {shortHash(a.content_hash)}</code>
-            {a.note && <span style={{ flexBasis: "100%", color: "var(--text-secondary)" }}>{a.note}</span>}
+            {a.note && <span style={{ flexBasis: "100%", color: "var(--text-secondary)" }}><TextoRico texto={a.note} /></span>}
           </div>
         ))}
         {data.publications.map((p, i) => (
@@ -282,7 +287,7 @@ function Decisions({ data, isAdmin, isStaff, reviewerAreas, onChanged, onPublish
   return (
     <Section title="Decisões">
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {(v.status === "awaiting_review" || v.status === "approved") && <TextArea label="Observação da aprovação (o que foi conferido)" value={note} onChange={setNote} rows={2} />}
+        {(v.status === "awaiting_review" || v.status === "approved") && <CampoTexto modo="linha" label="Observação da aprovação (o que foi conferido)" value={note} onChange={setNote} minRows={2} />}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {isStaff && v.status === "draft" && (
             <Button icon="send" loading={act.busy} onClick={() => call("app_ch_submit_for_review", { p_version_id: v.id }, "Enviada para revisão.")}>
@@ -347,16 +352,47 @@ function Decisions({ data, isAdmin, isStaff, reviewerAreas, onChanged, onPublish
  * Abre em modo leitura; "Editar" liga a edição (equipe, versão editável) e "Cancelar" descarta. Versão no ar não se edita no lugar:
  * "Editar (criar versão nova)" chama app_ch_new_version (só published/needs_update; a versão no ar continua até a nova ser publicada).
  */
-function Editor({ version, claims, editable: podeEditar, canNewVersion = false, onNewVersion, onSaved }) {
+function Editor({ version, titulo, claims, editable: podeEditar, canNewVersion = false, podeFormatar = false, onNewVersion, onSaved }) {
   const { backend } = useSession();
   const original = () => structuredClone(version.content.sections ?? []);
   const [sections, setSections] = React.useState(original);
   const [dirty, setDirty] = React.useState(false);
   const [editando, setEditando] = React.useState(false);
   const [confirmaNova, setConfirmaNova] = React.useState(false);
+  const [docConfig, setDocConfig] = React.useState(version.content.doc_config ?? null);
+  const [completo, setCompleto] = React.useState(false);
+  const [chaveEditorAula, setChaveEditorAula] = React.useState(0);
   const act = useAction();
+  // trava de edição (migração 013060): enquanto edita, a tela segura a trava com o hash da versão que abriu; o banco recusa
+  // salvar por cima de quem está editando ou de uma versão que outra pessoa salvou depois. Sem a 013060 no banco: segue como antes.
+  const [trava, setTrava] = React.useState(null); // null | { quem, desde } (outra pessoa) | { mudou: true }
+  const sinalTrava = React.useCallback(() => {
+    Promise.resolve()
+      .then(() => backend.rpc("app_ch_doc_trava", { p_version_id: version.id, p_base_hash: version.content_hash }))
+      .then((r) => {
+        if (!r) return;
+        if (r.minha === false) setTrava({ quem: r.quem || "outra pessoa", desde: r.desde ?? null });
+        else if (r.mudou) setTrava({ mudou: true });
+        else setTrava(null);
+      })
+      .catch(() => {});
+  }, [backend, version.id, version.content_hash]);
+  React.useEffect(() => {
+    if (!editando) return undefined;
+    sinalTrava();
+    const t = setInterval(sinalTrava, 30000);
+    return () => {
+      clearInterval(t);
+      setTrava(null);
+      Promise.resolve()
+        .then(() => backend.rpc("app_ch_doc_trava_soltar", { p_version_id: version.id }))
+        .catch(() => {});
+    };
+  }, [editando, sinalTrava, backend, version.id]);
   const claimLabel = new Map(claims.map((c, i) => [c.id, `A${i + 1}`]));
-  const editable = podeEditar && editando; // campos ligados agora
+  // versão no ar: só a formatação pode mudar (decisão do dono 16/10; o banco confere — migração 013080)
+  const soFormatoNoAr = !podeEditar && podeFormatar;
+  const editable = (podeEditar || podeFormatar) && editando; // campos ligados agora
   const update = (fn) => {
     setSections((s) => {
       const next = structuredClone(s);
@@ -367,20 +403,55 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
   };
   const cancelar = () => {
     setSections(original());
+    setDocConfig(version.content.doc_config ?? null);
+    setCompleto(false);
     setDirty(false);
     setEditando(false);
   };
+  const novoContent = { ...version.content, sections, ...(docConfig ? { doc_config: docConfig } : {}) };
+  // a tela só ADIANTA a resposta (mesma regra do banco, testada lado a lado); quem decide é o banco ao salvar
+  const soFormato = dirty && soFormatacao(version.content, novoContent);
   const salvar = () =>
-    act.run(() => backend.rpc("app_ch_save_unit_version", { p_version_id: version.id, p_content: { ...version.content, sections } }), "Texto salvo. As aprovações desta versão deixaram de valer.").then((r) => r && (setDirty(false), setEditando(false), onSaved()));
+    act.run(
+      () => backend.rpc("app_ch_save_unit_version", { p_version_id: version.id, p_content: novoContent }),
+      soFormato
+        ? `Formatação salva. As aprovações continuam valendo.${version.status === "published" ? " O aluno já vê a formatação nova." : ""}`
+        : "Texto salvo. As aprovações desta versão deixaram de valer.",
+    ).then((r) => r && (setDirty(false), setEditando(false), setCompleto(false), onSaved()));
+  const ajustarFormatacao = () => {
+    setChaveEditorAula((n) => n + 1);
+    setCompleto(true);
+    setEditando(true);
+  };
   const criarNova = () => act.run(() => backend.rpc("app_ch_new_version", { p_from_version_id: version.id }), null).then((id) => id && onNewVersion?.(id));
+
+  const alternarModo = () => {
+    if (!completo) setChaveEditorAula(prev => prev + 1);
+    setCompleto(!completo);
+  };
+  // ao voltar do editor completo o módulo do histórico solta a trava: a tela pega de novo logo depois (sem esperar 30 s)
+  React.useEffect(() => {
+    if (!editando || completo) return undefined;
+    const t = setTimeout(sinalTrava, 400);
+    return () => clearTimeout(t);
+  }, [completo]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <Section
       title="Texto da unidade (base revisada)"
       action={
         editable ? (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <Button size="sm" icon="check" disabled={!dirty} loading={act.busy} onClick={salvar}>
-              Salvar texto
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            {!soFormatoNoAr && (
+              <>
+                <Button size="sm" variant="secondary" onClick={alternarModo}>
+                  {completo ? "Editar por parágrafo" : "Editor completo"}
+                </Button>
+                <div style={{ width: 1, background: "var(--border-subtle)", alignSelf: "stretch", margin: "4px 0" }} />
+              </>
+            )}
+            <Button size="sm" icon="check" disabled={!dirty || (soFormatoNoAr && !soFormato) || Boolean(trava)} loading={act.busy} onClick={salvar}>
+              {soFormatoNoAr ? "Salvar formatação" : "Salvar texto"}
             </Button>
             <Button size="sm" variant="secondary" disabled={act.busy} onClick={cancelar}>
               Cancelar
@@ -390,10 +461,19 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
           <Button size="sm" variant="secondary" icon="pencil" onClick={() => setEditando(true)}>
             Editar
           </Button>
-        ) : canNewVersion && !confirmaNova ? (
-          <Button size="sm" variant="secondary" icon="pencil" onClick={() => setConfirmaNova(true)}>
-            Editar (criar versão nova)
-          </Button>
+        ) : (canNewVersion && !confirmaNova) || podeFormatar ? (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {podeFormatar && (
+              <Button size="sm" variant="secondary" icon="paintbrush" onClick={ajustarFormatacao}>
+                Ajustar formatação
+              </Button>
+            )}
+            {canNewVersion && !confirmaNova && (
+              <Button size="sm" variant="secondary" icon="pencil" onClick={() => setConfirmaNova(true)}>
+                Editar (criar versão nova)
+              </Button>
+            )}
+          </div>
         ) : null
       }
     >
@@ -412,59 +492,122 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
           </Banner>
         </div>
       )}
-      {editable && <p style={{ margin: "0 0 10px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Salvar invalida as aprovações e exige gerar os materiais de novo. Informação clínica nova precisa de afirmação com evidência.</p>}
-      {act.feedback}
-      {sections.map((s, si) => (
-        <div key={si} style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 10, marginTop: 10 }}>
-          {editable ? <TextField label="Seção" value={s.heading ?? ""} onChange={(e) => update((x) => (x[si].heading = e.target.value))} /> : <h4 style={{ margin: "0 0 6px", font: "var(--type-h4)", color: "var(--text-brand)" }}>{s.heading}</h4>}
-          {(s.paragraphs ?? []).map((p, pi) => (
-            <div key={pi} style={{ margin: "8px 0", paddingLeft: 10, borderLeft: `3px solid ${p.clinical ? "var(--border-brand)" : "var(--border-default)"}` }}>
-              {editable ? <TextArea value={p.text} onChange={(t) => update((x) => (x[si].paragraphs[pi].text = t))} rows={3} /> : <p style={{ margin: 0 }}>{p.text}</p>}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 4 }}>
-                {editable ? (
-                  <Checkbox label="Conteúdo clínico" checked={Boolean(p.clinical)} onChange={(e) => update((x) => (x[si].paragraphs[pi].clinical = e.target.checked))} />
-                ) : (
-                  p.clinical && <Badge size="sm" tone="brand">clínico</Badge>
-                )}
-                {claims.map((c) => {
-                  const on = (p.claim_ids ?? []).includes(c.id);
-                  if (!editable && !on) return null;
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      title={c.statement}
-                      disabled={!editable}
-                      className={`sm-badge sm-badge--sm`}
-                      style={{ cursor: editable ? "pointer" : "default", background: on ? "var(--selected-bg)" : "var(--surface-sunken)", color: on ? "var(--selected-text)" : "var(--text-tertiary)", borderColor: on ? "var(--selected-border)" : "transparent" }}
-                      onClick={() =>
-                        update((x) => {
-                          const ids = new Set(x[si].paragraphs[pi].claim_ids ?? []);
-                          on ? ids.delete(c.id) : ids.add(c.id);
-                          x[si].paragraphs[pi].claim_ids = [...ids];
-                        })
-                      }
-                    >
-                      {claimLabel.get(c.id)}
-                    </button>
-                  );
-                })}
-                {editable && (
-                  <Button size="sm" variant="ghost" icon="x" onClick={() => update((x) => x[si].paragraphs.splice(pi, 1))}>
-                    Remover
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-          {editable && (
-            <Button size="sm" variant="ghost" icon="plus" onClick={() => update((x) => (x[si].paragraphs = [...(x[si].paragraphs ?? []), { text: "", clinical: false, claim_ids: [] }]))}>
-              Parágrafo
-            </Button>
+      {editable && soFormatoNoAr && (
+        <div style={{ marginBottom: 10 }}>
+          <Banner tone={dirty && !soFormato ? "danger" : "info"} icon="paintbrush" title="Versão no ar: aqui só muda a formatação">
+            {dirty && !soFormato
+              ? "Você mudou o conteúdo (texto, imagem, link, legenda, nota ou outro). Numa versão no ar só a formatação pode mudar: desfaça essa mudança ou cancele e crie uma versão nova."
+              : "Fonte, cor, negrito, alinhamento e página não precisam de nova aprovação e aparecem para o aluno assim que você salvar. Texto, imagens e links pedem uma versão nova."}
+          </Banner>
+        </div>
+      )}
+      {editable && !soFormatoNoAr && (
+        <p style={{ margin: "0 0 10px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+          {dirty && soFormato
+            ? "Até agora você só mudou a formatação: ao salvar, as aprovações continuam valendo."
+            : "Mudar o texto, imagens ou links invalida as aprovações e exige gerar os materiais de novo; mudar só a formatação não. Informação clínica nova precisa de afirmação com evidência."}
+        </p>
+      )}
+      {editable && trava && (
+        <div style={{ marginBottom: 10 }}>
+          {trava.mudou ? (
+            <Banner tone="danger" icon="refresh-cw" title="Esta aula foi salva por outra pessoa">
+              <p style={{ margin: "0 0 8px" }}>Depois que você começou a editar, outra pessoa salvou esta versão. Para não salvar por cima, recarregue a aula (o que você mudou aqui se perde).</p>
+              <Button size="sm" variant="secondary" icon="refresh-cw" onClick={onSaved}>
+                Recarregar
+              </Button>
+            </Banner>
+          ) : (
+            <Banner tone="warning" icon="lock" title={`${trava.quem} está editando esta aula`}>
+              {`Edição aberta${trava.desde ? ` desde ${new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(trava.desde))}` : ""}. Para não salvar por cima, espere a outra pessoa salvar ou sair do editor.`}
+            </Banner>
           )}
         </div>
-      ))}
-      {editable && (
+      )}
+      {act.feedback}
+      
+      {editable && completo ? (
+        <React.Suspense fallback={<div style={{ padding: "20px", textAlign: "center" }}>Carregando editor completo...</div>}>
+          <EditorAula
+            key={`editor-aula-${chaveEditorAula}`}
+            content={{ ...version.content, sections, doc_config: docConfig ?? undefined }}
+            contexto={{ versionId: version.id, contentHash: version.content_hash, titulo, versao: version.version, aoRecarregar: onSaved }}
+            aoMudar={(c) => {
+              setSections(c.sections);
+              setDocConfig(c.doc_config ?? null);
+              setDirty(true);
+            }}
+          />
+        </React.Suspense>
+      ) : (
+        sections.map((s, si) => (
+          <div key={si} style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 10, marginTop: 10 }}>
+            {editable ? <TextField label="Seção" value={s.heading ?? ""} onChange={(e) => update((x) => (x[si].heading = e.target.value))} /> : <h4 style={{ margin: "0 0 6px", font: "var(--type-h4)", color: "var(--text-brand)" }}>{s.heading}</h4>}
+            {(s.paragraphs ?? []).map((p, pi) => {
+              const eRico = ricoValido(p.text, p.rico);
+              return (
+                <div key={pi} style={{ margin: "8px 0", paddingLeft: 10, borderLeft: `3px solid ${p.clinical ? "var(--border-brand)" : "var(--border-default)"}` }}>
+                  {editable ? (
+                    eRico ? (
+                      <div style={{ padding: "12px", background: "var(--surface-sunken)", borderRadius: "var(--radius-md)", margin: "8px 0" }}>
+                        <p style={{ margin: "0 0 8px", font: "var(--type-caption)", color: "var(--text-secondary)", fontStyle: "italic" }}>
+                          Este parágrafo tem formatação do editor completo. Para mudar o texto, use o Editor completo.
+                        </p>
+                        <ParagrafoRico texto={p.text} rico={p.rico} />
+                      </div>
+                    ) : (
+                      <CampoTexto modo="linha" label={`Parágrafo ${pi + 1}`} value={p.text} onChange={(t) => update((x) => (x[si].paragraphs[pi].text = t))} minRows={3} />
+                    )
+                  ) : (
+                    <ParagrafoRico texto={p.text} rico={p.rico} style={{ margin: 0 }} />
+                  )}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 4 }}>
+                    {editable ? (
+                      <Checkbox label="Conteúdo clínico" checked={Boolean(p.clinical)} onChange={(e) => update((x) => (x[si].paragraphs[pi].clinical = e.target.checked))} />
+                    ) : (
+                      p.clinical && <Badge size="sm" tone="brand">clínico</Badge>
+                    )}
+                    {claims.map((c) => {
+                      const on = (p.claim_ids ?? []).includes(c.id);
+                      if (!editable && !on) return null;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          title={c.statement}
+                          disabled={!editable}
+                          className={`sm-badge sm-badge--sm`}
+                          style={{ cursor: editable ? "pointer" : "default", background: on ? "var(--selected-bg)" : "var(--surface-sunken)", color: on ? "var(--selected-text)" : "var(--text-tertiary)", borderColor: on ? "var(--selected-border)" : "transparent" }}
+                          onClick={() =>
+                            update((x) => {
+                              const ids = new Set(x[si].paragraphs[pi].claim_ids ?? []);
+                              on ? ids.delete(c.id) : ids.add(c.id);
+                              x[si].paragraphs[pi].claim_ids = [...ids];
+                            })
+                          }
+                        >
+                          {claimLabel.get(c.id)}
+                        </button>
+                      );
+                    })}
+                    {editable && (
+                      <Button size="sm" variant="ghost" icon="x" onClick={() => update((x) => x[si].paragraphs.splice(pi, 1))}>
+                        Remover
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {editable && (
+              <Button size="sm" variant="ghost" icon="plus" onClick={() => update((x) => (x[si].paragraphs = [...(x[si].paragraphs ?? []), { text: "", clinical: false, claim_ids: [] }]))}>
+                Parágrafo
+              </Button>
+            )}
+          </div>
+        ))
+      )}
+      {!completo && editable && (
         <div style={{ marginTop: 10 }}>
           <Button size="sm" variant="secondary" icon="plus" onClick={() => update((x) => x.push({ heading: "Nova seção", paragraphs: [] }))}>
             Seção
@@ -553,7 +696,7 @@ function MaterialPreview({ kind, content }) {
             <h4 style={{ margin: "10px 0 4px", font: "var(--type-h4)", color: "var(--text-brand)" }}>{s.heading}</h4>
             {(s.paragraphs ?? []).map((p, j) => (
               <p key={j} style={{ margin: "0 0 6px" }}>
-                {p.text}
+                <TextoRico texto={p.text} />
               </p>
             ))}
           </div>

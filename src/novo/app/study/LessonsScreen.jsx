@@ -3,6 +3,8 @@
 // estrutura padrão: vídeo · área/tema/título/duração/professor/especialidade · "Treinar questões deste tema" ·
 // materiais complementares (slides PDF, áudio Flashcast, diretriz SUS/PCDT) · resumo e racionalidade · pontos-chave.
 import React from "react";
+import { TextoRico } from "../textoRico/TextoRico.jsx";
+import ResumoRico from "../editorPro/editarAula/ResumoRico.jsx";
 import { Badge, Banner, Button, Card, EmptyState, Icon, TextField } from "../../ds";
 import { IconTile } from "../../prototype/RealIcons.jsx";
 import { useSession } from "../session.jsx";
@@ -465,7 +467,7 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
               <IconTile name="book-open" size={32} tone="brand" />
               <span className="sm-overline" style={{ color: "var(--text-secondary)" }}>Resumo & racionalidade clínica</span>
             </div>
-            {lesson.summary ? <p style={{ margin: 0, font: "400 15px/1.65 var(--font-sans)", whiteSpace: "pre-wrap", textWrap: "pretty" }}>{lesson.summary}</p> : <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Resumo ainda não publicado.</p>}
+            {lesson.summary ? <ResumoRico texto={lesson.summary} rico={lesson.summary_rico} style={{ font: "400 15px/1.65 var(--font-sans)", textWrap: "pretty" }} /> : <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Resumo ainda não publicado.</p>}
           </Card>
           <Card style={{ borderRadius: 24 }} padding={mobile ? 18 : 24}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -477,7 +479,7 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
                 {lesson.key_points.map((p, k) => (
                   <li key={k} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 14px", borderRadius: 14, background: "var(--surface-subtle)", border: "1px solid var(--border-subtle)" }}>
                     <span style={{ width: 24, height: 24, flex: "none", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "var(--warning-bg)", color: "var(--warning-text)", font: "700 12px var(--font-sans)" }}>{k + 1}</span>
-                    <span style={{ font: "500 14px/1.5 var(--font-sans)" }}>{p}</span>
+                    <span style={{ font: "500 14px/1.5 var(--font-sans)" }}><TextoRico texto={p} /></span>
                   </li>
                 ))}
               </ol>
