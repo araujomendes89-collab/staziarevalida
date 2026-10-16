@@ -1,5 +1,6 @@
 import "./modulos";
 export * from "./registro";
+export * from "./conteudo";
 
 import {
   Valor,
@@ -341,9 +342,12 @@ export function sanearEnvelope(x: unknown): Envelope | null {
   return { f: FORMATO, v: VERSAO, doc: sanear(x.doc, { semRef: true }) };
 }
 
-/** Filtra nós inline para conterem apenas marcas nucleares suportadas pelo textoRico. */
+/**
+ * Projeção para o "text" guardado: só o texto e os links (o link é conteúdo). Negrito, itálico e sublinhado NÃO entram no texto de um
+ * parágrafo com rico: assim mudar só a formatação não muda o "text" e não derruba a aprovação (decisão do dono, 16/10; migração 013080).
+ */
 function filtrarMarcasNucleo(nos: NoDoc[]): NoInline[] {
-  const nucleoMarcas = new Set(["bold", "italic", "underline", "link"]);
+  const nucleoMarcas = new Set(["link"]);
   const out: NoInline[] = [];
   for (const n of nos) {
     if (n.type === "hardBreak") {
@@ -761,10 +765,8 @@ export function docParaUnidade(
 
           // Se o original tinha rico mas era inválido (desatualizado), não está inalterado (rico deve ser removido)
           const ricoInvalidoNoOriginal = pOrig.rico && !ricoOriginalValido;
-          const inalterado =
-            !ricoInvalidoNoOriginal &&
-            deepEqual(blocosSemRef, origBlocosSemRef) &&
-            novoTexto === pOrig.text;
+          // mesmo documento que o original produziria = parágrafo original intacto (inclusive texto antigo com **marcas**)
+          const inalterado = !ricoInvalidoNoOriginal && deepEqual(blocosSemRef, origBlocosSemRef);
 
           if (inalterado) {
             paragraphs.push(pOrig);

@@ -18,7 +18,7 @@ import { FichaRevisor } from "./unidades/Ficha.jsx";
 import { HistoricoUnidade } from "./unidades/Historico.jsx";
 import { ResumoAprovacao } from "./unidades/Resumo.jsx";
 import { dataCurta } from "./unidades/rotulos.js";
-import { ricoValido } from "../../../../shared/docRico";
+import { ricoValido, soFormatacao } from "../../../../shared/docRico";
 import ParagrafoRico from "../../editorPro/leitor/ParagrafoRico.jsx";
 const EditorAula = React.lazy(() => import("../../editorPro/EditorAula.jsx"));
 
@@ -184,7 +184,7 @@ function UnitVersion({ id, go, isAdmin, isStaff, reviewerAreas }) {
       <ReviewFlags flags={v.review_flags} />
       <Decisions data={data} isAdmin={isAdmin} isStaff={isStaff} reviewerAreas={reviewerAreas} onChanged={recarrega} onPublish={() => setPublishing(true)} go={go} hideLegacyPublish={Boolean(visao)} />
       {publishing && isAdmin && v.status === "approved" && <PublishPanel version={v} publishFn={visao ? "app_ch_unit_publish" : "app_ch_publish"} onClose={() => setPublishing(false)} onPublished={(msg) => (setPublishing(false), setNotice(msg), recarrega())} />}
-      <Editor key={v.content_hash} version={v} claims={data.claims} editable={editable} canNewVersion={isStaff && ["published", "needs_update"].includes(v.status)} onNewVersion={(novo) => go("unidades", { versao: novo })} onSaved={reload} />
+      <Editor key={v.content_hash} version={v} titulo={data.title} claims={data.claims} editable={editable} canNewVersion={isStaff && ["published", "needs_update"].includes(v.status)} podeFormatar={isStaff && v.status === "published"} onNewVersion={(novo) => go("unidades", { versao: novo })} onSaved={reload} />
       <Materials data={data} canRegenerate={editable} onChanged={recarrega} />
       <Section title={`Afirmações e evidências (${data.claims.length})`}>
         <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Lista só da equipe: cada afirmação com a fonte, a página e a citação literal. O aluno nunca vê esta lista.</p>
@@ -352,7 +352,7 @@ function Decisions({ data, isAdmin, isStaff, reviewerAreas, onChanged, onPublish
  * Abre em modo leitura; "Editar" liga a edição (equipe, versão editável) e "Cancelar" descarta. Versão no ar não se edita no lugar:
  * "Editar (criar versão nova)" chama app_ch_new_version (só published/needs_update; a versão no ar continua até a nova ser publicada).
  */
-function Editor({ version, claims, editable: podeEditar, canNewVersion = false, onNewVersion, onSaved }) {
+function Editor({ version, titulo, claims, editable: podeEditar, canNewVersion = false, podeFormatar = false, onNewVersion, onSaved }) {
   const { backend } = useSession();
   const original = () => structuredClone(version.content.sections ?? []);
   const [sections, setSections] = React.useState(original);
@@ -364,7 +364,9 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
   const [chaveEditorAula, setChaveEditorAula] = React.useState(0);
   const act = useAction();
   const claimLabel = new Map(claims.map((c, i) => [c.id, `A${i + 1}`]));
-  const editable = podeEditar && editando; // campos ligados agora
+  // versão no ar: só a formatação pode mudar (decisão do dono 16/10; o banco confere — migração 013080)
+  const soFormatoNoAr = !podeEditar && podeFormatar;
+  const editable = (podeEditar || podeFormatar) && editando; // campos ligados agora
   const update = (fn) => {
     setSections((s) => {
       const next = structuredClone(s);
@@ -380,8 +382,21 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
     setDirty(false);
     setEditando(false);
   };
+  const novoContent = { ...version.content, sections, ...(docConfig ? { doc_config: docConfig } : {}) };
+  // a tela só ADIANTA a resposta (mesma regra do banco, testada lado a lado); quem decide é o banco ao salvar
+  const soFormato = dirty && soFormatacao(version.content, novoContent);
   const salvar = () =>
-    act.run(() => backend.rpc("app_ch_save_unit_version", { p_version_id: version.id, p_content: { ...version.content, sections, ...(docConfig ? { doc_config: docConfig } : {}) } }), "Texto salvo. As aprovações desta versão deixaram de valer.").then((r) => r && (setDirty(false), setEditando(false), onSaved()));
+    act.run(
+      () => backend.rpc("app_ch_save_unit_version", { p_version_id: version.id, p_content: novoContent }),
+      soFormato
+        ? `Formatação salva. As aprovações continuam valendo.${version.status === "published" ? " O aluno já vê a formatação nova." : ""}`
+        : "Texto salvo. As aprovações desta versão deixaram de valer.",
+    ).then((r) => r && (setDirty(false), setEditando(false), setCompleto(false), onSaved()));
+  const ajustarFormatacao = () => {
+    setChaveEditorAula((n) => n + 1);
+    setCompleto(true);
+    setEditando(true);
+  };
   const criarNova = () => act.run(() => backend.rpc("app_ch_new_version", { p_from_version_id: version.id }), null).then((id) => id && onNewVersion?.(id));
 
   const alternarModo = () => {
@@ -395,12 +410,16 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
       action={
         editable ? (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-            <Button size="sm" variant="secondary" onClick={alternarModo}>
-              {completo ? "Editar por parágrafo" : "Editor completo"}
-            </Button>
-            <div style={{ width: 1, background: "var(--border-subtle)", alignSelf: "stretch", margin: "4px 0" }} />
-            <Button size="sm" icon="check" disabled={!dirty} loading={act.busy} onClick={salvar}>
-              Salvar texto
+            {!soFormatoNoAr && (
+              <>
+                <Button size="sm" variant="secondary" onClick={alternarModo}>
+                  {completo ? "Editar por parágrafo" : "Editor completo"}
+                </Button>
+                <div style={{ width: 1, background: "var(--border-subtle)", alignSelf: "stretch", margin: "4px 0" }} />
+              </>
+            )}
+            <Button size="sm" icon="check" disabled={!dirty || (soFormatoNoAr && !soFormato)} loading={act.busy} onClick={salvar}>
+              {soFormatoNoAr ? "Salvar formatação" : "Salvar texto"}
             </Button>
             <Button size="sm" variant="secondary" disabled={act.busy} onClick={cancelar}>
               Cancelar
@@ -410,10 +429,19 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
           <Button size="sm" variant="secondary" icon="pencil" onClick={() => setEditando(true)}>
             Editar
           </Button>
-        ) : canNewVersion && !confirmaNova ? (
-          <Button size="sm" variant="secondary" icon="pencil" onClick={() => setConfirmaNova(true)}>
-            Editar (criar versão nova)
-          </Button>
+        ) : (canNewVersion && !confirmaNova) || podeFormatar ? (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {podeFormatar && (
+              <Button size="sm" variant="secondary" icon="paintbrush" onClick={ajustarFormatacao}>
+                Ajustar formatação
+              </Button>
+            )}
+            {canNewVersion && !confirmaNova && (
+              <Button size="sm" variant="secondary" icon="pencil" onClick={() => setConfirmaNova(true)}>
+                Editar (criar versão nova)
+              </Button>
+            )}
+          </div>
         ) : null
       }
     >
@@ -432,7 +460,22 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
           </Banner>
         </div>
       )}
-      {editable && <p style={{ margin: "0 0 10px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Salvar invalida as aprovações e exige gerar os materiais de novo. Informação clínica nova precisa de afirmação com evidência.</p>}
+      {editable && soFormatoNoAr && (
+        <div style={{ marginBottom: 10 }}>
+          <Banner tone={dirty && !soFormato ? "danger" : "info"} icon="paintbrush" title="Versão no ar: aqui só muda a formatação">
+            {dirty && !soFormato
+              ? "Você mudou o conteúdo (texto, imagem, link, legenda, nota ou outro). Numa versão no ar só a formatação pode mudar: desfaça essa mudança ou cancele e crie uma versão nova."
+              : "Fonte, cor, negrito, alinhamento e página não precisam de nova aprovação e aparecem para o aluno assim que você salvar. Texto, imagens e links pedem uma versão nova."}
+          </Banner>
+        </div>
+      )}
+      {editable && !soFormatoNoAr && (
+        <p style={{ margin: "0 0 10px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+          {dirty && soFormato
+            ? "Até agora você só mudou a formatação: ao salvar, as aprovações continuam valendo."
+            : "Mudar o texto, imagens ou links invalida as aprovações e exige gerar os materiais de novo; mudar só a formatação não. Informação clínica nova precisa de afirmação com evidência."}
+        </p>
+      )}
       {act.feedback}
       
       {editable && completo ? (
@@ -440,6 +483,7 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
           <EditorAula
             key={`editor-aula-${chaveEditorAula}`}
             content={{ ...version.content, sections, doc_config: docConfig ?? undefined }}
+            contexto={{ versionId: version.id, contentHash: version.content_hash, titulo, versao: version.version, aoRecarregar: onSaved }}
             aoMudar={(c) => {
               setSections(c.sections);
               setDocConfig(c.doc_config ?? null);
