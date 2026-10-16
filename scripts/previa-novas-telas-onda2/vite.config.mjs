@@ -11,6 +11,8 @@ export default defineConfig({
   root: here,
   publicDir: path.join(raiz, "public"),
   plugins: [react()],
+  // onda 7: a arte 3D das medalhas e ligas do pacote fica LIGADA só nesta prévia (no app a flag é desligada por padrão)
+  define: { "import.meta.env.VITE_MEDALHAS_ARTE_PACOTE": JSON.stringify("1") },
   resolve: { alias: [{ find: /^(\.\.?\/)+session\.jsx$/, replacement: path.join(here, "sessaoSimulada.jsx") }] },
   server: { port: 31971, strictPort: true, host: "127.0.0.1", fs: { allow: [raiz] } },
   cacheDir: "/Volumes/StaziaMed/.tmp-aulas/novas-telas/vite-cache-onda2",

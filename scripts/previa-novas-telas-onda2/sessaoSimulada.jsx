@@ -2,6 +2,7 @@
 // "Mais" usam. DADOS DE TESTE, no mesmo formato do banco. Parâmetros da URL: ?vazio=1 (aluno sem respostas), ?semplay=1 ou ?arena=0 (Stazia Arena desligada), ?semliga=1 (fora do ranking e da liga),
 // ?teste=1 (teste grátis com 20 das 74 inéditas liberadas), ?tudofeito=1.
 import React from "react";
+import { conquistas, LIGAS, loja } from "./dadosConquistas.js";
 
 const q = new URLSearchParams(location.search);
 const ARENA_OFF = Boolean(q.get("semplay")) || q.get("arena") === "0";
@@ -20,7 +21,7 @@ const state = {
       ],
 };
 const todayPlan = () => ({ tasks: state.tasks, done: state.tasks.filter((t) => t.done).length, total: state.tasks.length });
-const boot = () => ({ role: "student", profile: state.profile, play: { enabled: !ARENA_OFF, streak: 0 }, streak_days: 0, flashcards_due: 0, days_to_exam: null, subscription: null, has_pro: false, reviewer_areas: [] });
+const boot = () => ({ role: "student", profile: state.profile, play: { enabled: !ARENA_OFF, streak: 0, flags: { coins: q.get("semmoedas") ? false : true }, names: { coins: "Stazia Coins" } }, streak_days: 0, flashcards_due: 0, days_to_exam: null, subscription: null, has_pro: false, reviewer_areas: [] });
 const MIS = [
   { slug: "m1", title: "Acerte 15 questões", progress: 0, target: 15, done: false, xp: 20 },
   { slug: "m2", title: "Estude 2 áreas diferentes", progress: 0, target: 2, done: false, xp: 10 },
@@ -62,8 +63,10 @@ const RPC = {
     next_level: { name: "Praticante", min_score: 400 },
     names: { score: "Stazia Score" },
     questions: 23,
+    accuracy: 55,
+    evolution_pts: null,
     provisional: false,
-    streak: { today: { questions: 0, min_questions: 10, min_minutes: 20 }, today_done: false, current: 0 },
+    streak: { today: { questions: 0, min_questions: 10, min_minutes: 20 }, today_done: false, current: 0, longest: 2 },
     missions: { done: 0, total: 3, items: MIS },
     weekly_rank: SEM_LIGA ? null : { rank: 12, total: 340, percentile: 96 },
     league: SEM_LIGA ? null : { slug: "bronze", name: "Bronze", icon: "medal", position: 12, group_size: 30, weekly_xp: 120 },
@@ -72,6 +75,11 @@ const RPC = {
   }),
   app_trail: () => ({ enabled: true, areas: [{ area: "CIRURGIA_GERAL", label: "Cirurgia", done: 0, total: 60, nodes: nodes(3) }, { area: "PEDIATRIA", label: "Pediatria", done: 0, total: 60, nodes: [] }] }),
   app_my_access: () => ({ locked: false }),
+  // onda 7 (Conquistas e Medalhas): as 41 medalhas, 7 ligas e a loja como o banco as semeia
+  app_gamification_achievements: () => conquistas(),
+  app_league_current: () => ({ enabled: true, joined: false, leagues: LIGAS }),
+  app_gamification_rewards: () => loja(),
+  app_claim_reward: () => loja(),
 };
 const backend = {
   async rpc(fn, args = {}) {

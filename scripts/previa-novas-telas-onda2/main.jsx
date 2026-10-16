@@ -1,6 +1,8 @@
 // PRÉVIA do Início e do Plano de Hoje (onda 2). Dados de TESTE, sem banco. Parâmetros:
 //   ?rota=home|hoje  &tema=escuro  &fase=1|2  &papel=aluno|equipe|revisor  &abrir=1 (Personalizar plano aberto)  &vazio=1  &tudofeito=1
 //   &arena=0 (Stazia Arena desligada)  &semliga=1 (fora do ranking)  &teste=1 (teste grátis: 20 de 74 inéditas)
+//   onda 7: ?rota=conquistas|medalhas  &arte=0 (como o app hoje: sem a arte 3D do pacote)  &ganhas=1 (2 medalhas de TESTE desbloqueadas)
+//           &aba=loja (Recompensas)  &lojavazia=1  &semmoedas=1 (moedas desligadas: sem a aba Recompensas)
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
@@ -8,9 +10,14 @@ import "../../src/novo/ds/styles.css";
 import { AppShell } from "../../src/novo/app/Shell.jsx";
 import { HomeScreen } from "../../src/novo/app/home/HomeScreen.jsx";
 import { TodayPlan } from "../../src/novo/app/home/TodayPlan.jsx";
+import { AchievementsScreen } from "../../src/novo/app/play/AchievementsScreen.jsx";
+import { MedalhasPadrao } from "../../src/novo/app/play/MedalhasPadrao.jsx";
+import artesDoPacote from "../../src/novo/ds/medalhas-pacote/artes.js";
+import { registrarArtesDoPacote } from "../../src/novo/ds/medalhas-pacote/index.js";
 import { useSession } from "./sessaoSimulada.jsx";
 
 const q = new URLSearchParams(location.search);
+registrarArtesDoPacote(artesDoPacote); // onda 7: arte 3D das medalhas só nesta prévia
 const papel = q.get("papel") || "aluno";
 
 function Previa() {
@@ -30,14 +37,25 @@ function Previa() {
   };
   const info = { name: "João Paulo Mendes", streakDays: 0, flashcardsDue: 0, onSignOut: () => alert("Sair (prévia)"), isStaff: papel === "equipe", isReviewer: papel === "revisor", radarGraves: 0, themeChoice: choice };
   const h = new Date().getHours();
-  const title = nav.route === "home" ? "Boa tarde, João." : "Plano de Hoje";
-  const sub = nav.route === "home" ? "Quinta, 15 de outubro" : "Ciclo diário · aprender, praticar, revisar";
+  const arte = q.get("arte") === "0" ? false : undefined;
+  const TITULOS = { home: ["Boa tarde, João.", "Quinta, 15 de outubro"], hoje: ["Plano de Hoje", "Ciclo diário · aprender, praticar, revisar"], conquistas: ["Conquistas", "Stazia Arena · medalhas e recompensas"], medalhas: ["Medalhas e ligas", "Padrão 3D do pacote · só na prévia"] };
+  const [title, sub] = TITULOS[nav.route] ?? [nav.route, ""];
   const search = nav.query ? `?${new URLSearchParams(nav.query)}` : "";
   const headerKind = nav.route === "home" ? "inicio" : nav.route === "hoje" ? "plano" : undefined;
   return (
     <MemoryRouter key={nav.route + search} initialEntries={["/" + nav.route + search]}>
       <AppShell route={nav.route} go={go} theme={theme} setTheme={setT} phase={phase} setPhase={setPhase} phase2Locked={papel === "aluno"} info={info} title={title} sub={sub} headerKind={headerKind}>
-        {nav.route === "home" ? <HomeScreen go={go} mobile={false} /> : nav.route === "hoje" ? <TodayPlan go={go} /> : <p>Tela: {nav.route} (fora desta prévia)</p>}
+        {nav.route === "home" ? (
+          <HomeScreen go={go} mobile={false} />
+        ) : nav.route === "hoje" ? (
+          <TodayPlan go={go} />
+        ) : nav.route === "conquistas" ? (
+          <AchievementsScreen arte={arte} aba={q.get("aba") || undefined} />
+        ) : nav.route === "medalhas" ? (
+          <MedalhasPadrao arte={arte} />
+        ) : (
+          <p>Tela: {nav.route} (fora desta prévia)</p>
+        )}
       </AppShell>
     </MemoryRouter>
   );
