@@ -360,8 +360,8 @@ export function LeagueView({ mobile, titled, load, listOut }) {
   if (!d.joined) {
     const first = [...leagues].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0];
     const size = d.group_size ?? 30;
-    const up = d.promote ?? 5;
-    const down = d.relegate ?? 5;
+    const up = d.promote ?? 3;
+    const down = d.relegate ?? 3;
     return wrap(
       <>
         <div className="ar-lhero">
@@ -372,7 +372,7 @@ export function LeagueView({ mobile, titled, load, listOut }) {
               <span className="ar-lhero__t">Você entra na liga com o primeiro XP da semana</span>
               {!mobile && (
                 <span className="ar-lhero__s">
-                  Grupos de até <span className="ar-mono">{size}</span> alunos ativos. Os <span className="ar-mono">{up}</span> primeiros sobem, os <span className="ar-mono">{down}</span> últimos descem. A semana fecha na segunda-feira.
+                  Grupos de até <span className="ar-mono">{size}</span> alunos ativos. Sobem os {d.promote_pct ?? 10}% primeiros (<span className="ar-mono">{up}</span> num grupo cheio) e descem os {d.relegate_pct ?? 10}% últimos (<span className="ar-mono">{down}</span>). A semana fecha na segunda-feira.
                 </span>
               )}
             </span>

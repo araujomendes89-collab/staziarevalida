@@ -19,6 +19,7 @@ export const EVENT_LABEL = {
   MISSION_COMPLETED: "Missão concluída", ACHIEVEMENT_UNLOCKED: "Medalha", LEVEL_UP: "Novo nível", STREAK_INCREMENTED: "Sequência",
   STREAK_FREEZE_USED: "Proteção usada", STREAK_FREEZE_EARNED: "Proteção ganha", STREAK_BROKEN: "Sequência interrompida",
   LEAGUE_PROMOTED: "Subiu de liga", LEAGUE_RELEGATED: "Desceu de liga", REWARD_CLAIMED: "Recompensa",
+  GUESS_PENALTY: "Multa por chute",
 };
 
 /** Cor da liga pelo token do banco (ex.: "--league-ouro"). */
@@ -70,6 +71,9 @@ export function xpLines(xp) {
 export function invalidReason(reason) {
   return {
     too_fast: "Resposta rápida demais para contar.",
+    guess: "Rápida demais para ter lido a questão: conta como chute e não vale XP.",
+    repeat_lock: "Você respondeu esta questão há menos de 3 dias: ela volta a valer XP depois disso.",
+    no_time: "Sem tempo de resposta medido: esta não contou.",
     rate_limit: "Muitas respostas em um minuto: esta não contou.",
     repeated_question_farming: "Questão repetida muitas vezes: não vale mais XP.",
     duplicate_event: "Resposta repetida.",

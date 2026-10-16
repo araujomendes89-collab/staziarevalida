@@ -147,6 +147,8 @@ describe("Treino — sessão de questões", () => {
   });
 
   it("a resposta é corrigida pelo banco e não pode ser trocada depois", async () => {
+    // 16/10: o tempo que vale é o do navegador limitado ao que o servidor viu passar desde o início da sessão (aqui, 60 s)
+    await db.query(`update public.practice_sessions set started_at = started_at - interval '60 seconds' where id = $1`, [sessionId]);
     const wrong = await rpc(ANA, "app_answer_question", {
       p_session_id: sessionId,
       p_question_id: first.id,
@@ -205,6 +207,8 @@ describe("Treino — sessão de questões", () => {
 
   it("finalizar devolve o placar e a correção de todas, e fecha a sessão para novas respostas", async () => {
     const before = await rpc(ANA, "app_get_session", { p_session_id: sessionId });
+    // 30 s se passaram desde a resposta anterior (o servidor mede; o navegador manda 19 s)
+    await db.query(`update public.question_attempts set answered_at = answered_at - interval '30 seconds' where session_id = $1`, [sessionId]);
     await rpc(ANA, "app_answer_question", { p_session_id: sessionId, p_question_id: before.questions[1].id, p_option: "B", p_active_ms: 19_000 });
 
     const done = await rpc(ANA, "app_finish_session", { p_session_id: sessionId });

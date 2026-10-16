@@ -48,13 +48,30 @@ const stats = async (uid: string) => (await sql(`select * from public.user_gamif
 const events = async (uid: string, type?: string) =>
   sql(`select * from public.gamification_events where user_id = $1 and ($2::text is null or event_type = $2) order by id`, [uid, type ?? null]);
 
-/** Treino com as questões dadas; responde cada uma (certa = B, errada = A). Devolve a sessão finalizada. */
-async function practice(uid: string, ids: string[], rightMask: (i: number) => boolean, activeMs: number | null = 20000) {
+/**
+ * O tempo passa (regra de 16/10: o servidor mede o tempo de cada resposta desde a anterior ou o início da sessão): empurra para trás
+ * o início da sessão, as respostas dela e os salvamentos do simulado.
+ */
+async function passa(sessionId: string, ms = 30000) {
+  const iv = `${ms} milliseconds`;
+  await sql(
+    `update public.practice_sessions set started_at = started_at - $2::interval,
+       answers = coalesce((select jsonb_object_agg(k, case when v ? 'at' then jsonb_set(v, '{at}', to_jsonb((v ->> 'at')::timestamptz - $2::interval)) else v end)
+                           from jsonb_each(answers) e (k, v)), '{}'::jsonb)
+     where id = $1`,
+    [sessionId, iv]
+  );
+  await sql(`update public.question_attempts set answered_at = answered_at - $2::interval where session_id = $1`, [sessionId, iv]);
+}
+
+/** Treino com as questões dadas; responde cada uma (certa = B, errada = A), com `readMs` de leitura antes de cada uma. */
+async function practice(uid: string, ids: string[], rightMask: (i: number) => boolean, activeMs: number | null = 20000, readMs = 30000) {
   const started = await rpc(uid, "app_start_session", { p_kind: "questoes", p_filters: { ids }, p_count: ids.length });
   // app_start_session sorteia do pool; forçamos as questões pedidas direto na sessão
   await sql(`update public.practice_sessions set question_ids = $2 where id = $1`, [started.session_id, ids]);
   const answers: any[] = [];
   for (const [i, id] of ids.entries()) {
+    await passa(started.session_id, readMs);
     answers.push(await rpc(uid, "app_answer_question", { p_session_id: started.session_id, p_question_id: id, p_option: rightMask(i) ? "B" : "A", p_active_ms: activeMs }));
   }
   const finished = await rpc(uid, "app_finish_session", { p_session_id: started.session_id });
@@ -112,34 +129,40 @@ beforeAll(async () => {
 }, 300_000);
 
 describe("XP nasce no banco, nunca do cliente", () => {
-  it("acerto na primeira tentativa: base + acerto + 1ª tentativa + inédita (+ difícil quando for)", async () => {
+  it("acerto na primeira tentativa: base + acerto + 1ª tentativa + inédita (+ difícil quando for), com os valores de 16/10 (-20%)", async () => {
     const ids = questionIds.CLINICA_MEDICA.slice(0, 2); // q001 (difícil) e q002
     const { answers } = await practice(ANA, ids, () => true);
     expect(answers[0].is_correct).toBe(true);
-    expect(answers[0].play.xp).toMatchObject({ base: 2, correct: 8, difficulty_bonus: 4, first_attempt_bonus: 3, unseen_bonus: 2, total: 19, valid: true });
-    expect(answers[1].play.xp).toMatchObject({ base: 2, correct: 8, first_attempt_bonus: 3, unseen_bonus: 2, total: 15 });
+    expect(answers[0].play.xp).toMatchObject({ base: 2, correct: 6, difficulty_bonus: 3, first_attempt_bonus: 2, unseen_bonus: 2, total: 15, valid: true });
+    expect(answers[1].play.xp).toMatchObject({ base: 2, correct: 6, first_attempt_bonus: 2, unseen_bonus: 2, total: 12 });
     expect(answers[1].play.xp.difficulty_bonus).toBeUndefined();
-    expect(answers[1].play.stats).toMatchObject({ total_xp: 34, coins: 2, provisional: true, streak: 0 });
+    // moedas: 1 a cada 10 acertos que pontuam no dia (2 acertos ainda não dão moeda)
+    expect(answers[1].play.stats).toMatchObject({ total_xp: 27, coins: 0, provisional: true, streak: 0 });
     const s = await stats(ANA);
-    expect(s).toMatchObject({ total_xp: 34, weekly_xp: 34, questions_answered: 2, correct_answers: 2, accuracy: "100.00" });
+    expect(s).toMatchObject({ total_xp: 27, weekly_xp: 27, questions_answered: 2, correct_answers: 2, accuracy: "100.00" });
     expect((await events(ANA, "QUESTION_CORRECT")).length).toBe(2);
   });
 
-  it("erro: só o XP de responder + inédita; moedas só no acerto", async () => {
+  it("erro: 0 XP e 0 moedas (16/10), mas conta como resposta válida", async () => {
     const { answers } = await practice(ANA, [questionIds.CLINICA_MEDICA[2]], () => false);
-    expect(answers[0].play.xp).toMatchObject({ base: 2, unseen_bonus: 2, total: 4 });
+    expect(answers[0].play.xp).toMatchObject({ total: 0, valid: true });
+    expect(answers[0].play.xp.base).toBeUndefined();
     expect(answers[0].play.coins).toBe(0);
     expect((await stats(ANA)).wrong_answers).toBe(1);
   });
 
-  it("repetir a questão rende menos (30%, 10%, depois 0 e marcado como farming); corrigir um erro vale bônus", async () => {
+  it("repetir a questão rende menos (30%, 10%, depois 0 e marcado como farming); corrigir um erro vale bônus (cada vez depois da trava de 3 dias)", async () => {
     const id = questionIds.CLINICA_MEDICA[2]; // errada antes
+    const tresDias = () => sql(`update public.question_attempts set answered_at = answered_at - interval '3 days 1 minute' where user_id = $1 and question_id = $2`, [ANA, id]);
+    await tresDias();
     const a2 = (await practice(ANA, [id], () => true)).answers[0];
-    // 2ª tentativa: (2 + 8 + 0 + 0 + 0) × 0,3 = 3, + revisão 5 + correção 10
-    expect(a2.play.xp).toMatchObject({ multiplier: 0.3, review_bonus: 5, fix_bonus: 10, total: 18, valid: true });
+    // 2ª tentativa: (2 + 6 + 0 + 0 + 0) × 0,3 = 2,4 → 2, + revisão 4 + correção 8
+    expect(a2.play.xp).toMatchObject({ multiplier: 0.3, review_bonus: 4, fix_bonus: 8, total: 14, valid: true });
+    await tresDias();
     const a3 = (await practice(ANA, [id], () => true)).answers[0];
     expect(a3.play.xp).toMatchObject({ multiplier: 0.1, total: 1 });
     expect(a3.play.xp.review_bonus).toBeUndefined();
+    await tresDias();
     const a4 = (await practice(ANA, [id], () => true)).answers[0];
     expect(a4.play.xp).toMatchObject({ total: 0, valid: false, reason: "repeated_question_farming" });
     const s = await stats(ANA);
@@ -153,14 +176,15 @@ describe("XP nasce no banco, nunca do cliente", () => {
     const before = (await stats(ANA)).total_xp;
     const sumXp = async () => (await sql(`select coalesce(sum(xp_awarded), 0)::int as s from public.gamification_events where user_id = $1`, [ANA]))[0].s;
     const sumBefore = await sumXp();
+    await passa(started.session_id);
     const r1 = await rpc(ANA, "app_answer_question", { p_session_id: started.session_id, p_question_id: id, p_option: "B", p_active_ms: 15000 });
     const r2 = await rpc(ANA, "app_answer_question", { p_session_id: started.session_id, p_question_id: id, p_option: "A", p_active_ms: 15000 });
-    expect(r1.play.xp.total).toBe(15);
+    expect(r1.play.xp.total).toBe(12);
     expect(r2.play).toBeNull();
     expect(r2.selected).toBe("B");
     const earned = (await sumXp()) - sumBefore;
     expect((await stats(ANA)).total_xp).toBe(before + earned); // agregado = livro-razão
-    expect(earned).toBeGreaterThanOrEqual(15);
+    expect(earned).toBeGreaterThanOrEqual(12);
     expect((await sql(`select count(*)::int as n from public.gamification_events where user_id = $1 and source_type = 'question_attempt' and metadata ->> 'question_id' = $2`, [ANA, id]))[0].n).toBe(1);
     expect((await sql(`select count(*)::int as n from public.question_attempts where user_id = $1 and question_id = $2`, [ANA, id]))[0].n).toBe(1);
   });
@@ -178,7 +202,8 @@ describe("XP nasce no banco, nunca do cliente", () => {
     await sql(`update public.gamification_rules set value = '3' where key = 'fraud.rate_limit_per_minute'`);
     try {
       const ids = questionIds.PEDIATRIA.slice(1, 6);
-      const { answers } = await practice(BRUNO, ids, () => true);
+      // 6 s de leitura por questão (acima do mínimo de leitura de 5 s): as 5 caem no mesmo minuto
+      const { answers } = await practice(BRUNO, ids, () => true, 20000, 6000);
       const reasons = answers.map((a) => a.play.xp.reason ?? null);
       // Bruno já tinha 1 resposta no último minuto: a 3ª chega ao limite de 3
       expect(reasons).toEqual([null, null, "rate_limit", "rate_limit", "rate_limit"]);
@@ -190,25 +215,28 @@ describe("XP nasce no banco, nunca do cliente", () => {
   it("marco da sessão: 10 questões numa sessão valem bônus", async () => {
     const ids = questionIds.GINECOLOGIA_OBSTETRICIA.slice(0, 10);
     const { answers } = await practice(CARLA, ids, () => true);
-    expect(answers[9].play.bonus.some((b: any) => b.type === "SESSION_10" && b.xp === 15)).toBe(true);
+    expect(answers[9].play.bonus.some((b: any) => b.type === "SESSION_10" && b.xp === 12)).toBe(true);
     expect((await events(CARLA, "SESSION_10")).length).toBe(1);
   });
 
-  it("simulado completo vale XP uma só vez", async () => {
-    const ids = questionIds.MEDICINA_FAMILIA_COMUNIDADE.slice(0, 5);
-    const started = await rpc(CARLA, "app_start_session", { p_kind: "simulado", p_filters: {}, p_count: 5, p_time_limit_seconds: 3600 });
+  it("simulado completo (30+ questões) vale XP uma só vez", async () => {
+    const ids = [...questionIds.MEDICINA_FAMILIA_COMUNIDADE.slice(0, 20), ...questionIds.GINECOLOGIA_OBSTETRICIA.slice(10, 20)];
+    const started = await rpc(CARLA, "app_start_session", { p_kind: "simulado", p_filters: {}, p_count: 30, p_time_limit_seconds: 3 * 3600 });
     await sql(`update public.practice_sessions set question_ids = $2 where id = $1`, [started.session_id, ids]);
-    for (const id of ids) await rpc(CARLA, "app_answer_question", { p_session_id: started.session_id, p_question_id: id, p_option: "B", p_active_ms: 30000 });
+    for (const id of ids) {
+      await passa(started.session_id);
+      await rpc(CARLA, "app_answer_question", { p_session_id: started.session_id, p_question_id: id, p_option: "B", p_active_ms: 30000 });
+    }
     await rpc(CARLA, "app_finish_session", { p_session_id: started.session_id });
     await rpc(CARLA, "app_finish_session", { p_session_id: started.session_id });
     expect((await events(CARLA, "SIMULATION_COMPLETED")).length).toBe(1);
-    expect((await events(CARLA, "SIMULATION_COMPLETED"))[0].xp_awarded).toBe(100);
+    expect((await events(CARLA, "SIMULATION_COMPLETED"))[0].xp_awarded).toBe(80);
   });
 });
 
 describe("Sequência diária (no fuso do aluno)", () => {
   it("só conta o dia com o mínimo de questões válidas; dias seguidos somam", async () => {
-    expect((await stats(CARLA)).current_streak).toBe(1); // 15 questões hoje
+    expect((await stats(CARLA)).current_streak).toBe(1); // 40 questões hoje
     await nextDay();
     await practice(CARLA, questionIds.CIRURGIA_GERAL.slice(0, 10), () => true);
     expect((await stats(CARLA)).current_streak).toBe(2);
@@ -461,7 +489,7 @@ describe("Segurança", () => {
     expect(saved.rules.find((r: any) => r.key === "xp.question_correct").value).toBe(9);
     const { answers } = await practice(ANA, [questionIds.CIRURGIA_GERAL[7]], () => true);
     expect(answers[0].play.xp.correct).toBe(9);
-    await rpc(ADMIN, "app_admin_gamification_save_rule", { p_key: "xp.question_correct", p_value: 8, p_enabled: true });
+    await rpc(ADMIN, "app_admin_gamification_save_rule", { p_key: "xp.question_correct", p_value: 6, p_enabled: true });
     const audit = await rpc(ADMIN, "app_admin_gamification_user", { p_user_id: ANA });
     expect(audit.events.some((e: any) => e.event_type === "QUESTION_CORRECT" && e.xp_awarded > 0)).toBe(true);
     expect(audit.stats.user_id).toBe(ANA);
@@ -504,7 +532,10 @@ describe("Simulado finalizado de uma vez", () => {
     const ids = [...questionIds.CLINICA_MEDICA, ...questionIds.CIRURGIA_GERAL].slice(0, 40);
     const started = await rpc(DIEGO, "app_start_session", { p_kind: "simulado", p_filters: {}, p_count: 40, p_time_limit_seconds: 7200 });
     await sql(`update public.practice_sessions set question_ids = $2 where id = $1`, [started.session_id, ids]);
-    for (const id of ids) await rpc(DIEGO, "app_answer_question", { p_session_id: started.session_id, p_question_id: id, p_option: "B", p_active_ms: 30000 });
+    for (const id of ids) {
+      await passa(started.session_id);
+      await rpc(DIEGO, "app_answer_question", { p_session_id: started.session_id, p_question_id: id, p_option: "B", p_active_ms: 30000 });
+    }
     const t0 = Date.now();
     await rpc(DIEGO, "app_finish_session", { p_session_id: started.session_id });
     const ms = Date.now() - t0;

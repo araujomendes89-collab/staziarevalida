@@ -213,9 +213,10 @@ describe("AR05: ligas sem a equipe", () => {
     }
     const moedasEquipe = (await sql(`select coalesce(sum(coins),0)::int as n from public.user_gamification_stats where user_id in ($1, $2)`, [ADMIN, EDITOR]))[0].n;
     const r = (await sql(`select public.ch_worker_gamification_close_week() as r`))[0].r;
-    expect(r).toMatchObject({ closed: true, promoted: 5, staff_removed: 2 });
+    // 16/10: sobem 10% do grupo, para baixo, no mínimo 1 (6 alunos → 1)
+    expect(r).toMatchObject({ closed: true, promoted: 1, staff_removed: 2 });
     const desfechos = Object.fromEntries((await sql(`select user_id, outcome, position from public.league_memberships where season_id = $1`, [s.id])).map((x) => [x.user_id, `${x.position}:${x.outcome}`]));
-    expect(desfechos).toEqual({ [ANA]: "1:promoted", [BRUNO]: "2:promoted", [CARLA]: "3:promoted", [DIEGO]: "4:promoted", [EVA]: "5:promoted", [FRED]: "6:stayed" });
+    expect(desfechos).toEqual({ [ANA]: "1:promoted", [BRUNO]: "2:stayed", [CARLA]: "3:stayed", [DIEGO]: "4:stayed", [EVA]: "5:stayed", [FRED]: "6:stayed" });
     // equipe: nenhum evento de liga, nenhuma medalha, nenhuma moeda nova; liga atual e XP intactos
     for (const uid of [ADMIN, EDITOR]) {
       expect((await sql(`select count(*)::int as n from public.gamification_events where user_id = $1 and event_type in ('LEAGUE_PROMOTED','LEAGUE_RELEGATED')`, [uid]))[0].n).toBe(0);

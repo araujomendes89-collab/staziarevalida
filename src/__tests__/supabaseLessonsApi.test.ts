@@ -104,11 +104,11 @@ describe("Aluno", () => {
     expect(p.completed_at).toBeTruthy();
     expect(p.xp).toBeNull(); // A08: sem assistir até o fim, concluir não dá XP
     p = await rpc(ANA, "app_lesson_watch", { p_id: lessonId, p_seconds: 2700, p_ended: true });
-    expect(p.xp).toBe(20); // o fim fecha o par: concluída e assistida até o fim
+    expect(p.xp).toBe(16); // o fim fecha o par: concluída e assistida até o fim (16/10: 20 → 16, -20%)
     p = await rpc(ANA, "app_lesson_progress", { p_id: lessonId, p_completed: true });
     expect(p.xp).toBeNull(); // já tinha concluído: nada de novo
     const ev = await db.query<any>(`select count(*)::int n, sum(xp_awarded)::int xp from public.gamification_events where user_id = $1 and event_type = 'LESSON_COMPLETED'`, [ANA]);
-    expect(ev.rows[0]).toEqual({ n: 1, xp: 20 });
+    expect(ev.rows[0]).toEqual({ n: 1, xp: 16 });
     expect((await rpc(ANA, "app_lessons")).completed).toBe(1);
     await expect(asUser(ANA, `insert into public.lesson_progress (user_id, lesson_id, completed_at) values ($1, $2, now())`, [ANA, lessonId])).rejects.toThrow();
     await expect(asUser(ANA, `update public.lessons set published = false`)).resolves.toMatchObject({ affectedRows: 0 });

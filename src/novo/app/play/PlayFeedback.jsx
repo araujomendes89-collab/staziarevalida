@@ -1,4 +1,4 @@
-// Feedback de cada resposta: "+17 XP" subindo ao lado do veredito, detalhe do XP e aviso de sequência.
+// Feedback de cada resposta: "+12 XP" subindo ao lado do veredito, detalhe do XP e aviso de sequência.
 // As comemorações (sequência, nível, medalha, missão, meta do dia, acerto/erro) agora são as do Stazi
 // (play/celebracoes, sistema do Motion Studio), que substituíram a animação antiga (Celebration.jsx) e os modais curtos.
 // Tudo vem do bloco `play` que o banco devolve.
@@ -8,18 +8,29 @@ import { invalidReason, pluralDays, xpLines } from "./format.js";
 import { useCelebracoesApp } from "./celebracoes/CelebracoesProvider.jsx";
 import "./play.css";
 
-/** "+17 XP" com o detalhe (primeira tentativa +3, difícil +4). Sem XP válido, explica o motivo. */
+/** "+12 XP" com o detalhe (primeira tentativa +2, difícil +3). Sem XP válido ou com erro, explica o motivo. */
 export function XPToast({ play }) {
   const [open, setOpen] = React.useState(false);
   if (!play) return null;
   const xp = play.xp ?? {};
   const lines = xpLines(xp);
   const bonus = (play.bonus ?? []).reduce((n, b) => n + (b.xp ?? 0), 0);
+  const penalty = play.penalty ?? 0;
   if (!xp.valid) {
+    return (
+      <div role="status" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>
+        <Icon name="info" size={16} />
+        {invalidReason(xp.reason)}
+        {penalty > 0 && <span style={{ font: "600 13px var(--font-sans)", color: "var(--danger-text)" }}>Chute repetido hoje: −{penalty} XP</span>}
+      </div>
+    );
+  }
+  // regra de 16/10: resposta errada não vale XP nem moedas (a questão volta a valer depois da trava de dias)
+  if (play.correct === false && !xp.total) {
     return (
       <div role="status" style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>
         <Icon name="info" size={16} />
-        {invalidReason(xp.reason)}
+        Resposta errada não vale XP. Revise a explicação: daqui a {play.lock_days ?? 3} dias esta questão volta a valer.
       </div>
     );
   }

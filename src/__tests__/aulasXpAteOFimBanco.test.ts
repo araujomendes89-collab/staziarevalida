@@ -62,14 +62,14 @@ describe("A08: XP da conclusão só com a aula assistida até o fim", () => {
     expect(await eventos(BIA, id)).toEqual([]);
     const fim = await rpc(BIA, "app_lesson_watch", { p_id: id, p_seconds: 1800, p_ended: true });
     expect(fim.watched_to_end_at).toBeTruthy();
-    expect(fim.xp).toBe(20);
-    expect(await eventos(BIA, id)).toEqual([{ source_id: id, xp_awarded: 20 }]);
-    expect(await xpTotal(BIA)).toBe(20);
+    expect(fim.xp).toBe(16);
+    expect(await eventos(BIA, id)).toEqual([{ source_id: id, xp_awarded: 16 }]);
+    expect(await xpTotal(BIA)).toBe(16);
     const de_novo = await rpc(BIA, "app_lesson_watch", { p_id: id, p_seconds: 1800, p_ended: true });
     expect(de_novo.xp).toBeNull();
     await rpc(BIA, "app_lesson_progress", { p_id: id, p_completed: true });
     expect(await eventos(BIA, id)).toHaveLength(1);
-    expect(await xpTotal(BIA)).toBe(20);
+    expect(await xpTotal(BIA)).toBe(16);
   });
 
   it("assistir até o fim primeiro e concluir depois: o XP vem ao concluir", async () => {
@@ -78,8 +78,8 @@ describe("A08: XP da conclusão só com a aula assistida até o fim", () => {
     expect(fim).toMatchObject({ completed_at: null, xp: null });
     expect(await eventos(CAIO, id)).toEqual([]);
     const p = await rpc(CAIO, "app_lesson_progress", { p_id: id, p_completed: true });
-    expect(p.xp).toBe(20);
-    expect(await xpTotal(CAIO)).toBe(20);
+    expect(p.xp).toBe(16);
+    expect(await xpTotal(CAIO)).toBe(16);
   });
 
   it("o progresso só cresce e o fim, uma vez medido, não se desfaz", async () => {
@@ -150,7 +150,7 @@ describe("A08 (rodada da revisão, achado 3): o fim só vale com tempo assistido
     expect(s.watched_to_end_at).toBeNull(); // 594 < 595
     s = await rpc(ANA, "app_lesson_watch", { p_id: id, p_seconds: 597, p_ended: true, p_duration: 600 });
     expect(s.watched_to_end_at).toBeTruthy();
-    expect(s.xp).toBe(20);
+    expect(s.xp).toBe(16);
   });
 
   it("sem a duração do player, vale metade da duração cadastrada da aula (quando houver); aula sem duração exige só tempo > 0", async () => {

@@ -329,7 +329,7 @@ describe("AR09: as regras só a equipe lê", () => {
       }), `anon: ${q}`).rejects.toThrow(/permission denied/);
     }
     // por dentro (motor, funções security definer) continuam funcionando
-    expect(Number((await sql(`select public.gam_num('xp.question_correct', 0) as n`))[0].n)).toBe(8);
+    expect(Number((await sql(`select public.gam_num('xp.question_correct', 0) as n`))[0].n)).toBe(6); // 16/10: 8 → 6
   });
 
   it("o fluxo do aluno continua inteiro: abertura do app, resposta com resumo de XP, ranking, liga, missões, trilha e loja", async () => {
@@ -339,10 +339,12 @@ describe("AR09: as regras só a equipe lê", () => {
     // resposta: o resumo de XP (gam_turn_summary) vem preenchido
     const started = await rpc(ANA, "app_start_session", { p_kind: "questoes", p_filters: { ids: ["q001"] }, p_count: 1 });
     await sql(`update public.practice_sessions set question_ids = $2 where id = $1`, [started.session_id, ["q001"]]);
+    // 16/10: o servidor mede o tempo da resposta desde o início da sessão: 30 s se passaram
+    await sql(`update public.practice_sessions set started_at = started_at - interval '30 seconds' where id = $1`, [started.session_id]);
     const answer = await rpc(ANA, "app_answer_question", { p_session_id: started.session_id, p_question_id: "q001", p_option: "B", p_active_ms: 20000 });
     expect(answer.is_correct).toBe(true);
     expect(answer.play).not.toBeNull();
-    expect(answer.play.xp).toMatchObject({ correct: 8, valid: true });
+    expect(answer.play.xp).toMatchObject({ correct: 6, valid: true });
     expect(answer.play.stats.total_xp).toBeGreaterThan(0);
     // o resumo é só do próprio aluno: pedir o de outro devolve nulo
     const attempt = (await sql(`select id from public.question_attempts where user_id = $1 and question_id = 'q001'`, [ANA]))[0];
