@@ -57,9 +57,15 @@ export default function CelebracoesMotor({ lotes, onConsumir, contexto = "normal
   const disparar = React.useRef(cel.disparar);
   disparar.current = cel.disparar;
 
+  // cada lote entra uma vez só (mesmo se o efeito rodar de novo antes de o provedor tirar o lote da lista)
+  const ultimoLote = React.useRef(0);
   React.useEffect(() => {
     if (mostrarSequencia === null || !lotes?.length) return;
-    for (const l of lotes) disparar.current(l.eventos.map(({ id, dados, complemento }) => ({ id, dados, ...(complemento ? { complemento } : {}) })));
+    for (const l of lotes) {
+      if (l.seq <= ultimoLote.current) continue;
+      ultimoLote.current = l.seq;
+      disparar.current(l.eventos.map(({ id, dados, complemento }) => ({ id, dados, ...(complemento ? { complemento } : {}) })));
+    }
     onConsumir(lotes[lotes.length - 1].seq);
   }, [lotes, mostrarSequencia, onConsumir]);
 
