@@ -65,8 +65,10 @@ describe("A regra: só formatação × conteúdo (banco e tela dão a mesma resp
     ["texto alternativo mudou", C(P({ rico: comFigura({ asset: "a1", alt: "Raio-x" }) })), C(P({ rico: comFigura({ asset: "a1", alt: "Raio-x de tórax" }) })), false],
     ["recorte/giro de imagem", C(P({ rico: comFigura({ asset: "a1", alt: "x" }) })), C(P({ rico: comFigura({ asset: "a1", alt: "x", giro: 90 }) })), false],
     ["destino do link mudou só no rico", C(P()), C(P({ rico: par([txt("Febre e "), txt("guia", [{ type: "link", attrs: { href: "https://outro.gov.br" } }]), txt(" hoje")]) })), false],
-    ["sobrescrito (10⁵ ≠ 105)", C(P()), C(P({ rico: par([txt("Febre e "), txt("guia", [link, { type: "superscript" }]), txt(" hoje")]) })), false],
-    ["tachado", C(P()), C(P({ rico: par([txt("Febre e "), txt("guia", [link, { type: "strike" }]), txt(" hoje")]) })), false],
+    // decisão do dono (16/10 ~16h50): sobrescrito, subscrito e tachado "não derrubam, apenas ajustam"
+    ["sobrescrito", C(P()), C(P({ rico: par([txt("Febre e "), txt("guia", [link, { type: "superscript" }]), txt(" hoje")]) })), true],
+    ["subscrito", C(P()), C(P({ rico: par([txt("Febre", [{ type: "subscript" }]), txt(" e "), txt("guia", [link]), txt(" hoje")]) })), true],
+    ["tachado", C(P()), C(P({ rico: par([txt("Febre e "), txt("guia", [link, { type: "strike" }]), txt(" hoje")]) })), true],
     ["virou título (nível)", C(P()), C(P({ rico: envelope({ type: "doc", content: [{ type: "heading", attrs: { level: 3 }, content: [txt("Febre e "), txt("guia", [link]), txt(" hoje")] }] } as any) })), false],
     ["estilo da numeração/marcador (listStyle) e borda de parágrafo",
       C(P({ text: "• Febre e [guia](https://www.gov.br/saude) hoje", rico: envelope({ type: "doc", content: [{ type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [txt("Febre e "), txt("guia", [link]), txt(" hoje")] }] }] }] } as any) })),

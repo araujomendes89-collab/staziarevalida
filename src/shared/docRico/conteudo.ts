@@ -3,7 +3,8 @@
 // As listas abaixo têm de ser IGUAIS às do SQL (o teste editorPro.conteudo.test.ts confere). Atributo ou marca novo de módulo que
 // seja só aparência entra nas DUAS listas, pelo líder da frente; o que não estiver aqui conta como conteúdo (na dúvida, é conteúdo).
 
-export const FORMATO_MARCAS = ["bold", "italic", "underline", "textStyle", "highlight"];
+// strike, superscript e subscript: formatação por decisão do dono (16/10 ~16h50: "não derrubam, apenas ajustam")
+export const FORMATO_MARCAS = ["bold", "italic", "underline", "textStyle", "highlight", "strike", "superscript", "subscript"];
 export const FORMATO_ATRIBUTOS = [
   "ref", "textAlign", "lineHeight", "indent", "firstLineIndent", "spacingBefore", "spacingAfter", "marginTop", "marginBottom",
   "color", "backgroundColor", "fontFamily", "fontSize", "colwidth", "cellBackground", "borderColor", "borderStyle",

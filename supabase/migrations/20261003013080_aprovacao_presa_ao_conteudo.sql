@@ -6,11 +6,12 @@
 --     o conteúdo inteiro, MENOS "doc_config" (página/estilos) e MENOS a parte de formatação do "rico" de cada parágrafo.
 --   * Continua igual por obrigação: "text" de todos os parágrafos (o texto oficial, que já traz os links), ordem e número de
 --     seções e parágrafos, títulos, "clinical", afirmações (claims/claim_ids), campos pdf_*, referências e qualquer outra chave.
---   * Do "rico" só é formatação: as marcas bold, italic, underline, textStyle (cor/fonte/tamanho), highlight e os atributos da lista
+--   * Do "rico" só é formatação: as marcas bold, italic, underline, textStyle (cor/fonte/tamanho), highlight, strike, superscript e
+--     subscript (decisão do dono 16/10 ~16h50: "não derrubam, apenas ajustam") e os atributos da lista
 --     public.ch_formato_atributos() (alinhamento, entrelinha, recuos, espaços, cor, fonte, tamanho, largura de coluna, borda de
 --     parágrafo, estilo do marcador/numeração da lista, quebra de página antes do parágrafo/título, largura / alinhamento / disposição / borda / cantos / sombra de imagem). TODO o resto conta como conteúdo: nó de módulo (imagem, nota,
 --     citação, fórmula...) com seus atributos (arquivo, legenda, texto alternativo, recorte, giro...), texto dentro deles, links
---     (destino), sobrescrito/subscrito (10⁵ ≠ 105), tachado, nível de título, células mescladas e qualquer coisa nova. Na dúvida,
+--     (destino), nível de título, células mescladas e qualquer coisa nova. Na dúvida,
 --     é conteúdo.
 --   * Conteúdo sem "rico" e sem "doc_config" (tudo que existe hoje) tem o MESMO hash de antes: nenhuma aprovação muda.
 -- O que muda nas funções:
@@ -25,7 +26,7 @@
 
 create or replace function public.ch_formato_marcas() returns text[]
   language sql immutable set search_path = ''
-as $$ select array['bold', 'italic', 'underline', 'textStyle', 'highlight']::text[] $$;
+as $$ select array['bold', 'italic', 'underline', 'textStyle', 'highlight', 'strike', 'superscript', 'subscript']::text[] $$;
 
 create or replace function public.ch_formato_atributos() returns text[]
   language sql immutable set search_path = ''
