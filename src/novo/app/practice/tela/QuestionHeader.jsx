@@ -117,8 +117,10 @@ export function QuestionHeader({ label, index, total, segments, progress = 0, ti
             )}
           </div>
           {onEnd && (
-            <button type="button" className="tq-ghost" onClick={onEnd} disabled={endDisabled} aria-label="Encerrar o simulado">
-              Encerrar
+            <button type="button" className="tq-ghost tq-end" onClick={onEnd} disabled={endDisabled} aria-label="Encerrar o simulado" title="Encerrar o simulado">
+              {/* no celular fica só o ícone (o nome continua no aria-label); no tablet e no computador, só a palavra */}
+              <Icon name="circle-stop" size={20} className="tq-end__ico" />
+              <span className="tq-end__t">Encerrar</span>
             </button>
           )}
         </div>

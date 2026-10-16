@@ -355,3 +355,63 @@
 @media (max-width: 720px) {
   .tq-ask__text { text-align: left !important; }
 }
+
+/* ===== G4, auditoria de proporção (16/10/2026) ===== */
+/* "Encerrar": no tablet e no computador só a palavra; no celular só o ícone (o nome fica no aria-label) */
+.tq-end .tq-end__ico { display: none; }
+/* sem frase de pergunta: a dica do Tutor sozinha, sem a caixa azul vazia */
+.tq-hint-solo { margin: 20px 36px 0; }
+.tq-hint-solo .tq-hint { margin-top: 0; padding-top: 0; border-top: 0; }
+/* explicação no painel da direita (tablet, depois de responder; PracticeSession) */
+.tq-panel--expl { gap: 12px; }
+.tq-panel--expl .tq-answer { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+
+/* tablet: painel da direita com 340 px, como no pacote */
+@media (min-width: 721px) and (max-width: 1180px) {
+  .tq-main[data-revealed="true"] .tq-side { flex: 0 0 340px; min-width: 0; }
+  .tq-hint-solo { margin: 20px 24px 0; }
+}
+
+/* celular: cabeçalho em 2 linhas curtas (X, símbolo, cronômetro, pausa e Encerrar; depois o progresso), caso clínico
+   alinhado à esquerda (justificado numa coluna estreita abre buracos entre as palavras e quebra "Paci-ente") */
+@media (max-width: 720px) {
+  .tq-head__in { padding: 6px 14px; gap: 8px 10px; }
+  .tq-brand { gap: 4px; }
+  .tq-timer { padding: 2px 2px 2px 4px; }
+  .tq-timer__lab { line-height: 1.2; }
+  .tq-brand .tq-logo:not(.tq-logo--sym) { display: none !important; }
+  .tq-brand .tq-logo--sym.tq-logo--light { display: block !important; height: 32px; }
+  [data-theme="dark"] .tq-brand .tq-logo--sym.tq-logo--light { display: none !important; }
+  [data-theme="dark"] .tq-brand .tq-logo--sym.tq-logo--dark { display: block !important; height: 32px; }
+  .tq-prog { gap: 6px; }
+  .tq-ring { width: 32px; height: 32px; }
+  .tq-ring > svg:first-child { width: 32px; height: 32px; }
+  .tq-ring__ico { left: 8px; top: 8px; }
+  .tq-round { width: 36px; height: 36px; }
+  .tq-end { width: 44px; padding: 0; justify-content: center; }
+  .tq-end .tq-end__ico { display: inline-block; }
+  .tq-end .tq-end__t { display: none; }
+  .tq-stem { text-align: left !important; hyphens: manual !important; }
+  .tq-hint-solo { margin: 16px 20px 0; }
+}
+
+/* celular estreito (até 380 px): alternativas com mais espaço para o texto */
+@media (max-width: 380px) {
+  .tq-chips { padding-inline: 16px; }
+  .tq-case { padding-inline: 16px; }
+  .tq-flag, .tq-err, .tq-hint-solo { margin-inline: 16px; }
+  .tq-ask, .tq-answer { margin-inline: 16px; }
+  .tq-alts { padding-inline: 16px; }
+  .tq-report { padding-inline: 16px; }
+  .tq-alt__main { gap: 10px; padding-left: 8px; }
+  .tq-alt__letter { width: 32px; height: 32px; }
+  .tq-alt__strike { width: 40px; }
+}
+
+/* telas largas (a partir de 1728 px): questão maior, sem ficar perdida no meio */
+@media (min-width: 1728px) {
+  .tq-head__in, .tq-main { max-width: 1440px; }
+  .tq-sheet { max-width: 1040px; }
+  .tq-stem { font-size: clamp(18px, 1vw, 20px); }
+  .tq-ask__text { font-size: 23px; }
+}

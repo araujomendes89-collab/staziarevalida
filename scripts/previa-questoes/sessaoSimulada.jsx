@@ -161,6 +161,8 @@ function session() {
     finished_at: null,
     result: null,
     questions: questions(),
+    // com ?estado=certo|errado a prévia abre já na questão 1 respondida (sem isso, a tela pula para a primeira em branco, a 2)
+    ...(params.get("estado") && params.get("estado") !== "respondendo" ? { open_index: 0 } : {}),
     ...timerFields(),
   };
 }

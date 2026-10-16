@@ -41,6 +41,14 @@
 .ln-step-t { font-size: 15px; font-weight: 800; color: #fff; }
 .ln-step-d { font-size: 13px; color: #a9bddd; }
 
+/* computador (G3, auditoria de proporção 15/10): a frase cresce com a tela até 64 px (64 px em 1440) e não quebra em 6 linhas
+   em 1024; em telas largas, frase e cartão ficam num bloco de até 1440 px no centro (o fundo azul continua na tela toda) */
+.ln-root--w { padding-inline: max(0px, calc((100% - 1440px) / 2)); }
+.ln-root--w .ln-hero-h { font-size: clamp(44px, 4.45vw, 64px); }
+@media (max-width: 1199px) {
+  .ln-root--w .ln-main { flex-basis: 480px; padding-inline: 20px; }
+}
+
 /* ---------- cartão ---------- */
 .ln-main { flex: 0 0 560px; padding: 40px; display: grid; place-items: center; }
 .ln-card {

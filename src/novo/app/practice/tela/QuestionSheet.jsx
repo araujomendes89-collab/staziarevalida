@@ -110,7 +110,8 @@ export function QuestionStatement({ question, hint = null, revealed = false, siz
           {hint}
         </div>
       )}
-      {!ask && hint && <div className="tq-ask">{hint}</div>}
+      {/* sem frase de pergunta, a dica fica sozinha, sem a caixa azul "Pergunta" vazia */}
+      {!ask && hint && <div className="tq-hint-solo">{hint}</div>}
     </>
   );
 }
