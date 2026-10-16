@@ -86,7 +86,7 @@ describe("Trilha de aprendizado", () => {
     expect((screen.getByRole("button", { name: /Pneumonia: Bloqueada/ }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: /Simulado de Clínica Médica: Bloqueada/ }) as HTMLButtonElement).disabled).toBe(true);
     // próxima etapa é a em andamento
-    expect(screen.getByRole("heading", { level: 3, name: "Insuficiência cardíaca" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2, name: "Insuficiência cardíaca" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Insuficiência cardíaca: Em andamento/ }));
     await waitFor(() => expect(go).toHaveBeenCalledWith("sessao", { s: "s-123" }));
     expect(backend.rpc).toHaveBeenCalledWith("app_start_trail_node", { p_area: "CLINICA_MEDICA", p_topic: "Insuficiência cardíaca" });
@@ -118,12 +118,13 @@ describe("Classificação", () => {
     expect(screen.getByText("Mira Boa")).toBeTruthy();
   });
 
-  it("troca o tipo de ranking e abre a liga", async () => {
+  it("troca o tipo de ranking e mostra a liga ao lado (computador)", async () => {
     render(<LeaderboardScreen go={vi.fn()} />);
     await screen.findByText("Carla D.");
     fireEvent.click(screen.getByRole("tab", { name: "Precisão" }));
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_leaderboard", { p_kind: "precisao", p_offset: 0, p_limit: 50 }));
-    fireEvent.click(screen.getByRole("tab", { name: /Liga da semana/ }));
+    // onda 6: no computador o Ranking e a Liga da semana ficam lado a lado (sem abas)
+    expect(screen.getByRole("heading", { name: "Liga da semana" })).toBeTruthy();
     expect(await screen.findByText(/Você entra na liga com o primeiro XP/)).toBeTruthy();
   });
 });

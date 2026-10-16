@@ -1,6 +1,7 @@
 // PRÉVIA do Início e do Plano de Hoje (onda 2). Dados de TESTE, sem banco. Parâmetros:
 //   ?rota=home|hoje  &tema=escuro  &fase=1|2  &papel=aluno|equipe|revisor  &abrir=1 (Personalizar plano aberto)  &vazio=1  &tudofeito=1
 //   &arena=0 (Stazia Arena desligada)  &semliga=1 (fora do ranking)  &teste=1 (teste grátis: 20 de 74 inéditas)
+//   Onda 6 (Stazia Arena): ?rota=trilha|missoes|classificacao  &trilhaandamento=1 (etapas feitas)  &missoesfeitas=1  &rankcheio=1 (linhas de TESTE)  &liga=1 (aluno numa liga)
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
@@ -8,6 +9,9 @@ import "../../src/novo/ds/styles.css";
 import { AppShell } from "../../src/novo/app/Shell.jsx";
 import { HomeScreen } from "../../src/novo/app/home/HomeScreen.jsx";
 import { TodayPlan } from "../../src/novo/app/home/TodayPlan.jsx";
+import { TrailScreen } from "../../src/novo/app/play/TrailScreen.jsx";
+import { MissionsScreen } from "../../src/novo/app/play/MissionsScreen.jsx";
+import { LeaderboardScreen } from "../../src/novo/app/play/LeaderboardScreen.jsx";
 import { useSession } from "./sessaoSimulada.jsx";
 
 const q = new URLSearchParams(location.search);
@@ -30,14 +34,16 @@ function Previa() {
   };
   const info = { name: "João Paulo Mendes", streakDays: 0, flashcardsDue: 0, onSignOut: () => alert("Sair (prévia)"), isStaff: papel === "equipe", isReviewer: papel === "revisor", radarGraves: 0, themeChoice: choice };
   const h = new Date().getHours();
-  const title = nav.route === "home" ? "Boa tarde, João." : "Plano de Hoje";
-  const sub = nav.route === "home" ? "Quinta, 15 de outubro" : "Ciclo diário · aprender, praticar, revisar";
+  // títulos das telas da Arena: os mesmos de App.jsx (TITLES)
+  const ARENA = { trilha: ["Minha Trilha", "Stazia Arena · uma etapa de cada vez"], missoes: ["Missões", "Stazia Arena · metas de hoje e da semana"], classificacao: ["Ranking", "Stazia Arena · ranking e liga da semana"] };
+  const title = nav.route === "home" ? "Boa tarde, João." : ARENA[nav.route]?.[0] ?? "Plano de Hoje";
+  const sub = nav.route === "home" ? "Quinta, 15 de outubro" : ARENA[nav.route]?.[1] ?? "Ciclo diário · aprender, praticar, revisar";
   const search = nav.query ? `?${new URLSearchParams(nav.query)}` : "";
   const headerKind = nav.route === "home" ? "inicio" : nav.route === "hoje" ? "plano" : undefined;
   return (
     <MemoryRouter key={nav.route + search} initialEntries={["/" + nav.route + search]}>
       <AppShell route={nav.route} go={go} theme={theme} setTheme={setT} phase={phase} setPhase={setPhase} phase2Locked={papel === "aluno"} info={info} title={title} sub={sub} headerKind={headerKind}>
-        {nav.route === "home" ? <HomeScreen go={go} mobile={false} /> : nav.route === "hoje" ? <TodayPlan go={go} /> : <p>Tela: {nav.route} (fora desta prévia)</p>}
+        {nav.route === "home" ? <HomeScreen go={go} mobile={false} /> : nav.route === "hoje" ? <TodayPlan go={go} /> : nav.route === "trilha" ? <TrailScreen go={go} /> : nav.route === "missoes" ? <MissionsScreen go={go} /> : nav.route === "classificacao" ? <LeaderboardScreen go={go} /> : <p>Tela: {nav.route} (fora desta prévia)</p>}
       </AppShell>
     </MemoryRouter>
   );
