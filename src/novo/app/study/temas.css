@@ -113,6 +113,27 @@ button.gt-pilula:hover:not(:disabled){border-color:var(--gt-p);background:var(--
   .gt-card:has(.gt-prog) .gt-foto{height:70%}
   .gt-texto{max-width:66cqi}
 }
+/* Ajuste 2 (16/10/2026), celular: a página tinha ~200 px por tema (20.780 px com os 100 temas; no pacote ~126 por item).
+   Mesmo conteúdo, foto e botões; menos espaço: selo e contagem numa linha só, título e aviso mais largos, botões de 38 px
+   (a área de toque continua com 44 px) e menos vão entre os cartões. */
+@media (max-width: 520px){
+  .gt-card{padding:11px 12px 12px;gap:4px}
+  .gt-grade{gap:10px}
+  .gt-topo{flex-wrap:nowrap;gap:6px}
+  .gt-selo{gap:5px;min-height:22px;padding:1px 7px 1px 2px;font-size:11px;white-space:nowrap}
+  .gt-selo-ic{width:16px;height:16px}
+  .gt-pilula{gap:4px;min-height:24px;padding:0 7px;font-size:11px;white-space:nowrap;flex:none}
+  .gt-pilula .sm-icon{width:13px!important;height:13px!important}
+  .gt-texto{max-width:78cqi;margin-top:0}
+  .gt-titulo{font-size:16.5px}
+  .gt-meta{margin-top:2px;font-size:12.5px;line-height:1.3}
+  .gt-aviso{max-width:none;font-size:12px;line-height:1.35}
+  .gt-acoes{padding-top:2px}
+  .gt-card .gt-btn{min-height:38px;padding-block:4px}
+  .gt-card .gt-btn::after{inset:-3px 0}
+}
+/* celular estreito: se selo e contagem não couberem juntos, a contagem desce (como antes) */
+@media (max-width: 380px){.gt-topo{flex-wrap:wrap}}
 /* modo escuro */
 [data-theme="dark"] .gt-card{border-color:var(--border-subtle);box-shadow:var(--shadow-md)}
 [data-theme="dark"] .gt-card::before{background:var(--gt-b)}
