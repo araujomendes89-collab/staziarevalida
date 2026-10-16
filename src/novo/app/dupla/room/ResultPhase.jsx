@@ -1,10 +1,14 @@
 // Fase "result" (Result.jsx:85-139 do protótipo, com ResultData do servidor): nota, critérios, detalhes e feedback.
 // Nada é calculado aqui além da contagem por nível e dos pontos perdidos: a nota e a % vêm do servidor.
+// Revisão da nota (Tarefa 18): o candidato pede uma vez, com motivo; o avaliador vê o pedido e "Rever a nota" (a sala volta à
+// conferência); depois aparece "Nota revisada". "Treinar novamente — Inverter papéis" abre a rodada seguinte com os papéis
+// trocados; "Encerrar treino" pede confirmação. O nome da estação aparece aos dois só aqui, no resultado.
 import React from "react";
-import { Avatar, Button, Tabs } from "../../../ds";
+import { Avatar, Badge, Banner, Button, Dialog, Tabs, Textarea } from "../../../ds";
 import { formatDecimal, formatDuration } from "../../../ds/format.js";
 import { areaVars } from "../labels.js";
 import { StationChip, pageStyle } from "./parts.jsx";
+import { feedbackKey, writeDraft } from "./useRoom.js";
 
 const GRADES = {
   correct: { text: "Adequado", color: "var(--score-full)" },
@@ -42,9 +46,56 @@ function Comparison({ pct, previous }) {
   );
 }
 
-export function ResultPhase({ room, result, actions }) {
+/** Pedido de revisão: motivo de 1 a 500 caracteres; o servidor confere de novo. */
+function ReviewRequest({ actions, requested }) {
+  const [open, setOpen] = React.useState(false);
+  const [reason, setReason] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const ok = reason.trim().length > 0 && reason.trim().length <= 500;
+  return (
+    <>
+      <Button variant="ghost" size="sm" icon="flag" disabled={requested} onClick={() => setOpen(true)}>
+        Solicitar revisão da nota
+      </Button>
+      {open && (
+        <Dialog
+          title="Solicitar revisão da nota"
+          onClose={() => setOpen(false)}
+          actions={
+            <>
+              <Button variant="ghost" onClick={() => setOpen(false)}>
+                Voltar
+              </Button>
+              <Button
+                icon="send"
+                disabled={!ok || busy}
+                onClick={async () => {
+                  setBusy(true);
+                  const res = await actions.requestReview(reason.trim());
+                  setBusy(false);
+                  if (res) setOpen(false);
+                }}
+              >
+                Solicitar revisão da nota
+              </Button>
+            </>
+          }
+        >
+          <Textarea label="Motivo" rows={4} maxLength={500} showCount value={reason} onChange={(e) => setReason(e.target.value)} />
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+export function ResultPhase({ room, result, actions, askLeave }) {
   const [filter, setFilter] = React.useState("all");
+  const [swapping, setSwapping] = React.useState(false);
   if (!result) return null;
+  const review = result.review || {};
+  const requested = Boolean(review.requested_at);
+  const revised = Boolean(review.revised_at);
+  const candidateName = result.candidate?.public_name;
   const station = result.station || room.station;
   const vars = areaVars(station?.area_code);
   const isCandidate = result.viewer === "candidate";
@@ -77,14 +128,50 @@ export function ResultPhase({ room, result, actions }) {
           </h1>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Button variant="ghost" onClick={() => actions.leave()}>
+          <Button variant="ghost" onClick={() => (askLeave ? askLeave("encerrar") : actions.leave())}>
             Encerrar treino
           </Button>
-          <Button icon="repeat" onClick={() => actions.swap()}>
+          <Button
+            icon="repeat"
+            disabled={swapping}
+            onClick={async () => {
+              setSwapping(true);
+              await actions.swap();
+              setSwapping(false);
+            }}
+          >
             Treinar novamente — Inverter papéis
           </Button>
         </div>
       </header>
+
+      {!isCandidate && requested && !revised && (
+        <Banner
+          tone="warning"
+          title={`${candidateName || "O candidato"} pediu revisão da nota`}
+          action={
+            <Button
+              icon="rotate-ccw"
+              onClick={() => {
+                // a conferência reabre com o feedback que já foi enviado, para o avaliador ajustar
+                writeDraft(feedbackKey(room.id, room.round), { pos: result.feedback?.pos ?? "", neg: result.feedback?.neg ?? "", gen: result.feedback?.gen ?? "" });
+                actions.redoReview();
+              }}
+            >
+              Rever a nota
+            </Button>
+          }
+        >
+          {review.reason}
+        </Banner>
+      )}
+      {revised && (
+        <div>
+          <Badge tone="success" icon="check">
+            Nota revisada
+          </Badge>
+        </div>
+      )}
 
       <section aria-label="Resumo da nota" style={{ ...box, background: vars.soft, display: "flex", flexWrap: "wrap", overflow: "hidden" }}>
         <div style={{ ...column, borderLeft: 0 }}>
@@ -227,9 +314,7 @@ export function ResultPhase({ room, result, actions }) {
           ))}
           {isCandidate && (
             <div style={{ paddingTop: 12, borderTop: "1px solid var(--border-subtle)" }}>
-              <Button variant="ghost" size="sm" icon="flag" onClick={() => actions.requestReview()}>
-                Solicitar revisão da nota
-              </Button>
+              <ReviewRequest actions={actions} requested={requested} />
             </div>
           )}
         </aside>
