@@ -11,7 +11,7 @@
 import React from "react";
 import { useSession } from "../../session.jsx";
 import { IMEDIATOS, completarComResumo, eventosDaLiga, eventosDaResposta, juntarLote, precisaResumo } from "./eventos.js";
-import { esquecerTudo, gravarPreferencias, lerHistorico, lerPreferencias, lerVistos, ligaConsultadaHaPouco, marcarLigaConsultada, marcarVistos, registrarHistorico } from "./memoria.js";
+import { atualizarRotulos, esquecerTudo, gravarPreferencias, lerHistorico, lerPreferencias, lerVistos, ligaConsultadaHaPouco, marcarLigaConsultada, marcarVistos, registrarHistorico } from "./memoria.js";
 
 const Motor = React.lazy(() => import("./CelebracoesMotor.jsx"));
 
@@ -99,7 +99,7 @@ export function CelebracoesProvider({ children, rota = "/", ligaAoAbrir = true }
 
   const entregar = React.useCallback((eventos) => {
     if (!eventos?.length || !vivo.current.ligado) return;
-    setHistorico(registrarHistorico(vivo.current.uid, eventos));
+    setHistorico(atualizarRotulos(vivo.current.uid, eventos)); // ex.: "Novo nível" vira "Novo nível: Explorador"
     setMotorLigado(true);
     setLotes((l) => [...l, { seq: ++seq.current, eventos }]);
   }, []);
@@ -128,6 +128,8 @@ export function CelebracoesProvider({ children, rota = "/", ligaAoAbrir = true }
       }
       if (!aceitos.length) return [];
       marcarVistos(vivo.current.uid, aceitos.map((e) => e.chave));
+      // o importante entra no histórico já ao chegar (mesmo que a sessão feche antes do fim ou o limite do dia o encolha)
+      if (aceitos.some((e) => e.importante)) setHistorico(registrarHistorico(vivo.current.uid, aceitos));
       const emSimulado = [...segurando.current.values()].includes("simulado");
       const agora = emSimulado ? [] : aceitos.filter((e) => IMEDIATOS.has(e.id));
       const depois = aceitos.filter((e) => !IMEDIATOS.has(e.id));

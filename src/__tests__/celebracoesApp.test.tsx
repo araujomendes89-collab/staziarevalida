@@ -231,6 +231,8 @@ describe("Provedor das comemorações no app", { timeout: 25000 }, () => {
     const micro = await achar("questao-correta");
     expect(micro.getAttribute("data-intensidade")).toBe("micro");
     expect(document.querySelector('[data-evento="conquista-desbloqueada"]')).toBeNull();
+    // já está no histórico, mesmo esperando o fim (se a sessão fechar antes, a conquista não se perde)
+    expect(screen.getByTestId("historico").textContent).toContain("Medalha desbloqueada: Primeiros Passos");
     fireEvent.click(screen.getByText("terminar"));
     await achar("conquista-desbloqueada");
   });

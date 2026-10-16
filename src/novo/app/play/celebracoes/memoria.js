@@ -74,6 +74,16 @@ export function registrarHistorico(uid, itens, agora = Date.now()) {
   return lista;
 }
 
+/** Depois de completar com o resumo do banco (nome do nível): troca o rótulo guardado da mesma chave. */
+export function atualizarRotulos(uid, itens) {
+  const novos = new Map(itens.filter((e) => e?.importante && e.chave && e.rotulo).map((e) => [e.chave, e]));
+  const lista = lerHistorico(uid);
+  if (!novos.size || !lista.some((h) => novos.has(h.chave))) return lista;
+  const pronta = lista.map((h) => (novos.has(h.chave) ? { ...h, rotulo: novos.get(h.chave).rotulo, complemento: novos.get(h.chave).complemento ?? h.complemento } : h));
+  gravar(prefixoHistorico(uid), JSON.stringify(pronta));
+  return pronta;
+}
+
 /** Última consulta do fechamento da liga (ms): no máximo uma a cada INTERVALO_LIGA_MS por aparelho e conta. */
 export const INTERVALO_LIGA_MS = 3 * 60 * 60 * 1000;
 export function ligaConsultadaHaPouco(uid, agora = Date.now()) {
