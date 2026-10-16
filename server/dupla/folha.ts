@@ -17,7 +17,7 @@ import { FOLHA_ESCALA, FOLHA_LARGURA, FOLHA_MODELO, folhaHtml, textosEsperados, 
 
 const ROOT = process.cwd();
 /** Logotipo do app (StaziaMed Revalida), o mesmo da tela. */
-export const FOLHA_LOGO = "public/novo-assets/logo-staziamed-revalida-v2.png";
+export const FOLHA_LOGO = "public/novo-assets/logo-staziamed-revalida-v3.png";
 
 export interface FolhaDeps {
   db: ContentDb;

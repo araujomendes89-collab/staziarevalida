@@ -33,7 +33,7 @@ COPY --from=build /app/dist-worker/worker-job.cjs ./dist-worker/worker-job.cjs
 COPY scripts/content-hub/*.py ./scripts/content-hub/
 COPY public/brand/horizontal-480w.png ./public/brand/horizontal-480w.png
 # logotipo da folha do candidato do Treino em Dupla (server/dupla/folha.ts)
-COPY public/novo-assets/logo-staziamed-revalida-v2.png ./public/novo-assets/logo-staziamed-revalida-v2.png
+COPY public/novo-assets/logo-staziamed-revalida-v3.png ./public/novo-assets/logo-staziamed-revalida-v3.png
 COPY server/contentHub/fonts ./server/contentHub/fonts
 USER pwuser
 CMD ["node", "dist-worker/worker-job.cjs"]

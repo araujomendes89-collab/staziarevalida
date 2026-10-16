@@ -9,7 +9,7 @@ import { Loading, messageOf } from "./common.jsx";
 import { FOLHA_LARGURA, FOLHA_MODELO, folhaHtml } from "../../../shared/dupla/folhaCandidato";
 
 const BASE = "/api/dupla/folhas";
-const LOGO = "/novo-assets/logo-staziamed-revalida-v2.png";
+const LOGO = "/novo-assets/logo-staziamed-revalida-v3.png";
 const FONTES = "@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');";
 
 /** Rótulo e cor de cada situação (dupla_folha_situacao, migração 013390). */

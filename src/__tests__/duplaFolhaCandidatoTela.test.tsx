@@ -46,7 +46,7 @@ describe("folha do candidato na aba Estações", () => {
     const html = quadro.getAttribute("srcdoc") ?? "";
     expect(html).toContain("ESTAÇÃO 1");
     expect(html).toContain("RELATO DO CASO CLÍNICO");
-    expect(html).toContain("/novo-assets/logo-staziamed-revalida-v2.png");
+    expect(html).toContain("/novo-assets/logo-staziamed-revalida-v3.png");
     expect(quadro.getAttribute("sandbox")).toBe("allow-same-origin");
     expect(screen.getByRole("button", { name: "Gerar folha" })).toBeTruthy();
   });
