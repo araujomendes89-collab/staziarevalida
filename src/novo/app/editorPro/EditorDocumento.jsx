@@ -16,8 +16,10 @@ import "./editorPro.css";
  * contexto: dados da tela para os módulos (ex.: { versionId }). aoCriar(editor): para testes e telas que precisam do editor.
  * Os botões e painéis recebem ctx = { config, mudarConfig, contexto, somenteLeitura, abrirPainel(id), fecharPainel(), painelAberto }.
  * Painel com "atalho" (ex.: "Mod-f") abre com Ctrl/Cmd + a tecla, com o cursor no primeiro campo.
+ * compacto: campo curto (alternativa, legenda...): folha sem margem de página.
+ * somenteTexto: sem as ferramentas de formatação (ex.: roteiro de podcast, que vai para a voz): só desfazer, Revisão e Exibir.
  */
-export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarConfig, contexto, somenteLeitura = false, rotulo, id, aoCriar }) {
+export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarConfig, contexto, somenteLeitura = false, rotulo, id, aoCriar, somenteTexto = false, compacto = false }) {
   const [aba, setAba] = React.useState("inicio");
   const [painel, setPainel] = React.useState(null);
   const ultimo = React.useRef(JSON.stringify(valor ?? null));
@@ -88,9 +90,11 @@ export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarCo
   };
   if (!editor) return null;
 
-  const abas = ABAS.filter((a) => botoesDaAba(a.id).length > 0);
+  const permitido = (b) => !somenteTexto || b.grupo === "historico" || b.aba === "revisao" || b.aba === "exibir";
+  const abas = ABAS.filter((a) => botoesDaAba(a.id).some(permitido));
+  const abaAtiva = abas.some((a) => a.id === aba) ? aba : abas[0]?.id;
   const grupos = [];
-  for (const b of botoesDaAba(aba)) {
+  for (const b of botoesDaAba(abaAtiva).filter(permitido)) {
     const g = grupos[grupos.length - 1];
     if (g && g.id === b.grupo) g.botoes.push(b);
     else grupos.push({ id: b.grupo, botoes: [b] });
@@ -99,11 +103,11 @@ export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarCo
   const aberto = listaPaineis.find((p) => p.id === painel);
 
   return (
-    <div className="ep-container" id={id} onKeyDown={aoTeclar}>
+    <div className={`ep-container${compacto ? " ep-container--compacto" : ""}`} id={id} onKeyDown={aoTeclar}>
       <div className="ep-toolbar">
         <div className="ep-tablist" role="tablist" aria-label="Abas do editor">
           {abas.map((a) => (
-            <button key={a.id} type="button" role="tab" aria-selected={aba === a.id} className={`ep-tab${aba === a.id ? " ep-tab--ativa" : ""}`} onClick={() => setAba(a.id)}>
+            <button key={a.id} type="button" role="tab" aria-selected={abaAtiva === a.id} className={`ep-tab${abaAtiva === a.id ? " ep-tab--ativa" : ""}`} onClick={() => setAba(a.id)}>
               {a.rotulo}
             </button>
           ))}
