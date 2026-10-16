@@ -78,6 +78,13 @@ export interface Backend {
     h: { onInvite(): void; onPresence(members: PresenceMember[]): void; onStatus?(s: RealtimeStatus): void },
   ) => RealtimeHandle;
   /**
+   * Treino em Dupla, chat entre os dois do match: avisa quando chega mensagem nova na conversa `chatId` (INSERT em
+   * `study_messages` com `chat_id` igual). Quem recebe o aviso é decidido pela RLS da tabela (só os dois do par); a tela relê
+   * as mensagens pela função (`app_dupla_chat_messages`). Só existe no Supabase; sem ele (banco local) a tela consulta a cada 5 s.
+   * Devolve a função para fechar o canal.
+   */
+  readonly subscribeChat?: (chatId: string, h: { onMessage(): void; onStatus?(s: RealtimeStatus): void }) => () => void;
+  /**
    * Envio direto de um arquivo ao depósito do Supabase com o token de envio assinado que o servidor gerou
    * (aulas: slides e áudios). Com onProgress (0 a 100) o envio é por XMLHttpRequest, para mostrar a porcentagem. Só existe no Supabase; no banco local o arquivo passa pelo servidor.
    */

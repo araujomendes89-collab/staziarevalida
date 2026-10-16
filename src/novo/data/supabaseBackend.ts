@@ -114,6 +114,31 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
         client.removeChannel(channel).catch(() => {});
       };
     },
+    subscribeChat(chatId, h) {
+      // Só o aviso de mensagem nova na conversa; a RLS de study_messages (migração 013370) só entrega aos dois do par.
+      let closed = false;
+      const channel = client
+        .channel(`dupla-chat-${chatId}`)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "study_messages", filter: `chat_id=eq.${chatId}` }, () => {
+          if (!closed) h.onMessage();
+        });
+      client.realtime
+        .setAuth()
+        .then(() => {
+          if (closed) return;
+          channel.subscribe((status) => {
+            if (!closed) h.onStatus?.(status as RealtimeStatus);
+          });
+        })
+        .catch(() => {
+          if (!closed) h.onStatus?.("CHANNEL_ERROR");
+        });
+      return () => {
+        if (closed) return;
+        closed = true;
+        client.removeChannel(channel).catch(() => {});
+      };
+    },
     subscribeInvites(userId, h) {
       // Canal privado: quem pode entrar é decidido pelas políticas de realtime.messages (migração 9750) e por RLS em study_invites.
       const channel = client.channel("dupla:online", { config: { private: true, presence: { key: userId } } });

@@ -1,6 +1,6 @@
 // Treino em Dupla · "Deu match!" e o convite de quem escolheu "Estudar junto" primeiro.
-// Porte de Match.jsx do pacote de design (89-118) com o Dialog e as cores do app. Sem "Agendar sessão" e sem "Enviar mensagem"
-// (não existem no sistema, decisão do dono de 09/10). O pacote usa a fanfarra ao abrir e o botão de som no canto.
+// Porte de Match.jsx do pacote de design (89-118) com o Dialog e as cores do app. "Enviar mensagem" abre o chat de estudo do par
+// (pacote de 11/10, Etapa C); "Agendar sessão" continua fora. O pacote usa a fanfarra ao abrir e o botão de som no canto.
 import React from "react";
 import { Button, Dialog, Icon, useToast } from "../../ds";
 import { useSession } from "../session.jsx";
@@ -8,6 +8,7 @@ import { messageOf } from "../admin/common.jsx";
 import { firstName } from "./deck.js";
 import { useInvites } from "./live.js";
 import { playMatchSound, setSoundOn, soundOn } from "./sound.js";
+import { useChatWindows } from "./chat/ChatList.jsx";
 
 // Animações do pacote (components.css:174-181), só com nomes novos; a janela deixa o confete sair da caixa.
 const STYLE = `
@@ -50,9 +51,9 @@ function Avatar({ name, animation }) {
 
 /**
  * "Deu match!": a fanfarra toca na montagem; o botão do canto liga e desliga o som (guardado neste aparelho).
- * `onClose` serve para "Continuar buscando", Esc e clique no fundo.
+ * `onClose` serve para "Continuar buscando", Esc e clique no fundo. Com `onMessage`, aparece "Enviar mensagem" (abre o chat).
  */
-export function MatchModal({ meName, partnerName, busy = false, onOpen, onClose }) {
+export function MatchModal({ meName, partnerName, busy = false, onOpen, onMessage, onClose }) {
   const [sound, setSound] = React.useState(() => soundOn());
   React.useEffect(() => {
     playMatchSound();
@@ -128,6 +129,11 @@ export function MatchModal({ meName, partnerName, busy = false, onOpen, onClose 
           <Button size="lg" fullWidth icon="video" loading={busy} onClick={onOpen}>
             Abrir sala agora
           </Button>
+          {onMessage && (
+            <Button size="lg" fullWidth variant="ghost" icon="message-circle" disabled={busy} onClick={onMessage}>
+              Enviar mensagem
+            </Button>
+          )}
           <button
             type="button"
             onClick={handleClose}
@@ -157,15 +163,17 @@ export function MatchModal({ meName, partnerName, busy = false, onOpen, onClose 
 /**
  * Convite de quem deu o primeiro "Estudar junto" (a outra pessoa completou o match). O mais novo no prazo abre o "Deu match!":
  * "Abrir sala agora" aceita e vai à sala; "Continuar buscando" ou Esc recusa. O mesmo componente vale no Praticar e no Perfil.
- * @param {{ go: (route: string, query?: Record<string, string>) => void, meName: string, inviteTick: number, live: boolean }} p
+ * Com `paused` (outra janela aberta na tela, como o chat) o convite espera a janela fechar.
+ * @param {{ go: (route: string, query?: Record<string, string>) => void, meName: string, inviteTick: number, live: boolean, paused?: boolean }} p
  */
-export function InviteWatcher({ go, meName, inviteTick, live }) {
+export function InviteWatcher({ go, meName, inviteTick, live, paused = false }) {
   const { backend } = useSession();
   const { invites, serverNow, refresh } = useInvites(inviteTick, live);
   const [answered, setAnswered] = React.useState(() => new Set());
   const [busy, setBusy] = React.useState(false);
   const [, bump] = React.useState(0);
   const [toastNode, showToast] = useToast();
+  const chat = useChatWindows({ go, onError: (text) => showToast(text, "danger") });
 
   // Relógio do servidor: o prazo do convite vem de `expires_at` (do servidor), então a hora do aparelho é corrigida pela diferença.
   const offset = React.useMemo(() => {
@@ -204,10 +212,21 @@ export function InviteWatcher({ go, meName, inviteTick, live }) {
     }
   };
 
+  // "Enviar mensagem": o convite sai da tela sem ser recusado (vence sozinho em 60 s, ou vira aceito pelo "Abrir sala" do chat).
+  const message = async () => {
+    if (!invite || busy) return;
+    const partnerId = invite.from?.user_id;
+    setAnswered((prev) => new Set(prev).add(invite.id));
+    if (partnerId) await chat.openWith(partnerId);
+  };
+
   return (
     <>
       {toastNode}
-      {invite && <MatchModal key={invite.id} meName={meName} partnerName={invite.from?.public_name ?? ""} busy={busy} onOpen={() => respond(true)} onClose={() => respond(false)} />}
+      {invite && !chat.chatOpen && !paused && (
+        <MatchModal key={invite.id} meName={meName} partnerName={invite.from?.public_name ?? ""} busy={busy} onOpen={() => respond(true)} onMessage={message} onClose={() => respond(false)} />
+      )}
+      {chat.node}
     </>
   );
 }

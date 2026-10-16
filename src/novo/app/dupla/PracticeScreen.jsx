@@ -1,6 +1,7 @@
 // Praticar em dupla (Treinamento em Dupla): cabeçalho com colegas online e matches de hoje, escolha do papel, estação escolhida,
 // baralho de colegas (arrastar ou ← →), "Deu match!" e "Como a compatibilidade é calculada". Porte de Match.jsx do pacote de design
-// (21-29, 120-180). Sem "Convite rápido", busca automática, lista de colegas, "Agendar sessão" e "Enviar mensagem" (decisões do dono).
+// (21-29, 120-180). Sem "Convite rápido", busca automática, lista de colegas e "Agendar sessão" (decisões do dono). O chat de estudo
+// (Etapa C) entra pelo "Enviar mensagem" do "Deu match!" e pelo botão "Conversas" do cabeçalho.
 // O baralho vem de app_dupla_deck e só se mexe no cartão de cima quando a pessoa o escolhe (mergeDeck).
 import React from "react";
 import { useSearchParams } from "react-router-dom";
@@ -12,6 +13,7 @@ import { firstName, mergeDeck } from "./deck.js";
 import { useDuplaChannel, useHeartbeat } from "./live.js";
 import { InviteWatcher, MatchModal } from "./MatchModal.jsx";
 import { installAudioWake, playSkipSound } from "./sound.js";
+import { useChatWindows } from "./chat/ChatList.jsx";
 
 const ROLE_OPTIONS = [
   { value: "any", label: "Qualquer papel" },
@@ -204,6 +206,7 @@ function PracticeBoard({ go, profile, saved, stationId, station, onRemoveStation
   const [leaving, setLeaving] = React.useState(false);
   const pressCount = React.useRef(0);
   const openProfile = () => go("dupla-perfil");
+  const chat = useChatWindows({ go, onError: (text) => showToast(text, "danger") });
 
   // Tempo real e sinal: a pessoa aparece online, recebe convites e o áudio fica pronto antes do primeiro clique.
   useHeartbeat("livre");
@@ -244,7 +247,7 @@ function PracticeBoard({ go, profile, saved, stationId, station, onRemoveStation
       });
       if (result?.matched) {
         deck.freeze(true);
-        setMatched({ roomId: result.room_id, partnerName: result.partner?.public_name ?? card.public_name });
+        setMatched({ roomId: result.room_id, partnerId: result.partner?.user_id ?? card.user_id, partnerName: result.partner?.public_name ?? card.public_name });
         void deck.refresh();
       }
     } catch (e) {
@@ -287,6 +290,16 @@ function PracticeBoard({ go, profile, saved, stationId, station, onRemoveStation
     }
   };
 
+  // "Enviar mensagem": fecha o "Deu match!" sem sair da sala (o convite segue valendo para o outro) e abre o chat do par.
+  const messageMatch = async () => {
+    if (!matched || leaving) return;
+    const { partnerId } = matched;
+    deck.freeze(false);
+    setMatched(null);
+    void deck.refresh();
+    await chat.openWith(partnerId);
+  };
+
   const leaveOpenRoom = async () => {
     if (!openRoom || leaving) return;
     setLeaving(true);
@@ -311,6 +324,9 @@ function PracticeBoard({ go, profile, saved, stationId, station, onRemoveStation
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Button variant="secondary" size="sm" icon="user-pen" onClick={openProfile}>
             Meu perfil de estudo
+          </Button>
+          <Button variant="secondary" size="sm" icon="message-circle" onClick={chat.openList}>
+            Conversas
           </Button>
           {deck.loaded && (
             <>
@@ -436,8 +452,18 @@ function PracticeBoard({ go, profile, saved, stationId, station, onRemoveStation
         <Compatibility count={deck.cards.length} hidden={deck.hidden} onProfile={openProfile} />
       </div>
 
-      {matched && <MatchModal meName={saved.public_name} partnerName={matched.partnerName} busy={leaving} onOpen={() => go("dupla-sala", { sala: matched.roomId })} onClose={closeMatch} />}
-      <InviteWatcher go={go} meName={saved.public_name} inviteTick={inviteTick} live={live} />
+      {matched && (
+        <MatchModal
+          meName={saved.public_name}
+          partnerName={matched.partnerName}
+          busy={leaving}
+          onOpen={() => go("dupla-sala", { sala: matched.roomId })}
+          onMessage={matched.partnerId ? messageMatch : undefined}
+          onClose={closeMatch}
+        />
+      )}
+      {chat.node}
+      <InviteWatcher go={go} meName={saved.public_name} inviteTick={inviteTick} live={live} paused={chat.chatOpen} />
     </div>
   );
 }
