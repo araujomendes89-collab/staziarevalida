@@ -78,6 +78,17 @@ export interface Backend {
     h: { onInvite(): void; onPresence(members: PresenceMember[]): void; onStatus?(s: RealtimeStatus): void },
   ) => RealtimeHandle;
   /**
+   * Treino em Dupla, sala: canal privado `room:${roomId}` com a Presença dos dois (chave = `userId`) e o aviso de que a sala
+   * mudou (broadcast `sala` com `{ rev }`, mandado pelo gatilho da migração 013350; a leitura direta da tabela das salas foi
+   * fechada na 013340, então `postgres_changes` não chegaria). Só avisa: o estado vem sempre de `app_dupla_room`.
+   * Só existe no Supabase; sem ele (banco local) a sala consulta de tempos em tempos.
+   */
+  readonly subscribeRoom?: (
+    roomId: string,
+    userId: string,
+    h: { onChange(): void; onPresence(members: PresenceMember[]): void; onStatus?(s: RealtimeStatus): void },
+  ) => RealtimeHandle;
+  /**
    * Envio direto de um arquivo ao depósito do Supabase com o token de envio assinado que o servidor gerou
    * (aulas: slides e áudios). Com onProgress (0 a 100) o envio é por XMLHttpRequest, para mostrar a porcentagem. Só existe no Supabase; no banco local o arquivo passa pelo servidor.
    */

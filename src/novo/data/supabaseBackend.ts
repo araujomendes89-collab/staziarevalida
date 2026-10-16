@@ -173,5 +173,61 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
         },
       };
     },
+
+    subscribeRoom(roomId, userId, h) {
+      // Canal privado da sala: só os dois membros entram (políticas de realtime.messages da 013300). O aviso de mudança é o
+      // broadcast "sala" com { rev } do gatilho da 013350; a tela busca o estado em app_dupla_room (o aviso nunca traz dado).
+      const channel = client.channel(`room:${roomId}`, { config: { private: true, presence: { key: userId } } });
+      let closed = false;
+      let subscribed = false;
+      let tracked: Record<string, unknown> | null = null;
+      const send = () => {
+        if (closed || !subscribed || !tracked) return;
+        channel.track(tracked).catch(() => {});
+      };
+      channel
+        .on("presence", { event: "sync" }, () => {
+          if (closed) return;
+          const seen = new Map<string, PresenceMember>();
+          for (const metas of Object.values(channel.presenceState<{ user_id?: string; status?: PresenceMember["status"] }>())) {
+            for (const meta of metas) {
+              if (meta.user_id && !seen.has(meta.user_id)) seen.set(meta.user_id, { user_id: meta.user_id, status: meta.status });
+            }
+          }
+          h.onPresence([...seen.values()]);
+        })
+        .on("broadcast", { event: "sala" }, () => {
+          if (!closed) h.onChange();
+        });
+      client.realtime
+        .setAuth()
+        .then(() => {
+          if (closed) return;
+          channel.subscribe((status) => {
+            if (closed) return;
+            subscribed = status === "SUBSCRIBED";
+            if (subscribed) send();
+            h.onStatus?.(status as RealtimeStatus);
+          });
+        })
+        .catch(() => {
+          if (!closed) h.onStatus?.("CHANNEL_ERROR");
+        });
+      return {
+        track(payload) {
+          tracked = payload;
+          send();
+        },
+        untrack() {
+          tracked = null;
+          if (!closed && subscribed) channel.untrack().catch(() => {});
+        },
+        close() {
+          if (closed) return;
+          closed = true;
+          client.removeChannel(channel).catch(() => {});
+        },
+      };
+    },
   };
 }

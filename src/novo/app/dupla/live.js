@@ -3,6 +3,7 @@
 // banco (`app_dupla_heartbeat`, `app_dupla_invites`). Sem o canal (banco local, ou canal com erro) as telas consultam de tempos em tempos.
 import React from "react";
 import { useSession } from "../session.jsx";
+import { measureOffset } from "./clock.js";
 
 const HEARTBEAT_MS = 45000;
 /** Consulta de convites: sem tempo real a cada 5 s; com tempo real só de segurança, a cada 30 s. */
@@ -161,4 +162,151 @@ export function useInvites(inviteTick, live) {
   }, [refresh, live]);
 
   return { invites: state.invites, serverNow: state.serverNow, refresh };
+}
+
+// ------------------------------------------------------------------ sala ao vivo (Tarefa 15)
+/** Sala sem tempo real (banco local, ou canal com erro): consulta rápida (só traz algo se o `rev` mudou) e completa. */
+const ROOM_POLL_MS = 2000;
+const ROOM_FULL_MS = 10000;
+/** Com tempo real: avisos juntos em 300 ms viram uma consulta; consulta completa de segurança a cada 30 s. */
+const ROOM_DEBOUNCE_MS = 300;
+const ROOM_SAFETY_MS = 30000;
+/** Parceiro ausente por mais de 30 s: "Reconectando…". */
+export const PARTNER_AWAY_MS = 30000;
+
+/**
+ * Estado da sala ao vivo. O tempo real só AVISA (canal `room:{id}`: Presença e o aviso `sala`); quem diz o estado é sempre
+ * `app_dupla_room`. Cada resposta mede a diferença de relógio com o servidor (`server_now`), usada pelo cronômetro.
+ *  - ao vivo (`backend.subscribeRoom`): avisos agrupados em 300 ms → `app_dupla_room(p_since_rev = rev)`; presença do parceiro
+ *    pelo canal; consulta completa a cada 30 s e ao voltar a aba ou a rede; canal com erro → passa ao modo local.
+ *  - local: a cada 2 s com `p_since_rev` (vazio se nada mudou) e completa a cada 10 s; `channelReady` depois da 1ª consulta;
+ *    parceiro presente = sinal há menos de 30 s (`partner.seen_ms_ago`).
+ * Resposta mais velha (rev menor) nunca vence uma mais nova. Erro de rede depois da 1ª leitura não derruba a tela.
+ * @param {string} roomId
+ * @returns {{ room: object | null, error: Error | null, offsetMs: number, live: boolean, channelReady: boolean,
+ *   partnerPresent: boolean | null, partnerAway: boolean, refresh(): Promise<void>, apply(room: object, sentAt?: number, receivedAt?: number): void }}
+ */
+export function useRoomState(roomId) {
+  const { backend, user } = useSession();
+  const userId = user?.id ?? null;
+  const [state, setState] = React.useState({ room: null, error: null, offsetMs: 0, live: false, polled: false, presence: null });
+  const roomRef = React.useRef(null);
+  const alive = React.useRef(true);
+  const liveRef = React.useRef(false);
+
+  const apply = React.useCallback((room, sentAt, receivedAt) => {
+    if (!room || typeof room !== "object" || !alive.current) return;
+    const cur = roomRef.current;
+    if (cur && cur.id === room.id && typeof room.rev === "number" && room.rev < cur.rev) return;
+    roomRef.current = room;
+    const offset = Number.isFinite(sentAt) && Number.isFinite(receivedAt) && room.server_now ? measureOffset(room.server_now, sentAt, receivedAt) : null;
+    setState((s) => ({ ...s, room, error: null, polled: true, offsetMs: offset ?? s.offsetMs }));
+  }, []);
+
+  const fetchRoom = React.useCallback(
+    async (full) => {
+      if (!backend || !roomId) return;
+      const since = full ? null : roomRef.current?.rev ?? null;
+      const sentAt = Date.now();
+      try {
+        const res = await backend.rpc("app_dupla_room", { p_room_id: roomId, p_since_rev: since });
+        const receivedAt = Date.now();
+        if (!alive.current) return;
+        if (res == null) {
+          if (since == null) throw new Error("Sala não encontrada.");
+          setState((s) => (s.polled ? s : { ...s, polled: true }));
+          return;
+        }
+        apply(res, sentAt, receivedAt);
+      } catch (error) {
+        if (!alive.current || roomRef.current) return; // já há sala na tela: a próxima consulta refaz
+        setState((s) => ({ ...s, error: error instanceof Error ? error : new Error(String(error)) }));
+      }
+    },
+    [backend, roomId, apply]
+  );
+
+  React.useEffect(() => {
+    alive.current = true;
+    roomRef.current = null;
+    setState({ room: null, error: null, offsetMs: 0, live: false, polled: false, presence: null });
+    return () => {
+      alive.current = false;
+    };
+  }, [roomId]);
+
+  // Canal da sala (só no Supabase).
+  React.useEffect(() => {
+    if (!backend?.subscribeRoom || !roomId || !userId) return undefined;
+    let timer = null;
+    const handle = backend.subscribeRoom(roomId, userId, {
+      onChange: () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => void fetchRoom(false), ROOM_DEBOUNCE_MS);
+      },
+      onPresence: (members) => setState((s) => ({ ...s, presence: new Set(members.map((m) => m.user_id).filter(Boolean)) })),
+      onStatus: (status) => {
+        liveRef.current = status === "SUBSCRIBED";
+        setState((s) => ({ ...s, live: liveRef.current, presence: liveRef.current ? s.presence : null }));
+        if (liveRef.current) void fetchRoom(true);
+      },
+    });
+    handle.track({ user_id: userId, status: "em_estacao" });
+    return () => {
+      clearTimeout(timer);
+      liveRef.current = false;
+      handle.untrack();
+      handle.close();
+    };
+  }, [backend, roomId, userId, fetchRoom]);
+
+  // Consultas: a primeira, as de reserva (local) ou de segurança (ao vivo), e ao voltar a aba ou a rede.
+  React.useEffect(() => {
+    void fetchRoom(true);
+  }, [fetchRoom]);
+  React.useEffect(() => {
+    const timers = state.live
+      ? [setInterval(() => void fetchRoom(true), ROOM_SAFETY_MS)]
+      : [setInterval(() => void fetchRoom(false), ROOM_POLL_MS), setInterval(() => void fetchRoom(true), ROOM_FULL_MS)];
+    const onVisible = () => {
+      if (pageVisible()) void fetchRoom(true);
+    };
+    const onOnline = () => void fetchRoom(true);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onOnline);
+    return () => {
+      timers.forEach(clearInterval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [state.live, fetchRoom]);
+
+  const room = state.room;
+  const partnerId = room?.partner?.user_id ?? null;
+  const seenPresent = typeof room?.partner?.seen_ms_ago === "number" ? room.partner.seen_ms_ago < PARTNER_AWAY_MS : null;
+  const partnerPresent = state.live && state.presence ? (partnerId ? state.presence.has(partnerId) : false) : room ? seenPresent : null;
+
+  // Ausente há mais de 30 s. No modo local o próprio sinal já diz "há 30 s"; ao vivo, a Presença some na hora: espera 30 s.
+  const [awayLive, setAwayLive] = React.useState(false);
+  React.useEffect(() => {
+    if (!state.live || partnerPresent !== false) {
+      setAwayLive(false);
+      return undefined;
+    }
+    const t = setTimeout(() => setAwayLive(true), PARTNER_AWAY_MS);
+    return () => clearTimeout(t);
+  }, [state.live, partnerPresent]);
+  const partnerAway = state.live ? awayLive : partnerPresent === false;
+
+  return {
+    room,
+    error: state.error,
+    offsetMs: state.offsetMs,
+    live: state.live,
+    channelReady: state.live || state.polled,
+    partnerPresent,
+    partnerAway,
+    refresh: () => fetchRoom(true),
+    apply,
+  };
 }
