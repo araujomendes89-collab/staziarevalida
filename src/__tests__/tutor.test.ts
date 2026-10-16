@@ -911,7 +911,7 @@ describe("Banco e motor (IA simulada)", () => {
           fetch(base + pathName, { method: body ? "POST" : "GET", headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
         expect((await call("/status", null)).status).toBe(401);
         // o aluno vê só o que liga ou desliga botões (voz e GPT-Live) e o limite por conversa de voz; o motivo da pendência é do administrador
-        expect(await (await call("/status", student)).json()).toEqual({ ready: true, simulated: true, neural_voice: false, realtime_voice: false, live_voice: false, voice_hint: null, voice_session_max_seconds: 1800 });
+        expect(await (await call("/status", student)).json()).toEqual({ ready: true, simulated: true, question_hint: false, neural_voice: false, realtime_voice: false, live_voice: false, voice_hint: null, voice_session_max_seconds: 1800 });
         expect(await (await call("/status", admin)).json()).toMatchObject({ ready: true, simulated: true, provider: "mock" });
         expect((await call("/turn", student, { session_id: "x", action: "message", text: "oi" })).status).toBe(400);
         expect((await call("/turn", student, { session_id: session, action: "apagar", text: "oi" })).status).toBe(400);

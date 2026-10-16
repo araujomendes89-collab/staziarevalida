@@ -10,7 +10,7 @@ Dados brutos: `/Volumes/StaziaMed/.tmp-aulas/voice-tutor/linha-de-base/` (`live/
 2. Com as nossas ferramentas (o gabarito só sai depois que o aluno diz a letra), a fala em que a ferramenta é chamada demora mais: **~1,9 s**. As outras falas continuam em ~1 s (P95 2,0 s).
 3. **Cérebro em texto (Gemini 3.8 Flash) + voz separada é lento**: 2,6 s só para a primeira palavra (P50) e picos de 7 a 18 s. Com ele, ElevenLabs ou Gemini TTS ficariam com 3 s ou mais até o primeiro som. Por isso o caminho A foi o escolhido.
 4. **Claude pelo Vertex não pôde ser medido**: o projeto tem cota zero para os modelos da Anthropic (erro 429 na primeira chamada). Ficou parado por decisão do dono.
-5. **Custo real do Live (pelos tokens que o Google devolve): US$ 0,039 por minuto de conversa** nesta bateria (densa: ~5 falas por minuto). É mais que o preço "por minuto de áudio" da tabela (US$ 0,023), porque **o texto das instruções da professora (~4.900 tokens) é cobrado de novo a cada fala** — metade do custo. Encurtar as instruções da voz é o maior corte possível (estimativa: −30%).
+5. **Custo real do Live (pelos tokens que o Google devolve): cerca de US$ 0,02 por conversa curta** (sessão de bancada de ~25 s com 2 falas da professora: US$ 0,016; conversa de 45 s no navegador: US$ 0,0215), ou **US$ 0,039 por minuto de conversa** nesta bateria (densa: ~5 falas por minuto). É mais que o preço "por minuto de áudio" da tabela (US$ 0,023), porque **o texto das instruções da professora (~4.900 tokens) é cobrado de novo a cada fala** — metade do custo. Encurtar as instruções da voz é o maior corte possível (estimativa: −30%).
 6. Nenhum cérebro revelou o gabarito antes da resposta nos 25 testes que rodaram (5 questões × 2 níveis × 2 cérebros, mais o Live). A correção médica das conversas está separada para os 2 revisores (`cerebros/conversas-para-revisores.md`).
 7. A Durona do Live xinga pouco mesmo no nível explosivo (1 palavrão em 3 conversas); o Flash em texto xinga muito (26 em 5). O Personality Engine novo (N1–N4) já entra nas instruções; o tom muda a cada resposta corrigida.
 
@@ -79,7 +79,7 @@ Custo/minuto: A medido; A enxuto e B são estimativas; ElevenAgents é preço de
 
 De onde vem o custo do Live (152 falas medidas): texto de entrada (instruções reenviadas a cada fala) 50%, áudio de saída 28%, "pensamento" do modelo 13%, áudio de entrada 6%. Ou seja: **cada fala custa ~US$ 0,007**; conversa com menos trocas por minuto sai mais barata por minuto. O valor real só fecha com a fatura do Google; o relatório de uso da ponte grava os tokens de cada ligação no livro-caixa (`ai_usage_ledger`, `meta.via = vertex-ponte`).
 
-## 7. Escuta cega
+## 7. Escuta cega (não é mais necessária: o dono já escolheu o Gemini Live pelo Vertex)
 
 `/Volumes/StaziaMed/.tmp-aulas/voice-tutor/comparacao-cega/index.html` (aberta no Chrome): a mesma fala da Durona (expressiva e explosiva) em Gemini Live (Kore, Aoede, Leda, Zephyr, Charon) e Gemini TTS flash e flash-lite (Kore, Leda), com letras embaralhadas; e 3 trechos de conversa de cada combinação voz × cérebro (A; B + TTS flash; B + TTS flash-lite). Gabarito com caminho e preço: `gabarito-NAO-ABRIR-antes-de-escolher.json`. ElevenLabs ficou fora (parada).
 

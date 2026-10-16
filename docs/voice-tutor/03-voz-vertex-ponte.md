@@ -51,13 +51,19 @@ fim da ligação ─────────────────────
 3. A professora apresenta a questão de teste (anafilaxia). Responda falando ("eu marco a letra B"), pergunte a dose, fale por cima dela para interromper. A tela mostra o estado, a transcrição, o tempo do 1º áudio, o da interrupção e o custo da sessão em dólar.
 Questão fictícia, sem aluno e sem banco; custo de centavos por conversa.
 
-## 4. Para ligar de verdade (com o dono; nada disso foi feito)
+## 4. O que o dono precisa para publicar (nada disso foi feito; nenhum segredo aparece na tela)
 
-1. Publicar a ponte: `PROJECT=staziamed-revalida-prod COPIAR=1 scripts/cloudrun/deploy-voz-ponte.sh` (cria conta de serviço com `roles/aiplatform.user`, segredo no Secret Manager, imagem no Cloud Build e o serviço em us-central1; `MIN_INSTANCES=1` evita a partida a frio, com custo fixo).
-2. Na Vercel (Production): `VOZ_PONTE_URL=wss://<endereço>/ponte` e `VOZ_PONTE_SEGREDO` (o mesmo do Secret Manager; o script copia para a área de transferência). As travas `TUTOR_VOICE_ALLOW_EXTERNAL=1` e `TUTOR_LIVE_VOICE_ALLOW_EXTERNAL=1` continuam valendo.
-3. Conferir a lista de origens (`ORIGENS`, padrão `https://app.staziamed.com.br,https://staziamed-revalida.vercel.app`).
-4. Aplicar a migração do Personality Engine (20261003011900, do vt-personalidade) para a Durona Explosiva valer na voz; sem ela, a persona de sempre.
-5. Publicar o site com este ramo. A chave `GEMINI_API_KEY` deixa de ser usada pela voz quando a ponte está configurada.
+Ordem:
+1. **Termo 2.0** (frente vt-termo, em andamento): ativar antes de qualquer aluno usar a voz pelo Vertex (fornecedor "Google Cloud (Vertex AI)", retenção, consentimento de voz). Junto, a migração do Personality Engine (20261003011900) para a Durona Explosiva valer na voz; sem ela, fica a persona de sempre.
+2. **Ponte no Cloud Run**: `PROJECT=staziamed-revalida-prod COPIAR=1 scripts/cloudrun/deploy-voz-ponte.sh`
+   - cria a conta de serviço `stazia-voz-ponte` (só `roles/aiplatform.user`), o segredo `stazia-voz-ponte-segredo` no Secret Manager (aleatório, criado uma vez), a imagem no Cloud Build e o serviço em **us-central1**;
+   - no Cloud Run as variáveis já vão pelo script: `VOZ_PONTE_SEGREDO` (do Secret Manager), `VOZ_PONTE_PROJETO=staziamed-revalida-prod`, `VOZ_PONTE_REGIAO=us-central1`, `VOZ_PONTE_ORIGENS=https://app.staziamed.com.br,https://staziamed-revalida.vercel.app` (conferir), `VOZ_PONTE_RELATORIO_URL=https://app.staziamed.com.br/api/tutor/voice/ponte-uso`;
+   - opcional `MIN_INSTANCES=1` (sem partida a frio na primeira ligação; custo fixo da instância ligada);
+   - conferir: `curl <endereço>/saude` responde `{"ok":true}`.
+3. **Vercel (Production)**: `VOZ_PONTE_URL=wss://<endereço do Cloud Run>/ponte` (o script imprime) e `VOZ_PONTE_SEGREDO` = o MESMO valor do Secret Manager (com `COPIAR=1` o script põe na área de transferência do Mac, sem mostrar; colar direto no painel). Publicar o site com este ramo (vt-voz, que já contém o vt-personalidade).
+4. **Testar só com a equipe**: a trava `TUTOR_VOICE_ALLOW_EXTERNAL=1` sozinha deixa a equipe testar; abrir uma conversa por voz no app e conferir no log da ponte (`gcloud run services logs read stazia-voz-ponte --region=us-central1 --project=staziamed-revalida-prod --limit=50`) e no livro-caixa (custo por tokens, `meta.via = vertex-ponte`).
+5. **Liberar aos alunos**: só depois do Termo 2.0 ativo e do teste da equipe, `TUTOR_LIVE_VOICE_ALLOW_EXTERNAL=1` na Vercel (trava própria da voz ao vivo dos alunos). Antes disso, cadastrar preço e tetos de gasto (memória "preços e tetos antes dos alunos").
+A chave `GEMINI_API_KEY` deixa de ser usada pela voz quando a ponte está configurada; pode ser retirada depois.
 
 ## 5. Pendências e riscos
 
