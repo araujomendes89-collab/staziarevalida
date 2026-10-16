@@ -48,6 +48,11 @@ drop trigger if exists study_write_guard on public.flashcard_reviews;
 drop trigger if exists study_write_guard on public.flashcard_states;
 drop function if exists public.study_write_guard();
 
+-- Tutor: marca de abertura da questão (só servia para medir o tempo da resposta)
+drop trigger if exists tutor_question_opened_at on public.tutor_sessions;
+drop function if exists public.tutor_question_opened_at();
+alter table public.tutor_sessions drop column if exists question_opened_at;
+
 -- funções: versões de antes (copiadas das migrações-base)
 
 -- gam_award: base 20261003003800_stazia_play.sql

@@ -12,7 +12,7 @@
 --  3. "mesmo se ele refazer a mesma questao e acertar, trava por 3 dias a pontuacao": a mesma questão só volta a valer XP,
 --     moeda, missão e sequência 3 dias depois da ÚLTIMA vez que foi respondida (certa ou errada). Leitura mais segura:
 --     contar da última "vez que pontuou" deixaria errar de propósito e refazer na hora valendo.
---  4. Chute (decisão do dono): resposta abaixo do tempo mínimo de leitura (10 ms por caractere do enunciado e das alternativas,
+--  4. Chute (decisão do dono; vale também no Tutor, decisão de 16/10 16h50): resposta abaixo do tempo mínimo de leitura (10 ms por caractere do enunciado e das alternativas,
 --     entre 5 e 15 s) vale 0; do 3º chute detectado no dia em diante, -5 XP cada (evento GUESS_PENALTY, negativo, no histórico;
 --     nunca deixa XP total/semana/mês/liga abaixo de zero). A multa de 5 não teve os -20% (é o número que o dono escolheu).
 --  5. "desafios tambem nao devem ser repetidos no mesmo dia": missões já pagavam uma vez por período (dia/semana); agora os
@@ -23,7 +23,8 @@
 --     estudioso cerca de 420, muito ativo cerca de 710 moedas (antes: 1.448, 2.183 e 3.933).
 --  7. Ligas: sobem 10% do grupo (para baixo, no mínimo 1: 30 alunos → 3; 9 → 1); descem 10% (idem), só em grupo de 10 ou mais.
 --  8. As 5 brechas da auditoria:
---     G01 simulado só vale com 30+ questões, 80% respondidas sem chute, 1 por dia;
+--     G01 simulado só vale com 30+ questões, 80% respondidas sem chute, nota de 60% ou mais (acertos ÷ respostas válidas;
+--         decisão do dono de 16/10, 16h50; vale também para a missão de simulado), 1 por dia;
 --     G02 plano do dia só vale no dia de hoje;
 --     G04 o tempo que vale é o do navegador limitado ao medido pelo servidor (no treino, desde a resposta anterior ou o início
 --         da sessão; no simulado, a soma das questões não passa do tempo da sessão aberta, sem as pausas);
@@ -38,7 +39,7 @@
 --   gam_award (3800) · gam_generate_missions (3800) · gam_facts (3900) · gam_process_attempt (8100) · gam_process_flashcard_review (8100)
 --   gam_process_session_finish (8100) · gam_process_plan_task (8100) · gam_turn_summary (9573) · ch_worker_gamification_close_week (9630)
 --   app_league_current (9630) · app_answer_question (4300). Nova: study_write_guard (+ gatilhos em question_attempts, practice_sessions, plan_tasks,
---   flashcard_reviews e flashcard_states).
+--   flashcard_reviews e flashcard_states) e tutor_question_opened_at (+ coluna tutor_sessions.question_opened_at).
 -- =============================================================================
 
 -- ---------------------------------------------------------------- 0. registro do que muda (só na primeira vez) e motivos novos
@@ -65,8 +66,9 @@ insert into public.gamification_rules (key, value, description) values
   ('xp.fix_wrong', '8'::jsonb, 'Erro anterior corrigido (acerto depois da trava de dias).'),
   ('xp.session_10', '12'::jsonb, '10 respostas válidas numa sessão (uma vez por dia).'),
   ('xp.session_30', '24'::jsonb, '30 respostas válidas numa sessão (uma vez por dia).'),
-  ('xp.simulation_completed', '80'::jsonb, 'Simulado completo: mínimo de questões, 80% respondidas sem chute, uma vez por dia.'),
+  ('xp.simulation_completed', '80'::jsonb, 'Simulado completo: mínimo de questões, 80% respondidas sem chute, nota mínima, uma vez por dia.'),
   ('xp.simulation_min_questions', '30'::jsonb, 'Questões mínimas no simulado para valer o XP de simulado completo.'),
+  ('xp.simulation_min_score', '60'::jsonb, 'Nota mínima (%) no simulado para o XP de simulado completo e a missão: acertos ÷ respostas válidas (sem chute).'),
   ('xp.flashcard_reviewed', '2'::jsonb, 'Revisar um flashcard oficial lembrando (uma vez por cartão por dia; "não lembrei" e cartão pessoal não valem XP).'),
   ('xp.flashcard_mastered', '4'::jsonb, 'Consolidar um flashcard oficial (intervalo de 21 dias ou mais, desde a 1ª revisão há 21 dias ou mais).'),
   ('xp.spaced_review_done', '12'::jsonb, 'Zerar a fila de flashcards do dia (mínimo de 5 cartões diferentes).'),
@@ -320,6 +322,26 @@ begin
 end
 $$;
 
+-- ---------------------------------------------------------------- 3b. Tutor: quando a questão foi aberta (para medir o tempo da resposta)
+-- O Tutor abre uma questão por vez (tutor_sessions.question_state = 'open'). Este gatilho guarda o instante da abertura, sem
+-- mexer nas funções do Tutor. A resposta do Tutor passa a ter o tempo medido pelo servidor (decisão do dono: chute vale no Tutor).
+alter table public.tutor_sessions add column if not exists question_opened_at timestamptz;
+create or replace function public.tutor_question_opened_at() returns trigger
+  language plpgsql set search_path = ''
+as $$
+begin
+  if new.question_state = 'open' and new.question_id is not null
+     and (tg_op = 'INSERT' or old.question_state is distinct from 'open' or old.question_id is distinct from new.question_id) then
+    new.question_opened_at := clock_timestamp();
+  end if;
+  return new;
+end
+$$;
+revoke execute on function public.tutor_question_opened_at() from public, anon, authenticated;
+drop trigger if exists tutor_question_opened_at on public.tutor_sessions;
+create trigger tutor_question_opened_at before insert or update on public.tutor_sessions
+  for each row execute function public.tutor_question_opened_at();
+
 -- ---------------------------------------------------------------- 4. XP de cada resposta (base: 20261003008100)
 -- Mudanças de 16/10 (decisões do dono):
 --  * erro = 0 XP e 0 moedas (treino, simulado, Tutor); a resposta errada continua contando em missão, sequência e precisão;
@@ -330,7 +352,8 @@ $$;
 --    evento GUESS_PENALTY negativo, sem deixar XP total, da semana, do mês ou da liga abaixo de zero;
 --  * moedas: coins.per_correct (1) a cada coins.correct_every (10) acertos que pontuam no dia;
 --  * bônus de 10 e de 30 respostas numa sessão: uma vez por dia cada, contando só respostas válidas.
--- Resposta do Tutor (sem sessão, questão aberta na conversa do Tutor) não tem cronômetro: não passa pelas regras de tempo.
+-- Resposta do Tutor (sem sessão, questão aberta na conversa do Tutor): o tempo é o que o servidor mediu desde que a questão
+-- foi aberta na conversa; valem as mesmas regras de tempo (rápido demais, chute e multa).
 create or replace function public.gam_process_attempt() returns trigger
   language plpgsql security definer set search_path = ''
 as $$
@@ -344,6 +367,7 @@ declare
   v_total int := 0; v_coins int := 0; v_in_session int;
   v_kind text;
   v_tutor boolean := false;
+  v_tutor_open timestamptz;
   v_ms integer;
   v_chars integer; v_guess_ms integer;
   v_last timestamptz;
@@ -371,22 +395,30 @@ begin
     v_mults := coalesce(public.gam_rule('repeat.multipliers'), '[1, 0.3, 0.1, 0]'::jsonb);
     v_mult := coalesce((v_mults ->> least(v_prior, jsonb_array_length(v_mults) - 1))::numeric, 0);
 
-    -- resposta do Tutor: sem sessão, com a questão aberta na conversa do Tutor (a função do Tutor grava antes de fechar a questão)
+    -- tempo da resposta. Treino e simulado: o que app_answer_question gravou (navegador limitado ao medido pelo servidor).
+    -- Tutor (sem sessão, questão aberta na conversa; a função do Tutor grava a resposta antes de fechar a questão): o tempo é o
+    -- que o SERVIDOR mediu desde que a questão foi aberta na conversa (tutor_sessions.question_opened_at) até a resposta; as dicas
+    -- pedidas no meio contam como tempo de leitura. Decisão do dono (16/10, 16h50): o chute vale também no Tutor.
+    v_ms := new.active_ms;
     if new.session_id is null then
-      v_tutor := exists (select 1 from public.tutor_sessions t
-                         where t.user_id = new.user_id and t.question_id = new.question_id and t.question_state = 'open');
+      select coalesce(t.question_opened_at, t.last_message_at) into v_tutor_open from public.tutor_sessions t
+        where t.user_id = new.user_id and t.question_id = new.question_id and t.question_state = 'open'
+        order by t.last_message_at desc limit 1;
+      v_tutor := found;
+      if v_tutor then
+        v_ms := greatest(floor(extract(epoch from (new.answered_at - v_tutor_open)) * 1000), 1)::int;
+      end if;
     end if;
 
     -- tempo mínimo de leitura (chute): caracteres do enunciado e das alternativas × ms por caractere, entre o mínimo e o teto
-    v_ms := new.active_ms;
     v_chars := coalesce(length(q.statement), 0)
              + coalesce((select sum(length(coalesce(o ->> 'text', ''))) from jsonb_array_elements(q.options) o), 0)::int;
     v_guess_ms := least(greatest(v_chars * public.gam_num('fraud.guess_ms_per_char', 10), public.gam_num('fraud.guess_min_ms', 5000)),
                         public.gam_num('fraud.guess_max_ms', 15000))::int;
 
-    if not v_tutor and (v_ms is null or v_ms <= 0) then
+    if v_ms is null or v_ms <= 0 then
       v_reason := 'no_time';
-    elsif not v_tutor and v_ms < public.gam_num('fraud.too_fast_ms', 3000) then
+    elsif v_ms < public.gam_num('fraud.too_fast_ms', 3000) then
       v_reason := 'too_fast';
     -- o simulado grava todas as respostas de uma vez ao finalizar: não conta como enxurrada, nem entra na conta dos treinos
     elsif coalesce(v_kind, '') <> 'simulado'
@@ -396,7 +428,7 @@ begin
                  and a.answered_at > clock_timestamp() - interval '60 seconds'
                  and coalesce(s2.kind, '') <> 'simulado') >= public.gam_num('fraud.rate_limit_per_minute', 30) then
       v_reason := 'rate_limit';
-    elsif not v_tutor and v_ms < v_guess_ms then
+    elsif v_ms < v_guess_ms then
       v_reason := 'guess';
     elsif v_last is not null and v_last > new.answered_at - make_interval(days => public.gam_num('repeat.lock_days', 3)::int) then
       v_reason := 'repeat_lock';
@@ -435,7 +467,7 @@ begin
       'question_attempt', new.id::text, v_total, v_coins,
       jsonb_build_object('question_id', q.id, 'area', q.area, 'topic', q.topic, 'difficulty', v_diff, 'hard', v_hard,
                          'attempt_number', v_attempt, 'first_attempt', v_attempt = 1, 'previously_wrong', v_prev_wrong,
-                         'response_time_ms', new.active_ms, 'min_read_ms', v_guess_ms, 'tutor', v_tutor,
+                         'response_time_ms', v_ms, 'min_read_ms', v_guess_ms, 'tutor', v_tutor,
                          'session_id', new.session_id, 'session_kind', v_kind, 'multiplier', v_mult,
                          'breakdown', jsonb_strip_nulls(jsonb_build_object('base', nullif(b_base, 0), 'correct', nullif(b_correct, 0), 'difficulty_bonus', nullif(b_hard, 0),
                                                          'first_attempt_bonus', nullif(b_first, 0), 'unseen_bonus', nullif(b_unseen, 0),
@@ -552,29 +584,34 @@ end
 $$;
 
 -- ---------------------------------------------------------------- 6. simulado completo (base: 20261003008100; brecha G01)
--- Vale XP de simulado completo só se: o simulado tem xp.simulation_min_questions (30) questões ou mais; 80% delas ou mais
--- foram respondidas SEM chute (respostas "chute", "rápido demais", "sem tempo" e "enxurrada" não contam); e uma vez por dia.
+-- Vale XP de simulado completo (e a missão da semana, que conta esse evento) só se: o simulado tem xp.simulation_min_questions
+-- (30) questões ou mais; 80% delas ou mais foram respondidas SEM chute (respostas "chute", "rápido demais", "sem tempo" e
+-- "enxurrada" não contam); a NOTA, acertos ÷ respostas válidas, é de xp.simulation_min_score (60%) ou mais (decisão do dono,
+-- 16/10, 16h50); e uma vez por dia.
 create or replace function public.gam_process_session_finish() returns trigger
   language plpgsql security definer set search_path = ''
 as $$
 declare
   v_total int;
   v_answered int;
+  v_correct int;
+  v_score numeric;
 begin
   begin
     if not public.gam_flag('flags.gamification_enabled') or new.kind <> 'simulado' or new.finished_at is null or old.finished_at is not null then return null; end if;
     v_total := cardinality(new.question_ids);
     if v_total < public.gam_num('xp.simulation_min_questions', 30)::int then return null; end if;
-    select count(*)::int into v_answered from public.question_attempts a
+    select count(*)::int, count(*) filter (where a.is_correct)::int into v_answered, v_correct from public.question_attempts a
       where a.session_id = new.id
         and not exists (select 1 from public.gamification_events e
                         where e.user_id = new.user_id and e.source_type = 'question_attempt' and e.source_id = a.id::text
                           and not e.is_valid and e.fraud_reason in ('guess', 'too_fast', 'no_time', 'rate_limit'));
-    if v_answered >= ceil(0.8 * v_total) then
+    v_score := round(100.0 * v_correct / greatest(v_answered, 1), 1);
+    if v_answered >= ceil(0.8 * v_total) and v_score >= public.gam_num('xp.simulation_min_score', 60) then
       perform public.gam_ensure(new.user_id);
       perform public.gam_award(new.user_id, 'SIMULATION_COMPLETED', 'day', public.gam_today(new.user_id)::text,
                                public.gam_num('xp.simulation_completed', 80)::int, 0,
-                               jsonb_build_object('session_id', new.id, 'total', v_total, 'answered', v_answered));
+                               jsonb_build_object('session_id', new.id, 'total', v_total, 'answered', v_answered, 'correct', v_correct, 'score', v_score));
       perform public.gam_after_activity(new.user_id);
     end if;
   exception when others then

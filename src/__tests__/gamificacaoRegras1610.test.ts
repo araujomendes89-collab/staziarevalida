@@ -257,6 +257,7 @@ describe("gravação direta pela API é recusada (brecha G05)", () => {
 });
 
 describe("simulado (brecha G01) e plano do dia (brecha G02)", () => {
+  let simulado30: string[] = [];
   async function simulado(uid: string, qids: string[], right: (i: number) => boolean, readMs = 30_000) {
     const sid = await sessao(uid, "simulado", qids);
     for (const [i, id] of qids.entries()) {
@@ -299,18 +300,32 @@ describe("simulado (brecha G01) e plano do dia (brecha G02)", () => {
     expect((await events(ANA, "SIMULATION_COMPLETED")).length).toBe(0);
   });
 
-  it("simulado de 30 vale 80 XP uma vez por dia; o 2º do dia não paga de novo; erros não valem XP", async () => {
+  it("simulado de 30 com nota 60%+ vale 80 XP uma vez por dia; o 2º do dia não paga de novo; erros não valem XP", async () => {
     const qs = [...novas("MEDICINA_FAMILIA_COMUNIDADE", 15), ...novas("CLINICA_MEDICA", 15)];
-    await simulado(ANA, qs, (i) => i % 2 === 0);
+    simulado30 = qs;
+    await simulado(ANA, qs, (i) => i < 20); // 20 de 30 = 66,7%
     const ev = await events(ANA, "SIMULATION_COMPLETED");
     expect(ev.length).toBe(1);
     expect(ev[0].xp_awarded).toBe(80);
     const wrong = await sql(`select xp_awarded, coins_awarded from public.gamification_events e join public.question_attempts a on a.id::text = e.source_id
                              where e.user_id = $1 and e.event_type = 'QUESTION_WRONG' and a.question_id = any($2)`, [ANA, qs]);
-    expect(wrong.length).toBe(15);
+    expect(wrong.length).toBe(10);
     expect(wrong.every((w: any) => w.xp_awarded === 0 && w.coins_awarded === 0)).toBe(true);
     await simulado(ANA, [...novas("MEDICINA_FAMILIA_COMUNIDADE", 15), ...novas("CLINICA_MEDICA", 15)], () => true);
     expect((await events(ANA, "SIMULATION_COMPLETED")).length).toBe(1);
+  });
+
+  it("simulado com nota abaixo de 60% (acertos ÷ respostas válidas) não vale XP de simulado nem a missão (decisão do dono, 16/10)", async () => {
+    await simulado(BIA, simulado30, (i) => i < 17); // 17 de 30 = 56,7%
+    expect((await events(BIA, "SIMULATION_COMPLETED")).length).toBe(0);
+    const m = await sql(`select completed_at from public.user_missions where user_id = $1 and mission_slug = 'weekly_simulado'`, [BIA]);
+    expect(m.every((x: any) => x.completed_at === null)).toBe(true);
+    // com 18 de 30 (60%) vale, no dia seguinte (o simulado vale 1 vez por dia e a trava de 3 dias fica para trás)
+    await diasDepois(BIA, 3);
+    await simulado(BIA, simulado30, (i) => i < 18);
+    const ev = await events(BIA, "SIMULATION_COMPLETED");
+    expect(ev.length).toBe(1);
+    expect(ev[0].metadata).toMatchObject({ answered: 30, correct: 18 });
   });
 
   it("simulado respondido no chute (80% abaixo da leitura mínima) não vale XP de simulado", async () => {
@@ -330,6 +345,29 @@ describe("simulado (brecha G01) e plano do dia (brecha G02)", () => {
     const ev = await events(BIA, "DAILY_GOAL_COMPLETED");
     expect(ev.length).toBe(1);
     expect(ev[0].xp_awarded).toBe(20);
+  });
+});
+
+describe("chute também no Tutor (decisão do dono, 16/10): o tempo é o que o servidor mede desde que a questão abriu na conversa", () => {
+  it("2 s depois de abrir: rápido demais; 4 s: chute; 40 s: vale 12", async () => {
+    const qs = novas("GINECOLOGIA_OBSTETRICIA", 3);
+    const pers = (await sql(`select id from public.tutor_personalities limit 1`))[0].id;
+    const casos: [string, number][] = [[qs[0], 2_000], [qs[1], 4_000], [qs[2], 40_000]];
+    const out: any[] = [];
+    for (const [q, ms] of casos) {
+      const [t] = await sql(`insert into public.tutor_sessions (user_id, mode, title, personality_id, intensity, question_id, question_state)
+                             values ($1, 'questao', 'teste', $2, 3, $3, 'open') returning id, question_opened_at`, [CAIO, pers, q]);
+      expect(t.question_opened_at).toBeTruthy(); // o gatilho marcou a abertura
+      await sql(`update public.tutor_sessions set question_opened_at = question_opened_at - $2::interval where id = $1`, [t.id, `${ms} milliseconds`]);
+      // como a função do Tutor faz: grava a resposta (sem sessão de treino) e só depois fecha a questão
+      const [a] = await sql(`insert into public.question_attempts (user_id, question_id, selected_option) values ($1, $2, 'B') returning id`, [CAIO, q]);
+      await sql(`update public.tutor_sessions set question_state = 'answered' where id = $1`, [t.id]);
+      out.push((await sql(`select xp_awarded, is_valid, fraud_reason, metadata from public.gamification_events where source_type = 'question_attempt' and source_id = $1`, [a.id]))[0]);
+    }
+    expect(out.map((e) => e.fraud_reason)).toEqual(["too_fast", "guess", null]);
+    expect(out[2]).toMatchObject({ xp_awarded: 12, is_valid: true });
+    expect(out[2].metadata).toMatchObject({ tutor: true });
+    expect(out[2].metadata.response_time_ms).toBeGreaterThanOrEqual(40_000);
   });
 });
 
