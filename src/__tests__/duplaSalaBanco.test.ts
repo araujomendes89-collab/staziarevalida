@@ -432,22 +432,21 @@ describe("Migração 013350: ações da sala do Treino em Dupla", () => {
     await ler(id);
     expect(respostas.length).toBeGreaterThan(15);
     expect(vaza(respostas)).toEqual([]);
-    // o avaliador recebe o nome, o resumo e a folha do candidato; o candidato não recebe resumo
+    // o avaliador recebe o nome e a folha do candidato; o resumo só vem aprovado pela revisão médica (013380, testado em
+    // duplaResumoBanco): o "summary" do conteúdo da estação não vai mais à sala. O candidato não recebe resumo.
     const aval = await d.rpc(U.bruno, "app_dupla_room_content", { p_room_id: id });
-    expect(aval.station).toMatchObject({ name: SECRETA.name, summary: SECRETA.summary, candidate_sheet: { has_image: true } });
+    expect(aval.station).toMatchObject({ name: SECRETA.name, summary: null, candidate_sheet: { has_image: true } });
     const cand = await d.rpc(U.ana, "app_dupla_room_content", { p_room_id: id });
     expect(cand.station).not.toHaveProperty("summary");
     expect(cand.station.candidate_sheet).toEqual({ has_image: true });
   });
 
-  it("resumo do avaliador: texto não vazio vira texto; vazio ou outro tipo vira null", async () => {
+  it("resumo do avaliador (013380): o summary do conteúdo da estação, texto ou lista, não vai mais à sala", async () => {
     const comTexto = { ...STATION, id: "teste-dupla-resumo", name: "Resumo de teste", summary: "  Texto do resumo.  " };
     await addStation(d.db, comTexto);
     const id = await sala("running", { station: comTexto.id });
-    expect((await d.rpc(U.bruno, "app_dupla_room_content", { p_room_id: id })).station.summary).toBe("  Texto do resumo.  ");
-    await addStation(d.db, { ...comTexto, summary: "   " });
     expect((await d.rpc(U.bruno, "app_dupla_room_content", { p_room_id: id })).station.summary).toBeNull();
-    await addStation(d.db, { ...comTexto, summary: 3 });
+    await addStation(d.db, { ...comTexto, summary: [{ topic: "Tema", summary: "Texto" }] });
     expect((await d.rpc(U.bruno, "app_dupla_room_content", { p_room_id: id })).station.summary).toBeNull();
   });
 
@@ -563,6 +562,11 @@ describe("Migração 013350: ações da sala do Treino em Dupla", () => {
     const colunas = () => d.sql(`select column_name, data_type from information_schema.columns where table_name = 'checklist_rooms' order by 1`);
     const antes = [await defs(), await gatilhos(), await colunas()];
     await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8"));
+    // As do Treino que vêm depois refazem funções desta (a 013380 refaz app_dupla_set_station, app_dupla_confirm_roles e
+    // app_dupla_room_content): coladas de novo na ordem, o banco volta igual.
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.includes("treino_dupla") && f > MIGRACAO).sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect([await defs(), await gatilhos(), await colunas()]).toEqual(antes);
     const acl = Object.fromEntries(antes[0].map((f: any) => [f.id, f.acl]));
     const app = [

@@ -52,14 +52,35 @@ const CONTENT = {
   summary: [{ topic: "Critérios diagnósticos", summary: "Glicemia acima de 250, pH abaixo de 7,3 e cetonemia." }],
 };
 let stations: any[] = [];
+// "Resumo sobre o tema" (pedido 4 do dono, 16/10): estado simulado do banco. Texto de EXEMPLO DE TESTE, não é conteúdo médico.
+let resumo: any = null;
+let podeAprovar = true;
+const resumoResp = () => ({
+  station_id: "st-cm", body: resumo?.body ?? null, status: resumo?.status ?? null, origin: resumo ? "equipe" : null,
+  updated_at: resumo ? "2026-10-16T12:00:00Z" : null, updated_by: resumo ? "Editora" : null,
+  approved_at: resumo?.status === "approved" ? "2026-10-16T13:00:00Z" : null, approved_by: resumo?.status === "approved" ? "Dr. Clínico" : null,
+  can_approve: podeAprovar,
+});
 
 beforeEach(() => {
   session.boot = { role: "admin", profile: { name: "Adm" }, reviewer_areas: [] };
   stations = [PENDING];
+  resumo = null;
+  podeAprovar = true;
   backend.rpc.mockReset();
   backend.rpc.mockImplementation(async (fn: string, args: any) => {
     if (fn === "app_admin_stations") return stations;
     if (fn === "app_admin_station_content") return CONTENT;
+    if (fn === "app_admin_station_summary") return resumoResp();
+    if (fn === "app_admin_save_station_summary") {
+      const body = String(args.p_body ?? "").trim();
+      resumo = body ? { body, status: body === resumo?.body ? resumo.status : "draft" } : null;
+      return resumoResp();
+    }
+    if (fn === "app_admin_review_station_summary") {
+      resumo = { ...resumo, status: args.p_status };
+      return resumoResp();
+    }
     if (fn === "app_admin_set_station_review")
       return stations.map((s) => (s.id === args.p_station_id ? { ...s, medical_review: args.p_status, review_note: args.p_note, reviewer: "Dr. Clínico", reviewed_at: "2026-10-10T12:00:00Z" } : s));
     throw new Error(`rpc não simulada: ${fn}`);
@@ -188,5 +209,72 @@ describe("Estações (ES03): aprovar é revisão médica registrada", () => {
     const barra = screen.getByRole("tablist", { name: "Administração" });
     expect(within(barra).getByRole("tab", { name: "Estações" }).getAttribute("aria-selected")).toBe("true");
     expect(await screen.findByText("Cetoacidose diabética")).toBeTruthy();
+  });
+});
+
+describe("Estações: Resumo sobre o tema (pedido 4 do dono, 16/10)", () => {
+  const EXEMPLO = "Exemplo de teste: resumo fictício, não é conteúdo médico.";
+
+  it("sem resumo: copia o 'Resumo dos temas' da estação para o rascunho, salva como rascunho e o revisor aprova", async () => {
+    render(<AdminStations />);
+    fireEvent.click(await screen.findByRole("button", { name: "Conferir" }));
+    expect(await screen.findByText("Sem resumo")).toBeTruthy();
+    expect(screen.getByText(/O candidato nunca vê\. Se o texto mudar, volta a rascunho\./)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Sugerir rascunho com a IA/ })).toBeNull(); // ponto da Central de IAs, desligado
+    fireEvent.click(screen.getByRole("button", { name: "Copiar o Resumo dos temas para o rascunho" }));
+    const campo = screen.getByLabelText("Texto do resumo") as HTMLTextAreaElement;
+    expect(campo.value).toBe("Critérios diagnósticos\nGlicemia acima de 250, pH abaixo de 7,3 e cetonemia.");
+    fireEvent.change(campo, { target: { value: EXEMPLO } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar rascunho" }));
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_save_station_summary", { p_station_id: "st-cm", p_body: EXEMPLO }));
+    expect((await screen.findAllByText("Resumo em rascunho")).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Rascunho salvo por Editora em .*Ainda não aparece na sala\./)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Aprovar resumo" }));
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_review_station_summary", { p_station_id: "st-cm", p_status: "approved" }));
+    expect((await screen.findAllByText("Resumo aprovado")).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Aprovado por Dr\. Clínico em/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Voltar a rascunho" })).toBeTruthy();
+  });
+
+  it("quem não pode aprovar não vê 'Aprovar resumo'; resumo aprovado editado some o aprovar até salvar (e volta a rascunho)", async () => {
+    resumo = { body: EXEMPLO, status: "draft" };
+    podeAprovar = false;
+    render(<AdminStations />);
+    fireEvent.click(await screen.findByRole("button", { name: "Conferir" }));
+    expect(await screen.findByText(/Só um revisor médico cadastrado em Clínica Médica ou um administrador aprova este resumo\./)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Aprovar resumo" })).toBeNull();
+    cleanup();
+
+    resumo = { body: EXEMPLO, status: "approved" };
+    podeAprovar = true;
+    stations = [{ ...PENDING, summary_status: "approved" }];
+    render(<AdminStations />);
+    expect(await screen.findByText("Resumo aprovado")).toBeTruthy(); // selo no cartão, antes de abrir
+    fireEvent.click(screen.getByRole("button", { name: "Conferir" }));
+    const campo = (await screen.findByLabelText("Texto do resumo")) as HTMLTextAreaElement;
+    expect(campo.value).toBe(EXEMPLO);
+    fireEvent.change(campo, { target: { value: EXEMPLO + " Versão 2." } });
+    expect(screen.queryByRole("button", { name: "Voltar a rascunho" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Salvar rascunho" }));
+    expect((await screen.findAllByText("Resumo em rascunho")).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Aprovar resumo" })).toBeTruthy();
+  });
+
+  it("o Registro mostra salvar e aprovar o resumo em português", async () => {
+    backend.rpc.mockImplementation(async (fn: string) =>
+      fn === "app_admin_audit_page"
+        ? {
+            total: 2, limit: 50, offset: 0, actions: ["station.summary.save", "station.summary.review"],
+            items: [
+              { id: 2, action: "station.summary.review", target: "st-cm", details: { from: "draft", to: "approved", area: "Clínica Médica" }, created_at: "2026-10-16T13:00:00Z", actor: "Dr. Clínico" },
+              { id: 1, action: "station.summary.save", target: "st-cm", details: { action: "saved", chars: 50 }, created_at: "2026-10-16T12:00:00Z", actor: "Editora" },
+            ],
+          }
+        : [],
+    );
+    render(<AdminAudit />);
+    const lista = within(await screen.findByRole("list", { name: "Ações registradas" }));
+    expect(lista.getByText("st-cm: resumo aprovado pela revisão médica")).toBeTruthy();
+    expect(lista.getByText("st-cm: rascunho do resumo salvo")).toBeTruthy();
   });
 });

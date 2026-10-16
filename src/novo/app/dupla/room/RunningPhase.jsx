@@ -240,10 +240,12 @@ function EvaluatorView({ room, content, marks, actions, started }) {
                 }}
               />
             </Accordion>
+            {/* Materiais (D9): o servidor só manda o resumo ao avaliador e só depois de aprovado pela revisão médica (013380). */}
             {hasSummary(st.summary) && (
               <Accordion icon="book-open" title="Materiais">
                 <div style={{ font: "600 var(--text-sm) var(--font-sans)", color: "var(--text-primary)", marginBottom: 6 }}>Resumo sobre o tema</div>
                 <Summary value={st.summary} />
+                <div style={{ marginTop: 8, font: "var(--text-xs) var(--font-sans)", color: "var(--text-secondary)" }}>Conferido pela revisão médica. O candidato não vê este resumo.</div>
               </Accordion>
             )}
             <Accordion icon="message-circle" title="Feedback">
