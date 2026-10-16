@@ -570,7 +570,8 @@ describe("Sala: fases a partir do estado gravado", () => {
       { room: roomState({ phase: "closed", closed_reason: "sem_sinal" }) },
     ];
     // os identificadores do React (useId) mudam a cada montagem; o resto do desenho tem de ser igual
-    const same = (html: string) => html.replace(/«r[0-9a-z]*»|_r_[0-9a-z]+_|:r[0-9a-z]*:/g, "ID");
+    // o cronômetro anda (conta a partir do relógio do servidor): "mm:ss" vira "TT"
+    const same = (html: string) => html.replace(/«r[0-9a-z]*»|_r_[0-9a-z]+_|:r[0-9a-z]*:/g, "ID").replace(/\d\d:\d\d/g, "TT");
     for (const scenario of cases) {
       const first = await mount(scenario);
       const html = same(first.container.innerHTML);
