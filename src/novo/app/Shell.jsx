@@ -481,11 +481,19 @@ function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, tablet, pha
   if (kind === "inicio-simples") return <SimpleTopHeader title={title} sub={sub} theme={theme} go={go} phase={phase} info={info} />;
   if (kind === "inicio") {
     return (
-      <header className="smn-ph">
+      <header className="smn-ph smn-ph--inicio">
         {mobile && <MobileTopBar theme={theme} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />}
         <div className="smn-ph-row">
           <div className="smn-ph-l">
-            <h1 className="smn-ph-h1">{title}</h1>
+            {/* celular: a data fica colada embaixo da saudação, ao lado da sequência (antes era uma linha a mais e o cartão azul descia) */}
+            {mobile && sub ? (
+              <div className="smn-ph-hd">
+                <h1 className="smn-ph-h1">{title}</h1>
+                <span className="smn-ph-date smn-ph-date--m">{sub}</span>
+              </div>
+            ) : (
+              <h1 className="smn-ph-h1">{title}</h1>
+            )}
             <StreakChip info={info} go={go} />
           </div>
           {!mobile && (
@@ -495,7 +503,6 @@ function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, tablet, pha
             </div>
           )}
         </div>
-        {mobile && sub && <span className="smn-ph-date smn-ph-date--m">{sub}</span>}
       </header>
     );
   }
@@ -504,17 +511,21 @@ function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, tablet, pha
   return (
     <header className="smn-ph smn-ph--plan">
       {mobile && <MobileTopBar theme={theme} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />}
+      {/* celular: "‹ Início" e o lema na linha curta de cima (onde as outras telas têm o subtítulo); assim o título fica em
+          y≈89 e o primeiro cartão em y≈139, como em Banco, Simulados e Trilha */}
       {mobile && (
-        <button type="button" className="smn-ph-back" onClick={() => go("home")}>
-          <Icon name="chevron-left" size={20} />
-          Início
-        </button>
+        <div className="smn-ph-topo">
+          <button type="button" className="smn-ph-back" onClick={() => go("home")}>
+            <Icon name="chevron-left" size={20} />
+            Início
+          </button>
+          <span className="smn-ph-eyebrow smn-ph-eyebrow--m">Aprender · praticar · revisar</span>
+        </div>
       )}
       <div className="smn-ph-row smn-ph-row--plan">
         <div>
           {!mobile && sub && <div className="smn-ph-eyebrow">{sub}</div>}
           <h1 className="smn-ph-h1">{title}</h1>
-          {mobile && <div className="smn-ph-eyebrow smn-ph-eyebrow--m">Aprender · praticar · revisar</div>}
         </div>
         <button type="button" className="smn-ph-btn" onClick={open} aria-haspopup="dialog">
           <Icon name="sliders-horizontal" size={18} />
