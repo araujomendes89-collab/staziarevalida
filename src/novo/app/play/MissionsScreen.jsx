@@ -4,6 +4,7 @@
 import React from "react";
 import { Banner, Icon } from "../../ds";
 import { useSession } from "../session.jsx";
+import { ShellActions } from "../Shell.jsx";
 import { Panel, RichIcon, Tile, useBreakpoint } from "../evolucao/ui.jsx";
 import moeda from "../../ds/icons-stazia/moeda-stazia-3d.svg";
 import { PlayError, Skeleton } from "./components.jsx";
@@ -190,11 +191,12 @@ export function MissionsScreen({ go }) {
 
   return (
     <div className="ev ar">
-      <div className="ar-actions">
+      {/* G10.5 (16/10/2026): o botão vai para o lugar de ações do cabeçalho (ao lado da sequência), sem empurrar os quadros */}
+      <ShellActions>
         <button type="button" className="ar-btn" onClick={study}>
           Estudar agora <Icon name="arrow-right" size={18} />
         </button>
-      </div>
+      </ShellActions>
       <div className="ar-cols">
         <Panel className="ar-mcard" aria-label="Missões de hoje">
           <div className="ar-mcard__head">

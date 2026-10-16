@@ -2,7 +2,7 @@
 // Nunca carrega o ranking inteiro: 50 por página, posição própria em consulta separada, "perto de mim" por janela.
 // Visual do pacote "Novas telas" (onda 6, 15/10/2026): computador = Ranking e Liga da semana lado a lado; tablet e celular =
 // abas Ranking | Liga da semana. Só aparecem alunos que a função devolve (nomes já tratados no banco); vazio = "Ninguém neste ranking".
-// As ligas (nome, ícone, cor) vêm do banco; a arte 3D das ligas fica para a onda 7 (diretor de arte).
+// As ligas (nome, ícone, cor) vêm do banco; com a arte do pacote ligada, o escudo 3D da liga substitui o ícone (G10.4, 16/10/2026).
 import React from "react";
 import { Badge, Banner, Button, Icon } from "../../ds";
 import { useSession } from "../session.jsx";
@@ -10,6 +10,8 @@ import { Panel, RichIcon, Tile, useBreakpoint } from "../evolucao/ui.jsx";
 import { endsIn, gapText, KIND_LABEL, KINDS, leagueColor, movementText, pluralDays, RARITY, topLabel } from "./format.js";
 import { PlayError, Skeleton } from "./components.jsx";
 import { usePlayLoad } from "./usePlay.js";
+import { ARTE_MIN, ArteLiga, useArteLigada, useArtesDoPacote } from "./Medalha.jsx";
+import { arteDaLiga } from "../../ds/medalhas-pacote/index.js";
 import "./play.css";
 import "./arena.css";
 
@@ -200,7 +202,7 @@ export function Leaderboard({ go, mobile, titled }) {
   const chips = (
     <div role="tablist" aria-label="Tipo de ranking" className={`ar-chips${mobile ? " ar-chips--scroll" : ""}`}>
       {KINDS.map((k) => (
-        <button key={k} type="button" role="tab" aria-selected={kind === k} className="ar-chip ar-chip--sm" onClick={() => change(k)}>
+        <button key={k} type="button" role="tab" aria-selected={kind === k} className="ar-chip" onClick={() => change(k)}>
           {KIND_LABEL[k]}
         </button>
       ))}
@@ -282,8 +284,16 @@ export function Leaderboard({ go, mobile, titled }) {
   );
 }
 
-/** Selo da liga: ícone do banco (Lucide) na cor da liga. A arte 3D das ligas fica para a onda 7. */
-function LeagueBadge({ league, small }) {
+/** Selo da liga: com a arte do pacote, o escudo 3D (nunca abaixo de 64 px); sem ela, o ícone do banco (Lucide) na cor da liga. */
+function LeagueBadge({ league, small, artes }) {
+  const nome = artes ? arteDaLiga(league?.slug) : null;
+  if (nome && artes[nome]) {
+    return (
+      <span className="ar-lart" aria-hidden="true">
+        <ArteLiga league={league} size={ARTE_MIN} artes={artes} />
+      </span>
+    );
+  }
   return (
     <span className={`ar-lbadge${small ? " ar-lbadge--sm" : ""}`} style={small ? { background: `color-mix(in oklab, ${leagueColor(league)} 16%, transparent)`, color: leagueColor(league) } : { color: leagueColor(league) }} aria-hidden="true">
       <Icon name={league?.icon || "medal"} size={small ? 22 : 30} />
@@ -291,28 +301,51 @@ function LeagueBadge({ league, small }) {
   );
 }
 
-function LeagueList({ leagues, current, mobile }) {
+/** `fold`: lista recolhível (fechada ao abrir), usada no computador quando o aluno já está num grupo (G10.3, decisão D4 provisória). */
+function LeagueList({ leagues, current, mobile, artes, fold }) {
+  const [open, setOpen] = React.useState(false);
+  const id = React.useId();
   if (!leagues?.length) return null;
   const list = [...leagues].sort((a, b) => (b.position ?? 0) - (a.position ?? 0)); // da mais alta à inicial, como no pacote
+  const title = mobile ? `As ${list.length} ligas, da mais alta à inicial` : `As ${list.length} ligas`;
+  const items = (
+    <ol className={`ar-leagues${mobile ? " ar-leagues--m" : ""}`} id={fold ? id : undefined}>
+      {list.map((l) => (
+        <li key={l.slug} className={current === l.slug ? "is-me" : undefined} aria-current={current === l.slug ? "true" : undefined}>
+          <LeagueBadge league={l} small artes={artes} />
+          <span className="ar-leagues__n">{l.name}</span>
+          {current === l.slug && <Badge tone="brand" size="sm">Sua liga</Badge>}
+        </li>
+      ))}
+    </ol>
+  );
+  if (fold) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <h3 className="ar-h3">
+          <button type="button" className="ar-lfold" aria-expanded={open} aria-controls={id} onClick={() => setOpen((v) => !v)}>
+            <span>{title}</span>
+            <Icon name="chevron-down" size={18} className={`ar-how__chev${open ? " is-open" : ""}`} />
+          </button>
+        </h3>
+        {open && items}
+      </div>
+    );
+  }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <h3 className={mobile ? "ar-h3 ar-h3--m" : "ar-h3"}>{mobile ? `As ${list.length} ligas, da mais alta à inicial` : `As ${list.length} ligas`}</h3>
-      <ol className={`ar-leagues${mobile ? " ar-leagues--m" : ""}`}>
-        {list.map((l) => (
-          <li key={l.slug} className={current === l.slug ? "is-me" : undefined} aria-current={current === l.slug ? "true" : undefined}>
-            <LeagueBadge league={l} small />
-            <span className="ar-leagues__n">{l.name}</span>
-            {current === l.slug && <Badge tone="brand" size="sm">Sua liga</Badge>}
-          </li>
-        ))}
-      </ol>
+      <h3 className={mobile ? "ar-h3 ar-h3--m" : "ar-h3"}>{title}</h3>
+      {items}
     </div>
   );
 }
 
-export function LeagueView({ mobile, titled }) {
+/** `load`: a leitura da liga já feita pela tela (computador); `listOut`: "As N ligas" fica fora deste quadro (coluna do ranking). */
+export function LeagueView({ mobile, titled, load, listOut }) {
   const { backend } = useSession();
-  const league = usePlayLoad(() => backend.rpc("app_league_current"), [backend]);
+  const own = usePlayLoad(() => (load ? Promise.resolve(null) : backend.rpc("app_league_current")), [backend, Boolean(load)]);
+  const league = load ?? own;
+  const artes = useArtesDoPacote(useArteLigada());
   const d = league.data;
   const wrap = (children) => (
     <Panel className={mobile ? "ar-panel-m" : "ar-league"} aria-label="Liga da semana" style={mobile ? { background: "transparent", border: 0, boxShadow: "none", padding: 0 } : undefined}>
@@ -333,7 +366,7 @@ export function LeagueView({ mobile, titled }) {
       <>
         <div className="ar-lhero">
           <div className="ar-lhero__top">
-            <LeagueBadge league={first} />
+            <LeagueBadge league={first} artes={artes} />
             <span className="ar-lhero__txt">
               <span className="ar-kicker">Entre na liga</span>
               <span className="ar-lhero__t">Você entra na liga com o primeiro XP da semana</span>
@@ -361,7 +394,7 @@ export function LeagueView({ mobile, titled }) {
             </>
           )}
         </div>
-        <LeagueList leagues={leagues} mobile={mobile} />
+        <LeagueList leagues={leagues} mobile={mobile} artes={artes} />
       </>,
     );
   }
@@ -371,7 +404,7 @@ export function LeagueView({ mobile, titled }) {
     <>
       <div className="ar-lhero">
         <div className="ar-lhero__top">
-          <LeagueBadge league={d.league} />
+          <LeagueBadge league={d.league} artes={artes} />
           <span className="ar-lhero__txt">
             <span className="ar-kicker">Liga {d.league.name}</span>
             <span className="ar-lhero__t">
@@ -400,7 +433,7 @@ export function LeagueView({ mobile, titled }) {
           </React.Fragment>
         ))}
       </ol>
-      <LeagueList leagues={leagues} current={d.league.slug} mobile={mobile} />
+      {!listOut && <LeagueList leagues={leagues} current={d.league.slug} mobile={mobile} artes={artes} />}
       {d.history?.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h3 className="ar-h3">Semanas anteriores</h3>
@@ -423,6 +456,31 @@ export function LeagueView({ mobile, titled }) {
   );
 }
 
+/** Computador: Ranking e Liga lado a lado. Com o aluno num grupo, "As N ligas" desce para baixo do ranking, recolhível,
+ *  para as duas colunas terem altura parecida (G10.3, decisão D4 provisória). Sem grupo, a lista fica no quadro da liga, como no pacote. */
+function RankingWide({ go, leagues }) {
+  const { backend } = useSession();
+  const league = usePlayLoad(() => (leagues ? backend.rpc("app_league_current") : Promise.resolve(null)), [backend, leagues]);
+  const artes = useArtesDoPacote(useArteLigada());
+  const d = league.data;
+  const listLeft = Boolean(leagues && d && d.enabled !== false && d.joined && d.leagues?.length);
+  return (
+    <div className="ev ar">
+      <div className="ar-cols">
+        <div className="ar-colL">
+          <Leaderboard go={go} titled />
+          {listLeft && (
+            <Panel className="ar-lfold-card" aria-label={`As ${d.leagues.length} ligas`}>
+              <LeagueList leagues={d.leagues} current={d.league?.slug} artes={artes} fold />
+            </Panel>
+          )}
+        </div>
+        {leagues && <LeagueView titled load={league} listOut={listLeft} />}
+      </div>
+    </div>
+  );
+}
+
 export function LeaderboardScreen({ go }) {
   const { boot } = useSession();
   const bp = useBreakpoint();
@@ -430,16 +488,7 @@ export function LeaderboardScreen({ go }) {
   if (boot?.play?.enabled === false) return <Banner tone="info">A classificação faz parte da Stazia Arena, que está desligada no momento.</Banner>;
   const leagues = boot?.play?.flags?.leagues !== false;
   const mobile = bp === "narrow";
-  if (bp === "wide") {
-    return (
-      <div className="ev ar">
-        <div className="ar-cols">
-          <Leaderboard go={go} titled />
-          {leagues && <LeagueView titled />}
-        </div>
-      </div>
-    );
-  }
+  if (bp === "wide") return <RankingWide go={go} leagues={leagues} />;
   return (
     <div className="ev ar">
       {leagues && (

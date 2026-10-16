@@ -7,9 +7,9 @@
 .ar h2,.ar h3{margin:0}
 .ar :is(button,a):focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .ar-cols{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
-.ar-actions{display:flex;justify-content:flex-end;margin-top:-8px}
 .ar-btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 18px;border:0;border-radius:13px;background:var(--action-primary);color:var(--action-on-primary);font:800 14px var(--font-sans);cursor:pointer;text-decoration:none}
 .ar-btn:hover{background:var(--action-primary-hover)}
+.ar-btn:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .ar-btn:active{transform:scale(.98)}
 .ar-btn[disabled]{opacity:.55;cursor:not-allowed}
 .ar-count{height:28px;display:inline-flex;align-items:center;padding:0 10px;border-radius:999px;background:var(--surface-sunken);color:var(--text-secondary);font:700 12px var(--font-mono);white-space:nowrap;flex:none}
@@ -24,13 +24,13 @@
 .ar-chips{display:flex;flex-wrap:wrap;gap:8px}
 .ar-chips--scroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px 2px}
 .ar-chips--scroll::-webkit-scrollbar{display:none}
-.ar-chip{flex:0 0 auto;min-height:44px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-secondary);font:700 13px var(--font-sans);cursor:pointer;white-space:nowrap}
+.ar-chip{flex:0 0 auto;min-height:36px;display:inline-flex;align-items:center;gap:8px;padding:0 12px;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-secondary);font:700 13px var(--font-sans);cursor:pointer;white-space:nowrap}
 .ar-chip:hover{border-color:var(--border-strong);color:var(--text-primary)}
 .ar-chip[aria-selected="true"]{background:var(--action-strong);border-color:var(--action-strong);color:var(--action-on-strong)}
 .ar-chip__dot{width:8px;height:8px;border-radius:999px;flex:none}
 .ar-chip__n{font:600 11.5px var(--font-mono);opacity:.75}
-/* no toque, 44 px; com mouse, 40 px como no pacote */
-@media (hover:hover) and (pointer:fine){.ar-chip--sm{min-height:40px}}
+/* G10.7 e G10.8 (16/10/2026): pílulas de 36 px com mouse e 44 px no toque, iguais às de Conquistas (.cq-chip) */
+@media (pointer:coarse){.ar-chip{min-height:44px}}
 
 /* controle segmentado (Ranking | Liga da semana; Hoje | Semana) */
 .ar-seg{display:flex;padding:4px;border-radius:14px;background:var(--surface-sunken);gap:4px}
@@ -44,8 +44,11 @@
 .ar-hero .ar-kicker{color:var(--ar-hero-kicker)}
 .ar-hero__title{font:800 22px/1.2 var(--font-sans);letter-spacing:-.02em;color:#fff}
 .ar-hero__sub{font:500 14px/1.5 var(--font-sans);color:var(--ar-hero-sub)}
-.ar-hero__btn{margin-top:6px;min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 20px;border-radius:14px;border:0;background:#fff;color:var(--brand-navy);font:800 15px var(--font-sans);cursor:pointer}
+.ar-hero__btn{margin-top:6px;min-height:48px;max-width:420px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 20px;border-radius:14px;border:0;background:#fff;color:var(--brand-navy);font:800 15px var(--font-sans);cursor:pointer}
 .ar-hero__btn:active{transform:scale(.98)}
+/* G10.1 e G10.2: o botão não estica nas telas largas (até 360 px no computador, 420 px no tablet); no celular ocupa a largura */
+@media (min-width:1181px){.ar-hero__btn{max-width:360px}}
+@media (max-width:719px){.ar-hero__btn{max-width:none}}
 .ar-hero__btn[disabled]{opacity:.6;cursor:not-allowed}
 .ar-hero :is(button):focus-visible{box-shadow:0 0 0 3px rgba(255,255,255,.7)}
 
@@ -167,13 +170,22 @@
 .ar-week{margin:0;font:500 13px var(--font-sans);color:var(--text-secondary)}
 .ar-week b{font:600 13px var(--font-mono);color:var(--text-primary)}
 /* botão preso acima da barra de abas do celular (mesmo lugar do botão do Plano de Hoje); o espaço embaixo evita cobrir o texto */
-.ar-sticky{position:fixed;left:16px;right:16px;bottom:calc(var(--smn-tabs-h,70px) + 12px + env(safe-area-inset-bottom));z-index:30}
-.ar-sticky-space{height:72px;flex:none}
+/* G10.11: 28 px acima da barra, para o botão redondo do Tutor (que sobe da barra) não cobrir "Estudar agora" */
+.ar-sticky{position:fixed;left:16px;right:16px;bottom:calc(var(--smn-tabs-h,70px) + 28px + env(safe-area-inset-bottom));z-index:30}
+.ar-sticky-space{height:88px;flex:none}
 .ar-sticky .ar-btn{width:100%;min-height:52px;border-radius:16px;font-size:15px;box-shadow:0 12px 24px -12px rgba(10,111,216,.6)}
 
 /* ===== Ranking e Liga ===== */
 .ar-rank{flex:3 1 460px;padding:20px;display:flex;flex-direction:column;gap:14px}
 .ar-league{flex:2 1 340px;padding:20px;display:flex;flex-direction:column;gap:16px}
+/* G10.1: no computador (a partir de 1181 px) os quadros não esticam; no tablet ocupam a largura toda */
+@media (min-width:1181px){.ar-mcard{max-width:640px}.ar-rank,.ar-colL{max-width:820px}.ar-league{max-width:520px}}
+/* computador: coluna do ranking (ranking + "As N ligas" recolhível embaixo) */
+.ar-colL{flex:3 1 460px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.ar-colL>.ar-rank{flex:none;max-width:none}
+.ar-lfold-card{padding:8px 20px}
+.ar-lfold-card .ar-leagues{padding-bottom:10px}
+.ar-lfold{width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0;border:0;background:transparent;color:var(--text-primary);font:inherit;text-align:left;cursor:pointer;border-radius:10px}
 .ar-h2{font:800 18px/1.25 var(--font-sans)}
 .ar-me{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:var(--ar-row);border:1px dashed var(--border-strong)}
 .ar-me__t{flex:1;min-width:0;font:500 13.5px/1.4 var(--font-sans);color:var(--text-secondary)}
@@ -206,7 +218,8 @@
 .ar-row__who{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .ar-row__n{font:600 14px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ar-row[aria-current="true"] .ar-row__n{font-weight:800}
-.ar-row__m{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font:500 12px var(--font-sans);color:var(--text-tertiary)}
+/* G10.9: uma linha só (as linhas do ranking ficam todas com a mesma altura no celular) */
+.ar-row__m{display:flex;gap:8px;flex-wrap:nowrap;overflow:hidden;white-space:nowrap;min-width:0;align-items:center;font:500 12px var(--font-sans);color:var(--text-tertiary)}
 .ar-row__m .ar-streak{display:inline-flex;align-items:center;gap:3px;color:var(--streak-text)}
 .ar-row__v{flex:none;font:700 14px var(--font-mono);font-variant-numeric:tabular-nums}
 .ar-zone{display:flex;align-items:center;gap:6px;margin:6px 10px;padding-top:6px;font:700 11px var(--font-sans);letter-spacing:.08em;text-transform:uppercase;border-top:1px dashed}
@@ -229,6 +242,9 @@
 .ar-lbadge{width:56px;height:56px;flex:none;border-radius:18px;display:grid;place-items:center;background:rgba(255,255,255,.95);box-shadow:0 4px 10px rgba(5,42,90,.25)}
 .ar-lbadge--sm{width:40px;height:40px;border-radius:13px;box-shadow:none}
 .ar-lbadge .sm-icon{background-color:currentColor}
+/* escudo 3D da liga (arte do pacote): sem a caixa branca, como no pacote */
+.ar-lart{flex:none;display:block;line-height:0}
+.ar-leagues>li:has(.ar-lart){padding-top:2px;padding-bottom:2px}
 .ar-leagues{list-style:none;margin:0;padding:0}
 .ar-leagues>li{display:flex;align-items:center;gap:12px;padding:8px 4px;box-shadow:0 1px 0 var(--border-subtle)}
 .ar-leagues>li:last-child{box-shadow:none}

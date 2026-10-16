@@ -11,7 +11,7 @@ import { gapText, levelProgress, movementText, topLabel, xpLines } from "../novo
 const backend: any = { rpc: vi.fn() };
 const boot: any = { profile: { name: "Ana Maria Souza" }, play: { enabled: true, flags: { leaderboard: true, leagues: true, coins: true, trail: true }, names: { score: "Stazia Score", coins: "Stazia Coins" }, streak: 3 } };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot, user: { id: "u1" } }) }));
-vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
+vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false, ShellActions: ({ children }: any) => children }));
 
 import { TrailScreen } from "../novo/app/play/TrailScreen.jsx";
 import { LeaderboardScreen } from "../novo/app/play/LeaderboardScreen.jsx";

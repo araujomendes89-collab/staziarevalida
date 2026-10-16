@@ -1,13 +1,14 @@
 // Trilha de aprendizado (app_trail): Área → temas mais cobrados → simulado da área.
 // Cada etapa tem estado (bloqueada, disponível, em andamento, concluída, dominada); abrir uma etapa
 // cria um treino só daquele tema (app_start_trail_node). Visual do pacote "Novas telas" (onda 6, 15/10/2026):
-// computador = trilha em zigue-zague + coluna com "Próxima etapa"; tablet = uma coluna; celular = áreas com arte,
+// computador e tablet deitado (a partir de 960 px) = trilha em zigue-zague + coluna com "Próxima etapa"; tablet em pé = uma coluna
+// com "Próxima etapa" primeiro (G10.2, 16/10/2026); celular = áreas com arte,
 // cartão azul primeiro e a lista curta com "Ver as N etapas + simulado". Os dados são os de sempre.
 import React from "react";
 import { Banner, Icon } from "../../ds";
 import { useSession } from "../session.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
-import { AreaTile, Panel, RichIcon, useBreakpoint } from "../evolucao/ui.jsx";
+import { AreaTile, Panel, RichIcon, useBreakpoint, useNarrow } from "../evolucao/ui.jsx";
 import { NODE_STATE } from "./format.js";
 import { PlayError, Skeleton } from "./components.jsx";
 import "./play.css";
@@ -161,6 +162,8 @@ export function TrailScreen({ go }) {
   const { backend, boot } = useSession();
   const bp = useBreakpoint();
   const narrow = bp === "narrow";
+  // G10.2 (16/10/2026): a coluna lateral vale a partir de 960 px (regra só desta tela; o useBreakpoint segue igual para as outras)
+  const twoCols = !useNarrow(959);
   const [area, setArea] = React.useState(() => (typeof localStorage !== "undefined" && localStorage.getItem("smn-trail-area")) || AREAS[0].id);
   const [data, setData] = React.useState(null);
   const [error, setError] = React.useState(null);
@@ -279,32 +282,55 @@ export function TrailScreen({ go }) {
     );
   }
 
+  const trail = (
+    <Panel className="ar-trail" aria-label={`Trilha de ${current.label}`}>
+      <div className="ar-trail__head">
+        <div>
+          <div className="ar-kicker ar-trail__kicker">Trilha</div>
+          <h2 className="ar-trail__name">{current.label}</h2>
+        </div>
+        <TrailProgress area={current} />
+      </div>
+      <ol className="ar-steps">
+        {current.nodes.map((n) => (
+          <Step key={n.topic} node={n} current={n === next} busy={busy} onOpen={open} />
+        ))}
+        <SimStep area={current} busy={busy} onOpen={() => start(null)} />
+      </ol>
+    </Panel>
+  );
+  const nextCard = <NextCard area={current} next={next} busy={busy} onStart={start} />;
+  const extras = (
+    <>
+      <HowItWorks data={data} defaultOpen />
+      <button type="button" className="ar-link" onClick={() => go("temas")}>
+        Ver Grandes Temas por incidência <Icon name="chevron-right" size={16} />
+      </button>
+    </>
+  );
+
+  // tablet em pé (720 a 959 px): uma coluna com "Próxima etapa" antes da trilha (decisão D8, provisória), como no celular
+  if (!twoCols) {
+    return (
+      <div className="ev ar">
+        {tabs}
+        {error && <Banner tone="danger">{error}</Banner>}
+        {nextCard}
+        {trail}
+        {extras}
+      </div>
+    );
+  }
+
   return (
     <div className="ev ar">
       {tabs}
       {error && <Banner tone="danger">{error}</Banner>}
       <div className="ar-cols">
-        <Panel className="ar-trail" aria-label={`Trilha de ${current.label}`}>
-          <div className="ar-trail__head">
-            <div>
-              <div className="ar-kicker ar-trail__kicker">Trilha</div>
-              <h2 className="ar-trail__name">{current.label}</h2>
-            </div>
-            <TrailProgress area={current} />
-          </div>
-          <ol className="ar-steps">
-            {current.nodes.map((n) => (
-              <Step key={n.topic} node={n} current={n === next} busy={busy} onOpen={open} />
-            ))}
-            <SimStep area={current} busy={busy} onOpen={() => start(null)} />
-          </ol>
-        </Panel>
-        <div className="ar-side" style={bp === "wide" ? undefined : { position: "static", flexBasis: "100%" }}>
-          <NextCard area={current} next={next} busy={busy} onStart={start} />
-          <HowItWorks data={data} defaultOpen />
-          <button type="button" className="ar-link" onClick={() => go("temas")}>
-            Ver Grandes Temas por incidência <Icon name="chevron-right" size={16} />
-          </button>
+        {trail}
+        <div className="ar-side">
+          {nextCard}
+          {extras}
         </div>
       </div>
     </div>

@@ -11,7 +11,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 const backend: any = { rpc: vi.fn() };
 const session: { boot: any } = { boot: null };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot: session.boot, user: { id: "u1" } }) }));
-vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
+vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false, ShellActions: ({ children }: any) => children }));
 
 import { TrailScreen } from "../novo/app/play/TrailScreen.jsx";
 import { MissionsScreen } from "../novo/app/play/MissionsScreen.jsx";
@@ -190,7 +190,11 @@ describe("Ranking e Liga", () => {
     expect(await within(liga).findByText("Liga Bronze")).toBeInTheDocument();
     expect(within(liga).getByText("Promoção")).toBeInTheDocument();
     expect(within(liga).getByText("Rebaixamento")).toBeInTheDocument();
-    expect(within(liga).getByText("Sua liga")).toBeInTheDocument();
+    // G10.3 (D4, provisória): no computador, com grupo, "As N ligas" fica embaixo do ranking e abre ao tocar
+    const ligas = screen.getByRole("button", { name: "As 3 ligas" });
+    expect(ligas).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(ligas);
+    expect(within(screen.getByRole("region", { name: "As 3 ligas" })).getByText("Sua liga")).toBeInTheDocument();
     expect(within(liga).getByRole("button", { name: /Você/ })).toHaveAttribute("aria-current", "true");
   });
 
