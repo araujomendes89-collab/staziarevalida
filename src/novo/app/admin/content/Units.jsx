@@ -184,7 +184,7 @@ function UnitVersion({ id, go, isAdmin, isStaff, reviewerAreas }) {
       <ReviewFlags flags={v.review_flags} />
       <Decisions data={data} isAdmin={isAdmin} isStaff={isStaff} reviewerAreas={reviewerAreas} onChanged={recarrega} onPublish={() => setPublishing(true)} go={go} hideLegacyPublish={Boolean(visao)} />
       {publishing && isAdmin && v.status === "approved" && <PublishPanel version={v} publishFn={visao ? "app_ch_unit_publish" : "app_ch_publish"} onClose={() => setPublishing(false)} onPublished={(msg) => (setPublishing(false), setNotice(msg), recarrega())} />}
-      <Editor key={v.content_hash} version={v} claims={data.claims} editable={editable} canNewVersion={isStaff && ["published", "needs_update"].includes(v.status)} podeFormatar={isStaff && v.status === "published"} onNewVersion={(novo) => go("unidades", { versao: novo })} onSaved={reload} />
+      <Editor key={v.content_hash} version={v} titulo={data.title} claims={data.claims} editable={editable} canNewVersion={isStaff && ["published", "needs_update"].includes(v.status)} podeFormatar={isStaff && v.status === "published"} onNewVersion={(novo) => go("unidades", { versao: novo })} onSaved={reload} />
       <Materials data={data} canRegenerate={editable} onChanged={recarrega} />
       <Section title={`Afirmações e evidências (${data.claims.length})`}>
         <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Lista só da equipe: cada afirmação com a fonte, a página e a citação literal. O aluno nunca vê esta lista.</p>
@@ -352,7 +352,7 @@ function Decisions({ data, isAdmin, isStaff, reviewerAreas, onChanged, onPublish
  * Abre em modo leitura; "Editar" liga a edição (equipe, versão editável) e "Cancelar" descarta. Versão no ar não se edita no lugar:
  * "Editar (criar versão nova)" chama app_ch_new_version (só published/needs_update; a versão no ar continua até a nova ser publicada).
  */
-function Editor({ version, claims, editable: podeEditar, canNewVersion = false, podeFormatar = false, onNewVersion, onSaved }) {
+function Editor({ version, titulo, claims, editable: podeEditar, canNewVersion = false, podeFormatar = false, onNewVersion, onSaved }) {
   const { backend } = useSession();
   const original = () => structuredClone(version.content.sections ?? []);
   const [sections, setSections] = React.useState(original);
@@ -483,7 +483,7 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
           <EditorAula
             key={`editor-aula-${chaveEditorAula}`}
             content={{ ...version.content, sections, doc_config: docConfig ?? undefined }}
-            contexto={{ versionId: version.id, contentHash: version.content_hash, aoRecarregar: onSaved }}
+            contexto={{ versionId: version.id, contentHash: version.content_hash, titulo, versao: version.version, aoRecarregar: onSaved }}
             aoMudar={(c) => {
               setSections(c.sections);
               setDocConfig(c.doc_config ?? null);
