@@ -55,8 +55,10 @@ export interface CueAgendado {
 
 export interface OpcoesAgenda {
   intensidade?: Intensidade;
-  /** Rodizio (indice) das variantes de efeito. */
+  /** Rodizio (indice) das variantes de efeito: deterministico (video, folha de escuta, testes). Ignorado quando ha `sortear`. */
   rodizio?: number;
+  /** No app: sorteia um dos sons aprovados de cada momento, sem repetir o ultimo (ver sorteioSom.ts). */
+  sortear?: (variantes: readonly string[]) => string;
   rebaixada?: boolean;
   voz?: PreferenciaVoz;
   seed?: number;
@@ -74,7 +76,7 @@ export function montarAgenda(def: EventoCatalogo, o: OpcoesAgenda = {}): { agend
   const rodizio = o.rodizio ?? 0;
   const agenda: CueAgendado[] = def.som
     .map((x) => {
-      const cue = o.rebaixada && x.curta ? x.curta : x.variantes && x.variantes.length > 1 ? x.variantes[rodizio % x.variantes.length] : x.cue;
+      const cue = o.rebaixada && x.curta ? x.curta : x.variantes && x.variantes.length > 1 ? (o.sortear ? o.sortear(x.variantes) : x.variantes[rodizio % x.variantes.length]) : x.cue;
       return { cue, at: momentoMs(inten, x.momento) + x.delta, gain: x.gain };
     })
     .sort((a, b) => a.at - b.at);

@@ -13,5 +13,7 @@ export { CENARIO_INFO } from './cenarios/registro';
 export { Cenario } from './cenarios/Cenario';
 export * from './tipos';
 export { escolherFigurino } from './figurino';
+export { sortearVariante, criarSorteio, memoriaLocal, chaveDoConjunto, sortearSomDoApp, CHAVE_MEMORIA_SORTEIO } from './sorteioSom';
+export type { MemoriaSorteio } from './sorteioSom';
 export { FIGURINOS, PAPEIS, ROTULO_FIGURINO, resolverPose } from '../mascot/figurinos';
 export type { Figurino, Papel } from '../mascot/figurinos';

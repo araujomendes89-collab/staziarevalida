@@ -10,6 +10,7 @@ import { Cenario } from './cenarios/Cenario';
 import { CENARIO_INFO } from './cenarios/registro';
 import { DURACAO, TEMPOS, frameMascote, frameTextos, momentoMs, particulasAt, type ParticulaCz } from './coreografia';
 import { montarAgenda, VOZ_PADRAO, type PreferenciaVoz } from './agendaSom';
+import { sortearSomDoApp } from './sorteioSom';
 import { escolherFigurino } from './figurino';
 import { escolherFrase, preencher, semente, textoDetalhe, textoTitulo } from './frases';
 import type { Catalogo, Dados, EventoCatalogo, Intensidade, Momento } from './tipos';
@@ -81,13 +82,6 @@ const GROUND = 150;
 const STAND: Record<Intensidade, number> = { micro: 56, pequena: 168, media: 236, grande: 266, epica: 280 };
 const REDUZIDO_MICRO_MS = 4000;
 
-/** Rodizio das variantes de um evento micro (contador por evento, na sessao): nao repete o mesmo som em seguida. */
-const contadorRodizio = new Map<string, number>();
-function rodizio(id: string): number {
-  const n = contadorRodizio.get(id) ?? 0;
-  contadorRodizio.set(id, n + 1);
-  return n;
-}
 
 /* ---------------------------------------------------------------- relogio */
 function useRelogio(fim: number, parado: boolean, inicial: number): [number, (ms: number) => void] {
@@ -243,12 +237,13 @@ export function CelebracaoStazi({
   const montada = useMemo(() => {
     if (!def) return { agenda: [], fala: null };
     const rebaixada = !!intensidade && intensidade !== def.intensidade;
-    const m = montarAgenda(def, { intensidade: inten, rodizio: rodizio(def.id), rebaixada, voz: voz ?? VOZ_PADRAO, seed: seedSom, vozesDisponiveis: Object.keys(sound?.vozes ?? {}), vozPorEvento: sound?.vozPorEvento });
+    // varios sons aprovados para o mesmo momento: sorteia um, sem repetir o ultimo (so quando o som vai tocar; video/escuta ficam no 1o)
+    const m = montarAgenda(def, { intensidade: inten, sortear: somLigado ? sortearSomDoApp : undefined, rebaixada, voz: voz ?? VOZ_PADRAO, seed: seedSom, vozesDisponiveis: Object.keys(sound?.vozes ?? {}), vozPorEvento: sound?.vozPorEvento });
     const dono = sound?.porEvento?.[def.id];
     if (dono?.url) return { agenda: [...m.agenda.filter((c) => c.cue.startsWith('voz:')), { cue: '__dono', at: momentoMs(inten, (dono.momento as Momento) ?? 'climax'), gain: dono.gain ?? 1 }].sort((a, b) => a.at - b.at), fala: m.fala };
     return m;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [def, inten, intensidade, sound?.porEvento, sound?.vozes, sound?.vozPorEvento, voz?.estilo, voz?.duronaNivel, seedSom]);
+  }, [def, inten, intensidade, sound?.porEvento, sound?.vozes, sound?.vozPorEvento, voz?.estilo, voz?.duronaNivel, seedSom, somLigado]);
   const agenda = montada.agenda;
   const urlsDoEvento = useMemo(() => {
     const out: Record<string, string> = {};
