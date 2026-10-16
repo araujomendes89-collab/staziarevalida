@@ -40,7 +40,7 @@
 .ac-admin__t small{font:400 12.5px/1.45 var(--font-sans);color:#E3F0FF}
 .ac-admin__btn{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;border:0;border-radius:11px;background:#fff;color:#052A5A;font:800 13.5px var(--font-sans);cursor:pointer}
 .ac-admin__btn:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:none}
-.ac-cols{display:grid;grid-template-columns:280px minmax(0,1fr);gap:20px;align-items:start}
+.ac-cols{display:grid;grid-template-columns:280px minmax(0,1fr);gap:20px;align-items:stretch}
 .ac-cols--mid{grid-template-columns:minmax(0,1fr)}
 .ac-nav{padding:8px;display:flex;flex-direction:column;gap:2px}
 .ac-nav__item{display:flex;align-items:center;gap:12px;padding:8px 10px;border:0;border-radius:14px;background:transparent;color:var(--text-primary);cursor:pointer;text-align:left;font-family:var(--font-sans);min-height:56px}
@@ -54,7 +54,15 @@
 .ac-nav__link:hover{background:var(--action-ghost-hover)}
 .ac-nav__link[aria-current="page"]{background:var(--selected-bg);color:var(--text-primary)}
 .ac-nav__link--out{color:var(--danger-text)}
-.ac-panel{padding:24px}
+.ac-panel{padding:24px;max-width:880px}
+/* G9.5: formulário no peso do pacote (título 800, rótulos 13,5/800, Aparência com opções de 150 px, Cancelar com contorno) */
+.ac-sh{min-width:0}
+.ac-sh__t{margin:0;font:var(--type-h4);font-weight:800;color:var(--text-primary)}
+.ac-sh__s{margin:2px 0 0;font:var(--type-body-sm);color:var(--text-secondary)}
+.ac-panel .sm-field__label{font-size:13.5px;font-weight:800}
+.ac-panel .ac-theme .sm-seg__opt{min-width:150px}
+.ac-cancel.sm-btn--ghost{border:1px solid var(--border-default);background:var(--surface-card)}
+.ac-cancel.sm-btn--ghost:hover:not(:disabled){background:var(--action-ghost-hover)}
 .ac-chips{display:flex;gap:8px;overflow-x:auto;padding:2px;scrollbar-width:thin}
 .ac-chip{flex:none;min-height:44px;display:inline-flex;align-items:center;gap:8px;padding:0 16px;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-primary);font:700 13.5px var(--font-sans);cursor:pointer;white-space:nowrap}
 .ac-chip[aria-current="page"]{border-color:var(--action-primary);background:var(--selected-bg);color:var(--text-link)}

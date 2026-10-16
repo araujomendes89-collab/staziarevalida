@@ -10,6 +10,12 @@
 .dp-evo{flex:3 1 460px;padding:20px;display:flex;flex-direction:column;gap:12px}
 .dp-areas-card{flex:2 1 320px;padding:20px;display:flex;flex-direction:column;gap:8px}
 .dp-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+/* G9.9: seletor de período compacto do pacote (32 px, mono 12,5/700, raio 11). A área de toque continua com 44 px (faixa invisível acima e abaixo). */
+.ev .dp-period .sm-seg{padding:3px;gap:2px;border-radius:11px}
+.ev .dp-period .sm-seg__opt{position:relative;height:32px;min-height:32px;padding:0 10px;border-radius:9px;font:700 12.5px/1 var(--font-mono)}
+.ev .dp-period .sm-seg__opt::after{content:"";position:absolute;left:0;right:0;top:-6px;bottom:-6px}
+.dp--narrow .dp-head{flex-wrap:nowrap}
+.dp--narrow .dp-head .ev-h2{font-size:14.5px;min-width:0}
 .dp-chart{min-width:0}
 .dp-note{margin:0;color:var(--text-secondary);font:var(--type-body-sm)}
 .dp-areas{list-style:none;margin:0;padding:0}
@@ -52,9 +58,12 @@
 .ev-tab{min-height:44px;border:0;border-radius:11px;background:transparent;color:var(--text-secondary);font:700 13px var(--font-sans);cursor:pointer}
 .ev-tab[aria-selected="true"]{background:var(--surface-card);color:var(--text-primary);box-shadow:0 1px 3px rgba(13,28,66,.12)}
 .dp--narrow .dp-evo,.dp--narrow .dp-areas-card{flex:none;padding:14px}
+.dp--narrow .dp-evo{gap:8px}
 .dp--narrow .dp-areas-card .ev-ia{width:100%}
 .dp--narrow .dp-err{padding:12px 14px;min-height:60px;align-items:center}
-@media (max-width:1100px){.dp-metric{padding:14px;gap:10px}.dp-metric__value{font-size:22px}}
+/* números menores só quando os 4 azulejos ficam estreitos de verdade (abaixo de ~170 px, ex.: 834): em 1024 e acima seguem o pacote, 26 px e 18 de respiro.
+   Em 834 o "00:06" com 26 px passaria da borda do azulejo de 161 px, por isso o corte fica em 900 e não em 760. */
+@media (max-width:900px){.dp-metric{padding:14px;gap:10px}.dp-metric__value{font-size:22px}}
 .dp-errors--stack{flex-direction:column}
 .dp-errors--stack .dp-err{flex:none}
 [data-theme="dark"] .ev-tab[aria-selected="true"]{background:var(--border-default);box-shadow:none}

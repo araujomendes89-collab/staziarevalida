@@ -12,6 +12,8 @@
 .pn--narrow .pn-hero,.pn .pn-hero{min-width:0}
 .pn-sec{display:flex;flex-direction:column;gap:12px}
 .pn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+/* G9.6: acima do celular os planos ficam sempre numa linha só, uma coluna por plano (3 colunas de ~221 px em 834, sem cartão sozinho embaixo) */
+@media (min-width:720px){.pn-grid{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}}
 .pn-card{padding:20px;display:flex;flex-direction:column;gap:14px}
 .pn-body{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1}
 .pn-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
@@ -32,3 +34,8 @@
 .pn-back{min-height:44px;display:inline-flex;align-items:center;gap:4px;padding:0 4px;border:0;background:none;color:var(--text-link);font:700 14px var(--font-sans);cursor:pointer;border-radius:10px}
 .pn-back:hover{text-decoration:underline}
 @media (max-width:719px){.pn-hero{padding:18px;border-radius:22px;gap:12px}.pn-hero__h{font-size:20px}.pn-hero__ic{width:52px;height:52px;border-radius:16px}}
+/* G9.7: aviso da assinatura como nota curta (ícone de 16 px, 13,5/400): caixa clara no computador e linha simples no celular, como no pacote */
+.pn-notice{margin:0;display:flex;align-items:flex-start;gap:10px;padding:14px 16px;border-radius:16px;background:var(--info-bg);border:1px solid var(--info-border);color:var(--info-text);font:400 13.5px/1.5 var(--font-sans)}
+.pn-notice .sm-icon,.pn-notice svg{flex:none;margin-top:2px;color:var(--text-link)}
+.pn-notice strong{font-weight:700}
+@media (max-width:719px){.pn-notice{padding:0 4px;border:0;border-radius:0;background:none;color:var(--text-secondary);font-size:13px}}

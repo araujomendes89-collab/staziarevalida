@@ -3,7 +3,7 @@
 // Os interruptores de lembrete e de alertas do protótipo saíram: o produto ainda não envia
 // notificações.
 import React from "react";
-import { Badge, Banner, Button, Icon, SectionHeader as DsSectionHeader, SegmentedControl, SelectField, TextField } from "../../ds";
+import { Badge, Banner, Button, Icon, SegmentedControl, SelectField, TextField } from "../../ds";
 import { isStaffRole } from "../admin/AdminScreen.jsx";
 import { isPhase2Locked } from "../admin/common.jsx";
 import { PASSWORD_MIN_LENGTH } from "../../data";
@@ -30,7 +30,14 @@ const SECTIONS = [
 const InlineContext = React.createContext(false);
 function SectionHeader({ title, subtitle }) {
   const inline = React.useContext(InlineContext);
-  return inline ? subtitle ? <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{subtitle}</p> : null : <DsSectionHeader title={title} subtitle={subtitle} />;
+  if (inline) return subtitle ? <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{subtitle}</p> : null;
+  // mesma marcação do SectionHeader do design system, com o título em 800 como no pacote (estilo em account.css)
+  return (
+    <div className="ac-sh">
+      <h2 className="ac-sh__t">{title}</h2>
+      {subtitle && <p className="ac-sh__s">{subtitle}</p>}
+    </div>
+  );
 }
 const MAIN_SECTIONS = SECTIONS.filter((s) => s.id !== "ajuda");
 const HELP = SECTIONS.find((s) => s.id === "ajuda");
@@ -63,7 +70,7 @@ function SaveBar({ saving, status, onCancel, dirty }) {
         {status === "saved" && "Alterações salvas."}
         {status === "error" && "Não foi possível salvar. Confira os campos e tente de novo."}
       </span>
-      <Button variant="ghost" onClick={onCancel} disabled={!dirty || saving}>
+      <Button variant="ghost" className="ac-cancel" onClick={onCancel} disabled={!dirty || saving}>
         Cancelar
       </Button>
       <Button type="submit" loading={saving} disabled={!dirty}>
@@ -113,7 +120,7 @@ function PhoneInputs({ code, number, onChange, error, codeError, id }) {
   const [other, setOther] = React.useState(() => !COUNTRY_CODES.has(code));
   const selectValue = !other && COUNTRY_CODES.has(code) ? code : "outro";
   return (
-    <div style={{ display: "grid", gridTemplateColumns: other ? "minmax(150px,1fr) 110px minmax(0,2fr)" : "minmax(150px,1fr) minmax(0,2fr)", gap: 12, alignItems: "start" }}>
+    <div style={{ display: "grid", gridTemplateColumns: other ? "minmax(150px,1fr) 110px minmax(0,2fr)" : "minmax(0,1fr) minmax(0,1fr)", gap: 12, alignItems: "start" }}>
       <SelectField
         id={`${id}-country`}
         label="País do WhatsApp"
@@ -179,7 +186,9 @@ function AccountSection({ email }) {
         <div className="sm-field__label" style={{ marginBottom: 10 }}>
           Aparência
         </div>
-        <SegmentedControl label="Aparência" value={boot.profile.theme} onChange={(theme) => updateProfile({ theme }).catch(() => {})} options={THEMES} />
+        <div className="ac-theme">
+          <SegmentedControl label="Aparência" value={boot.profile.theme} onChange={(theme) => updateProfile({ theme }).catch(() => {})} options={THEMES} />
+        </div>
       </div>
       <SaveBar saving={form.saving} status={form.status} dirty={form.dirty || phoneDirty} onCancel={() => (form.reset(), setPhone(savedPhone), setPhoneKey((k) => k + 1), setShowPhoneError(false))} />
     </form>
@@ -512,7 +521,9 @@ export function AccountScreen({ go }) {
     };
   }, [backend, isElite, eliteKey, tick]);
   const bp = useBreakpoint();
-  const [section, setSection] = React.useState("conta");
+  // no celular a lista abre com as seções fechadas (D9); no computador e no tablet a primeira seção já aparece
+  const [section, setSection] = React.useState(() => (bp === "narrow" ? "" : "conta"));
+  const active = section || "conta";
   const profile = boot.profile;
   const plan = planBadge(boot.subscription, boot.role, Boolean(boot.reviewer_areas?.length));
   const supportEmail = useSupportEmail();
@@ -547,9 +558,10 @@ export function AccountScreen({ go }) {
       <Badge tone="info" size="sm">{profile.phase === 2 && !phase2Locked ? "2ª fase" : "1ª fase"}</Badge>
     </div>
   );
+  // no celular o cartão "Seu plano" sai (D9): a linha "Meu plano" logo abaixo já leva à tela do plano
   const notices = (
     <>
-      {summary && <PlanCard summary={summary} email={supportEmail} />}
+      {summary && bp !== "narrow" && <PlanCard summary={summary} email={supportEmail} />}
       {lock && (
         <Banner tone="warning" icon="lock" title={lock.title} action={<Button size="sm" variant="secondary" onClick={() => go("planos")}>Ver planos</Button>}>
           {lock.text}
@@ -663,7 +675,7 @@ export function AccountScreen({ go }) {
         {bp === "wide" ? (
           <Panel as="nav" className="ac-nav" aria-label="Seções da conta">
             {MAIN_SECTIONS.map((s) => (
-              <button key={s.id} type="button" className="ac-nav__item" aria-current={section === s.id ? "page" : undefined} onClick={() => setSection(s.id)}>
+              <button key={s.id} type="button" className="ac-nav__item" aria-current={active === s.id ? "page" : undefined} onClick={() => setSection(s.id)}>
                 <Tile tone={s.tone} size={40} radius={12}><RichIcon name={s.icon} size={26} /></Tile>
                 <span className="ac-row__t"><b>{s.label}</b><small>{s.sub}</small></span>
               </button>
@@ -681,14 +693,14 @@ export function AccountScreen({ go }) {
         ) : (
           <nav aria-label="Seções da conta" className="ac-chips">
             {MAIN_SECTIONS.map((s) => (
-              <button key={s.id} type="button" className="ac-chip" aria-current={section === s.id ? "page" : undefined} onClick={() => setSection(s.id)}>
+              <button key={s.id} type="button" className="ac-chip" aria-current={active === s.id ? "page" : undefined} onClick={() => setSection(s.id)}>
                 <RichIcon name={s.icon} size={22} />
                 {s.label}
               </button>
             ))}
           </nav>
         )}
-        <Panel className="ac-panel">{content(section || "conta")}</Panel>
+        <Panel className="ac-panel">{content(active)}</Panel>
         {bp === "mid" && (
           <div className="ac-foot2">
             <button type="button" className="ac-ghost" aria-current={section === "ajuda" ? "page" : undefined} onClick={() => setSection("ajuda")}>

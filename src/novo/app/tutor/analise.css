@@ -11,6 +11,12 @@
 .an-cols{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
 .an-main{flex:3 1 440px;display:flex;flex-direction:column;gap:20px;min-width:0}
 .an-side{flex:2 1 300px;display:flex;flex-direction:column;gap:16px;min-width:0}
+/* G9.8: quando a coluna lateral cai para baixo (as duas não cabem lado a lado: 440 + 20 + 300 px), Evolução e Revisões ficam lado a lado e "Com o Tutor" ocupa a linha toda */
+.an-cols{container-type:inline-size}
+@container (max-width:759px){.an-side{flex-basis:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}.an-side>.an-tutor{grid-column:1/-1}}
+/* G9.13: os 5 intervalos das revisões cabem numa linha na coluna lateral estreita (1024 px) e no cartão de meia largura (834 px) */
+.an-side .an-chips{gap:5px}
+.an-side .an-chip{padding:0 8px}
 .an-mastery{padding:20px;display:flex;flex-direction:column;gap:8px}
 .an--narrow .an-mastery{padding:4px 14px}
 .an-barline{display:flex;align-items:center;gap:10px}

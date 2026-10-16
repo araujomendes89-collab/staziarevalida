@@ -43,11 +43,13 @@ function useWidth() {
   return [ref, width];
 }
 
+/** `height` é a altura mínima: em cartão largo o gráfico cresce junto (1/3 da largura, até 300) para não ficar achatado. */
 function AccuracyChart({ daily, days, height }) {
   const [ref, width] = useWidth();
+  const H = Math.round(Math.min(300, Math.max(height, width / 3)));
   return (
     <div ref={ref} className="dp-chart">
-      <ChartBody daily={daily} days={days} W={width} H={height} />
+      <ChartBody daily={daily} days={days} W={width} H={H} />
     </div>
   );
 }
@@ -154,7 +156,12 @@ function AreasList({ areas }) {
 }
 
 function PeriodControl({ days, setDays }) {
-  return <SegmentedControl label="Período" value={days} onChange={setDays} options={PERIODS} />;
+  // variante compacta do pacote (32 px, fonte mono): o estilo fica em desempenho.css (.dp-period)
+  return (
+    <div className="dp-period">
+      <SegmentedControl label="Período" value={days} onChange={setDays} options={PERIODS} />
+    </div>
+  );
 }
 
 function Metric({ tone, icon, label, value, caption, captionTone }) {

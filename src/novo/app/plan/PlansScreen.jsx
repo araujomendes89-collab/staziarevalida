@@ -2,7 +2,7 @@
 // escreveu em Administração > Planos (função app_plans_info), e a situação da própria pessoa. NÃO tem preço, NÃO tem botão de assinar
 // e não leva a pagamento nenhum: a assinatura pelo app ainda não está disponível (a Stripe está parada) e os preços só entram depois.
 import React from "react";
-import { Badge, Banner, Button, EmptyState, Icon } from "../../ds";
+import { Badge, Button, EmptyState, Icon } from "../../ds";
 import { useSession } from "../session.jsx";
 import { currentPlanCode, hasFullAccess, planStatusLabel, usePlanLock } from "./planAccess.js";
 import { Panel, RichIcon, Tile, useNarrow } from "../evolucao/ui.jsx";
@@ -97,10 +97,14 @@ export function PlansScreen({ go }) {
   const paidParts = info?.tutor_paid ? "Os simulados completos, o Tutor e as estações Pro" : "Os simulados completos e as estações Pro";
 
   const narrow = useNarrow();
+  // nota curta do pacote (G9.7): os mesmos textos do aviso, numa linha com ícone pequeno
   const notice = (
-    <Banner tone="info" title="A assinatura pelo app ainda não está disponível">
-      Esta página só mostra o que cada plano inclui. Ainda não há cobrança nem preço aqui.
-    </Banner>
+    <p className="pn-notice" role="note">
+      <Icon name="info" size={16} />
+      <span>
+        <span>A assinatura pelo app ainda não está disponível</span>. Esta página só mostra o que cada plano inclui. <strong>Ainda não há cobrança nem preço aqui.</strong>
+      </span>
+    </p>
   );
   const situation = (
     <section className="pn-hero" aria-label="Sua situação">

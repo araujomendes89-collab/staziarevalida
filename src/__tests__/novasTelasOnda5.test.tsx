@@ -176,7 +176,13 @@ describe("Conta", () => {
     render(<AccountScreen go={vi.fn()} />);
     expect(screen.getByText("Plano e acesso")).toBeInTheDocument();
     const row = screen.getByRole("button", { name: /Minha conta/ });
-    expect(row).toHaveAttribute("aria-expanded", "true"); // a primeira seção já abre
+    // D9 (G9.3): no celular a lista abre com as seções fechadas e sem o cartão "Seu plano" (a linha "Meu plano" já existe)
+    expect(row).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByLabelText("Nome completo")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Seu plano" })).toBeNull();
+    expect(screen.getByRole("button", { name: /Meu plano/ })).toBeInTheDocument();
+    fireEvent.click(row);
+    expect(row).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByLabelText("Nome completo")).toHaveValue("Aluno Teste");
     fireEvent.click(screen.getByRole("button", { name: /Segurança/ }));
     expect(screen.getByText("Nova senha")).toBeInTheDocument();
