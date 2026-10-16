@@ -31,7 +31,7 @@ describe('sons do Veo 3.1 (rodada 6: audio nativo)', () => {
       expect((CUES_NOVOS as readonly string[]).includes(c), c).toBe(true);
     }
   });
-  it('arquivos: mp3 valido, <= 2,5 s (XP <= 0,8 s; moeda <= 1 s), >= 0,4 s, pico <= -3 dBFS, pequeno', () => {
+  it('arquivos: mp3 valido, <= 2,5 s (XP <= 0,8 s; moeda <= 1 s; marco de 7 dias e rebaixamento <= 2,65 s; resultado e lendaria das ligas <= 3,05 s), >= 0,4 s, pico <= -3 dBFS, pequeno', () => {
     for (const [c, v] of Object.entries(M)) {
       const f = resolve(dir, `veo/${c}.mp3`);
       expect(existsSync(f), c).toBe(true);
@@ -39,7 +39,9 @@ describe('sons do Veo 3.1 (rodada 6: audio nativo)', () => {
       expect(b[0] === 0x49 || b[0] === 0xff, c).toBe(true);
       expect(statSync(f).size / 1024, c).toBeLessThanOrEqual(25);
       expect(v.dur_s, c).toBeGreaterThanOrEqual(0.4);
-      expect(v.dur_s, c).toBeLessThanOrEqual(v.grupo === 'xp' ? 0.8 : v.grupo === 'moeda' ? 1.0 : 2.55);
+      // sons aprovados pelo dono em 16/10 como estao: marco de 7 dias (2,57 s), rebaixamento (ate 2,62 s), resultado e lendaria das ligas (3,02 s)
+      const teto = v.grupo === 'xp' ? 0.8 : v.grupo === 'moeda' ? 1.0 : ['liga-resultado', 'liga-lendaria'].includes(v.grupo) ? 3.05 : ['streak7', 'liga-desce'].includes(v.grupo) ? 2.65 : 2.55;
+      expect(v.dur_s, c).toBeLessThanOrEqual(teto);
       expect(v.pico_db, c).toBeLessThanOrEqual(-2.9);
     }
   });

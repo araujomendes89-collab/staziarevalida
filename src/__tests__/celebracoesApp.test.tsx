@@ -153,6 +153,23 @@ describe("Do banco para o catálogo (funções puras)", () => {
     expect(eventosDaLiga({ enabled: false }, { hoje: HOJE })).toEqual([]);
   });
 
+  it("liga: começo da semana (a batalha começou) só com temporada aberta desta semana e o aluno inscrito; uma chave por semana", () => {
+    const ini = new Date(`${HOJE}T12:00:00Z`);
+    ini.setUTCDate(ini.getUTCDate() - 2);
+    const segunda = ini.toISOString().slice(0, 10);
+    const aberta = { enabled: true, joined: true, leagues: LIGAS, league: LIGAS.find((l: any) => l.slug === "ouro"), season: { starts_on: segunda, ends_on: HOJE } };
+    const [e] = eventosDaLiga(aberta, { hoje: HOJE });
+    expect(e).toMatchObject({ id: "liga-inicio-semana", dados: { liga: "Ouro", nivel_liga: 3 }, chave: `liga:${segunda}:inicio`, importante: false });
+    // junto com o fechamento da semana passada: primeiro o resultado, depois a semana nova
+    const junto = eventosDaLiga({ ...aberta, history: [{ starts_on: "2026-10-05", league: "prata", position: 9, outcome: "stayed" }] }, { hoje: HOJE });
+    expect(junto.map((x) => x.id)).toEqual(["liga-permanencia", "liga-inicio-semana"]);
+    // não inscrito, temporada antiga ou sem temporada: nada
+    expect(eventosDaLiga({ ...aberta, joined: false }, { hoje: HOJE })).toEqual([]);
+    expect(eventosDaLiga({ ...aberta, season: { starts_on: "2026-09-01" } }, { hoje: HOJE })).toEqual([]);
+    expect(eventosDaLiga({ ...aberta, season: undefined }, { hoje: HOJE })).toEqual([]);
+    expect(eventosDaLiga({ ...aberta, enabled: false }, { hoje: HOJE })).toEqual([]);
+  });
+
   it("lote do fim da sessão: só a maior série, missões numa só (XP somado), sem chave repetida", () => {
     const lote = juntarLote([
       { id: "serie-acertos-5", dados: { n: 5 }, chave: "serie:s:5" },

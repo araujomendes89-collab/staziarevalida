@@ -106,8 +106,27 @@ export function eventoDosFlashcards(total, hoje) {
  * A promoção só é comemorada depois de confirmada no fechamento; a mesma semana nunca é comemorada duas vezes.
  */
 export function eventosDaLiga(liga, { hoje }) {
+  if (!liga?.enabled) return [];
+  return [...eventosDoFechamento(liga, { hoje }), ...eventoInicioDaSemana(liga, { hoje })];
+}
+
+/**
+ * Começo da semana da liga ("a batalha começou"): a temporada ABERTA que o banco já devolve (season.starts_on) com o aluno inscrito.
+ * Só comemora; não muda regra nenhuma. A chave é a semana: aparece uma vez por semana, na mesma consulta do fechamento.
+ */
+export function eventoInicioDaSemana(liga, { hoje }) {
+  const ini = liga?.joined && liga?.season?.starts_on ? String(liga.season.starts_on).slice(0, 10) : null;
+  if (!ini) return [];
+  const d = diasEntre(ini, hoje);
+  if (!(d >= 0 && d < 7)) return []; // temporada de outra semana (ou data do aparelho errada): nada
+  const nome = liga.league?.name ?? liga.league?.slug;
+  const pos = [...(liga.leagues ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).findIndex((l) => l.slug === liga.league?.slug);
+  return [{ id: "liga-inicio-semana", dados: { ...(nome ? { liga: nome } : {}), ...(pos >= 0 ? { nivel_liga: pos + 1 } : {}) }, chave: `liga:${ini}:inicio`, importante: false, rotulo: nome ? `Começou a semana na Liga ${nome}` : "Começou a semana da liga" }];
+}
+
+function eventosDoFechamento(liga, { hoje }) {
   const h = Array.isArray(liga?.history) ? liga.history[0] : null; // a mais recente vem primeiro
-  if (!liga?.enabled || !h?.starts_on || !h.league) return [];
+  if (!h?.starts_on || !h.league) return [];
   if (diasEntre(String(h.starts_on).slice(0, 10), hoje) > LIGA_DIAS_MAX) return [];
   const ligas = [...(liga.leagues ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   const i = ligas.findIndex((l) => l.slug === h.league);

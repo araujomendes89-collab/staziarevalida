@@ -40,6 +40,7 @@ export const DADOS_DEMO: Record<string, Dados> = {
   'liga-promocao-diamante': { liga: 'Diamante', nivel_liga: 5, posicao: 2 },
   'liga-promocao-elite': { liga: 'Elite', nivel_liga: 6, posicao: 1 },
   'liga-promocao-master': { liga: 'Revalida Master', nivel_liga: 7, posicao: 1 },
+  'liga-inicio-semana': { liga: 'Ouro', nivel_liga: 3 },
   'liga-permanencia': { liga: 'Ouro', nivel_liga: 3, posicao: 12 },
   'liga-rebaixamento': { liga: 'Prata', nivel_liga: 2, posicao: 22 },
   'liga-primeiro-lugar': { liga: 'Ouro', nivel_liga: 3, posicao: 1 },

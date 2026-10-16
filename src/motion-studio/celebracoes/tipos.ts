@@ -34,7 +34,9 @@ export type Momento = (typeof MOMENTOS)[number];
  */
 export const CUES_NOVOS = [
   /* aprovados pelo dono (bancos livres + moedas) */ 'coins-cascata', 'coins-grande', 'conquista-op2', 'lendaria', 'liga-op3', 'missao-op3', 'nivel-op3', 'recuo-3', 'sequencia-3', 'xp-3',
-  /* Veo 3.1 aprovados (no app: as 2 opcoes novas do streak-7 so entram quando o dono escolher) */ 'veo-conquista-1', 'veo-conquista-2', 'veo-erro-1', 'veo-erro-2', 'veo-lendaria-1', 'veo-lendaria-2', 'veo-liga-1', 'veo-liga-2', 'veo-missao-1', 'veo-missao-2', 'veo-moeda-1', 'veo-nivel-1', 'veo-nivel-2', 'veo-sequencia-1', 'veo-sequencia-2', 'veo-xp-1', 'veo-xp-2', 'veo-xp-3',
+  /* Veo 3.1 aprovados (rodada 6) */ 'veo-conquista-1', 'veo-conquista-2', 'veo-erro-1', 'veo-erro-2', 'veo-lendaria-1', 'veo-lendaria-2', 'veo-liga-1', 'veo-liga-2', 'veo-missao-1', 'veo-missao-2', 'veo-moeda-1', 'veo-nivel-1', 'veo-nivel-2', 'veo-sequencia-1', 'veo-sequencia-2', 'veo-xp-1', 'veo-xp-2', 'veo-xp-3',
+  /* Veo 3.1, rodada 7 (escolhas do dono em 16/10/2026, 20h23) */ 'veo-r7-missao-1', 'veo-r7-missao-2', 'veo-r7-nivel-1', 'veo-r7-nivel-2', 'veo-r7-lendaria-1', 'veo-r7-lendaria-2', 'veo-r7-sequencia-1', 'veo-r7-sequencia-2', 'veo-r7-streak7-1', 'veo-r7-conquista-1', 'veo-r7-conquista-2', 'veo-r7-erro-1',
+  /* Veo 3.1, sons de batalha das ligas (escolhas do dono em 16/10/2026, 20h26) */ 'veo-liga-batalha-2', 'veo-liga-sobe-1', 'veo-liga-sobe-2', 'veo-liga-sobe-3', 'veo-liga-desce-1', 'veo-liga-desce-2', 'veo-liga-desce-3', 'veo-liga-manteve-1', 'veo-liga-manteve-1b', 'veo-liga-manteve-2', 'veo-liga-manteve-2b', 'veo-liga-ultrapassa-1', 'veo-liga-resultado-3', 'veo-liga-lendaria-3',
   /* arquivo do dono (direitos confirmados por ele em 15/10/2026) e derivados */ 'hee-hee', 'hee-hee-2', 'hee-hee-3',
 ] as const;
 /** Sons sintetizados por codigo (LEGADO v1): so reserva/comparacao. (As rodadas Lyria infantil e gamer adulto foram arquivadas fora do repositorio.) */
@@ -52,7 +54,7 @@ export type Dados = Partial<Record<Variavel, number | string>>;
 
 export interface SomCue {
   cue: CueId;
-  /** Rodizio: toca uma destas por vez (micro nao cansa). A primeira e a padrao da agenda/video. */
+  /** Sons aprovados para o mesmo momento: no app, um sorteado por vez, sem repetir o ultimo (ver sorteioSom.ts). A primeira e a padrao da agenda/video. */
   variantes?: CueId[];
   /** Versao curta (2 a 3 s) usada quando a celebracao vem rebaixada (varios eventos juntos). */
   curta?: CueId;

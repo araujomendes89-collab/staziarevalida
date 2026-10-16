@@ -31,13 +31,13 @@
    },
    "som": [
     {
-     "cue": "veo-sequencia-2",
+     "cue": "veo-r7-sequencia-1",
      "momento": "climax",
      "delta": 0,
      "gain": 0.6,
      "variantes": [
-      "veo-sequencia-2",
-      "sequencia-3"
+      "veo-r7-sequencia-1",
+      "veo-r7-sequencia-2"
      ]
     }
    ],
@@ -104,10 +104,14 @@
    },
    "som": [
     {
-     "cue": "veo-sequencia-2",
+     "cue": "veo-r7-sequencia-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 0.4
+     "gain": 0.4,
+     "variantes": [
+      "veo-r7-sequencia-1",
+      "veo-r7-sequencia-2"
+     ]
     }
    ],
    "numero": {
@@ -171,10 +175,14 @@
    },
    "som": [
     {
-     "cue": "veo-sequencia-1",
+     "cue": "veo-r7-sequencia-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 0.4
+     "gain": 0.4,
+     "variantes": [
+      "veo-r7-sequencia-1",
+      "veo-r7-sequencia-2"
+     ]
     }
    ],
    "numero": {
@@ -239,10 +247,14 @@
    },
    "som": [
     {
-     "cue": "veo-sequencia-1",
+     "cue": "veo-r7-sequencia-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 0.35
+     "gain": 0.35,
+     "variantes": [
+      "veo-r7-sequencia-1",
+      "veo-r7-sequencia-2"
+     ]
     }
    ],
    "numero": {
@@ -306,7 +318,7 @@
    },
    "som": [
     {
-     "cue": "sequencia-3",
+     "cue": "veo-r7-streak7-1",
      "momento": "climax",
      "delta": 0,
      "gain": 0.7
@@ -592,10 +604,14 @@
    },
    "som": [
     {
-     "cue": "veo-lendaria-1",
+     "cue": "veo-r7-lendaria-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 0.9
+     "gain": 0.9,
+     "variantes": [
+      "veo-r7-lendaria-1",
+      "veo-r7-lendaria-2"
+     ]
     }
    ],
    "numero": {
@@ -659,10 +675,14 @@
    },
    "som": [
     {
-     "cue": "veo-lendaria-2",
+     "cue": "veo-r7-lendaria-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 1.0
+     "gain": 1.0,
+     "variantes": [
+      "veo-r7-lendaria-1",
+      "veo-r7-lendaria-2"
+     ]
     }
    ],
    "numero": {
@@ -1434,10 +1454,14 @@
    },
    "som": [
     {
-     "cue": "veo-missao-1",
+     "cue": "veo-r7-missao-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 0.65
+     "gain": 0.65,
+     "variantes": [
+      "veo-r7-missao-1",
+      "veo-r7-missao-2"
+     ]
     },
     {
      "cue": "hee-hee-2",
@@ -1649,15 +1673,19 @@
    },
    "som": [
     {
-     "cue": "veo-nivel-1",
+     "cue": "veo-r7-nivel-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 0.85
+     "gain": 0.85,
+     "variantes": [
+      "veo-r7-nivel-1",
+      "veo-r7-nivel-2"
+     ]
     },
     {
      "cue": "hee-hee-3",
      "momento": "climax",
-     "delta": 2050,
+     "delta": 2550,
      "gain": 0.8
     }
    ],
@@ -1795,7 +1823,7 @@
    },
    "som": [
     {
-     "cue": "veo-nivel-2",
+     "cue": "veo-liga-ultrapassa-1",
      "momento": "climax",
      "delta": 0,
      "gain": 0.8
@@ -1803,7 +1831,7 @@
     {
      "cue": "hee-hee-2",
      "momento": "climax",
-     "delta": 2050,
+     "delta": 1450,
      "gain": 0.7
     }
    ],
@@ -1868,10 +1896,14 @@
    },
    "som": [
     {
-     "cue": "veo-missao-2",
+     "cue": "veo-r7-conquista-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 0.65
+     "gain": 0.65,
+     "variantes": [
+      "veo-r7-conquista-1",
+      "veo-r7-conquista-2"
+     ]
     }
    ],
    "numero": {
@@ -1934,10 +1966,10 @@
    },
    "som": [
     {
-     "cue": "coins-cascata",
+     "cue": "veo-r7-missao-2",
      "momento": "climax",
      "delta": 0,
-     "gain": 0.45
+     "gain": 0.55
     }
    ],
    "numero": {
@@ -1999,7 +2031,7 @@
    },
    "som": [
     {
-     "cue": "veo-erro-2",
+     "cue": "veo-r7-erro-1",
      "momento": "climax",
      "delta": 0,
      "gain": 0.4
@@ -2274,10 +2306,15 @@
    },
    "som": [
     {
-     "cue": "veo-liga-2",
+     "cue": "veo-liga-sobe-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 0.6
+     "gain": 0.6,
+     "variantes": [
+      "veo-liga-sobe-1",
+      "veo-liga-sobe-2",
+      "veo-liga-sobe-3"
+     ]
     },
     {
      "cue": "hee-hee-2",
@@ -2349,10 +2386,15 @@
    },
    "som": [
     {
-     "cue": "veo-liga-2",
+     "cue": "veo-liga-sobe-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 0.7
+     "gain": 0.7,
+     "variantes": [
+      "veo-liga-sobe-1",
+      "veo-liga-sobe-2",
+      "veo-liga-sobe-3"
+     ]
     },
     {
      "cue": "hee-hee-3",
@@ -2424,10 +2466,15 @@
    },
    "som": [
     {
-     "cue": "veo-liga-2",
+     "cue": "veo-liga-sobe-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 0.8
+     "gain": 0.8,
+     "variantes": [
+      "veo-liga-sobe-1",
+      "veo-liga-sobe-2",
+      "veo-liga-sobe-3"
+     ]
     },
     {
      "cue": "hee-hee-2",
@@ -2499,10 +2546,15 @@
    },
    "som": [
     {
-     "cue": "veo-liga-2",
+     "cue": "veo-liga-sobe-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 0.9
+     "gain": 0.9,
+     "variantes": [
+      "veo-liga-sobe-1",
+      "veo-liga-sobe-2",
+      "veo-liga-sobe-3"
+     ]
     },
     {
      "cue": "hee-hee-3",
@@ -2574,10 +2626,15 @@
    },
    "som": [
     {
-     "cue": "veo-liga-2",
+     "cue": "veo-liga-sobe-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 1.0
+     "gain": 1.0,
+     "variantes": [
+      "veo-liga-sobe-1",
+      "veo-liga-sobe-2",
+      "veo-liga-sobe-3"
+     ]
     },
     {
      "cue": "hee-hee",
@@ -2649,7 +2706,7 @@
    },
    "som": [
     {
-     "cue": "veo-liga-2",
+     "cue": "veo-liga-lendaria-3",
      "momento": "climax",
      "delta": 0,
      "gain": 1.0
@@ -2657,7 +2714,7 @@
     {
      "cue": "hee-hee",
      "momento": "climax",
-     "delta": 2550,
+     "delta": 3050,
      "gain": 0.9
     }
    ],
@@ -2694,6 +2751,74 @@
    }
   },
   {
+   "id": "liga-inicio-semana",
+   "rotulo": "Começo da semana da liga",
+   "categoria": "social",
+   "gatilho": {
+    "tipo": "calculado",
+    "condicao": "temporada aberta nova (season.starts_on) com o aluno inscrito no grupo; uma vez por semana",
+    "fonte": "app_league_current (season.starts_on, league)"
+   },
+   "intensidade": "pequena",
+   "cenario": "arena-esports",
+   "reacao": {
+    "coreografia": "toque",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "esports",
+     "varsity",
+     "fone"
+    ]
+   },
+   "efeito": {
+    "tipo": "faiscas",
+    "densidade": 0.35
+   },
+   "som": [
+    {
+     "cue": "veo-liga-batalha-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.55
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "liga",
+    "unidade": ""
+   },
+   "titulo": "A batalha da semana começou",
+   "frases": [
+    "Semana nova na Liga {liga}. O placar zerou para todo mundo.",
+    "A batalha da Liga {liga} começou. Cada questão conta.",
+    "Placar zerado. A semana é de quem aparece.",
+    "Nova rodada na Liga {liga}. Bora pontuar.",
+    "Começou a semana da liga. O grupo já está aquecendo.",
+    "Liga aberta. O primeiro XP da semana é o mais fácil.",
+    "Semana nova, grupo novo de rivais. Sem pressa, com constância."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 40,
+   "detalhe": "O XP da semana começa do zero.",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Começou a batalha!",
+    "durona": "Semana nova. Bora.",
+    "durona_forte": "Placar zerado. Trabalha."
+   }
+  },
+  {
    "id": "liga-permanencia",
    "rotulo": "Permanência na liga",
    "categoria": "social",
@@ -2723,10 +2848,16 @@
    },
    "som": [
     {
-     "cue": "veo-missao-2",
+     "cue": "veo-liga-manteve-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 0.5
+     "gain": 0.5,
+     "variantes": [
+      "veo-liga-manteve-1",
+      "veo-liga-manteve-1b",
+      "veo-liga-manteve-2",
+      "veo-liga-manteve-2b"
+     ]
     }
    ],
    "numero": {
@@ -2789,10 +2920,15 @@
    },
    "som": [
     {
-     "cue": "veo-erro-2",
+     "cue": "veo-liga-desce-1",
      "momento": "climax",
      "delta": 0,
-     "gain": 0.45
+     "gain": 0.45,
+     "variantes": [
+      "veo-liga-desce-1",
+      "veo-liga-desce-2",
+      "veo-liga-desce-3"
+     ]
     }
    ],
    "numero": {
@@ -2857,7 +2993,7 @@
    },
    "som": [
     {
-     "cue": "veo-lendaria-1",
+     "cue": "veo-liga-lendaria-3",
      "momento": "climax",
      "delta": 0,
      "gain": 1.0
@@ -2865,7 +3001,7 @@
     {
      "cue": "hee-hee",
      "momento": "climax",
-     "delta": 2550,
+     "delta": 3050,
      "gain": 0.9
     }
    ],
@@ -2931,7 +3067,7 @@
    },
    "som": [
     {
-     "cue": "veo-liga-1",
+     "cue": "veo-liga-resultado-3",
      "momento": "climax",
      "delta": 0,
      "gain": 0.6
@@ -2939,7 +3075,7 @@
     {
      "cue": "hee-hee-3",
      "momento": "climax",
-     "delta": 2550,
+     "delta": 3050,
      "gain": 0.6
     }
    ],
