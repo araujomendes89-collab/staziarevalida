@@ -43,7 +43,19 @@ const itens = E1.criteria.map((c, i) => ({
   grades: { correct: c.max, partial: c.partial, incorrect: 0 },
   criteria: {}, subitems: [],
 }));
-const impressos = E1.prints.map((p, i) => ({ id: `p${i + 1}`, index: i + 1, name: p.title, content: p.body, has_image: false }));
+// Como os dados de teste do banco local (P1): o relato do caso é o impresso INICIAL (visível desde o início, sem liberação);
+// os outros são liberáveis, numerados na tela a partir de 1 (o número da prova fica só para o avaliador).
+const inicial = (p, i) => i === 0 && /^Relato/i.test(p.title);
+let nTela = 0;
+const impressos = E1.prints.map((p, i) => ({
+  id: `p${i + 1}`, index: i + 1, source_number: i + 1, initially_visible: inicial(p, i),
+  display_number: inicial(p, i) ? 1 : ++nTela, name: p.title, content: p.body, has_image: false,
+}));
+const liberaveis = impressos.filter((p) => !p.initially_visible);
+const chave = (p) => (p.initially_visible ? "i" : "d") + p.display_number;
+// O candidato (e quem ainda não tem papel) nunca recebe o nome nem o id da estação antes do resultado (migração 012900).
+const { id: _id, name: _nome, topic: _tema, ...SEM_TEMA } = ST;
+const stParaCandidato = { ...SEM_TEMA, label: `Estação ${ST.number}` };
 const lerSala = (roomId) => {
   const [fase = "roles", papel = "candidate"] = String(roomId).split("-");
   return { fase, papel: papel === "evaluator" ? "evaluator" : "candidate" };
@@ -52,14 +64,17 @@ function salaEstado(roomId) {
   const { fase, papel } = lerSala(roomId);
   const outro = papel === "candidate" ? "evaluator" : "candidate";
   const base = {
-    id: roomId, rev: 3, phase: fase, round: 1, server_now: NOW(), station: ST, duration_ms: 600000,
+    id: roomId, rev: 3, phase: fase, round: 1, server_now: NOW(), station: papel === "evaluator" || fase === "result" ? ST : stParaCandidato, duration_ms: 600000,
     me: { user_id: "t-eu", public_name: "Aluno de Teste", role: papel, confirmed: false, connected: true, ready: false },
     partner: { user_id: "t-1", public_name: "Colega Teste Um", role: outro, confirmed: false, connected: true, ready: false, seen_ms_ago: 2000 },
     match_note: "Definido pelo match: você topa qualquer papel e Colega Teste Um quer ser ator/avaliador. Vocês ainda podem trocar. (dado de teste)",
     invite_pending: false, call_link: fase === "setup" || fase === "running" ? "https://meet.exemplo.teste/sala" : null,
     started_at: null, ends_at: null, paused_left_ms: null, paused_at: null, finished_at: null, released_pressings: [], closed_reason: null, closed_by: null,
   };
-  if (fase === "running") return { ...base, started_at: EM(-180000), ends_at: EM(420000), released_pressings: ["p1"] };
+  if (fase === "running") {
+    const lib = liberaveis[0];
+    return { ...base, started_at: EM(-180000), ends_at: EM(420000), released_pressings: lib ? [papel === "evaluator" ? lib.id : chave(lib)] : [] };
+  }
   if (fase === "review") return { ...base, finished_at: EM(-60000) };
   if (fase === "result") return { ...base, finished_at: EM(-600000) };
   if (fase === "closed") return { ...base, closed_reason: "saiu", closed_by: { me: false, public_name: "Colega Teste Um" } };
@@ -68,15 +83,17 @@ function salaEstado(roomId) {
 }
 function salaConteudo(roomId) {
   const { fase, papel } = lerSala(roomId);
-  const min = { id: ST.id, name: ST.name, area: ST.area, area_code: ST.area_code, number: ST.number, duration_ms: 600000 };
-  if (fase === "roles" || fase === "connecting") return { role: papel, station: min, pressing_count: impressos.length, pressings: [] };
-  const liberados = fase === "running" ? [impressos[0]] : impressos;
+  const comNome = papel === "evaluator" || fase === "result";
+  const min = { ...(comNome ? { id: ST.id, name: ST.name } : {}), label: `Estação ${ST.number}`, area: ST.area, area_code: ST.area_code, number: ST.number, duration_ms: 600000 };
+  if (fase === "roles" || fase === "connecting") return { role: papel, station: min, pressing_count: liberaveis.length, pressings: [] };
+  const vistos = impressos.filter((p) => p.initially_visible || (fase === "running" ? p === liberaveis[0] : true));
+  const liberados = vistos.map(({ source_number: _s, index: _i, ...p }) => ({ ...p, id: chave(p) }));
   const cena = [E1.scenario, "Tarefas:\n" + E1.tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")].join("\n\n");
   const doc = { version: "teste", doctor_scene: E1.scenario, doctor_tasks: E1.tasks.map((t, i) => `${i + 1}. ${t}`).join("\n") };
-  if (papel === "candidate") return { role: papel, station: { ...min, ...doc }, pressing_count: impressos.length, pressings: liberados };
+  if (papel === "candidate") return { role: papel, station: { ...min, ...doc, candidate_sheet: { has_image: false } }, pressing_count: liberaveis.length, pressings: liberados };
   return {
     role: papel, station: { ...min, ...doc, actor_script: "TODO: o roteiro do ator não consta nos documentos do INEP (precisa vir da Montagem de estações)." },
-    pressing_count: impressos.length, pressings: impressos, checklist_items: itens,
+    pressing_count: liberaveis.length, pressings: impressos, checklist_items: itens,
   };
 }
 function salaResultado(roomId) {
