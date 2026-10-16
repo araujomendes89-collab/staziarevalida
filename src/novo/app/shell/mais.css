@@ -98,3 +98,8 @@
 .sms-out{min-height:48px;display:flex;align-items:center;justify-content:center;gap:10px;border-radius:14px;border:1px solid var(--danger-border);background:var(--surface-card);color:var(--danger-text);font:700 15px var(--font-sans);cursor:pointer}
 .sms :is(button,h2):focus-visible{outline:none;box-shadow:var(--focus-ring)}
 @media (prefers-reduced-motion:reduce){.sms{animation:none}}
+
+/* G1.11 (16/10/2026): a folha termina 34 px acima da barra de baixo, para o botão redondo do Tutor (que sobe 26 px) não ficar
+   por cima dela; com isso ela flutua, com os quatro cantos arredondados. Seção com 2 itens em 2 colunas. */
+.sms{left:8px;right:8px;bottom:calc(var(--smn-tabs-h,76px) + 34px + env(safe-area-inset-bottom));max-height:calc(100dvh - var(--smn-tabs-h,76px) - 34px - 72px - env(safe-area-inset-bottom));border-radius:28px}
+.sms-grid--2{grid-template-columns:repeat(2,minmax(0,1fr))}

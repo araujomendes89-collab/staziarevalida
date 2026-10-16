@@ -1,8 +1,7 @@
 // Arte 3D das 41 medalhas e 7 ligas do pacote "Novas telas" (Medalhas.html e Conquistas*, assets/ do pacote, 15/10/2026).
-// SOMENTE PRÉVIA. A arte não vai ao aluno antes da rodada do diretor de arte e da confirmação do direito de uso (regra do dono,
-// decisão 7). O app NÃO importa artes.js: quem importa é só a prévia scripts/previa-novas-telas-onda2 (registrarArtesDoPacote),
-// por isso nenhum SVG daqui entra no build do app (conferido no build de 15/10; um import dinâmico em ramo morto ainda publicava
-// os arquivos). Para levar ao aluno depois da aprovação: importar artes.js no início do app, registrar e ligar a flag.
+// LIGADA no app desde 16/10/2026 (o dono confirmou que a arte é dele): o app carrega artes.js sob demanda (import dinâmico,
+// só quando Conquistas ou Medalhas abrem), então os SVGs entram no build como arquivos à parte. VITE_MEDALHAS_ARTE_PACOTE=0 desliga.
+// A prévia scripts/previa-novas-telas-onda2 continua registrando o mapa direto (registrarArtesDoPacote).
 // Nome do arquivo = slug do banco (tabela public.achievements / public.leagues da migração 20261003003800_stazia_play.sql).
 // As 4 secretas do pacote são medalhas genéricas com fechadura (sem a arte "real"), separadas só pela raridade.
 
@@ -42,8 +41,10 @@ export function registrarArtesDoPacote(mapa) {
   registradas = mapa || {};
 }
 
-/** Endereços das artes (nome -> URL). Vazio com a flag desligada ou sem registro (o app hoje). */
+/** Endereços das artes (nome -> URL). Vazio com a flag desligada (VITE_MEDALHAS_ARTE_PACOTE=0). */
 export async function carregarArtesDoPacote() {
-  if (import.meta.env.VITE_MEDALHAS_ARTE_PACOTE !== "1") return {};
-  return registradas;
+  if (String(import.meta.env.VITE_MEDALHAS_ARTE_PACOTE ?? "") === "0") return {};
+  if (Object.keys(registradas).length) return registradas;
+  const m = await import("./artes.js");
+  return m.default || {};
 }

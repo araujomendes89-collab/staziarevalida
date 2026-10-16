@@ -1,7 +1,7 @@
 /**
  * Novas telas, onda 7: Conquistas e "Medalhas e ligas" (padrão 3D). Confere o progresso real das medalhas bloqueadas,
- * o mapa slug -> arte do pacote (41 medalhas + 7 ligas), a flag VITE_MEDALHAS_ARTE_PACOTE (desligada por padrão: sem arte,
- * ícones Lucide) e os três desenhos (computador, tablet, celular).
+ * o mapa slug -> arte do pacote (41 medalhas + 7 ligas), a flag VITE_MEDALHAS_ARTE_PACOTE (LIGADA por padrão desde 16/10/2026,
+ * o dono confirmou que a arte é dele; =0 volta aos ícones Lucide), a arte com no mínimo 64 px e os três desenhos (computador, tablet, celular).
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -97,7 +97,7 @@ describe("arte do pacote (41 medalhas + 7 ligas)", () => {
       expect(s).not.toMatch(/<script|\son[a-z]+=|https?:\/\/(?!www\.w3\.org)|<foreignObject|<image/i);
     }
   });
-  it("só a prévia importa artes.js (o build do app não leva nenhum SVG da arte)", () => {
+  it("o app carrega artes.js só sob demanda (import dinâmico em medalhas-pacote/index.js); nenhuma tela importa direto", () => {
     const quem: string[] = [];
     const varrer = (d: string) => {
       for (const f of fs.readdirSync(d, { withFileTypes: true })) {
@@ -107,19 +107,20 @@ describe("arte do pacote (41 medalhas + 7 ligas)", () => {
       }
     };
     varrer(path.resolve(__dirname, ".."));
-    expect(quem).toEqual([]);
+    expect(quem.map((q) => path.relative(path.resolve(__dirname, ".."), q))).toEqual([path.join("novo", "ds", "medalhas-pacote", "index.js")]);
     expect(fs.readFileSync(path.resolve(__dirname, "../../scripts/previa-novas-telas-onda2/main.jsx"), "utf8")).toContain("medalhas-pacote/artes.js");
   });
-  it("flag desligada por padrão; liga só com VITE_MEDALHAS_ARTE_PACOTE=1", () => {
-    expect(medalhasArtePacote()).toBe(false);
-    vi.stubEnv("VITE_MEDALHAS_ARTE_PACOTE", "1");
+  it("flag ligada por padrão; desliga só com VITE_MEDALHAS_ARTE_PACOTE=0", () => {
     expect(medalhasArtePacote()).toBe(true);
+    vi.stubEnv("VITE_MEDALHAS_ARTE_PACOTE", "0");
+    expect(medalhasArtePacote()).toBe(false);
+    vi.unstubAllEnvs();
   });
 });
 
 describe("tela Conquistas", () => {
-  it("computador: ordem do pacote, critério e progresso reais, sem arte (padrão do app), secretas sem critério", async () => {
-    const { container } = render(<AchievementsScreen />);
+  it("computador: ordem do pacote, critério e progresso reais, sem arte (arte desligada), secretas sem critério", async () => {
+    const { container } = render(<AchievementsScreen arte={false} />);
     expect(await screen.findByText("Primeiros Passos")).toBeTruthy();
     expect(screen.getByText(/de/, { selector: ".cq-summary__title" }).textContent).toBe("0 de 41 medalhas");
     const nomes = [...container.querySelectorAll(".cq-card .cq-name")].map((n) => n.textContent);
@@ -149,6 +150,14 @@ describe("tela Conquistas", () => {
     const srcs = [...container.querySelectorAll("img.cq-medal__art")].map((i) => i.getAttribute("src"));
     expect(srcs[0]).toBe("/arte/primeiros_passos.svg");
     expect(srcs.filter((s) => s?.includes("secreta-"))).toHaveLength(4);
+  });
+
+  it("arte ligada por padrão no app, nunca menor que 64 px (celular pede 46)", async () => {
+    largura(true, true);
+    const { container } = render(<AchievementsScreen />);
+    await screen.findAllByText("Primeiros Passos");
+    await vi.waitFor(() => expect(container.querySelectorAll("img.cq-medal__art").length).toBeGreaterThan(0));
+    for (const img of container.querySelectorAll("img.cq-medal__art")) expect(Number(img.getAttribute("width"))).toBeGreaterThanOrEqual(64);
   });
 
   it("tablet: detalhe da selecionada + grade de miniaturas", async () => {

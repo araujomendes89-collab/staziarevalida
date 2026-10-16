@@ -113,15 +113,16 @@
 .smn-ph-btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-primary);font:700 14px var(--font-sans);cursor:pointer}
 .smn-ph-btn:hover{border-color:var(--border-strong)}
 .smn-ph-back{align-self:flex-start;display:inline-flex;align-items:center;gap:2px;min-height:44px;padding:0 10px 0 0;border:0;border-radius:12px;background:transparent;color:var(--action-primary);font:700 15px var(--font-sans);cursor:pointer}
-.smn-mtop{display:flex;align-items:center;gap:8px;margin:-8px -6px 0 -2px}
+.smn-mtop{display:flex;align-items:center;gap:8px;height:64px;margin:-24px -6px 0 -2px} /* G1.3: barra do logo com 64 px, colada no alto */
 .smn-mtop-logo{border:0;background:none;padding:0;cursor:pointer;min-height:44px;display:flex;align-items:center}
 .smn-mtop-logo img{height:30px;width:auto;display:block}
 .smn-mtop-phase{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-primary);font:700 13px var(--font-sans);cursor:pointer}
 .smn-mtop-phase:disabled{cursor:default;color:var(--text-secondary)}
 .smn-mtop-dot{width:7px;height:7px;border-radius:50%}
 @media (max-width:719px){.smn-ph-h1{font-size:22px}.smn-ph-row--plan .smn-ph-h1{font-size:26px}}
-.smn-ph--plan{max-width:960px;width:100%}
+.smn-ph--plan{width:100%} /* G1.7: mesma largura das outras telas (antes 960 px presos à esquerda) */
 .smn-ph--plan .smn-ph-h1{font-size:32px}
+@media (max-width:719px){.smn-ph--plan .smn-ph-h1{font-size:26px}} /* G1.6: vem depois da regra de 32 px para valer no celular */
 @media (max-width:719px){.smn-ph-l{width:100%;justify-content:space-between;flex-wrap:nowrap}.smn-ph-row--plan{flex-wrap:nowrap;align-items:center}.smn-ph-row--plan .smn-ph-btn{flex:none}}
 .smn-mtop-logo .sym{display:none;height:34px;width:auto}
 .smn-mtop .smn-phase{padding:3px;gap:3px}
@@ -163,3 +164,36 @@
 .smn-stop .smn-mtop-logo img{height:30px}
 .smn-ph--simples{gap:14px}
 .smn-ph-h1--simples{margin-top:2px;font-size:26px!important}
+
+/* ---------- G1 (16/10/2026): largura única, cabeçalho como no pacote, barra das subpáginas e pílula da fase ---------- */
+.smn-box{max-width:var(--content-max);margin:0 auto;display:flex;flex-direction:column;gap:20px}
+/* computador e tablet: subtítulo e título 32/800 à esquerda; ações, sequência e fase à direita, na mesma linha */
+.smn-gh{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 20px;flex-wrap:wrap}
+.smn-gh-l{display:flex;flex-direction:column;gap:4px;min-width:0}
+.smn-gh-sub{font:500 13px/1.3 var(--font-sans);color:var(--text-tertiary)}
+.smn-gh-h1{font-size:32px}
+.smn-gh-r{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+@media (max-width:719px){.smn-gh-h1{font-size:26px}}
+/* celular, telas com o logo (Banco, Simulados, Trilha, Flashcards...): barra de 64 px e título 26/800 logo abaixo */
+.smn-ph--root{gap:4px}
+@media (max-width:719px){.smn-ph:not(.smn-ph--plan):not(.smn-ph--root):not(.smn-ph--simples){gap:8px}}
+.smn-ph--root .smn-gh-l{padding:0 2px}
+/* celular, subpáginas do Mais: barra do pacote "‹ Mais | Título" (56 px, presa no alto ao rolar) */
+.smn-sbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;height:56px;box-sizing:border-box;margin:-24px -18px -12px;padding:0 6px;background:color-mix(in srgb,var(--bg-app) 90%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.smn-sbar-back{position:relative;z-index:1;display:inline-flex;align-items:center;height:44px;padding:0 8px 0 4px;border:0;border-radius:12px;background:transparent;color:var(--action-primary);font:700 15px var(--font-sans);cursor:pointer}
+.smn-sbar-back:hover{background:var(--action-ghost-hover)}
+.smn-sbar-h1{position:absolute;left:96px;right:96px;margin:0;text-align:center;font:800 16.5px/1.2 var(--font-sans);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-primary)}
+/* Plano de Hoje no celular: "‹ Início" de 36 px (alvo de 44 px) e espaços do pacote */
+@media (max-width:719px){.smn-ph--plan{gap:6px}.smn-ph--plan .smn-ph-back{position:relative;min-height:36px}.smn-ph--plan .smn-ph-back::after{content:"";position:absolute;inset:-4px 0}}
+/* pílula compacta da fase (celular e tablet): ~100x36, alvo de 44 px; abre o seletor logo abaixo */
+.smn-pp{position:relative;flex:none}
+.smn-mtop-phase{position:relative;min-height:36px;height:36px;white-space:nowrap}
+.smn-mtop-phase::after{content:"";position:absolute;inset:-4px 0}
+.smn-mtop-phase:hover{border-color:var(--border-strong)}
+.smn-pp-chev{color:var(--text-tertiary)}
+.smn-pp-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:40;padding:6px;border-radius:16px;background:var(--surface-card);border:1px solid var(--border-default);box-shadow:var(--shadow-lg);animation:smn-in var(--dur-base) var(--ease-out)}
+.smn-pp-pop .smn-phase{border:0!important;padding:0!important;background:transparent!important}
+.smn-pp-pop .smn-phase button{white-space:nowrap}
+@media (prefers-reduced-motion:reduce){.smn-pp-pop{animation:none}}
+@media (min-width:720px){.smn-ph-row--plan .smn-ph-eyebrow{margin-bottom:4px}} /* título do Plano na mesma altura das outras telas (y=52 em 1440) */
+.smn-gh-acts{display:contents}

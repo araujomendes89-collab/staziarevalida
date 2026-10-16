@@ -9,9 +9,9 @@ export function aulasParaAluno() {
 }
 
 // MEDALHAS (arte 3D do pacote "Novas telas", 15/10/2026): as 41 medalhas e 7 ligas desenhadas no pacote ficam em
-// src/novo/ds/medalhas-pacote/ e aparecem SÓ com VITE_MEDALHAS_ARTE_PACOTE=1 (hoje ligado apenas na prévia
-// scripts/previa-novas-telas-onda2). Desligado (padrão do app), Conquistas mostra os ícones Lucide atuais de cada medalha.
-// Regra do dono: a arte só vai ao aluno depois da rodada do diretor de arte e da confirmação do direito de uso.
+// src/novo/ds/medalhas-pacote/. LIGADA no app desde 16/10/2026: o dono confirmou que a arte das medalhas foi feita por ele
+// (direito de uso resolvido). Para voltar aos ícones Lucide do banco: VITE_MEDALHAS_ARTE_PACOTE=0 no ambiente do build.
+// Ainda não publicado: vai ao aluno só com a publicação do ramo novas-telas, com o "pode" do dono.
 export function medalhasArtePacote() {
-  return String(import.meta.env.VITE_MEDALHAS_ARTE_PACOTE ?? "") === "1";
+  return String(import.meta.env.VITE_MEDALHAS_ARTE_PACOTE ?? "") !== "0";
 }

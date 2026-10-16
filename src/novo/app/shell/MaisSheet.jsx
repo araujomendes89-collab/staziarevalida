@@ -71,7 +71,8 @@ export function MaisSheet({ route, go, info, phase, setPhase, phase2Locked, them
               {sections.map((sec) => (
                 <section key={sec.id} className="sms-sec" aria-label={sec.label}>
                   <h3>{sec.label}</h3>
-                  <div className="sms-grid">
+                  {/* G1.11: seção com 2 itens (Configurações do aluno) em 2 colunas, para a linha não ficar incompleta */}
+                  <div className={`sms-grid${sec.items.length === 2 ? " sms-grid--2" : ""}`}>
                     {sec.items.map(([id, ic, label]) => {
                       const badge = badgeOf(id, info);
                       return (

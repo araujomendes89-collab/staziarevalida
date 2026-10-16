@@ -3,7 +3,8 @@
 // (Administração só para equipe, Revisão médica só para revisor). Os dados vêm de `info`; nada de exemplo.
 // Modelo do menu em shell/navModel.js; estilos em shell/shell.css (só tokens do design system).
 import React from "react";
-import { Icon, Avatar, IconButton } from "../ds";
+import { createPortal } from "react-dom";
+import { Icon, Avatar } from "../ds";
 import { RI_CSS } from "../prototype/RealIcons.jsx";
 import { AppRealIcon } from "./AppIcons.jsx";
 import { FULL, badgeKind, badgeOf, configItems, groupBadge, groupOfRoute, groupsOf, mobileTabs } from "./shell/navModel.js";
@@ -277,10 +278,10 @@ function MoreGrid({ size = 24 }) {
 // ---------------------------------------------------------------- celular: barra de abas
 // Pacote (HomeMobileCompact): Início, Questões, Tutor (botão redondo roxo no meio), Revisar (selo vermelho = questões erradas a revisar), Mais.
 // "Mais" abre a folha que sobe de baixo (MobileMais) ou a página "Mais" (HomeMais), conforme cascaConfig.js.
-function MobileTabs({ route, go, phase, setPhase, phase2Locked, info, theme, setTheme }) {
-  const [more, setMore] = React.useState(false);
-  const close = React.useCallback(() => setMore(false), []);
-  React.useEffect(() => setMore(false), [route]);
+// `more`/`setMore` vêm do AppShell: o "‹ Mais" da barra das subpáginas reabre a mesma folha.
+function MobileTabs({ route, go, phase, setPhase, phase2Locked, info, theme, setTheme, more, setMore }) {
+  const close = React.useCallback(() => setMore(false), [setMore]);
+  React.useEffect(() => setMore(false), [route, setMore]);
   const tabs = mobileTabs(phase);
   const current = groupOfRoute(route, phase);
   const onTab = (t) => t[3] != null && t[3] === current;
@@ -366,6 +367,55 @@ function PhaseSwitch({ phase, setPhase, mobile, phase2Locked }) {
   );
 }
 
+// Pílula compacta da fase (pacote: "● 1ª Fase ⌄", cerca de 100x36): toca e abre o mesmo seletor de fase logo abaixo,
+// com as mesmas regras (para o aluno a 2ª fase continua "Em breve", apagada e sem clique). Celular e tablet (G1.8).
+function PhasePill({ phase, setPhase, phase2Locked }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return undefined;
+    const fora = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    const esc = (e) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        const b = ref.current && ref.current.querySelector("button");
+        if (b) b.focus();
+      }
+    };
+    document.addEventListener("mousedown", fora);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", fora);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  const nome = phase === 1 ? "1ª Fase" : "2ª Fase";
+  return (
+    <div className="smn-pp" ref={ref}>
+      <button type="button" className="smn-mtop-phase" aria-haspopup="true" aria-expanded={open} aria-label={`Fase do Revalida: ${nome}. Mudar fase`} onClick={() => setOpen((o) => !o)}>
+        <i className="smn-mtop-dot" style={{ background: phase === 1 ? "var(--teal-500)" : "var(--violet-600)" }} aria-hidden="true" />
+        {nome}
+        <Icon name="chevron-down" size={14} className="smn-pp-chev" />
+      </button>
+      {open && (
+        <div className="smn-pp-pop">
+          <PhaseSwitch
+            phase={phase}
+            setPhase={(v) => {
+              setOpen(false);
+              setPhase(v);
+            }}
+            mobile
+            phase2Locked={phase2Locked}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- cabeçalhos do Início e do Plano de Hoje (pacote "Novas telas", onda 2)
 // Celular: barra do alto (logo, fase, conta) e título; computador e tablet: título com a sequência e a fase à direita (Início) ou título com o botão de personalizar (Plano).
 function StreakChip({ info, go }) {
@@ -388,7 +438,7 @@ function MobileTopBar({ theme, go, phase, setPhase, phase2Locked, info }) {
         <img className="sym" src={logoSrc(theme, "symbol")} alt="" aria-hidden="true" width="26" height="38" />
       </button>
       <span style={{ flex: 1 }} />
-      <PhaseSwitch phase={phase} setPhase={setPhase} mobile phase2Locked={phase2Locked} />
+      <PhasePill phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} />
       <button type="button" className="smn-hdr-btn" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`}>
         <Avatar name={info.name} size={36} />
       </button>
@@ -418,7 +468,7 @@ function SimpleTopHeader({ title, sub, theme, go, phase, info }) {
   );
 }
 
-function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, phase, setPhase, phase2Locked, info }) {
+function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, tablet, phase, setPhase, phase2Locked, info }) {
   if (kind === "inicio-simples") return <SimpleTopHeader title={title} sub={sub} theme={theme} go={go} phase={phase} info={info} />;
   if (kind === "inicio") {
     return (
@@ -432,7 +482,7 @@ function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, phase, setP
           {!mobile && (
             <div className="smn-ph-r">
               {sub && <span className="smn-ph-date">{sub}</span>}
-              <PhaseSwitch phase={phase} setPhase={setPhase} mobile={false} phase2Locked={phase2Locked} />
+              {tablet ? <PhasePill phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} /> : <PhaseSwitch phase={phase} setPhase={setPhase} mobile={false} phase2Locked={phase2Locked} />}
             </div>
           )}
         </div>
@@ -466,42 +516,79 @@ function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, phase, setP
   );
 }
 
-function Header({ title, sub, theme, setTheme, go, mobile, phase, setPhase, phase2Locked, info, kind }) {
-  if (kind === "inicio" || kind === "inicio-simples" || kind === "plano") return <PageHeader kind={kind} title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />;
+// Lugar de ações do cabeçalho (computador e tablet): a tela põe ali seus botões com <ShellActions>...</ShellActions>
+// (ex.: "Estudar agora" em Missões), sem criar outra linha acima do conteúdo. No celular não há lugar: devolve null e a tela decide.
+const ActionsSlot = React.createContext(null);
+export function ShellActions({ children }) {
+  const slot = React.useContext(ActionsSlot);
+  return slot ? createPortal(children, slot) : null;
+}
+
+// Celular, 1ª fase: telas que abrem pelo "Mais" usam a barra do pacote "‹ Mais | Título" (56 px, sem logo, fase nem tema).
+// Meu plano abre pela Conta ("‹ Conta"). As telas das abas (Início, Questões, Revisar) e Plano, Trilha e Simulados ficam com a barra do logo.
+const SUB_DO_MAIS = new Set(["desempenho", "analise", "plano", "perfil", "temas", "atualizacoes", "mapas", "aulas", "missoes", "classificacao", "conquistas", "medalhas"]);
+const SUB_VOLTA = { planos: ["perfil", "Conta"] };
+
+function SubBar({ title, back, onBack }) {
   return (
-    <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
-      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
-        {mobile && (
-          <button type="button" onClick={() => go(phase === 2 ? "home2" : "home")} aria-label="StaziaMed, início" style={{ display: "flex", alignItems: "center", gap: 10, border: 0, background: "none", padding: 0, cursor: "pointer", minHeight: 44 }}>
-            <img src={theme === "dark" ? "/brand/horizontal-escuro-320w.png" : "/brand/horizontal-320w.png"} alt="StaziaMed Revalida" width="129" height="40" style={{ height: 40, width: "auto", display: "block" }} />
-          </button>
-        )}
-        <PhaseSwitch phase={phase} setPhase={setPhase} mobile={mobile} phase2Locked={phase2Locked} />
-        <div>
-          {sub && <div style={{ font: "500 13px var(--font-sans)", color: "var(--text-tertiary)" }}>{sub}</div>}
-          <h1 style={{ margin: "4px 0 0", font: `700 ${mobile ? 26 : 32}px/1.15 var(--font-sans)`, letterSpacing: "-0.02em" }}>{title}</h1>
+    <header className="smn-sbar">
+      <button type="button" className="smn-sbar-back" onClick={onBack} aria-label={`Voltar para ${back}`}>
+        <Icon name="chevron-left" size={24} />
+        {back}
+      </button>
+      <h1 className="smn-sbar-h1">{title}</h1>
+    </header>
+  );
+}
+
+// Cabeçalho das outras telas (G1.2 a G1.5 e G1.9, 16/10/2026). Computador e tablet: subtítulo e título 32/800 à esquerda; à direita
+// as ações da tela (`actions`), a sequência e a fase (computador: o seletor inteiro; tablet: a pílula compacta), como no Início.
+// Celular: barra "‹ Mais | Título" nas subpáginas do Mais; nas outras, a barra do logo (64 px) e o título 26/800.
+function Header({ title, sub, theme, setTheme, go, mobile, tablet, phase, setPhase, phase2Locked, info, kind, route, actions, openMais, setSlot }) {
+  if (kind === "inicio" || kind === "inicio-simples" || kind === "plano") return <PageHeader kind={kind} title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} tablet={tablet} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />;
+  if (mobile && phase === 1 && SUB_VOLTA[route]) {
+    const [to, label] = SUB_VOLTA[route];
+    return <SubBar title={title} back={label} onBack={() => go(to)} />;
+  }
+  if (mobile && phase === 1 && SUB_DO_MAIS.has(route)) return <SubBar title={title} back="Mais" onBack={openMais} />;
+  if (mobile) {
+    return (
+      <header className="smn-ph smn-ph--root">
+        <MobileTopBar theme={theme} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />
+        <div className="smn-gh-l">
+          {sub && <div className="smn-gh-sub">{sub}</div>}
+          <h1 className="smn-ph-h1 smn-gh-h1">{title}</h1>
         </div>
+      </header>
+    );
+  }
+  return (
+    <header className="smn-gh">
+      <div className="smn-gh-l">
+        {sub && <div className="smn-gh-sub">{sub}</div>}
+        <h1 className="smn-ph-h1 smn-gh-h1">{title}</h1>
       </div>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        {!mobile && (
-          <button type="button" className="smn-pill" onClick={() => go("missoes")} title="Sequência de dias de estudo">
-            <Icon name="flame" size={16} style={{ color: "var(--streak)" }} />
-            {info.streakDays} {info.streakDays === 1 ? "dia" : "dias"}
-          </button>
-        )}
-        <IconButton icon={theme === "dark" ? "sun" : "moon"} label={theme === "dark" ? "Tema claro" : "Tema escuro"} variant="secondary" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} style={{ minWidth: 44, minHeight: 44 }} />
-        {mobile && (
-          <button type="button" className="smn-hdr-btn" onClick={() => go("perfil")} aria-label="Conta">
-            <Avatar name={info.name} size={40} />
-          </button>
-        )}
+      <div className="smn-gh-r">
+        <span className="smn-gh-acts" ref={setSlot} />
+        {actions}
+        <StreakChip info={info} go={go} />
+        {tablet ? <PhasePill phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} /> : <PhaseSwitch phase={phase} setPhase={setPhase} mobile={false} phase2Locked={phase2Locked} />}
       </div>
     </header>
   );
 }
 
-function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phase = 1, setPhase, phase2Locked = false, info: baseInfo, headerKind: kind }) {
+// Medidas da casca (G1.1 e G1.10, 16/10/2026): o menu do computador termina em x=280 (recolhido, x=100) e o trilho do tablet em x=100.
+// Computador: o conteúdo começa 40 px depois do menu (x=320 em 1440, como no pacote) e fica num bloco de até --content-max
+// centralizado no espaço à direita do menu (acima de ~1960 px sobra a mesma margem dos dois lados). Tablet: x=128, como no pacote.
+const PAD = { desktop: "32px 40px 64px", tablet: "32px 28px 64px", mobile: "24px 18px calc(104px + env(safe-area-inset-bottom))" };
+
+/** `actions`: botões da tela que vão à direita do título no computador e no tablet (ex.: "Estudar agora" em Missões). */
+function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phase = 1, setPhase, phase2Locked = false, info: baseInfo, headerKind: kind, actions }) {
   const layout = useLayout();
+  const [more, setMore] = React.useState(false);
+  const [slot, setSlot] = React.useState(null);
+  const openMais = React.useCallback(() => setMore(true), []);
   const counts = useShellCounts(route);
   const info = { ...counts, ...baseInfo };
   const full = FULL.includes(route);
@@ -529,7 +616,7 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
   };
   const collapsed = pref;
   const headerKind = kind === "inicio" && mobile && inicioCelular() === "simples" ? "inicio-simples" : kind;
-  const marginLeft = full || mobile ? 0 : layout === "tablet" ? 116 : collapsed ? 116 : 304;
+  const marginLeft = full || mobile ? 0 : layout === "tablet" ? 100 : collapsed ? 100 : 280;
   return (
     <div className="smn" style={{ minHeight: "100vh", background: "var(--bg-app)" }}>
       {!full && (
@@ -539,17 +626,17 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
       )}
       {!full && layout === "desktop" && <Sidebar route={route} go={go} phase={phase} info={info} theme={theme} collapsed={collapsed} setCollapsed={setCollapsed} />}
       {!full && layout === "tablet" && <Rail route={route} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} theme={theme} setTheme={setTheme} />}
-      <main id="conteudo" tabIndex={-1} style={{ marginLeft, transition: "margin-left var(--dur-base) var(--ease-standard)", padding: bare ? 0 : mobile ? "24px 18px calc(104px + env(safe-area-inset-bottom))" : layout === "tablet" ? "28px 28px 64px" : "36px 48px 64px", outline: "none" }}>
+      <main id="conteudo" tabIndex={-1} style={{ marginLeft, transition: "margin-left var(--dur-base) var(--ease-standard)", padding: bare ? 0 : PAD[layout], outline: "none" }}>
         {bare ? (
           children
         ) : (
-          <div style={{ maxWidth: "var(--content-max)", margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
-            <Header title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} kind={headerKind} />
-            {children}
+          <div className="smn-box">
+            <Header title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} tablet={layout === "tablet"} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} kind={headerKind} route={route} actions={actions} openMais={openMais} setSlot={setSlot} />
+            <ActionsSlot.Provider value={slot}>{children}</ActionsSlot.Provider>
           </div>
         )}
       </main>
-      {!full && mobile && <MobileTabs route={route} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} theme={theme} setTheme={setTheme} />}
+      {!full && mobile && <MobileTabs route={route} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} theme={theme} setTheme={setTheme} more={more} setMore={setMore} />}
     </div>
   );
 }
