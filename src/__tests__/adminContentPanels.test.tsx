@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const backend: any = { rpc: vi.fn(), accessToken: async () => "t" };
-// editor profissional (CampoRico) trocado por textarea: este teste antigo digita nos campos como antes
+// editor profissional (CampoRico: Atualizações 013130 e pontos-chave 013160) trocado por textarea: este teste antigo digita nos campos como antes
 vi.mock("../novo/app/editorPro/CampoRico.jsx", () => import("./helpers/campoRicoComoTexto"));
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot: { role: "admin", profile: { name: "Adm" } }, user: { id: "a" } }) }));
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
@@ -31,9 +31,6 @@ vi.mock("../novo/app/editorPro/editarAula/EditorResumo.jsx", async () => {
   }
   return { default: EditorResumo };
 });
-
-// Editor profissional (013160): os pontos-chave usam o CampoRico; aqui ele vira o textarea de antes (mesmo rótulo).
-vi.mock("../novo/app/editorPro/CampoRico.jsx", () => import("./helpers/campoRicoComoTexto"));
 
 import { AdminLessons } from "../novo/app/admin/AdminLessons.jsx";
 import { AdminUpdates } from "../novo/app/admin/AdminUpdates.jsx";
