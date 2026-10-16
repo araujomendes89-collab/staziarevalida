@@ -96,6 +96,7 @@
 
 .f2-stations-search {
   flex: 1 1 320px;
+  max-width: 520px;
   min-width: 0;
 }
 

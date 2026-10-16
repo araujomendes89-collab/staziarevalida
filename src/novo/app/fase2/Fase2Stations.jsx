@@ -3,7 +3,7 @@ import { Badge, Icon, EmptyState, SegmentedControl, TextField, Button } from "..
 import { useSession } from "../session.jsx";
 import { useLoad, Loading, LoadError } from "../admin/common.jsx";
 import { fase2Api } from "./api.js";
-import { AREAS, fmtScore, fmtMinutes, getArea } from "./labels.js";
+import { AREAS, fmtScore, getArea } from "./labels.js";
 import todas from "../../ds/area-icons/todas.svg";
 import clinica from "../../ds/area-icons/clinica-medica.svg";
 import cirurgia from "../../ds/area-icons/cirurgia.svg";
@@ -76,12 +76,6 @@ function StationCardItem({ station: s, go }) {
       <div className="f2-station-card__tags">
         {s.topic && <span className="f2-station-tag">{s.topic}</span>}
         {s.setting && <span className="f2-station-tag">{s.setting}</span>}
-        {s.duration_ms && (
-          <span className="f2-station-tag f2-station-tag--meta">
-            <Icon name="timer" size={12} />
-            {fmtMinutes(s.duration_ms)}
-          </span>
-        )}
       </div>
 
       <div className="f2-station-card__footer">
@@ -156,12 +150,6 @@ function StationRowItem({ station: s, go }) {
         <div className="f2-station-row__meta">
           {s.topic && <span className="f2-station-tag">{s.topic}</span>}
           {s.setting && <span className="f2-station-tag">{s.setting}</span>}
-          {s.duration_ms && (
-            <span className="f2-station-tag f2-station-tag--meta">
-              <Icon name="timer" size={12} />
-              {fmtMinutes(s.duration_ms)}
-            </span>
-          )}
           <span className="f2-station-row__source">{source}</span>
         </div>
       </div>
@@ -302,7 +290,7 @@ export function Fase2Stations({ go }) {
   return (
     <div className="f2-container">
       <p className="f2-stations-lead">
-        Escolha uma estação clínica para treinar. Cada caso traz o enunciado, os impressos e o checklist PEP.
+        Escolha uma estação para treinar. Cada uma traz o enunciado, os impressos e o checklist PEP.
       </p>
 
       {/* Linha superior: Busca e Status de conclusão */}
@@ -311,7 +299,7 @@ export function Fase2Stations({ go }) {
           <TextField
             icon="search"
             aria-label="Buscar estação"
-            placeholder="Buscar por tema, queixa, cenário ou instituição…"
+            placeholder="Buscar estação, tema ou sinal"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
