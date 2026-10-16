@@ -440,6 +440,7 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
           <EditorAula
             key={`editor-aula-${chaveEditorAula}`}
             content={{ ...version.content, sections, doc_config: docConfig ?? undefined }}
+            contexto={{ versionId: version.id, contentHash: version.content_hash, aoRecarregar: onSaved }}
             aoMudar={(c) => {
               setSections(c.sections);
               setDocConfig(c.doc_config ?? null);

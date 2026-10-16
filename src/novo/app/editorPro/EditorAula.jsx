@@ -4,7 +4,7 @@ import React, { useRef, useMemo, useCallback } from "react";
 import CampoDocumento from "./CampoDocumento.jsx";
 import { unidadeParaDoc, docParaUnidade } from "../../../shared/docRico";
 
-export default function EditorAula({ content, aoMudar }) {
+export default function EditorAula({ content, aoMudar, contexto }) {
   const original = useRef(content);
   
   const docRico = useMemo(() => unidadeParaDoc(original.current), []);
@@ -36,6 +36,7 @@ export default function EditorAula({ content, aoMudar }) {
           aoMudar={handleMudar}
           config={content.doc_config ?? {}}
           aoMudarConfig={handleMudarConfig}
+          contexto={contexto}
         />
       </div>
     </div>
