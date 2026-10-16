@@ -368,7 +368,10 @@
 
 /* tablet: painel da direita com 340 px, como no pacote */
 @media (min-width: 721px) and (max-width: 1180px) {
-  .tq-main[data-revealed="true"] .tq-side { flex: 0 0 340px; min-width: 0; }
+  /* conferência final: com o painel ao lado, a alternativa ficava com ~120 px e quebrava palavras; no tablet o painel
+     da explicação desce para baixo do cartão, na largura toda */
+  .tq-main[data-revealed="true"] { flex-direction: column; }
+  .tq-main[data-revealed="true"] .tq-side { flex: 1 1 auto; width: 100%; min-width: 0; }
   .tq-hint-solo { margin: 20px 24px 0; }
 }
 
