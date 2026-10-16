@@ -563,6 +563,10 @@ describe("Migração 013350: ações da sala do Treino em Dupla", () => {
     const colunas = () => d.sql(`select column_name, data_type from information_schema.columns where table_name = 'checklist_rooms' order by 1`);
     const antes = [await defs(), await gatilhos(), await colunas()];
     await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8"));
+    // as migrações depois da 013350 que redefinem funções dela (ex.: 013390, app_dupla_print_path) são coladas de novo, na ordem
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.endsWith(".sql") && x > MIGRACAO).sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect([await defs(), await gatilhos(), await colunas()]).toEqual(antes);
     const acl = Object.fromEntries(antes[0].map((f: any) => [f.id, f.acl]));
     const app = [
