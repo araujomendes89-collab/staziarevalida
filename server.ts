@@ -38,6 +38,7 @@ import { createDevDbRouter } from "./server/devDb/router";
 import { getDevDatabase } from "./server/devDb/devDatabase";
 import { setupContentHub } from "./server/contentHub";
 import { createVisualRouter } from "./server/contentHub/visual/router";
+import { createDocImagensRouter } from "./server/contentHub/docImagens/router";
 import { createAiRouter } from "./server/ai/router";
 import { requireAdmin } from "./server/auth/requireAdmin";
 import { createTutorRouter } from "./server/tutor/router";
@@ -114,6 +115,8 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   // Materiais visuais (cards, A4, story e flashcards): rotas próprias, montadas antes das da Central
   app.use("/api/content-hub/visual", createVisualRouter(hub.deps, { pending: hub.pending }));
   app.use("/api/ai-central", createAiRouter(hub.deps, { pending: hub.pending })); // prefixo próprio: em /api/ai engoliria as rotas do app antigo
+  // Editor profissional (M11a): imagens guardadas no depósito privado doc-imagens; aluno só por /aluno/:id (aula publicada)
+  app.use("/api/content-hub/doc-imagens", createDocImagensRouter(hub.deps, { pending: hub.pending }));
   app.use("/api/content-hub", hub.router);
   // Stazia Tutor: usa o mesmo banco; a simulação de IA só existe com o banco de desenvolvimento
   const tutorDeps = hub.deps ? { db: hub.deps.db, mockRespond: hub.deps.db.mode === "dev" ? tutorMockRespond : undefined, log: (m: string) => console.log(m), storage: tutorVoiceSamplesStorage(hub.deps.db.mode) } : null;
