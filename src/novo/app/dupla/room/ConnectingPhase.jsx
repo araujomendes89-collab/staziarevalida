@@ -2,14 +2,14 @@
 // Nesta tarefa as etapas aparecem "a fazer"; a Tarefa 16 liga os eventos de cada uma.
 import React from "react";
 import { Avatar, Button, Icon } from "../../../ds";
-import { firstName, stationTitle } from "./parts.jsx";
+import { firstName, stationLine } from "./parts.jsx";
 
 const RING = 2 * Math.PI * 34;
 
 export function ConnectingPhase({ room, actions }) {
   const partner = room.partner.public_name;
   const steps = [
-    ["Carregando a estação", room.station ? stationTitle(room.station) : ""],
+    ["Carregando a estação", room.station ? stationLine(room.station) : ""],
     ["Validando acesso", "Plano e permissões do módulo"],
     ["Separando conteúdo por papel", "Roteiro e checklist só para o avaliador"],
     ["Criando sala privada", "Sala exclusiva da dupla"],

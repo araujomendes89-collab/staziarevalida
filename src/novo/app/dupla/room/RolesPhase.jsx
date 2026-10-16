@@ -1,7 +1,7 @@
 // Fase "roles" (Setup.jsx:13-27 do protótipo): definir quem é o candidato e quem é o ator/avaliador, e a estação.
 import React from "react";
 import { Button, Icon } from "../../../ds";
-import { CardBlock, PairHeader, ROLE_COLORS, firstName, pageStyle, roleLabel, stationTitle, strong } from "./parts.jsx";
+import { CardBlock, PairHeader, ROLE_COLORS, firstName, pageStyle, roleLabel, stationLine, strong } from "./parts.jsx";
 import { StationPicker } from "./StationPicker.jsx";
 
 const ROLE_CARDS = [
@@ -61,7 +61,7 @@ export function RolesPhase({ room, actions }) {
       <PairHeader
         room={room}
         title={`Dupla com ${partnerName}`}
-        subtitle={`${station ? stationTitle(station) + ". " : ""}Antes de conectar, definam quem será o candidato e quem será o ator/avaliador.`}
+        subtitle={`${station ? stationLine(station) + ". " : ""}Antes de conectar, definam quem será o candidato e quem será o ator/avaliador.`}
       />
       {room.match_note && (
         <div
@@ -84,6 +84,26 @@ export function RolesPhase({ room, actions }) {
         <div role="status" style={{ display: "flex", alignItems: "center", gap: 10, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
           <Icon name="loader" size={16} />
           Aguardando {partnerName} entrar na sala
+        </div>
+      )}
+      {room.me.role === "candidate" && room.me.picked_station && (
+        // Decisão do dono (16/10): os dois escolhem os papéis; quem escolheu a estação (no Banco de estações ou na sala) e fica
+        // como candidato recebe este aviso. O tema continua só para o avaliador.
+        <div
+          role="note"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "12px 16px",
+            borderRadius: "var(--radius-lg)",
+            background: "var(--warning-bg)",
+            color: "var(--warning-text)",
+            font: "600 var(--text-sm)/1.45 var(--font-sans)",
+          }}
+        >
+          <Icon name="triangle-alert" size={18} />
+          Você escolheu esta estação, então já conhece o tema.
         </div>
       )}
       <CardBlock
@@ -114,7 +134,7 @@ export function RolesPhase({ room, actions }) {
           <div role="status" style={{ display: "flex", alignItems: "center", gap: 8, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
             <Icon name={station ? "clipboard-list" : "info"} size={16} />
             {station
-              ? stationTitle(station)
+              ? stationLine(station)
               : evaluatorName
                 ? `Aguardando ${firstName(evaluatorName)} escolher a estação.`
                 : "Definam os papéis antes de escolher a estação."}

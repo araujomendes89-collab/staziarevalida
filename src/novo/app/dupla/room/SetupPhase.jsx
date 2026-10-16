@@ -3,7 +3,7 @@ import React from "react";
 import { Avatar, Badge, Button, Card, Icon, IconButton, SegmentedControl, TextField, useToast } from "../../../ds";
 import { formatDecimal } from "../../../ds/format.js";
 import { splitActorScript, splitBlocks, splitTasks } from "../content.js";
-import { ActorScript, CardBlock, PairHeader, RoleBand, Scene, firstName, pageStyle, stationTitle } from "./parts.jsx";
+import { ActorScript, CardBlock, PairHeader, RoleBand, Scene, firstName, pageStyle, stationLine } from "./parts.jsx";
 
 const LINK_RE = /^https:\/\/[^\s/.]+\.[^\s]+$/;
 const clock = (ms) => {
@@ -232,7 +232,7 @@ function CandidateWaiting({ room }) {
     <Card padding={20}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <Icon name="stethoscope" size={22} style={{ color: "var(--text-brand)" }} />
-        <div style={{ ...overline, marginBottom: 0 }}>{stationTitle(station)}</div>
+        <div style={{ ...overline, marginBottom: 0 }}>{stationLine(station)}</div>
       </div>
       <p style={{ margin: "10px 0 0", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>O enunciado aparece quando o avaliador iniciar a estação.</p>
     </Card>

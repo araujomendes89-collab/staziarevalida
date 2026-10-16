@@ -153,7 +153,7 @@ describe("Sala: fases a partir do estado gravado", () => {
     await mount({ room: roles("candidate", { match_note: note, invite_pending: true }), content: contentFor("candidate") });
     expect(screen.getByText("Dupla com Bruno Lima")).toBeTruthy();
     // candidato: "Estação 3 · Clínica Médica", nunca o nome da estação
-    expect(screen.getByText(/Estação 3 · Clínica Médica\./)).toBeTruthy();
+    expect(screen.getByText(/Estação 3 · Clínica Médica · Revalida 2020 · INEP\./)).toBeTruthy();
     expect(document.body.textContent).not.toContain("Estação de teste");
     expect(screen.getByText(/Antes de conectar, definam quem será o candidato e quem será o ator\/avaliador\./)).toBeTruthy();
     expect(screen.getByText(note)).toBeTruthy();
@@ -178,7 +178,7 @@ describe("Sala: fases a partir do estado gravado", () => {
 
     // avaliador: Trocar estação com o nome
     await mount({ room: roles("evaluator"), content: contentFor(null) });
-    expect(screen.getByText(/Estação 3 · Estação de teste\./)).toBeTruthy();
+    expect(screen.getByText(/Estação 3 · Estação de teste · Revalida 2020 · INEP\./)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Trocar estação" })).toBeTruthy();
     cleanup();
 
@@ -387,7 +387,7 @@ describe("Sala: fases a partir do estado gravado", () => {
   it("preparação (Etapa P): candidato vê só 'Estação N · Área' e 'O enunciado aparece quando o avaliador iniciar a estação.'", async () => {
     const setup = { phase: "setup", call_link: null };
     await mount({ room: roles("candidate", setup), content: contentFor("candidate", [], true) });
-    expect(screen.getByText("Estação 3 · Clínica Médica")).toBeTruthy();
+    expect(screen.getByText("Estação 3 · Clínica Médica · Revalida 2020 · INEP")).toBeTruthy();
     expect(screen.getByText("O enunciado aparece quando o avaliador iniciar a estação.")).toBeTruthy();
     expect(screen.queryByText("Leitura prévia do avaliador")).toBeNull();
     expect(screen.getByRole("button", { name: "Sair da sala" })).toBeTruthy();
@@ -398,6 +398,36 @@ describe("Sala: fases a partir do estado gravado", () => {
     expect(screen.getByText("Leitura prévia do avaliador")).toBeTruthy();
     expect(screen.getByText("Visíveis ao candidato desde o início")).toBeTruthy();
     expect(screen.getByText("Impresso 1 · Hemograma · no documento oficial: Impresso 2")).toBeTruthy();
+  });
+
+  it("decisões do dono (16/10): origem sempre visível ao candidato e aviso a quem escolheu a estação e ficou como candidato", async () => {
+    // b) a origem "Revalida 2020 · INEP" aparece para o candidato nos papéis, na preparação e na estação; a) nunca o nome
+    await mount({ room: roles("candidate", { me: { picked_station: true } }), content: contentFor("candidate") });
+    expect(screen.getByText("Estação 3 · Clínica Médica · Revalida 2020 · INEP")).toBeTruthy();
+    // c) quem escolheu a estação (Banco de estações ou sala) e está como candidato vê o aviso; o tema não aparece
+    expect(screen.getByRole("note").textContent).toBe("Você escolheu esta estação, então já conhece o tema.");
+    expect(document.body.textContent).not.toContain("Estação de teste");
+    cleanup();
+
+    // os dois escolhem os papéis: o mesmo aviso some se a pessoa passa a ser avaliador, e não aparece a quem não escolheu
+    await mount({ room: roles("evaluator", { me: { picked_station: true } }), content: contentFor(null) });
+    expect(screen.queryByText("Você escolheu esta estação, então já conhece o tema.")).toBeNull();
+    cleanup();
+    await mount({ room: roles("candidate", { me: { picked_station: false } }), content: contentFor("candidate") });
+    expect(screen.queryByRole("note")).toBeNull();
+    cleanup();
+
+    await mount({ room: roles("candidate", { phase: "connecting" }), content: contentFor("candidate") });
+    expect(document.body.textContent).not.toContain("Estação de teste");
+    cleanup();
+
+    await mount({ room: roles("candidate", { phase: "running", started_at: "2026-10-11T14:55:00.000Z", ends_at: "2026-10-11T15:04:07.000Z" }), content: contentFor("candidate", [], true) });
+    expect(screen.getByText("Clínica Médica · Revalida 2020 · INEP")).toBeTruthy();
+    // d) impressos 1, 2, 3 contínuos para o candidato; o número da prova (source_number) nunca aparece para ele
+    expect(screen.getByText("Impresso 1 · Aguardando liberação")).toBeTruthy();
+    expect(screen.getByText("Impresso 2 · Aguardando liberação")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("documento oficial");
+    expect(document.body.textContent).not.toContain("Estação de teste");
   });
 
   it("conferência: avaliador com nota provisória e pendentes; candidato com 'Aguardando avaliação' e Sair da sala", async () => {
