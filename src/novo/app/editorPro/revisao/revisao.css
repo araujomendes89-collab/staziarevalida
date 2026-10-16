@@ -1,0 +1,27 @@
+/* Módulo Revisão e painel lateral reaproveitável (classes ep-pl-*). Só tokens do app. */
+.ep-achado { background: color-mix(in srgb, var(--warning, #f5c542) 40%, transparent); border-radius: 2px; }
+.ep-achado--atual { background: color-mix(in srgb, var(--warning, #f5a623) 75%, transparent); outline: 1px solid var(--warning, #f5a623); }
+.ep-pl { display: flex; flex-direction: column; gap: 16px; font-family: var(--font-sans); font-size: 14px; color: var(--text-primary); }
+.ep-pl-secao { display: flex; flex-direction: column; gap: 8px; }
+.ep-pl-titulo { margin: 0; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+.ep-pl-subtitulo { margin: 8px 0 0; font-size: 13px; font-weight: 600; }
+.ep-pl-dica { margin: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+.ep-pl-linha { display: flex; gap: 8px; flex-wrap: wrap; }
+.ep-pl-campo { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-background); color: inherit; font: inherit; }
+.ep-pl-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-card); color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.ep-pl-btn:hover:not(:disabled) { background: var(--surface-background); }
+.ep-pl-btn:disabled { opacity: .45; cursor: not-allowed; }
+.ep-pl-btn--primario { background: var(--text-primary); color: var(--surface-card); border-color: transparent; }
+.ep-pl-btn.ep-ativo { outline: 2px solid var(--text-primary); }
+.ep-pl-interruptor { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.ep-pl-interruptor small { display: block; font-size: 12px; color: var(--text-secondary); }
+.ep-pl-contagem { margin: 0; font-size: 13px; color: var(--text-secondary); }
+.ep-pl-contagem-lista { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; }
+.ep-pl-contagem-lista dt { color: var(--text-secondary); }
+.ep-pl-contagem-lista dd { margin: 0; font-weight: 600; text-align: right; }
+.ep-pl-aviso { margin: 0; font-size: 13px; color: var(--text-secondary); }
+.ep-pl-proposta { display: flex; flex-direction: column; gap: 8px; }
+.ep-pl-proposta-bloco { padding: 8px; border: 1px solid var(--border-subtle); border-radius: 8px; }
+.ep-pl-proposta-bloco p { margin: 4px 0 0; white-space: pre-wrap; }
+.ep-pl-proposta-bloco--depois { background: color-mix(in srgb, var(--success, #2e9e5b) 12%, transparent); }
+.ep-resumo-btn { font-size: 12px; white-space: nowrap; color: var(--text-secondary); padding: 0 6px; }
