@@ -221,6 +221,24 @@ describe("Praticar com baralho", () => {
     expect(rpcCalls("app_dupla_swipe")[1][1]).toMatchObject({ p_to: "u-bruno", p_direction: "left" });
   });
 
+  it("Estudar junto repetido no mesmo cartão (clique duplo, tecla repetida) escolhe uma pessoa só", async () => {
+    // R15 do pacote de 11/10 (Etapa P, Tarefa P6)
+    await openPractice();
+    await screen.findByText("5 colegas online");
+    const botao = screen.getByRole("button", { name: "Estudar junto" });
+    fireEvent.click(botao);
+    fireEvent.click(botao);
+    await waitFor(() => expect(rpcCalls("app_dupla_swipe")).toHaveLength(1));
+    await new Promise((r) => setTimeout(r, 600));
+    expect(rpcCalls("app_dupla_swipe").map((c: any) => c[1].p_to)).toEqual(["u-carla"]);
+    // tecla repetida (auto-repetição do teclado) no cartão seguinte
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    fireEvent.keyDown(window, { key: "ArrowRight", repeat: true });
+    await waitFor(() => expect(rpcCalls("app_dupla_swipe")).toHaveLength(2));
+    await new Promise((r) => setTimeout(r, 600));
+    expect(rpcCalls("app_dupla_swipe").map((c: any) => c[1].p_to)).toEqual(["u-carla", "u-bruno"]);
+  });
+
   it("a estação escolhida no Banco vai junto no 'Estudar junto'", async () => {
     await openPractice("/dupla?estacao=teste-inep2020-e03");
     await screen.findByText("Estação 3 · Cefaleia na gestante");
