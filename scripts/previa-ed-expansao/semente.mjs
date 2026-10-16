@@ -106,6 +106,54 @@ export async function semear({ sql, rpc, U, raiz }) {
     await rpc(U.ADMIN, "app_admin_vigilance_set_gate", { p_mode: "aviso" });
     await rpc(U.ADMIN, "app_ch_unit_publish", { p_version_id: versao, p_options: { confirm_similar: true } });
     dados.tema = "GR-001";
+    // um vídeo com legenda e transcrição (inserido direto no banco de teste, sem os gatilhos: a versão já está no ar)
+    await sql(`alter table public.ch_unit_materials disable trigger user`);
+    await sql(`insert into public.ch_unit_materials (unit_version_id, kind, title, visibility, origin, source, position, url, content)
+               values ($1, 'video', 'Vídeo: tratamento da tuberculose em 3 minutos', 'aluno', 'inserido', 'link', 1, 'https://www.youtube.com/watch?v=previa',
+                       $2::jsonb)`, [versao, JSON.stringify({
+      legenda: "Esquema básico: 2 meses de RHZE e 4 meses de RH, com tomada diária supervisionada.",
+      transcricao: "Neste vídeo revisamos o esquema básico da tuberculose pulmonar em adultos. A fase intensiva dura 2 meses e a de manutenção, 4 meses.",
+    })]);
+    await sql(`alter table public.ch_unit_materials enable trigger user`);
   });
+  // 7. Formatação de exemplo (SÓ no ramo novo, quando as colunas existem): negrito/itálico em trechos, para a prévia mostrar ao aluno
+  const tem = async (t, c) => (await sql(`select 1 from information_schema.columns where table_schema = 'public' and table_name = $1 and column_name = $2`, [t, c])).length > 0;
+  if (await tem("questions", "formatacao")) {
+    await passo("formatação de exemplo", async () => {
+      const [q] = await sql(`select statement, options, expected_conduct from public.questions where id = $1`, [dados.questao]);
+      const b = q.options.find((o) => o.id === "B");
+      const f = {
+        statement: rico(q.statement, "saturação de 95% em ar ambiente"),
+        "opcao.B.texto": rico(b.text, "sinais de alerta"),
+        "opcao.B.explicacao": rico(b.explanation, "tratamento é de suporte em casa", [{ type: "italic" }]),
+        expected_conduct: rico(q.expected_conduct, "suporte em casa"),
+      };
+      await sql(`update public.questions set formatacao = $2::jsonb where id = $1`, [dados.questao, JSON.stringify(f)]);
+      const [u] = await sql(`select current_conduct, before_text from public.guideline_updates where slug = $1`, [dados.atualizacao]);
+      const fu = {};
+      if (u?.current_conduct) fu.current_conduct = rico(u.current_conduct, u.current_conduct.split(/[:(]/)[0].trim());
+      if (u?.before_text) fu.before_text = rico(u.before_text, u.before_text.split(/[,(]/)[0].trim(), [{ type: "italic" }]);
+      await sql(`alter table public.guideline_updates disable trigger user`);
+      await sql(`update public.guideline_updates set formatacao = $2::jsonb where slug = $1`, [dados.atualizacao, JSON.stringify(fu)]);
+      await sql(`alter table public.guideline_updates enable trigger user`);
+      const mats = await sql(`select id, content from public.ch_unit_materials where unit_version_id = $1 and coalesce(content ->> 'legenda', '') <> '' order by created_at desc limit 1`, [dados.versao]);
+      for (const m of mats) {
+        const leg = m.content.legenda;
+        await sql(`update public.ch_unit_materials set content = content || jsonb_build_object('formatacao', $2::jsonb) where id = $1`, [m.id, JSON.stringify({ legenda: rico(leg, "2 meses de RHZE e 4 meses de RH"), transcricao: rico(m.content.transcricao, "esquema básico", [{ type: "italic" }]) })]);
+      }
+      dados.formatacao = { questao: Object.keys(f).length, atualizacao: Object.keys(fu).length, materiais: mats.length };
+    });
+  }
   return dados;
+}
+
+// envelope sdoc de UM parágrafo com o trecho marcado (a projeção é exatamente o texto)
+function rico(texto, trecho, marks = [{ type: "bold" }]) {
+  const i = texto.indexOf(trecho);
+  const partes = i < 0 || !trecho ? [{ type: "text", text: texto, marks }] : [
+    texto.slice(0, i) && { type: "text", text: texto.slice(0, i) },
+    { type: "text", text: trecho, marks },
+    texto.slice(i + trecho.length) && { type: "text", text: texto.slice(i + trecho.length) },
+  ].filter(Boolean);
+  return { f: "sdoc", v: 1, doc: { type: "doc", content: [{ type: "paragraph", content: partes }] } };
 }
