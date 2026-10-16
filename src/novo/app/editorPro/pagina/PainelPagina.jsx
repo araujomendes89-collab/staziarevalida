@@ -95,6 +95,7 @@ export function PainelPagina({ editor, ctx, buscarPrevia }) {
 
       const body = {
         titulo: ctx.contexto?.titulo ?? "Prévia da aula",
+        ...(Number.isInteger(ctx.contexto?.versao) ? { versao: ctx.contexto.versao } : {}),
         sections,
         ...(ctx.config?.pagina ? { doc_config: { pagina: ctx.config.pagina } } : {}),
       };

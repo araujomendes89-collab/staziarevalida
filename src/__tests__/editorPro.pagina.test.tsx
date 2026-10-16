@@ -31,6 +31,7 @@ import {
   createRenderer,
 } from "../../server/contentHub/render";
 import { mountPreviaPdf } from "../../server/contentHub/previaPdf";
+import { soFormatacao, FORMATO_ATRIBUTOS } from "../shared/docRico/conteudo";
 import { PainelPagina } from "../novo/app/editorPro/pagina/PainelPagina.jsx";
 import { botoesDaAba, modulosEditor } from "../novo/app/editorPro/registroEditor.js";
 
@@ -502,5 +503,14 @@ describe("Módulo M5: Página e PDF do Editor Profissional", () => {
     const quadro = await screen.findByTitle("Prévia para impressão");
     expect(quadro.getAttribute("sandbox")).toBe("allow-same-origin allow-modals");
     expect(screen.getByText("Imprimir / salvar em PDF")).toBeTruthy();
+  });
+  it("11. Regra do dono (§8): a configuração de página é só formatação (não derruba aprovação); a quebra de página idem quando o líder incluir o atributo", () => {
+    const antes = { sections: [{ heading: "H", paragraphs: [{ text: "Texto **forte**", clinical: true, claim_ids: ["c1"] }] }] };
+    const comPagina = { ...antes, doc_config: { pagina: { tamanho: "A4", marcaDagua: "RASCUNHO", cabecalho: { texto: "Pediatria", alinhamento: "centro" } } } };
+    expect(soFormatacao(antes, comPagina)).toBe(true);
+    const bloco = { type: "paragraph", attrs: { quebraPagina: true }, content: [{ type: "text", text: "Texto " }, { type: "text", text: "forte", marks: [{ type: "bold" }] }] };
+    const comQuebra = { sections: [{ heading: "H", paragraphs: [{ ...antes.sections[0].paragraphs[0], rico: { f: "sdoc", v: 1, doc: { type: "doc", content: [bloco] } } }] }] };
+    // pedido ao líder: "quebraPagina" na lista de formatação (SQL + conteudo.ts)
+    expect(soFormatacao(antes, comQuebra)).toBe(FORMATO_ATRIBUTOS.includes("quebraPagina"));
   });
 });
