@@ -15,5 +15,5 @@ export default defineConfig({
   define: { "import.meta.env.VITE_MEDALHAS_ARTE_PACOTE": JSON.stringify("1") },
   resolve: { alias: [{ find: /^(\.\.?\/)+session\.jsx$/, replacement: path.join(here, "sessaoSimulada.jsx") }] },
   server: { port: 31971, strictPort: true, host: "127.0.0.1", fs: { allow: [raiz] } },
-  cacheDir: "/Volumes/StaziaMed/.tmp-aulas/novas-telas/vite-cache-onda2",
+  cacheDir: process.env.PREVIA_CACHE || "/Volumes/StaziaMed/.tmp-aulas/novas-telas/vite-cache-onda2",
 });

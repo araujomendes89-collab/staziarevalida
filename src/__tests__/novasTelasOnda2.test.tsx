@@ -91,10 +91,12 @@ describe("Início (Visão Geral)", () => {
     expect(within(plan).getByText("0 de 2")).toBeTruthy();
     expect(within(plan).getByText("20 questões de Pediatria")).toBeTruthy();
     const kpis = screen.getByRole("region", { name: "Seu desempenho" });
-    expect(kpis.textContent).toContain("5para revisar");
-    expect(kpis.textContent).toContain("383Stazia Score");
-    expect(kpis.textContent).toContain("55%acurácia");
-    expect(kpis.textContent).toContain("9itens na semana");
+    // faixa em blocos com ícone/gráfico, igual à do celular (pedido do dono, 15/10/2026)
+    expect(kpis.className).toContain("ih-mkpis--wide");
+    expect(within(kpis).getByRole("button", { name: "5 para revisar" }).textContent).toContain("Revisar");
+    expect(kpis.textContent).toContain("383Score");
+    expect(kpis.textContent).toContain("55% acerto");
+    expect(kpis.textContent).toContain("9na semana");
     expect(await screen.findByText("Coloproctologia")).toBeTruthy();
     expect(screen.getByText("Cirurgia geral e trauma")).toBeTruthy();
     expect(screen.getByText("Ver os 2 temas prioritários")).toBeTruthy();
@@ -167,8 +169,8 @@ describe("Início: proposta de 15/10 (missões, ranking e Questões Inéditas)",
     render(<MemoryRouter><HomeScreen go={vi.fn()} mobile={false} /></MemoryRouter>);
     await screen.findByText("Continue de onde parou");
     const kpis = screen.getByRole("region", { name: "Seu desempenho" });
-    expect(kpis.textContent).not.toMatch(/missões|Liga|Entre na liga|Stazia Score/);
-    expect(kpis.textContent).toContain("para revisar");
+    expect(kpis.textContent).not.toMatch(/missões|Liga|Entre na liga|Score/);
+    expect(kpis.textContent).toContain("Revisar");
     expect(screen.queryByText("Coloproctologia")).toBeNull();
     expect(backend.rpc).not.toHaveBeenCalledWith("app_trail", expect.anything());
     expect(screen.getByRole("region", { name: "Questões Inéditas" })).toBeTruthy();

@@ -9,6 +9,7 @@ import { AuthFlow, NewPasswordScreen } from "./AuthScreens.jsx";
 import { LegalPage } from "./legal/LegalPage.jsx";
 import { AcceptanceScreen } from "./legal/AcceptanceScreen.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
+import { forgetShellCounts } from "./shell/useShellCounts.js";
 import { rememberScreen } from "./support/lastScreen.js";
 import { NexusScreen } from "./tutor/nexus/NexusScreen.jsx";
 import { ReportScreen } from "./tutor/ReportScreen.jsx";
@@ -94,7 +95,7 @@ function resolveTheme(theme) {
 }
 
 function Screen() {
-  const { boot, updateProfile, signOut } = useSession();
+  const { boot, updateProfile, signOut, backend } = useSession();
   const params = useParams();
   const navigate = useNavigate();
   const mobile = useMobile();
@@ -141,6 +142,8 @@ function Screen() {
   const setTheme = (next) => updateProfile({ theme: next }).catch(() => {});
 
   // o Tutor abre em qualquer tela de estudo, com o contexto que a tela já conhece
+  // (ao sair da sessão os selos do menu, como o do Caderno de Erros, são perguntados de novo ao banco)
+  if (route === "sessao") forgetShellCounts(backend);
   if (route === "sessao") return <TutorDockProvider go={go}><PracticeSession go={go} /></TutorDockProvider>;
   // a tela de uma estação abre sem a moldura: o aviso de "em reconstrução" entra aqui, antes dela
   if (route === "estacao")

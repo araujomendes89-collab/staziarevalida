@@ -4,6 +4,8 @@
 //   onda 7: ?rota=conquistas|medalhas  &arte=0 (como o app hoje: sem a arte 3D do pacote)  &ganhas=1 (2 medalhas de TESTE desbloqueadas)
 //           &aba=loja (Recompensas)  &lojavazia=1  &semmoedas=1 (moedas desligadas: sem a aba Recompensas)
 //   Onda 6 (Stazia Arena): ?rota=trilha|missoes|classificacao  &trilhaandamento=1 (etapas feitas)  &missoesfeitas=1  &rankcheio=1 (linhas de TESTE)  &liga=1 (aluno numa liga)
+//   Casca final (15/10/2026): ?rota=login (login novo; &login=atual mostra o de antes; senha "errada" mostra o erro)
+//   &inicio=simples (Início do celular do pacote MobileMenu)  &mais=pagina (botão Mais do celular abre a página em vez da folha)
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
@@ -18,6 +20,7 @@ import { registrarArtesDoPacote } from "../../src/novo/ds/medalhas-pacote/index.
 import { TrailScreen } from "../../src/novo/app/play/TrailScreen.jsx";
 import { MissionsScreen } from "../../src/novo/app/play/MissionsScreen.jsx";
 import { LeaderboardScreen } from "../../src/novo/app/play/LeaderboardScreen.jsx";
+import { LoginScreen } from "../../src/novo/app/auth/LoginScreen.jsx";
 import { useSession } from "./sessaoSimulada.jsx";
 
 const q = new URLSearchParams(location.search);
@@ -39,6 +42,7 @@ function Previa() {
     setTheme(next === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : next);
     updateProfile({ theme: next });
   };
+  if (nav.route === "login") return <LoginScreen go={(r) => alert(`Prévia: abriria "${r}" (recuperar senha, criar conta)`)} />;
   const info = { name: "João Paulo Mendes", streakDays: 0, flashcardsDue: 0, onSignOut: () => alert("Sair (prévia)"), isStaff: papel === "equipe", isReviewer: papel === "revisor", radarGraves: 0, themeChoice: choice };
   const h = new Date().getHours();
   const arte = q.get("arte") === "0" ? false : undefined;

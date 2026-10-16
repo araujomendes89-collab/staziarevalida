@@ -140,6 +140,14 @@ const backend = {
     return () => {};
   },
   async signOut() {},
+  // login da prévia: nenhuma conta real; a senha "errada" mostra o aviso de erro, qualquer outra mostra "Acesso autorizado"
+  async signIn(email, password) {
+    await new Promise((r) => setTimeout(r, 1200));
+    if (password === "errada") throw Object.assign(new Error("credenciais"), { code: "invalid_credentials" });
+  },
+  async signInWithGoogle() {
+    throw Object.assign(new Error("google"), { code: "google_unavailable" });
+  },
 };
 const value = { backend, boot: boot(), user: { id: "previa" }, status: "ready", refresh: async () => {}, updateProfile: async (patch) => RPC.app_update_profile({ p_patch: patch }), signOut: async () => alert("Sair (prévia)") };
 export function useSession() {
