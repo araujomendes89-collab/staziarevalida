@@ -3,11 +3,12 @@
  *
  * VOZ_MODO=llm (padrão; é o que vai para o Cloud Run): só GET /saude e POST /v1/chat/completions (Custom LLM da ElevenLabs,
  *   com segredo compartilhado). Nada de microfone, Live ou token aqui: o serviço público não deixa ninguém gastar.
- * VOZ_MODO=previa (só no Mac, preso em 127.0.0.1): + POST /api/voz/sessao (token temporário), WS /api/voz/live (ponte para o
- *   Gemini Live) e GET /api/voz/eleven/* (token de conversa da ElevenLabs quando a chave existir).
+ * VOZ_MODO=previa (só no Mac, preso em 127.0.0.1): faz o papel do APP para a prévia: POST /api/voz/sessao (sela o bilhete da
+ *   ponte com a Durona do Personality Engine), POST /api/voz/ferramenta (ferramentas do protótipo) e monta a MESMA ponte do
+ *   Cloud Run (server/vozPonte) em WS /api/voz/ponte. GET /api/voz/eleven/* fica para a opção futura (ElevenLabs parada).
  *
- * Segredos: VOZ_LLM_SEGREDO e VOZ_SESSAO_SEGREDO (env ou ~/.config/staziamed-voz-teste/segredos.env), VERTEX_API_KEY (env ou
- * ~/.config/vertex-staziamed/vertex.env). Nenhum é impresso.
+ * Segredos: VOZ_LLM_SEGREDO e VOZ_PONTE_SEGREDO (env ou ~/.config/staziamed-voz-teste/segredos.env), VERTEX_API_KEY (env ou
+ * ~/.config/vertex-staziamed/vertex.env). Nenhum é impresso. O Live usa o gcloud do dono (no Cloud Run, a conta de serviço).
  *
  * Uso local: npx tsx server/vozTeste/main.ts   (com VOZ_MODO=previa para a página scripts/previa-voz)
  */
@@ -16,11 +17,15 @@ import os from "node:os";
 import path from "node:path";
 import { tratarChatCompletions } from "./customLlm";
 import { configEleven, lerArquivoEnv, tokenConversaEleven } from "./eleven";
-import { tokenGoogle } from "./googleToken";
-import { atenderNavegador, servidorWsLive } from "./liveProxy";
-import { vozValida } from "./liveConfig";
-import { nivelValido } from "./durona";
-import { emitirToken, UsoUnico, verificarToken } from "./tokens";
+import { tokenGoogle } from "../vozPonte/googleToken";
+import { randomUUID } from "node:crypto";
+import { WebSocketServer } from "ws";
+import { vozValida, MODELO_LIVE } from "./liveConfig";
+import { diretivaPrevia, escolhaValida, instrucoesPrevia, type EscolhaExplosiva } from "./durona";
+import { DECLARACOES_FERRAMENTAS, EstadoQuestao, QUESTAO_ANAFILAXIA } from "./questaoTeste";
+import { personaPromptLayer } from "../tutor/personalityEngine";
+import { NoncesUsados, selarBilhete } from "../vozPonte/bilhete";
+import { atenderPonte } from "../vozPonte/ponte";
 import { gerarCom, type ConfigCerebros } from "./cerebros";
 
 const arquivos = {
@@ -33,7 +38,9 @@ const MODO = env("VOZ_MODO", "llm") === "previa" ? "previa" : "llm";
 const PORTA = Number(process.env.PORT || env("VOZ_PORTA", "31996"));
 const HOST = MODO === "previa" ? "127.0.0.1" : "0.0.0.0";
 const ORIGENS = new Set(["http://127.0.0.1:31991", "http://localhost:31991"]);
-const usados = new UsoUnico();
+const usados = new NoncesUsados();
+/** Ligações da prévia (o "banco" do teste): estado da questão e escolha da Durona, só em memória. */
+const ligacoes = new Map<string, { questao: EstadoQuestao; escolha: EscolhaExplosiva; criada: number }>();
 const cerebros: ConfigCerebros = {
   apiKey: env("VERTEX_API_KEY"),
   apiBase: env("VERTEX_API_BASE"),
@@ -79,14 +86,27 @@ const servidor = http.createServer(async (req, res) => {
     if (MODO !== "previa") return json(res, 404, { erro: "não existe" });
     if (!origemOk(req)) return json(res, 403, { erro: "origem não permitida" });
 
+    // faz o papel do app (Vercel): sela o bilhete da ponte com a Durona do Personality Engine e as ferramentas do protótipo
     if (req.method === "POST" && url.pathname === "/api/voz/sessao") {
       const b = await corpoJson(req);
-      const { token, expiraEm } = emitirToken(
-        { motor: "gemini", voz: vozValida(b.voz), nivel: nivelValido(b.nivel), vad: b.vad === "rapido" ? "rapido" : "padrao" },
-        env("VOZ_SESSAO_SEGREDO"),
-        30_000,
-      );
-      return json(res, 200, { token, expiraEm, ws: `/api/voz/live?t=${encodeURIComponent(token)}` });
+      const escolha = escolhaValida(b);
+      const vc = randomUUID();
+      for (const [k, v] of ligacoes) if (Date.now() - v.criada > 3600_000) ligacoes.delete(k);
+      ligacoes.set(vc, { questao: new EstadoQuestao(QUESTAO_ANAFILAXIA), escolha, criada: Date.now() });
+      const { bilhete, expiraEm } = selarBilhete({
+        vc, u: "00000000-0000-4000-8000-000000000000", modelo: MODELO_LIVE, voz: vozValida(b.voz), instrucoes: instrucoesPrevia(escolha),
+        ferramentas: DECLARACOES_FERRAMENTAS, maxSegundos: Number(env("VOZ_MAX_SESSAO_S", "600")), vad: b.vad === "rapido" ? "rapido" : "padrao",
+      }, env("VOZ_PONTE_SEGREDO"));
+      return json(res, 200, { vc, bilhete, expiraEm, ponte: "/api/voz/ponte" });
+    }
+    // faz o papel de /api/tutor/voice/tool: executa a ferramenta no servidor; depois da resposta devolve o tom novo (Personality Engine)
+    if (req.method === "POST" && url.pathname === "/api/voz/ferramenta") {
+      const b = await corpoJson(req);
+      const l = ligacoes.get(String(b.vc ?? ""));
+      if (!l) return json(res, 404, { erro: "ligação não encontrada" });
+      const output: Record<string, unknown> = l.questao.executar(String(b.name ?? ""), (b.args ?? {}) as Record<string, unknown>);
+      if (b.name === "submit_answer" && typeof output.acertou === "boolean") output.tom_do_professor = personaPromptLayer(diretivaPrevia(l.escolha, [output.acertou ? "correct" : "wrong"]));
+      return json(res, 200, { output });
     }
     if (req.method === "GET" && url.pathname === "/api/voz/eleven/estado") {
       const c = configEleven();
@@ -107,24 +127,16 @@ const servidor = http.createServer(async (req, res) => {
 });
 
 if (MODO === "previa") {
-  const wss = servidorWsLive();
+  // a MESMA ponte que vai para o Cloud Run, montada aqui em /api/voz/ponte (origem só a página da prévia)
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 256 * 1024 });
   servidor.on("upgrade", (req, socket, head) => {
     const url = new URL(req.url ?? "/", "http://x");
-    if (url.pathname !== "/api/voz/live" || !origemOk(req)) return socket.destroy();
-    const v = verificarToken(url.searchParams.get("t") ?? "", env("VOZ_SESSAO_SEGREDO"), usados);
-    if (!v.ok) {
-      log({ rota: "live", recusado: v.motivo });
-      socket.write("HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n");
-      return socket.destroy();
-    }
+    if (url.pathname !== "/api/voz/ponte" || !origemOk(req) || !req.headers.origin) return socket.destroy();
     wss.handleUpgrade(req, socket, head, (ws) =>
-      atenderNavegador(ws, v.dados, {
+      atenderPonte(ws, {
+        segredo: env("VOZ_PONTE_SEGREDO"), usados, log, tokenGoogle,
         projeto: env("GCLOUD_PROJECT_VERTEX", "staziamed-revalida-prod"),
         regiao: env("VOZ_LIVE_REGIAO", "us-central1"),
-        token: tokenGoogle,
-        maxSessaoS: Number(env("VOZ_MAX_SESSAO_S", "600")),
-        retomada: env("VOZ_LIVE_RETOMADA", "1") === "1",
-        log,
       }),
     );
   });

@@ -1,22 +1,22 @@
-// Prévia do Voice Tutor (Fase 2, só teste): conversa por voz com a Durona sobre uma questão de TESTE (anafilaxia).
-// Motores: Gemini Live pelo Vertex (funciona já) e ElevenLabs Agents (fica pronto quando o dono criar chave e agente).
+// Prévia do Voice Tutor (Fase 2, só teste): conversa por voz com a Durona Explosiva sobre uma questão de TESTE (anafilaxia),
+// pelo caminho escolhido pelo dono: Gemini Live no VERTEX, pela ponte (a mesma do Cloud Run) e com o cliente de voz do app.
 import { createRoot } from "react-dom/client";
-import { lazy, Suspense, useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { inicial, proximo, estadoVisivel, NOMES } from "./estados.js";
 import { criarMotorGemini } from "./motorGemini.js";
 import "./previa.css";
 
-const MotorEleven = lazy(() => import("./MotorEleven.jsx"));
 const VOZES = ["Kore", "Aoede", "Leda", "Zephyr", "Charon", "Puck"];
-const NIVEIS = [["sem_palavrao", "Sem palavrão"], ["moderada", "Moderada"], ["forte", "Forte"], ["sem_filtro", "Explosiva (sem filtro)"]];
+const NIVEIS = [["n1", "N1 Direta"], ["n2", "N2 Sarcástica"], ["n3", "N3 Estressada (padrão)"], ["n4", "N4 Explosiva"]];
 
 const mediana = (xs) => { if (!xs.length) return null; const s = [...xs].sort((a, b) => a - b); return s[Math.floor((s.length - 1) / 2)]; };
 
 function App() {
   const [estado, despachar] = useReducer(proximo, inicial);
-  const [motor, setMotor] = useState("gemini");
   const [voz, setVoz] = useState("Kore");
-  const [nivel, setNivel] = useState("forte");
+  const [nivel, setNivel] = useState("n3");
+  const [gritos, setGritos] = useState(true);
+  const [palavroes, setPalavroes] = useState(true);
   const [vad, setVad] = useState("padrao");
   const [vol, setVol] = useState(1);
   const [falas, setFalas] = useState([]);
@@ -24,9 +24,7 @@ function App() {
   const [lat, setLat] = useState([]);
   const [interr, setInterr] = useState([]);
   const [uso, setUso] = useState(null);
-  const [eleven, setEleven] = useState(null);
   const motorRef = useRef(null);
-  const elevenRef = useRef(null);
   const inicio = useRef(0);
 
   const anotar = (texto) => setLog((l) => [`${new Date().toLocaleTimeString("pt-BR")} ${texto}`, ...l].slice(0, 60));
@@ -49,25 +47,20 @@ function App() {
   const metrica = useCallback((m) => {
     if (m.tipo === "primeiro_audio") setLat((x) => [...x, m.ms]);
     else if (m.tipo === "interrupcao") setInterr((x) => [...x, m.ms]);
-    else if (m.tipo === "uso") setUso(m);
+    else if (m.tipo === "uso") setUso({ ...m, recebidoEm: Date.now() });
   }, []);
 
-  useEffect(() => { fetch("/api/voz/eleven/estado").then((r) => r.json()).then(setEleven).catch(() => setEleven({ pronta: false, falta: ["servidor de teste fora do ar"] })); }, []);
-  useEffect(() => { motorRef.current?.volume?.(vol); elevenRef.current?.volume?.(vol); }, [vol]);
+  useEffect(() => { motorRef.current?.volume?.(vol); }, [vol]);
 
-  const atual = () => (motor === "gemini" ? motorRef.current : elevenRef.current);
+  const atual = () => motorRef.current;
 
   async function iniciar() {
     setFalas([]); setLat([]); setInterr([]); setUso(null);
     despachar({ tipo: "iniciar" });
     inicio.current = Date.now();
     try {
-      if (motor === "gemini") {
-        motorRef.current = criarMotorGemini({ emitir, metrica });
-        await motorRef.current.iniciar({ voz, nivel, vad });
-      } else {
-        await elevenRef.current.iniciar();
-      }
+      motorRef.current = criarMotorGemini({ emitir, metrica });
+      await motorRef.current.iniciar({ voz, nivel, gritos, palavroes, vad });
     } catch (e) {
       emitir({ tipo: "erro", mensagem: String(e.message || e) });
     }
@@ -75,40 +68,33 @@ function App() {
 
   const vis = estadoVisivel(estado);
   const ativo = !["idle", "ended", "error"].includes(estado.fase);
-  const minutos = uso ? Math.max(uso.segundos, 1) / 60 : null;
+  // minutos desde o início da conversa até o último relatório de uso (a ponte manda o uso a cada turno)
+  const minutos = uso ? Math.max((uso.recebidoEm - inicio.current) / 60000, 1 / 60) : null;
 
   return (
     <main>
       <header>
-        <h1>Prévia do tutor de voz <small>Durona · questão de teste (anafilaxia)</small></h1>
+        <h1>Prévia do tutor de voz <small>Durona Explosiva · Gemini Live pelo Vertex · questão de teste (anafilaxia)</small></h1>
         <p className="aviso">Só teste: dados fictícios, sem aluno, sem banco. Fale no microfone; pode interromper a professora falando por cima.</p>
       </header>
 
       <section className="config">
-        <label>Motor
-          <select value={motor} onChange={(e) => setMotor(e.target.value)} disabled={ativo}>
-            <option value="gemini">Gemini Live pelo Vertex (principal)</option>
-            <option value="eleven" disabled={!eleven?.pronta}>ElevenLabs Agents {eleven?.pronta ? "" : "(falta configurar)"}</option>
-          </select>
-        </label>
         <label>Voz
-          <select value={voz} onChange={(e) => setVoz(e.target.value)} disabled={ativo || motor !== "gemini"}>{VOZES.map((v) => <option key={v}>{v}</option>)}</select>
+          <select value={voz} onChange={(e) => setVoz(e.target.value)} disabled={ativo}>{VOZES.map((v) => <option key={v}>{v}</option>)}</select>
         </label>
         <label>Nível da Durona
-          <select value={nivel} onChange={(e) => setNivel(e.target.value)} disabled={ativo || motor !== "gemini"}>{NIVEIS.map(([v, n]) => <option key={v} value={v}>{n}</option>)}</select>
+          <select value={nivel} onChange={(e) => setNivel(e.target.value)} disabled={ativo}>{NIVEIS.map(([v, n]) => <option key={v} value={v}>{n}</option>)}</select>
         </label>
         <label>Detector de fala
-          <select value={vad} onChange={(e) => setVad(e.target.value)} disabled={ativo || motor !== "gemini"}>
+          <select value={vad} onChange={(e) => setVad(e.target.value)} disabled={ativo}>
             <option value="padrao">Padrão do Google</option>
             <option value="rapido">Rápido (silêncio curto)</option>
           </select>
         </label>
+        <label className="caixa"><input type="checkbox" checked={gritos} onChange={(e) => setGritos(e.target.checked)} disabled={ativo} /> Gritos</label>
+        <label className="caixa"><input type="checkbox" checked={palavroes} onChange={(e) => setPalavroes(e.target.checked)} disabled={ativo} /> Palavrões</label>
         <label>Volume <input type="range" min="0" max="1" step="0.05" value={vol} onChange={(e) => setVol(Number(e.target.value))} /></label>
       </section>
-
-      {motor === "eleven" || !eleven?.pronta ? (
-        <p className="falta">ElevenLabs: {eleven?.pronta ? "pronta" : `falta ${eleven?.falta?.join("; ") ?? "…"}`}</p>
-      ) : null}
 
       <section className={`estado e-${vis}`} aria-live="polite">
         <span className="bolinha" />
@@ -142,9 +128,6 @@ function App() {
         <ul className="log">{log.map((l, i) => <li key={i}>{l}</li>)}</ul>
       </details>
 
-      {eleven?.pronta ? (
-        <Suspense fallback={null}><MotorEleven ref={elevenRef} emitir={emitir} metrica={metrica} /></Suspense>
-      ) : null}
     </main>
   );
 }

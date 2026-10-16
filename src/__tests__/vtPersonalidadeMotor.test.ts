@@ -409,10 +409,17 @@ describe("encaixe no prompt e no servidor", () => {
     expect(prompt).toMatch(/Reações de voz liberadas NESTA fala \(só estas, escritas exatamente assim, onde a reação acontece\): \[laughs\]/);
   });
 
-  it("o Tutor atual não usa o motor novo (Durona de hoje segue igual até o dono aprovar)", () => {
-    for (const f of ["engine.ts", "speech.ts", "elevenlabsTts.ts", "speechDirector.ts", "officialVoices.ts", "realtime.ts", "router.ts"]) {
+  it("o Tutor atual não usa o motor novo, exceto a voz do Gemini pelo Vertex (decisão do dono de 16/10/2026)", () => {
+    for (const f of ["engine.ts", "speech.ts", "elevenlabsTts.ts", "speechDirector.ts", "officialVoices.ts"]) {
       expect(fs.readFileSync(path.join(ROOT, "server/tutor", f), "utf8")).not.toMatch(/personalityEngine|voiceReactionFilter/);
     }
+    // realtime.ts e router.ts: só no caminho do Vertex (ponte do Cloud Run); GPT-Live, Realtime e a API direta do Gemini seguem iguais
+    const rt = fs.readFileSync(path.join(ROOT, "server/tutor/realtime.ts"), "utf8");
+    expect(rt.match(/personaPromptLayer\(/g)).toHaveLength(1);
+    expect(rt.slice(rt.indexOf('gemini.via === "vertex"'), rt.indexOf("selarBilhete({"))).toMatch(/personaPromptLayer\(/);
+    const ro = fs.readFileSync(path.join(ROOT, "server/tutor/router.ts"), "utf8");
+    expect(ro.match(/personaPromptLayer\(/g)).toHaveLength(1);
+    expect(ro).toMatch(/v\.provider === "gemini" && geminiVoiceConfig\(\)\.via === "vertex"[\s\S]{0,800}personaPromptLayer\(/);
   });
 
   it("planPersonaTurn lê o banco (painel, regras, escolha do aluno); banco fora do ar = nenhuma reação e Explosiva desligada", async () => {

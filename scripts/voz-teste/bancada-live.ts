@@ -65,7 +65,7 @@ function rodar(falaId: string, rep: number): Promise<Record<string, unknown>> {
       void ultimoUso;
       if (rep === 1 && audio.length) fs.writeFileSync(path.join(saidaDir, `${cfg}${FERR ? "-ferr" : ""}-${falaId}.wav`), wav(Buffer.concat(audio), 24000));
       resolve({
-        fala: falaId, rep, config: cfg, ferramentas_ligadas: FERR, ferramentas_chamadas: ferramentas, modelo: MODELO, voz: VOZ, motivo,
+        fala: falaId, rep, config: cfg, ferramentas_ligadas: FERR, desenho: FERR ? "caso_no_prompt+submit_answer" : "caso_no_prompt", ferramentas_chamadas: ferramentas, modelo: MODELO, voz: VOZ, motivo,
         primeiro_audio_ms: r.primeiroAudio != null && r.fimFala != null ? r.primeiroAudio - r.fimFala : null,
         aviso_interrupcao_desde_inicio_ms: r.avisoInterrompido != null && r.interrompeuIni != null ? r.avisoInterrompido - r.interrompeuIni : null,
         primeiro_audio_apos_interrupcao_ms: r.primeiroAudio2 != null && r.interrompeuFim != null ? r.primeiroAudio2 - r.interrompeuFim : null,

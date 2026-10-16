@@ -24,3 +24,4 @@ button { cursor: pointer; font-weight: 600; } button:disabled { opacity: .45; cu
 .conversa .aluno { align-self: flex-end; max-width: 85%; } .conversa .tutor { max-width: 85%; }
 .falta { color: var(--laranja); font-size: .88rem; }
 .log { font: 12px/1.5 ui-monospace, monospace; color: var(--suave); padding-left: 16px; }
+.config .caixa { flex-direction: row; align-items: center; gap: 6px; color: var(--texto); font-size: .9rem; }

@@ -6,37 +6,20 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { describe, expect, it } from "vitest";
-import { bearer, emitirToken, segredoConfere, UsoUnico, verificarToken } from "../../server/vozTeste/tokens";
+import { bearer, segredoConfere } from "../../server/vozTeste/tokens";
 import { conferirFrase, Fraseador, mensagensParaGemini, prepararTurno, tratarChatCompletions, type DepsCustomLlm } from "../../server/vozTeste/customLlm";
 import { blocoBase, EstadoQuestao, letraDita, QUESTAO_ANAFILAXIA } from "../../server/vozTeste/questaoTeste";
 import { camadaDurona, instrucoesDurona, nivelValido } from "../../server/vozTeste/durona";
 import { claudeEmFluxo } from "../../server/vozTeste/cerebros";
 import { configEleven } from "../../server/vozTeste/eleven";
 import { custoLiveUsd, usoDe } from "../../server/vozTeste/liveConfig";
-import { setupLive } from "../../server/vozTeste/liveProxy";
+import { instrucoesPrevia } from "../../server/vozTeste/durona";
 import { estadoVisivel, eventoEleven, inicial, proximo } from "../../scripts/previa-voz/estados.js";
 
 const SEG = "s".repeat(40);
 
-describe("token temporário de sessão", () => {
-  const dados = { motor: "gemini" as const, voz: "Kore", nivel: "forte", vad: "padrao" as const };
-  it("vale uma vez só, dentro do prazo, com a assinatura certa", () => {
-    const usados = new UsoUnico();
-    const { token } = emitirToken(dados, SEG, 30_000, 1_000);
-    expect(verificarToken(token, SEG, usados, 2_000)).toEqual({ ok: true, dados });
-    expect(verificarToken(token, SEG, usados, 2_000)).toEqual({ ok: false, motivo: "reusado" });
-  });
-  it("recusa vencido, adulterado e assinado com outro segredo", () => {
-    const { token } = emitirToken(dados, SEG, 30_000, 1_000);
-    expect(verificarToken(token, SEG, new UsoUnico(), 40_000)).toEqual({ ok: false, motivo: "expirado" });
-    const [v, corpo, sig] = token.split(".");
-    const outro = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(corpo, "base64url").toString()), nivel: "sem_filtro" })).toString("base64url");
-    expect(verificarToken(`${v}.${outro}.${sig}`, SEG, new UsoUnico(), 2_000)).toEqual({ ok: false, motivo: "assinatura" });
-    expect(verificarToken(token, "x".repeat(40), new UsoUnico(), 2_000)).toEqual({ ok: false, motivo: "assinatura" });
-    expect(verificarToken("lixo", SEG, new UsoUnico())).toEqual({ ok: false, motivo: "formato" });
-  });
-  it("não emite com segredo curto e não autoriza segredo vazio", () => {
-    expect(() => emitirToken(dados, "curto")).toThrow();
+describe("segredo do Custom LLM", () => {
+  it("não autoriza segredo vazio nem diferente", () => {
     expect(segredoConfere("qualquer", "")).toBe(false);
     expect(segredoConfere(SEG, SEG)).toBe(true);
     expect(segredoConfere(`${SEG}x`, SEG)).toBe(false);
@@ -76,14 +59,12 @@ describe("Truth Engine do protótipo", () => {
     expect(e.executar("submit_answer", { letra: "B" })).toMatchObject({ registrada: "A" });
     expect(e.executar("get_question_context", {})).toMatchObject({ gabarito: "B", resposta_do_aluno: "A" });
   });
-  it("o Live com ferramentas leva o caso sem gabarito e declara as ferramentas", () => {
-    const s = setupLive({ motor: "gemini", voz: "hackeada", nivel: "inventado", vad: "padrao" }, { projeto: "p", regiao: "us-central1", retomada: true });
-    const texto = s.setup.systemInstruction.parts[0].text;
-    expect(texto).not.toMatch(/Gabarito StaziaMed/);
-    expect(texto).toMatch(/submit_answer/);
-    expect(s.setup.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName).toBe("Kore");
-    expect(JSON.stringify(s.setup.tools)).toMatch(/submit_answer/);
-    expect(s.setup.model).toBe("projects/p/locations/us-central1/publishers/google/models/gemini-3.8-live");
+  it("as instruções da prévia (Personality Engine) levam o caso sem gabarito e mandam usar submit_answer", () => {
+    const t = instrucoesPrevia({ nivel: "n3", gritos: true, palavroes: true });
+    expect(t).not.toMatch(/Gabarito StaziaMed/);
+    expect(t).toMatch(/submit_answer/);
+    expect(t).toMatch(/Durona Explosiva — N3/);
+    expect(instrucoesPrevia({ nivel: "n1", gritos: false, palavroes: false })).toMatch(/Sem palavrão nesta fala/);
   });
 });
 

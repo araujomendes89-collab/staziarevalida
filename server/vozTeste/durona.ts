@@ -120,3 +120,43 @@ export function instrucoesDurona(o: OpcoesInstrucoes): string {
     .filter(Boolean)
     .join("\n\n");
 }
+
+// ------------------------------------------------------------------------------------------------ Personality Engine (vt-personalidade)
+import { personaPromptLayer, personaTurn, resolveProfile, type ExplosivaLevel, type PersonaDirective, type Signal } from "../tutor/personalityEngine";
+
+export const NIVEIS_EXPLOSIVA: readonly ExplosivaLevel[] = ["n1", "n2", "n3", "n4"] as const;
+export interface EscolhaExplosiva { nivel: ExplosivaLevel; gritos: boolean; palavroes: boolean }
+export const escolhaValida = (b: Record<string, unknown>): EscolhaExplosiva => ({
+  nivel: NIVEIS_EXPLOSIVA.includes(b.nivel as ExplosivaLevel) ? (b.nivel as ExplosivaLevel) : "n3",
+  gritos: b.gritos !== false,
+  palavroes: b.palavroes !== false,
+});
+
+/** Diretiva do Personality Engine para a prévia (todos maiores de 18 pelo Termo; painel com a Explosiva ligada; reações: nenhuma no Live). */
+export function diretivaPrevia(e: EscolhaExplosiva, fatos: Signal[] = []): PersonaDirective {
+  const resolved = resolveProfile({
+    personality: "durona",
+    explosiva: { level: e.nivel, shouts: e.gritos, profanity: e.palavroes, adultDeclared: true },
+    platform: { maxProfanity: "moderate", explosivaEnabled: true },
+  });
+  return personaTurn({ resolved, memory: null, facts: fatos, rules: [], provider: "gemini_live" });
+}
+
+/**
+ * Instruções da prévia no MESMO formato do app pela ponte: camadas do Tutor + Personality Engine (Durona Explosiva) +
+ * ferramentas para a correção (o gabarito nunca vai no prompt). O tom muda depois de cada resposta pela própria ferramenta.
+ */
+export function instrucoesPrevia(e: EscolhaExplosiva, questao: QuestaoTeste = QUESTAO_ANAFILAXIA): string {
+  return [
+    TUTOR_REALTIME_LANGUAGE,
+    BASE_FALADA,
+    REGRAS_FALADAS,
+    TUTOR_MODES.questao,
+    VOZ_SEM_FERRAMENTAS,
+    COM_FERRAMENTAS + "\n- Depois de submit_answer, o resultado traz tom_do_professor: siga esse tom a partir dali.",
+    FALA_SEM_FILTRO,
+    personaPromptLayer(diretivaPrevia(e)),
+    blocoBase(questao, null),
+    "Esta é uma sessão de TESTE do protótipo de voz (questão fictícia, sem aluno real).",
+  ].join("\n\n");
+}

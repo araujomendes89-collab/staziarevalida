@@ -32,6 +32,9 @@ import { redactSupportMaterial } from "../contentHub/complementarGuard";
 import { safetyCheck, type BaseBlock } from "./safety";
 import { realKey } from "./speech";
 import { REALTIME_TOOLS } from "./tools";
+import { selarBilhete } from "../vozPonte/bilhete";
+import { planPersonaTurn } from "./voiceReactions";
+import { personaPromptLayer } from "./personalityEngine";
 import { estimateCost, voiceTimeCost } from "./costs";
 import { deterministicTutor, tutorSettings, type TutorSettings } from "./settings";
 import {
@@ -160,6 +163,8 @@ export interface VoiceStart {
   /** Gemini: chave temporária (instruções travadas no servidor) para o navegador conectar no Google. */
   gemini_token?: string;
   gemini_expires_at?: string;
+  /** Gemini pelo Vertex: endereço da ponte (Cloud Run) e o bilhete selado (o navegador não lê nem altera). */
+  gemini_ponte?: { url: string; bilhete: string; expira_em: string };
   model: string;
   voice: string;
   lease_seconds: number;
@@ -304,6 +309,26 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
       // a chave vence junto com o que a ligação pode durar: limite da conversa ou o tempo de voz que o aluno ainda tem hoje
       const left = Number((r.entitlement as { voice?: { remaining_s?: number } } | null)?.voice?.remaining_s);
       const maxSeconds = Number.isFinite(left) ? Math.min(settings.voice_session_max_seconds, left + r.lease_seconds) : settings.voice_session_max_seconds;
+      if (gemini.via === "vertex" && gemini.ponte) {
+        // Vertex pela ponte: Personality Engine (Durona Explosiva etc.) como camada de personalidade da sessão; se o banco ainda
+        // não tiver as funções do motor, fica a camada de sempre
+        let personaVoz = persona;
+        try {
+          personaVoz = personaPromptLayer(await planPersonaTurn(deps, { userId, personality: ctx.personality.id, provider: "gemini_live", memory: null }));
+        } catch (error) {
+          deps.log?.(`[tutor] voz: Personality Engine indisponível, usando a persona de sempre: ${(error as Error).message.slice(0, 120)}`);
+        }
+        const instrucoes = composeRealtimeInstructions({ mode: ctx.session.mode, persona: personaVoz, context: sessionContext(ctx, extras, { live: false, continuity }), pronunciations: settings.pronunciations });
+        const b = selarBilhete({
+          vc: r.voice_call_id, u: userId, modelo: gemini.model, voz: gVoice, instrucoes,
+          ferramentas: REALTIME_TOOLS.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })), maxSegundos: maxSeconds,
+        }, gemini.ponte.segredo);
+        await deps.db.service("ch_worker_tutor_voice_attach", { p_user: userId, p_voice_call: r.voice_call_id, p_call_id: `vertex-${r.voice_call_id.slice(0, 8)}`, p_provider: "gemini" });
+        return {
+          provider: "gemini", voice_call_id: r.voice_call_id, gemini_ponte: { url: gemini.ponte.url, bilhete: b.bilhete, expira_em: new Date(b.expiraEm).toISOString() },
+          model: gemini.model, lease_seconds: r.lease_seconds, entitlement: r.entitlement, ...base, voice: gVoice,
+        };
+      }
       const t = await createGeminiVoiceToken({ key: gemini.key!, model: gemini.model, instructions, voice: gVoice, tools: REALTIME_TOOLS as never, maxSeconds, client: deps.geminiClient });
       await deps.db.service("ch_worker_tutor_voice_attach", { p_user: userId, p_voice_call: r.voice_call_id, p_call_id: `gemini-${r.voice_call_id.slice(0, 8)}`, p_provider: "gemini" });
       return { provider: "gemini", voice_call_id: r.voice_call_id, gemini_token: t.token, gemini_expires_at: t.expiresAt, model: gemini.model, lease_seconds: r.lease_seconds, entitlement: r.entitlement, ...base, voice: gVoice };
@@ -375,7 +400,9 @@ export async function endVoice(deps: TutorDeps, userId: string, voiceCallId: str
     "ch_worker_tutor_voice_end", { p_user: userId, p_voice_call: voiceCallId, p_reason: reason });
   if (!r.ok) throw new TutorError("Chamada de voz não encontrada.", 404);
   void hangup(r.call_id, deps, r.provider ?? "realtime");
-  if (!r.already && (r.provider === "live" || r.provider === "gemini")) await recordLiveMinutes(deps, userId, r.session_id ?? null, r.model ?? null, r.consumed_seconds ?? 0, voiceCallId, r.provider);
+  // Gemini pelo Vertex (ponte): o custo entra pelos TOKENS que a ponte relata no fim (/voice/ponte-uso), não pelo tempo
+  const viaPonte = r.provider === "gemini" && String(r.call_id ?? "").startsWith("vertex-");
+  if (!r.already && !viaPonte && (r.provider === "live" || r.provider === "gemini")) await recordLiveMinutes(deps, userId, r.session_id ?? null, r.model ?? null, r.consumed_seconds ?? 0, voiceCallId, r.provider);
   return { consumed_seconds: r.consumed_seconds ?? 0 };
 }
 

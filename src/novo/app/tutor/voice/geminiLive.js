@@ -15,7 +15,7 @@ const MAX_RESUMES = 8; // trocas de conexão no total (as do Google, de ~10 em ~
 
 // Captura do microfone em blocos de ~100 ms a 16 kHz, na taxa que o contexto tiver (48 kHz, 44,1 kHz ou já 16 kHz):
 // passa-baixa (dois polos simples) e interpolação linear. Para voz, que é o que o Gemini precisa ouvir, basta.
-const CAPTURE_WORKLET = `
+export const CAPTURE_WORKLET = `
 class StaziaCapture extends AudioWorkletProcessor {
   constructor(options) {
     super();

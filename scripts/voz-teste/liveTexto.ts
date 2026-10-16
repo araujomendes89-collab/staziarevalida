@@ -63,7 +63,7 @@ export function conversaLive(o: { nivel: NivelTeste; questao: QuestaoTeste; fala
         setTimeout(proximo, 200);
       }
     });
-    ws.on("close", () => fim(turnos.length < o.falas.length ? "Live fechou antes do fim" : undefined));
+    ws.on("close", (codigo, porque) => fim(turnos.length < o.falas.length ? `Live fechou antes do fim (${codigo} ${String(porque).slice(0, 160)})` : undefined));
     ws.on("error", (e) => fim(`erro ${String(e).slice(0, 150)}`));
   });
 }
