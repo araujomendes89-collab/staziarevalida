@@ -35,6 +35,8 @@ import { REALTIME_TOOLS } from "./tools";
 import { selarBilhete } from "../vozPonte/bilhete";
 import { planPersonaTurn } from "./voiceReactions";
 import { personaPromptLayer } from "./personalityEngine";
+import { AI_OFF, assertAiAllowed, rateHit } from "./limits";
+import { aiAllowed } from "../contentHub/ai/registry";
 import { estimateCost, voiceTimeCost } from "./costs";
 import { deterministicTutor, tutorSettings, type TutorSettings } from "./settings";
 import {
@@ -184,6 +186,10 @@ export const reasonError = (reason: string | undefined, e: unknown): TutorError 
       return new TutorError("A voz do Tutor está desligada no momento.", 503);
     case "session_closed":
       return new TutorError("Esta conversa foi encerrada. Abra uma nova.", 409);
+    case "account_minutes":
+    case "account_budget":
+      // Fase 0 (L1): teto da plataforma (minutos ou US$ do dia, somando todos): o aluno segue pelo chat
+      return Object.assign(new TutorError(ACCOUNT_LIMIT, 503), { code: "voice_account_limit" });
     case "not_found":
       return new TutorError("Conversa não encontrada.", 404);
     default:
@@ -208,6 +214,8 @@ export function geminiVoiceFor(settings: Pick<TutorSettings, "voice_name">, pers
  * `avoid`: provedores que acabaram de falhar no aparelho do aluno (o Gemini conecta pelo navegador; se não abrir, o app pede outro).
  */
 export async function startVoice(deps: TutorDeps, userId: string, sessionId: string, force: boolean, sdp: string | null = null, avoid: VoiceProviderId[] = []): Promise<VoiceStart> {
+  // Fase 0 (L4): IA desligada no painel ou no ambiente: nada abre (antes de reservar tempo e de falar com qualquer provedor)
+  await assertAiAllowed(deps);
   const rt = deps.realtime ?? realtimeConfig();
   const live = liveOf(deps);
   const gemini = geminiOf(deps);
@@ -355,13 +363,25 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
   throw new TutorError("Não consegui abrir a conversa por voz agora. Tente de novo em instantes.", 502);
 }
 
+/** Teto da plataforma (Fase 0, L1): a voz ao vivo de todos chegou ao limite de minutos ou de dinheiro do dia. */
+export const ACCOUNT_LIMIT = "O Tutor por voz atingiu o limite de uso de hoje. Continue pelo chat; a voz volta amanhã.";
+
 const STOP_MESSAGE: Record<string, string> = {
   quota: "Você atingiu seu limite de voz de hoje. O acesso é renovado amanhã.",
+  account_limit: ACCOUNT_LIMIT,
+  ai_off: AI_OFF,
   session_limit: "Esta conversa por voz chegou ao tempo máximo. Você pode abrir outra.",
   timeout: "A conversa por voz caiu por falta de sinal. Pode abrir de novo.",
 };
 
 export async function renewVoice(deps: TutorDeps, userId: string, voiceCallId: string, callId: string | null) {
+  // Fase 0 (L4): IA desligada no meio da ligação: o servidor encerra agora (sem folga) e derruba a ligação no provedor
+  const allowed = await aiAllowed(deps.db);
+  if (!allowed.ok) {
+    deps.log?.(`[tutor] voz encerrada, IA bloqueada: ${allowed.why}`);
+    await endVoice(deps, userId, voiceCallId, "error", callId);
+    return { stop: true, reason: "ai_off", grace_seconds: 0, message: STOP_MESSAGE.ai_off, entitlement: null };
+  }
   const r = await deps.db.service<{ ok: boolean; stop?: boolean; reason?: string; call_id?: string | null; provider?: string; grace_seconds?: number; lease_seconds?: number; remaining_s?: number; warn?: boolean; session_left_s?: number; entitlement?: unknown }>(
     "ch_worker_tutor_voice_renew", { p_user: userId, p_voice_call: voiceCallId, p_call_id: callId });
   if (r.stop) {
@@ -395,11 +415,12 @@ async function recordLiveMinutes(deps: TutorDeps, userId: string, sessionId: str
 
 export type EndReason = "student" | "error" | "quota" | "session_limit";
 
-export async function endVoice(deps: TutorDeps, userId: string, voiceCallId: string, reason: EndReason) {
+/** `clientCallId`: o id da ligação que o aplicativo mandou (Realtime), usado para desligar quando o banco ainda não o tem. */
+export async function endVoice(deps: TutorDeps, userId: string, voiceCallId: string, reason: EndReason, clientCallId: string | null = null) {
   const r = await deps.db.service<{ ok: boolean; consumed_seconds?: number; call_id?: string | null; provider?: string; model?: string | null; session_id?: string; already?: boolean }>(
     "ch_worker_tutor_voice_end", { p_user: userId, p_voice_call: voiceCallId, p_reason: reason });
   if (!r.ok) throw new TutorError("Chamada de voz não encontrada.", 404);
-  void hangup(r.call_id, deps, r.provider ?? "realtime");
+  void hangup(r.call_id ?? clientCallId, deps, r.provider ?? "realtime");
   // Gemini pelo Vertex (ponte): o custo entra pelos TOKENS que a ponte relata no fim (/voice/ponte-uso), não pelo tempo
   const viaPonte = r.provider === "gemini" && String(r.call_id ?? "").startsWith("vertex-");
   if (!r.already && !viaPonte && (r.provider === "live" || r.provider === "gemini")) await recordLiveMinutes(deps, userId, r.session_id ?? null, r.model ?? null, r.consumed_seconds ?? 0, voiceCallId, r.provider);
@@ -458,6 +479,8 @@ export async function recordVoiceMetrics(deps: TutorDeps, userId: string, voiceC
  */
 export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCallId: string, role: "student" | "tutor", text: string) {
   const v = await voiceCall(deps, userId, voiceCallId);
+  // Fase 0 (L2): cada fala conta no limite de frequência do aluno (no banco)
+  await rateHit(deps, userId, "voice_transcript");
   const clean = text.trim().slice(0, 4000);
   if (!clean) return { correction: null };
   if (role === "student") {

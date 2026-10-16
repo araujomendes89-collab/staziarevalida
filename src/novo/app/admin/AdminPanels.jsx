@@ -784,6 +784,10 @@ export function AdminTutor() {
         stt_trial_daily_min: secondsToMinutes(data.stt_trial_daily_seconds),
         stt_paid_daily_min: secondsToMinutes(data.stt_paid_daily_seconds),
         stt_account_daily_min: secondsToMinutes(data.stt_account_daily_seconds),
+        live_account_daily_min: secondsToMinutes(data.live_account_daily_seconds),
+        live_account_daily_usd: data.live_account_daily_usd != null ? String(data.live_account_daily_usd) : "",
+        live_account_monthly_usd: data.live_account_monthly_usd != null ? String(data.live_account_monthly_usd) : "",
+        live_price_per_min_usd: data.live_price_per_min_usd != null ? String(data.live_price_per_min_usd) : "",
       });
   }, [data]);
   const personas = useLoad(() => backend.rpc("app_admin_tutor_personalities"), [backend]);
@@ -824,6 +828,8 @@ export function AdminTutor() {
   const micSupported = Object.prototype.hasOwnProperty.call(data, "stt_team_only");
   // banco ainda sem a coluna da dica (migração …10600 não colada): o interruptor fica travado em vez de fingir que guarda
   const hintSupported = Object.prototype.hasOwnProperty.call(data, "question_hint_enabled");
+  // banco ainda sem a coluna dos tetos da plataforma da voz ao vivo (migração …012800 não colada)
+  const liveCapsSupported = Object.prototype.hasOwnProperty.call(data, "live_account_monthly_usd");
   const needsMicCaps = micSupported && !form.stt_team_only && !(micCapsFilled && positive(form.stt_price_per_min_usd));
   const needsVoicePrice = !form.tts_team_only && data.tts_team_only !== false && !positive(form.tts_price_per_1k_chars_usd);
   const blocked = needsPlans || needsMicCaps || needsVoicePrice;
@@ -835,6 +841,18 @@ export function AdminTutor() {
       const n = (x) => String(x ?? "").trim();
       const min = (x) => (n(x) === "" ? "" : String(Math.round(Number(n(x)) * 60)));
       const price = (x) => n(x).replace(",", ".");
+      const isNumeric = (val) => {
+        const s = String(val ?? "").trim().replace(",", ".");
+        return s !== "" && !Number.isNaN(Number(s)) && Number.isFinite(Number(s));
+      };
+      const liveConfig = liveCapsSupported
+        ? {
+            ...(isNumeric(form.live_account_daily_min) ? { live_account_daily_seconds: min(price(form.live_account_daily_min)) } : {}),
+            ...(isNumeric(form.live_account_daily_usd) ? { live_account_daily_usd: price(form.live_account_daily_usd) } : {}),
+            ...(isNumeric(form.live_account_monthly_usd) ? { live_account_monthly_usd: price(form.live_account_monthly_usd) } : {}),
+            ...(isNumeric(form.live_price_per_min_usd) ? { live_price_per_min_usd: price(form.live_price_per_min_usd) } : {}),
+          }
+        : {};
       const config = {
         enabled: form.enabled, requires_pro: form.requires_pro, max_profanity: form.max_profanity, voice_enabled: form.voice_enabled,
         daily_message_limit: n(form.daily_message_limit), trial_text_daily: n(form.trial_text_daily), trial_questions_daily: n(form.trial_questions_daily),
@@ -849,6 +867,7 @@ export function AdminTutor() {
         ...(micSupported
           ? { stt_team_only: form.stt_team_only, stt_trial_daily_seconds: min(form.stt_trial_daily_min), stt_paid_daily_seconds: min(form.stt_paid_daily_min), stt_account_daily_seconds: min(form.stt_account_daily_min) }
           : {}),
+        ...liveConfig,
       };
       setData(await backend.rpc("app_admin_tutor_save_config", { p_config: config, p_reason: reason }));
       setReason("");
@@ -911,6 +930,16 @@ export function AdminTutor() {
           </div>
           {micSupported && !micCapsFilled && <Badge tone="warning">Pendente: definir os tetos diários da transcrição antes de liberar o microfone aos alunos</Badge>}
           {needsMicCaps && <Banner tone="warning">Para liberar o microfone aos alunos, preencha antes o teto diário de transcrição (teste grátis, plano pago e a plataforma toda) e o preço da transcrição.</Banner>}
+          <div className="sm-overline">Voz ao vivo: teto de gasto da plataforma</div>
+          {!liveCapsSupported && (
+            <Banner tone="warning">O teto de gasto da voz ainda não pode ser mudado por aqui: falta uma atualização do banco, que o Claude prepara para você colar.</Banner>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+            <TextField label="Minutos de voz ao vivo por dia (todos os alunos)" value={form.live_account_daily_min} inputMode="decimal" maxLength={6} disabled={!liveCapsSupported} onChange={(e) => set({ live_account_daily_min: e.target.value })} hint="Soma de todos os alunos no dia." />
+            <TextField label="Teto de gasto por dia (US$)" value={form.live_account_daily_usd} inputMode="decimal" maxLength={8} disabled={!liveCapsSupported} onChange={(e) => set({ live_account_daily_usd: e.target.value })} hint="Custo real ou estimado do dia." />
+            <TextField label="Teto de gasto por mês (US$)" value={form.live_account_monthly_usd} inputMode="decimal" maxLength={8} disabled={!liveCapsSupported} onChange={(e) => set({ live_account_monthly_usd: e.target.value })} hint="Quando o teto do mês chega, a voz fecha para todos e o chat continua." />
+            <TextField label="Preço por minuto da voz ao vivo (US$)" value={form.live_price_per_min_usd} inputMode="decimal" maxLength={8} disabled={!liveCapsSupported} onChange={(e) => set({ live_price_per_min_usd: e.target.value })} hint="Usado enquanto a ponte ainda não relatou o custo real." />
+          </div>
           <div className="sm-overline">Teste grátis (7 dias, a partir do primeiro uso)</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
             <TextField label="Interações de texto por dia" value={form.trial_text_daily} inputMode="numeric" maxLength={3} onChange={(e) => set({ trial_text_daily: e.target.value })} />

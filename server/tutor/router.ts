@@ -20,6 +20,7 @@ import { samplePath } from "./voicePreview";
 import { elevenAccessOf, nexusStatus, openNexus, type TtsQuota } from "./nexus";
 import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, STT_BLOCK, STT_BUSY, STT_PER_MINUTE, audioFitsSeconds, sttAccessOf, sttConfig, transcribe } from "./stt";
 import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
+import { rateHit } from "./limits";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -351,13 +352,19 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     if (!role || typeof b.text !== "string") throw new TutorError("Transcrição inválida.", 400);
     return voiceTranscript(deps!, req.user!.id, callIdOf(b), role, b.text);
   }));
-  /** Ferramenta pedida pela voz: só as da lista, sempre com o aluno e a sessão desta chamada. */
+  /**
+   * Ferramenta pedida pela voz: só as da lista, sempre com o aluno e a sessão desta chamada. Fase 0 (L2): só na voz ao vivo que usa
+   * ferramentas (Realtime e Gemini); a Nexus "por escrito" (tts) e o GPT-Live (delega pelo /voice/delegate) são recusados, e cada
+   * pedido conta no limite de frequência do aluno, no banco.
+   */
   router.post("/voice/tool", voiceRoute(async (req, b) => {
     const id = callIdOf(b);
     const name = String(b.name ?? "");
     if (!TOOL_NAMES.has(name)) throw new TutorError("Ferramenta desconhecida.", 400);
     const v = await voiceCall(deps!, req.user!.id, id);
     if (v.status !== "active") throw new TutorError("A conversa por voz foi encerrada.", 409);
+    if (v.provider !== "realtime" && v.provider !== "gemini") throw new TutorError("Esta conversa por voz não usa ferramentas.", 409);
+    await rateHit(deps!, req.user!.id, "voice_tool");
     let args: Record<string, unknown> = {};
     try {
       args = typeof b.arguments === "string" ? JSON.parse(b.arguments || "{}") : (b.arguments ?? {});
