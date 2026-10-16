@@ -563,7 +563,7 @@ describe("Migração 013350: ações da sala do Treino em Dupla", () => {
     const antes = [await defs(), await gatilhos(), await colunas()];
     await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8"));
     // As do Treino que vêm depois refazem funções desta (a 013380 refaz app_dupla_set_station, app_dupla_confirm_roles e
-    // app_dupla_room_content): coladas de novo na ordem, o banco volta igual.
+    // app_dupla_room_content; a 013390, app_dupla_print_path): coladas de novo na ordem, o banco volta igual.
     for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.includes("treino_dupla") && f > MIGRACAO).sort()) {
       await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
     }

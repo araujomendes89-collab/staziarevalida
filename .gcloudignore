@@ -22,6 +22,7 @@ node_modules
 /public/*
 !/public/novo-assets/
 /public/novo-assets/*
+!/public/novo-assets/logo-staziamed-revalida-v2.png
 !/public/brand/
 /public/brand/*
 !/public/brand/horizontal-480w.png
