@@ -543,7 +543,7 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
         {bare ? (
           children
         ) : (
-          <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
+          <div style={{ maxWidth: "var(--content-max)", margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
             <Header title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} kind={headerKind} />
             {children}
           </div>
