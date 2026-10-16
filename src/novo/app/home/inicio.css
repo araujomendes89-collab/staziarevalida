@@ -151,7 +151,7 @@ button.ih-mk{cursor:pointer}
 .ih-chip{font:700 12px var(--font-sans);padding:1px 8px;border-radius:999px}
 
 /* ---- Plano de Hoje ---- */
-.ip{max-width:960px;width:100%}
+.ip{width:100%} /* G2.6: mesma largura da casca e do cabeçalho do Plano (G1.7); antes 960 px presos à esquerda */
 .ip .ih-hero-main{flex-wrap:wrap;padding:28px;gap:18px 24px;justify-content:space-between}
 .ip-chip{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,.16);font:700 12px var(--font-sans)}
 .ip-chip i{width:7px;height:7px;border-radius:999px;background:#4fd39a}
@@ -214,6 +214,14 @@ button.ih-mk{cursor:pointer}
   .ip-step{grid-template-columns:1fr;padding:16px}
   .ip-step .ip-btn{width:100%;justify-content:center;min-height:50px}
   .ip-n{margin-top:14px}
+}
+/* G2.4: no celular o anel do Plano tem 76 px (pacote PlanoMobile) e o botão das Inéditas ocupa a largura toda, como os das etapas */
+@media (max-width:719px){
+  .ip .ih-hero-main{gap:14px}
+  .ip-ring .ih-ring-n{font-size:19px}.ip-ring .ih-ring-n small{font-size:12px}
+  .ip-ring .ih-ring-u{margin-top:2px}
+  .ip-extra>:last-child{flex:1 1 100%}
+  .ip-extra .ip-btn{flex:1 1 100%;width:100%;justify-content:center;min-height:50px}
 }
 @media (prefers-reduced-motion:reduce){.ih *,.ip *{transition:none!important;animation:none!important}}
 
@@ -296,3 +304,58 @@ button.ihs-box:hover{border-color:var(--border-strong)}
 .ihs-foot{font:500 12.5px var(--font-sans);color:var(--text-secondary)}
 .ihs-trail{padding:16px}
 .ihs-t{font:700 17px var(--font-sans)}
+
+/* ==== G2 (16/10/2026): proporção do Início nas 9 larguras (auditoria CONSOLIDADO.md) ==== */
+/* G2.1/G2.5: cartão azul e plano. Até 1179 px empilhados; de 1180 a 1799 px lado a lado em metades (como o modelo Home 1440: azul de 532 px);
+   a partir de 1800 px três colunas (azul | plano | números em 3×2), para o azul ficar entre 532 e 700 px e nenhuma linha de tarefa passar de 800 px. */
+.ih-top{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+.ih-top>.ih-mkpis--wide{margin-top:4px}
+@media (min-width:1180px){
+  .ih-top{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ih-top>.ih-mkpis--wide{grid-column:1/-1}
+  /* sem tarefas no plano: azul | números (3×2) ao lado, em vez do azul esticado na largura toda */
+  .ih-top--sem-plano{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
+  .ih-top--sem-plano>.ih-mkpis--wide{grid-column:auto;margin-top:0;grid-auto-flow:row;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .ih-top--sem-plano>.ih-mkpis--wide:not(:has(> :nth-child(5))){grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (min-width:1800px){
+  .ih-top{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,.85fr)}
+  .ih-top--sem-plano{grid-template-columns:minmax(0,1.25fr) minmax(0,.85fr)}
+  .ih-top>.ih-mkpis--wide{grid-column:auto;margin-top:0;grid-auto-flow:row;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .ih-top>.ih-mkpis--wide:not(:has(> :nth-child(5))){grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* G2.7/G2.8: blocos de números em 3 faixas fixas (ícone | número | rótulo), para números e rótulos ficarem na mesma linha em todos os blocos.
+   Sem número (Revisar, acerto), a faixa fica reservada. O rótulo tem lugar para 2 linhas ("na semana / 3 dias ativos"). */
+.ih-mkpis--wide>.ih-mk{display:grid;grid-template-rows:34px 28px minmax(32px,auto);grid-template-areas:"ic" "val" "lbl";justify-items:center;align-content:center;row-gap:4px;padding:14px 10px 12px;min-height:0}
+.ih-mkpis--wide .ih-mk>:is(.ih-mk-ic,.ih-ring,.ih-bar){grid-area:ic;align-self:center}
+.ih-mkpis--wide .ih-mk>b{grid-area:val;align-self:center;margin:0;font-size:24px;line-height:28px}
+.ih-mkpis--wide .ih-mk>small{grid-area:lbl;align-self:start}
+.ih-mkpis--wide .ih-bar{max-width:min(120px,80%)}
+
+/* G2.2 (decisão D5, provisória): no celular os 6 blocos em grade 3×2, sem rolagem lateral (com 4 blocos, uma linha de 4, como no modelo) */
+.ih--m .ih-mkpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0;padding:0;overflow:visible;scroll-snap-type:none}
+.ih--m .ih-mkpis:has(> :nth-child(5)){grid-template-columns:repeat(3,minmax(0,1fr))}
+.ih--m .ih-mkpis>.ih-mk{display:grid;grid-template-rows:28px 22px minmax(30px,auto);grid-template-areas:"ic" "val" "lbl";justify-items:center;align-content:center;row-gap:2px;padding:5px 4px;min-height:0;min-width:0}
+.ih--m .ih-mk>:is(.ih-mk-ic,.ih-ring,.ih-bar){grid-area:ic;align-self:center}
+.ih--m .ih-mk>.ih-mk-ic{width:28px;height:28px}
+.ih--m .ih-mk>b{grid-area:val;align-self:center;margin:0;line-height:22px}
+.ih--m .ih-mk>small{grid-area:lbl;align-self:start}
+.ih--m .ih-mk .ih-bar{max-width:72%}
+
+/* G2.3: tablet (2 colunas de cartões): o último cartão sozinho vira faixa na largura toda; Inéditas em linha (ícone e título | número | botão) */
+@media (min-width:720px) and (max-width:1179px){
+  .ih-cards>:last-child:nth-child(odd){grid-column:1/-1}
+  .ih-cards>.ih-ined:last-child:nth-child(odd){flex-direction:row;flex-wrap:wrap;align-items:center;gap:12px 20px}
+  .ih-cards>.ih-ined:last-child:nth-child(odd) .ih-lcard-h{flex:1 1 220px;min-width:0}
+  .ih-cards>.ih-ined:last-child:nth-child(odd) .ih-ined-btn{align-self:center}
+}
+
+/* G2.6 (telas largas): sem o limite de 960 px, a partir de 1800 px as etapas ficam à esquerda e o cartão "Extra · Questões Inéditas" à direita,
+   alinhado com a primeira etapa, para as linhas das etapas não esticarem na largura toda (1630 px em 2560) */
+@media (min-width:1800px){
+  .ip:has(> .ip-sec + .ip-extra){display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:24px 20px;align-items:start}
+  .ip:has(> .ip-sec + .ip-extra)>*{grid-column:1/-1}
+  .ip:has(> .ip-sec + .ip-extra)>.ip-sec{grid-column:1}
+  .ip:has(> .ip-sec + .ip-extra)>.ip-extra{grid-column:2;margin-top:33px}
+}

@@ -476,7 +476,7 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas
         </button>
       )}
       <button type="button" className="ih-mk ih-press" onClick={() => go("desempenho")} aria-label={`${accuracy}% de acerto`}>
-        <Ring value={accuracy} total={100} size={34} stroke={4} color="var(--success-solid)" track="var(--chart-track)">{null}</Ring>
+        <Ring value={accuracy} total={100} size={compact ? 28 : 34} stroke={compact ? 3.5 : 4} color="var(--success-solid)" track="var(--chart-track)">{null}</Ring>
         <small><b style={{ font: "600 12px var(--font-mono)", color: "var(--success-text)" }}>{accuracy}%</b> acerto</small>
       </button>
       <button type="button" className="ih-mk ih-press" onClick={() => go("desempenho")} aria-label={`${home.week.attempts} itens na semana, ${activeDays} ${activeDays === 1 ? "dia ativo" : "dias ativos"}`}>
@@ -490,14 +490,14 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas
       {missionsKpi && (
         <button type="button" className="ih-mk ih-press" onClick={() => go("missoes")} aria-label={`${missionsKpi.done} de ${missionsKpi.total} missões de hoje`}>
           <span className="ih-mk-ic">{AppRealIcon({ name: "target", size: 26 })}</span>
-          <b style={{ lineHeight: "22px" }}>{missionsKpi.done}/{missionsKpi.total}</b>
+          <b>{missionsKpi.done}/{missionsKpi.total}</b>
           <small>missões</small>
         </button>
       )}
       {rankKpi && (
         <button type="button" className="ih-mk ih-press" onClick={() => go("classificacao")} aria-label={`${rankLabel}. Abrir o Ranking`}>
           <span className="ih-mk-ic">{AppRealIcon({ name: "trophy", size: 26 })}</span>
-          {rankKpi.n && <b style={{ lineHeight: "22px" }}>{rankKpi.n}</b>}
+          {rankKpi.n && <b>{rankKpi.n}</b>}
           <small>{rankKpi.n ? rankKpi.l : <strong style={{ color: "var(--action-primary)" }}>{rankKpi.l}</strong>}</small>
         </button>
       )}
@@ -583,17 +583,18 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas
     );
   }
 
-  // ---- computador e tablet
+  // ---- computador e tablet. Grade em inicio.css (G2.1/G2.5): empilhado até 1179 px; cartão azul | plano de 1180 a 1679 px;
+  // cartão azul | plano | números (blocos 3×2) a partir de 1680 px, para o cartão azul não passar de ~700 px nas telas largas.
   return (
     <div className="ih">
       {top}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))", gap: 20 }}>
+      <div className={`ih-top${planEl ? "" : " ih-top--sem-plano"}`}>
         {heroEl}
         {planEl}
+        <section className="ih-mkpis ih-mkpis--wide" aria-label="Seu desempenho">
+          {kpiTiles}
+        </section>
       </div>
-      <section className="ih-mkpis ih-mkpis--wide" aria-label="Seu desempenho">
-        {kpiTiles}
-      </section>
       <div className="ih-cards">
         {trailEl}
         {priorityEl}

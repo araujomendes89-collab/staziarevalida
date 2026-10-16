@@ -207,7 +207,7 @@ export function TodayPlan({ go }) {
           </div>
           {plan.total > 0 && (
             <div className="ip-ring">
-              <Ring value={plan.done} total={plan.total} size={104} stroke={8}>
+              <Ring value={plan.done} total={plan.total} size={compact ? 76 : 104} stroke={compact ? 7 : 8}>
                 <span className="ih-ring-n">
                   {plan.done}
                   <small>/{plan.total}</small>
