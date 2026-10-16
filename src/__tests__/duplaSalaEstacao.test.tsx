@@ -147,6 +147,14 @@ describe("impressos e folha do candidato", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/dupla/rooms/r1/prints/candidate_sheet/link", expect.anything());
     const img = screen.getByAltText("Instruções para o participante e relato do caso clínico");
     expect(img.getAttribute("src")).toBe("https://deposito.test/candidate_sheet.png");
+    // imagem única da estação: "Ampliar imagem da estação", tela cheia com 1100 px a 100% (StationImage do protótipo)
+    fireEvent.click(screen.getByRole("button", { name: "Ampliar imagem da estação" }));
+    const full = within(screen.getByRole("dialog")).getAllByRole("img")[0] as HTMLImageElement;
+    expect(full.style.width).toBe("1100px");
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Ampliar imagem" }));
+    expect(full.style.width).toBe("1320px");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.queryByText("Enunciado")).toBeNull();
     expect(screen.queryByText("Relato inicial de teste.")).toBeNull(); // o relato está na imagem única
     cleanup();
