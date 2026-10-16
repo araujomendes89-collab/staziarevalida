@@ -4,6 +4,7 @@
 // materiais complementares (slides PDF, áudio Flashcast, diretriz SUS/PCDT) · resumo e racionalidade · pontos-chave.
 import React from "react";
 import { TextoRico } from "../textoRico/TextoRico.jsx";
+import ResumoRico from "../editorPro/editarAula/ResumoRico.jsx";
 import { Badge, Banner, Button, Card, EmptyState, Icon, TextField } from "../../ds";
 import { IconTile } from "../../prototype/RealIcons.jsx";
 import { useSession } from "../session.jsx";
@@ -466,7 +467,7 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
               <IconTile name="book-open" size={32} tone="brand" />
               <span className="sm-overline" style={{ color: "var(--text-secondary)" }}>Resumo & racionalidade clínica</span>
             </div>
-            {lesson.summary ? <TextoRico modo="documento" texto={lesson.summary} style={{ font: "400 15px/1.65 var(--font-sans)", textWrap: "pretty" }} /> : <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Resumo ainda não publicado.</p>}
+            {lesson.summary ? <ResumoRico texto={lesson.summary} rico={lesson.summary_rico} style={{ font: "400 15px/1.65 var(--font-sans)", textWrap: "pretty" }} /> : <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Resumo ainda não publicado.</p>}
           </Card>
           <Card style={{ borderRadius: 24 }} padding={mobile ? 18 : 24}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
