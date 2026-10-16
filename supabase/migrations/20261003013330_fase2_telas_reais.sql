@@ -24,11 +24,11 @@
 -- =============================================================================
 
 -- ---------------------------------------------------------------- acesso
-create function public.fase2_allowed() returns boolean
+create or replace function public.fase2_allowed() returns boolean
   language sql stable security definer set search_path = ''
 as $$ select (select auth.uid()) is not null and public.is_staff() $$;
 
-create function public.fase2_assert() returns uuid
+create or replace function public.fase2_assert() returns uuid
   language plpgsql stable security definer set search_path = ''
 as $$
 begin
@@ -40,7 +40,7 @@ end
 $$;
 
 -- ---------------------------------------------------------------- tentativas sozinho
-create table public.station_attempts (
+create table if not exists public.station_attempts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   station_id text not null references public.checklist_stations (id) on delete cascade,
@@ -56,14 +56,14 @@ create table public.station_attempts (
   correctness numeric(4, 1) check (correctness is null or correctness between 0 and 100),
   created_at timestamptz not null default now()
 );
-create index station_attempts_user_idx on public.station_attempts (user_id, finished_at desc);
+create index if not exists station_attempts_user_idx on public.station_attempts (user_id, finished_at desc);
 -- Duas trancas: acesso por linha ligado sem nenhuma política, e nenhuma permissão para aluno e visitante.
 alter table public.station_attempts enable row level security;
 revoke all on table public.station_attempts from public, anon, authenticated;
 
 -- ---------------------------------------------------------------- avaliações (sozinho + em dupla como médico)
 -- Uma linha por estação avaliada do próprio aluno; nota de 0 a 10.
-create function public.fase2_evaluations(p_uid uuid)
+create or replace function public.fase2_evaluations(p_uid uuid)
   returns table (id text, origin text, station_id text, at timestamptz, score10 numeric)
   language sql stable security definer set search_path = ''
 as $$
@@ -76,7 +76,7 @@ $$;
 
 -- ---------------------------------------------------------------- catálogo
 -- Estações APROVADAS (sem o conteúdo), com a melhor nota e o número de vezes do próprio aluno.
-create function public.app_fase2_stations() returns jsonb
+create or replace function public.app_fase2_stations() returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
 declare
@@ -99,7 +99,7 @@ end
 $$;
 
 -- ---------------------------------------------------------------- Início da 2ª fase
-create function public.app_fase2_overview() returns jsonb
+create or replace function public.app_fase2_overview() returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
 declare
@@ -131,7 +131,7 @@ $$;
 
 -- ---------------------------------------------------------------- uma tentativa, em qualquer etapa
 -- O que sai depende SÓ da etapa gravada no servidor.
-create function public.fase2_attempt_payload(a public.station_attempts) returns jsonb
+create or replace function public.fase2_attempt_payload(a public.station_attempts) returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
 declare
@@ -175,7 +175,7 @@ begin
 end
 $$;
 
-create function public.app_fase2_attempt(p_attempt_id uuid) returns jsonb
+create or replace function public.app_fase2_attempt(p_attempt_id uuid) returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
 declare
@@ -191,7 +191,7 @@ end
 $$;
 
 -- Começa (ou retoma) uma estação sozinho. Só estação aprovada; Pro quando a estação exige.
-create function public.app_fase2_start(p_station_id text) returns jsonb
+create or replace function public.app_fase2_start(p_station_id text) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -220,7 +220,7 @@ end
 $$;
 
 -- Leitura -> atendimento (começa o relógio). Repetir a chamada não reinicia o relógio.
-create function public.app_fase2_begin(p_attempt_id uuid) returns jsonb
+create or replace function public.app_fase2_begin(p_attempt_id uuid) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -241,7 +241,7 @@ end
 $$;
 
 -- Atendimento -> avaliação pelo PEP. Passo sem volta: é aqui que o checklist passa a sair.
-create function public.app_fase2_finish(p_attempt_id uuid) returns jsonb
+create or replace function public.app_fase2_finish(p_attempt_id uuid) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -263,7 +263,7 @@ $$;
 
 -- O aluno marca cada item do PEP ('correct', 'partial' ou 'incorrect', por número do item); o servidor confere e calcula a nota.
 -- p_marks: {"1": "correct", "2": "partial", ...}. Todos os itens precisam ser marcados; 'partial' só onde o item admite.
-create function public.app_fase2_submit(p_attempt_id uuid, p_marks jsonb) returns jsonb
+create or replace function public.app_fase2_submit(p_attempt_id uuid, p_marks jsonb) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -320,7 +320,7 @@ begin
 end
 $$;
 
-create function public.app_fase2_abandon(p_attempt_id uuid) returns jsonb
+create or replace function public.app_fase2_abandon(p_attempt_id uuid) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -333,7 +333,7 @@ end
 $$;
 
 -- ---------------------------------------------------------------- Meus PEPs
-create function public.app_fase2_peps(p_limit integer default 100) returns jsonb
+create or replace function public.app_fase2_peps(p_limit integer default 100) returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
 declare
@@ -350,7 +350,7 @@ end
 $$;
 
 -- ---------------------------------------------------------------- Desempenho prático
-create function public.app_fase2_performance() returns jsonb
+create or replace function public.app_fase2_performance() returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
 declare

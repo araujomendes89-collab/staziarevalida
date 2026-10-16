@@ -299,7 +299,10 @@ as $$
     'study_profile', (select to_jsonb(t) from public.study_profiles t where t.user_id = (select auth.uid())),
     'study_swipes', (select coalesce(jsonb_agg(to_jsonb(t) order by t.created_at), '[]'::jsonb)
                      from public.study_swipes t where t.from_user = (select auth.uid())),
-    'study_matches', (select coalesce(jsonb_agg(to_jsonb(t) order by t.created_at), '[]'::jsonb)
+    -- sem station_id: o tema da estação não sai pela exportação (a coluna nem é legível pelo aluno)
+    'study_matches', (select coalesce(jsonb_agg(jsonb_build_object('id', t.id, 'user_a', t.user_a, 'user_b', t.user_b,
+                                                                   'room_id', t.room_id, 'created_at', t.created_at)
+                                                order by t.created_at), '[]'::jsonb)
                       from public.study_matches t where (select auth.uid()) in (t.user_a, t.user_b)),
     'checklist_rooms', public.dupla_export_rooms(),
     'acceptances', (select coalesce(jsonb_agg(jsonb_build_object('document', t.document, 'version', t.version,

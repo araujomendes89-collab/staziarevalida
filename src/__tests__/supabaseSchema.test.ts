@@ -401,7 +401,8 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
       expect((await d.asUser(uid, `select from_user from public.study_swipes`)).map((r) => r.from_user), "escolhas").toEqual([uid]);
     }
     for (const t of ["checklist_rooms", "study_matches", "study_invites", "study_swipes"]) {
-      expect(await d.asUser(U.fabio, `select * from public.${t}`), t).toEqual([]);
+      // study_matches: só as colunas liberadas (a estação do match não é legível pelo aluno, 013300)
+      expect(await d.asUser(U.fabio, `select ${t === "study_matches" ? "id" : "*"} from public.${t}`), t).toEqual([]);
     }
     expect((await d.sql(`select phase, candidate_id from public.checklist_rooms where id = $1`, [sala]))[0]).toEqual({ phase: "roles", candidate_id: null });
 
@@ -416,6 +417,8 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
     expect((await d.asUser(U.diego, `update public.study_swipes set direction = 'left'`)).affectedRows).toBe(0);
     await expect(d.asUser(U.diego, `insert into public.study_matches (user_a, user_b) values ($1, $2)`, [U.diego, U.gil])).rejects.toThrow(/row-level security/);
     expect((await d.asUser(U.diego, `update public.study_matches set station_id = null`)).affectedRows).toBe(0);
+    // a estação do match não é legível pelo aluno (013300): o tema só sai pelas funções da sala
+    await expect(d.asUser(U.diego, `select station_id from public.study_matches`)).rejects.toThrow(/permission denied/);
     expect(await d.sql(`select status from public.study_invites where id = $1`, [convite.id])).toEqual([{ status: "pending" }]);
     // O que o banco confere sozinho: sala com dois membros diferentes, link só https, duração e fase dentro dos limites.
     await expect(d.sql(`insert into public.checklist_rooms (member_ids) values ($1)`, [[U.diego, U.diego]])).rejects.toThrow(/check constraint/);

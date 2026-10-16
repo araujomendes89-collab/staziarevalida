@@ -197,6 +197,10 @@ alter table public.study_matches enable row level security;
 drop policy if exists "matches: os dois leem" on public.study_matches;
 create policy "matches: os dois leem" on public.study_matches
   for select to authenticated using ((select auth.uid()) in (user_a, user_b));
+-- O tema da estação é só do avaliador: quem está no match lê a própria linha, mas NÃO a estação escolhida (station_id), que só
+-- sai pelas funções da sala (conferido por papel). Sem isto, o candidato leria station_id aqui e o nome no catálogo.
+revoke select on public.study_matches from anon, authenticated;
+grant select (id, user_a, user_b, room_id, created_at) on public.study_matches to anon, authenticated; -- visitante: a política não devolve linha
 
 -- ---------------------------------------------------------------- 4) a sala
 -- As salas que já existem eram do modelo antigo (coluna state): fecham, sem apagar. Só na primeira colagem (enquanto "state" existe).
@@ -503,7 +507,9 @@ as $$
     'study_profile', (select to_jsonb(t) from public.study_profiles t where t.user_id = (select auth.uid())),
     'study_swipes', (select coalesce(jsonb_agg(to_jsonb(t) order by t.created_at), '[]'::jsonb)
                      from public.study_swipes t where t.from_user = (select auth.uid())),
-    'study_matches', (select coalesce(jsonb_agg(to_jsonb(t) order by t.created_at), '[]'::jsonb)
+    'study_matches', (select coalesce(jsonb_agg(jsonb_build_object('id', t.id, 'user_a', t.user_a, 'user_b', t.user_b,
+                                                                   'room_id', t.room_id, 'created_at', t.created_at)
+                                                order by t.created_at), '[]'::jsonb)
                       from public.study_matches t where (select auth.uid()) in (t.user_a, t.user_b)),
     'checklist_rooms', (select coalesce(jsonb_agg(to_jsonb(t) order by t.created_at), '[]'::jsonb)
                         from public.checklist_rooms t where (select auth.uid()) = any (t.member_ids)),
