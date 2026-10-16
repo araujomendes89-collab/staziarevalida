@@ -66,8 +66,15 @@ const save = (question: Record<string, unknown>) => rpc(EDITOR, "app_admin_save_
 
 const session = async (uid: string, kind: "questoes" | "simulado", numbers: number[]) =>
   (await sql<any>(`insert into public.practice_sessions (user_id, kind, question_ids) values ($1, $2, $3) returning id`, [uid, kind, numbers.map(idOf)]))[0].id as string;
-const answer = (uid: string, sessionId: string, number: number, option: string) =>
-  rpc(uid, "app_answer_question", { p_session_id: sessionId, p_question_id: idOf(number), p_option: option, p_active_ms: 10_000 });
+/** 16/10: o servidor mede o tempo de cada resposta desde a anterior (ou o início da sessão): 30 s se passaram antes de responder. */
+const passa = async (sessionId: string) => {
+  await sql(`update public.practice_sessions set started_at = started_at - interval '30 seconds' where id = $1`, [sessionId]);
+  await sql(`update public.question_attempts set answered_at = answered_at - interval '30 seconds' where session_id = $1`, [sessionId]);
+};
+const answer = async (uid: string, sessionId: string, number: number, option: string) => {
+  await passa(sessionId);
+  return rpc(uid, "app_answer_question", { p_session_id: sessionId, p_question_id: idOf(number), p_option: option, p_active_ms: 10_000 });
+};
 
 const official = (extra: Record<string, unknown>) => ({
   p_answer: null, p_status: "FINAL", p_source: "Gabarito oficial definitivo INEP 2024/1 (teste)", p_reason: "Conferido no edital.", ...extra,

@@ -49,12 +49,27 @@ async function forceRule(key: string, valueJson: string) {
   }
 }
 
+
+/** O tempo passa (16/10: o servidor mede o tempo de cada resposta desde a anterior ou o início da sessão). */
+async function passa(sessionId: string, ms = 30000) {
+  const iv = `${ms} milliseconds`;
+  await sql(
+    `update public.practice_sessions set started_at = started_at - $2::interval,
+       answers = coalesce((select jsonb_object_agg(k, case when v ? 'at' then jsonb_set(v, '{at}', to_jsonb((v ->> 'at')::timestamptz - $2::interval)) else v end)
+                           from jsonb_each(answers) e (k, v)), '{}'::jsonb)
+     where id = $1`,
+    [sessionId, iv]
+  );
+  await sql(`update public.question_attempts set answered_at = answered_at - $2::interval where session_id = $1`, [sessionId, iv]);
+}
+
 /** Treino com as questões dadas, todas certas (B). */
 async function practice(uid: string, ids: string[]) {
   const started = await rpc(uid, "app_start_session", { p_kind: "questoes", p_filters: { ids }, p_count: ids.length });
   await sql(`update public.practice_sessions set question_ids = $2 where id = $1`, [started.session_id, ids]);
   const answers: any[] = [];
   for (const id of ids) {
+    await passa(started.session_id);
     answers.push(await rpc(uid, "app_answer_question", { p_session_id: started.session_id, p_question_id: id, p_option: "B", p_active_ms: 20000 }));
   }
   return { answers, sessionId: started.session_id as string };
@@ -102,10 +117,10 @@ describe("O banco confere o tipo de cada regra ao salvar", () => {
       await expect(rpc(ADMIN, "app_admin_gamification_save_rule", { p_key: "xp.question_correct", p_value: value, p_enabled: true }))
         .rejects.toThrow("A regra xp.question_correct precisa ser um número entre 0 e 1.000.000.");
     }
-    expect(await ruleValue("xp.question_correct")).toBe(8);
+    expect(await ruleValue("xp.question_correct")).toBe(6); // 16/10: 8 → 6 (-20%)
     const saved = await rpc(ADMIN, "app_admin_gamification_save_rule", { p_key: "xp.question_correct", p_value: 9, p_enabled: true });
     expect(saved.rules.find((r: any) => r.key === "xp.question_correct").value).toBe(9);
-    await rpc(ADMIN, "app_admin_gamification_save_rule", { p_key: "xp.question_correct", p_value: 8, p_enabled: true });
+    await rpc(ADMIN, "app_admin_gamification_save_rule", { p_key: "xp.question_correct", p_value: 6, p_enabled: true });
   });
 
   it("interruptor só aceita ligado ou desligado (true/false)", async () => {
@@ -143,7 +158,7 @@ describe("O banco confere o tipo de cada regra ao salvar", () => {
       .rejects.toThrow("A regra xp.question_correct precisa ser um número, sem aspas (por exemplo: 8).");
     await expect(sql(`insert into public.gamification_rules (key, value) values ('xp.nova_regra', '"cinco"')`))
       .rejects.toThrow("A regra xp.nova_regra precisa ser um número, sem aspas (por exemplo: 8).");
-    expect(await ruleValue("xp.question_correct")).toBe(8);
+    expect(await ruleValue("xp.question_correct")).toBe(6); // 16/10: 8 → 6 (-20%)
   });
 });
 
@@ -163,18 +178,18 @@ describe("O cálculo de XP nunca cancela o que o aluno fez", () => {
       expect(f[0].bad_rules).toEqual(["xp.question_correct"]);
       expect((await sql(`select total_xp from public.user_gamification_stats where user_id = $1`, [ANA]))[0]?.total_xp ?? 0).toBe(0);
     } finally {
-      await forceRule("xp.question_correct", "8");
+      await forceRule("xp.question_correct", "6");
     }
     // regra corrigida: a próxima resposta volta a render XP normalmente
     const { answers } = await practice(ANA, [qs[1]]);
-    expect(answers[0].play.xp).toMatchObject({ correct: 8, valid: true });
+    expect(answers[0].play.xp).toMatchObject({ correct: 6, valid: true });
   });
 
   it("regra usada depois da resposta (score) com valor ruim: a resposta e o XP dela ficam; a falha é registrada", async () => {
     await forceRule("score.max_step", '"quarenta"');
     try {
       const { answers } = await practice(BRUNO, [qs[2]]);
-      expect(answers[0].play.xp).toMatchObject({ correct: 8, valid: true });
+      expect(answers[0].play.xp).toMatchObject({ correct: 6, valid: true });
       const attempt = await attemptOf(BRUNO, qs[2]);
       expect((await attemptEvents(BRUNO, attempt.id)).length).toBe(1);
       const f = (await failures(BRUNO)).filter((x) => x.step === "after_activity");
@@ -200,11 +215,16 @@ describe("O cálculo de XP nunca cancela o que o aluno fez", () => {
 
   it("simulado: finalizar grava todas as respostas mesmo com a regra de XP do simulado ruim", async () => {
     await forceRule("xp.simulation_completed", '"cem"');
+    // 16/10: o simulado só vale XP com 30+ questões; aqui, com 3, baixamos o mínimo para chegar à regra ruim
+    await sql(`update public.gamification_rules set value = '1' where key = 'xp.simulation_min_questions'`);
     try {
       const ids = qs.slice(4, 7);
       const started = await rpc(CARLA, "app_start_session", { p_kind: "simulado", p_filters: {}, p_count: 3, p_time_limit_seconds: 3600 });
       await sql(`update public.practice_sessions set question_ids = $2 where id = $1`, [started.session_id, ids]);
-      for (const id of ids) await rpc(CARLA, "app_answer_question", { p_session_id: started.session_id, p_question_id: id, p_option: "B", p_active_ms: 30000 });
+      for (const id of ids) {
+        await passa(started.session_id);
+        await rpc(CARLA, "app_answer_question", { p_session_id: started.session_id, p_question_id: id, p_option: "B", p_active_ms: 30000 });
+      }
       const finished = await rpc(CARLA, "app_finish_session", { p_session_id: started.session_id });
       expect(finished).toBeTruthy();
       expect((await sql(`select count(*)::int as n from public.question_attempts where session_id = $1`, [started.session_id]))[0].n).toBe(3);
@@ -213,7 +233,8 @@ describe("O cálculo de XP nunca cancela o que o aluno fez", () => {
       expect((await sql(`select count(*)::int as n from public.gamification_events where user_id = $1 and source_type = 'question_attempt'`, [CARLA]))[0].n).toBe(3);
       expect((await failures(CARLA)).map((x) => x.step)).toEqual(["session_finish"]);
     } finally {
-      await forceRule("xp.simulation_completed", "100");
+      await sql(`update public.gamification_rules set value = '30' where key = 'xp.simulation_min_questions'`);
+      await forceRule("xp.simulation_completed", "80");
     }
   });
 

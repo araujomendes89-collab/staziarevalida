@@ -231,9 +231,10 @@ function SimpleEditor({ title, items, fields, onSave }) {
 const SUSPECT_LABEL = {
   too_fast: "rápido demais", rate_limit: "muitas respostas por minuto", repeated_question_farming: "questão repetida demais",
   duplicate_event: "resposta repetida", invalid_attempt: "tentativa inválida",
+  guess: "chute (rápida demais para ter lido)", repeat_lock: "trava de dias (questão repetida)", no_time: "sem tempo medido",
 };
 const suspectLabel = (reason) => SUSPECT_LABEL[reason] ?? "não contou";
-const JOB_LABEL = { daily: "Rotina diária", close_week: "Fechamento da semana", close_month: "Fechamento do mês", arena_sem_equipe: "Equipe fora das ligas" };
+const JOB_LABEL = { daily: "Rotina diária", close_week: "Fechamento da semana", close_month: "Fechamento do mês", arena_sem_equipe: "Equipe fora das ligas", regras_1610: "Regras novas de 16/10" };
 function jobSummary(job) {
   const r = job.result ?? {};
   if (r.skipped) return "não rodou (Arena desligada)";
@@ -319,7 +320,7 @@ function UserAudit({ leagues = [], missions = [] }) {
             {data.events.map((e) => (
               <div key={e.id} style={{ display: "flex", gap: 10, padding: "6px 10px", borderTop: "1px solid var(--border-subtle)", font: "var(--type-caption)", opacity: e.is_valid ? 1 : 0.6 }}>
                 <span style={{ width: 110, flex: "none", color: "var(--text-tertiary)" }}>{dateTimeBR(e.created_at)}</span>
-                <span style={{ width: 60, flex: "none", font: "700 12px var(--font-mono)", color: e.xp_awarded > 0 ? "var(--xp-text)" : "var(--text-tertiary)" }}>{e.xp_awarded > 0 ? `+${e.xp_awarded} XP` : "0 XP"}</span>
+                <span style={{ width: 60, flex: "none", font: "700 12px var(--font-mono)", color: e.xp_awarded > 0 ? "var(--xp-text)" : e.xp_awarded < 0 ? "var(--danger-text)" : "var(--text-tertiary)" }}>{e.xp_awarded > 0 ? `+${e.xp_awarded} XP` : e.xp_awarded < 0 ? `−${-e.xp_awarded} XP` : "0 XP"}</span>
                 <span style={{ flex: 1, minWidth: 0 }}>{EVENT_LABEL[e.event_type] ?? "Evento"}{e.metadata?.topic ? ` · ${e.metadata.topic}` : ""}{e.metadata?.mission ? ` · ${missionName(e.metadata.mission)}` : ""}</span>
                 {!e.is_valid && <Badge size="sm" tone="danger">{suspectLabel(e.fraud_reason)}</Badge>}
               </div>

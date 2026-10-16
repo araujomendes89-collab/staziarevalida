@@ -197,3 +197,55 @@
 @media (prefers-reduced-motion:reduce){.smn-pp-pop{animation:none}}
 @media (min-width:720px){.smn-ph-row--plan .smn-ph-eyebrow{margin-bottom:4px}} /* título do Plano na mesma altura das outras telas (y=52 em 1440) */
 .smn-gh-acts{display:contents}
+
+/* ---------- Menu lateral da web: distribuição pela altura da janela (menu-web, 16/10/2026) ----------
+   Antes: o painel pegava a altura toda da janela, mas o conteúdo do menu tinha tamanho fixo; em janela alta sobrava um vazio de até
+   37% entre "Tutor com IA" e "Configurações". Agora: (1) linhas, espaços e o bloco do alto crescem um pouco com a altura da janela
+   (a partir de 800 px, que é a medida do pacote: grupos de 44 px, até 52 px) e encolhem em janela baixa (mouse: até 40 px;
+   toque: nunca menos de 44 px); (2) o painel para de crescer em --smn-max (cabe o grupo mais comprido aberto) e fica preso no alto,
+   o resto da janela é fundo; (3) o selo "IA" do Tutor ganha o espaço da seta dos outros grupos e fica na mesma coluna dos selos
+   0/2, 7 e 0/3. Navegador sem "round()": valem as medidas do pacote (44 px). */
+.smn-side{--smn-min:40px;--smn-sub-min:38px;--smn-row:44px;--smn-sub:44px;--smn-gap:4px;--smn-logo-t:20px;--smn-logo-b:12px;--smn-logo-w:176px;--smn-id-b:12px;--smn-user-pad:10px;--smn-list-pt:4px;--smn-list-pb:8px;--smn-max:900px;max-height:var(--smn-max)}
+@media (pointer:coarse){.smn-side{--smn-min:44px;--smn-sub-min:44px}}
+@supports (height:round(down,1.5px,1px)){
+  /* janela de 800 px ou mais: crescem */
+  @media (min-height:800px){
+    .smn-side{
+      --smn-row:round(down,clamp(44px,44px + (100vh - 800px) * .06,52px),1px);
+      --smn-sub:round(down,clamp(44px,44px + (100vh - 800px) * .02,46px),1px);
+      --smn-gap:round(down,clamp(4px,4px + (100vh - 800px) * .025,8px),1px);
+      --smn-logo-t:round(down,clamp(20px,20px + (100vh - 800px) * .03,26px),1px);
+      --smn-logo-b:round(down,clamp(12px,12px + (100vh - 800px) * .02,16px),1px);
+      --smn-id-b:round(down,clamp(12px,12px + (100vh - 800px) * .02,16px),1px);
+      --smn-user-pad:round(down,clamp(10px,10px + (100vh - 800px) * .02,12px),1px);
+    }
+  }
+  /* janela baixa: encolhem */
+  @media (max-height:799px){
+    .smn-side{
+      --smn-row:round(down,clamp(var(--smn-min),44px + (100vh - 800px) * .06,44px),1px);
+      --smn-sub:round(down,clamp(var(--smn-sub-min),44px + (100vh - 800px) * .06,44px),1px);
+      --smn-gap:round(down,clamp(2px,4px + (100vh - 800px) * .02,4px),1px);
+      --smn-logo-t:round(down,clamp(12px,20px + (100vh - 800px) * .04,20px),1px);
+      --smn-logo-b:round(down,clamp(6px,12px + (100vh - 800px) * .03,12px),1px);
+      --smn-logo-w:round(down,clamp(150px,176px + (100vh - 800px) * .12,176px),1px);
+      --smn-id-b:round(down,clamp(8px,12px + (100vh - 800px) * .03,12px),1px);
+      --smn-user-pad:round(down,clamp(6px,10px + (100vh - 800px) * .03,10px),1px);
+      --smn-list-pt:round(down,clamp(2px,4px + (100vh - 800px) * .02,4px),1px);
+      --smn-list-pb:round(down,clamp(4px,8px + (100vh - 800px) * .04,8px),1px);
+    }
+  }
+}
+.smn-side .smn-logo{padding:var(--smn-logo-t) 20px var(--smn-logo-b)}
+.smn-side .smn-logo img{max-width:var(--smn-logo-w)}
+.smn-side:not(.is-collapsed) .smn-toggle{top:calc(var(--smn-logo-t) + 14px)} /* a bolinha de recolher acompanha o centro do logo */
+.smn-side.is-collapsed .smn-logo{padding:18px 0 12px}
+.smn-side .smn-userwrap,.smn-side.is-collapsed .smn-userwrap{padding-bottom:var(--smn-id-b)}
+.smn-side .smn-user{padding:var(--smn-user-pad)}
+.smn-side.is-collapsed .smn-user{padding:8px 0}
+.smn-side .smn-list,.smn-side .smn-foot{gap:var(--smn-gap)}
+.smn-side .smn-list{padding-top:var(--smn-list-pt);padding-bottom:var(--smn-list-pb)}
+.smn-side .smn-grp,.smn-side .smn-foot .smn-grp{min-height:var(--smn-row)}
+.smn-side .smn-item{min-height:var(--smn-sub)}
+.smn-chev-slot{flex:none;width:16px;height:16px}
+@media (max-height:720px){.smn-side .smn-sub{margin-bottom:3px}}
