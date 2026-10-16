@@ -100,7 +100,9 @@ let antes: Awaited<ReturnType<typeof fotografia>>;
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(ler("supabase/tests/bootstrap.sql"));
-  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== NOVA && f !== ATIVACAO).sort()) {
+  // o banco "de antes do Termo 2.0": só as migrações anteriores a ele (as de depois, como a 013340 do Treino em Dupla, já
+  // contam com a tabela legal_declarations que o Termo cria)
+  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f < NOVA).sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
   // um aluno com o Termo 1.0 aceito antes da migração
