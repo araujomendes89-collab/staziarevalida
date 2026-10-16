@@ -1,0 +1,96 @@
+/* Conquistas (onda 7 das novas telas): cartões e grade de medalhas do pacote, com os tokens do app (claro e escuro). */
+.cq{display:flex;flex-direction:column;gap:16px;min-width:0}
+.cq-num{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+
+/* resumo "0 de 41 medalhas" */
+.cq-summary{display:flex;align-items:center;gap:14px;padding:16px 18px}
+.cq-summary__body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.cq-summary__title{font:800 15px/1.3 var(--font-sans);color:var(--text-primary)}
+.cq-summary__note{font:400 12.5px/1.4 var(--font-sans);color:var(--text-secondary)}
+.cq-bar{height:6px;border-radius:999px;background:var(--surface-sunken);overflow:hidden}
+.cq-bar>span{display:block;height:100%;border-radius:inherit;background:var(--xp)}
+.cq-summary--narrow{padding:0 4px;gap:6px;display:flex;flex-direction:column}
+.cq-summary--narrow .cq-summary__row{display:flex;justify-content:space-between;gap:8px;font:400 13px/1.3 var(--font-sans);color:var(--text-tertiary)}
+.cq-summary--narrow strong{color:var(--text-primary);font-weight:800}
+
+/* filtros (pílulas) */
+.cq-filters{display:flex;gap:8px;flex-wrap:wrap}
+.cq-filters--scroll{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:2px 16px;scrollbar-width:none}
+.cq-filters--scroll::-webkit-scrollbar{display:none}
+.cq-chip{flex:0 0 auto;min-height:36px;display:inline-flex;align-items:center;padding:0 14px;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-secondary);font:700 13px/1 var(--font-sans);cursor:pointer;white-space:nowrap;transition:background var(--dur-fast) var(--ease-standard),color var(--dur-fast) var(--ease-standard)}
+.cq-chip:hover{border-color:var(--border-strong);color:var(--text-primary)}
+.cq-chip[aria-selected="true"]{background:var(--action-strong);border-color:var(--action-strong);color:var(--action-on-strong)}
+.cq-chip:focus-visible,.cq-card:focus-visible,.cq-tile:focus-visible,.cq-more:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+@media (pointer:coarse){.cq-chip{min-height:44px}}
+
+/* medalha (arte do pacote ou selo Lucide) */
+.cq-medal{position:relative;flex:none;display:inline-grid;place-items:center}
+.cq-medal__art{display:block;filter:drop-shadow(0 2px 3px rgba(13,28,66,.12))}
+.cq-medal--locked .cq-medal__art{filter:grayscale(.7) opacity(.72)}
+[data-theme="dark"] .cq-medal--locked .cq-medal__art{filter:grayscale(.6) opacity(.82)}
+.cq-medal__pin{position:absolute;right:-2px;bottom:-2px;border-radius:999px;background:var(--surface-card);color:var(--text-secondary);box-shadow:0 1px 3px rgba(13,28,66,.2);display:grid;place-items:center}
+.cq-seal{display:grid;place-items:center;border-radius:999px;border:3px solid var(--border-strong);background:var(--surface-sunken);color:var(--text-secondary)}
+.cq-seal--rara{border-color:var(--info-text);background:var(--info-bg);color:var(--info-text)}
+.cq-seal--epica{border-color:var(--ai-text);background:var(--ai-bg);color:var(--ai-text)}
+.cq-seal--lendaria{border-color:var(--xp);background:var(--xp-bg);color:var(--xp-text)}
+.cq-medal--locked .cq-seal{border-color:var(--border-default);background:var(--locked-bg);color:var(--locked)}
+
+/* textos comuns */
+.cq-name{font:800 14.5px/1.25 var(--font-sans);color:var(--text-primary)}
+.cq-req{font:400 12.5px/1.4 var(--font-sans);color:var(--text-secondary)}
+.cq-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.cq-reward{display:inline-flex;align-items:center;gap:5px;font:700 12px/1 var(--font-sans);color:var(--xp-text)}
+.cq-reward .cq-dot{color:var(--text-tertiary)}
+.cq-rar{height:22px;display:inline-flex;align-items:center;padding:0 8px;border-radius:999px;font:700 11px/1 var(--font-sans);background:var(--surface-sunken);color:var(--text-secondary)}
+.cq-rar--rara{background:var(--info-bg);color:var(--info-text)}
+.cq-rar--epica{background:var(--ai-bg);color:var(--ai-text)}
+.cq-rar--lendaria{background:var(--xp-bg);color:var(--xp-text)}
+.cq-done{font:600 12px/1.3 var(--font-sans);color:var(--success-text)}
+.cq-prog{display:flex;flex-direction:column;gap:5px;margin-top:2px}
+.cq-prog__text{font:600 12px/1.3 var(--font-sans);color:var(--text-secondary)}
+.cq-prog .cq-bar>span{background:var(--action-primary)}
+
+/* computador: cartões */
+.cq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.cq-card{border-radius:22px;background:var(--surface-card);border:1px solid var(--border-default);padding:14px;display:flex;align-items:center;gap:14px;min-height:92px;text-align:left;font:inherit;color:inherit;cursor:pointer;min-width:0;transition:border-color var(--dur-fast) var(--ease-standard),background var(--dur-fast) var(--ease-standard)}
+.cq-card:hover{border-color:var(--border-brand)}
+.cq-card__body{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+
+/* tablet e celular: detalhe + grade de miniaturas */
+.cq-detail{display:flex;align-items:center;gap:14px;padding:14px}
+.cq-detail__body{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.cq-detail .cq-name{font-size:15px}
+.cq-tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.cq-tiles--4{grid-template-columns:repeat(4,minmax(0,1fr));gap:2px}
+.cq-tile{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 2px;min-height:44px;border-radius:14px;border:2px solid transparent;background:transparent;cursor:pointer;font:inherit;color:inherit}
+.cq-tile[aria-pressed="true"]{border-color:var(--action-primary);background:var(--surface-brand-soft)}
+.cq-tile__name{font:700 11.5px/1.2 var(--font-sans);color:var(--text-primary);text-align:center;overflow-wrap:anywhere}
+.cq-section{padding:8px}
+.cq-more{width:100%;margin-top:6px;min-height:44px;border:0;border-radius:12px;background:var(--surface-sunken);color:var(--text-brand);font:700 13.5px/1 var(--font-sans);cursor:pointer}
+
+/* janela de detalhe (computador) */
+.cq-modal{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
+
+/* Recompensas vazio */
+.cq-empty{padding:36px 20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.cq-empty strong{font:800 16px/1.3 var(--font-sans);color:var(--text-primary)}
+.cq-empty span{max-width:40ch;font:400 13.5px/1.45 var(--font-sans);color:var(--text-secondary)}
+
+/* Medalhas e ligas (folha do padrão 3D) */
+.md-page{display:flex;flex-direction:column;gap:32px}
+.md-intro{margin:0;font:400 15px/1.5 var(--font-sans);color:var(--text-secondary);max-width:90ch}
+.md-h2{margin:0 0 14px;font:800 20px/1.2 var(--font-sans);color:var(--text-primary)}
+.md-h2 small{font:600 14px/1 var(--font-sans);color:var(--text-tertiary)}
+.md-leagues{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:14px;padding:24px;border-radius:24px;background:linear-gradient(150deg,#0A6FD8,#0752AB 45%,#052A5A)}
+.md-league{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;min-width:0}
+.md-league strong{font:800 14px/1.2 var(--font-sans);color:#FFFFFF}
+.md-league span{font:600 11.5px/1 var(--font-mono);color:#CFEAFF}
+.cq-league__art{display:block;max-width:100%;height:auto}
+.cq-league__seal{display:grid;place-items:center;border-radius:999px;background:rgba(255,255,255,.92)}
+.md-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.md-card{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 12px 16px;border-radius:20px;background:var(--surface-card);border:1px solid var(--border-default);text-align:center;min-width:0}
+.md-card .cq-meta{justify-content:center;margin-top:auto}
+@media (max-width:1023px){.md-leagues{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:719px){.md-leagues{grid-template-columns:repeat(2,minmax(0,1fr));padding:16px}.md-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.md-card{padding:14px 8px}}
+
+@media (prefers-reduced-motion:reduce){.cq-chip,.cq-card{transition:none}}
