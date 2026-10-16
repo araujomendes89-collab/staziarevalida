@@ -32,7 +32,7 @@ export const fakeBackend = {
       ATU.forEach((i) => { by_area[i.area] = (by_area[i.area] ?? 0) + 1; });
       return { total: ATU.length, by_area, years: [2025, 2026], items };
     }
-    if (fn === "app_flashcards") return { counts: { due: 0, new: 0, learning: 0, total: 0 }, queue: [] };
+    if (fn === "app_flashcards") return { counts: { due: 0, new: 0, learning: 0, consolidated: 0, total: 0 }, queue: [] };
     if (fn === "app_flashcards_ilustrados") return {};
     throw new Error(`rpc não simulada na prévia: ${fn}`);
   },

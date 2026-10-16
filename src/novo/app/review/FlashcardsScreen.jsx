@@ -2,7 +2,7 @@
 // Mesma marcação da FlashcardsScreen do kit (prototype/ReviewScreens.jsx). O "Modo áudio"
 // do protótipo deu lugar a "Novo flashcard": não existe modo áudio no produto.
 import React from "react";
-import { Badge, Banner, Button, Card, Chip, EmptyState, StatCard } from "../../ds";
+import { Badge, Banner, Button, Card, EmptyState, StatCard } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel, formatWhen } from "../practice/format.js";
@@ -11,6 +11,7 @@ import { intervalLabel, nextSchedule, previewDays } from "./fsrs.js";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
 import { CartaoIlustrado, preCarregarCartao } from "../study/AulaImagem.jsx";
 import { CartaoFlashcard } from "./CartaoFlashcard.jsx";
+import { AREA_CHAVE, AreaFiltro } from "../study/casca.jsx";
 
 const RATINGS = [
   { value: 1, label: "Errei", variant: "danger" },
@@ -126,8 +127,8 @@ export function FlashcardsScreen({ go }) {
                 {queue.length} {queue.length === 1 ? "cartão agendado" : "cartões agendados"}
               </Badge>
             </div>
-            <h2 style={{ margin: "6px 0 4px", font: "var(--type-h2)" }}>Flashcards</h2>
-            <p style={{ margin: 0, color: "var(--text-secondary)" }}>Revisão espaçada dos conteúdos clínicos que você precisa manter ativos na memória.</p>
+            {/* o título "Flashcards" já está no cabeçalho da página (h1): aqui fica só a frase */}
+            <p style={{ margin: "6px 0 0", color: "var(--text-secondary)" }}>Revisão espaçada dos conteúdos clínicos que você precisa manter ativos na memória.</p>
           </div>
           <Button variant="secondary" icon="plus" onClick={() => setCreating(!creating)} aria-expanded={creating}>
             Novo flashcard
@@ -150,20 +151,18 @@ export function FlashcardsScreen({ go }) {
       <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "repeat(3,1fr)", gap: 16 }}>
         <StatCard label="Novos" value={counts.new} caption="Aguardando 1ª repetição" />
         <StatCard label="Em aprendizado" value={counts.learning} caption="Em fase de fixação ativa" tone="info" icon="refresh-cw" />
-        <StatCard label="Consolidados" value={counts.consolidated} caption="Intervalo de 21 dias ou mais" tone="success" icon="circle-check" />
+        <StatCard label="Consolidados" value={counts.consolidated ?? 0} caption="Intervalo de 21 dias ou mais" tone="success" icon="circle-check" />
       </div>
-      <Card>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <span className="sm-field__label">Filtrar por grande área</span>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {[{ id: "", label: "Todas as áreas" }, ...AREAS].map((a) => (
-              <Chip key={a.id || "todas"} selected={area === a.id} onClick={() => setArea(a.id)}>
-                {a.label}
-              </Chip>
-            ))}
-          </div>
-        </div>
-      </Card>
+      {/* mesmo filtro de área de Temas, Diretrizes e Mapas (no celular, uma fileira que rola para o lado) */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
+        <span className="sm-field__label">Filtrar por grande área</span>
+        <AreaFiltro
+          rotulo="Filtrar por grande área"
+          valor={area}
+          onChange={setArea}
+          itens={[{ id: "", label: "Todas as áreas", k: "todas", curto: "Todas" }, ...AREAS.map((a) => ({ id: a.id, label: a.label, k: AREA_CHAVE[a.id] }))]}
+        />
+      </div>
       {card ? (
         <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", font: "var(--type-caption)", color: "var(--text-secondary)" }}>

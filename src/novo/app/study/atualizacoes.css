@@ -26,8 +26,9 @@
   .at-intro{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
   .at-hero__lead{margin:0;font-size:14px}
   .at-filtros__linha{flex-direction:column;align-items:stretch}
-  .at-filtros__linha .ap-busca{max-width:none}
-  .at-destaques{display:flex;overflow-x:auto;gap:12px;margin:0 -16px;padding:2px 16px 8px;scroll-snap-type:x proximity;scrollbar-width:none}
+  /* na coluna, o "flex:1 1 320px" virava 320 px de ALTURA (faixa branca abaixo da busca): no celular a busca tem a altura dela */
+  .at-filtros__linha .ap-busca{flex:none;max-width:none}
+  .at-destaques{display:flex;overflow-x:auto;gap:12px;margin:0 calc(-1 * var(--ap-recuo,18px));padding:2px var(--ap-recuo,18px) 8px;scroll-padding-inline:var(--ap-recuo,18px);scroll-snap-type:x proximity;scrollbar-width:none}
   .at-destaques::-webkit-scrollbar{display:none}
   .at-destaques>*{flex:0 0 84%;scroll-snap-align:start}
 }

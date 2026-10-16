@@ -109,7 +109,9 @@
 @media (prefers-reduced-motion:no-preference){.mm-mais svg{transition:transform .2s}}
 
 /* tela Mapas Mentais */
-.mm-tela{display:flex;flex-direction:column;gap:16px;max-width:1240px;margin:0 auto;width:100%}
+/* a lista segue a largura da casca (G1) e alinha com o título; o pôster aberto fica até 1240 px, alinhado à esquerda com o título */
+.mm-tela{display:flex;flex-direction:column;gap:16px;width:100%;min-width:0}
+.mm-tela:has(>.mm-topo){max-width:1240px}
 .mm-intro{margin:0;color:var(--text-secondary);font:400 14.5px/1.5 var(--font-sans);max-width:60ch}
 .mm-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .mm-topo-area{font:700 11px var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary)}
@@ -248,10 +250,12 @@
 
 
 /* lista de Mapas Mentais (casca nova, onda 4): cartão branco com bloco do ícone 3D, área, título, subtítulo e, no rodapé, ramos + dois jeitos de abrir */
-.mm-filtros{display:flex;flex-direction:column;align-items:stretch;gap:12px}
+/* coluna SEM quebra: com "wrap", a fileira de áreas do celular (rolagem própria) alargava a página (496 px numa tela de 390) */
+.mm-filtros{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:12px;min-width:0}
+.mm-filtros>.ap-areas{min-width:0}
 .mm-busca{width:100%;max-width:480px}
 .mm-busca .sm-input{height:48px;border-radius:14px}
-.mm-grade{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:16px}
+.mm-grade{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:16px}
 .mm-item{--gt-p:#087A63;--gt-c:#E5F7F1;--gt-b:#90E7CD;--gt-e:#005141;--cp:var(--gt-p);min-width:0;display:flex;flex-direction:column;border-radius:22px;background:var(--surface-card);
   border:1px solid var(--border-default);box-shadow:0 1px 2px rgba(13,28,66,.04);transition:box-shadow .15s,border-color .15s}
 :root[data-theme="dark"] .mm-item{--cp:var(--gt-b)}
@@ -266,8 +270,8 @@
 :root[data-theme="dark"] .mm-lcard-area{color:var(--gt-b)}
 .mm-lcard-t{font:800 17px/1.25 var(--font-sans);color:var(--text-primary);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
 .mm-lcard-s{font:400 13px/1.4 var(--font-sans);color:var(--text-secondary);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
-.mm-lcard-pe{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;margin:0 18px;padding:12px 0 16px;border-top:1px solid var(--border-subtle)}
-.mm-lcard-r{flex:1;min-width:0;margin-right:auto;font:500 12.5px var(--font-sans);color:var(--text-tertiary)}
+.mm-lcard-pe{display:flex;align-items:center;gap:8px 6px;flex-wrap:wrap;margin:0 18px;padding:12px 0 16px;border-top:1px solid var(--border-subtle)}
+.mm-lcard-r{flex:none;margin-right:auto;font:500 12.5px var(--font-sans);color:var(--text-tertiary);white-space:nowrap}
 .mm-lcard-r--celular{display:none}
 .mm-acao{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-primary);font:700 13px var(--font-sans);cursor:pointer;white-space:nowrap}
 .mm-acao--rapida{border-color:transparent;background:var(--surface-brand-soft);color:var(--text-link)}

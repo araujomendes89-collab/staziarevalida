@@ -1,5 +1,6 @@
 /* Casca nova de Aprender (onda 4): filtro de area, aviso recolhivel, cabecalho de grupo. Só tokens do app (src/novo/ds). */
-.ap-bloco{display:inline-grid;place-items:center;flex:none;width:var(--ap-t,32px);height:var(--ap-t,32px);border-radius:calc(var(--ap-t,32px)*.31);
+/* tamanho do bloco: --ap-t (CSS, por exemplo o celular) vence --ap-t0 (o tamanho que o componente pede) */
+.ap-bloco{--ap-tam:var(--ap-t,var(--ap-t0,32px));display:inline-grid;place-items:center;flex:none;width:var(--ap-tam);height:var(--ap-tam);border-radius:calc(var(--ap-tam)*.31);
   background:linear-gradient(160deg,var(--ap-de),var(--ap-ate));box-shadow:inset 0 1px 0 rgba(255,255,255,.9);color:var(--brand-navy,#052A5A)}
 [data-theme="dark"] .ap-bloco{background:linear-gradient(160deg,color-mix(in srgb,var(--ap-ate) 28%,var(--surface-card)),color-mix(in srgb,var(--ap-ate) 14%,var(--surface-card)));box-shadow:inset 0 1px 0 rgba(255,255,255,.08);color:var(--text-primary)}
 
@@ -37,12 +38,12 @@
 
 /* celular: colunas de bloco com o nome curto, fileira que rola */
 @media (max-width:719px){
-  .ap-areas{flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:0 -16px;padding:2px 16px 6px;scrollbar-width:none;scroll-snap-type:x proximity}
+  .ap-areas{flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:0 calc(-1 * var(--ap-recuo,18px));padding:2px var(--ap-recuo,18px) 6px;scroll-padding-inline:var(--ap-recuo,18px);scrollbar-width:none;scroll-snap-type:x proximity}
   .ap-areas::-webkit-scrollbar{display:none}
   .ap-area{flex:0 0 72px;flex-direction:column;justify-content:flex-start;gap:5px;min-height:44px;padding:4px 0;border:0;border-radius:14px;background:transparent;white-space:normal;text-align:center;scroll-snap-align:start;font:600 11.5px/1.2 var(--font-sans)}
   .ap-area:hover{background:transparent}
   .ap-area .ap-bloco{--ap-t:52px}
-  .ap-area .ap-bloco .sm-icon{width:30px!important;height:30px!important}
+  .ap-area .ap-bloco :is(.sm-icon,svg){width:30px!important;height:30px!important}
   .ap-area[aria-pressed="true"]{background:transparent;color:var(--text-link);font-weight:800}
   .ap-area[aria-pressed="true"] .ap-bloco{box-shadow:0 0 0 2px var(--action-primary),0 6px 14px -6px color-mix(in srgb,var(--action-primary) 55%,transparent)}
   .ap-area-tx--cheio{display:none}

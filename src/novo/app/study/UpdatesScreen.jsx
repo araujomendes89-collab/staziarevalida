@@ -770,7 +770,7 @@ export function UpdatesScreen({ go }) {
             celular ? (
               <MobileLista items={data.items} onOpen={openItem} lidas={lidas} />
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,380px),1fr))", gap: 16 }}>
+              <div className="at-lista" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(max(min(100%,300px),calc((100% - 48px) / 4)),1fr))", gap: 16 }}>
                 {data.items.map((i) => <UpdateCard key={i.id} item={i} onOpen={openItem} read={Boolean(lidas[i.slug])} />)}
               </div>
             )

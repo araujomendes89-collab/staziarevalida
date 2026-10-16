@@ -38,7 +38,7 @@ function Venus({ size }) {
 export function AreaBloco({ k, tamanho = 32 }) {
   const v = AREA_VISUAL[k] ?? AREA_VISUAL.todas;
   return (
-    <span className="ap-bloco" style={{ "--ap-t": `${tamanho}px`, "--ap-de": v.de, "--ap-ate": v.ate }} aria-hidden="true">
+    <span className="ap-bloco" style={{ "--ap-t0": `${tamanho}px`, "--ap-de": v.de, "--ap-ate": v.ate }} aria-hidden="true">
       {v.propio ? <Venus size={Math.round(tamanho * 0.58)} /> : <Icon name={v.icon} size={Math.round(tamanho * 0.58)} />}
     </span>
   );
