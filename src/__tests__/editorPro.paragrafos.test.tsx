@@ -18,12 +18,12 @@ const env = (d: any) => ({ f: "sdoc", v: 1, doc: d });
 describe("Editor Profissional - M2 Parágrafos", () => {
   it("sanear: guarda só valores fechados e descarta o padrão", () => {
     const d = sanear(doc(p("a", {
-      textAlign: "center", lineHeight: 1.5, spaceBefore: 12, spaceAfter: 24, indentLeft: 2, indentFirst: 1, borda: "fina", fundo: "azul",
+      textAlign: "center", lineHeight: 1.5, spacingBefore: 12, spacingAfter: 24, indent: 2, firstLineIndent: 1, borda: "fina", fundo: "azul",
     })));
-    expect(d.content[0].attrs).toEqual({ textAlign: "center", lineHeight: 1.5, spaceBefore: 12, spaceAfter: 24, indentLeft: 2, indentFirst: 1, borda: "fina", fundo: "azul" });
+    expect(d.content[0].attrs).toEqual({ textAlign: "center", lineHeight: 1.5, spacingBefore: 12, spacingAfter: 24, indent: 2, firstLineIndent: 1, borda: "fina", fundo: "azul" });
 
     const ruim = sanear(doc(p("a", {
-      textAlign: "left", lineHeight: 1, spaceBefore: -1, spaceAfter: 999, indentLeft: 0, indentFirst: 99, borda: "red; x:y", fundo: "url(x)",
+      textAlign: "left", lineHeight: 1, spacingBefore: -1, spacingAfter: 999, indent: 0, firstLineIndent: 99, borda: "red; x:y", fundo: "url(x)",
     })));
     expect(ruim.content[0].attrs).toBeUndefined();
     expect(sanear(doc(p("a", { textAlign: "justify", lineHeight: 9 }))).content[0].attrs).toEqual({ textAlign: "justify" });
@@ -31,7 +31,7 @@ describe("Editor Profissional - M2 Parágrafos", () => {
   });
 
   it("html do PDF aplica o estilo e não aceita CSS livre", () => {
-    const html = htmlDoDoc(doc(p("a", { textAlign: "right", lineHeight: 2, spaceBefore: 8, indentLeft: 2, fundo: "amarelo" })) as any);
+    const html = htmlDoDoc(doc(p("a", { textAlign: "right", lineHeight: 2, spacingBefore: 8, indent: 2, fundo: "amarelo" })) as any);
     expect(html).toContain("text-align:right;");
     expect(html).toContain("line-height:2;");
     expect(html).toContain("margin-top:8px;");
@@ -81,11 +81,11 @@ describe("Editor Profissional - M2 Parágrafos", () => {
 
     (ed.commands as any).recuar(1);
     (ed.commands as any).recuar(1);
-    expect(sanear(ed.getJSON()).content[0].attrs).toEqual({ indentLeft: 2 });
+    expect(sanear(ed.getJSON()).content[0].attrs).toEqual({ indent: 2 });
     (ed.commands as any).recuar(-5);
     expect(sanear(ed.getJSON()).content[0].attrs).toBeUndefined();
     (ed.commands as any).recuar(99);
-    expect(sanear(ed.getJSON()).content[0].attrs).toEqual({ indentLeft: 6 });
+    expect(sanear(ed.getJSON()).content[0].attrs).toEqual({ indent: 6 });
     // o segundo parágrafo não foi tocado
     expect(sanear(ed.getJSON()).content[1].attrs).toBeUndefined();
 
@@ -123,7 +123,7 @@ describe("Editor Profissional - M2 Parágrafos", () => {
   });
 
   it("leitor do aluno e PDF respeitam; rico velho é ignorado", () => {
-    const rico = env(doc(p("oi", { textAlign: "center", spaceAfter: 18, indentFirst: 1 })));
+    const rico = env(doc(p("oi", { textAlign: "center", spacingAfter: 18, firstLineIndent: 1 })));
     const { container, rerender } = render(<ParagrafoRico texto="oi" rico={rico} />);
     const el = container.querySelector(".tr-doc p") as HTMLElement;
     expect(el.style.textAlign).toBe("center");

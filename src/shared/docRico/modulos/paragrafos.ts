@@ -43,10 +43,10 @@ export const cssFundo = (v: Valor): Css => (FUNDOS[String(v)] ? { "background-co
 export const ATRIBUTOS_PARAGRAFO = {
   textAlign: { sanear: umDe([...ALINHAMENTOS]), css: cssAlinhamento },
   lineHeight: { sanear: numeroEntre(1, 3), css: cssEntrelinha, padrao: 1 as Valor },
-  spaceBefore: { sanear: inteiroEntre(0, 72), css: cssAntes },
-  spaceAfter: { sanear: inteiroEntre(0, 72), css: cssDepois },
-  indentLeft: { sanear: inteiroEntre(0, RECUO_MAX), css: cssRecuoEsq, padrao: 0 as Valor },
-  indentFirst: { sanear: inteiroEntre(0, RECUO_PRIMEIRA_MAX), css: cssRecuoPrimeira, padrao: 0 as Valor },
+  spacingBefore: { sanear: inteiroEntre(0, 72), css: cssAntes },
+  spacingAfter: { sanear: inteiroEntre(0, 72), css: cssDepois },
+  indent: { sanear: inteiroEntre(0, RECUO_MAX), css: cssRecuoEsq, padrao: 0 as Valor },
+  firstLineIndent: { sanear: inteiroEntre(0, RECUO_PRIMEIRA_MAX), css: cssRecuoPrimeira, padrao: 0 as Valor },
   borda: { sanear: umDe(Object.keys(BORDAS)), css: cssBorda },
   fundo: { sanear: umDe(Object.keys(FUNDOS)), css: cssFundo },
 };

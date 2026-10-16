@@ -11,7 +11,7 @@ import {
 
 const TIPOS = ["paragraph", "heading"];
 const LISTAS = ["bulletList", "orderedList"];
-const PADRAO = { textAlign: null, lineHeight: null, spaceBefore: null, spaceAfter: null, indentLeft: null, indentFirst: null, borda: null, fundo: null };
+const PADRAO = { textAlign: null, lineHeight: null, spacingBefore: null, spacingAfter: null, indent: null, firstLineIndent: null, borda: null, fundo: null };
 
 const globais = () =>
   Object.entries(ATRIBUTOS_PARAGRAFO).reduce((acc, [nome, d]) => {
@@ -91,9 +91,9 @@ const Paragrafos = Extension.create({
       recuar: (delta) => ({ editor, commands, state }) => {
         if (listaAtual(editor)) return delta > 0 ? commands.sinkListItem("listItem") : commands.liftListItem("listItem");
         const { $from } = state.selection;
-        const atual = Number($from.parent.attrs?.indentLeft) || 0;
+        const atual = Number($from.parent.attrs?.indent) || 0;
         const novo = Math.max(0, Math.min(RECUO_MAX, atual + delta));
-        return commands.definirParagrafo("indentLeft", novo === 0 ? null : novo);
+        return commands.definirParagrafo("indent", novo === 0 ? null : novo);
       },
     };
   },
@@ -227,14 +227,14 @@ registrarModuloEditor({
     botao("recuoMais", 270, "indent-increase", "Aumentar recuo (em lista: vira subitem)", { grupo: "paragrafo", pode: foraDaTabela, faz: (e) => e.chain().focus().recuar(1).run() }),
     botao("primeiraLinha", 280, "arrow-right-to-line", "Recuo da primeira linha (liga/desliga)", {
       grupo: "paragrafo",
-      ativo: (e) => Number(atual(e, "indentFirst")) > 0,
+      ativo: (e) => Number(atual(e, "firstLineIndent")) > 0,
       pode: (e) => !listaAtual(e),
-      faz: (e) => aplicar(e, "indentFirst", Number(atual(e, "indentFirst")) > 0 ? null : 1),
+      faz: (e) => aplicar(e, "firstLineIndent", Number(atual(e, "firstLineIndent")) > 0 ? null : 1),
     }),
     seletor("estiloLista", 290, "paragrafo", "Estilo da lista", estiloLista),
     { ...seletor("entrelinha", 340, "espacamento", "Espaçamento entre linhas", entrelinha), rotuloGrupo: "Espaçamento" },
-    seletor("antes", 350, "espacamento", "Espaço antes do parágrafo", espaco("spaceBefore", "Antes")),
-    seletor("depois", 360, "espacamento", "Espaço depois do parágrafo", espaco("spaceAfter", "Depois")),
+    seletor("antes", 350, "espacamento", "Espaço antes do parágrafo", espaco("spacingBefore", "Antes")),
+    seletor("depois", 360, "espacamento", "Espaço depois do parágrafo", espaco("spacingAfter", "Depois")),
     { ...seletor("borda", 370, "caixa", "Borda do parágrafo", simples("borda", NOMES_BORDA, "Sem borda")), rotuloGrupo: "Borda e fundo" },
     seletor("fundo", 380, "caixa", "Sombreamento do parágrafo", simples("fundo", NOMES_FUNDO, "Sem sombreamento")),
     botao("limparParagrafo", 390, "eraser", "Limpar formatação do parágrafo", { grupo: "caixa", faz: (e) => e.chain().focus().limparParagrafo().run() }),
