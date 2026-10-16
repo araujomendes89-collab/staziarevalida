@@ -1,6 +1,8 @@
 // Administração de Atualizações: editar (equipe ou revisor da área), conferir no documento oficial
 // (só revisor médico cadastrado na área) e publicar para o aluno (só administrador, e só depois da conferência aprovada).
 // Recusar ou mudar o texto de uma publicada tira do ar até nova conferência. O banco confere cada papel e cada regra.
+// Editor profissional (013130): os textos longos usam o CampoRico (texto oficial + formatação). A formatação vai em "formatacao"
+// (chaves em src/shared/atualizacoes/formatacao.ts) e mudar SÓ a formatação não tira do ar nem pede nova conferência.
 import React from "react";
 import { Badge, Banner, Button, Card, SelectField, Switch, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
@@ -10,6 +12,9 @@ import { AssistantLayout } from "./assistant/AssistantLayout.jsx";
 import { TabAssistant } from "./assistant/TabAssistant.jsx";
 import { SearchSourcesButton } from "./assistant/SearchSourcesButton.jsx";
 import { dateTimeBR, LoadError, Loading, messageOf, TextArea, useLoad } from "./common.jsx";
+import { CampoRico } from "../editorPro/CampoRico.jsx";
+import { comFormatacao } from "../../../shared/docRico/campos";
+import { chaves, paraSalvar, tirarItem } from "../../../shared/atualizacoes/formatacao";
 
 const REVIEW = { pending: ["Conferência pendente", "warning"], approved: ["Conferida", "success"], rejected: ["Recusada", "danger"] };
 const FILTERS = [
@@ -19,7 +24,7 @@ const FILTERS = [
   ["publicadas", "Publicadas"],
   ["app-anterior", "Vindas do app anterior"],
 ];
-const blank = { area: "CLINICA_MEDICA", topic: "", subtopic: "", priority: 2, publication_label: "", institution: "", document_title: "", source_url: "", before_text: "", timeline: [], current_conduct: "", clinical_impact: "", exam_impact: "", trap: "", search_terms: "", position: 0, flashcards: [], practice_questions: [] };
+const blank = { area: "CLINICA_MEDICA", topic: "", subtopic: "", priority: 2, publication_label: "", institution: "", document_title: "", source_url: "", before_text: "", timeline: [], current_conduct: "", clinical_impact: "", exam_impact: "", trap: "", search_terms: "", position: 0, flashcards: [], practice_questions: [], formatacao: {} };
 const toForm = (u) => ({ ...blank, ...Object.fromEntries(Object.entries(u).map(([k, v]) => [k, v ?? (typeof blank[k] === "string" ? "" : blank[k])])) });
 // O que o aluno lê (os mesmos campos que o banco compara): mudar algo daqui numa publicada tira do ar até nova conferência.
 // Posição, prioridade e termos do treino ficam de fora, como no banco. A tela compara do mesmo jeito que o banco
@@ -71,7 +76,8 @@ function LegacyBox({ legacy, sources }) {
   );
 }
 
-function TimelineEditor({ value, onChange }) {
+// formatacao/onFormatacao: a formatação de cada texto (chave timeline.N, na ordem desta lista); tirar uma linha sobe a das seguintes
+function TimelineEditor({ value, onChange, formatacao, onFormatacao }) {
   const rows = value ?? [];
   const set = (i, patch) => onChange(rows.map((r, k) => (k === i ? { ...r, ...patch } : r)));
   return (
@@ -80,8 +86,8 @@ function TimelineEditor({ value, onChange }) {
       {rows.map((r, i) => (
         <div key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr auto", gap: 8, alignItems: "start" }}>
           <TextField aria-label="Ano" type="number" min={2000} max={2100} value={r.year ?? ""} onChange={(e) => set(i, { year: e.target.value })} />
-          <TextArea label={null} value={r.text ?? ""} rows={2} onChange={(v) => set(i, { text: v })} />
-          <Button variant="ghost" size="sm" icon="trash-2" aria-label="Remover ano" onClick={() => onChange(rows.filter((_, k) => k !== i))} />
+          <CampoRico label={`Texto do ano ${i + 1}`} texto={r.text ?? ""} rico={formatacao?.[chaves.timeline(i)]} onChange={(c) => (set(i, { text: c.texto }), onFormatacao((f) => comFormatacao(f, chaves.timeline(i), c.rico)))} />
+          <Button variant="ghost" size="sm" icon="trash-2" aria-label="Remover ano" onClick={() => (onChange(rows.filter((_, k) => k !== i)), onFormatacao((f) => tirarItem(f, "timeline", i)))} />
         </div>
       ))}
       <div>
@@ -91,7 +97,7 @@ function TimelineEditor({ value, onChange }) {
   );
 }
 
-function FlashcardsEditor({ value, onChange }) {
+function FlashcardsEditor({ value, onChange, formatacao, onFormatacao }) {
   const rows = value ?? [];
   const set = (i, patch) => onChange(rows.map((r, k) => (k === i ? { ...r, ...patch } : r)));
   return (
@@ -99,9 +105,9 @@ function FlashcardsEditor({ value, onChange }) {
       <div className="sm-field__label">Flashcards de fixação</div>
       {rows.map((r, i) => (
         <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "start" }}>
-          <TextArea label={null} placeholder="Frente" value={r.front ?? ""} rows={2} onChange={(v) => set(i, { front: v })} />
-          <TextArea label={null} placeholder="Verso" value={r.back ?? ""} rows={2} onChange={(v) => set(i, { back: v })} />
-          <Button variant="ghost" size="sm" icon="trash-2" aria-label="Remover flashcard" onClick={() => onChange(rows.filter((_, k) => k !== i))} />
+          <CampoRico label="Frente" texto={r.front ?? ""} rico={formatacao?.[chaves.frente(i)]} maxLength={2000} onChange={(c) => (set(i, { front: c.texto }), onFormatacao((f) => comFormatacao(f, chaves.frente(i), c.rico)))} />
+          <CampoRico label="Verso" texto={r.back ?? ""} rico={formatacao?.[chaves.verso(i)]} maxLength={2000} onChange={(c) => (set(i, { back: c.texto }), onFormatacao((f) => comFormatacao(f, chaves.verso(i), c.rico)))} />
+          <Button variant="ghost" size="sm" icon="trash-2" aria-label="Remover flashcard" onClick={() => (onChange(rows.filter((_, k) => k !== i)), onFormatacao((f) => tirarItem(f, "flashcard", i)))} />
         </div>
       ))}
       <div>
@@ -132,9 +138,10 @@ const practiceProblem = (list) => {
   return null;
 };
 
-function PracticeQuestionsEditor({ value, onChange }) {
+function PracticeQuestionsEditor({ value, onChange, formatacao, onFormatacao }) {
   const rows = value ?? [];
   const set = (i, q) => onChange(rows.map((r, k) => (k === i ? q : r)));
+  const fmt = (chave, rico) => onFormatacao((f) => comFormatacao(f, chave, rico));
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div className="sm-field__label">Questões de treino (escritas pela equipe; não são questões oficiais do INEP)</div>
@@ -142,14 +149,14 @@ function PracticeQuestionsEditor({ value, onChange }) {
         <div key={i} role="group" aria-label={`Questão de treino ${i + 1}`} style={{ display: "flex", flexDirection: "column", gap: 12, padding: 12, borderRadius: 12, border: "1px solid var(--border-subtle)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
             <strong style={{ font: "var(--type-label)" }}>{`Questão de treino ${i + 1}`}</strong>
-            <Button variant="ghost" size="sm" icon="trash-2" aria-label={`Remover questão de treino ${i + 1}`} onClick={() => onChange(rows.filter((_, k) => k !== i))} />
+            <Button variant="ghost" size="sm" icon="trash-2" aria-label={`Remover questão de treino ${i + 1}`} onClick={() => (onChange(rows.filter((_, k) => k !== i)), onFormatacao((f) => tirarItem(f, "questao", i)))} />
           </div>
-          <TextArea label="Enunciado" value={q.statement ?? ""} rows={3} onChange={(v) => set(i, { ...q, statement: v })} hint="Pelo menos 20 caracteres." />
+          <CampoRico label="Enunciado" texto={q.statement ?? ""} rico={formatacao?.[chaves.enunciado(i)]} onChange={(c) => (set(i, { ...q, statement: c.texto }), fmt(chaves.enunciado(i), c.rico))} hint="Pelo menos 20 caracteres." />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 12 }}>
             {LETTERS.map((l) => (
               <div key={l} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <TextArea label={`Alternativa ${l}`} value={optionOf(q, l).text ?? ""} rows={2} onChange={(v) => set(i, withOption(q, l, { text: v }))} />
-                <TextArea label={`Justificativa da ${l} (por que está certa ou errada)`} value={optionOf(q, l).justification ?? ""} rows={2} onChange={(v) => set(i, withOption(q, l, { justification: v }))} />
+                <CampoRico label={`Alternativa ${l}`} texto={optionOf(q, l).text ?? ""} rico={formatacao?.[chaves.alt(i, l)]} onChange={(c) => (set(i, withOption(q, l, { text: c.texto })), fmt(chaves.alt(i, l), c.rico))} />
+                <CampoRico label={`Justificativa da ${l} (por que está certa ou errada)`} texto={optionOf(q, l).justification ?? ""} rico={formatacao?.[chaves.justificativa(i, l)]} onChange={(c) => (set(i, withOption(q, l, { justification: c.texto })), fmt(chaves.justificativa(i, l), c.rico))} />
               </div>
             ))}
           </div>
@@ -159,7 +166,7 @@ function PracticeQuestionsEditor({ value, onChange }) {
             onChange={(e) => set(i, { ...q, answer: e.target.value })}
             options={[{ value: "", label: "Escolha a alternativa correta" }, ...LETTERS.map((l) => ({ value: l, label: `Alternativa ${l}` }))]}
           />
-          <TextArea label="Comentário (o aluno lê depois de confirmar)" value={q.commentary ?? ""} rows={3} onChange={(v) => set(i, { ...q, commentary: v })} />
+          <CampoRico label="Comentário (o aluno lê depois de confirmar)" texto={q.commentary ?? ""} rico={formatacao?.[chaves.comentario(i)]} onChange={(c) => (set(i, { ...q, commentary: c.texto }), fmt(chaves.comentario(i), c.rico))} />
         </div>
       ))}
       <div>
@@ -179,6 +186,9 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
   const [assistantOpen, setAssistantOpen] = React.useState(false);
   const set = (patch) => (setForm((f) => ({ ...f, ...patch })), setState((s) => ({ ...s, done: null })));
   const changeQuestions = (next) => (setQuestions(next), setState((s) => ({ ...s, done: null })));
+  // formatação (013130): muda junto com o texto do campo; fn recebe a formatação atual e devolve a nova
+  const setFormatacao = (fn) => (setForm((f) => ({ ...f, formatacao: fn(f.formatacao ?? {}) })), setState((s) => ({ ...s, done: null })));
+  const campo = (k) => ({ texto: form[k], rico: form.formatacao?.[k], onChange: (c) => (setForm((f) => ({ ...f, [k]: c.texto, formatacao: comFormatacao(f.formatacao, k, c.rico) })), setState((s) => ({ ...s, done: null }))) });
   // "Usar" só muda o formulário (e apaga o aviso de salvo); quem grava é "Salvar alterações". Lista (linha do tempo, flashcards): o painel
   // entrega a lista já com os itens novos ao fim, então o campo é trocado pelo valor final.
   const applySuggestion = (field, value) => {
@@ -199,10 +209,16 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
     const practice = questions;
     const problem = practiceProblem(practice);
     if (problem) return setState({ busy: false, error: problem, done: null });
+    // formatação aparada junto com o texto (como o banco apara), chaves da linha do tempo na ordem gravada e só as válidas (formatacao.ts)
+    const pronto = paraSalvar(form, practice, form.formatacao);
+    if (pronto.problema) return setState({ busy: false, error: pronto.problema, done: null });
+    // só formatação não muda o texto: não tira do ar, então não pergunta
     if (current?.published && asSaved(form, practice) !== asStored(current) && !window.confirm(OFF_AIR_CONFIRM)) return;
     run("save", async () => {
       const saved = await backend.rpc("app_admin_save_guideline_update", {
-        p_update: { ...form, id: current?.id, priority: Number(form.priority) || 2, position: Number(form.position) || 0, timeline: form.timeline.map((t) => ({ year: Number(t.year), text: t.text })), practice_questions: practice },
+        // os textos vão como sempre (o banco apara e põe a linha do tempo em ordem de ano, no empate a ordem enviada); a formatação já
+        // vem com as chaves na ordem que o banco grava
+        p_update: { ...form, id: current?.id, priority: Number(form.priority) || 2, position: Number(form.position) || 0, timeline: form.timeline.map((t) => ({ year: Number(t.year), text: t.text })), practice_questions: practice, formatacao: pronto.formatacao },
       });
       onSaved();
       setCurrent((c) => ({ ...(c ?? {}), ...saved }));
@@ -233,7 +249,7 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
   const [label, tone] = REVIEW[current?.review_status] ?? REVIEW.pending;
   // O servidor lê o formulário como está na tela. O id é o do item gravado (nulo se ainda é novo); o registro do app anterior e a
   // questão de treino (com a resposta) não vão para a IA. O documento oficial só é oferecido como material se o endereço é https.
-  const assistantForm = { ...form, id: current?.id ?? null, legacy: undefined, practice_questions: undefined };
+  const assistantForm = { ...form, id: current?.id ?? null, legacy: undefined, practice_questions: undefined, formatacao: undefined };
   const officialUrl = String(form.source_url ?? "").trim();
   const materialLink = officialUrl.startsWith("https://") ? officialUrl : null;
   return (
@@ -256,7 +272,7 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
           {state.error && <Banner tone="danger">{state.error}</Banner>}
           {state.done === "save" && current?.review_status === "pending" && current?.review_note && <Banner tone="warning">{current.review_note}</Banner>}
           {state.done === "save" && <Banner tone="success">Atualização salva.</Banner>}
-          {current?.published && <Banner tone="warning">Esta atualização está no ar. Se você mudar o texto, ela sai do ar para os alunos até um revisor médico conferir de novo e o administrador publicar outra vez. Mudar só a posição, a prioridade ou os termos do treino não tira do ar.</Banner>}
+          {current?.published && <Banner tone="warning">Esta atualização está no ar. Se você mudar o texto, ela sai do ar para os alunos até um revisor médico conferir de novo e o administrador publicar outra vez. Mudar só a posição, a prioridade, os termos do treino ou a formatação (negrito, cor, alinhamento...) não tira do ar.</Banner>}
           {current?.origin === "legacy_app" && <LegacyBox legacy={current.legacy} sources={<SearchSourcesButton tab="atualizacoes" form={form} />} />}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
             <SelectField label="Grande área" value={form.area} onChange={(e) => set({ area: e.target.value })} options={AREAS.map((a) => ({ value: a.id, label: a.label }))} />
@@ -270,14 +286,14 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
             <TextField label="Termos para o treino" value={form.search_terms} maxLength={120} onChange={(e) => set({ search_terms: e.target.value })} hint="Palavras buscadas nas questões oficiais da área (ex.: pré-eclâmpsia)." />
             <TextField label="Posição" type="number" value={form.position} onChange={(e) => set({ position: e.target.value })} />
           </div>
-          <TextArea label="Antes (conduta anterior)" value={form.before_text} rows={3} maxLength={4000} onChange={(v) => set({ before_text: v })} />
-          <TimelineEditor value={form.timeline} onChange={(timeline) => set({ timeline })} />
-          <TextArea label="Conduta vigente" value={form.current_conduct} rows={4} maxLength={4000} onChange={(v) => set({ current_conduct: v })} />
-          <TextArea label="Como pode aparecer no Revalida" value={form.exam_impact} rows={3} maxLength={4000} onChange={(v) => set({ exam_impact: v })} />
-          <TextArea label="Pegadinha da banca" value={form.trap} rows={2} maxLength={2000} onChange={(v) => set({ trap: v })} />
-          <TextArea label="Impacto clínico" value={form.clinical_impact} rows={3} maxLength={4000} onChange={(v) => set({ clinical_impact: v })} />
-          <FlashcardsEditor value={form.flashcards} onChange={(flashcards) => set({ flashcards })} />
-          <PracticeQuestionsEditor value={questions} onChange={changeQuestions} />
+          <CampoRico label="Antes (conduta anterior)" maxLength={4000} {...campo("before_text")} />
+          <TimelineEditor value={form.timeline} onChange={(timeline) => set({ timeline })} formatacao={form.formatacao} onFormatacao={setFormatacao} />
+          <CampoRico label="Conduta vigente" maxLength={4000} {...campo("current_conduct")} />
+          <CampoRico label="Como pode aparecer no Revalida" maxLength={4000} {...campo("exam_impact")} />
+          <CampoRico label="Pegadinha da banca" maxLength={2000} {...campo("trap")} />
+          <CampoRico label="Impacto clínico" maxLength={4000} {...campo("clinical_impact")} />
+          <FlashcardsEditor value={form.flashcards} onChange={(flashcards) => set({ flashcards })} formatacao={form.formatacao} onFormatacao={setFormatacao} />
+          <PracticeQuestionsEditor value={questions} onChange={changeQuestions} formatacao={form.formatacao} onFormatacao={setFormatacao} />
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <Button type="submit" loading={state.busy === "save"}>{current ? "Salvar alterações" : "Criar atualização"}</Button>
           </div>
