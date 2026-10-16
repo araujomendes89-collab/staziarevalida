@@ -5,6 +5,7 @@ import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { dateTimeBR, LoadError, Loading, messageOf, PLAN_LABEL, ROLE_LABEL, SUB_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
 import { auditActor, auditLabel, auditSummary } from "./auditLog.js";
+import { FolhaBadge, FolhaCandidato } from "./FolhaCandidato.jsx";
 
 // ---------------------------------------------------------------- visão geral
 /** O que espera conferência, por aba (chaves de pending_review em app_admin_overview). */
@@ -424,7 +425,7 @@ function reviewRecord(s) {
   return null;
 }
 
-function StationCard({ station: s, onSaved }) {
+function StationCard({ station: s, onSaved, folha, onFolha }) {
   const { backend } = useSession();
   const [open, setOpen] = React.useState(false);
   const [content, setContent] = React.useState({ loading: false, data: undefined, error: null });
@@ -471,6 +472,7 @@ function StationCard({ station: s, onSaved }) {
               </Badge>
             )}
             {s.institution === "INEP" && <Badge size="sm">INEP</Badge>}
+            <FolhaBadge situacao={folha} />
           </div>
           <div style={{ font: "600 16px var(--font-sans)", marginTop: 8 }}>{s.name}</div>
           <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{s.topic}</div>
@@ -499,6 +501,7 @@ function StationCard({ station: s, onSaved }) {
           {content.loading && <Loading />}
           {content.error && <Banner tone="danger">{content.error}</Banner>}
           {content.data !== undefined && <StationContent content={content.data} />}
+          <FolhaCandidato stationId={s.id} onSituacao={onFolha} />
           <div style={{ display: "grid", gap: 8 }}>
             <div style={{ font: "var(--type-label)" }}>Revisão médica</div>
             {state.error && <Banner tone="danger">{state.error}</Banner>}
@@ -535,6 +538,19 @@ function StationCard({ station: s, onSaved }) {
 export function AdminStations() {
   const { backend } = useSession();
   const { data, error, reload, setData } = useLoad(() => backend.rpc("app_admin_stations"), [backend]);
+  // situação da folha do candidato de cada estação (migração 013390); sem a função, os cartões ficam sem o selo
+  const [folhas, setFolhas] = React.useState({});
+  React.useEffect(() => {
+    let vivo = true;
+    Promise.resolve(backend.rpc("app_admin_dupla_folhas")).then(
+      (m) => vivo && setFolhas(m && typeof m === "object" ? m : {}),
+      () => undefined
+    );
+    return () => {
+      vivo = false;
+    };
+  }, [backend]);
+  const folhaDe = React.useCallback((id) => (situacao) => setFolhas((m) => ({ ...m, [id]: situacao })), []);
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
   return (
@@ -547,7 +563,7 @@ export function AdminStations() {
       </Banner>
       {data.length === 0 && <EmptyState icon="clipboard-list" title="Nenhuma estação cadastrada" />}
       {data.map((s) => (
-        <StationCard key={s.id} station={s} onSaved={setData} />
+        <StationCard key={s.id} station={s} onSaved={setData} folha={folhas[s.id]} onFolha={folhaDe(s.id)} />
       ))}
     </div>
   );
