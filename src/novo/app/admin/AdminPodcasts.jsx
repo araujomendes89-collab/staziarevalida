@@ -85,7 +85,7 @@ function EpisodeForm({ podcast, lessons, onSaved }) {
 }
 
 // ---------------------------------------------------------------- 2. fontes
-function Sources({ podcast, lessons, onChanged }) {
+function Sources({ podcast, lessons, isAdmin, onChanged }) {
   const { backend } = useSession();
   const [mode, setMode] = React.useState("file");
   const [text, setText] = React.useState({ title: "", body: "" });
@@ -114,6 +114,12 @@ function Sources({ podcast, lessons, onChanged }) {
     if (next == null || !next.trim() || next.trim() === s.title) return;
     run(`rename-${s.id}`, () => api.renameSource(backend, podcast.id, s.id, next.trim()));
   };
+  // fonte complementar (apostila): vale para a IA e para a equipe, mas o aluno não vê o nome, o link nem as páginas dela. Só o administrador marca.
+  const marcarComplementar = (s) => {
+    const para = !s.complementar;
+    if (!para && !window.confirm("O aluno voltará a ver o nome desta fonte e as páginas usadas na transcrição. Continuar?")) return;
+    run(`comp-${s.id}`, () => backend.rpc("app_admin_podcast_source_complementar", { p_source_id: s.id, p_complementar: para }));
+  };
   const remove = (s) => {
     if (podcast.script && !window.confirm("Tirar esta fonte apaga o roteiro atual (ele pode citar trechos dela). Continuar?")) return;
     run(s.id, () => api.removeSource(backend, podcast.id, s.id));
@@ -135,7 +141,19 @@ function Sources({ podcast, lessons, onChanged }) {
                 <span style={{ display: "block", font: "var(--type-caption)", color: "var(--text-tertiary)", overflowWrap: "anywhere" }}>
                   {SOURCE_KIND[s.kind]} · {s.chunks} trechos{s.pages ? ` · ${s.pages} páginas` : ""}{s.url ? ` · ${s.url}` : ""}
                 </span>
+                {s.student_hidden && (
+                  <span style={{ display: "block", marginTop: 4 }}>
+                    <Badge size="sm" tone="warning" icon="eye-off">
+                      {s.complementar ? "Fonte complementar · o aluno não vê esta fonte" : "O aluno não vê esta fonte: o nome bate com uma fonte complementar da biblioteca"}
+                    </Badge>
+                  </span>
+                )}
               </span>
+              {isAdmin && (
+                <Button size="sm" variant="ghost" icon={s.complementar ? "eye" : "eye-off"} loading={state.busy === `comp-${s.id}`} onClick={() => marcarComplementar(s)}>
+                  {s.complementar ? "Voltar a oficial" : "Marcar como complementar"}
+                </Button>
+              )}
               {!locked && <Button size="sm" variant="ghost" icon="pencil" loading={state.busy === `rename-${s.id}`} onClick={() => rename(s)}>Renomear</Button>}
               {!locked && <Button size="sm" variant="ghost" icon="trash-2" loading={state.busy === s.id} onClick={() => remove(s)}>Tirar</Button>}
             </div>
@@ -203,11 +221,13 @@ function Citation({ id, cited }) {
   );
 }
 
+const SEM_LIMPEZA_TEXTO = "O roteiro foi salvo, mas os arquivos antigos do áudio ainda não foram apagados do depósito. Nada se perdeu: eles saem na próxima limpeza.";
+
 function ScriptEditor({ podcast, warnings, onSaved, locked }) {
   const { backend } = useSession();
   const saved = podcast.script?.lines ?? [];
   const [lines, setLines] = React.useState(saved);
-  const [state, setState] = React.useState({ saving: false, error: null });
+  const [state, setState] = React.useState({ saving: false, error: null, note: null });
   React.useEffect(() => setLines(podcast.script?.lines ?? []), [podcast.script]);
   const dirty = JSON.stringify(lines) !== JSON.stringify(saved);
   const byLine = React.useMemo(() => {
@@ -219,11 +239,18 @@ function ScriptEditor({ podcast, warnings, onSaved, locked }) {
   const remove = (i) => setLines((ls) => ls.filter((_, j) => j !== i));
   const insertAfter = (i) => setLines((ls) => [...ls.slice(0, i + 1), { speaker: ls[i]?.speaker === "ANA" ? "BRUNO" : "ANA", text: "", style: "", sources: [] }, ...ls.slice(i + 1)]);
   const save = async () => {
-    setState({ saving: true, error: null });
+    setState({ saving: true, error: null, note: null });
     try {
       const view = await backend.rpc("app_admin_podcast_save_script", { p_id: podcast.id, p_script: { lines: lines.map((l) => ({ ...l, text: l.text.trim() })), missing: podcast.script?.missing ?? [] } });
-      setState({ saving: false, error: null });
+      setState({ saving: false, error: null, note: null });
       onSaved(view, true);
+      // o áudio antigo deixou de valer: o servidor apaga o arquivo. A edição já está salva; se a limpeza não terminar, a equipe é avisada.
+      api
+        .cleanupPodcastFiles(backend, podcast.id)
+        .then((r) => {
+          if (r && r.ok === false) setState((st) => ({ ...st, note: r.note || SEM_LIMPEZA_TEXTO }));
+        })
+        .catch(() => setState((st) => ({ ...st, note: SEM_LIMPEZA_TEXTO })));
     } catch (error) {
       setState({ saving: false, error: messageOf(error) });
     }
@@ -231,6 +258,7 @@ function ScriptEditor({ podcast, warnings, onSaved, locked }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {state.error && <Banner tone="danger">{state.error}</Banner>}
+      {state.note && <Banner tone="warning">{state.note}</Banner>}
       {lines.map((l, i) => (
         <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 14, border: `1px solid ${byLine[i] ? "var(--warning-border)" : "var(--border-subtle)"}`, background: l.speaker === "ANA" ? "var(--surface-subtle)" : "transparent" }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -278,11 +306,24 @@ function ScriptStep({ podcast, providers, onChanged }) {
   }, [providers]); // eslint-disable-line react-hooks/exhaustive-deps
   const [notes, setNotes] = React.useState("");
   const [warnings, setWarnings] = React.useState(podcast.script_meta?.warnings ?? null);
-  const [state, setState] = React.useState({ busy: null, error: null });
+  const [state, setState] = React.useState({ busy: null, error: null, aviso: null });
   const [note, setNote] = React.useState("");
   const locked = podcast.status === "published";
   const hasScript = Boolean(podcast.script?.lines?.length);
   const meta = podcast.script_meta ?? {};
+
+  // Quem aprova o roteiro: administrador ou revisor médico da área do episódio (o banco decide; a tela só explica). Se a pergunta
+  // falhar (banco ainda sem a função), o botão fica ligado e o banco recusa quem não pode.
+  const [approval, setApproval] = React.useState(null);
+  React.useEffect(() => {
+    let alive = true;
+    setApproval(null);
+    backend.rpc("app_admin_podcast_approval", { p_id: podcast.id }).then((r) => alive && setApproval(r)).catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [backend, podcast.id, podcast.area, podcast.approved_by]);
+  const cannotApprove = approval?.can_approve === false;
 
   // roteiro editado (sem avisos guardados): o servidor confere de novo
   React.useEffect(() => {
@@ -296,12 +337,12 @@ function ScriptStep({ podcast, providers, onChanged }) {
 
   const generate = async () => {
     if (hasScript && !window.confirm("Gerar outro roteiro substitui o atual e tira a aprovação e o áudio. Continuar?")) return;
-    setState({ busy: "generate", error: null });
+    setState({ busy: "generate", error: null, aviso: null });
     try {
       const r = await api.generatePodcastScript(backend, podcast.id, provider, notes);
       setWarnings(r.warnings);
       onChanged(r.podcast);
-      setState({ busy: null, error: null });
+      setState({ busy: null, error: null, aviso: r.note ?? null }); // r.note: a limpeza dos arquivos antigos não terminou
     } catch (error) {
       setState({ busy: null, error: messageOf(error) });
     }
@@ -322,6 +363,7 @@ function ScriptStep({ podcast, providers, onChanged }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {state.error && <Banner tone="danger">{state.error}</Banner>}
+      {state.aviso && <Banner tone="warning">{state.aviso}</Banner>}
       {!locked && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
@@ -359,8 +401,13 @@ function ScriptStep({ podcast, providers, onChanged }) {
           ) : (
             !locked && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 14, background: "var(--surface-subtle)" }}>
-                <TextArea label="O que você conferiu (obrigatório para aprovar)" value={note} rows={2} maxLength={600} onChange={setNote} placeholder="Ex.: conferi doses e critérios nas páginas citadas do PCDT; corrigi a fala 12." />
-                <Button icon="shield-check" style={{ alignSelf: "flex-start" }} loading={state.busy === "approve"} disabled={note.trim().length < 10} onClick={approve}>Aprovar roteiro</Button>
+                {cannotApprove && (
+                  <Banner tone="info" icon="lock" title="Você não pode aprovar este roteiro">
+                    {approval.reason}
+                  </Banner>
+                )}
+                <TextArea label="O que você conferiu (obrigatório para aprovar)" value={note} rows={2} maxLength={600} disabled={cannotApprove} onChange={setNote} placeholder="Ex.: conferi doses e critérios nas páginas citadas do PCDT; corrigi a fala 12." />
+                <Button icon="shield-check" style={{ alignSelf: "flex-start" }} loading={state.busy === "approve"} disabled={cannotApprove || note.trim().length < 10} onClick={approve}>Aprovar roteiro</Button>
               </div>
             )
           )}
@@ -385,7 +432,7 @@ function AudioStep({ podcast, providers, lessons, isAdmin, onChanged }) {
   const voices = { ...(providers?.default_voices?.[provider] ?? {}), ...(chosen[provider] ?? {}) };
   const pickVoice = (who, value) => setChosen((c) => ({ ...c, [provider]: { ...(c[provider] ?? {}), [who]: value } }));
   const [progress, setProgress] = React.useState(null);
-  const [state, setState] = React.useState({ busy: null, error: null, done: null });
+  const [state, setState] = React.useState({ busy: null, error: null, done: null, aviso: null });
   const [src, setSrc] = React.useState(null);
   const canGenerate = Boolean(podcast.approved_at) && ["approved", "audio_ready"].includes(podcast.status);
   const lesson = lessons.find((l) => l.id === podcast.lesson_id);
@@ -408,11 +455,12 @@ function AudioStep({ podcast, providers, lessons, isAdmin, onChanged }) {
 
   const generate = async () => {
     if (podcast.audio_path && !window.confirm("Gerar de novo substitui o áudio atual. Continuar?")) return;
-    setState({ busy: "audio", error: null, done: null });
+    setState({ busy: "audio", error: null, done: null, aviso: null });
     setProgress({ done: 0, total: 1 });
     try {
-      onChanged(await api.generatePodcastAudio(backend, podcast.id, { provider, voices }, setProgress));
-      setState({ busy: null, error: null, done: "Áudio pronto. Ouça antes de publicar." });
+      const view = await api.generatePodcastAudio(backend, podcast.id, { provider, voices }, setProgress);
+      onChanged(view);
+      setState({ busy: null, error: null, done: "Áudio pronto. Ouça antes de publicar.", aviso: view?.note ?? null }); // note: a limpeza dos arquivos antigos não terminou
     } catch (error) {
       setState({ busy: null, error: messageOf(error), done: null });
     } finally {
@@ -440,11 +488,12 @@ function AudioStep({ podcast, providers, lessons, isAdmin, onChanged }) {
     ),
   ];
 
-  if (!podcast.approved_at) return <Muted>O áudio só é gerado depois que uma pessoa da equipe aprovar o roteiro.</Muted>;
+  if (!podcast.approved_at) return <Muted>O áudio só é gerado depois que o administrador ou o revisor médico da área aprovar o roteiro.</Muted>;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {state.error && <Banner tone="danger">{state.error}</Banner>}
       {state.done && <Banner tone="success">{state.done}</Banner>}
+      {state.aviso && <Banner tone="warning">{state.aviso}</Banner>}
       {canGenerate && (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
@@ -496,7 +545,8 @@ function PublishStep({ podcast, isAdmin, onChanged, onDeleted }) {
     if (!window.confirm(`Apagar o episódio "${podcast.title}"? Fontes, roteiro e áudio somem.`)) return;
     setState({ busy: "delete", error: null });
     try {
-      await api.deletePodcast(backend, podcast.id);
+      const done = await api.deletePodcast(backend, podcast.id);
+      if (done?.aviso) window.alert(done.aviso); // a limpeza dos arquivos não terminou: a equipe precisa saber
       onDeleted();
     } catch (error) {
       setState({ busy: null, error: messageOf(error) });
@@ -563,7 +613,7 @@ function PodcastEditor({ id, isAdmin, lessons, providers, providersError, onClos
         {podcast && (
           <>
             <Section step={2} title="Fontes" done={podcast.sources.length > 0}>
-              <Sources podcast={podcast} lessons={lessons} onChanged={changed} />
+              <Sources podcast={podcast} lessons={lessons} isAdmin={isAdmin} onChanged={changed} />
             </Section>
             <Section step={3} title="Roteiro (revisão humana)" done={Boolean(podcast.approved_at)}>
               <ScriptStep podcast={podcast} providers={providers} onChanged={changed} />
@@ -608,7 +658,7 @@ export function AdminPodcasts() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <Banner tone="info" icon="headphones" title="Podcasts a partir dos materiais">
-        Fontes → roteiro com IA (só com o que está nas fontes, citando documento e página) → revisão e aprovação da equipe → áudio com duas vozes → publicação pelo administrador. A IA nunca aprova nem publica.
+        Fontes → roteiro com IA (só com o que está nas fontes, citando documento e página) → revisão da equipe e aprovação do administrador ou do revisor médico da área → áudio com duas vozes → publicação pelo administrador. A IA nunca aprova nem publica.
       </Banner>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>

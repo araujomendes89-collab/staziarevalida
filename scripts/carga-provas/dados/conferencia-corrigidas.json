@@ -1,0 +1,3458 @@
+{
+ "enamed_2025_q062": {
+  "statement_md5": "ac4bf8736fe8d295b1cd1b99aa3fcfe8",
+  "options_md5": {
+   "A": "fde3a46b795ca085fa97bccc15ed1d89",
+   "B": "7c093d30fa595bc2abf30f9a52d9ef49",
+   "C": "131b4ccf6f6bf76122959795e7b61ea4",
+   "D": "7847a3eb921a125e1af8a1db9dc49664"
+  }
+ },
+ "enamed_2025_q041": {
+  "statement_md5": "6e41333bc6422a869e4631bb466d1f36",
+  "options_md5": {
+   "A": "770934e865ff093b9d4e5f058957118d",
+   "B": "712abee22a4cfd127249d1e47e8d9857",
+   "C": "992349606402a485d960b87010ac1ce4",
+   "D": "4ddbabc09993b26c2847f65bb787e8bb"
+  }
+ },
+ "enamed_2025_q088": {
+  "statement_md5": "8acd2702ac551db0bcad9787eb7e8a8d",
+  "options_md5": {
+   "A": "1e1423e0d50584f0d8fe821e57ff5084",
+   "B": "db44532f0278610db33a935335181450",
+   "C": "8150a320a5d905453499d18bd77f655e",
+   "D": "692a1d516d785a0a4beaafbd0ea1f394"
+  }
+ },
+ "enamed_2025_q068": {
+  "statement_md5": "200a787d1d7f0891a1df2a315d1e4838",
+  "options_md5": {
+   "A": "86e31af1942ed1b83337e99e2f7c0e13",
+   "B": "5a2f584598f9785266e09d34701e4058",
+   "C": "77e90a4d0c8be958f14375b2b00b6a6f",
+   "D": "b9e94ebdf1cbad74ad6fb2f47003b59d"
+  }
+ },
+ "enamed_2025_q090": {
+  "statement_md5": "c3fa5e7a53b74affc68f60a43eaad9af",
+  "options_md5": {
+   "A": "7aba4b4b8abe8bc58394d0979e044e0e",
+   "B": "dcf4342718cf859c1d2e52587525b3be",
+   "C": "0be532b6fb1d9656169027a2ad63e1be",
+   "D": "9d2db2139d8373cda28aff6f194059c9"
+  }
+ },
+ "enamed_2025_q021": {
+  "statement_md5": "a102d17ddc99028c02c7d4c2cf605ca5",
+  "options_md5": {
+   "A": "df8e68dbeb3c7fac20d7000119854fd9",
+   "B": "d55e7bc0ce9e3c05a9626996882335b2",
+   "C": "be2119c07bdd09750353f317d2aca7a9",
+   "D": "70badaf78c27cf81bfbcc4eb7bbc31da"
+  }
+ },
+ "enamed_2025_q009": {
+  "statement_md5": "8e042fb5ff9ec6b59d7e7720aba35897",
+  "options_md5": {
+   "A": "af161d8f823b2789410c4adab770796c",
+   "B": "ee17bcdcb29bc19e3a30b95d895968d3",
+   "C": "e58170ba9cf9b0fe321bc34885ca7797",
+   "D": "829f824ab326ce1562e148050f2f6993"
+  }
+ },
+ "enamed_2025_q055": {
+  "statement_md5": "f487bf23201ea5897a8e51fcb2e34645",
+  "options_md5": {
+   "A": "40500494b03ba3a2c4e18be471b3f2ba",
+   "B": "1ea40fa45e9d4820949c382202be2870",
+   "C": "0b3960ff2d0651beaa533a469877d3ab",
+   "D": "5434436f861e7ae4e57a0fb2adf013bb"
+  }
+ },
+ "enamed_2025_q070": {
+  "statement_md5": "dc3a04a83afd960b715ea4f96e2a82d3",
+  "options_md5": {
+   "A": "cc0bb1dc4d8463405fbda21491a8a4cb",
+   "B": "7338b5cfc9ddd9ee568c90688b942ac1",
+   "C": "1b36d1b462148e01a123da1b5dbb54d3",
+   "D": "c46307a8482631581c3c1c3e72ee8448"
+  }
+ },
+ "enamed_2025_q083": {
+  "statement_md5": "69f6c418df4ff3efe16d38f385edc245",
+  "options_md5": {
+   "A": "bb8941cb7185c30dccce18eee96a286f",
+   "B": "9a09d14399b782836a2c7a17d2157425",
+   "C": "116cbe364f208cf5d26ca9ad40f81ebf",
+   "D": "9a7d4b1545b30c34c0009a17edf1bece"
+  }
+ },
+ "enamed_2025_q037": {
+  "statement_md5": "19556122dcb7930c801c4cad6d85cd2a",
+  "options_md5": {
+   "A": "1f291b7c48eb353e2ef902d584b8d35e",
+   "B": "ef950beec1fb8151e61059f0646fb256",
+   "C": "ae4f1a42ea358827a6a637fb7b90f512",
+   "D": "ca9adf57829f3096dcbcccee667491e8"
+  }
+ },
+ "enamed_2025_q049": {
+  "statement_md5": "f4abe9b5714e1d8cd343f44ff1f44a85",
+  "options_md5": {
+   "A": "bbce3ffda1376b64bfdbbfc95f558cbf",
+   "B": "d49585dcad1ac1a45a54d417e8af7935",
+   "C": "a966e4ae9b03293404c0f35b5a889a49",
+   "D": "7a3fdb7c8c0f5611ffabec9eab6b56b4"
+  }
+ },
+ "enamed_2025_q038": {
+  "statement_md5": "54a77cb42c0c23b87ac0fdec9523d4b5",
+  "options_md5": {
+   "A": "7f56b9827dd972e447550414dad5a488",
+   "B": "f3ff92e24f9c1e1d6ee065019eb8c5eb",
+   "C": "37f138ad43a0904dbe9d1e8a570639c1",
+   "D": "1984e01002325c6cccc61ec7a55458e8"
+  }
+ },
+ "enamed_2025_q073": {
+  "statement_md5": "b8bbee5e14a3f4e812b5376d231bcfe3",
+  "options_md5": {
+   "A": "1314bb50eb4eab22283e2eb6a1e8a4d0",
+   "B": "1710a802d7206eb58c65962d58ee99f6",
+   "C": "08c0a4d75fc80da01ba495f71529f8a8",
+   "D": "6dce328ac8a0c04b2273826e746601f4"
+  }
+ },
+ "enamed_2025_q078": {
+  "statement_md5": "089e18b7012adcc6fb8f9303fd112259",
+  "options_md5": {
+   "A": "87e977ada5d8b43c6f2e380bdd4e9ab3",
+   "B": "1037ad1471ad3a626a98c196534b7498",
+   "C": "ae6c2acd2bba3d2558200a060953e764",
+   "D": "c4433c51c9ba5a81b6f35a3a8f45dc50"
+  }
+ },
+ "enamed_2025_q072": {
+  "statement_md5": "262795260d8525bc4499a0493a054aa2",
+  "options_md5": {
+   "A": "8f4956b77fbd6d792860f5c61324d34c",
+   "B": "c7b95cdb83e616ea232ee03bc74e15fe",
+   "C": "0d0c9155604d15942809036bb7126d8b",
+   "D": "92a0ae1e870e2e00cd69b2864f339d14"
+  }
+ },
+ "enamed_2025_q023": {
+  "statement_md5": "a67e7ad82b9f024802b2121cd25b8a9a",
+  "options_md5": {
+   "A": "f3d96f834f4b5eacc5e1f6dc100f04cc",
+   "B": "0ad9bfd7fcc2a360a2a8cc104e386e95",
+   "C": "d988e240604ad59041cf4c0ca9dd565c",
+   "D": "57eb6c3e0847417293820c5df3e4fd74"
+  }
+ },
+ "enamed_2025_q097": {
+  "statement_md5": "6a06aaf1ad8996d789687a432f689a69",
+  "options_md5": {
+   "A": "98a26520fbf159d751abe8f412fadda1",
+   "B": "5a2084a19f489b6bce19e9ca1a65ac16",
+   "C": "31216423c350bc18de4a193c9bbd2619",
+   "D": "556e9829a952d468db00d97c52480b91"
+  }
+ },
+ "enamed_2025_q091": {
+  "statement_md5": "b88edac8d50e09f954a3d82ece5b5aa8",
+  "options_md5": {
+   "A": "a7dcdbb2215f4e869248ecff7497b0a1",
+   "B": "7267b1f87cf2c47d0f7fe9e1355f5c21",
+   "C": "ec1b4ca8058dac68aab3e62632018543",
+   "D": "004b16ef3631f40028a29d65ec58c3bc"
+  }
+ },
+ "enamed_2025_q019": {
+  "statement_md5": "8faec263dabae0c5949d3daf4d8146f8",
+  "options_md5": {
+   "A": "b6e46358376dc915295eaae363d7c916",
+   "B": "237f3cbeec5f0afabff03d44e07731b4",
+   "C": "ab47242e50aebc0f61cdd018db5ae00d",
+   "D": "d7cfcca07ac2cd6ea02acc8a5c73c825"
+  }
+ },
+ "enamed_2025_q033": {
+  "statement_md5": "56837d403f12e71ffe08dcc277be529d",
+  "options_md5": {
+   "A": "ab6cd2d5eb5003f695d4e77b5426d175",
+   "B": "8e81de0f6451f436d28d04226cddfab4",
+   "C": "23bbe20368d8f5ff45c1692a09da0023",
+   "D": "01fd16b7c40a68c00ca2ed23d62f1247"
+  }
+ },
+ "enamed_2025_q069": {
+  "statement_md5": "97f972dadbd9fe190622db54345b3696",
+  "options_md5": {
+   "A": "7669a1c1b373008d2038ab97f9e0b3eb",
+   "B": "ba278cb1fadd3c89ab64b71e8b2cb438",
+   "C": "65d5020f20124fe4d69ac3566291b66c",
+   "D": "c21964487f9091b2a979c747d22054e4"
+  }
+ },
+ "enamed_2025_q010": {
+  "statement_md5": "e8c72369f575f8d6e67a68b6f0b417a1",
+  "options_md5": {
+   "A": "47b67e6236fa4026e144c1ef3df85f11",
+   "B": "e1b054516e9cc0f502d9c68a77e48be0",
+   "C": "cc36375a7f9d1b7504fe2006a87f50e7",
+   "D": "3acbfcf7917a92935ff5eb3dfa22317a"
+  }
+ },
+ "enamed_2025_q035": {
+  "statement_md5": "e23855479b32a0f74f9cae399e9b4327",
+  "options_md5": {
+   "A": "ce41843865ba70a422886374dfcc63be",
+   "B": "2cf00ed68fab8ec6d2353ac004e55342",
+   "C": "404119069259a60739eb6369f55939eb",
+   "D": "05a7ad9b3e549bee08e389480d82be33"
+  }
+ },
+ "enamed_2025_q042": {
+  "statement_md5": "b70e00d9433957e59e86be91452b495f",
+  "options_md5": {
+   "A": "f730052d70c3d3ebf544a59589c3302e",
+   "B": "5264ea7e0a56b4add388d671d22990a3",
+   "C": "238497d61fbf42e95509945b5a2f64bd",
+   "D": "9b66a36cbe78172598eed22d7501ed79"
+  }
+ },
+ "enamed_2025_q086": {
+  "statement_md5": "af0d25aa27297abb3ce6cc8e09742e8a",
+  "options_md5": {
+   "A": "f574a2267345296ae0cba501acc9353a",
+   "B": "4540d3b7ab96fcd0281a984c9464631f",
+   "C": "0e8d8b656bdcd4354c27b81049918595",
+   "D": "919a307ba7fdd600831028702ccefbac"
+  }
+ },
+ "enamed_2025_q054": {
+  "statement_md5": "53b2aec183fd18444e2632dcbc2b95a3",
+  "options_md5": {
+   "A": "1e06c98ef26b61dfd4196318821a29bc",
+   "B": "4e58dc9a7b0b4a7b6e39649a26481dbf",
+   "C": "8fc332d391c9cc5e4bc7ee2c8eddb216",
+   "D": "f650645b10b7aaf42e8eda19a2b81039"
+  }
+ },
+ "enamed_2025_q017": {
+  "statement_md5": "2709ad9e7d378c705cfed6a3070dd840",
+  "options_md5": {
+   "A": "5e076d6700cc3b4257005537eb49fe91",
+   "B": "78f391bae2409b39e407f47516b40822",
+   "C": "10202025c68be3a8f94cd117411b96f2",
+   "D": "b8c499d44f14dead90e9569bbcaeac15"
+  }
+ },
+ "enamed_2025_q064": {
+  "statement_md5": "7a4344c3c2ff60a83d8be58ad5a3d02e",
+  "options_md5": {
+   "A": "99482a122f590dfb6ce1e247a3ac23be",
+   "B": "796339d70084f091415fd41720488f69",
+   "C": "e786a76de3d11723eb6529f34693af4f",
+   "D": "c3c1e659d0648b123ac24144e3bb334a"
+  }
+ },
+ "enamed_2025_q006": {
+  "statement_md5": "138355c84a44f8590af2c02c3454084b",
+  "options_md5": {
+   "A": "ea475b1582d3d8f214f4c439b285b356",
+   "B": "7af6ab8c0c15b9ad72a3bc869bc8937d",
+   "C": "8a7fe88a45510d08ac89c721f08fe5e3",
+   "D": "4ccb3d5ac7900bbd5a7a19915f0d8968"
+  }
+ },
+ "enamed_2025_q026": {
+  "statement_md5": "06229ea1d6ff2f545c82be47fc2b73bf",
+  "options_md5": {
+   "A": "09cff70adbaeac064adf09c9598d9fcb",
+   "B": "f8a960e6ea518cda71ab1ac1883c135a",
+   "C": "429bf4b564f56a7df925e3e2438ca5ec",
+   "D": "e61b7a3b5f5362ccaf5f3d8eca08d1d8"
+  }
+ },
+ "enamed_2025_q024": {
+  "statement_md5": "c135d12c2637d93a731c32f5e6dd9515",
+  "options_md5": {
+   "A": "bf3a3502d054dd2aee00648d2f2517e8",
+   "B": "7d52537eb2c3fbd27c92a51fbab538ff",
+   "C": "5a0f800d480891a5d8a87d18beda30ba",
+   "D": "ef06eb259a95211f84966c64dc418f59"
+  }
+ },
+ "enamed_2025_q095": {
+  "statement_md5": "eab9b76beff7e013c4d8dc6dfe97f34c",
+  "options_md5": {
+   "A": "7ec631d25fbe537ea907b86cff3b8b1a",
+   "B": "9e01dbdcea5917e1101ebca9f9d2d878",
+   "C": "accfa4a96f58085efedf6c3151b0562c",
+   "D": "d63ccc94ebc6328f7f687d04fe4dc74b"
+  }
+ },
+ "enamed_2025_q022": {
+  "statement_md5": "38a34b0dda314c916a31241906c6dd84",
+  "options_md5": {
+   "A": "ee3efe582973360663226f61b000e91d",
+   "B": "ae7bdaaab155799bb4e81874caae81fd",
+   "C": "f6990152c49fe641255cecfbce23f219",
+   "D": "3fc5b3689d75efdc1ebc1dd32ba411ac"
+  }
+ },
+ "enamed_2025_q032": {
+  "statement_md5": "86da4e8771dd9e5a9cf584bd2667fe5a",
+  "options_md5": {
+   "A": "6eb292b4bf3dcc64337c7c1bf950007b",
+   "B": "71e4bc08105150bd2b4516055bc422dc",
+   "C": "844834278c1893d076519efb7e6ed868",
+   "D": "8d251360fb7546a039964dac50f452ab"
+  }
+ },
+ "enamed_2025_q011": {
+  "statement_md5": "aa26cdd738fb0a125027fe83a24587cb",
+  "options_md5": {
+   "A": "4224c0333f46a0a301e2177c163d6980",
+   "B": "2857401f6c01f54b8c7e5de7fa0704b7",
+   "C": "14511579416d989b9bdf49257bb234ac",
+   "D": "a87e8f4e9c9eb236ab48f31b4a39306c"
+  }
+ },
+ "enamed_2025_q050": {
+  "statement_md5": "3cf949d4fdbd87094c8f57f83799433a",
+  "options_md5": {
+   "A": "987b91e0665e601db059c272543c6af5",
+   "B": "b3ddb4c12d9920991f3d06078be13de7",
+   "C": "2bfd341f4d89ea78fcc1a209e15b4578",
+   "D": "3dfba310e263d121d36f45b7ba861f29"
+  }
+ },
+ "enamed_2025_q051": {
+  "statement_md5": "b505c3376be344ca3de664e5ead48ad1",
+  "options_md5": {
+   "A": "9f4820925a9daeed0233636e0432d7ff",
+   "B": "6edd4a3c9aca315eec782f1118a21cd9",
+   "C": "60a4067d33222ff1d7a374b38dc8526e",
+   "D": "3fa2bd1b305b6e20a8dc0d39489e9619"
+  }
+ },
+ "enamed_2025_q093": {
+  "statement_md5": "67e3962e2e48bd166edb5d72fb068476",
+  "options_md5": {
+   "A": "d156acbd708ff9fa041b13e419799a59",
+   "B": "9584b251326ddc6bbe4dda51c1879d5c",
+   "C": "3581fe163a810aaea6160eda1e2bd010",
+   "D": "d05b0f495087563559c0918b989fc06d"
+  }
+ },
+ "enamed_2025_q045": {
+  "statement_md5": "1a1c13e5c39d30b19095f64971fc4e31",
+  "options_md5": {
+   "A": "57d89ac1b904aae7c3292c2b5d9d26e6",
+   "B": "cd25a0c7a2c7f55f0e11b70ef8c7bc7d",
+   "C": "d46b523511f4db1ce444fc737030ed46",
+   "D": "844fca2cc3e5bfa0b1ae346e09dc99a6"
+  }
+ },
+ "enamed_2025_q007": {
+  "statement_md5": "759e10a82b5c6087abcc30edcce4bd60",
+  "options_md5": {
+   "A": "93526b05aa597227586136d20d38b255",
+   "B": "6e0f078704c9df56c50d807ee778d6f8",
+   "C": "1508fc1d50d071a9770278ea18ed4a89",
+   "D": "22fc1bbc053c6fc695d10ba2a372ec3f"
+  }
+ },
+ "enamed_2025_q079": {
+  "statement_md5": "3e7f098f19b838de74423a40164c3ff0",
+  "options_md5": {
+   "A": "d97e03d4e615a2e86d9a6c4b1d9f1f71",
+   "B": "db7bf271026fa40787d413d9575520fe",
+   "C": "c1990f45d3d79d8dd5728b5af3050fe8",
+   "D": "db44354bb93b0d1a484368516909e7bc"
+  }
+ },
+ "enamed_2025_q080": {
+  "statement_md5": "4d7a6fa6662d5f14d6d2e966e7514d86",
+  "options_md5": {
+   "A": "5fde100d4e20a576946dc0cc3819664e",
+   "B": "db635c897dea53209b417f9f7d0c2790",
+   "C": "a93eb55cc36c6b73313dedef62cdb536",
+   "D": "06c33bc79aff32ecde77390fb01f9ffc"
+  }
+ },
+ "enamed_2025_q031": {
+  "statement_md5": "eda21b0149771938a93819f0ca335cfc",
+  "options_md5": {
+   "A": "09e6369f7553c28f501483f476bfafa4",
+   "B": "2bb2c7c4510970536911a9765129fd08",
+   "C": "a37373f4b0cc2747a87ab776e22584c1",
+   "D": "a3e02f2bd97afee3d844b9f78af38929"
+  }
+ },
+ "enamed_2025_q020": {
+  "statement_md5": "223d629299243a9ab39895e5eefe1c0f",
+  "options_md5": {
+   "A": "351c42bcf10c2ed23fa133171bb8da89",
+   "B": "a4109d63de7ca5868367335c4336c397",
+   "C": "7a1e831260842bb98fca319a8e646a9b",
+   "D": "6234e10c9071acceada0d8c78a7e1488"
+  }
+ },
+ "enamed_2025_q060": {
+  "statement_md5": "9f6d43e0f62e22b175bb6a3af7592279",
+  "options_md5": {
+   "A": "d0784b01a5f73f23316f8bec1f112860",
+   "B": "c5f85eda61aadbf98adcada4c0e061d0",
+   "C": "0457f3203cc1f504ed6f2c590293f605",
+   "D": "0eca724a2cfd389a9549861e89d6665b"
+  }
+ },
+ "enamed_2025_q003": {
+  "statement_md5": "13a19f4cc689b7770402a22c6bffa3a3",
+  "options_md5": {
+   "A": "430bf7c57a67e5e66562a05e417bf20f",
+   "B": "f69a977a8959b5ae2d2836d5ab26ba3b",
+   "C": "76170a41363f3720d5eabd4bdbeff556",
+   "D": "5ac925cd38ae924fbcd89a0ea1114e71"
+  }
+ },
+ "enamed_2025_q028": {
+  "statement_md5": "5feeae5fe2878772866ac43b71775d4a",
+  "options_md5": {
+   "A": "ac99f7158df7745ff2e88afa399a9c9e",
+   "B": "fbc7a705f6ae2169e2b82e342957d70d",
+   "C": "84d13bb91928cb6e5e9e73f52809b2e2",
+   "D": "7d50b803a51965402d14ea24a0c6400e"
+  }
+ },
+ "enamed_2025_q094": {
+  "statement_md5": "e460b4b42ab59b6b7e1e274f9f9f493a",
+  "options_md5": {
+   "A": "eb425ffbd340145aeea033b8c455415b",
+   "B": "8d11864761c7b7e766d1b2f356c4c6e2",
+   "C": "044eb7f64e35c2ad6fc655aa7de6a201",
+   "D": "26e4972385c38cbc49f4dfec4a78cc01"
+  }
+ },
+ "enamed_2025_q076": {
+  "statement_md5": "6c3bbc00eae82279c550fd25cb80cab5",
+  "options_md5": {
+   "A": "6d2f65888a8a801dc959af8f0ca1e3db",
+   "B": "bce4d1da2a636aeccf6d841667295b9e",
+   "C": "6bf6461652826e6561453ddda14a7a8d",
+   "D": "de1dc1a6894590e7d4f125cb073dd916"
+  }
+ },
+ "enamed_2025_q015": {
+  "statement_md5": "bb3b390cc9a44cf33522aac4a0d0a9de",
+  "options_md5": {
+   "A": "a3043d0c0fda3e26472c38cafba4208c",
+   "B": "87fa3f536878467d16103d7340f19861",
+   "C": "bedd2a7db31e12786612eb7e95a574d3",
+   "D": "5fd523a6fd3094824fc9ce601e9a70de"
+  }
+ },
+ "enamed_2025_q039": {
+  "statement_md5": "52816083990f69945539ded5a8a1f898",
+  "options_md5": {
+   "A": "fc0b0e3efb267c5d47b04bfce69f22e1",
+   "B": "295d4c7824cca35442f766dc4d52977e",
+   "C": "003f4caaa4af82893af59376862548f2",
+   "D": "8291a2181946268533339406f3f55a7d"
+  }
+ },
+ "enamed_2025_q065": {
+  "statement_md5": "655bb7656c7503f77afce05c16ca2d31",
+  "options_md5": {
+   "A": "dc321e23b725c3fcd7677bd71911bcdc",
+   "B": "8f2a6bb5ae870572d656f12f41e0e74d",
+   "C": "cf9e7a3523a80de71597ffba0b17ef9f",
+   "D": "ada7884867377a1b22d7583e2b23c8e9"
+  }
+ },
+ "enamed_2025_q012": {
+  "statement_md5": "97035b226ef50c97ac4a44d49b43ce69",
+  "options_md5": {
+   "A": "385a53a7fd88b9fa1dbabf592038b304",
+   "B": "c31871585eb50bc059ed3a99e1974c7c",
+   "C": "a9cdae6e5b6a1d2bd7fa7c39c535eec9",
+   "D": "f6d169d5fd4a600572e553e4971de96f"
+  }
+ },
+ "enamed_2025_q058": {
+  "statement_md5": "25cdded8ef25a785b6e64e4f9e61119a",
+  "options_md5": {
+   "A": "11d18d927b5c112c9fa4a526b279c8f4",
+   "B": "c39e324244cae6882087c6ae22bfdec9",
+   "C": "71a7112c7c339efb258e2253e0ad9384",
+   "D": "b71d92c52ed37dd963edcb17a2ea8b4f"
+  }
+ },
+ "enamed_2025_q056": {
+  "statement_md5": "7944aa82dcccb377c274bb3a93579a64",
+  "options_md5": {
+   "A": "f087e9c5be31d5df0020eb2397f39540",
+   "B": "b19b486f74675abe16f30d6001f63d2d",
+   "C": "ce3e5cbbcf4363c8b90447daa88bb6bf",
+   "D": "d377c254dac9a2363169a4beb2c01632"
+  }
+ },
+ "enamed_2025_q098": {
+  "statement_md5": "955ec0f5aff51a5502f42dd08824618e",
+  "options_md5": {
+   "A": "56abedb3f2b57de472ca797bc624e078",
+   "B": "dd742f465db22d71fe9ac4e7bc90bb1e",
+   "C": "6f7aef1a37317847cf9cba0da43582a9",
+   "D": "5a429824a0fb12b2df85122e6bfd2b98"
+  }
+ },
+ "enamed_2025_q048": {
+  "statement_md5": "799454fff17c429c51ac132bf78167c9",
+  "options_md5": {
+   "A": "3a1140c13b1832e3ab75bbe36b441036",
+   "B": "f6c0feede13d2f4118897c713cc4fb2f",
+   "C": "b3de5cae54e4a382c70d4ee2ea5ac076",
+   "D": "e794ab8b3ddd5c2b2f1360ae7d24fdae"
+  }
+ },
+ "enamed_2025_q043": {
+  "statement_md5": "434390902162d0fdf9ee9311181323b0",
+  "options_md5": {
+   "A": "976dc702a91529526680c7a6d50053fa",
+   "B": "f2a54d666fe5347b450a6c668f373e6e",
+   "C": "75ebe9958b8e5b2b3f5265d6ffa06c9b",
+   "D": "924a1af56f8b9c5ba5228c06318d6832"
+  }
+ },
+ "enamed_2025_q046": {
+  "statement_md5": "5649074581b3f2f32c54921305b2684c",
+  "options_md5": {
+   "A": "c7f781d47cb4e4f2dd6d0be77505e00f",
+   "B": "efbce32c8a7a2de568a479b040734218",
+   "C": "127fe5c8924245ef395b5a6498272b01",
+   "D": "fc575db2b95b62aa6fb51b449422665b"
+  }
+ },
+ "enamed_2025_q075": {
+  "statement_md5": "46d0bc1ebd5ab6110fea520b7c3d7594",
+  "options_md5": {
+   "A": "237ff93d0ae3a660525fe1677cb3360c",
+   "B": "785a7a2d74a6b014edd78a3948df4f4e",
+   "C": "3d39c0732b43fd888ca775ae0813e9ad",
+   "D": "f7cf624e78ffe52c287e38e290771724"
+  }
+ },
+ "enamed_2025_q016": {
+  "statement_md5": "de5718b6d748c9d8d159329a487f9b15",
+  "options_md5": {
+   "A": "8809ba29d72544b4827f6d3184fc74c1",
+   "B": "3159d2817aaf0646a662366883cc6c7a",
+   "C": "e8e5e128c26160cbf0cc3e0fc3f65d53",
+   "D": "918562eb85d13ca999cb7679a36ed96a"
+  }
+ },
+ "revalida_2020_1_q048": {
+  "statement_md5": "58ed07d69821905b4745db352cd757eb",
+  "options_md5": {
+   "A": "051d7d848ab5cc9bdb04b5d6de5949d0",
+   "B": "3a189d61055726596fa6f850dcf4a258",
+   "C": "0ee05e32cf7e4223456489ec7f7f693e",
+   "D": "af35ba4b8ac3373677bb3b6863bfa87b"
+  }
+ },
+ "revalida_2020_1_q044": {
+  "statement_md5": "4b15119bd15aa6da4386e5c2506e45de",
+  "options_md5": {
+   "A": "b1752aa3a0a7e798fedc1c5e3fdbee22",
+   "B": "cc6748f7a04f8d6b44c0644a3fc843a9",
+   "C": "bb2fe69e54cb9f4ed0fdaad5518ee9a2",
+   "D": "40659b7d6738388d97062b45c9b20b01"
+  }
+ },
+ "revalida_2020_1_q056": {
+  "statement_md5": "c868d9d72d4231c38b218ccdcdbc03b4",
+  "options_md5": {
+   "A": "589ae8e40ce104c80a9ff1717ae8ce25",
+   "B": "5200b97b47e003a711df94eea381faa8",
+   "C": "f1459d41abe103bd48063b6a2170471e",
+   "D": "f12e7f37638533cef650dee7152a0f78"
+  }
+ },
+ "revalida_2020_1_q095": {
+  "statement_md5": "9fb5581dc9d44af6011c7491776c6c02",
+  "options_md5": {
+   "A": "8a45366040b23e175e5abedab01e3852",
+   "B": "f4324e9f68fa74ff4c0bffae03daf208",
+   "C": "a6e8c8c134900d60fb8214f139b310b3",
+   "D": "0217cb4976294fd857420bf2b14a2a9e"
+  }
+ },
+ "revalida_2020_1_q016": {
+  "statement_md5": "d2c3192bf2d1507a2f817f9d80f572d4",
+  "options_md5": {
+   "A": "36a482ab47376f1aae49d5a11b9aeeba",
+   "B": "7078ab2992077ef2f60f9224b3b6d235",
+   "C": "d5e06d7dd660122a2aed6d70bc644209",
+   "D": "e09157cf53a99f174528ff69d7a537eb"
+  }
+ },
+ "revalida_2020_1_q045": {
+  "statement_md5": "f49380d7783e9540e02fbb6109efb716",
+  "options_md5": {
+   "A": "1900216c3e4f23bc18048f7ce86163a8",
+   "B": "cbf3cac798efb2482e4ee7374a52f82a",
+   "C": "77c13996c25f6f1e7f0677a57c6a0b04",
+   "D": "191191e9587c03051e2cd5fd5514a9ce"
+  }
+ },
+ "revalida_2020_1_q064": {
+  "statement_md5": "717a55655628f7890b861d71069616b5",
+  "options_md5": {
+   "A": "3c410f1ccd4d86e1abbef4568f464000",
+   "B": "0fdee4ac8df9b273310b5fc655aaa2f3",
+   "C": "0319137ea66e101af7e0828bf709983e",
+   "D": "f80ab1de6f543a003f2fbdd06a78201f"
+  }
+ },
+ "revalida_2020_1_q065": {
+  "statement_md5": "96343389694d162786cbc332f14ad4ba",
+  "options_md5": {
+   "A": "140fab6669bd6b99790227a73efbdb8c",
+   "B": "211af230fb20d07cd57361f1734b20d5",
+   "C": "f9504724d65e85355b3c5064919355b4",
+   "D": "9755cc374e64b17989b91f5d1124a9bc"
+  }
+ },
+ "revalida_2020_1_q006": {
+  "statement_md5": "742eac57e4aae8a38e7a7715ae64b9a3",
+  "options_md5": {
+   "A": "3faf06a08858d13fc70bf90c5fbf857b",
+   "B": "17a414964db5ca5e125c6db51fa428ad",
+   "C": "53e35c7c4639d9f0dde7e172a2eabc7b",
+   "D": "24706575ad3d486ef99eba270ec168ba"
+  }
+ },
+ "revalida_2020_1_q051": {
+  "statement_md5": "e61816a93472e5387a2a930b79f17482",
+  "options_md5": {
+   "A": "c171b1722f63370d15693c08d07087fc",
+   "B": "39093c7b03ab2164d4eb637c9eb153f9",
+   "C": "18ae7ccc27e05e22eab69a01d14e5041",
+   "D": "fb3e547ea9895c21697b6132fdcf7c2f"
+  }
+ },
+ "revalida_2020_1_q015": {
+  "statement_md5": "6c07800481b7dabca539ed75d61353f4",
+  "options_md5": {
+   "A": "77eb5da638ef46cb7ba17e7cfa5bb75e",
+   "B": "ef950beec1fb8151e61059f0646fb256",
+   "C": "9ee7de75b4bf8c46f6b604b4fd3d1344",
+   "D": "f51f801770b8cf05b029036b602f3ce9"
+  }
+ },
+ "revalida_2020_1_q059": {
+  "statement_md5": "0951a040739882f044e4ea76cdc26726",
+  "options_md5": {
+   "A": "f59dd8e2ec0d945758e10d97dcf321ab",
+   "B": "bcecf1e62337a2389a9afa0a843a05d8",
+   "C": "6c6ae5ad91bcbd8958dceadbd147ee65",
+   "D": "1af0e6a9a99109e94d1c14e9cee98cb8"
+  }
+ },
+ "revalida_2020_1_q009": {
+  "statement_md5": "a6088fad7dc0752792f401459a743b5b",
+  "options_md5": {
+   "A": "7ed01dfc6033274b59eb80f9f174ee66",
+   "B": "f49024ebcadaf29059a3e9e35f36fdb3",
+   "C": "180ff423e3e4fac59c413d0171b1cb0a",
+   "D": "bf7b948c1511ee2a6bc7ab4e6320ed92"
+  }
+ },
+ "revalida_2020_1_q099": {
+  "statement_md5": "341af7fc32ca5cf5d1dc9fb76fec2b96",
+  "options_md5": {
+   "A": "68e7894fb17d1a1697faf9bfc920623f",
+   "B": "011f634480b560ce519a3e7f9690006b",
+   "C": "768e1905c784a82803f2c8743ee0bd4a",
+   "D": "9c7e9b3761c99e0cb9df7d251d2c28ca"
+  }
+ },
+ "revalida_2020_1_q046": {
+  "statement_md5": "a99b6c694fd91ba7c548cb863d28453b",
+  "options_md5": {
+   "A": "709105fbfe2f3226948f542dccaf0a91",
+   "B": "669b07232ab9a1dfd17bdb2e321a6312",
+   "C": "06a793a1da18d54817b1c24fc8bece33",
+   "D": "e471b92d2dc28f442d08468cd6b71cf0"
+  }
+ },
+ "revalida_2020_1_q080": {
+  "statement_md5": "e7b81cc9ccfecaab78f24a8e1188d689",
+  "options_md5": {
+   "A": "cb6dbc9cfe5a0f5eaa3e5d0bf95c40d5",
+   "B": "5a16e9e87407587c14bf57107157348a",
+   "C": "cbeade08453fb404e624987b1e5d0035",
+   "D": "f174af3284deeec44b9bae74dce3df50"
+  }
+ },
+ "revalida_2020_1_q085": {
+  "statement_md5": "46a8e57565922d7f24930318c7e0ac52",
+  "options_md5": {
+   "A": "8dea4ecf03c15afa2e8fe83cb751e4f5",
+   "B": "a39068d8b27c813411b2275c6f3faba0",
+   "C": "388f49ca6b7f225412e7bbca586856d8",
+   "D": "102885d5d152482789880d7181b96a2d"
+  }
+ },
+ "revalida_2020_1_q072": {
+  "statement_md5": "f69055e598015ead9c51bb71c6be6377",
+  "options_md5": {
+   "A": "71526d7c2046a69e720f09c43a21817e",
+   "B": "19306e907a39eaaaa4200c1961ba6241",
+   "C": "7a4ad262dffc6b11d1d087f636c545ac",
+   "D": "c350ecf6b3ea433b5aa3d5e80cde577b"
+  }
+ },
+ "revalida_2020_1_q032": {
+  "statement_md5": "2e175065999da34264cfc7b8bf9a52dd",
+  "options_md5": {
+   "A": "6f02e3114e067213b20e58bda71af787",
+   "B": "a1e799d5a7b1f86ea60b6b97523f5067",
+   "C": "6dafdd711b5759621ff1a9d4eae0fbe1",
+   "D": "fab1147b0f31ba2a89b5bf98897b84b7"
+  }
+ },
+ "revalida_2020_1_q028": {
+  "statement_md5": "60fe1c3a32b6e04453822ae1742bff3e",
+  "options_md5": {
+   "A": "0607cb9cb97196f99d8e9ece7de3ea72",
+   "B": "70491915328c6f00aa6549b32008fefa",
+   "C": "0a7ef463fae4dcabd816c67f22518ba4",
+   "D": "ef48a1843b23d9816b0cea054b9c7ffa"
+  }
+ },
+ "revalida_2020_1_q075": {
+  "statement_md5": "08aa1775567ad3be689b0b770ad93119",
+  "options_md5": {
+   "A": "ad358c8fb75f2f7c282079581fc1e85f",
+   "B": "35b863a8d65acf7942d658996caf4b1c",
+   "C": "dc4794323cba3e6906010507da7019c2",
+   "D": "35d0232a6868c1517da1a3d30e616ec5"
+  }
+ },
+ "revalida_2020_1_q034": {
+  "statement_md5": "83d8e156dd83991e4e237648cbfc6747",
+  "options_md5": {
+   "A": "96184d2f124d22630550fb2583eae732",
+   "B": "928cf7d24a08d646705cfda9938324fb",
+   "C": "9facff5015e80dab910a4f0e735bf82f",
+   "D": "fc90892d14c28e5baf92e1e71c610d82"
+  }
+ },
+ "revalida_2020_1_q019": {
+  "statement_md5": "52d847dcac525ba8bdc3a668861602a4",
+  "options_md5": {
+   "A": "6cfdb3c8fb8cda13bfc314af77778f88",
+   "B": "0592e8e0f8e5c75ceeddab5a69b8374a",
+   "C": "8cdd72c5bd791cb48d54a3afbe745dbc",
+   "D": "776edda084d4fd192502a768b2eb34a0"
+  }
+ },
+ "revalida_2020_1_q073": {
+  "statement_md5": "9acdcce7ad42f13b0470d2a2a59bdbfd",
+  "options_md5": {
+   "A": "33b4d6fe0532ceb2f020b750b34b785a",
+   "B": "ddbde7ca36c18e858db85e47df11112a",
+   "C": "96f1841b7503a1d2350282e3c2812ad2",
+   "D": "fc89f22e384537fb9aabb4fb79b1e1c7"
+  }
+ },
+ "revalida_2021_1_q068": {
+  "statement_md5": "87a6bd4c63e464f8d1836596936b7086",
+  "options_md5": {
+   "A": "06e95ba931d0321dfb534c20b7c83a15",
+   "B": "b474736ed6ef852282f4f5bf364a1af9",
+   "C": "f14bcb4cf150e671a0276ae06ae27c76",
+   "D": "1ceae7b2c5226faa7bdc1c7b631ea402"
+  }
+ },
+ "revalida_2021_1_q046": {
+  "statement_md5": "9581f40ab532e451a80efa9c080e3b2a",
+  "options_md5": {
+   "A": "7828378365d5e079cc990aa5644d8e0d",
+   "B": "59b8cfcf9239672fa3a697f01ba5d8c6",
+   "C": "958fa31e16224fad7d1f2a7b4d678028",
+   "D": "f1d789fe7d253f8b5e642fcf3545d1e1"
+  }
+ },
+ "revalida_2021_1_q079": {
+  "statement_md5": "d1e6808a4d847c8e07aec194c51637ce",
+  "options_md5": {
+   "A": "4f5bb439409e0bb36b3cd431975f2ed1",
+   "B": "e74ec1b818d35f11d85d4950e0326365",
+   "C": "c883c963c5a3fa593ecb1a497e62d33d",
+   "D": "453bf8b01b4779c5dc2ef500b1332423"
+  }
+ },
+ "revalida_2021_1_q041": {
+  "statement_md5": "11077f8eb94a923d1ecb84cc677b1850",
+  "options_md5": {
+   "A": "c52e2c88777153eea92c6642a0091b7b",
+   "B": "ea163ff0c32ee9577e7a028aeb606adb",
+   "C": "b8373370c33aad6fe716139c6512d4e9",
+   "D": "acaea14203b021566eb7c3983051c879"
+  }
+ },
+ "revalida_2021_1_q086": {
+  "statement_md5": "5e80d81102f0b815ddebd82e26f90eeb",
+  "options_md5": {
+   "A": "6524b6c7ab98d4cb74ebe8cd05aa64a1",
+   "B": "e63392c4332f91bd95e461c2e4bcd547",
+   "C": "3151b837716456cdd4b383c67d7bec84",
+   "D": "426454c2d39aed0775003b78da2fec7a"
+  }
+ },
+ "revalida_2021_1_q033": {
+  "statement_md5": "66aab4cecc2aa09b6688ea6c4634293f",
+  "options_md5": {
+   "A": "7efce6a4d0b3ec751a9967b4a25dfffa",
+   "B": "55cf7a5c5e8e3569381f4a62d5b45050",
+   "C": "1c2ee03dd1d8e06bb43c927902db9e43",
+   "D": "837d08979508a5f1e0fd9eef6c7dc731"
+  }
+ },
+ "revalida_2021_1_q093": {
+  "statement_md5": "58718b194ae468db0ba7d17a2e13976c",
+  "options_md5": {
+   "A": "ccf0f23ac80f57171a11832318ef35ec",
+   "B": "93094789e3697271e2a872a2dc6a5dfc",
+   "C": "fc6b3bed4029242119d7e408e4025aee",
+   "D": "1192099b9a5572e17fe0e306050f89a6"
+  }
+ },
+ "revalida_2021_1_q019": {
+  "statement_md5": "956d258a46d3ffe19f328d6981893207",
+  "options_md5": {
+   "A": "267e2ef72c7f98be0c9fb92e98fb31d2",
+   "B": "83c0ae91d5071b31e8fd6ec806608b6c",
+   "C": "051048141015e9c4d895cd5667f81ddc",
+   "D": "e182415326fa06871eff485032710236"
+  }
+ },
+ "revalida_2021_1_q027": {
+  "statement_md5": "0e1cdec85ac8c6848f5670d5abe5be96",
+  "options_md5": {
+   "A": "b30cbde7a285a84a45a38b70d049fc22",
+   "B": "d2692bbfbcbe1af24baec08a367307dc",
+   "C": "aec66f059d46f6b1dd40f3521b88c3bf",
+   "D": "5371faa2e404e3ec8fd83efb8bce11ca"
+  }
+ },
+ "revalida_2021_1_q080": {
+  "statement_md5": "bd395a3311649da6dcb6fa96b610f63c",
+  "options_md5": {
+   "A": "7d5abde25e71d032c535a9c4327c4a63",
+   "B": "a75033060fd215ae72ffb7969fb2bb69",
+   "C": "7357a79351db8f7c4418aa1a80ef2e3c",
+   "D": "cff2db189fc6a5b39b720bb2d4e88276"
+  }
+ },
+ "revalida_2021_1_q005": {
+  "statement_md5": "d685a906f5a7cfee43869409c69c7176",
+  "options_md5": {
+   "A": "f872b64051ec6c11feb9270cfffbeefa",
+   "B": "1b35cb3df98eb426d06e4175f874a860",
+   "C": "acb1381cfa6db4b6096078f4bdb25fb0",
+   "D": "7b30df1cb38f8e3e4789834d02638a2b"
+  }
+ },
+ "revalida_2021_1_q075": {
+  "statement_md5": "d23fde0139db88f0712747b941a1bee1",
+  "options_md5": {
+   "A": "3160314927efb982c08ccc22629733ba",
+   "B": "89b496fd20ac49201fdabe5af3c228d2",
+   "C": "550218240c53944f8e4f480531ff3c63",
+   "D": "77794e9ee9044174e40499c94b4cde25"
+  }
+ },
+ "revalida_2021_1_q018": {
+  "statement_md5": "4284fe1046be43528c5c8ff53b2b13bc",
+  "options_md5": {
+   "A": "ac4b249d3a0dd8e5c4066267b36682d0",
+   "B": "c80207281aba00fb84fe513f95f48795",
+   "C": "e489123b29e0e2f0d27d87501994e304",
+   "D": "3a77e6f7205385de78fbc08e2b7322d7"
+  }
+ },
+ "revalida_2021_1_q022": {
+  "statement_md5": "848263afb35486d73180933711aceb5b",
+  "options_md5": {
+   "A": "89a5097486d4a96f0e67dae6d0f4bb5a",
+   "B": "5d6a06e79ec2e2dde56b3a50c955a1df",
+   "C": "3dd930ded3722d098322f286b968ac46",
+   "D": "594a4d90528238103b66f1ed1842572e"
+  }
+ },
+ "revalida_2021_1_q082": {
+  "statement_md5": "781964363ca4c0375ad98c5143bc6e42",
+  "options_md5": {
+   "A": "3a995a1fbaf1b34a72980aea2a639aa6",
+   "B": "cefe2d90e44c2c60fad3e7bcf88d318f",
+   "C": "2dd5bdf9a92fcb3d91281bc10bca461b",
+   "D": "09efdf12162a00e87a31aeccc38b3a26"
+  }
+ },
+ "revalida_2021_1_q026": {
+  "statement_md5": "60b1cae3237e7861a86011375aad336a",
+  "options_md5": {
+   "A": "0a6099c21afb00fe1cf126296eaa2193",
+   "B": "425b986a5ba4d1be05f354e2b04add9f",
+   "C": "d2d69e358cf0ccc49a226356b00a6735",
+   "D": "92bfcbc39990fc4d0652d1d260e4a0e9"
+  }
+ },
+ "revalida_2021_1_q042": {
+  "statement_md5": "5ab27bba4b5428aeb8a369791366f017",
+  "options_md5": {
+   "A": "15b92ba175fda9d527cd125db19477e1",
+   "B": "8d90585331b707a17764c113b5db83f9",
+   "C": "2def7a7aa9e6517f0f97daf3bd12faa9",
+   "D": "0dcb08e0d7ac5ee29f3b552bf68b7a85"
+  }
+ },
+ "revalida_2021_1_q085": {
+  "statement_md5": "e4487f637667dbcd151cfdc89b9c3804",
+  "options_md5": {
+   "A": "8e0f036aba1531a4ff7b7a5282782135",
+   "B": "baec8813e615b6e7649dac21c88412dc",
+   "C": "85a2c439a04a1098b0e84655d6d956c1",
+   "D": "58ed22dc125e4e53f26a48ed69fa21e9"
+  }
+ },
+ "revalida_2021_1_q061": {
+  "statement_md5": "899f1a4599e4f9665e0213cec16b91fc",
+  "options_md5": {
+   "A": "872d0a9b1b94e62534f11a8af7559397",
+   "B": "67ad9b424d1566c055ecf650e05e6e65",
+   "C": "f66b0dba45b603ba6904d999e32fa7ca",
+   "D": "78866c9326227b037ca3b04e8b10262a"
+  }
+ },
+ "revalida_2021_1_q076": {
+  "statement_md5": "541f8fadd56bb9807f7099d1e47f5586",
+  "options_md5": {
+   "A": "65af8ee4dc87def3c9d3a8a1fdd8bf1e",
+   "B": "0c44df47f5bf948230990f435e241f11",
+   "C": "07094faa53771c523c2f41a7c3ed8216",
+   "D": "72376b533344a22e16d977aefc0c9fa7"
+  }
+ },
+ "revalida_2021_1_q063": {
+  "statement_md5": "8b85e335c97d2b9cc8d57eab31f0cb07",
+  "options_md5": {
+   "A": "9bc01fc423dc6fac22e6dfd7c0921f1d",
+   "B": "896346429e3025dfed97928753c59e85",
+   "C": "4e02ea8019cc3d67bd4da72a62f485be",
+   "D": "b30ce15ef4e20ff4bc110c415af919a9"
+  }
+ },
+ "revalida_2021_1_q087": {
+  "statement_md5": "87f90cdbb5b8da44168cedc909ae2f33",
+  "options_md5": {
+   "A": "fce24de496f7165a53aa9b0daaced510",
+   "B": "d33710be2b71019412defbc98f2400d8",
+   "C": "3bb238c26c37ac2b6916dd49bc592d53",
+   "D": "123d420ba80653d50b83ce95e7037ef3"
+  }
+ },
+ "revalida_2021_1_q053": {
+  "statement_md5": "be44375922952df33230494e3a99f489",
+  "options_md5": {
+   "A": "b7fdfaf60c72a33fc243c6a7bcfe2dd3",
+   "B": "3606a5a1d57332d55f91873c9ed4cbdb",
+   "C": "57491cd6c8301f859141c9307c2a04fb",
+   "D": "76734b92401dbc1b62bed72b95ab039b"
+  }
+ },
+ "revalida_2021_1_q056": {
+  "statement_md5": "4c2c63591827b46719edea03e31dedee",
+  "options_md5": {
+   "A": "c58457a483925cd8bab34ce1606dc65a",
+   "B": "3e03562dd628b20e69861a583f328228",
+   "C": "4706ed330856aaa9dd34cf991bb572bf",
+   "D": "e38fa96777c4ced66f411df75cffe26d"
+  }
+ },
+ "revalida_2021_1_q031": {
+  "statement_md5": "9b7c591998b8486080e67fb852a236e9",
+  "options_md5": {
+   "A": "dab80f006d3c194e07db71f655dcd67e",
+   "B": "e28d0b80b65f11c023485456fec5d704",
+   "C": "eccd0e63be364f28dce22847ada413ab",
+   "D": "eb34806584c4dadc76baca2e9266d876"
+  }
+ },
+ "revalida_2021_1_q004": {
+  "statement_md5": "72d22f91e3e6b3748c7557ec981f998e",
+  "options_md5": {
+   "A": "6a73b638ad902a4ea53f1b98063bcdb1",
+   "B": "ad39dc4b504b6077d450ee21885e0dc9",
+   "C": "c78181a8aa076c6f529b3c7c7c1bccc7",
+   "D": "7a4a57182618a84ac7ebcb0e25a47172"
+  }
+ },
+ "revalida_2021_1_q059": {
+  "statement_md5": "119a7e4c4f42694f2ee56e25117baccf",
+  "options_md5": {
+   "A": "0439a3d4aa5ef85aa81e088768b25ba7",
+   "B": "48a479fed80285baa9a8ee4a088b7919",
+   "C": "565ab9c394169fcd25163a10cd9c6a10",
+   "D": "8cde8c48a31eb8915e7b960bf5c61dc1"
+  }
+ },
+ "revalida_2021_1_q098": {
+  "statement_md5": "080e1531294da625e6e5ba0070b42f27",
+  "options_md5": {
+   "A": "9fa166723b86c7dcdff7d2c89c6e7bb1",
+   "B": "91e5479860f910c35457f2377bf46a67",
+   "C": "0bc3df4b4a2a191d1210db9928266e11",
+   "D": "720c8f975b88ac32e420f64ad889f166"
+  }
+ },
+ "revalida_2021_1_q081": {
+  "statement_md5": "2b01f3aad2dae8503b174be3bbf639ba",
+  "options_md5": {
+   "A": "a5c62a59ef8c5f2adff8acefe45a3cf8",
+   "B": "cc1738942590a3b82aae29e49b313982",
+   "C": "4987b92b0323c664a5dbbeffce2beb9d",
+   "D": "cc51ff9ff6c8e05debb3b8490fddcc49"
+  }
+ },
+ "revalida_2021_1_q024": {
+  "statement_md5": "1ced3d96f78d6d42c492fb084c28fdd6",
+  "options_md5": {
+   "A": "8e355891d01379515aaa1e7f1eae2669",
+   "B": "1df3d14803af52509e43c2ac52e82d4c",
+   "C": "34557ea35b055e2438c72436be379b72",
+   "D": "db2617f9bda898c1b43dc8fc1612f088"
+  }
+ },
+ "revalida_2022_1_q070": {
+  "statement_md5": "5423d8073cc15005094746bba7ffe560",
+  "options_md5": {
+   "A": "c957f29c40b6a5099b54d88b654b8685",
+   "B": "ee14b0bcdd92687033cf045b718a9fa1",
+   "C": "4f15883090922dc0c6a751155aad0ab4",
+   "D": "50eaeaf2d2b6e177b4baf46ddcc6cc60"
+  }
+ },
+ "revalida_2022_1_q026": {
+  "statement_md5": "b969f99d56b61c7cbc259ac175846f9c",
+  "options_md5": {
+   "A": "04e73809a39625eef431bffce7f44b38",
+   "B": "9f11f716b314691adaf651d21d922602",
+   "C": "53642602bca623f0a23057207d40cdac",
+   "D": "344faa72eab7d9b732891115d415cd5d"
+  }
+ },
+ "revalida_2022_1_q027": {
+  "statement_md5": "013b078e1fe61479a8023080524072c2",
+  "options_md5": {
+   "A": "81ecea69da7f573b4c5e46131abbd12c",
+   "B": "66bf9db76709b2c278bc299d1d141447",
+   "C": "590b0285ba273dac23781fa5c0e671b0",
+   "D": "512760662853ff0db310afb33d50de7f"
+  }
+ },
+ "revalida_2022_1_q001": {
+  "statement_md5": "43f4694151f9119e0b592b97b959b210",
+  "options_md5": {
+   "A": "db6749ac08031751572135b765263b41",
+   "B": "0564b7c5714ec4b8fb278b2610fc39d1",
+   "C": "a37092160853c774eadc512256431f93",
+   "D": "4ff26b40e4ca1bfe819a57b65f250aad"
+  }
+ },
+ "revalida_2022_1_q019": {
+  "statement_md5": "eaf8a711a0137536ae94dd11095de63d",
+  "options_md5": {
+   "A": "9b2f600c7a6b3c615d851d10878de044",
+   "B": "d5105de50fe5e8e4f6f14d6538c70379",
+   "C": "ba508c969f6d50b038408c0497c10d54",
+   "D": "c6a8825034d16dee990d667ab5060074"
+  }
+ },
+ "revalida_2022_1_q032": {
+  "statement_md5": "c9c366240de5cd8525619590ca0c5274",
+  "options_md5": {
+   "A": "e263de1468b15782f0a5ce816b94c392",
+   "B": "686868667740789dac845017c1c59d9c",
+   "C": "7eb020ad0562ab9be084c6474f978bfe",
+   "D": "bb95ab7e3d1ef340e077d013724e04fb"
+  }
+ },
+ "revalida_2022_1_q036": {
+  "statement_md5": "56edb9c4f5e1967608ff0eda2c04b03a",
+  "options_md5": {
+   "A": "dffb8824ce62a72cd419760fb47e9cba",
+   "B": "384092985d560cbc468d593809a971ed",
+   "C": "266dd9b9f2a4a67043f0a4e86d153011",
+   "D": "7828378365d5e079cc990aa5644d8e0d"
+  }
+ },
+ "revalida_2022_1_q050": {
+  "statement_md5": "f908bc0af43790a84537df996be6e049",
+  "options_md5": {
+   "A": "460942f7c666633a5d849911052b59ca",
+   "B": "4b80c87837426b29aa1a533c4a66cf7b",
+   "C": "175a0b270ec4b63e490bf4d83ebfe627",
+   "D": "838035ac038177afc97998f8a8a9c6f4"
+  }
+ },
+ "revalida_2022_1_q012": {
+  "statement_md5": "7a8b680277f0bd326e7350a76de708bb",
+  "options_md5": {
+   "A": "35eb1123f7b59002597e7b82eef2f7de",
+   "B": "5eef9d93926b2dca45d86f8f0350b8fc",
+   "C": "325a9c7e90c8695b8f7d912b5ee4fdc5",
+   "D": "bbedbbf2109ed7c1fc20bf2040dcffb5"
+  }
+ },
+ "revalida_2022_1_q009": {
+  "statement_md5": "4c5c9c7a4dbf2357615275df0a378ba1",
+  "options_md5": {
+   "A": "b5073290a93e1155e347091b360a9225",
+   "B": "14c717e84d8ad380d892a57e96bbe8a0",
+   "C": "c288e610ca23135b10ff3770610a86b3",
+   "D": "02a6a6254d812cdb37e0ad2b91ce5a67"
+  }
+ },
+ "revalida_2022_1_q028": {
+  "statement_md5": "0d3634d1b45385bc96701cf0afdc32e1",
+  "options_md5": {
+   "A": "4091f1c76eface8d0b021a636c0b9855",
+   "B": "28d2437e61eecfad328315cc335660e5",
+   "C": "5d56f3b91f0f00a38df55e16d47d50a0",
+   "D": "3a0294473af9eed502d49e4d424be614"
+  }
+ },
+ "revalida_2022_1_q062": {
+  "statement_md5": "3d09b49b359b9c13d86e05484f240521",
+  "options_md5": {
+   "A": "2468a525f1123fe6d24f6482585c8ad5",
+   "B": "11233e3adce1fe1cfc060c246e815538",
+   "C": "2353f621822f3b50323ba3cbe1362924",
+   "D": "c8b763e4d3695d21891749cce093b8d7"
+  }
+ },
+ "revalida_2022_1_q043": {
+  "statement_md5": "a51867f1eb6686c0ff5cedec880901f8",
+  "options_md5": {
+   "A": "c8b0b799769a2b6fa6143ea90907d0a6",
+   "B": "b45141bcc6b0484f19a756fe32994f8b",
+   "C": "51938dd954a821b951e7657e828540df",
+   "D": "8f326a1c80ac3d6e0c5b5ee28439bcea"
+  }
+ },
+ "revalida_2022_1_q082": {
+  "statement_md5": "9f4f7292c0bec8078ecf86f2398704c4",
+  "options_md5": {
+   "A": "3598dccdb912a2931d8f74f74713af37",
+   "B": "c163659e6fc097e6631b26ba6ddc726d",
+   "C": "ebce292a2b356da9a46730e533034c70",
+   "D": "ecea14d940799de1b48be616c5a18dda"
+  }
+ },
+ "revalida_2022_1_q080": {
+  "statement_md5": "30f06e02c41e5e1d8f11f252e29d5f43",
+  "options_md5": {
+   "A": "b45c3cda98e6e6c776e959b8853695e2",
+   "B": "3c394f7f01b5f3d6b978df48287947cb",
+   "C": "1055521f6f7f6d7d6d050d70029b8b5e",
+   "D": "6a830b900100d317116bf70374be63e6"
+  }
+ },
+ "revalida_2022_1_q052": {
+  "statement_md5": "19596850efd309b2525816268726c07a",
+  "options_md5": {
+   "A": "46c707ab21d40aaa8019f629dd21e718",
+   "B": "9101587d43a1f7c22e07e4f21998eb42",
+   "C": "ad739b60b057daf5eef9ae0ac83701c8",
+   "D": "de3b364a8dd59d867912f6fd193e085c"
+  }
+ },
+ "revalida_2022_1_q090": {
+  "statement_md5": "ac7c3d92d7857382ebff3d190d19917c",
+  "options_md5": {
+   "A": "c1612e6315c3d1248d6d48044037bd63",
+   "B": "48abe9f8ce726b78cad7fc4f1e4bd7f5",
+   "C": "7664eba09febecf3b117b8207f887799",
+   "D": "40fa6a82a7159927d2b47071ef16b121"
+  }
+ },
+ "revalida_2022_1_q091": {
+  "statement_md5": "f0b98bea07c80ce829574ff027e7b0bd",
+  "options_md5": {
+   "A": "38a9d5691096d5651682680a1e00aadb",
+   "B": "5d0da523aaac8f8be9cba974ad500a8b",
+   "C": "33e780c3c190ddd9e951fc02bce7379a",
+   "D": "8ea8bf4b68b3eb4fd3e022e2a48b0a91"
+  }
+ },
+ "revalida_2022_1_q069": {
+  "statement_md5": "0cbe356310d96eee4c9a265cd901dd22",
+  "options_md5": {
+   "A": "cfceaf6009a95fe710ee94995f51487b",
+   "B": "71efac80a2822702474cd0f7d536b92c",
+   "C": "f2bef52d22d735dbbc80b9146e9bc1e0",
+   "D": "5719f2deacc2713e18f440ce61f3f4a5"
+  }
+ },
+ "revalida_2022_1_q072": {
+  "statement_md5": "c642878eb0d9973be69c371aa42e047b",
+  "options_md5": {
+   "A": "ae0c5e96a570b91402df89cfbab96301",
+   "B": "4ca92be118d688da27aa68ad5382db6a",
+   "C": "d5c59b42d476b84ad1be45fc5f1003a1",
+   "D": "5f4441e31cb8d4fc4de011286de2ac58"
+  }
+ },
+ "revalida_2022_1_q038": {
+  "statement_md5": "f08f7e537ff0b894d031fec9d183bd53",
+  "options_md5": {
+   "A": "58dec989d5df54215487512912679b7c",
+   "B": "cfbde33fb781f31bdb075d94f2aa47cb",
+   "C": "98508247fab0cab175d081e0a97ded0c",
+   "D": "9201c5c433d28e96014c69468cc73bcf"
+  }
+ },
+ "revalida_2022_1_q081": {
+  "statement_md5": "ce5d88d26135c183b724e6c8d54c1452",
+  "options_md5": {
+   "A": "c633f496d1e6b52d332fde7e00398600",
+   "B": "1608bda70cf88bd1c1de1fa1115b1da7",
+   "C": "07813a71fe8d69be347a1a73b38c20a1",
+   "D": "e8e318fddaa638f91a8c467db4692e80"
+  }
+ },
+ "revalida_2022_1_q099": {
+  "statement_md5": "dd732b0079a2f14d1af7c080d1c63081",
+  "options_md5": {
+   "A": "8c761a1124899f33411700fa8641888a",
+   "B": "a0c315fa5bc84b84e9cc620e5a7b6f2c",
+   "C": "ba3ce7d5ba5cc6112a109fb40506f14f",
+   "D": "54afcf8f8e2d71ea8752ff392f6681e1"
+  }
+ },
+ "revalida_2022_1_q011": {
+  "statement_md5": "dbabc1636543d91570624c9c50d03785",
+  "options_md5": {
+   "A": "56f31f95c49a0daad50b69e696c24789",
+   "B": "1e09a8d6189c8dcfcb46d13e2c66d5dc",
+   "C": "84c551494e95e4b1bef43deddf17ac13",
+   "D": "d6ed5c90180eeceb0d222d7f5feed141"
+  }
+ },
+ "revalida_2022_1_q039": {
+  "statement_md5": "78a58a55e4313e1fad502d3d28192c08",
+  "options_md5": {
+   "A": "7d125c3838cab3a535754072403de9c3",
+   "B": "189b14e8cfcac4c48871b1710e900e89",
+   "C": "8c7528e1ec22f0e03886787d3d3b62c5",
+   "D": "fc653cdadda35cfc991b89ee40838961"
+  }
+ },
+ "revalida_2022_1_q025": {
+  "statement_md5": "4bf65f2144456717b3478b2ae7c03dfb",
+  "options_md5": {
+   "A": "c29ca82165d4a5724bded96566e452a9",
+   "B": "7d7f8f7798994ead9dcda0ccdf53daaf",
+   "C": "412fce11c038423fc2082a675154f2b8",
+   "D": "f3953b3963fb9bb387fb82b235d12918"
+  }
+ },
+ "revalida_2022_1_q060": {
+  "statement_md5": "2dacd678eeca9cde619049a3448cc2c7",
+  "options_md5": {
+   "A": "be80c50769b576629fdf731e5f8bebe1",
+   "B": "d946207b7285bf6fd4d1ead65a250f0f",
+   "C": "39209334e598348d6a937acab894672c",
+   "D": "ce6c2fff980792b5ee10f8e4cb21f623"
+  }
+ },
+ "revalida_2022_1_q086": {
+  "statement_md5": "96f7d2dc02782e4d20887c88c84ade61",
+  "options_md5": {
+   "A": "0a492dab5885da3752f715fe70bd95c7",
+   "B": "992b10e45fbee626dfdcbce26f63c7fd",
+   "C": "1e108e15dc4ce418497aa4e39957f44f",
+   "D": "3a047f79c461e91c5a1434adf520c5f8"
+  }
+ },
+ "revalida_2022_1_q098": {
+  "statement_md5": "e21144aa5a3c3fb599c3c4f0bbea26cf",
+  "options_md5": {
+   "A": "3757b899cc8704c3d639de99f0269d28",
+   "B": "0be9053ee2c678f8c5b1d9d213f31bb3",
+   "C": "f8a1eb21b1f94ce2047516f7913b3271",
+   "D": "70a0045f28ed0f0e65c63a599c1f5f8d"
+  }
+ },
+ "revalida_2022_1_q037": {
+  "statement_md5": "78fce5354284de868b5d255e696cb03f",
+  "options_md5": {
+   "A": "aca7e372395e8383f06b867aee08ab58",
+   "B": "d5eebfebf0b3e02f542865a8cadb4cfb",
+   "C": "a1de0c0d775d47feaab0691c59ae1f4c",
+   "D": "1a76df3c82f281830102ce3f928aa25f"
+  }
+ },
+ "revalida_2022_1_q046": {
+  "statement_md5": "1e65dbd74abb4c36b6f4d92d0109bd64",
+  "options_md5": {
+   "A": "66dd1223d9e7c0aae325b8b74f9389c7",
+   "B": "2135d5ce9168bdf1f3c48d1ddc7d6929",
+   "C": "045b4335ecf07a80fbd734e1595a7e0c",
+   "D": "708f1b53bf635c12fc9d809fc868c572"
+  }
+ },
+ "revalida_2022_1_q076": {
+  "statement_md5": "2446d42c9ab66d2ef08c7328a9514044",
+  "options_md5": {
+   "A": "a6a158bc181eb8d743641f98b5ef63cf",
+   "B": "cfaafc90918c6bef32b457827b346e3a",
+   "C": "afee3f9cca53910ab7b73151f3cb1dc1",
+   "D": "f94887f110bc6401a241d4ec70df4b81"
+  }
+ },
+ "revalida_2022_1_q087": {
+  "statement_md5": "a74b08ac4ac55658e6901618acb5368e",
+  "options_md5": {
+   "A": "e5ea1acd524068328c72161a410bcbd5",
+   "B": "8f1bb100365035e3a9944b12f9814ae0",
+   "C": "944d56fe7f8cb21b0b502da8cf959c3e",
+   "D": "bec05e292239af46fd90b6ce50dd4daf"
+  }
+ },
+ "revalida_2022_1_q034": {
+  "statement_md5": "65ddf6b6cb1a11202c82b81fdd714d81",
+  "options_md5": {
+   "A": "5dce7701b144d88366ff44dbc7c58eb3",
+   "B": "1e3b943964143c2627f69511798cd8a3",
+   "C": "76298518c3344694338c9848725f84fe",
+   "D": "69f5f3188a7b5f2f6ba2cce58e60641c"
+  }
+ },
+ "revalida_2022_1_q058": {
+  "statement_md5": "53703961bdffa4681bd9766f3cdfbcb1",
+  "options_md5": {
+   "A": "160c3760ed132c1a0f9f592009dda178",
+   "B": "639de4b063217ea4932f0a5d7eda3475",
+   "C": "fa094eeaa1eb3112d4f89375faebe57c",
+   "D": "8cb0db6622414b564a4b6dc0db9ec026"
+  }
+ },
+ "revalida_2022_1_q079": {
+  "statement_md5": "4a26960958f189f99c523dfcd908d8e8",
+  "options_md5": {
+   "A": "641081c6699d0ad8eac6cd7922bc9900",
+   "B": "baf6f4ec9a15c3d5d2435bc48e020f18",
+   "C": "c67b5db5f3bcc4074772652029d8fea3",
+   "D": "9a8ea4bcd0fa92000d09c5e40168b288"
+  }
+ },
+ "revalida_2022_1_q078": {
+  "statement_md5": "a56bc593dd551ba1bb5f533d2181d939",
+  "options_md5": {
+   "A": "c783f282f537b2ca68dbff2fd1c79b6c",
+   "B": "3c50de2c4384db8705c1b4a8ba873303",
+   "C": "ca3203709ff473f311f86a411647b09c",
+   "D": "f9a79d8fc236d4db415a561d0de380b9"
+  }
+ },
+ "revalida_2022_1_q045": {
+  "statement_md5": "997601a6357018a3e0a14294388b4127",
+  "options_md5": {
+   "A": "95c553cfdc12d886261a96e60aaa126a",
+   "B": "7de054d1aa01b764cc8c75f0cf01b25b",
+   "C": "6922178e4e3f91a240b867bf475840ec",
+   "D": "c2d11366f058e8e24edfe39ec0475a08"
+  }
+ },
+ "revalida_2022_1_q023": {
+  "statement_md5": "46915f016f0e4248abbf169c6ead137b",
+  "options_md5": {
+   "A": "c44cf00ea98f56bed5b89a76e4857f1f",
+   "B": "187e83d21115aa958dd8f8e3f4931d8a",
+   "C": "1d9ceec136a01cae132cd039ac0ff46d",
+   "D": "9d2ba4061072a9cc3254b708910ce308"
+  }
+ },
+ "revalida_2022_1_q089": {
+  "statement_md5": "da8d36109716b8bef3015be0e1245976",
+  "options_md5": {
+   "A": "69b38d604df8385ac31f9d4ee6e82cc1",
+   "B": "8291afe00416344d18a573bc0c66e779",
+   "C": "01d87f84b868221bb8ee293655e4e0d6",
+   "D": "4e14e694262542c6d6cb2a8279322ed6"
+  }
+ },
+ "revalida_2022_1_q054": {
+  "statement_md5": "cfad07946b8435aa6f63de162eb36402",
+  "options_md5": {
+   "A": "7db6d5b9bfd1573df8802ae9d60fe0d3",
+   "B": "d6a025048a2467ca891df0827c5a020d",
+   "C": "ca84f06b46894983eb7b5d814e5822d8",
+   "D": "daac9a19bb1e626ff08bdb5172a863f7"
+  }
+ },
+ "revalida_2022_1_q055": {
+  "statement_md5": "e0ff3ff3c021ba5639c2aa174a676b80",
+  "options_md5": {
+   "A": "16902dc1421c53789693829ba2f7a6b6",
+   "B": "4727eed15af64660256ca881a222e008",
+   "C": "79a63b4cac1140bfb891747cd8ad379d",
+   "D": "f3891d8b84d1a5b621a0fab15e0061b2"
+  }
+ },
+ "revalida_2022_1_q049": {
+  "statement_md5": "5fe6771c8c71f9ee34767b46d1b716f4",
+  "options_md5": {
+   "A": "fa0156ab98c2c6b1244ad8db9bd76b93",
+   "B": "afe0f5997102e3f2d141bf62446d05f4",
+   "C": "2091237361527f4e32df37ed79e7d9c1",
+   "D": "30f458ab165819933b6bb1e279419915"
+  }
+ },
+ "revalida_2022_1_q084": {
+  "statement_md5": "f028c29dd98a375813ecb4f5a1e3628a",
+  "options_md5": {
+   "A": "7b97fbd5a3e63830918764e978db35de",
+   "B": "a072459e9e1ed7409d63d2ed128918a9",
+   "C": "d9bc6e555041f6d57e65e9619940f041",
+   "D": "c6b0c88d18ddd50901388995c2943260"
+  }
+ },
+ "revalida_2022_1_q057": {
+  "statement_md5": "8a517085801ea8ed0eb1479714d1d056",
+  "options_md5": {
+   "A": "12159d57b56ae2788a88b2a326be4b3b",
+   "B": "1a2c8da501f1e7cdeeccf195bc155b24",
+   "C": "a539c9f6b493ee8236b706a8b61a80ad",
+   "D": "92820f4362e544a8617a90ac2fbd3a72"
+  }
+ },
+ "revalida_2022_1_q003": {
+  "statement_md5": "7fb581d998bd3bdf82abafda872f599e",
+  "options_md5": {
+   "A": "36cfcc8b9c0234f5f0043a159aeb134d",
+   "B": "c0018f559d056d3da04aeab425a14123",
+   "C": "25579e4a572d1169f985d997c86d5b33",
+   "D": "25a56234a047a8699e0e29c6ee0e2a93"
+  }
+ },
+ "revalida_2022_1_q064": {
+  "statement_md5": "25a06cb7d936dafc44149ec4bc3ed50c",
+  "options_md5": {
+   "A": "2bc042ec3b11bd3590d33d3f1e7f16b7",
+   "B": "b8883a009997652be9b81bc9dc66dfb9",
+   "C": "85f0f6ea98e9d160c6940cc72029e375",
+   "D": "1dd40a72db456334a86c9490bcbe7796"
+  }
+ },
+ "revalida_2022_1_q068": {
+  "statement_md5": "506626eee1aa4b2742d82a51ff3b534b",
+  "options_md5": {
+   "A": "1c65ade5592060c77ef85fc5d5072a5f",
+   "B": "a3db44fbedb6bc325d73e9787b0b8df2",
+   "C": "eaa4dcea2de88aa74fe5d47b572ede0c",
+   "D": "3bacfc0dbd90d59396f40d50b3e9548f"
+  }
+ },
+ "revalida_2022_1_q096": {
+  "statement_md5": "ac3ae2c16f6cbc2d523a39d2d3e0cb05",
+  "options_md5": {
+   "A": "c7bf85f8976393d2afe3d8a1d0e2e2a1",
+   "B": "978331c41dd94b374da318f07535d639",
+   "C": "a2da5ca65f909736dd1d98aed9921361",
+   "D": "18a690a70f8c5366b0f8320688ee42da"
+  }
+ },
+ "revalida_2022_1_q031": {
+  "statement_md5": "57151faf402a2c095a7e2282b92b2d3e",
+  "options_md5": {
+   "A": "d276780477c4723588a6a6720ad3e5d4",
+   "B": "d4c97ec06ec1704072d4f859e5e7e62f",
+   "C": "414daf5c530aaa0f05bf6742575de3af",
+   "D": "a6bd87e2a51236d29f691eafa6d83c24"
+  }
+ },
+ "revalida_2022_1_q021": {
+  "statement_md5": "25312d713aaf5f35c0c95ca933342b02",
+  "options_md5": {
+   "A": "7f81e693755237c106074b2a37ec63f8",
+   "B": "24647ea52d8dfa5570a119a27ec30efd",
+   "C": "b8088cba2b4d9af9ad3c1acb89f4207c",
+   "D": "17660c84cacfabf45257ac45836cb67f"
+  }
+ },
+ "revalida_2022_1_q006": {
+  "statement_md5": "7a37173cdb3d2461afaab75b588e472f",
+  "options_md5": {
+   "A": "aee61ac8ccd0881bb535536997879e1b",
+   "B": "231e4411c5bd8b9d7d7e40a3ec2c8ef6",
+   "C": "53b3e76c8ba9834c469571f571f3f9bb",
+   "D": "f0f7ed56152afad4e1d28cafd080641d"
+  }
+ },
+ "revalida_2022_1_q056": {
+  "statement_md5": "e0074b7e85422fbe52bc8d562d3613b3",
+  "options_md5": {
+   "A": "9d121a3d51e8569b6b901075b654ee84",
+   "B": "3aaa42e6507adfef4bd6dce808562fa8",
+   "C": "1d753dd88323c0481e228e9c95fc7ad0",
+   "D": "074660dba5cef34b4974e1441cbd7a60"
+  }
+ },
+ "revalida_2022_1_q047": {
+  "statement_md5": "312b073cc5a8264e272e9b6c7ca7866b",
+  "options_md5": {
+   "A": "e0d2276bc042e2d2f9de37ccd7f0ee8a",
+   "B": "0369700336abfc6f02d2c5eb8a09c980",
+   "C": "60ac396b5150e6b95dfc6d13b970142f",
+   "D": "2e7193ec52d8793f73f8db130ed85876"
+  }
+ },
+ "revalida_2022_1_q097": {
+  "statement_md5": "eda38811a00ea0143747870cf86457e4",
+  "options_md5": {
+   "A": "0fb23f124868fb6d243ef463ae10dc81",
+   "B": "e500591a1dd94d39d17efef1c4d670b3",
+   "C": "3323b0dbefb64a9f0fcd194bc0daba1f",
+   "D": "af9722a1629006adebd76a60ffe5e8b1"
+  }
+ },
+ "revalida_2022_1_q007": {
+  "statement_md5": "746e4d8815d0d48167201b027e5b2a6a",
+  "options_md5": {
+   "A": "e0e51c6e817e9953f3a3ca204402ddaf",
+   "B": "115b225fc04865fb62608226e11ea965",
+   "C": "e9db0544e150e519778a35127a9f1226",
+   "D": "3ee43200d933ab0b16198dc752495689"
+  }
+ },
+ "revalida_2022_1_q093": {
+  "statement_md5": "8cab3bdf98e07607cac7381f6455b186",
+  "options_md5": {
+   "A": "2e2b9753d3ee828d7e553b27c2631d22",
+   "B": "968a953dcf5060327dd1d8e35e16b084",
+   "C": "57e6bb6fa7f14ef996206d9ccbbc1655",
+   "D": "d9293a46ed17612680e2e7181e4a4394"
+  }
+ },
+ "revalida_2022_1_q063": {
+  "statement_md5": "fbc75084df6c9b80687ceed6fbd2ee85",
+  "options_md5": {
+   "A": "e9408463a8a0c5c4400df1c647e742b2",
+   "B": "869d9543e09c781a2954160f57863d59",
+   "C": "5220c5466bebe3e8592524d4076f6543",
+   "D": "449ffa4fe65e83fc8d3f7667728ac6e0"
+  }
+ },
+ "revalida_2022_1_q004": {
+  "statement_md5": "ee724c8d33015217f3253a0cb7b1a86a",
+  "options_md5": {
+   "A": "5f0670a9fc9cad7959fcc67611b3ea31",
+   "B": "09409bb084e575f561d92280d5caba4c",
+   "C": "7cc3fdf360e04849d7c62d0ff8734124",
+   "D": "bfeb14a0e5452c4adaa196a3ebbfd616"
+  }
+ },
+ "revalida_2022_1_q024": {
+  "statement_md5": "0dfa334d6b2145756711e2b4f958d924",
+  "options_md5": {
+   "A": "18f642651ef31f9260285b076fb50769",
+   "B": "b21e70e663f219caee7765c956665c0a",
+   "C": "9540bb34a0bbd309f26d22e621860984",
+   "D": "36f6aad2d3eb3167a68a610fc961bd43"
+  }
+ },
+ "revalida_2022_1_q061": {
+  "statement_md5": "b5e08161196a5c2e6d8de0ba9564ceae",
+  "options_md5": {
+   "A": "c8414d2484f517019ce4ed94b67e64a6",
+   "B": "93b326303082d5ff3c6010cca713e7fc",
+   "C": "f8f4c0558ce3213c75a065bd568b9e61",
+   "D": "6d5511fd2e36b129b0a2674a797c617e"
+  }
+ },
+ "revalida_2022_1_q014": {
+  "statement_md5": "730a97d1036af7fcd3a7491624ec040c",
+  "options_md5": {
+   "A": "5c08fc8e91a53604c1a99e2c8e9271b5",
+   "B": "b25c2ce1afaccd94ca0eda3891ab7e4b",
+   "C": "7ab45f8eb395ee9d38b004d3ebf9079e",
+   "D": "98b27a970c757ed34ed77666c7fd46cd"
+  }
+ },
+ "revalida_2022_1_q008": {
+  "statement_md5": "778a4b7845ac06409ee8d88be75663ea",
+  "options_md5": {
+   "A": "1f826c2837847183d4d268764b02603b",
+   "B": "25fa6e71ec3e33f335557cea91ea74aa",
+   "C": "56b5cf00a0c0f7634ea133e8dba96139",
+   "D": "ce8b061ad7bbadbeb923a70edceb3429"
+  }
+ },
+ "revalida_2022_1_q048": {
+  "statement_md5": "5381c46c0efdccb219f5990da0e881d2",
+  "options_md5": {
+   "A": "2477fac58b3bfc3495d56704bd3ea1d0",
+   "B": "ba727cc0335ece94889867a1755304ea",
+   "C": "c014d8953374fa2f83cf1d798078f22f",
+   "D": "84e9d4d3aaee79f66c9b2b7f1a3536d1"
+  }
+ },
+ "revalida_2022_1_q071": {
+  "statement_md5": "2772125d376e19f10f6056a6dba58d6f",
+  "options_md5": {
+   "A": "5cb6db7c9a5c826bf2ee031c8cd069f5",
+   "B": "46c5501f703321632a31533f4b084509",
+   "C": "16e03642ee3a7825f31572e27944d751",
+   "D": "7b87103b9ab8e96368277899c807d345"
+  }
+ },
+ "revalida_2022_1_q016": {
+  "statement_md5": "e203301321ded94ee3f36c5efccad8b4",
+  "options_md5": {
+   "A": "8db766e3db649862fc3ad3da3c15b254",
+   "B": "6e9d3193b69e87bc355061b3016d286d",
+   "C": "a4498bce6cef6f8add30faa50ad9e8bb",
+   "D": "71e06d8e5253ac58d5a51ba55d57a531"
+  }
+ },
+ "revalida_2022_1_q095": {
+  "statement_md5": "c248c6046ac7e270f1b5e1e8d57fde7f",
+  "options_md5": {
+   "A": "6a753ce519a3fdab7277dda926c60a1d",
+   "B": "7440dab0746072152f0f64f868fcba0a",
+   "C": "d65452ae6bbe00aa33939b01dbfb3c78",
+   "D": "bc4d0c4b3a16c7face04aaac79bb965c"
+  }
+ },
+ "revalida_2022_1_q033": {
+  "statement_md5": "f6d4abd742922fa8898ae955609e0cb5",
+  "options_md5": {
+   "A": "9877a2984f6b968d5b4f1fe683fad8ba",
+   "B": "2ad0847c644208e717bedcf5995ddf6b",
+   "C": "85cefc07b1679d912c68a5606a49cfa7",
+   "D": "dbe1abd98c4f5fbb53c789694c90dc25"
+  }
+ },
+ "revalida_2022_1_q051": {
+  "statement_md5": "18017f78435ce07a5ae1be231d5e9972",
+  "options_md5": {
+   "A": "1dd56ce59db5588a28ae1950e2196a44",
+   "B": "d15c69c5a9b36b23f8b6e92ce737da2f",
+   "C": "88c0cff40ef4b57d459e374e4aeeee77",
+   "D": "f4a6d07f72689688e349551f7fca2bb5"
+  }
+ },
+ "revalida_2022_1_q053": {
+  "statement_md5": "b9a06588323f46907ad8507d58f8c9d7",
+  "options_md5": {
+   "A": "693510f000cb7c56bf894625bcfabc93",
+   "B": "c37790810780d232f9faf88163b12536",
+   "C": "7d316eddcc54c36889b8c6f5d73bba36",
+   "D": "69f8fa09500c9492b31a18eb192f7c54"
+  }
+ },
+ "revalida_2022_1_q092": {
+  "statement_md5": "d7379074647fe91f96bf781914a11cba",
+  "options_md5": {
+   "A": "4eb3cb2e510f5b38ea7fa34cab1aeb43",
+   "B": "462efa0aeef45e2f13d53f914dc3eb5c",
+   "C": "847cd3defeceab38de312d998a68a878",
+   "D": "c92a060b5bb8ec029a6b6086ee7db1da"
+  }
+ },
+ "revalida_2022_1_q044": {
+  "statement_md5": "9de38164b726bd276d31de24933b27c8",
+  "options_md5": {
+   "A": "38b42babb7f90f395721df6efba9a66b",
+   "B": "303174eba1392bfe7d4be6a4567a4ccc",
+   "C": "005202656b4de251dee75104b01cc34a",
+   "D": "dbb174bf176ea89da51a0443770b9baf"
+  }
+ },
+ "revalida_2022_1_q020": {
+  "statement_md5": "569bf41096ed274e09ef3f077dfcf1a7",
+  "options_md5": {
+   "A": "71c69f50f9fbbd85e79dbd6bf5db24a8",
+   "B": "84d233edf129bac1497d952d795f63e2",
+   "C": "6fabd8342c3e6d96ca5d8e92905319fe",
+   "D": "09f738f9876de5410c5de821235a2576"
+  }
+ },
+ "revalida_2022_1_q077": {
+  "statement_md5": "dabf0c052e78bbdc027b2f8ab01c0863",
+  "options_md5": {
+   "A": "f569d9320560225edd040715d2d1617b",
+   "B": "5dbcec98e90f01c07fa737319b00545e",
+   "C": "1f1c2bb8c77d58967f6f97cbf61114a2",
+   "D": "8d2a77169b5ea739d13bf95b88915211"
+  }
+ },
+ "revalida_2022_1_q094": {
+  "statement_md5": "2f3962a75aa9e05704a39b486892689c",
+  "options_md5": {
+   "A": "1a5159b1fc84fa327168e299de88acfd",
+   "B": "d76dc6215b1214d732aaa6c00a0e54d4",
+   "C": "663503ef5367f06cd721c150a4ab8d11",
+   "D": "093b45b78e8b9cf17546ed756a5b876e"
+  }
+ },
+ "revalida_2022_1_q010": {
+  "statement_md5": "32e24169953cc050d4fedc915b7493c1",
+  "options_md5": {
+   "A": "0da9e383e6b4ae3c3b5806da80530110",
+   "B": "3517dc57398ac76041467237b9b3568d",
+   "C": "5132808173f7442c8eb63782fb499ba0",
+   "D": "03a6dc858a5e2e535e83180348a3f249"
+  }
+ },
+ "revalida_2022_1_q018": {
+  "statement_md5": "acf55bd521176f5fda0b545e7a6d7d11",
+  "options_md5": {
+   "A": "312a709c97b6a32a690308a0a8c4ea27",
+   "B": "3880d58b38fdd09df0696730477f3c01",
+   "C": "26dfcb120cfcf34cbefbcf5f6a7a0c11",
+   "D": "0fe5fec344bfbb642abb77077cbb5430"
+  }
+ },
+ "revalida_2022_1_q083": {
+  "statement_md5": "44a9319951e82508ee3125b349b8f153",
+  "options_md5": {
+   "A": "e98578f98fa5023a666538ddbce1cd57",
+   "B": "711f23d1256497f3356c2e7f9af63959",
+   "C": "45475872b02c824ffdc9419db07695ec",
+   "D": "3192df9d72150fbdbc0e07734f9b3395"
+  }
+ },
+ "revalida_2022_1_q041": {
+  "statement_md5": "3e1916d0936643faaca34e22614ceeee",
+  "options_md5": {
+   "A": "f489ac7d3a03daf11509000c70c7a251",
+   "B": "5af2e0fdde4c78136514ccd7474de0af",
+   "C": "d216586efc4808335989412e35362fdb",
+   "D": "ae1310b05e3141636315927cc62c2bab"
+  }
+ },
+ "revalida_2022_1_q042": {
+  "statement_md5": "5fe141e4630359856b6f552d75e7fd8a",
+  "options_md5": {
+   "A": "759a9a6cbdd6cc55535566f7a07fb34c",
+   "B": "5bcdc6467e7ac7564395fe3aedfdf869",
+   "C": "5e69cab81b11189ea9a4cba8dd5c2035",
+   "D": "75bc9b5419e531792b2f4f8e343db8e7"
+  }
+ },
+ "revalida_2022_1_q022": {
+  "statement_md5": "9d136a9b683bce515163d78acd2a14b8",
+  "options_md5": {
+   "A": "b7571ac934ee477a3fa93a8dff270d1e",
+   "B": "28009e27392513bdc8c202e476ffbd17",
+   "C": "cb152bff41342ff8a3339a755071ce06",
+   "D": "f33910a116217dde4aca8bde9c3daf1c"
+  }
+ },
+ "revalida_2022_1_q030": {
+  "statement_md5": "e8c2a04df6a693cab4d6a59fbce91e84",
+  "options_md5": {
+   "A": "2a2442c187155e27e231d7834223aaa0",
+   "B": "7a9cfe2e4b72783489aa8accbbf59f80",
+   "C": "d342a2a98292a11a5025033fefed0a62",
+   "D": "513d18d092b07864e3331e508908a3bc"
+  }
+ },
+ "revalida_2022_1_q015": {
+  "statement_md5": "636d5933903a74aa1bb133f16b0ec3a8",
+  "options_md5": {
+   "A": "f36b88c53ed81ff88f4294203f619241",
+   "B": "7abc81fd905fdcdd6a8eed8b7d652730",
+   "C": "a04cd053f00bbb0d0006c39ba2146dbb",
+   "D": "13a7a8307e16f9b0924133ab88b0805b"
+  }
+ },
+ "revalida_2022_1_q059": {
+  "statement_md5": "50e2b5bdba5b1aebb3011b92dc40b92c",
+  "options_md5": {
+   "A": "30fdccfa5cb9a25eec39fcaa45042aaa",
+   "B": "fc80ed4a8ad814e1261f6cfd0b0d3170",
+   "C": "e0652fa24ee4159ea0784e7aa1a9825c",
+   "D": "13e7544871f97312592b62b3356a6944"
+  }
+ },
+ "revalida_2022_1_q073": {
+  "statement_md5": "510b35d1b09ed39f2ff23ee46ce55129",
+  "options_md5": {
+   "A": "5ae9a929cb8cb0d6a5606ec0c967396f",
+   "B": "6e9d3193b69e87bc355061b3016d286d",
+   "C": "74457f2e62c4fa98fe43780ba3055fd0",
+   "D": "bdb0a384e8f8dd1094136d8296c972a7"
+  }
+ },
+ "revalida_2022_1_q100": {
+  "statement_md5": "18b1f1c034d9e9c735f8a417b96fc476",
+  "options_md5": {
+   "A": "30f0f59c4335383abba539c923650b08",
+   "B": "055414bd22d05846c2dc34f8f42752fd",
+   "C": "beae78cb7c76dcee7452cf1a0c332d53",
+   "D": "3dcf248412724b53826c16b647e8d49e"
+  }
+ },
+ "revalida_2022_1_q029": {
+  "statement_md5": "d8801189ad512a1e52709ca41bdaa491",
+  "options_md5": {
+   "A": "253d71ae145793c85fce1aa4451ed5fb",
+   "B": "2bc17c573820c7dcd781f0a198edd28a",
+   "C": "149f1386b2b4c27a68f537d45ecc3657",
+   "D": "0ee44764f60c5e28f28ca255c405d93a"
+  }
+ },
+ "revalida_2022_1_q088": {
+  "statement_md5": "fec10876fc25d739c28ee7231006e2de",
+  "options_md5": {
+   "A": "aafe29db07cb741550b25983a6affe1c",
+   "B": "6a53ff6e1b2b5712539efbc2a47e8cdc",
+   "C": "ff500ef02f68bc9bfead167b73affe4a",
+   "D": "08dcbf11740e3f808b7c8213943b74bb"
+  }
+ },
+ "revalida_2022_1_q017": {
+  "statement_md5": "469c0afc70e191699eabc58f7aac778b",
+  "options_md5": {
+   "A": "32126de1df4495b8347c62e459e99ae8",
+   "B": "9e8f2dfda17b5ea39d8c20b64c42e733",
+   "C": "e5062dbd0501666dc09fb370708f9207",
+   "D": "7684f5881436e08e09676e53a6ae6814"
+  }
+ },
+ "revalida_2022_1_q065": {
+  "statement_md5": "71286652b1bdd5e43ddf031cf45a9dcc",
+  "options_md5": {
+   "A": "74c5f21136c695b94dfb8994143d615a",
+   "B": "6214feb4eaf1011e339a30b1bdeec6f6",
+   "C": "4cf7ca022e82a83094441893df57dc28",
+   "D": "8b858d4fd4cfb3d841f10c1eadb20b56"
+  }
+ },
+ "revalida_2022_1_q002": {
+  "statement_md5": "97bdeee6638797e723d2627e596fc24f",
+  "options_md5": {
+   "A": "52a7fa2cd1fd7a4ef58a8052550dec99",
+   "B": "b3d1b52e99b3d2ecbd77732b29071a50",
+   "C": "68266aa61567bf7f104ee98f945ad660",
+   "D": "8a7077e3e266b0eae7f178231c7ad257"
+  }
+ },
+ "revalida_2022_1_q005": {
+  "statement_md5": "b426b59685278e9dc69ac922115d25a4",
+  "options_md5": {
+   "A": "d0cce4a0ce6f6560c92767e2637da0c1",
+   "B": "e89aa3c3293ad03a3fb5303bef460adb",
+   "C": "06c2424512813ba5f91b5944429dbdb4",
+   "D": "ed43671871013f2b96a360a89680cc08"
+  }
+ },
+ "revalida_2022_1_q074": {
+  "statement_md5": "18eecd2525bec3d682b9a61101e706ed",
+  "options_md5": {
+   "A": "e6975bb075b8f6a45305f9e0b1af916b",
+   "B": "6088dc420b75bb2adc91875e55452907",
+   "C": "9ba5a589b9fed11b9d4d22400392782f",
+   "D": "249af667bdd6e7dc8eabc1eece597bba"
+  }
+ },
+ "revalida_2022_1_q075": {
+  "statement_md5": "d199ddf65c1ee501c3ac7faebf28922e",
+  "options_md5": {
+   "A": "4abbeaf9d4b1aae2dbae1cf5a26a67f4",
+   "B": "21ed2d9742d8f9bccc8d1d6787b30ce5",
+   "C": "dc6847b61f9df0e74f044fd8a60f6c6e",
+   "D": "975c8c29e91e834589aa9c58afe5e39a"
+  }
+ },
+ "revalida_2022_1_q085": {
+  "statement_md5": "56dfda778f8ef7893e110673e236f868",
+  "options_md5": {
+   "A": "12d7f5e74dc0526ce8421c75a05cab58",
+   "B": "38c49948dd49b2f5b545b1abd4820c54",
+   "C": "7652f5d23d630564cc51a5251cc1b0f3",
+   "D": "e6880cda5ee1d4d5805d2485af213619"
+  }
+ },
+ "revalida_2022_1_q067": {
+  "statement_md5": "21fbf9c98f88e6021b06cd8155a799da",
+  "options_md5": {
+   "A": "6d9051efabc11b7a0698b4a771cbe5b9",
+   "B": "94247b04b255f64fd3af5333eb6789e1",
+   "C": "b1292ed1c44e3e3ab8842ece0041760d",
+   "D": "cf6a1c08c317cd8d4f5c8e9d5c3ef70e"
+  }
+ },
+ "revalida_2022_1_q040": {
+  "statement_md5": "17221cb2fd424677a38014fd9e82c032",
+  "options_md5": {
+   "A": "29b549ed7c4b36fc32e8dbb59751e44a",
+   "B": "773a233edd814e08da628114423d8cb4",
+   "C": "53400f63710302a2558299b910fb810f",
+   "D": "0a6ea8c11a6f2a0cd90b9562709ce1e4"
+  }
+ },
+ "revalida_2022_1_q013": {
+  "statement_md5": "04820f03f1c7e82b056264c9da389808",
+  "options_md5": {
+   "A": "ac50f3faee78f91b3b6243581eda851a",
+   "B": "7622a0577ae2790824c1bd4a2a293519",
+   "C": "8e4761cf80e711e5f2adfa33ff9db7a1",
+   "D": "d41f7e60ccc190183d1d488d1d2ccdd8"
+  }
+ },
+ "revalida_2022_1_q066": {
+  "statement_md5": "a8a914f028c4b0ae72cfc28b6cc13bc4",
+  "options_md5": {
+   "A": "7f1f2379b09f15ca667efd8e5346beec",
+   "B": "ada9abd3d3db3695c2dc061f6b65863d",
+   "C": "61f3917039f7d2030cbeca31e0b9b0a1",
+   "D": "e5a19d3d9f7176854c824f2059ae1168"
+  }
+ },
+ "revalida_2022_1_q035": {
+  "statement_md5": "4f92d999e807626586ea965215ce5f42",
+  "options_md5": {
+   "A": "f8884f714e5a6f7320273bf1b68ca7b0",
+   "B": "74c3c5c0882413e3e4fccafdffc94c80",
+   "C": "8614e8da9b1cd8863c2e2102f0d10e46",
+   "D": "d87fb5de8c6cd58ca494af7a2691f723"
+  }
+ },
+ "revalida_2022_2_q017": {
+  "statement_md5": "df782d359008c7e91052f0f9e13c0250",
+  "options_md5": {
+   "A": "c67e6fa2a2ea06c8a5d056769302122e",
+   "B": "05236c68d9dcc757ffb4739248f8d701",
+   "C": "449b5a3c4934f4b760c9aaeea156446f",
+   "D": "f3bfd7ae896f856ac00910cb98ce4562"
+  }
+ },
+ "revalida_2022_2_q015": {
+  "statement_md5": "dbb0a2096d74fa6681fd6d3088982704",
+  "options_md5": {
+   "A": "b4d6e546304324282184d4ca82b875db",
+   "B": "b48aade3db74353f79e5fd6a880dac80",
+   "C": "7f3e91240037199a33eba692f85c838b",
+   "D": "f55ddbda42f7d7522ba32e156adacab6"
+  }
+ },
+ "revalida_2022_2_q059": {
+  "statement_md5": "a80c004decfab61724e15e3eb73d01fa",
+  "options_md5": {
+   "A": "f6cd4b6c97680f6c7e9a9f8ae90c78d6",
+   "B": "76ad2996e43b1870232e25ff9de4296f",
+   "C": "6b853f2f0b052e46a0bb31c9b653e52b",
+   "D": "89052fe14dfb22b73164d0bcc21901cf"
+  }
+ },
+ "revalida_2022_2_q006": {
+  "statement_md5": "f3062b235fb75d0706db657b10dd07a2",
+  "options_md5": {
+   "A": "2f8b267b76edaa8d0fa5f6409dd21cfa",
+   "B": "b8061e93bd0f86ee5bbc8cbc2eb51b25",
+   "C": "611536f0580b666452e7e7ea240be10a",
+   "D": "83feeeca7cc5103952e4cd6461cf0c01"
+  }
+ },
+ "revalida_2022_2_q009": {
+  "statement_md5": "7aaac7a45a41f240260ba50203a7f2a6",
+  "options_md5": {
+   "A": "130edebbea33beb3d03ab10ecc660278",
+   "B": "c3ae42cc826164be57da48932327e105",
+   "C": "818510bd230be0d4e15304e53a05f695",
+   "D": "482e501595e8d320c3c9bb1b7face66b"
+  }
+ },
+ "revalida_2022_2_q060": {
+  "statement_md5": "721de78fa76af86b330fcce2624cf0d7",
+  "options_md5": {
+   "A": "c258fc088a5dd344b0dff62294eab0ca",
+   "B": "500625e2ed2d9a6c423ae2d3414862ef",
+   "C": "d1690eb1d9436ba8e783266c1817cf79",
+   "D": "ee30592720fb96c17be604051d22b134"
+  }
+ },
+ "revalida_2022_2_q062": {
+  "statement_md5": "5d66f61d35f3f2107720b82d74e55036",
+  "options_md5": {
+   "A": "9f8683c64b90726ae2ca5afe02a31841",
+   "B": "872f5e714a33392653ef086a72bebdc2",
+   "C": "ff500ef02f68bc9bfead167b73affe4a",
+   "D": "aafe29db07cb741550b25983a6affe1c"
+  }
+ },
+ "revalida_2022_2_q078": {
+  "statement_md5": "ee271e3316d823d86aad3d2f4805b086",
+  "options_md5": {
+   "A": "91d77d71ab9b5cca78b862e7c472bc5a",
+   "B": "b8f231d92bbd8be20fc4f84c0226c8e3",
+   "C": "c0ed5932c791917b1cec82b71a94b548",
+   "D": "c5a0855dc96954de51bcad400365a0b0"
+  }
+ },
+ "revalida_2022_2_q012": {
+  "statement_md5": "00614ac630ad0a914eca123a3416769d",
+  "options_md5": {
+   "A": "a1f967314c8fb48c659c71bce589fcf4",
+   "B": "45bc779ede941b879420f3d1dc7dd902",
+   "C": "e476d9d00711f74a91a881ddad486f2e",
+   "D": "3d5ea3ce17252fdeb32a8c9c98e48857"
+  }
+ },
+ "revalida_2022_2_q091": {
+  "statement_md5": "dde0b03ed2c3590bef39579a6a2036d8",
+  "options_md5": {
+   "A": "d3b94b80b7a108404664eeab347b9bf2",
+   "B": "5f22b32c6b5fba71149dad63fe29eba2",
+   "C": "5d6d6099bf130868a57237b6ba5b1874",
+   "D": "e48cf94145f63b8d4b3b34e5b7719fcc"
+  }
+ },
+ "revalida_2022_2_q056": {
+  "statement_md5": "53fddb61c9adb14938b0ff947023d84f",
+  "options_md5": {
+   "A": "c5332db889b6bc3091337c29064ca637",
+   "B": "ba56dd7242ad428c0990add09358a7fc",
+   "C": "c452381ff0dec5dfae9562e410e26083",
+   "D": "0aa5a21a4020d2ce747797a829e908ee"
+  }
+ },
+ "revalida_2022_2_q051": {
+  "statement_md5": "f6da78271e4d462e618718c6c68da846",
+  "options_md5": {
+   "A": "fda46f60add031d38fed7f97d346276f",
+   "B": "837cb52ef030546ac3634f921508aa93",
+   "C": "fc0006a9a153b8e63908ffe55657d888",
+   "D": "31c1fc38cb1a9b04e899a76fd3f73ab3"
+  }
+ },
+ "revalida_2022_2_q052": {
+  "statement_md5": "86ae93c000c9b88de2f69369e6f9eecf",
+  "options_md5": {
+   "A": "ba802953a8981b56fc45a5ce09a8e61f",
+   "B": "df5de7d1d36cc542b58dd254a2728110",
+   "C": "74dc3115750d321b939d7ad3226e79f2",
+   "D": "4ab011eedf094a6392ce3e443ffe68f7"
+  }
+ },
+ "revalida_2022_2_q045": {
+  "statement_md5": "b4cb0d20fb6443f8db379880a0e1c4a9",
+  "options_md5": {
+   "A": "9296e51177bec0fb2d887ddc85a433fc",
+   "B": "2e20b08ba8c6d04b4b219ffc4d9b78d3",
+   "C": "ea0c8f18f4e25135bf47da6c3976232b",
+   "D": "f877f9cbdef3b24a24acca904cf9b54a"
+  }
+ },
+ "revalida_2022_2_q043": {
+  "statement_md5": "a75bf195cd3dea5917e4fe1f9cbe490b",
+  "options_md5": {
+   "A": "7feea1fac52adf46372d495f39fe8aa1",
+   "B": "3527dca8a1fa02946c1cd69419d1e4c7",
+   "C": "4a5e3128a9e9059b5a784c570fc88656",
+   "D": "fe64258d7d8c541cdc3e68e5b918e19a"
+  }
+ },
+ "revalida_2023_1_q100": {
+  "statement_md5": "8e374488f50556d2f2d4b668575cc205",
+  "options_md5": {
+   "A": "8acacc7e4479b46137fd80f75d115e2e",
+   "B": "f408aec7c033f974216ad9ea0bada74f",
+   "C": "1810b161e9f3d3c36eb2886346b42d31",
+   "D": "de6a8d3f4e7a0276d745cf619b875646"
+  }
+ },
+ "revalida_2023_1_q087": {
+  "statement_md5": "fefb1d19341087af4dcb8122ea32a1e6",
+  "options_md5": {
+   "A": "78bd642b692d238778e1a2a7cdd5ded8",
+   "B": "762b0a0d5cf18d0918f9f9fc9ba5cc85",
+   "C": "37b4138d9d85be9b78bb5b33889217e4",
+   "D": "d9ce2b8d16f2ac56011f923116091568"
+  }
+ },
+ "revalida_2023_1_q085": {
+  "statement_md5": "f45e952b7bd55f7f8877643dfc9ea1ae",
+  "options_md5": {
+   "A": "80f8903d87d57ac9b327542d35f17ed7",
+   "B": "dfbb6aa59bdb5599218a14987122707d",
+   "C": "fb282d86224797174705455353d05836",
+   "D": "08162176ea0d5955aea845a2a1dfd5cc"
+  }
+ },
+ "revalida_2023_1_q047": {
+  "statement_md5": "86f97ed0f9acb7ea59477618804431c6",
+  "options_md5": {
+   "A": "bae98b99d1cf6855594a2b7d358cdeb2",
+   "B": "bf2653d12b2af3ff49619e1260a36844",
+   "C": "23eab869aa7999c5d95121ead2801e79",
+   "D": "007d5de92cda56c9cd83b0bcaa787cdf"
+  }
+ },
+ "revalida_2023_1_q081": {
+  "statement_md5": "3f64e721b9e96c44493ffefbb2357f6c",
+  "options_md5": {
+   "A": "a032c808ac5c218229ca2da7b9f0cf5d",
+   "B": "00b116f9e642e1c451d00645d382c7d6",
+   "C": "3d2bcaf0e8e79ccb51507f51ad924cf8",
+   "D": "87458c3439f6ad4c6749b3b34652c2f0"
+  }
+ },
+ "revalida_2023_1_q097": {
+  "statement_md5": "28df7426db5fa0478ca164ea34d02b0c",
+  "options_md5": {
+   "A": "fd31100b6b5558fb0ef93d21652ed15d",
+   "B": "899ba9b9130055a65e479696176bd8dc",
+   "C": "98c1432c8510e89eb0ca5a19434963c7",
+   "D": "ec0e4ac0da34f06cf0aa83f9879967f9"
+  }
+ },
+ "revalida_2023_1_q071": {
+  "statement_md5": "87e8622b328cdb052076c5c91941c0f0",
+  "options_md5": {
+   "A": "d8f9b96508fe7de1ddd052b60515c7fa",
+   "B": "cdcc06bcac49c610e06c1b17823803cd",
+   "C": "3007ee5717ebd817f1f04ce6689c2e61",
+   "D": "fde504b63d96ac1fb377b11723ee4ec4"
+  }
+ },
+ "revalida_2023_1_q053": {
+  "statement_md5": "740b2e6557a2ac18947d8fdc4c21bdf8",
+  "options_md5": {
+   "A": "377ffc1e21770c99777e144585f52237",
+   "B": "d1be94748c5c1e686d398ec79e6d4cab",
+   "C": "82c2ba5f4ecec639de337c136322b4c7",
+   "D": "5e0480173ee4e51625d4ea70258f5c41"
+  }
+ },
+ "revalida_2023_1_q011": {
+  "statement_md5": "cd504715eef611732c81697979d30230",
+  "options_md5": {
+   "A": "8dc9f97b86053bfbae6521f91137629f",
+   "B": "3966238954152d666e52769d915c4812",
+   "C": "ddd54efce1891746295803e23a736a3c",
+   "D": "31f447d0f6df5c9c0b0597594b219930"
+  }
+ },
+ "revalida_2023_1_q019": {
+  "statement_md5": "d9105c4fc13bdfe619b552cca46ab374",
+  "options_md5": {
+   "A": "24601ff108be6db9db103c86a48313d0",
+   "B": "0ea2efe1aa53c540234a53b1d99ea2f1",
+   "C": "557cdfddeb6ed4cf7cc17f289c8303c2",
+   "D": "642c59b531d75d50e64a3838a36dc6d2"
+  }
+ },
+ "revalida_2023_1_q099": {
+  "statement_md5": "1c7867625049627fb8d720d6614641cb",
+  "options_md5": {
+   "A": "4c0c7e2736016f6b19f5a9585ccf78ac",
+   "B": "a463cae687930f2dbdfcc2a90617018f",
+   "C": "6449752a6dd139490c83239cd6428366",
+   "D": "c2b6ebaf00687c7b0fe428ea1a5de60f"
+  }
+ },
+ "revalida_2023_1_q061": {
+  "statement_md5": "4ea86eff5e4971214388bf1d03b80d28",
+  "options_md5": {
+   "A": "efcbe2138e3e6de2b2addaca371ba3e0",
+   "B": "07ee88bf6dd9a8154762cafa207b4c42",
+   "C": "75302fcd415dd852c551f09cf9ecadb1",
+   "D": "a82e984b316dad2c48e3b8dcb182e5ac"
+  }
+ },
+ "revalida_2023_1_q096": {
+  "statement_md5": "5296f8940514e0b3100279149ad3e66e",
+  "options_md5": {
+   "A": "2b014bba864ed71e299ec4077d65730b",
+   "B": "1a049e186a5b863eaa0cf157c8a368c4",
+   "C": "84b0f882918dd564e195a07d188cca3e",
+   "D": "d6650a990b99d26a427de8137288912c"
+  }
+ },
+ "revalida_2023_1_q031": {
+  "statement_md5": "f311cd06d49060652c83c80cebf4c7fb",
+  "options_md5": {
+   "A": "2ab4a0879642c943eba24f0d4d03c609",
+   "B": "ed7e535210b1adbf7e4992371132d4b4",
+   "C": "c96f5145839a0e617e89408b30d32a2d",
+   "D": "3f664d404f7027adbfc15ed1bdb5ddd2"
+  }
+ },
+ "revalida_2023_1_q046": {
+  "statement_md5": "33824267156f67026c980b7fadb69893",
+  "options_md5": {
+   "A": "910a9727f74786fceb2d4353526dacdc",
+   "B": "12b156c12c8a4e016ed6080c9042f5ea",
+   "C": "c0ef4d05a92c69f0a2d7b3dbfef69413",
+   "D": "eaa8698a03bc10eb22ef0e3c79afeecd"
+  }
+ },
+ "revalida_2023_1_q094": {
+  "statement_md5": "ad78529a18df2efe4e17eb6d240bd161",
+  "options_md5": {
+   "A": "26592a35480b65d10b94be455de8199f",
+   "B": "aa9bdfd24471d44910d4e3b115cd71b7",
+   "C": "8f9c5a85654aaf131594695e25ebaa36",
+   "D": "4f91529167554d2767e51127b4a4168e"
+  }
+ },
+ "revalida_2023_1_q080": {
+  "statement_md5": "1f9f8f2631c4ca8d5870e911dcf0a88a",
+  "options_md5": {
+   "A": "4103ffb9cb8d22b3e3a723aa1a5a9207",
+   "B": "88df1a31fd819da35d1a442c50ee25fe",
+   "C": "7405e5c86dbf5334e8856ce673b1b378",
+   "D": "6da0ec4a826c1f6e8d4d226108d7d937"
+  }
+ },
+ "revalida_2023_1_q058": {
+  "statement_md5": "0a777d18a7e736dd413565869c22ad2e",
+  "options_md5": {
+   "A": "3b18cacf5f18efc05c2f3196dc33fb70",
+   "B": "15a89593370c85c21122b6eb5d695f2c",
+   "C": "d8467f36957f3e3bb143e19972450480",
+   "D": "bff3a0216e0789cd3d1d70b512571f74"
+  }
+ },
+ "revalida_2023_1_q004": {
+  "statement_md5": "7a8992728de6e8395b8207b6ff76d9b9",
+  "options_md5": {
+   "A": "2bdf3df8733dd304fad30596dcafe007",
+   "B": "ecb0e12fbb9601ea6974f17527ee5e13",
+   "C": "9c5ec7c590026176fafc485d0e404fb1",
+   "D": "9037aacd5e6b76a8ac47e40f9a3ce609"
+  }
+ },
+ "revalida_2023_1_q023": {
+  "statement_md5": "ca0e3b68579f7c1e4cd902eb15b2b97c",
+  "options_md5": {
+   "A": "2e445a41115aec47a3728cbd201cd68b",
+   "B": "b76f4f00b8f92e465ff01c87dd06876c",
+   "C": "26765ec7132d1fd1c29b5c10585f3c6c",
+   "D": "3bffa4cd774a66fae74ff206cf628b3f"
+  }
+ },
+ "revalida_2023_1_q032": {
+  "statement_md5": "5315263c9505457226c26b38e2840c2e",
+  "options_md5": {
+   "A": "de6e571bafe96548de31e16022cab0e5",
+   "B": "3cbb21ca1194e79f9df477e79bd79def",
+   "C": "1254bc53f9db76c64af044d0b8acbc42",
+   "D": "be97b76da8c3abad9dd3b65ea4979f7c"
+  }
+ },
+ "revalida_2023_1_q043": {
+  "statement_md5": "2aa9d66b9664b032d25c3b175d44895e",
+  "options_md5": {
+   "A": "e9aa32657acb5413213eca330e75e56f",
+   "B": "71b308a6f0078eac036da693892421fa",
+   "C": "a4eb177acb11949a7c1bce7bdd7b3b13",
+   "D": "d30366e436511b82b863e00c3dc949f0"
+  }
+ },
+ "revalida_2023_1_q026": {
+  "statement_md5": "a6a41542d551a241cd9f5dcd8e6111d8",
+  "options_md5": {
+   "A": "6b1706f80ae4713c95d03339f63a67c5",
+   "B": "8a14835e43e94322469273260b116759",
+   "C": "b736dd6739038c4f3651c3b3b00de0f7",
+   "D": "72e8f9aadc8cc7a904e14a5e2e1590a0"
+  }
+ },
+ "revalida_2023_2_q004": {
+  "statement_md5": "dd5ce2f3cfaeb0456042433bf6def45e",
+  "options_md5": {
+   "A": "40ee1941c48825e935937982c4f5cd1d",
+   "B": "fcc80bcd5307663008fcdc475957c942",
+   "C": "4a912c4a7731bcf5584ceb9062c29677",
+   "D": "24386dbcf6e235b585e1b8937f2313e5"
+  }
+ },
+ "revalida_2023_2_q097": {
+  "statement_md5": "e684386848e57b0126792f8915f70f08",
+  "options_md5": {
+   "A": "b0df09a3a351c4d7599caf3444f83102",
+   "B": "975e3b17cac1e37a0113c2563fead170",
+   "C": "307a974a2f623d936785c46555af0333",
+   "D": "0929c719c902d2a5f3a56995bdef4bb9"
+  }
+ },
+ "revalida_2023_2_q031": {
+  "statement_md5": "80833b2ec280d55a136dc1e35da21843",
+  "options_md5": {
+   "A": "8f73e6b754280dba5535d1b9584765d2",
+   "B": "56b41ab2eab3f9681e6484ca5ba1000f",
+   "C": "0fdd7261f62345eddcbd2c913f25130c",
+   "D": "c3dd9763dddf7db4a111c681e395f7f0"
+  }
+ },
+ "revalida_2023_2_q057": {
+  "statement_md5": "e942324280a885ee2cb20fcba9b5d9f2",
+  "options_md5": {
+   "A": "9be30717ca52cf6e3c7f1398da285a07",
+   "B": "a973ac5884934adf38cebbc0ab71b769",
+   "C": "12f888a77afb6bb94e3e6de687e32691",
+   "D": "7f3638cdcfade49b338464b2946a7d58"
+  }
+ },
+ "revalida_2023_2_q071": {
+  "statement_md5": "1261a09ecc9751c42b982501d8c7651a",
+  "options_md5": {
+   "A": "2c17e04908c1206b56e507e8fa73d859",
+   "B": "49126a65c289b3544f42a2919c41b01f",
+   "C": "9ed8a437f9ea6db2b7e96bf95bdbbfef",
+   "D": "c2d558ae783e674d1f52202779bd69cd"
+  }
+ },
+ "revalida_2023_2_q062": {
+  "statement_md5": "832d62c4fb21109a99b2040c96db9dd8",
+  "options_md5": {
+   "A": "28cd0c5833ba2315f92e3fc47794bcc6",
+   "B": "857027aa863bdf1a7a23ca53dd907f26",
+   "C": "159ec3971b10d71ce41ea17b326fe581",
+   "D": "7e8c19a98ae72204ac3960ef7fa44ef2"
+  }
+ },
+ "revalida_2023_2_q016": {
+  "statement_md5": "970ffb773a164dd1abacbc443c2da096",
+  "options_md5": {
+   "A": "0317280a69bd2e712aa088ea066748f3",
+   "B": "0dd5bbb3562a8f12b411899ca56390c7",
+   "C": "b99640099eee32581070acea94089608",
+   "D": "e21a8c3f1de5db260b7aa51774868ac3"
+  }
+ },
+ "revalida_2023_2_q081": {
+  "statement_md5": "bf44c27de77ba85b7652ca5b670249e2",
+  "options_md5": {
+   "A": "8b1915d015741dbae09d3fd02665e233",
+   "B": "a378a465834b09a95984c6d1105125be",
+   "C": "1c1b089111e8656f36fbfea25a572ca3",
+   "D": "d5ac6ec3fd3f5246a718aabc86767131"
+  }
+ },
+ "revalida_2023_2_q086": {
+  "statement_md5": "cf4119bd1ac3c7b35379a48f162454f0",
+  "options_md5": {
+   "A": "466ca7dd3fb8b0a707e831eeea8c1995",
+   "B": "9c5c94e7d178bd6703452c1997babbb0",
+   "C": "ce682d251c2a8f5ac89cb9a75c5cb472",
+   "D": "2aa51752a5834e670ecef184e6c12c06"
+  }
+ },
+ "revalida_2023_2_q044": {
+  "statement_md5": "47a50480ca7a9761a264f76cd4e17ca7",
+  "options_md5": {
+   "A": "18d47975c7f295b180a82fcbb0790038",
+   "B": "94e60b38f5982f888fc2334a9447a2b9",
+   "C": "bf8660c915f5cd91255db0e4d078e48d",
+   "D": "d0de7aeb339fb7f54506d2e746aff0c0"
+  }
+ },
+ "revalida_2023_2_q022": {
+  "statement_md5": "467ce209ac8dba256c87b8b2b93b433e",
+  "options_md5": {
+   "A": "ee7765adebff03b2aefec94c8e182bf7",
+   "B": "b729d1b17584fd1634d7854442cfd1da",
+   "C": "d415b6be4a66998a533a5a6bfba789c6",
+   "D": "5017036eb8ba44d54625badefba29f73"
+  }
+ },
+ "revalida_2023_2_q094": {
+  "statement_md5": "647322b87bd4e421c5a4b2b3dc94f938",
+  "options_md5": {
+   "A": "43c22066f742cadc3724a3aa1415c0c4",
+   "B": "38e085c5bfb4529b2aa49e5fdf7453e8",
+   "C": "f700593f2d7ef301564b6fc6441ac395",
+   "D": "3f5b8bccb317211d101cc8e746aa12cc"
+  }
+ },
+ "revalida_2024_1_q095": {
+  "statement_md5": "8a08b688eff77b9435933e8b41543382",
+  "options_md5": {
+   "A": "e6bc867d61e56205e3c951dbad9d9692",
+   "B": "e309c05767ac2158c8253ddfa7ee8466",
+   "C": "658e4bbb5f2b0ebd683019446eca3345",
+   "D": "545abe355f281882135e0500656cd843"
+  }
+ },
+ "revalida_2024_1_q077": {
+  "statement_md5": "4106007f8ad21ed036a77dee41ba5af6",
+  "options_md5": {
+   "A": "fba42919484942c5f9285f9e502e0d45",
+   "B": "9aca04213d206f3ed8a89f470946e486",
+   "C": "b69efd269eade56d698edf41cbcd4046",
+   "D": "23da50c018e47912f92862868c750b48"
+  }
+ },
+ "revalida_2024_1_q021": {
+  "statement_md5": "25862ea0e75c4a89cee15b17eaa456c6",
+  "options_md5": {
+   "A": "096fe663b7820e5833f044f5a7b8076a",
+   "B": "d655b04158d04097d993b79272000b3a",
+   "C": "323838fbff2610372f80e3163128d68f",
+   "D": "9c949455cd0cf6aabdfd9bf91abff5fe"
+  }
+ },
+ "revalida_2024_1_q036": {
+  "statement_md5": "d186be0bd582cb7b8c41bfa64f35b92d",
+  "options_md5": {
+   "A": "afbac9bbb3f87243a3cfd344cf704180",
+   "B": "00c71fedc1d0e29afe829a96bc12f2b7",
+   "C": "887c57873b81623389de23d1eeaeeb52",
+   "D": "4828000b6eaabf8393fd65bb053a09da"
+  }
+ },
+ "revalida_2024_1_q063": {
+  "statement_md5": "8770f407a6784746563cafc8c6d7c5cf",
+  "options_md5": {
+   "A": "d3b42687fbefdd955a6b3666b2a2ff5a",
+   "B": "aecad908967f2d8ff63ef890ae1ea0c5",
+   "C": "2b32563e604162988d3c3ed2f50ab754",
+   "D": "677cc32768ff0f7944ec9c69c743098e"
+  }
+ },
+ "revalida_2024_1_q053": {
+  "statement_md5": "12ce30192c76d2c32132f17e73aa894f",
+  "options_md5": {
+   "A": "bd18f3c1db5b6bd2a6723c9bcd3e0727",
+   "B": "cf12abee8c76040a719386890e04c0f1",
+   "C": "89d842afd40b5b9734db74c020230c1c",
+   "D": "368242e8b32e2b71c8f9bcf5996ec2df"
+  }
+ },
+ "revalida_2024_1_q059": {
+  "statement_md5": "a1e61be3a84df4e8a5419e899b65e67d",
+  "options_md5": {
+   "A": "8800b0c39a32fc34bd84e5bdb4603fdb",
+   "B": "4a35d9691cc56c7f67968ecb20767706",
+   "C": "f08c815d84ae1f05c1159c8910a3ac55",
+   "D": "e620a315c01290e19c54d9d3cb298b47"
+  }
+ },
+ "revalida_2024_1_q023": {
+  "statement_md5": "04ed002a71d963b64c616b8418d916e1",
+  "options_md5": {
+   "A": "f0a27ef2b8491aaa1a807536f5846fbe",
+   "B": "398faa9608d0d1f385265a033522e464",
+   "C": "ddb0231aa94e6be10cdbc7c44d409a93",
+   "D": "1ca3216adb5b261b81abddb9cb26566e"
+  }
+ },
+ "revalida_2024_1_q015": {
+  "statement_md5": "f61030fa6a63eff26ec76b938b1a07c3",
+  "options_md5": {
+   "A": "13e8a01bd7ff5020a59828c5c7e0228d",
+   "B": "b875e79c24fcec578b6adb97199f60ce",
+   "C": "a77a4a975e063e6ce805505a8f0fc868",
+   "D": "c1ba9c1124902907d94a78a30fcd03fd"
+  }
+ },
+ "revalida_2024_1_q064": {
+  "statement_md5": "018deb7698c39548520c3659adc1c3bc",
+  "options_md5": {
+   "A": "c2563cf7c68b585f8561efd425156456",
+   "B": "e0652fa24ee4159ea0784e7aa1a9825c",
+   "C": "e610d8bccc3d447c6fd11376e6b5c834",
+   "D": "64f154ffd72a0cb82d730734ca12eeae"
+  }
+ },
+ "revalida_2024_1_q047": {
+  "statement_md5": "f1ba0f34f2fa2d1a595124c5c6409dca",
+  "options_md5": {
+   "A": "c0537c408080738f5fc325d92383ce9e",
+   "B": "0df994ae885b402a4c11cd4efe0db406",
+   "C": "fd1b4c2926d4caafb0f168f6b9eb21d3",
+   "D": "7f0413b49e7f7b1af684f004aabded22"
+  }
+ },
+ "revalida_2024_1_q020": {
+  "statement_md5": "bdc41f6f7261ebeeb9c97af561593114",
+  "options_md5": {
+   "A": "e61b1a0c6ebe4a298c22c1ed5c888b15",
+   "B": "b783b57032a6344c84a60f2021c698f7",
+   "C": "0badb617566d0c0ce3de19ca55337e7a",
+   "D": "a0d3fb8a227a99ee73a2af76bcc8b2c9"
+  }
+ },
+ "revalida_2024_1_q091": {
+  "statement_md5": "807b048fc1d7e3cc453ada217bc62a0f",
+  "options_md5": {
+   "A": "8a33df827346e1082b9eeb962c29d3a1",
+   "B": "4fa9e02cc2dc7f04244995e5c461c0b6",
+   "C": "eb16e2390e78d4a173c71d91a1cd4c63",
+   "D": "28f4770355d6230582ee5dc10c586698"
+  }
+ },
+ "revalida_2024_1_q088": {
+  "statement_md5": "7aae86bcdf61425047f2be216c44b3ce",
+  "options_md5": {
+   "A": "568985a61b8a1d5e2f7811b9a1594644",
+   "B": "b9798c296cf8c9cc2aaa527c63ce57dd",
+   "C": "f0c667b19b7d6c94f2012e247d91779a",
+   "D": "ab266f5678eb7ce70b6e774fe1771c25"
+  }
+ },
+ "revalida_2024_1_q029": {
+  "statement_md5": "c71f00ea75976fbe7b865f7350955729",
+  "options_md5": {
+   "A": "10cc3752d4b803feb5eba0335d2ba13a",
+   "B": "411682bdfeb898621a8819f9cff15a39",
+   "C": "2d4834908c2e28e10ff6d1c8090c8ea5",
+   "D": "db22d077ed2e310d42683e8e7817af19"
+  }
+ },
+ "revalida_2024_1_q018": {
+  "statement_md5": "e10fd437975cd1ec583b98fbea8dc843",
+  "options_md5": {
+   "A": "5535b264fe5f7083ac2158f4fcbc7f62",
+   "B": "628e7b0b84ee446a09dcd8d984aeafac",
+   "C": "62dc966b5cc83ec986dc46e187663092",
+   "D": "25146bc9a546b034462b4c590cad3647"
+  }
+ },
+ "revalida_2024_1_q058": {
+  "statement_md5": "fb26fd2567c758c76d7e18ff971a130d",
+  "options_md5": {
+   "A": "b91d8502317f89c5f82af32e302465b7",
+   "B": "5f6b07d55845259bcbf6229b0d6c91dd",
+   "C": "d21329bde705d46ab1ed69bef9141e61",
+   "D": "8912d032580c86645d19990bab692cb6"
+  }
+ },
+ "revalida_2024_1_q014": {
+  "statement_md5": "9f5744097808b071f90f78c7fbc10bce",
+  "options_md5": {
+   "A": "b5d00eb7c4af9707410a83642d6c751f",
+   "B": "c1450e1bcffbfe4161e6e5012767a3ec",
+   "C": "9dc8d6280f679c7537aa49030088ee1a",
+   "D": "f0875da99529def29aed2e62c3af2faa"
+  }
+ },
+ "revalida_2024_2_q041": {
+  "statement_md5": "33729d0b9f1fa6c471c65a5aacaa8d68",
+  "options_md5": {
+   "A": "50bc1f9c32d2e2641c50b1ddaa62b089",
+   "B": "a1ecd20dcd0bb0c66c06a9bd1e097258",
+   "C": "767d5da8b968b910b72cf446b49d8ab2",
+   "D": "98ab10b1e75bbdb974d1ff3745d26947"
+  }
+ },
+ "revalida_2024_2_q078": {
+  "statement_md5": "e691bf9225ca400f75d766f06a46bfa9",
+  "options_md5": {
+   "A": "03ccf8e959c87b4d5ba0c6774774fcdc",
+   "B": "03fa31126e9be0b850557787a81ee252",
+   "C": "e1616c688285cc878f81a34254b963f7",
+   "D": "6aef2a70bc0d67074483b125b027628e"
+  }
+ },
+ "revalida_2024_2_q012": {
+  "statement_md5": "ec9ba0f07e985f16d9cc433c5be1131f",
+  "options_md5": {
+   "A": "986b700a4c2d84b042e974f17f8660d3",
+   "B": "7baf1a5d1bce14b6c2ffa02b59a16bfa",
+   "C": "dad113db261d4de22280c09ed68af786",
+   "D": "76be95c85793c381b60507f31e7dd166"
+  }
+ },
+ "revalida_2024_2_q023": {
+  "statement_md5": "a36209debfc9d339b6f576c975236eec",
+  "options_md5": {
+   "A": "0908141ddffc2e62f66ccb9ad28f7392",
+   "B": "1b78a9e0000ebb5463eb232d65145d36",
+   "C": "b474736ed6ef852282f4f5bf364a1af9",
+   "D": "c3e16d64c46221faf63fe04e8b1e605a"
+  }
+ },
+ "revalida_2024_2_q033": {
+  "statement_md5": "d4a75c89985d466c0df062d8f3b384a0",
+  "options_md5": {
+   "A": "bbbb7b55812985e4d91345c6f107475f",
+   "B": "0e8d3501c1ceea5214b38f735c734e81",
+   "C": "19c20c811411306e6b27515572052c3b",
+   "D": "4bc4d013253235d0165d9af8e41921b9"
+  }
+ },
+ "revalida_2024_2_q042": {
+  "statement_md5": "62be3039745671e8b47849141eb5cb64",
+  "options_md5": {
+   "A": "3e69e4c31c34ad39221f250e4252f6d0",
+   "B": "6bfa941bd77e86c0b4117516ea262506",
+   "C": "950732799a89692ba06a6afaecbb4cda",
+   "D": "e78a27f8aa37bfe7c665669168f16b8b"
+  }
+ },
+ "revalida_2024_2_q081": {
+  "statement_md5": "5247a0f9c1a9eb3afe5ae5b1e645a887",
+  "options_md5": {
+   "A": "cd6be07ed636f00e412386709aa7f339",
+   "B": "7cdd5428c0870f9ff7ea964b91059be5",
+   "C": "95b011d4b4453f31a81fa9290683537c",
+   "D": "3aaa11bd4017063ce0c015224333182b"
+  }
+ },
+ "revalida_2024_2_q073": {
+  "statement_md5": "dfe7748e5287c6a738a13866e5238c77",
+  "options_md5": {
+   "A": "9a9166c4a2c5b963c00cd80c5d499699",
+   "B": "8ac0b917ec844ad41d69c42047dbc3c6",
+   "C": "07c164b05ad949d43a8da5f11d284395",
+   "D": "70ce251281ee55579f5176d5ebd85925"
+  }
+ },
+ "revalida_2024_2_q060": {
+  "statement_md5": "58d77d0e48fb274c1cd62c960e8132ec",
+  "options_md5": {
+   "A": "67c9806faf4e4209074395f5fccd2cd9",
+   "B": "e5ce0c77310fd0fe89fc2bd4e8f2bec5",
+   "C": "52640cfe26b427d26f5fa3631a208332",
+   "D": "e725d585923b21ea02a8b414a5c5b4af"
+  }
+ },
+ "revalida_2024_2_q098": {
+  "statement_md5": "08016125fbffb98a930948c9c37bfb57",
+  "options_md5": {
+   "A": "66aed75946527e0c24e0d84ee3dc6889",
+   "B": "87185d62cf0959610ba6abdd0bea3906",
+   "C": "17265929cbf59cd8792d4a299a533f22",
+   "D": "de5d6e509e5bd39f649065ab036a0a3d"
+  }
+ },
+ "revalida_2024_2_q016": {
+  "statement_md5": "f7db2a788efb977023f86bedc3a5c375",
+  "options_md5": {
+   "A": "4d193286a8185f7e8ca05576839038a8",
+   "B": "768cceb9902f2f3bea6a82a1bf6cae15",
+   "C": "efcf7d490714f24a230fb87e5b0d3348",
+   "D": "3deecf5cadbb72ccb4ecdd3460348250"
+  }
+ },
+ "revalida_2024_2_q057": {
+  "statement_md5": "fa9fb09eaebb7408a5d369d6dae54847",
+  "options_md5": {
+   "A": "8a33571d0f6ce684d079413bda424a20",
+   "B": "ff0b01682b4a4c6fa6d82aa6645df4d9",
+   "C": "8f6c755471a4d6e3094a029a809c83ca",
+   "D": "46fae0d990988b23fba31b85e17629cc"
+  }
+ },
+ "revalida_2024_2_q066": {
+  "statement_md5": "5ad35b16636e955f7ff055b93b04f020",
+  "options_md5": {
+   "A": "6e287a15cb4ea8d3d907683e74d5beac",
+   "B": "e9fbde36949a478f34612253dd2b8c2c",
+   "C": "916a58eda985b36dbe0649c82c1583d4",
+   "D": "aaf3b04c9a40241af533d38bf67c9842"
+  }
+ },
+ "revalida_2024_2_q076": {
+  "statement_md5": "835d8e5f1e4791bb7e5515e2e63807f2",
+  "options_md5": {
+   "A": "a55d17c0780a4d32bc2caad4bc36e82d",
+   "B": "4adb7391ce3c3d51439f68ccd9e28d52",
+   "C": "40aee19fb2cdeb4078b655937b8ad910",
+   "D": "b441eb44b0482096fb70fa799e49295f"
+  }
+ },
+ "revalida_2024_2_q053": {
+  "statement_md5": "f313774bade13c56536557dd0a47d1cd",
+  "options_md5": {
+   "A": "7195578e674ce425a800b7fc097d1062",
+   "B": "5721f32335ec375abfa358293b65d97c",
+   "C": "51a867a8bef664c8ce58c404467f7e7b",
+   "D": "71d03e4919d91a8263bd0cf579a24201"
+  }
+ },
+ "revalida_2024_2_q092": {
+  "statement_md5": "1da557b067afc4b7a0c982dfd186a6dc",
+  "options_md5": {
+   "A": "afbe29b16bb1e434aceb888731845eba",
+   "B": "b882a642cc566b1bd4845c9e1ff751e1",
+   "C": "0352a1cd35d329024c32a05f496191af",
+   "D": "a1b6a80c99121846f585945e371489eb"
+  }
+ },
+ "revalida_2024_2_q044": {
+  "statement_md5": "6afdc9a7bd4c715894485d678d2f7329",
+  "options_md5": {
+   "A": "3abe27cffc972c69306ee3d54b4a3b5b",
+   "B": "77b3ad14e14ef41ea66a81ae4b6a665b",
+   "C": "65e1098b3be8adf5a197c97c567c38e1",
+   "D": "43ff03d5fa45ffdd87ee7c14b76304c5"
+  }
+ },
+ "revalida_2024_2_q027": {
+  "statement_md5": "a86a40335bdf0f6852a9067652140614",
+  "options_md5": {
+   "A": "f2f1d21baa24dea961cbedd06fe371cb",
+   "B": "a87dfc24171c1f81562bb6f8d6e7f274",
+   "C": "f74c693dcb87753ce074a6449ce7622f",
+   "D": "f9e485c5eb2681088614dc7a074a521a"
+  }
+ },
+ "revalida_2024_2_q037": {
+  "statement_md5": "4ce214b5fdff3f7d95fab0eaa83ddd75",
+  "options_md5": {
+   "A": "f1b3886b2152652f5db7cc6a6dc1eb1a",
+   "B": "2365b488ac723cab9c02c844189621aa",
+   "C": "3033e590a404f4d96f168f92b6775135",
+   "D": "db2bae38d7e9ccf422ef3f3a88bd7b5e"
+  }
+ },
+ "revalida_2025_1_q024": {
+  "statement_md5": "f4342caf2da46e38f1183b70f36d20e3",
+  "options_md5": {
+   "A": "a64cba96edfcbf383dcf9436f2b2304a",
+   "B": "3116e919b6bc3f963969d908a8c01052",
+   "C": "9987e8634bd7a81271830df150ebe4ef",
+   "D": "d31f6a3d4c4c8d57533ed60b82d1ec9d"
+  }
+ },
+ "revalida_2025_1_q083": {
+  "statement_md5": "e7eac0cc2a7e808f9afa479244a80dad",
+  "options_md5": {
+   "A": "a88c77fc9fd6e270800ecbe548b0bad7",
+   "B": "09e6c5a11aaa17d2a6cfce77de450649",
+   "C": "c52cb83eb867372870b56326d36a3588",
+   "D": "1d9ceba8d2052eb899ed5094ccf50951"
+  }
+ },
+ "revalida_2025_1_q047": {
+  "statement_md5": "dd550fd4499609c352a33161189f8bb8",
+  "options_md5": {
+   "A": "591d97f13062325caaa37d9e8651008a",
+   "B": "bee0d3435441771e63c68fd23eefc6b9",
+   "C": "9ffa8dff7ff9d84f741e426c6fd2692c",
+   "D": "f37f4b18b10cc0c98656d8834fb9b920"
+  }
+ },
+ "revalida_2025_1_q040": {
+  "statement_md5": "17f73154dfcd476e8e22931527b07560",
+  "options_md5": {
+   "A": "fed7865277f424fd2baa09cab1f1bf3f",
+   "B": "c33931ed09b0cf7ac9b0ddef46521f12",
+   "C": "57c637e206eff35f922a101888ce6992",
+   "D": "823b5718ce710872755dbe0a869ad7a1"
+  }
+ },
+ "revalida_2025_1_q001": {
+  "statement_md5": "d3b8def7abc0096a6e5e01d10f7283c9",
+  "options_md5": {
+   "A": "e3fdbaf9e157dfb558621c9f30480d42",
+   "B": "89bac5d3f949179405f090fe9f1176c2",
+   "C": "d9b02510cb99d8830c89a116aa5b9858",
+   "D": "77caf2cdfdaf0b788aab86d782c36562"
+  }
+ },
+ "revalida_2025_1_q070": {
+  "statement_md5": "8e97d4b62b54c23ecc086d0c666c13de",
+  "options_md5": {
+   "A": "7fe810acb6740b70e8f93ed5b1e2cf26",
+   "B": "057c602c0e350b21d02e16182c7ccb0c",
+   "C": "ad406da657eeb54c661199028e851736",
+   "D": "888782688d86009b57e2845e0f1e69f7"
+  }
+ },
+ "revalida_2025_1_q027": {
+  "statement_md5": "f3352d9a23ede1cc7c5744af42367783",
+  "options_md5": {
+   "A": "d3f6cbcac46b35a7dbcf240f4947babe",
+   "B": "16ae361676abe3136aec901736ed3942",
+   "C": "4f04da50b3cfb570d4d7326de4b5d0e8",
+   "D": "f532218144e2168bcee21f1450d00fad"
+  }
+ },
+ "revalida_2025_1_q029": {
+  "statement_md5": "9e3f5265ee507cc5001928f3163af84c",
+  "options_md5": {
+   "A": "43afd7b52f2d0e908b717afd6757a97e",
+   "B": "73d5796b6a2cd8ae6e406c9ec717eefc",
+   "C": "77ce2322d3344aaa28236d6712692169",
+   "D": "ee32fae01bf295eba267480afc2187c6"
+  }
+ },
+ "revalida_2025_1_q002": {
+  "statement_md5": "4b0fa8891a5b6f5fcdf1f151502455e7",
+  "options_md5": {
+   "A": "01dc0a0b33b74bbd2f0fd11789e70e3c",
+   "B": "3eeda1144eb317a153f81b09b8706d97",
+   "C": "f3ff92e24f9c1e1d6ee065019eb8c5eb",
+   "D": "509f042aa8fbace504bda97c7b626843"
+  }
+ },
+ "revalida_2025_1_q006": {
+  "statement_md5": "e1842b0f4bc00c2c631c014536034a4e",
+  "options_md5": {
+   "A": "d5d625417a2e9f2c7d722e778ecf1fe9",
+   "B": "94a121ed7995f2971d0a388a9aa0a459",
+   "C": "0747fda5d2a84592e653b5bcc5b9022f",
+   "D": "e6d18696579d6be44e5d6093b02ecb22"
+  }
+ },
+ "revalida_2025_1_q053": {
+  "statement_md5": "2a9616db7228bd1e3423a7f7529f66eb",
+  "options_md5": {
+   "A": "e48e861d11f2cbb3af868d7eaa6d4120",
+   "B": "3bb8e3db083feb99b80f6751318877da",
+   "C": "fdf1e0ee1fef8aecc3110a7d02f6c495",
+   "D": "9762751abbc307c6bed54b5a062a3f26"
+  }
+ },
+ "revalida_2025_1_q021": {
+  "statement_md5": "e445c9dfdd7d871b7e50d8b938cad7ae",
+  "options_md5": {
+   "A": "936d73abaf6ad911ec14e8a990cef14b",
+   "B": "3bba705b38699cd529030915c2cabd22",
+   "C": "c899d70ab6ee16dfd8b62b9e6b18c962",
+   "D": "ca6c69d02abc7892c65606f426e7f164"
+  }
+ },
+ "revalida_2025_1_q079": {
+  "statement_md5": "151a2ce3755e73152914667dc3e17855",
+  "options_md5": {
+   "A": "8bddcc1bf64069ab9bbc34c48fb81ead",
+   "B": "f46bf904aa73a1b8da4f09e6d9e3e604",
+   "C": "04f490952609bc06a4dd21a4da2aa4f8",
+   "D": "744488cfdb590c32145a510cc986aca5"
+  }
+ },
+ "revalida_2025_1_q054": {
+  "statement_md5": "eeb7cf62875543e2a053c3e1537503fe",
+  "options_md5": {
+   "A": "90aa7b7969bbdc9f9b458cf5158cd38c",
+   "B": "2267910ca202a0accc4efbfbb1133dd6",
+   "C": "8a31cd26e4a4cb7393f13db5fe376848",
+   "D": "769febf35fee052dd021b3f7df96cd3e"
+  }
+ },
+ "revalida_2025_1_q086": {
+  "statement_md5": "622be29be865b2a50c5392c9e870705e",
+  "options_md5": {
+   "A": "8fc78604bb2786c573854797101f0fac",
+   "B": "41112c00e3d9d5bafcfe6c60339e0ede",
+   "C": "89d8972ef38ad61708bd96d474a66d59",
+   "D": "66efe74fd2d8659fe13007f2b0b64c2e"
+  }
+ },
+ "revalida_2025_1_q051": {
+  "statement_md5": "bc14034143c574b2f60e60152801ab45",
+  "options_md5": {
+   "A": "d26dc55b351a9f656aa364e5fa26c279",
+   "B": "32fc5cd8bd8cffdfc4b5930698784d58",
+   "C": "1f08b2ffcf51ea2e660d4cd8c2e8f8ba",
+   "D": "c81a3eefd04dab20b609366fe03e8598"
+  }
+ },
+ "revalida_2025_2_q024": {
+  "statement_md5": "211fc777e5b5c341d77fbfb6116ec22e",
+  "options_md5": {
+   "A": "bf3a3502d054dd2aee00648d2f2517e8",
+   "B": "7d52537eb2c3fbd27c92a51fbab538ff",
+   "C": "5a0f800d480891a5d8a87d18beda30ba",
+   "D": "ef06eb259a95211f84966c64dc418f59"
+  }
+ },
+ "revalida_2025_2_q023": {
+  "statement_md5": "a67e7ad82b9f024802b2121cd25b8a9a",
+  "options_md5": {
+   "A": "f3d96f834f4b5eacc5e1f6dc100f04cc",
+   "B": "0ad9bfd7fcc2a360a2a8cc104e386e95",
+   "C": "d988e240604ad59041cf4c0ca9dd565c",
+   "D": "57eb6c3e0847417293820c5df3e4fd74"
+  }
+ },
+ "revalida_2025_2_q099": {
+  "statement_md5": "ae1e63dbc1e1f9246f1755e8ec828afb",
+  "options_md5": {
+   "A": "7be4f1756fe6df614f020a40187af426",
+   "B": "c711dd6a373b7bd5c4f0e0c7e081c05a",
+   "C": "64f3daa80c6bfb230353d107c8217854",
+   "D": "cb141d3efc39b2eca21a8c27d1471606"
+  }
+ },
+ "revalida_2025_2_q086": {
+  "statement_md5": "9ba90bb432c4ad6e883eefb791e60d1a",
+  "options_md5": {
+   "A": "2319f374b5cddd539649d947a78af634",
+   "B": "18e06b3455c75e88166aac58d2ff2dc9",
+   "C": "a4cd3d770d306a72ef3943cb97112aea",
+   "D": "faccfefa04bc8c9e9edae2d36991919c"
+  }
+ },
+ "revalida_2025_2_q058": {
+  "statement_md5": "f261fdb8b623094a05178712b66a16f4",
+  "options_md5": {
+   "A": "05e94cacb85048007e4432868d6d4357",
+   "B": "7f5064e5092a522ef03e5b93e38d2d97",
+   "C": "89187f26a83698f387a1f30ac790e2c7",
+   "D": "1564def85c1cc819f8be851ebc23f9a0"
+  }
+ },
+ "revalida_2025_2_q003": {
+  "statement_md5": "868eb48caf82de4c7e17dd3d74620bba",
+  "options_md5": {
+   "A": "430bf7c57a67e5e66562a05e417bf20f",
+   "B": "f69a977a8959b5ae2d2836d5ab26ba3b",
+   "C": "76170a41363f3720d5eabd4bdbeff556",
+   "D": "5ac925cd38ae924fbcd89a0ea1114e71"
+  }
+ },
+ "revalida_2025_2_q017": {
+  "statement_md5": "2709ad9e7d378c705cfed6a3070dd840",
+  "options_md5": {
+   "A": "5e076d6700cc3b4257005537eb49fe91",
+   "B": "78f391bae2409b39e407f47516b40822",
+   "C": "10202025c68be3a8f94cd117411b96f2",
+   "D": "b8c499d44f14dead90e9569bbcaeac15"
+  }
+ },
+ "revalida_2025_2_q065": {
+  "statement_md5": "18be1e2af2278ea7da6ab06984c6f076",
+  "options_md5": {
+   "A": "1969a76a7f22e4925f146dc0328fb7b4",
+   "B": "55f566893e02c7298b03b016a9cd582a",
+   "C": "892a8c8a4787305c5e220a746bfd8afc",
+   "D": "efb28fbc3ae7ebf3d2612d7948b724f6"
+  }
+ },
+ "revalida_2025_2_q076": {
+  "statement_md5": "6cc0d743f0f5f030c2ac4f4c608b5435",
+  "options_md5": {
+   "A": "5f1bae494aeccd44c366b108247faf56",
+   "B": "33f41aa0bfd12efd84e9376320274df3",
+   "C": "c0cb2b9d0170f2a4c8b926ab796620b9",
+   "D": "804cc43f033c76eb08137774ae757914"
+  }
+ },
+ "revalida_2025_2_q021": {
+  "statement_md5": "a102d17ddc99028c02c7d4c2cf605ca5",
+  "options_md5": {
+   "A": "df8e68dbeb3c7fac20d7000119854fd9",
+   "B": "d55e7bc0ce9e3c05a9626996882335b2",
+   "C": "be2119c07bdd09750353f317d2aca7a9",
+   "D": "70badaf78c27cf81bfbcc4eb7bbc31da"
+  }
+ },
+ "revalida_2025_2_q041": {
+  "statement_md5": "fbd1b9a0e3959b5209b54bf92215f7ca",
+  "options_md5": {
+   "A": "770934e865ff093b9d4e5f058957118d",
+   "B": "712abee22a4cfd127249d1e47e8d9857",
+   "C": "992349606402a485d960b87010ac1ce4",
+   "D": "4ddbabc09993b26c2847f65bb787e8bb"
+  }
+ },
+ "revalida_2025_2_q020": {
+  "statement_md5": "223d629299243a9ab39895e5eefe1c0f",
+  "options_md5": {
+   "A": "351c42bcf10c2ed23fa133171bb8da89",
+   "B": "a4109d63de7ca5868367335c4336c397",
+   "C": "7a1e831260842bb98fca319a8e646a9b",
+   "D": "6234e10c9071acceada0d8c78a7e1488"
+  }
+ },
+ "revalida_2025_2_q046": {
+  "statement_md5": "cf8f48ad7649669b3ae9a6e2db7263a5",
+  "options_md5": {
+   "A": "c7f781d47cb4e4f2dd6d0be77505e00f",
+   "B": "efbce32c8a7a2de568a479b040734218",
+   "C": "127fe5c8924245ef395b5a6498272b01",
+   "D": "fc575db2b95b62aa6fb51b449422665b"
+  }
+ },
+ "revalida_2025_2_q015": {
+  "statement_md5": "31b3c039978e1524d646f5ddbc0b544c",
+  "options_md5": {
+   "A": "a3043d0c0fda3e26472c38cafba4208c",
+   "B": "87fa3f536878467d16103d7340f19861",
+   "C": "bedd2a7db31e12786612eb7e95a574d3",
+   "D": "5fd523a6fd3094824fc9ce601e9a70de"
+  }
+ },
+ "revalida_2025_2_q038": {
+  "statement_md5": "cc85fcd85d4a603e083f5459582588c0",
+  "options_md5": {
+   "A": "7f56b9827dd972e447550414dad5a488",
+   "B": "f3ff92e24f9c1e1d6ee065019eb8c5eb",
+   "C": "37f138ad43a0904dbe9d1e8a570639c1",
+   "D": "1984e01002325c6cccc61ec7a55458e8"
+  }
+ },
+ "revalida_2025_2_q097": {
+  "statement_md5": "1dffbd08fe5b9fda914df15076f4aa14",
+  "options_md5": {
+   "A": "39c5731e8462f1b4ae03518dd145129b",
+   "B": "6b6c2c03a348e2ab00d332e394b72da3",
+   "C": "72dc7fc06504b0aa4ced7b698e246407",
+   "D": "438a3ce8ffe458caf78f8d48a5090ed4"
+  }
+ },
+ "revalida_2025_2_q060": {
+  "statement_md5": "a2e83a9416ed72d34575804bd2b96f78",
+  "options_md5": {
+   "A": "72df3f94eaabe75c16c29b1a628631b0",
+   "B": "3428a76df8f9ab2456874f6b62b187e8",
+   "C": "4aae7e9ec207239cf6278c7511ed8654",
+   "D": "da9249558db9779b12167496f4529db5"
+  }
+ },
+ "revalida_2025_2_q062": {
+  "statement_md5": "6cf518a3936ea9ae923f00e1a1987bb0",
+  "options_md5": {
+   "A": "39522034d1c8f671b95edb7715e6823d",
+   "B": "2ec418a2cf6581d2244b2f24bbbbf251",
+   "C": "a47d61f2a4ee779b6471467510e0fcdd",
+   "D": "1cb2f139e8c2e31e71bb5095d6d8bdc2"
+  }
+ },
+ "revalida_2025_2_q043": {
+  "statement_md5": "4327b7076567dc659be3b385c2777d6e",
+  "options_md5": {
+   "A": "976dc702a91529526680c7a6d50053fa",
+   "B": "f2a54d666fe5347b450a6c668f373e6e",
+   "C": "75ebe9958b8e5b2b3f5265d6ffa06c9b",
+   "D": "924a1af56f8b9c5ba5228c06318d6832"
+  }
+ },
+ "revalida_2025_2_q012": {
+  "statement_md5": "97035b226ef50c97ac4a44d49b43ce69",
+  "options_md5": {
+   "A": "385a53a7fd88b9fa1dbabf592038b304",
+   "B": "c31871585eb50bc059ed3a99e1974c7c",
+   "C": "a9cdae6e5b6a1d2bd7fa7c39c535eec9",
+   "D": "f6d169d5fd4a600572e553e4971de96f"
+  }
+ },
+ "revalida_2025_2_q042": {
+  "statement_md5": "b70e00d9433957e59e86be91452b495f",
+  "options_md5": {
+   "A": "f730052d70c3d3ebf544a59589c3302e",
+   "B": "5264ea7e0a56b4add388d671d22990a3",
+   "C": "238497d61fbf42e95509945b5a2f64bd",
+   "D": "9b66a36cbe78172598eed22d7501ed79"
+  }
+ },
+ "revalida_2025_2_q039": {
+  "statement_md5": "52816083990f69945539ded5a8a1f898",
+  "options_md5": {
+   "A": "fc0b0e3efb267c5d47b04bfce69f22e1",
+   "B": "295d4c7824cca35442f766dc4d52977e",
+   "C": "003f4caaa4af82893af59376862548f2",
+   "D": "8291a2181946268533339406f3f55a7d"
+  }
+ },
+ "revalida_2025_2_q010": {
+  "statement_md5": "081257464482d2b18166787f08ab3800",
+  "options_md5": {
+   "A": "47b67e6236fa4026e144c1ef3df85f11",
+   "B": "e1b054516e9cc0f502d9c68a77e48be0",
+   "C": "cc36375a7f9d1b7504fe2006a87f50e7",
+   "D": "3acbfcf7917a92935ff5eb3dfa22317a"
+  }
+ },
+ "revalida_2026_1_q018": {
+  "statement_md5": "c1d78ff77abd1656901780c8c34df63f",
+  "options_md5": {
+   "A": "d8e82bc618eeead7797fc09a5fab6477",
+   "B": "7b47255f8852379dc29d3b7de9a53b6e",
+   "C": "f411434cd6fe357a966c20e6bdc1d66f",
+   "D": "22a4dcbf8eb25d829bada9f924934edd"
+  }
+ },
+ "revalida_2026_1_q015": {
+  "statement_md5": "633b1abfadabee367a00339521b8a3e4",
+  "options_md5": {
+   "A": "c37dcaa06ec5893076919d7f2e919917",
+   "B": "81d7c747f0ed4d393e014e53a73daac5",
+   "C": "b96dc9edfc8e5179d1d28aa1971c67d2",
+   "D": "fe87837249754d64551e479d0adc5951"
+  }
+ },
+ "revalida_2026_1_q065": {
+  "statement_md5": "603f623069d187417d02953ba484b681",
+  "options_md5": {
+   "A": "4d6e7f522aa8e939b8fb7f9c4c70a7eb",
+   "B": "ea6ab9cf741e3afbb9eb2d0b0f9f12ab",
+   "C": "3b5dff7a4aca3a0ba95479ff82c3da18",
+   "D": "952eabf38f1ac1286bff1ef51a8f24ec"
+  }
+ },
+ "revalida_2026_1_q091": {
+  "statement_md5": "3e867b6ff0133bf11f92a7e3b7869976",
+  "options_md5": {
+   "A": "e1c7905f56c7da655438b444a376799d",
+   "B": "40dd0173f072159bfac790fe895c73e9",
+   "C": "6469f767b3eda742705435c5495862b2",
+   "D": "0cba39a2dfc4209edabeec1b1983f2ab"
+  }
+ },
+ "revalida_2026_1_q017": {
+  "statement_md5": "5bd453bef7b65988c35c43280f24e9f4",
+  "options_md5": {
+   "A": "c60ab3a1db715f28f13283615611820a",
+   "B": "fbfcce163c298e8034ae7711cc5e5759",
+   "C": "34cf079615556ce0d6c499ec32f0f46a",
+   "D": "63e9707b1dbb90d8d46237953f8873e3"
+  }
+ },
+ "revalida_2026_1_q051": {
+  "statement_md5": "3b3dd45c55dd182e0f7f2e9fab9e898a",
+  "options_md5": {
+   "A": "d73c5c7b0c88ec559e06beafbf990eff",
+   "B": "2e96efdffd7e0612dc38d382b1c82f8c",
+   "C": "bbac9cb440c64792e899fbb29cfd84cc",
+   "D": "d80d28a8700cc1c69e7662be499aff18"
+  }
+ },
+ "revalida_2026_1_q076": {
+  "statement_md5": "8edd48ae767528218177e6655a4dd435",
+  "options_md5": {
+   "A": "41b07cbb2f9f35dd9da6eb2a046771df",
+   "B": "8e4320d239d8d429067aa5f8d19003a8",
+   "C": "1465d851b79d0ef282b1629fb1e88ad6",
+   "D": "a1c3068d5fc05e6f4db5895dff04dae1"
+  }
+ },
+ "revalida_2026_1_q056": {
+  "statement_md5": "1068c23af6792fbc738ebeb03b3077c0",
+  "options_md5": {
+   "A": "e888df00d836fd35c0afc1d9a4c67dc0",
+   "B": "0c2a08968542a728a086b3f55b6a65ab",
+   "C": "396521ed2476c4195e7320254a1c6b20",
+   "D": "d709091c9d664a5f6462d24d9dc90046"
+  }
+ },
+ "revalida_2026_1_q020": {
+  "statement_md5": "decfbc6e7ad673bcd5486031483921a7",
+  "options_md5": {
+   "A": "5fad1172263c784d600c72605674fe4c",
+   "B": "d4dc17e8b87ca05cefa38ed0d4a73333",
+   "C": "f168a17f8f793609ab2ffb503f29825c",
+   "D": "c3ee775e944ea7994b2b0460a8e39c48"
+  }
+ },
+ "revalida_2026_1_q024": {
+  "statement_md5": "195b2eaa2c025e1febc608b39fb6a651",
+  "options_md5": {
+   "A": "302417afa7deb5189694684cf9558ca8",
+   "B": "b5c16e544991ec86a40f83914164332a",
+   "C": "b1e5e52e986015e8f7deb3d541838f3b",
+   "D": "217e80c90f8d70d14d968d15bc54a349"
+  }
+ },
+ "revalida_2026_1_q021": {
+  "statement_md5": "3bae0fae53edb0edea3c67d330412eb9",
+  "options_md5": {
+   "A": "5835c57d935c8b4330ff74d82648235e",
+   "B": "e2c208765c77fec80fa751809856f119",
+   "C": "daa5af81d9626668b8ad32704c33e41c",
+   "D": "8871f9346c2bda8707e065fb0b0cf057"
+  }
+ },
+ "revalida_2026_1_q003": {
+  "statement_md5": "0e81575bec3f8644109dcf880835e4fc",
+  "options_md5": {
+   "A": "388dd25403762673a87b2a4758ae374d",
+   "B": "3bf7d0b47f723666b92a0a4c054802d9",
+   "C": "48193fd56b912b3e7c740eb75994c650",
+   "D": "4ad5989f4022b6f835bae3110cf19cdd"
+  }
+ },
+ "revalida_2026_1_q014": {
+  "statement_md5": "7e415f2c70a6c42a2796575a34e0e7e8",
+  "options_md5": {
+   "A": "b5750ec9de1cf3e181b1a5832336b472",
+   "B": "8cfe99ae147fc67d6a14539e325245db",
+   "C": "d31581039bf346268bf98a8946a02bc7",
+   "D": "dcab5f62c2f813e7a41a96d0279b51f4"
+  }
+ },
+ "revalida_2026_1_q072": {
+  "statement_md5": "2a622a208065a941829bb2bb644688df",
+  "options_md5": {
+   "A": "5fdea398cad5a61d6fdf07134057ad04",
+   "B": "add3d4dc292e813664db38c267809362",
+   "C": "41bd6df5123be5d0f78248ec8f5f52f3",
+   "D": "09cee85fc7540bc2c8000dfb29d03d9c"
+  }
+ },
+ "revalida_2026_1_q010": {
+  "statement_md5": "471dc912ad4e1b2625933df4c6c60abe",
+  "options_md5": {
+   "A": "7d807246c2238a86953562d254f6748f",
+   "B": "453aec5d4dedc8130bce0207f48e425f",
+   "C": "14b63e0a4cb3002170a1b17b9fb856fb",
+   "D": "10d1353370c62a1e9dd6b473ec5eb1aa"
+  }
+ },
+ "revalida_2026_1_q066": {
+  "statement_md5": "2b182fd27f51670e8c7020f638bbc21d",
+  "options_md5": {
+   "A": "cde3e7a405b057cebd61dd35c09e62f6",
+   "B": "f708684939dbedf2b9c216ee160f6921",
+   "C": "72da5a15685098980c1cb96ad50e1fe3",
+   "D": "92d9f576d1f83b8e6e4284b096243106"
+  }
+ },
+ "revalida_2026_1_q045": {
+  "statement_md5": "656d73417a5271f2d58c2ecc0448df8a",
+  "options_md5": {
+   "A": "f375b422e2b2d978aebffac8d2c76456",
+   "B": "6bd1336ead3114df640543aa1c416608",
+   "C": "b8969bdce55911a1119ed48c5cd124b6",
+   "D": "5a29cea2eee509f072b3ea7a39eb481c"
+  }
+ },
+ "revalida_2026_1_q008": {
+  "statement_md5": "b7ab8eff1f08ce5ae89686d6329c8635",
+  "options_md5": {
+   "A": "74bafd9a38dd235a598ee0c37a762daf",
+   "B": "b8583fb3788934537e4307b715b77c2a",
+   "C": "dc243654683a86693b6ea5345647996e",
+   "D": "b430357de1617bbf003f37ed00dd0515"
+  }
+ },
+ "revalida_2026_1_q073": {
+  "statement_md5": "c04aa98a5d101fc0a9009e167fd362ec",
+  "options_md5": {
+   "A": "46c7065aff5b1a6b19da63140f92d0f2",
+   "B": "ef86003572784087c93a79ee136a20f6",
+   "C": "220b0cf9809db5c0cd16c9e3bb3cf9fe",
+   "D": "70e1007270d34fd79afc1787a68c8601"
+  }
+ },
+ "revalida_2026_1_q049": {
+  "statement_md5": "bb7ff7d9524843f6ecc2679c936d9669",
+  "options_md5": {
+   "A": "d5e2a4a242aebd7170398113cadf4aa7",
+   "B": "d8c56d69edd9f7e2157431664aea0e6c",
+   "C": "db8b78fc35d662a967da7815f8b803e2",
+   "D": "d48a06e044381b52e08017c4fc03282b"
+  }
+ },
+ "revalida_2026_1_q057": {
+  "statement_md5": "8d6efe27fe890a4417ee8020d541596e",
+  "options_md5": {
+   "A": "b7706e0b149cd93d08971d0c7b27a836",
+   "B": "17906623d511100b2c64e11ff2c06373",
+   "C": "33db1b0c615cfc33eb45018a66c029aa",
+   "D": "3473880ffa836d0f016f888a30a7bbd5"
+  }
+ },
+ "revalida_2026_1_q069": {
+  "statement_md5": "4f096ec55fa6c72ba9d3d02a43caaa97",
+  "options_md5": {
+   "A": "87c7f213ce27e50f4dcdef14004bc9ca",
+   "B": "99f084440d32380b28efcf324c2832a1",
+   "C": "08a8cfb9f4706af4b1eac27b0fa60733",
+   "D": "79431cc1da3c4599bcfece609e427344"
+  }
+ },
+ "revalida_2026_1_q046": {
+  "statement_md5": "96ea843290c1f84d44437db1ea8cc2a6",
+  "options_md5": {
+   "A": "f9d47f1ec230b784ff4c1db70ceb5fd9",
+   "B": "f110982cdbe2c262cbd4c2dd94ecb8fc",
+   "C": "b139458d2a5258770f9fce16af6682a0",
+   "D": "0a45f61f9f39c2b0b20966f4778d37b2"
+  }
+ },
+ "revalida_2026_1_q040": {
+  "statement_md5": "2eb3a21906bcdd7f1107169ba9bca1d2",
+  "options_md5": {
+   "A": "251093bba995330dcc6fb818480421ca",
+   "B": "2f6a23d96d695698fa11026a1d4b71d1",
+   "C": "d9773153c33244db9aa82509ac7e6b27",
+   "D": "eff50284320a64f3b77955a114b01bc5"
+  }
+ },
+ "revalida_2026_1_q047": {
+  "statement_md5": "ebf0e387bf037d02447f1d7de2e5e40e",
+  "options_md5": {
+   "A": "cf6522b0e84a08a9d8efef9ba3c92674",
+   "B": "ffead9a6695f74f86f65e6b3c3dd037d",
+   "C": "37ee391c9e79908c9b1c6d7b2e1496bb",
+   "D": "e47be56947400241a296984572115734"
+  }
+ },
+ "revalida_2026_1_q096": {
+  "statement_md5": "42c905ac177f68e3cbb3746bfe83e47b",
+  "options_md5": {
+   "A": "e203161fc848309acd957482d594cf37",
+   "B": "a5d1206f956b4f88e466726930337618",
+   "C": "6e69c1b8922c91ffeed43c8861056fb3",
+   "D": "3bf4aa005962717e69255e3a84aaad73"
+  }
+ },
+ "revalida_2026_1_q100": {
+  "statement_md5": "75b1bd572ebd2d2eb094b1c8c56d0d9c",
+  "options_md5": {
+   "A": "cd9786dba44584c9788e28365b8edf8f",
+   "B": "eb29b28ede6c3606035cd83636eeae3a",
+   "C": "e45f22c940c5a6047f53ffdc8b663227",
+   "D": "dd5dcf8704880c80328f9dc014f58e62"
+  }
+ },
+ "revalida_2026_1_q093": {
+  "statement_md5": "984303f6bef0853e0ec9c17f5d90d918",
+  "options_md5": {
+   "A": "8b2936e05e804c61230c96cae24a93b3",
+   "B": "4e1e2b2613104ec1d802a01639bc32e4",
+   "C": "24b851ec58822cd1938ccc102f1cf156",
+   "D": "86590b89dacd74e7da599eea22ed76c3"
+  }
+ },
+ "revalida_2026_1_q029": {
+  "statement_md5": "028e0ce72834848e75e845a12dbc3b8f",
+  "options_md5": {
+   "A": "b1fdadd12aa888c092326df301c4ca9d",
+   "B": "8784b8484b7203988027f312830cb63a",
+   "C": "3d516a10f73706a3eb69073ea39cd2e7",
+   "D": "80e285716b18a9ba4541063801cc23d9"
+  }
+ },
+ "revalida_2026_1_q009": {
+  "statement_md5": "d296117a3edade5688bddbb9e876c030",
+  "options_md5": {
+   "A": "28558b515a915687cf05f6ffaece3be6",
+   "B": "642b3caed674f8792c04303a36599bd5",
+   "C": "3cbe0ae00f502200b27feb18175aaee5",
+   "D": "7936c0b04827ed828e427c8cb83c3948"
+  }
+ },
+ "revalida_2026_1_q007": {
+  "statement_md5": "f38557cb8ae21f71e7e5a1dba9fbe221",
+  "options_md5": {
+   "A": "01373e117ddd68b2c126d36bf06cbf09",
+   "B": "cbcd0a47aabd84a7bb46146c77eb76b4",
+   "C": "6d0e52207a98673d3fa91be7191cd005",
+   "D": "2e01f4a213fb007886317a9689d7180b"
+  }
+ },
+ "revalida_2026_1_q094": {
+  "statement_md5": "2b3793f791c140e3d65116ff7155184d",
+  "options_md5": {
+   "A": "69539028928ba7c2d744d156e499a595",
+   "B": "de6e0a52dea1b9f02000f67a6e7288e0",
+   "C": "cdcca675e95e7a776fbef2aa82d352df",
+   "D": "0469177b8fa80616945c01e440cb36eb"
+  }
+ },
+ "revalida_2026_1_q031": {
+  "statement_md5": "7d8270aced44a8ff32adcd904e2ffdc2",
+  "options_md5": {
+   "A": "ce1a0b8d85c3a653e83bf75781fdcf59",
+   "B": "f27dd65e59ce96489db175a15c8c90bf",
+   "C": "c2c200e67b2cc18a3db20642ff9be4b6",
+   "D": "763a2b693b2442db4ce029980754206a"
+  }
+ },
+ "revalida_2026_1_q023": {
+  "statement_md5": "60334cae29c1230e176faee89065d6b3",
+  "options_md5": {
+   "A": "ec6463e17fc8c9e43724ab2e55e995bb",
+   "B": "ad3c66f6acef5285ba4d3c86970f0786",
+   "C": "6feb17e0e96a921f30e67a58ef1e304c",
+   "D": "b5af82b1dd168b1731eaab90c276922f"
+  }
+ },
+ "revalida_2026_1_q087": {
+  "statement_md5": "6cfcfd05bfc1b29cb46b314ca1827fb4",
+  "options_md5": {
+   "A": "2100bfb5bf88b815cc9c78bcf3b3a33d",
+   "B": "1fa3edf58ca90ba0aef63ca75e83adae",
+   "C": "e5cacfc5f18cf8ab1d41ed81a5e0d68f",
+   "D": "8db4a6eac8e1e344dba211aa38b022ff"
+  }
+ },
+ "revalida_2026_1_q004": {
+  "statement_md5": "af7d83cb2512118b493a47fc4acaf520",
+  "options_md5": {
+   "A": "e5e82e87ab19b1b726d12c299effca13",
+   "B": "4b76db2b5bf27bc97c01cb2ec662c175",
+   "C": "a1a302dd3a9b64d1d05b062669a735bb",
+   "D": "70ddef52d823978dd7ef88980d0ddfcc"
+  }
+ },
+ "revalida_2026_1_q095": {
+  "statement_md5": "84503f6f6e2a3362581bfb6aff8e5f9d",
+  "options_md5": {
+   "A": "5526576099019fc817a9a1dfc5eaffbe",
+   "B": "ed52f6cea6d1090fda6e596e6c846583",
+   "C": "2b76694e2e62e4e169866d08061c7a5a",
+   "D": "6e02b312af7cd51dc3ce9f13d0dbc189"
+  }
+ },
+ "revalida_2026_1_q059": {
+  "statement_md5": "dd9ffadce2ff9515a6b4de14ca81773d",
+  "options_md5": {
+   "A": "e8113e3abc26612107b8bfa886fea2aa",
+   "B": "6a6d223479dcfda45608e8f7dce39bbf",
+   "C": "bb7f96723460ca0ace5a9fa01f067cec",
+   "D": "94aa47ecb9f470054fa7787b0e3ae01c"
+  }
+ },
+ "revalida_2026_1_q032": {
+  "statement_md5": "9782f911f04a9e1613926a7968c2c281",
+  "options_md5": {
+   "A": "8f0ad483727667cbd014a7fa1982d49a",
+   "B": "e6d7f57c2fb4d555a8bb3b9166d5a7ec",
+   "C": "cb7e600db32c7ab485568541bff29312",
+   "D": "3f4f5ad02cb8e26438896ee5b05620db"
+  }
+ },
+ "revalida_2026_1_q026": {
+  "statement_md5": "a93c8f0db41a3ff6622333e29a682c53",
+  "options_md5": {
+   "A": "8a73ee276d3accd1beb4ecc1be1748fc",
+   "B": "4258cefc3cfc7ee347ce08d86b64c328",
+   "C": "e38aa2c1e717053df5d99cb19e6717b5",
+   "D": "8ccab1a215cebf2b6202937980a5c169"
+  }
+ },
+ "revalida_2026_1_q068": {
+  "statement_md5": "1adc1c2085f75a432a5927cf5a4b750c",
+  "options_md5": {
+   "A": "00f0839cbfbb02970a1d54650a381328",
+   "B": "6fac60e99b806b66e66788d44fea4365",
+   "C": "55edf417386e334fb7f3a05211a53c59",
+   "D": "31fca3bd748a00102d94dd4d7d2a576c"
+  }
+ },
+ "revalida_2026_1_q081": {
+  "statement_md5": "c3e05941895b4389eeece7064075c436",
+  "options_md5": {
+   "A": "05a996de3d959846287ab906c40d61b0",
+   "B": "3fbda1b4804bddc5f838b1635eb261ff",
+   "C": "79c1e5f07d839e4eac573ba4b930a73a",
+   "D": "c487b4e919dc7a08704791fca46e90ac"
+  }
+ }
+}

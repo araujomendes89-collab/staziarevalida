@@ -50,9 +50,9 @@ export interface Brand {
 /** Identidade a partir do Design System StaziaMed (cores e tipografia dos tokens; logo em public/novo-assets). */
 export function loadBrand(): Brand {
   const pending: string[] = [];
-  const logoPath = path.join(ROOT, "public/novo-assets/logo-horizontal.png");
+  const logoPath = path.join(ROOT, "public/brand/horizontal-480w.png");
   const logo = fs.existsSync(logoPath) ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}` : null;
-  if (!logo) pending.push("Logo horizontal não encontrado em public/novo-assets/logo-horizontal.png.");
+  if (!logo) pending.push("Logo horizontal não encontrado em public/brand/horizontal-480w.png.");
   // Plus Jakarta Sans (licença SIL OFL, em server/contentHub/fonts); CONTENT_HUB_FONT_DIR troca a pasta
   const fontDir = process.env.CONTENT_HUB_FONT_DIR || path.join(ROOT, "server/contentHub/fonts");
   let fontFaces = "";
@@ -105,7 +105,7 @@ export function lessonHtml(content: any, meta: RenderMeta, brand: Brand): string
 @page{size:A5;margin:16mm 13mm 18mm}
 body{font-size:11pt;line-height:1.55}
 header{border-bottom:2px solid var(--teal-500);padding-bottom:10px;margin-bottom:14px}
-header img{height:28px;display:block;margin-bottom:10px}
+header img{height:34px;width:auto;display:block;margin-bottom:10px}
 .overline{font-size:8pt;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal-700)}
 h1{font-size:18pt;line-height:1.2;margin:4px 0 6px;font-weight:800}
 .meta{font-size:8.5pt;color:var(--gray-600)}
@@ -116,7 +116,7 @@ p{margin:0 0 8px}
 .refs h2{color:var(--navy-900)}
 .refs li{font-size:8.5pt;color:var(--gray-600);margin-bottom:4px}
 </style></head><body>
-<header>${brand.logo ? `<img src="${brand.logo}" alt="StaziaMed">` : ""}<div class="overline">Aula StaziaMed</div><h1>${esc(content.title ?? meta.title)}</h1>
+<header>${brand.logo ? `<img src="${brand.logo}" alt="StaziaMed Revalida">` : ""}<div class="overline">Aula StaziaMed</div><h1>${esc(content.title ?? meta.title)}</h1>
 <div class="meta">${esc(content.label ?? "Material StaziaMed")} · conteúdo original, não é material oficial do Inep · versão ${meta.version} de ${esc(dateBr(meta.revisedAt))}</div>
 ${content.scope_note ? `<div class="scope">${esc(content.scope_note)}</div>` : ""}</header>
 ${sections}
@@ -128,7 +128,7 @@ export function cardsHtml(content: any, meta: RenderMeta, brand: Brand): string 
   const cards = content.cards ?? [];
   const pages = cards
     .map(
-      (c: any, i: number) => `<article class="card"><div class="top">${brand.logo ? `<img src="${brand.logo}" alt="StaziaMed">` : ""}<span>${esc(content.title ?? meta.title)}</span></div>
+      (c: any, i: number) => `<article class="card"><div class="top">${brand.logo ? `<img src="${brand.logo}" alt="StaziaMed Revalida">` : ""}<span>${esc(content.title ?? meta.title)}</span></div>
 <div class="body" data-card="${i}"><p>${esc(c.text)}</p></div>
 <div class="foot">${esc(content.label ?? "Card StaziaMed")} · versão ${meta.version} de ${esc(dateBr(meta.revisedAt))} · ${i + 1}/${cards.length}</div></article>`
     )
@@ -137,7 +137,7 @@ export function cardsHtml(content: any, meta: RenderMeta, brand: Brand): string 
 @page{size:108mm 135mm;margin:0}
 .card{width:108mm;height:135mm;padding:9mm 8mm;display:flex;flex-direction:column;break-after:page;background:#fff;border-top:3mm solid var(--teal-500)}
 .top{display:flex;flex-direction:column;gap:4mm;font-size:9pt;font-weight:700;color:var(--teal-700);text-transform:uppercase;letter-spacing:.06em}
-.top img{height:22px;align-self:flex-start}
+.top img{height:28px;width:auto;align-self:flex-start}
 .body{flex:1;display:flex;align-items:center;overflow:hidden}
 .body p{font-size:15pt;line-height:1.4;font-weight:600;margin:0}
 .foot{font-size:7.5pt;color:var(--gray-600);border-top:1px solid var(--gray-200);padding-top:3mm}

@@ -1,0 +1,886 @@
+{
+  "esquema": 1,
+  "slug": "tuberculose-pulmonar",
+  "codigo": "GR-001",
+  "area": "cm",
+  "titulo": "Tuberculose pulmonar",
+  "subtitulo": "Da tosse persistente ao controle dos contatos",
+  "emblema": "pulmao",
+  "revisao": {
+    "status": "pre-revisado por agente",
+    "origem": "Aula GR-001 versao 4 (pacote 2026-10-15-aulas-corrigidas), afirmacoes TB01 a TB114",
+    "gerado_em": "2026-10-15",
+    "aprovacao_humana": null,
+    "pendencias": [
+      "Data de incorporacao do BPaLM citada pelo dono (06/10/2026) NAO verificada: a aula traz apenas o documento de 24/08/2026; data omitida do mapa.",
+      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): rótulo \"Rifampicina detectada\" corrigido para \"Resistência à rifampicina detectada\" (o que é detectado é a resistência)."
+    ]
+  },
+  "ramos": [
+    {
+      "id": "suspeita",
+      "titulo": "Suspeita clínica",
+      "cor": "azul",
+      "icone": "estetoscopio",
+      "revisao": {
+        "itens": [
+          "Tosse há 3 semanas ou mais: investigar TB",
+          "Febre vespertina, sudorese, emagrecimento",
+          {
+            "t": "Grupos de risco: tosse de qualquer duração",
+            "tom": "atencao"
+          },
+          "Contato com caso de TB reforça a suspeita"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Quem investigar",
+          "itens": [
+            "Sintomático respiratório: tosse por três semanas ou mais, com exames bacteriológicos.",
+            "Em cinco grupos o tempo de tosse não importa: privados de liberdade, profissionais de saúde, pessoas vivendo com HIV, pessoas em situação de rua e indígenas."
+          ]
+        },
+        {
+          "titulo": "Diferenciais",
+          "itens": [
+            "Pneumonias, micoses pulmonares, sarcoidose e carcinoma brônquico, entre outros."
+          ]
+        },
+        {
+          "titulo": "BCG não afasta TB",
+          "itens": [
+            {
+              "t": "A cicatriz de BCG não afasta tuberculose pulmonar: a vacina não protege contra a forma pulmonar.",
+              "tom": "alerta"
+            },
+            "Ela evita as formas mais graves (miliar e meníngea) em menores de 5 anos."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Febre vespertina, sudorese noturna, emagrecimento, cansaço",
+            {
+              "t": "Privados de liberdade, profissionais de saúde, HIV, situação de rua, indígenas: tosse de qualquer duração",
+              "tom": "atencao"
+            }
+          ]
+        }
+      ],
+      "claims": [
+        "TB01",
+        "TB02",
+        "TB34",
+        "TB35",
+        "TB85"
+      ]
+    },
+    {
+      "id": "transmissao",
+      "titulo": "Transmissão e contágio",
+      "cor": "ciano",
+      "icone": "virus",
+      "revisao": {
+        "itens": [
+          "A forma pulmonar é a que transmite",
+          "Tratamento adequado reduz a transmissão",
+          "Em geral, após 15 dias, muito reduzida",
+          "BCG não protege da forma pulmonar"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "O que a aula sustenta",
+          "itens": [
+            "A transmissão está associada à forma pulmonar.",
+            "Com o tratamento adequado a transmissão diminui e, em geral, após 15 dias já está muito reduzida.",
+            "A BCG evita as formas graves (miliar e meníngea) em menores de 5 anos, mas não a pulmonar."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Com tratamento adequado, a transmissão cai",
+            "Em geral, após 15 dias de tratamento está muito reduzida"
+          ]
+        }
+      ],
+      "claims": [
+        "TB24",
+        "TB34",
+        "TB85"
+      ]
+    },
+    {
+      "id": "diagnostico",
+      "titulo": "Diagnóstico",
+      "cor": "azul",
+      "icone": "microscopio",
+      "revisao": {
+        "linhas": [
+          {
+            "rotulo": "Imagem",
+            "itens": [
+              "Radiografia de tórax na suspeita",
+              {
+                "t": "Nenhuma imagem é patognomônica",
+                "tom": "atencao"
+              }
+            ],
+            "icone": "pulmao"
+          },
+          {
+            "rotulo": "Caso novo",
+            "itens": [
+              "TRM-TB: exame de escolha",
+              "Sem TRM-TB: baciloscopia + cultura"
+            ],
+            "icone": "microscopio"
+          },
+          {
+            "rotulo": "Cultura com TS",
+            "itens": [
+              "Sempre: HIV, criança, extrapulmonar",
+              "Demais: TRM-TB positivo/persistência"
+            ],
+            "icone": "tubo"
+          }
+        ],
+        "fluxo": [
+          {
+            "t": "TRM-TB",
+            "tom": "diag"
+          },
+          {
+            "t": "MTB detectado, sensível: esquema básico",
+            "tom": "conduta"
+          },
+          {
+            "t": "Resistência à rifampicina: terciária já",
+            "tom": "alerta"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Como ler o TRM-TB no caso novo",
+          "itens": [
+            "MTB detectado e rifampicina não detectada: TB sem resistência à rifampicina; iniciar esquema básico e reavaliar com a cultura e o TS.",
+            {
+              "t": "Resistência à rifampicina detectada: encaminhar imediatamente à referência terciária (conduta em até 7 dias), sem aguardar os novos exames.",
+              "tom": "alerta"
+            },
+            "MTB não detectado e sintomas que persistem: cultura com TS e seguir investigando (micobactéria não tuberculosa, micoses sistêmicas).",
+            "MTB não detectado e sintomas que cessam: TB excluída (nas populações do fluxograma)."
+          ]
+        },
+        {
+          "titulo": "Exceções: o negativo não exclui",
+          "itens": [
+            {
+              "t": "Em pessoas vivendo com HIV, crianças menores de 10 anos e TB extrapulmonar, MTB não detectado não exclui TB ativa: continuar com cultura.",
+              "tom": "alerta"
+            },
+            "Traços: pouco material genético e resistência não avaliada. Na população geral não confirma TB; conta como positivo só em HIV, crianças e extrapulmonar.",
+            "Resistência à rifampicina indeterminada: positivo para TB com resistência inconclusiva; repetir o teste em nova amostra."
+          ]
+        },
+        {
+          "titulo": "Retratamento",
+          "itens": [
+            "O TRM-TB detecta bacilos vivos ou mortos: não confirma sozinho; serve para identificar resistência à rifampicina.",
+            "Diagnóstico pela baciloscopia e/ou cultura. Antes de reintroduzir o esquema: baciloscopia, TRM-TB, cultura com identificação de espécie e TS."
+          ]
+        },
+        {
+          "titulo": "Em todo caso",
+          "itens": [
+            {
+              "t": "Oferecer teste de HIV a toda pessoa com TB.",
+              "tom": "conduta"
+            }
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "TRM-TB: exame de escolha (detecta o bacilo e triagem de resistência à rifampicina)",
+            "Sem TRM-TB: baciloscopia de 2 amostras e cultura",
+            "Demais: se TRM-TB positivo ou quadro persistente"
+          ]
+        }
+      ],
+      "claims": [
+        "TB04",
+        "TB05",
+        "TB09",
+        "TB10",
+        "TB11",
+        "TB12",
+        "TB13",
+        "TB15",
+        "TB40",
+        "TB47",
+        "TB48",
+        "TB49",
+        "TB50",
+        "TB54",
+        "TB57",
+        "TB58",
+        "TB59",
+        "TB60",
+        "TB61"
+      ]
+    },
+    {
+      "id": "tratamento",
+      "titulo": "Tratamento (esquema básico)",
+      "cor": "laranja",
+      "icone": "pilula",
+      "lado": "centro",
+      "revisao": {
+        "faixas": [
+          {
+            "rotulo": "Fase intensiva (2 meses)",
+            "chip": "RHZE",
+            "texto": "4 fármacos em dose fixa combinada"
+          },
+          {
+            "rotulo": "Manutenção (4 meses)",
+            "chip": "RH",
+            "texto": "2 fármacos em dose fixa combinada"
+          }
+        ],
+        "itens": [
+          "10 anos ou mais: 2RHZE/4RH",
+          "Atenção Primária, com TDO para todos",
+          "Gestante: doses habituais + piridoxina",
+          "Esquemas especiais: referência"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Onde e como",
+          "itens": [
+            "A TB sensível é tratada preferencialmente na Atenção Primária.",
+            "Dose depende do peso: consultar sempre o quadro oficial.",
+            "TDO recomendado para todas as pessoas com TB."
+          ]
+        },
+        {
+          "titulo": "Casos especiais",
+          "itens": [
+            "Efeitos adversos maiores ou comorbidades (incluindo HIV, hepatopatias e insuficiência renal): referência secundária ou terciária.",
+            "Coinfecção TB-HIV: acompanhamento clínico no SAE, com TDO compartilhado com a Atenção Primária."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Adultos e adolescentes (10 anos ou mais): 2RHZE/4RH",
+            "Esquemas especiais (efeitos adversos, comorbidades): referência"
+          ]
+        }
+      ],
+      "claims": [
+        "TB16",
+        "TB17",
+        "TB18",
+        "TB19",
+        "TB20",
+        "TB64",
+        "TB112"
+      ]
+    },
+    {
+      "id": "acompanhamento",
+      "titulo": "Acompanhamento",
+      "cor": "verde",
+      "icone": "calendario",
+      "revisao": {
+        "itens": [
+          "Baciloscopia de controle mensal",
+          {
+            "t": "TRM-TB não acompanha o tratamento",
+            "tom": "alerta"
+          },
+          "Cura: 2 baciloscopias negativas",
+          "Falência: baciloscopia positiva ao final"
+        ],
+        "fluxo": [
+          {
+            "t": "Baciloscopia positiva no 2º mês",
+            "tom": "atencao"
+          },
+          {
+            "t": "Cultura com TS (e TRM-TB onde houver)",
+            "tom": "diag"
+          },
+          {
+            "t": "Prolongar RHZE por 30 dias e reavaliar",
+            "tom": "conduta"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Por que o TRM-TB não acompanha",
+          "itens": [
+            "Detecta material de bacilos vivos ou mortos.",
+            "Exceção: na suspeita de resistência ou de falência clínica, pode ser pedido em qualquer momento."
+          ]
+        },
+        {
+          "titulo": "Positiva no 2º mês",
+          "itens": [
+            "Pedir cultura com TS e, onde houver, TRM-TB para rastrear resistência à rifampicina.",
+            "Prolongar a fase de ataque (RHZE) por mais 30 dias e reavaliar com o TS.",
+            "Depois, com TS sensível ou sem resultado e boa evolução, manutenção RH por mais 4 meses.",
+            "Evolução insatisfatória: referência de tuberculose."
+          ]
+        },
+        {
+          "titulo": "Falência",
+          "itens": [
+            "Baciloscopia positiva ao final do tratamento.",
+            "Fortemente positiva (++ ou +++) no início e mantida até o 4º mês.",
+            "Positiva no início, negativa e depois positiva por 2 meses consecutivos a partir do 4º mês.",
+            {
+              "t": "Poucos bacilos isolados perto do 4º ou 6º mês não são, necessariamente, falência: acompanhar com baciloscopia, cultura e TS.",
+              "tom": "atencao"
+            }
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "TRM-TB não serve para acompanhar o tratamento",
+              "tom": "alerta"
+            },
+            "Cura: 2 baciloscopias negativas (uma em qualquer mês e outra ao final)",
+            "Falência: baciloscopia positiva ao final do tratamento"
+          ]
+        }
+      ],
+      "claims": [
+        "TB07",
+        "TB21",
+        "TB22",
+        "TB23",
+        "TB36",
+        "TB65",
+        "TB66",
+        "TB67",
+        "TB68",
+        "TB69",
+        "TB70",
+        "TB71",
+        "TB108"
+      ]
+    },
+    {
+      "id": "contatos",
+      "titulo": "Controle de contatos e ILTB",
+      "cor": "azul-forte",
+      "icone": "pessoas",
+      "revisao": {
+        "linhas": [
+          {
+            "rotulo": "Com sintomas",
+            "itens": [
+              "Escarro e radiografia de tórax"
+            ],
+            "icone": "estetoscopio"
+          },
+          {
+            "rotulo": "Contato sem sintomas",
+            "itens": [
+              "PT e/ou radiografia de tórax",
+              "PT 5 mm ou mais: tratar ILTB"
+            ],
+            "icone": "pessoas"
+          },
+          {
+            "rotulo": "ILTB",
+            "itens": [
+              {
+                "t": "Antes: afastar TB ativa",
+                "tom": "alerta"
+              },
+              "Preferencial: 3HP"
+            ],
+            "icone": "escudo"
+          }
+        ],
+        "itens": [
+          "Oferecer teste de HIV a todos os contatos",
+          "ILTB: 3HP tem alternativas e restrições"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Preferencial 3HP (rifapentina + isoniazida, 12 doses semanais)",
+            "Há alternativas: isoniazida ou rifampicina",
+            "PT 5 mm ou mais: tratar ILTB (mesmo com BCG prévia)",
+            "PT abaixo do corte: repetir em 8 semanas"
+          ]
+        },
+        {
+          "titulo": "Avaliação",
+          "itens": [
+            "Feita fundamentalmente pela Atenção Primária.",
+            "Vale para adultos e adolescentes a partir de 10 anos o fluxograma da PT.",
+            "Conversão da PT: aumento de pelo menos 10 mm sobre a anterior; contato que converte trata ILTB.",
+            "Contato assintomático vivendo com HIV: trata ILTB independentemente da PT, depois de afastar TB ativa."
+          ]
+        },
+        {
+          "titulo": "IGRA",
+          "itens": [
+            "Também diagnostica infecção latente, mas é reservado a grupos específicos: HIV com CD4 acima de 350, crianças de 2 a 10 anos contato de TB ativa, candidatos a transplante e quem usa imunobiológicos ou imunossupressores."
+          ]
+        },
+        {
+          "titulo": "Quando o 3HP não serve",
+          "itens": [
+            {
+              "t": "Gestação, contato de TB monorresistente à isoniazida ou à rifampicina, intolerância à isoniazida, e HIV em uso de inibidor de protease, nevirapina ou tenofovir alafenamida.",
+              "tom": "alerta"
+            },
+            "Intolerância à isoniazida ou contato de TB monorresistente à isoniazida: rifampicina.",
+            "HIV com inibidor de protease, nevirapina ou tenofovir alafenamida: isoniazida.",
+            "Gestante: em geral esperar o parto; se tratar, preferir rifampicina (segunda opção: isoniazida); rifapentina não é recomendada."
+          ]
+        }
+      ],
+      "claims": [
+        "TB25",
+        "TB26",
+        "TB27",
+        "TB28",
+        "TB29",
+        "TB30",
+        "TB31",
+        "TB32",
+        "TB74",
+        "TB75",
+        "TB76",
+        "TB78",
+        "TB79",
+        "TB80",
+        "TB81",
+        "TB97",
+        "TB98",
+        "TB99",
+        "TB100",
+        "TB109",
+        "TB110"
+      ]
+    },
+    {
+      "id": "especiais",
+      "titulo": "Situações especiais",
+      "cor": "roxo",
+      "icone": "bebe",
+      "revisao": {
+        "itens": [
+          "RN de caso confirmado: sem BCG ao nascer",
+          "Isoniazida (ou rifampicina) 3 meses, depois PT",
+          "3 meses a 16 anos, TB sensível não grave: esquema de 4 meses",
+          "BPaLM (2026): TB resistente à rifampicina, 6 meses",
+          {
+            "t": "BPaLM: não usar em gestantes e lactantes",
+            "tom": "alerta"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Recém-nascido",
+          "itens": [
+            "Contato de TB pulmonar confirmada por critério laboratorial: afastar TB ativa e tratar sem PT.",
+            "Depois de 3 meses faz-se a PT: 5 mm ou mais, mais 3 meses de isoniazida (ou mais 1 mês de rifampicina) e sem BCG; abaixo de 5 mm, suspender e vacinar."
+          ]
+        },
+        {
+          "titulo": "Esquema encurtado pediátrico (abril de 2024)",
+          "itens": [
+            "Reduz o tempo total de 6 para 4 meses.",
+            "Só para 3 meses a 16 anos, TB sensível e não grave, sem suspeita de resistência.",
+            {
+              "t": "Idade de 3 meses ou menos, ou peso abaixo de 4 kg: doses individualizadas, sem esquema curto.",
+              "tom": "atencao"
+            },
+            "Evolução desfavorável: completar os 6 meses. Para o adulto, nada muda."
+          ]
+        },
+        {
+          "titulo": "Tuberculose resistente (atualização de 2026)",
+          "itens": [
+            "BPaLM: bedaquilina, pretomanida, linezolida e moxifloxacino, por 6 meses (26 semanas).",
+            "Indicado em monorresistência à rifampicina, TB RR, MDR ou pré-XDR, pulmonar ou extrapulmonar (exceto sistema nervoso central, osteoarticular ou miliar), a partir de 14 anos.",
+            {
+              "t": "Não usar em gestantes e lactantes. Com resistência à fluoroquinolona, retira-se o moxifloxacino (BPaL).",
+              "tom": "alerta"
+            },
+            "TB RR é a resistência à rifampicina vista só no TRM-TB; MDR exige resistência a pelo menos rifampicina e isoniazida."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Recém-nascido de caso confirmado: sem BCG ao nascer; isoniazida (ou rifampicina) por 3 meses e depois PT",
+            "PT do recém-nascido de 5 mm ou mais: manter o tratamento e não vacinar; abaixo de 5 mm: suspender e dar BCG",
+            "Crianças e adolescentes de 3 meses a 16 anos, TB sensível e não grave: esquema encurtado de 4 meses (2024)",
+            "BPaLM (2026): TB resistente à rifampicina, 6 meses, 14 anos ou mais; não usar em gestantes e lactantes"
+          ]
+        }
+      ],
+      "claims": [
+        "TB37",
+        "TB39",
+        "TB86",
+        "TB87",
+        "TB88",
+        "TB89",
+        "TB90",
+        "TB91",
+        "TB92",
+        "TB93",
+        "TB94",
+        "TB95",
+        "TB96",
+        "TB102",
+        "TB103",
+        "TB104",
+        "TB105",
+        "TB106",
+        "TB107",
+        "TB114"
+      ]
+    },
+    {
+      "id": "revalida",
+      "titulo": "Revalida INEP: decisões e pegadinhas",
+      "cor": "vermelho",
+      "icone": "alerta",
+      "revisao": {
+        "itens": [
+          {
+            "t": "Esperar 3 semanas de tosse em grupos de risco",
+            "tom": "alerta"
+          },
+          {
+            "t": "Excluir TB com TRM-TB negativo em HIV/criança",
+            "tom": "alerta"
+          },
+          {
+            "t": "Usar o TRM-TB para acompanhar o tratamento",
+            "tom": "alerta"
+          },
+          {
+            "t": "Reter na UBS quem tem resistência à rifampicina",
+            "tom": "alerta"
+          },
+          {
+            "t": "ILTB sem afastar TB ativa; 3HP na gestante",
+            "tom": "alerta"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "O que mudou desde a prova",
+          "itens": [
+            "ILTB: em 2019 a isoniazida era a preferencial; hoje o preferencial é o 3HP quando a pessoa é elegível. Questões antigas ainda podem cobrar a isoniazida.",
+            "Crianças e adolescentes: esquema encurtado desde abril de 2024.",
+            "Tuberculose resistente: BPaLM, documento de agosto de 2026."
+          ]
+        },
+        {
+          "titulo": "Mais armadilhas",
+          "itens": [
+            "Confirmar TB só pela clínica sem ter oferecido os exames é falha do serviço.",
+            "Dispensar contato assintomático sem avaliar PT e radiografia, ou esperar a PT em contato vivendo com HIV.",
+            "Usar o TRM-TB sozinho para confirmar o retratamento."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Esperar 3 semanas de tosse em grupos onde qualquer duração já basta",
+              "tom": "alerta"
+            },
+            {
+              "t": "Excluir TB por TRM-TB negativo em HIV, criança menor de 10 anos ou suspeita extrapulmonar",
+              "tom": "alerta"
+            },
+            {
+              "t": "Esquecer o teste de HIV do paciente e dos contatos",
+              "tom": "alerta"
+            }
+          ]
+        }
+      ],
+      "claims": [
+        "TB02",
+        "TB07",
+        "TB11",
+        "TB15",
+        "TB27",
+        "TB28",
+        "TB31",
+        "TB32",
+        "TB38",
+        "TB46",
+        "TB50",
+        "TB54",
+        "TB57",
+        "TB76",
+        "TB78"
+      ]
+    }
+  ],
+  "pontos_chave": [
+    "Tosse por 3 semanas ou mais: investigar TB",
+    "Caso novo: TRM-TB primeiro",
+    "Esquema básico: 2RHZE/4RH, com TDO",
+    "ILTB só depois de afastar TB ativa"
+  ],
+  "atencao": [
+    "ILTB não é TB ativa: afastar TB ativa antes de tratar",
+    "PT e IGRA indicam infecção latente: não diagnosticam doença ativa",
+    "TRM-TB negativo com quadro persistente: cultura e TS",
+    "Resistência à rifampicina detectada: referência terciária imediata"
+  ],
+  "foto": {
+    "webp": "/mapas-mentais/tuberculose-pulmonar.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  },
+  "cartoes": {
+    "conceito": {
+      "titulo": "Transmissão e BCG",
+      "icone": "virus",
+      "cor": "azul",
+      "itens": [
+        "A forma pulmonar é a que transmite",
+        "Com tratamento adequado, a transmissão cai",
+        "Em geral, após 15 dias já está muito reduzida",
+        "BCG não protege contra a forma pulmonar"
+      ],
+      "claims": [
+        "TB24",
+        "TB34",
+        "TB85"
+      ]
+    },
+    "quadro": {
+      "titulo": "Suspeita clínica",
+      "icone": "estetoscopio",
+      "cor": "vermelho",
+      "itens": [
+        "Tosse por 3 semanas ou mais",
+        "Febre vespertina",
+        "Sudorese noturna",
+        "Emagrecimento",
+        "Cansaço"
+      ],
+      "claims": [
+        "TB01"
+      ]
+    },
+    "fatores": {
+      "titulo": "Tosse de qualquer duração",
+      "icone": "alerta",
+      "cor": "amarelo",
+      "itens": [
+        "Privados de liberdade",
+        "Profissionais de saúde",
+        "Pessoas vivendo com HIV",
+        "Pessoas em situação de rua",
+        "Indígenas"
+      ],
+      "claims": [
+        "TB02"
+      ]
+    },
+    "diagnostico": {
+      "titulo": "Diagnóstico",
+      "icone": "prancheta",
+      "cor": "verde",
+      "linhas": [
+        {
+          "icone": "pulmao",
+          "rotulo": "Imagem",
+          "itens": [
+            "Radiografia de tórax em toda suspeita",
+            "Nenhuma imagem é patognomônica"
+          ]
+        },
+        {
+          "icone": "microscopio",
+          "rotulo": "Caso novo",
+          "itens": [
+            "TRM-TB é o exame de escolha",
+            "Sem TRM-TB: baciloscopia e cultura"
+          ]
+        },
+        {
+          "icone": "tubo",
+          "rotulo": "Cultura com TS",
+          "itens": [
+            "Sempre: HIV, criança, extrapulmonar",
+            "Demais: TRM-TB positivo ou quadro persistente"
+          ]
+        }
+      ],
+      "claims": [
+        "TB04",
+        "TB05",
+        "TB09",
+        "TB47",
+        "TB48",
+        "TB49"
+      ]
+    },
+    "exames": {
+      "titulo": "Interpretação do TRM-TB",
+      "icone": "microscopio",
+      "cor": "roxo",
+      "linhas": [
+        {
+          "icone": "escudo",
+          "rotulo": "Rifampicina sensível",
+          "texto": "MTB detectado: esquema básico e reavaliar com a cultura"
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "Resistência à rifampicina detectada",
+          "texto": "Referência terciária imediatamente"
+        },
+        {
+          "icone": "lupa",
+          "rotulo": "MTB não detectado",
+          "texto": "Sintomas persistem: cultura e TS; em HIV, criança e extrapulmonar não exclui TB"
+        },
+        {
+          "icone": "tubo",
+          "rotulo": "Traços ou indeterminada",
+          "texto": "Traços: manter investigação; indeterminada: repetir em nova amostra"
+        }
+      ],
+      "claims": [
+        "TB10",
+        "TB11",
+        "TB12",
+        "TB57",
+        "TB58",
+        "TB60",
+        "TB61"
+      ]
+    },
+    "conduta": {
+      "titulo": "Controle dos contatos",
+      "icone": "pessoas",
+      "cor": "azul-forte",
+      "linhas": [
+        {
+          "icone": "estetoscopio",
+          "rotulo": "Com sintomas",
+          "itens": [
+            "Escarro e radiografia de tórax"
+          ]
+        },
+        {
+          "icone": "pessoas",
+          "rotulo": "Sem sintomas",
+          "itens": [
+            "PT e/ou radiografia de tórax",
+            "PT 5 mm ou mais: tratar ILTB"
+          ]
+        },
+        {
+          "icone": "escudo",
+          "rotulo": "ILTB",
+          "itens": [
+            "Antes, afastar TB ativa",
+            "3HP preferencial; há alternativas e restrições"
+          ]
+        }
+      ],
+      "claims": [
+        "TB26",
+        "TB27",
+        "TB29",
+        "TB31",
+        "TB32"
+      ]
+    },
+    "objetivos": {
+      "titulo": "Condutas essenciais",
+      "icone": "alvo",
+      "cor": "ciano",
+      "itens": [
+        "Tratar na Atenção Primária, com TDO",
+        "Controlar com baciloscopia mensal",
+        "Oferecer teste de HIV ao paciente e aos contatos",
+        "Notificar o caso confirmado"
+      ],
+      "claims": [
+        "TB15",
+        "TB16",
+        "TB20",
+        "TB21",
+        "TB28",
+        "TB33"
+      ]
+    },
+    "tratamento": {
+      "titulo": "Tratamento (esquema básico)",
+      "icone": "pilula",
+      "cor": "laranja",
+      "faixas": [
+        {
+          "rotulo": "Fase intensiva (2 meses)",
+          "chip": "RHZE",
+          "texto": "Quatro fármacos"
+        },
+        {
+          "rotulo": "Manutenção (4 meses)",
+          "chip": "RH",
+          "texto": "Dois fármacos"
+        }
+      ],
+      "itens": [
+        "Adultos e adolescentes (10 anos ou mais): 2RHZE/4RH",
+        "Esquemas especiais: referência"
+      ],
+      "claims": [
+        "TB17",
+        "TB18",
+        "TB64"
+      ]
+    }
+  },
+  "poster": {
+    "webp": "/mapas-mentais/poster-tuberculose-pulmonar.webp",
+    "estado": "pendente de revisão médica (aprovada)",
+    "ressalvas": [
+      "ilustração dentro do cartão central em vez de emergir acima dele"
+    ],
+    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K (versão com logo no topo e marca d'água, 15/10)"
+  },
+  "icone": {
+    "webp": "/mapas-mentais/icone-tuberculose-pulmonar.webp",
+    "origem": "ícone 3D sintético gerado pelo diretor de arte (decorativo)"
+  }
+}

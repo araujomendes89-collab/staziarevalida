@@ -80,6 +80,9 @@ beforeAll(async () => {
   await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id in ($1, $2)`, [PAGO, SEM_ACEITE]);
   for (const uid of [ADMIN, PAGO]) await aceitarTermos(dev.db, uid);
   for (const uid of [ADMIN, PAGO, SEM_ACEITE]) tokens[uid] = await dev.createSession(uid);
+  // CF02/VZ03: o microfone dos alunos e a voz do professor só abrem com os tetos e os preços preenchidos; aqui o dono "já preencheu" (direto no banco)
+  await dev.db.query(`update public.tutor_config set stt_team_only = false, stt_trial_daily_seconds = 300, stt_paid_daily_seconds = 1800, stt_account_daily_seconds = 36000,
+                      stt_price_per_min_usd = 0.003, tts_price_per_1k_chars_usd = 0.3`);
   process.env.TUTOR_AI_PROVIDER = "mock";
   process.env.DETERMINISTIC_TUTOR = "true";
   process.env.TUTOR_SETTINGS_TTL_MS = "0";

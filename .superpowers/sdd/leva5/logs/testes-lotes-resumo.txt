@@ -1,0 +1,13 @@
+lote-lista-aa exit=0  Test Files  16 passed (16)       Tests  252 passed (252) 
+lote-lista-ab exit=0  Test Files  16 passed (16)       Tests  329 passed | 4 expected fail | 1 skipped (334) 
+lote-lista-ac exit=0  Test Files  16 passed (16)       Tests  198 passed | 2 expected fail (200) 
+lote-lista-ad exit=0  Test Files  15 passed (15)       Tests  287 passed (287) 
+lote-lista-ae exit=0  Test Files  16 passed (16)       Tests  266 passed (266) 
+lote-lista-af exit=0  Test Files  16 passed (16)       Tests  318 passed (318) 
+lote-lista-ag exit=0  Test Files  16 passed (16)       Tests  178 passed (178) 
+lote-lista-ah exit=0  Test Files  16 passed (16)       Tests  277 passed (277) 
+lote-lista-ai exit=133 
+lote-lista-aj exit=0  Test Files  16 passed (16)       Tests  236 passed (236) 
+lote-lista-ak exit=0  Test Files  16 passed (16)       Tests  151 passed (151) 
+lote-lista-al exit=0  Test Files  8 passed (8)       Tests  98 passed (98) 
+FIM

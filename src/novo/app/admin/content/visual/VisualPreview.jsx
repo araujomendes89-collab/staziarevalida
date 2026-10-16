@@ -5,6 +5,7 @@ import React from "react";
 import { Banner } from "../../../../ds";
 import { previewShellHtml, renderArtboards, VISUAL_MODELS } from "../../../../../shared/visualMaterials";
 import { loadVisualFonts } from "./visualFonts.js";
+import { explainError } from "../../../../../shared/errors/explicarErro";
 
 const SHELL = previewShellHtml();
 
@@ -40,7 +41,7 @@ export function VisualPreview({ content, side = "front", guides = false, images 
         setReady((r) => ({ ...r, shell: true }));
         loadVisualFonts().then(
           (faces) => frame.current?.contentWindow?.postMessage({ type: "fonts", faces }, "*"),
-          (err) => setError(err.message)
+          (err) => setError(explainError(err))
         );
       }
       if (m.type === "visual-fonts-ready") setReady((r) => ({ ...r, fonts: true }));

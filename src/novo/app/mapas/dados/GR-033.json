@@ -1,0 +1,901 @@
+{
+ "esquema": 1,
+ "slug": "trauma-toracico",
+ "codigo": "GR-033",
+ "area": "cir",
+ "titulo": "Trauma torácico",
+ "subtitulo": "As lesões que matam e o que fazer na hora",
+ "emblema": "pulmao",
+ "revisao": {
+  "status": "pre-revisado por agente",
+  "origem": "Aula GR-033 versão 5.2 (pacote 2026-10-15-aulas-corrigidas/GR-033-sem-samu), 90 afirmações",
+  "gerado_em": "2026-10-15",
+  "aprovacao_humana": null,
+  "pendencias": [
+   "Conteúdo da aula v5.2 (pacote GR-033-sem-samu, 90 afirmações), conferido item a item em 15/10: texto do mapa só com afirmações da aula atual, sem protocolo anterior como fonte; o serviço de transporte (SAMU 192) aparece apenas como serviço, como na própria aula.",
+   "Tórax instável: segue o ATLS 11 (diagnóstico clínico; cirurgia só em casos selecionados). \"Não enfaixar nem estabilizar\" ficou de fora (sem fonte vigente aberta). Corte de pulso paradoxal > 10 mmHg: fora.",
+   "Pendência: procurar item do Inep com o corte de 1500 mL de drenagem do hemotórax para nota em \"O que mudou desde a prova\".",
+   "Termos em inglês do ATLS 11 não conferidos no original (só a cópia traduzida).",
+   "Inclusões do pedido do dono (v5.2): hemotórax maciço = drenar e tratar o choque com sangue (TT98, TT99); cânula antes de puncionar só sem hipotensão e sem desvio da traqueia; cateter 14G ou mais grosso (TT19, TT84); reavaliar B e C e monitorização (TT100, TT101).",
+   "Pôster em imagem: o da v4 tem texto do conteúdo antigo e foi retirado do app (campo poster.webp vazio); o mapa mostra o formato em código até o novo pôster ser gerado. Depois de gerar, colocar o caminho de poster.webp_a_regerar em poster.webp."
+  ]
+ },
+ "ramos": [
+  {
+   "id": "avaliacao",
+   "titulo": "Avaliação do tórax",
+   "cor": "azul",
+   "icone": "estetoscopio",
+   "revisao": {
+    "itens": [
+     "O tórax é examinado no B do xABCDE",
+     "Expor tórax; examinar o pescoço sem descuidar da coluna",
+     "Frente do colar: restrição manual; verbalizar o colar",
+     "Dorso e tórax lateral: examinar no rolamento",
+     "Flanco esquerdo: pensar em diafragma"
+    ]
+   },
+   "aprofundado": [
+    {
+     "titulo": "Sequência do atendimento",
+     "itens": [
+      "Na edição de 2025 do ATLS, o x inicial é o controle rápido da hemorragia externa exsanguinante, em certos pacientes, antes da via aérea.",
+      "No B: expor o tórax e examinar o pescoço (veias, traqueia, sinais de lesão), com a restrição manual da coluna ao abrir a frente do colar (que é fechado de novo em seguida); observar a simetria do movimento da parede."
+     ]
+    },
+    {
+     "titulo": "Onde olhar com mais cuidado",
+     "itens": [
+      "A parede torácica inclui o tórax lateral e o posterior: examinar também o dorso, no rolamento com proteção da coluna.",
+      "Ferimento penetrante no flanco esquerdo (do mamilo ao rebordo costal): pode haver lesão do diafragma.",
+      "Ferimento por arma de fogo no tórax: a região de risco para o coração pode incluir o tórax anterior e o posterior."
+     ]
+    },
+    {
+     "titulo": "Verbalizar no atendimento inicial",
+     "itens": [
+      "A máscara de oxigênio é verbalizada logo no começo, antes da avaliação primária completa e da punção.",
+      "Manutenção do colar cervical (verbalizar na prova prática).",
+      "No E: expor e depois cobrir o paciente para prevenir hipotermia."
+     ]
+    }
+   ],
+   "claims": [
+    "TT01",
+    "TT02",
+    "TT03",
+    "TT04",
+    "TT102",
+    "TT71",
+    "TT72",
+    "TT73",
+    "TT83",
+    "TT97",
+    "W01"
+   ]
+  },
+  {
+   "id": "pneumotorax",
+   "titulo": "Pneumotórax: tipos e sinais",
+   "cor": "ciano",
+   "icone": "pulmao",
+   "revisao": {
+    "linhas": [
+     {
+      "rotulo": "Simples",
+      "itens": [
+       "Dispneia; sons diminuídos no lado afetado",
+       {
+        "t": "Pressão positiva pode agravá-lo",
+        "tom": "atencao"
+       }
+      ]
+     },
+     {
+      "rotulo": "Hipertensivo",
+      "itens": [
+       "Diagnóstico clínico: mecanismo, sem sons, hipotensão",
+       "Hiperressonância (hipertimpanismo); traqueia desviada"
+      ]
+     },
+     {
+      "rotulo": "Aberto",
+      "itens": [
+       "Ferida torácica \"de sucção\""
+      ]
+     }
+    ],
+    "fluxo": [
+     {
+      "t": "Aberto: curativo estéril oclusivo em 3 lados",
+      "tom": "conduta"
+     },
+     {
+      "t": "Funciona como válvula (evita tensão)",
+      "tom": "atencao"
+     },
+     {
+      "t": "Dreno por incisão separada, logo",
+      "tom": "conduta"
+     }
+    ]
+   },
+   "aprofundado": [
+    {
+     "titulo": "Mais pontos",
+     "itens": [
+      "Simples: dispneia e possível diminuição dos sons respiratórios; a pressão positiva pode transformá-lo rapidamente em hipertensivo.",
+      "Hipertensivo: desconforto respiratório agudo, ausência unilateral de sons, hiperressonância (hipertimpanismo) e traqueia desviada para longe do lado da lesão; o ar entra no espaço pleural e não escapa.",
+      "Aberto: abertura com pelo menos dois terços do diâmetro da traqueia; o ar passa pelo defeito na inspiração."
+     ]
+    },
+    {
+     "titulo": "Pneumotórax hipertensivo",
+     "itens": [
+      {
+       "t": "O desvio da traqueia é difícil de avaliar e pode ser sutil; as veias do pescoço podem faltar se houver choque hemorrágico concomitante. Na prova, o caso pode vir sem a pressão arterial informada.",
+       "tom": "atencao"
+      },
+      "Ausência de sons de um lado, hiperressonância e traqueia desviada já levantam a suspeita."
+     ]
+    },
+    {
+     "titulo": "Pneumotórax aberto",
+     "itens": [
+      "Cobrir imediatamente com curativo estéril que ultrapasse as bordas da ferida, fixado em três lados (efeito de válvula).",
+      {
+       "t": "Objeto cravado geralmente não é removido no pronto-socorro; avaliação cirúrgica.",
+       "tom": "alerta"
+      }
+     ]
+    }
+   ],
+   "claims": [
+    "TT07",
+    "TT09",
+    "TT10",
+    "TT11",
+    "TT12",
+    "TT13",
+    "TT15",
+    "TT16",
+    "TT75",
+    "TT32",
+    "TT33",
+    "TT34",
+    "TT77",
+    "TT35"
+   ]
+  },
+  {
+   "id": "descompressao",
+   "titulo": "Conduta no pneumotórax hipertensivo",
+   "cor": "laranja",
+   "icone": "seringa",
+   "lado": "centro",
+   "revisao": {
+    "fluxo": [
+     {
+      "t": "Suspeita: descompressão sem esperar imagem",
+      "tom": "conduta"
+     },
+     "Reavaliar B e C (ou todo o ABCDE); monitorizar",
+     {
+      "t": "Drenagem torácica fechada em selo d'água",
+      "tom": "conduta"
+     }
+    ],
+    "itens": [
+     "Cateter calibroso: calibre 14 ou mais grosso",
+     "Entrar sobre a borda superior da costela",
+     "Prova prática: 4º/5º espaço, linha axilar média",
+     "Não aliviou: toracostomia digital",
+     {
+      "t": "Intubado SEM hipotensão e traqueia central: conferir a cânula; com choque, descomprimir sem adiar",
+      "tom": "alerta"
+     }
+    ]
+   },
+   "aprofundado": [
+    {
+     "titulo": "Local da punção",
+     "itens": [
+      "Resposta esperada na prova prática: região lateral, 4º ou 5º espaço intercostal, linha axilar média ou anterior a ela.",
+      "Também descrito, conforme o paciente e o cenário: 2º espaço intercostal, linha hemiclavicular.",
+      "Cateter: a prova prática aceitou o número 14, 16 ou 18; a parede pode ser espessa e o cateter pode dobrar: se não aliviar, toracostomia digital."
+     ]
+    },
+    {
+     "titulo": "Depois da punção",
+     "itens": [
+      "A punção alivia, mas não encerra a conduta: segue a drenagem torácica fechada, no 4º ou 5º espaço intercostal, entre a linha axilar anterior e a média.",
+      "A radiografia de tórax vem depois da punção ou da drenagem.",
+      "Pneumotórax oculto (visto só na tomografia) e transferência aérea planejada: discutir com o médico receptor o dreno antes do voo; o dreno é concluído antes da transferência, sobretudo se houver sintomas."
+     ]
+    },
+    {
+     "titulo": "Paciente intubado",
+     "itens": [
+      "Recém-intubado que piora, sem hipotensão e com traqueia na linha média: sons diminuídos podem indicar cânula em brônquio principal; conferir a posição pela ausculta.",
+      {
+       "t": "Com hipotensão, ausência de sons, hiperressonância ou traqueia desviada: tratar como pneumotórax hipertensivo e descomprimir sem adiar.",
+       "tom": "alerta"
+      }
+     ]
+    },
+    {
+     "titulo": "No transporte",
+     "itens": [
+      {
+       "t": "O pneumotórax hipertensivo pode recorrer após descompressão por agulha ou digital (tecidos moles ocluem o trajeto); manter cateteres e tubos bem presos.",
+       "tom": "atencao"
+      }
+     ]
+    },
+    {
+     "titulo": "Mais pontos",
+     "itens": [
+      "O diagnóstico clínico de pneumotórax hipertensivo requer descompressão de emergência, que não espera radiografia nem ultrassonografia.",
+      "Depois: drenagem torácica fechada em selo d'água, radiografia de tórax e reavaliar o B e o C, ou repetir todo o ABCDE."
+     ]
+    },
+    {
+     "titulo": "Monitorização",
+     "itens": [
+      "Pedir frequência cardíaca, pressão arterial, oximetria de pulso contínua, diurese e eletrocardiograma."
+     ]
+    }
+   ],
+   "claims": [
+    "TT10",
+    "TT100",
+    "TT101",
+    "TT13",
+    "TT14",
+    "TT15",
+    "TT18",
+    "TT19",
+    "TT20",
+    "TT21",
+    "TT22",
+    "TT23",
+    "TT25",
+    "TT26",
+    "TT27",
+    "TT28",
+    "TT29",
+    "TT30",
+    "TT31",
+    "TT70",
+    "TT71",
+    "TT78",
+    "TT79",
+    "TT84",
+    "TT85",
+    "TT86",
+    "TT87"
+   ]
+  },
+  {
+   "id": "hemotorax",
+   "titulo": "Hemotórax",
+   "cor": "vermelho",
+   "icone": "gota",
+   "revisao": {
+    "itens": [
+     "Maciço: sons diminuídos, choque, veias planas",
+     "Tratar o choque junto: hemorragia, sangue, transfusão",
+     {
+      "t": "Tratamento definitivo: dreno torácico",
+      "tom": "conduta"
+     },
+     {
+      "t": "Choque persiste: cirurgia (fisiologia e sangramento)",
+      "tom": "conduta"
+     },
+     "Macicez à percussão: consistente, difícil de avaliar"
+    ]
+   },
+   "aprofundado": [
+    {
+     "titulo": "Limite da aula",
+     "itens": [
+      "Esta aula não traz números de volume drenado para indicar toracotomia: seguir a orientação oficial em vigor e a rotina do serviço."
+     ]
+    },
+    {
+     "titulo": "Mais pontos",
+     "itens": [
+      "Hemotórax maciço: sons diminuídos e choque hemorrágico; veias do pescoço planas (distendidas no hipertensivo e no tamponamento) e traqueia em geral na linha média (pode desviar se houver fisiologia tensional).",
+      "O tratamento definitivo do hemotórax, como o do pneumotórax, é o dreno torácico (em selo d'água).",
+      "Fisiologia tensional no maciço de tórax inteiro: toracostomia digital seguida de dreno.",
+      "Enquanto drena, tratar o choque hemorrágico: controle da hemorragia e reposição do volume com sangue; transfusões de emergência são comuns.",
+      "Choque que continua apesar da descompressão adequada indica cirurgia: a decisão se baseia no estado fisiológico e no sangramento contínuo, e não na saída específica do dreno.",
+      "A macicez à percussão é consistente, mas difícil de avaliar; no pneumotórax hipertensivo, a percussão é hiperressonante."
+     ]
+    }
+   ],
+   "claims": [
+    "TT12",
+    "TT26",
+    "TT36",
+    "TT39",
+    "TT40",
+    "TT74",
+    "TT88",
+    "TT90",
+    "TT91",
+    "TT92",
+    "TT98",
+    "TT99"
+   ]
+  },
+  {
+   "id": "tamponamento",
+   "titulo": "Tamponamento cardíaco",
+   "cor": "azul-forte",
+   "icone": "coracao",
+   "revisao": {
+    "linhas": [
+     {
+      "rotulo": "Quadro",
+      "itens": [
+       "Penetrante mais comum que contuso",
+       "Taquicardia, hipotensão sem resposta a volume"
+      ]
+     },
+     {
+      "rotulo": "Tríade de Beck",
+      "itens": [
+       "Veias do pescoço distendidas",
+       "Bulhas abafadas; baixo débito (hipotensão)"
+      ]
+     },
+     {
+      "rotulo": "Conduta",
+      "itens": [
+       "Dois acessos de grosso calibre + volume",
+       "Ultrassom à beira do leito (FAST ou E-FAST)"
+      ]
+     }
+    ],
+    "itens": [
+     {
+      "t": "Também no hipertensivo: o exame do pulmão decide",
+      "tom": "atencao"
+     }
+    ]
+   },
+   "aprofundado": [
+    {
+     "titulo": "Mais pontos",
+     "itens": [
+      "Pericardiocentese (punção de Marfan) ou toracotomia de urgência; a cirurgia é o tratamento, e a pericardiocentese guiada por ultrassom é temporização de curto prazo.",
+      "Quadro: mais comum no trauma penetrante; apresentação típica com mecanismo apropriado, taquicardia e hipotensão que não responde à fluidoterapia.",
+      "Tríade de Beck: veias do pescoço distendidas, bulhas abafadas e baixo débito cardíaco (hipotensão).",
+      "Conduta: dois acessos venosos de grosso calibre e reposição volêmica; ultrassom à beira do leito (FAST ou E-FAST).",
+      "Veia do pescoço distendida com hipotensão também ocorre no pneumotórax hipertensivo: o exame do pulmão decide."
+     ]
+    },
+    {
+     "titulo": "Sinais",
+     "itens": [
+      "Taquicardia, hipotensão, turgência jugular e bulhas hipofonéticas (abafadas).",
+      "O pulso paradoxal é um achado comum.",
+      {
+       "t": "A ausência dos achados clássicos não exclui tamponamento.",
+       "tom": "atencao"
+      },
+      "Retorno venoso, pré-carga e débito cardíaco ficam reduzidos.",
+      "Choque obstrutivo no trauma: pneumotórax hipertensivo e tamponamento."
+     ]
+    },
+    {
+     "titulo": "Como diferenciar do hipertensivo",
+     "itens": [
+      "Ausência de sons de um lado, hiperressonância e traqueia desviada para o lado oposto apontam para pneumotórax hipertensivo: descomprimir.",
+      "Taquicardia, hipotensão, turgência jugular e bulhas abafadas, sem sinais de pneumotórax no pulmão: tamponamento."
+     ]
+    }
+   ],
+   "claims": [
+    "TT11",
+    "TT12",
+    "TT13",
+    "TT41",
+    "TT42",
+    "TT43",
+    "TT44",
+    "TT45",
+    "TT46",
+    "TT47",
+    "TT49",
+    "TT50",
+    "TT51",
+    "TT80"
+   ]
+  },
+  {
+   "id": "parede",
+   "titulo": "Parede torácica e contusão pulmonar",
+   "cor": "verde",
+   "icone": "cruz",
+   "revisao": {
+    "linhas": [
+     {
+      "rotulo": "Tórax instável",
+      "itens": [
+       "Diagnóstico CLÍNICO: movimento paradoxal",
+       "Imagem: ≥ 2 costelas em ≥ 2 locais"
+      ]
+     },
+     {
+      "rotulo": "Suporte",
+      "itens": [
+       "Oxigênio e analgesia multimodal",
+       "Intubação se incapacidade respiratória"
+      ]
+     },
+     {
+      "rotulo": "Contusão pulmonar",
+      "itens": [
+       "Hipoxemia grave: contusão e/ou pneumotórax",
+       "Evitar sobrecarga de volume"
+      ]
+     }
+    ]
+   },
+   "aprofundado": [
+    {
+     "titulo": "Mais pontos",
+     "itens": [
+      "O tórax instável é diagnóstico clínico (movimento paradoxal da parede), que pode ser difícil de ver e pode faltar com pressão positiva.",
+      "Segmento radiográfico instável: duas ou mais costelas fraturadas em dois ou mais locais; pode haver o radiográfico sem o clínico, não o contrário.",
+      "Intubação pode ser indicada se o tórax instável causar incapacidade respiratória ou se a contusão grave resultar em hipóxia.",
+      "A estabilização cirúrgica de costelas é eficaz em casos selecionados (decisão do serviço)."
+     ]
+    },
+    {
+     "titulo": "Fratura de costela",
+     "itens": [
+      "A pneumonia é a causa mais comum de morbidade e mortalidade, porque a dor impede a higiene pulmonar.",
+      "O tratamento se baseia no controle da dor e em higiene pulmonar adequada.",
+      "Alívio multimodal (oral e intravenoso), com ênfase em terapias não opioides e controle locorregional."
+     ]
+    },
+    {
+     "titulo": "Contusão pulmonar",
+     "itens": [
+      "O tamanho e o impacto clínico aumentam nas primeiras 24 a 72 horas.",
+      "Oxigênio suplementar para saturação adequada e evitar sobrecarga de volume, mantendo a função circulatória."
+     ]
+    }
+   ],
+   "claims": [
+    "TT52",
+    "TT53",
+    "TT56",
+    "TT58",
+    "TT60",
+    "TT61",
+    "TT62",
+    "TT63",
+    "TT57",
+    "TT76",
+    "TT93",
+    "TT94",
+    "TT70"
+   ]
+  },
+  {
+   "id": "cinematica",
+   "titulo": "Cinemática e transferência",
+   "cor": "amarelo",
+   "icone": "relogio",
+   "revisao": {
+    "linhas": [
+     {
+      "rotulo": "Danos no volante",
+      "itens": [
+       "Fratura de esterno e costelas, tórax instável",
+       "Contusão cardíaca, aorta, hemo/pneumotórax"
+      ]
+     },
+     {
+      "rotulo": "Impacto lateral",
+      "itens": [
+       "Tórax instável, pneumotórax",
+       "Aorta e diafragma; clavícula e úmero"
+      ]
+     },
+     {
+      "rotulo": "Transferência",
+      "itens": [
+       "Pneumo hipertensivo/aberto ou choque: rápida",
+       "Planejar a transferência na reanimação"
+      ]
+     }
+    ]
+   },
+   "aprofundado": [
+    {
+     "titulo": "Transferência",
+     "itens": [
+      "Pneumotórax hipertensivo ou aberto e sinais clínicos de choque: transferência rápida.",
+      "Lesão torácica moderada e grave se beneficia de centro de trauma.",
+      "Preparar: otimizar o transporte, identificar o que pode piorar, manter a temperatura normal.",
+      "O plano de transferência antecipada é elaborado e iniciado enquanto o paciente é reanimado; na rede pública, o transporte pode ser feito pelo serviço móvel de urgência (SAMU 192)."
+     ]
+    },
+    {
+     "titulo": "Mais pontos",
+     "itens": [
+      "Danos no volante: fraturas do esterno e das costelas, tórax instável, contusão cardíaca, lesões aórticas, hemo/pneumotórax.",
+      "Impacto lateral: lesões torácicas (tórax instável, pneumotórax), ruptura aórtica e do diafragma, fraturas de clavícula e úmero.",
+      "Lesão de aorta e vasos da base é diferencial do trauma torácico com choque; na radiografia, avaliar mediastino alargado e perda de detalhes da aorta; sem tomografia, a avaliação da aorta fica limitada."
+     ]
+    }
+   ],
+   "claims": [
+    "TT65",
+    "TT66",
+    "TT67",
+    "TT68",
+    "TT69",
+    "TT81",
+    "TT82",
+    "TT95",
+    "TT96"
+   ]
+  },
+  {
+   "id": "revalida",
+   "titulo": "Revalida INEP: decisões e pegadinhas",
+   "cor": "vermelho",
+   "icone": "alerta",
+   "revisao": {
+    "itens": [
+     {
+      "t": "Imagem antes de descomprimir o hipertensivo",
+      "tom": "alerta"
+     },
+     {
+      "t": "Parar na punção: segue a drenagem fechada",
+      "tom": "alerta"
+     },
+     {
+      "t": "Atrasar a descompressão para conferir a cânula (com choque)",
+      "tom": "alerta"
+     },
+     {
+      "t": "Confundir tamponamento com hipertensivo",
+      "tom": "alerta"
+     },
+     {
+      "t": "Retirar objeto cravado no pronto-socorro",
+      "tom": "alerta"
+     }
+    ]
+   },
+   "aprofundado": [
+    {
+     "titulo": "O que mudou desde a prova",
+     "itens": [
+      "Sequência do atendimento: a nova edição do ATLS (2025) acrescentou um x antes do ABCDE, para o controle rápido da hemorragia externa exsanguinante em certos pacientes.",
+      "Nesta aula, o exame do tórax aparece no B: veias do pescoço, posição da traqueia e simetria do movimento da parede."
+     ]
+    },
+    {
+     "titulo": "Local da punção",
+     "itens": [
+      "A resposta esperada na prova prática é o 4º ou 5º espaço intercostal, na linha axilar média ou anterior a ela; o 2º espaço, hemiclavicular, também é descrito."
+     ]
+    },
+    {
+     "titulo": "Mais pontos",
+     "itens": [
+      "Pedir radiografia ou tomografia antes de descomprimir pneumotórax hipertensivo.",
+      "Confundir tamponamento com pneumotórax hipertensivo: faltam os sinais pulmonares.",
+      "Achar que a ausência dos sinais clássicos exclui o tamponamento; retirar objeto cravado; dar volume em excesso na contusão pulmonar; no intubado sem hipotensão, puncionar sem conferir a cânula."
+     ]
+    }
+   ],
+   "claims": [
+    "W01",
+    "TT01",
+    "TT73",
+    "TT14",
+    "TT23",
+    "TT25",
+    "TT18",
+    "TT26",
+    "TT28",
+    "TT35",
+    "TT44",
+    "TT46",
+    "TT62",
+    "TT13",
+    "TT93"
+   ]
+  }
+ ],
+ "pontos_chave": [
+  "Tórax no B do xABCDE: veias do pescoço, traqueia, simetria",
+  "Hipertensivo suspeito: descomprimir sem pedir imagem",
+  "Após a punção: drenagem torácica fechada",
+  "Intubado sem hipotensão: conferir a cânula; com choque, descomprimir"
+ ],
+ "atencao": [
+  "Pressão positiva pode agravar o pneumotórax simples",
+  "O caso pode vir sem a pressão arterial informada",
+  "Objeto cravado geralmente não é removido no pronto-socorro",
+  "Punção: prova prática 4º/5º; o 2º espaço hemiclavicular também é descrito"
+ ],
+ "foto": {
+  "webp": "/mapas-mentais/trauma-toracico.webp",
+  "foco": "50% 50%",
+  "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+  "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+ },
+ "cartoes": {
+  "conceito": {
+   "titulo": "Tipos de pneumotórax",
+   "icone": "pulmao",
+   "cor": "azul",
+   "itens": [
+    "Simples: dispneia, sons diminuídos",
+    "Hipertensivo: diagnóstico clínico, hipotensão",
+    "Aberto: ferida torácica \"de sucção\"",
+    "Pressão positiva pode agravar o simples"
+   ],
+   "claims": [
+    "TT07",
+    "TT09",
+    "TT10",
+    "TT11",
+    "TT12",
+    "TT13",
+    "TT16",
+    "TT75",
+    "TT32",
+    "TT33",
+    "TT34",
+    "TT77",
+    "TT35"
+   ]
+  },
+  "quadro": {
+   "titulo": "Sinais do hipertensivo",
+   "icone": "estetoscopio",
+   "cor": "vermelho",
+   "itens": [
+    "Desconforto respiratório agudo",
+    "Ausência de sons de um lado",
+    "Hiperressonância (hipertimpanismo)",
+    "Traqueia desviada ao lado oposto",
+    "Hipotensão; veias do pescoço distendidas"
+   ],
+   "claims": [
+    "TT11",
+    "TT12",
+    "TT13",
+    "TT15",
+    "TT16",
+    "TT75"
+   ]
+  },
+  "fatores": {
+   "titulo": "Cinemática do impacto",
+   "icone": "alerta",
+   "cor": "amarelo",
+   "itens": [
+    "Volante: esterno, costelas, tórax instável",
+    "Volante: contusão cardíaca, aorta",
+    "Lateral: tórax instável, pneumotórax",
+    "Lateral: aorta, diafragma, clavícula"
+   ],
+   "claims": [
+    "TT65",
+    "TT66",
+    "TT67"
+   ]
+  },
+  "diagnostico": {
+   "titulo": "Como reconhecer",
+   "icone": "prancheta",
+   "cor": "verde",
+   "linhas": [
+    {
+     "icone": "pulmao",
+     "rotulo": "Hemotórax",
+     "itens": [
+      "Sons diminuídos, choque, veias planas",
+      "Drenar e tratar o choque com sangue"
+     ]
+    },
+    {
+     "icone": "coracao",
+     "rotulo": "Tamponamento",
+     "itens": [
+      "Veias distendidas e bulhas abafadas",
+      "Taquicardia, hipotensão sem resposta a volume"
+     ]
+    },
+    {
+     "icone": "cruz",
+     "rotulo": "Tórax instável",
+     "itens": [
+      "Diagnóstico clínico: paradoxal",
+      "Imagem: ≥ 2 costelas em ≥ 2 locais"
+     ]
+    }
+   ],
+   "claims": [
+    "TT36",
+    "TT39",
+    "TT40",
+    "TT42",
+    "TT43",
+    "TT44",
+    "TT45",
+    "TT46",
+    "TT47",
+    "TT49",
+    "TT50",
+    "TT51",
+    "TT52",
+    "TT53",
+    "TT74",
+    "TT76",
+    "TT80",
+    "TT88",
+    "TT92",
+    "TT93",
+    "TT98",
+    "TT99"
+   ]
+  },
+  "exames": {
+   "titulo": "Exame físico que distingue",
+   "icone": "microscopio",
+   "cor": "roxo",
+   "linhas": [
+    {
+     "icone": "lupa",
+     "rotulo": "Percussão",
+     "texto": "Hipertensivo: hiperressonância; hemotórax: macicez (difícil de avaliar)"
+    },
+    {
+     "icone": "estetoscopio",
+     "rotulo": "Hipertensivo",
+     "texto": "Ausência de sons de um lado, hiperressonância, traqueia desviada"
+    },
+    {
+     "icone": "coracao",
+     "rotulo": "Tamponamento",
+     "texto": "Taquicardia, hipotensão, jugulares distendidas, bulhas abafadas"
+    },
+    {
+     "icone": "gota",
+     "rotulo": "Pulso paradoxal",
+     "texto": "Achado comum no tamponamento"
+    }
+   ],
+   "claims": [
+    "TT11",
+    "TT12",
+    "TT13",
+    "TT36",
+    "TT74",
+    "TT42",
+    "TT43",
+    "TT45",
+    "TT50"
+   ]
+  },
+  "conduta": {
+   "titulo": "Conduta no hipertensivo",
+   "icone": "seringa",
+   "cor": "azul-forte",
+   "linhas": [
+    {
+     "icone": "seringa",
+     "rotulo": "Descompressão",
+     "itens": [
+      "Suspeita: descompressão sem pedir imagem",
+      "Cateter calibroso (calibre 14 ou mais grosso)",
+      "Não aliviou: toracostomia digital"
+     ]
+    },
+    {
+     "icone": "alvo",
+     "rotulo": "Local da punção",
+     "itens": [
+      "Prova prática: 4º/5º espaço, axilar média",
+      "Também descrito: 2º espaço, hemiclavicular"
+     ]
+    },
+    {
+     "icone": "prancheta",
+     "rotulo": "Depois da punção",
+     "itens": [
+      "Reavaliar B e C; monitorizar",
+      "Drenagem fechada; radiografia depois"
+     ]
+    }
+   ],
+   "claims": [
+    "TT10",
+    "TT100",
+    "TT101",
+    "TT14",
+    "TT18",
+    "TT19",
+    "TT20",
+    "TT21",
+    "TT25",
+    "TT26",
+    "TT27",
+    "TT28",
+    "TT29",
+    "TT84",
+    "TT85",
+    "TT86"
+   ]
+  },
+  "objetivos": {
+   "titulo": "Objetivos do atendimento",
+   "icone": "alvo",
+   "cor": "ciano",
+   "itens": [
+    "Intubado: cânula primeiro só sem hipotensão e sem desvio",
+    "Objeto cravado: não remover no pronto-socorro",
+    "Flanco esquerdo: pensar em diafragma",
+    "Planejar a transferência na reanimação"
+   ],
+   "claims": [
+    "TT23",
+    "TT35",
+    "TT03",
+    "TT68"
+   ]
+  },
+  "tratamento": {
+   "titulo": "Tratamento imediato",
+   "icone": "pilula",
+   "cor": "laranja",
+   "itens": [
+    "Pneumotórax aberto: curativo estéril fixado em 3 lados",
+    "Tórax instável: oxigênio, analgesia, intubação se necessário",
+    "Tamponamento: volume e pericardiocentese ou toracotomia",
+    "Pericardiocentese guiada: temporização; a cirurgia trata",
+    "Contusão: evitar sobrecarga de volume"
+   ],
+   "claims": [
+    "TT33",
+    "TT34",
+    "TT47",
+    "TT49",
+    "TT57",
+    "TT58",
+    "TT60",
+    "TT62",
+    "TT70",
+    "TT93",
+    "TT94"
+   ]
+  }
+ },
+ "poster": {
+  "webp": "/mapas-mentais/poster-trauma-toracico.webp",
+  "estado": "pendente de revisão médica (aprovada pelos 2 revisores, v5.2 sem SAMU)",
+  "ressalvas": [
+   "esterno pouco evidente na ilustração (estético)"
+  ],
+  "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K (versão com logo no topo e marca d'água, 15/10)"
+ },
+ "icone": {
+  "webp": "/mapas-mentais/icone-trauma-toracico.webp",
+  "origem": "ícone 3D sintético gerado pelo diretor de arte (decorativo)"
+ }
+}

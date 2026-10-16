@@ -1,0 +1,11 @@
+{
+ "novas": [
+  "app_plans_info()",
+  "ch_worker_tutor_stt_today(uuid)"
+ ],
+ "mudadas": [
+  "app_admin_tutor_save_config(jsonb,text)",
+  "ch_worker_ai_save_settings(uuid,jsonb)",
+  "ch_worker_tutor_settings()"
+ ]
+}

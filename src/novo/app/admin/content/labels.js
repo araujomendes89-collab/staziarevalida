@@ -7,8 +7,16 @@ export const DOC_STATUS = {
   verifying_sources: ["Verificando fontes", "info"],
   drafting: ["Gerando rascunhos", "ai"],
   awaiting_review: ["Aguardando revisão", "warning"],
+  no_drafts: ["Sem rascunhos para revisar", "warning"],
   failed: ["Falhou", "danger"],
 };
+
+/**
+ * Depois do envio (CC10): o arquivo entra na fila e o processamento (tarefa no Google Cloud Run) pega na próxima passada. O agendador
+ * passa a cada 1 minuto (scripts/cloudrun/deploy-pdf-worker.sh); se a tarefa estiver ocupada com outro documento, entra na vez.
+ */
+export const PROCESSING_START_NOTICE =
+  "Arquivo recebido e na fila. O processamento pega o arquivo na próxima passada (a tarefa passa a cada 1 minuto; se estiver ocupada com outro documento, ele espera a vez) e PDF grande leva mais tempo para terminar.";
 
 export const UNIT_STATUS = {
   draft: ["Rascunho", "neutral"],
@@ -39,6 +47,9 @@ export const STEP_LABEL = {
   render: "Arquivos finais",
   review_check: "Revisão automática",
   source_search: "Busca de fontes",
+  question_analysis: "Análise de questões por IA",
+  draft_check: "Conferência de rascunhos por IA",
+  similarity: "Questões parecidas",
 };
 
 export const BLOCK_STATUS = {
@@ -93,8 +104,15 @@ export const AUTHORITY = {
   B: "B · Sociedade médica reconhecida",
   C: "C · Organização internacional (OMS, OPAS, CDC, NICE…)",
   D: "D · Revisão sistemática, metanálise, periódico de alto nível",
-  E: "E · Livro, apostila ou curso (não vale como evidência)",
+  E: "E · Livro, apostila ou curso (fonte complementar: não dá selo ao aluno)",
 };
+
+// Classe da fonte na biblioteca: oficial (confiável, pode ser mostrada ao aluno) ou complementar (o aluno não vê nada dela).
+export const AUDIENCE = {
+  oficial: "Oficial · confiável: pode ser mostrada ao aluno",
+  complementar: "Fonte complementar · o aluno não vê esta fonte",
+};
+export const AUDIENCE_NOTE = "Fonte complementar · o aluno não vê esta fonte";
 
 // Natureza da fonte (o que ela é), diferente de "tipo" (a situação do documento: final, consulta pública…).
 export const SOURCE_TYPE = {
@@ -165,7 +183,7 @@ export const MATERIAL_KIND = {
   visual_cards: "Cards visuais",
   flashcards: "Flashcards",
   table: "Tabela",
-  questions: "Questões inéditas StaziaMed",
+  questions: "Questões inéditas",
   station: "Roteiro de estação",
 };
 

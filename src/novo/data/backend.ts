@@ -20,6 +20,9 @@ export interface SignUpExtra {
   termsVersion?: string;
   /** Navegador da pessoa, guardado junto do aceite (até 300 caracteres). */
   userAgent?: string;
+  /** Termo 2.0 em diante: marcou "tenho 18 anos ou mais" e "sou médico(a)". Vão como "true" nos metadados; só "sim" é enviado. */
+  declaresAdult?: boolean;
+  declaresPhysician?: boolean;
 }
 
 /** Quem está no canal de Presença (Treino em Dupla): `status` é o que a pessoa mandou no `track()`. */
@@ -41,8 +44,11 @@ export interface RealtimeHandle {
 export interface Backend {
   readonly mode: "supabase" | "local";
   getUser(): Promise<AuthUser | null>;
-  /** Avisa quando alguém entra ou sai. Devolve a função para cancelar. */
-  onAuthChange(callback: (user: AuthUser | null) => void): () => void;
+  /**
+   * Avisa quando alguém entra ou sai. Devolve a função para cancelar.
+   * `event` (só no Supabase) diz o motivo; "PASSWORD_RECOVERY" = a pessoa abriu o link de recuperar senha e precisa criar a nova senha.
+   */
+  onAuthChange(callback: (user: AuthUser | null, event?: string) => void): () => void;
   signIn(email: string, password: string): Promise<void>;
   /**
    * `extra` vai nos metadados da conta (`phone`, `terms_version`, `user_agent`), que o gatilho de criação da conta lê.
@@ -96,6 +102,8 @@ export type BackendErrorCode =
   | "invalid_credentials"
   | "email_taken"
   | "weak_password"
+  | "same_password"
+  | "link_expired"
   | "invalid_email"
   | "google_unavailable"
   | "network"
@@ -125,6 +133,8 @@ export function signUpMetadata(extra: SignUpExtra = {}): Record<string, string> 
   if (extra.phone) meta.phone = extra.phone;
   if (extra.termsVersion) meta.terms_version = extra.termsVersion;
   if (extra.userAgent) meta.user_agent = extra.userAgent.slice(0, USER_AGENT_MAX);
+  if (extra.declaresAdult === true) meta.declares_adult = "true";
+  if (extra.declaresPhysician === true) meta.declares_physician = "true";
   return meta;
 }
 

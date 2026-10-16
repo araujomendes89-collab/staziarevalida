@@ -1,13 +1,13 @@
 :root{
 --bg-app:var(--gray-50);--surface-card:var(--gray-0);--surface-subtle:var(--gray-25);--surface-sunken:var(--gray-100);--surface-inverse:var(--navy-900);--surface-brand-soft:var(--teal-50);--surface-overlay:rgba(8,18,43,.48);
 --border-subtle:var(--gray-100);--border-default:var(--gray-200);--border-strong:var(--gray-300);--border-brand:var(--teal-500);
---text-primary:var(--navy-900);--text-secondary:var(--gray-600);--text-tertiary:var(--gray-500);--text-disabled:var(--gray-400);--text-inverse:var(--gray-0);--text-brand:var(--teal-700);--text-link:var(--teal-700);--text-link-hover:var(--teal-800);
+--text-primary:var(--brand-navy);--text-secondary:var(--gray-600);--text-tertiary:var(--gray-550);--text-disabled:var(--gray-400);--text-inverse:var(--gray-0);--text-brand:var(--teal-800);--text-link:var(--teal-700);--text-link-hover:var(--teal-800);
 --action-primary:var(--teal-700);--action-primary-hover:var(--teal-800);--action-primary-pressed:var(--teal-900);--action-on-primary:var(--gray-0);
 --action-strong:var(--navy-900);--action-strong-hover:var(--navy-800);--action-on-strong:var(--gray-0);
 --action-secondary-bg:var(--gray-0);--action-secondary-hover:var(--gray-50);--action-secondary-border:var(--gray-200);
 --action-ghost-hover:var(--gray-100);
 --selected-bg:var(--teal-50);--selected-border:var(--teal-600);--selected-text:var(--teal-800);
---focus-ring:0 0 0 3px rgba(18,167,155,.35);--focus-color:var(--teal-500);
+--focus-ring:0 0 0 2px var(--surface-card),0 0 0 4px var(--action-primary);--focus-color:var(--teal-500);
 --success-bg:var(--green-50);--success-border:var(--green-200);--success-text:var(--green-700);--success-solid:var(--green-600);
 --warning-bg:var(--amber-50);--warning-border:var(--amber-200);--warning-text:var(--amber-700);--warning-solid:var(--amber-500);
 --danger-bg:var(--red-50);--danger-border:var(--red-200);--danger-text:var(--red-700);--danger-solid:var(--red-600);
@@ -15,32 +15,38 @@
 --pro-bg:var(--amber-50);--pro-border:var(--amber-200);--pro-text:var(--amber-700);
 --streak:var(--orange-500);--streak-bg:var(--orange-50);--streak-text:var(--orange-700);
 --ai:var(--violet-600);--ai-bg:var(--violet-50);--ai-text:var(--violet-700);
-/* Stazia Play: XP, níveis, ligas e etapas da trilha (nunca cores soltas nos componentes) */
+/* Stazia Play: XP, níveis, ligas e etapas da trilha (nunca cores soltas nos componentes).
+   Liga Master dourada (pedido do dono, 16/10/2026): #9A6F00 tem 4,5:1 no branco e 3,7:1 no selo tingido; no escuro #F5B83D tem 9,8:1 no cartão. */
 --xp:var(--amber-500);--xp-bg:var(--amber-50);--xp-text:var(--amber-700);--brand-soft:var(--teal-50);--locked:var(--gray-400);--locked-bg:var(--gray-100);
---league:var(--violet-600);--league-bronze:#B8732E;--league-prata:#8A94A6;--league-ouro:#D9A400;--league-platina:#5FB3C9;--league-diamante:#4F7BE8;--league-elite:#7A4FE0;--league-master:#D63B6C;
+--league:var(--violet-600);--league-bronze:#B8732E;--league-prata:#8A94A6;--league-ouro:#D9A400;--league-platina:#5FB3C9;--league-diamante:#4F7BE8;--league-elite:#7A4FE0;--league-master:#9A6F00;
 --level-1:var(--gray-500);--level-2:var(--teal-500);--level-3:var(--blue-600);--level-4:var(--violet-600);--level-5:var(--amber-500);--level-6:var(--orange-500);--level-7:#D63B6C;--level-8:var(--navy-900);
 /* 5 grandes áreas do Revalida */
 --area-clinica:#2F5FD0;--area-cirurgia:#D9650A;--area-go:#C23A74;--area-pediatria:#0E8A5F;--area-preventiva:#6A47E0;
 --chart-1:var(--teal-500);--chart-2:var(--navy-500);--chart-track:var(--gray-100);
---brand-gradient:linear-gradient(160deg,#12B5AA 0%,#1E4F96 100%);/* @kind color */
+/* Novas telas (onda 0, 15/10/2026): pastéis por área e degradês do pacote do dono, sempre por token */
+--area-clinica-bg:#EDF2FD;--area-clinica-text:#1C43A8;--area-cirurgia-bg:#FFF2E8;--area-cirurgia-text:#B34A0C;--area-go-bg:#FCEEF5;--area-go-text:#B8336F;--area-pediatria-bg:#EFFAF5;--area-pediatria-text:#0B6B4A;--area-preventiva-bg:#F3EFFE;--area-preventiva-text:#4F28B0;
+--brand-hero-gradient:linear-gradient(160deg,#0752AB 0%,#031A3A 100%);--brand-avatar-gradient:linear-gradient(160deg,#009DFE,#052A5A);
+--brand-gradient:linear-gradient(160deg,#2B9BFF 0%,#0A4FA8 100%);/* @kind color */
 }
 [data-theme="dark"]{
---bg-app:#08111F;--surface-card:#0F1A2B;--surface-subtle:#132036;--surface-sunken:#0B1525;--surface-inverse:var(--gray-0);--surface-brand-soft:rgba(45,189,177,.12);
+--bg-app:#08111F;--surface-card:#0F1A2B;--surface-subtle:#132036;--surface-sunken:#0B1525;--surface-inverse:var(--gray-0);--surface-brand-soft:rgba(61,165,255,.12);
 --border-subtle:#17243A;--border-default:#22324B;--border-strong:#304463;--border-brand:var(--teal-400);
 --text-primary:#EAF0F7;--text-secondary:#A9B5C7;--text-tertiary:#8592A6;--text-disabled:#5A677B;--text-inverse:var(--navy-950);--text-brand:var(--teal-300);--text-link:var(--teal-300);--text-link-hover:var(--teal-200);
 --action-primary:var(--teal-400);--action-primary-hover:var(--teal-300);--action-primary-pressed:var(--teal-500);--action-on-primary:var(--navy-950);
 --action-strong:#EAF0F7;--action-strong-hover:#FFFFFF;--action-on-strong:var(--navy-950);
 --action-secondary-bg:#132036;--action-secondary-hover:#192A44;--action-secondary-border:#2A3C59;--action-ghost-hover:#17263D;
---selected-bg:rgba(45,189,177,.14);--selected-border:var(--teal-400);--selected-text:var(--teal-200);
+--selected-bg:rgba(61,165,255,.14);--selected-border:var(--teal-400);--selected-text:var(--teal-200);
 --success-bg:rgba(22,128,60,.18);--success-border:rgba(74,190,120,.4);--success-text:#7FD8A2;
 --warning-bg:rgba(229,154,11,.14);--warning-border:rgba(229,154,11,.4);--warning-text:#F5C462;
 --danger-bg:rgba(198,40,40,.18);--danger-border:rgba(240,110,110,.4);--danger-text:#F59C9C;
 --info-bg:rgba(37,86,209,.2);--info-border:rgba(110,150,240,.4);--info-text:#9DB9F5;
 --pro-bg:rgba(229,154,11,.14);--pro-border:rgba(229,154,11,.4);--pro-text:#F5C462;
 --streak-bg:rgba(242,107,29,.16);--streak-text:#FFA36B;--ai-bg:rgba(98,54,214,.22);--ai-text:#BCA7FA;
---xp:#F5C462;--xp-bg:rgba(229,154,11,.16);--xp-text:#F5C462;--brand-soft:rgba(45,189,177,.12);--locked:#5A677B;--locked-bg:#132036;
---league:#BCA7FA;--league-bronze:#D99A5B;--league-prata:#B5BEC9;--league-ouro:#F2C94C;--league-platina:#8FD3E6;--league-diamante:#8FAEFF;--league-elite:#B39BF7;--league-master:#FF7FA5;
+--xp:#F5C462;--xp-bg:rgba(229,154,11,.16);--xp-text:#F5C462;--brand-soft:rgba(61,165,255,.12);--locked:#5A677B;--locked-bg:#132036;
+--league:#BCA7FA;--league-bronze:#D99A5B;--league-prata:#B5BEC9;--league-ouro:#F2C94C;--league-platina:#8FD3E6;--league-diamante:#8FAEFF;--league-elite:#B39BF7;--league-master:#F5B83D;
 --level-1:#8592A6;--level-2:var(--teal-400);--level-3:#7FA2F2;--level-4:#B39BF7;--level-5:#F5C462;--level-6:#F59A5E;--level-7:#FF7FA5;--level-8:#EAF0F7;
 --area-clinica:#7FA2F2;--area-cirurgia:#F59A5E;--area-go:#EE8DBA;--area-pediatria:#6FCF95;--area-preventiva:#B39BF7;
 --chart-1:var(--teal-400);--chart-2:#6F8FD6;--chart-track:#1A2840;
+--area-clinica-bg:rgba(127,162,242,.16);--area-clinica-text:#9DB9F5;--area-cirurgia-bg:rgba(245,154,94,.16);--area-cirurgia-text:#F7B287;--area-go-bg:rgba(238,141,186,.16);--area-go-text:#F2A8CB;--area-pediatria-bg:rgba(111,207,149,.16);--area-pediatria-text:#8FDDAE;--area-preventiva-bg:rgba(179,155,247,.18);--area-preventiva-text:#C8B8FA;
+--brand-hero-gradient:linear-gradient(160deg,#0B5FC4 0%,#08122B 100%);--brand-avatar-gradient:linear-gradient(160deg,#3DA5FF,#0A4FA8);
 }

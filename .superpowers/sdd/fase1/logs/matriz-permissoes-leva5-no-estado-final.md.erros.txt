@@ -1,0 +1,188 @@
+app_admin_save_support_contact(e-mail) | visitante | permission denied for function app_admin_save_support_contact
+app_admin_save_support_contact(e-mail) | aluno | Acesso restrito a administradores.
+app_admin_save_support_contact(e-mail) | revisor da área (sem equipe) | Acesso restrito a administradores.
+app_admin_save_support_contact(e-mail) | revisor de OUTRA área (sem equipe) | Acesso restrito a administradores.
+app_admin_save_support_contact(e-mail) | editor | Acesso restrito a administradores.
+app_admin_save_support_contact(e-mail) | editor + revisor da área | Acesso restrito a administradores.
+app_report_problem(tela, texto) | visitante | permission denied for function app_report_problem
+app_admin_reports() | visitante | permission denied for function app_admin_reports
+app_admin_reports() | aluno | Acesso restrito à equipe.
+app_admin_reports() | revisor da área (sem equipe) | Acesso restrito à equipe.
+app_admin_reports() | revisor de OUTRA área (sem equipe) | Acesso restrito à equipe.
+app_admin_report_resolve(1) | visitante | permission denied for function app_admin_report_resolve
+app_admin_report_resolve(1) | aluno | Acesso restrito à equipe.
+app_admin_report_resolve(1) | revisor da área (sem equipe) | Acesso restrito à equipe.
+app_admin_report_resolve(1) | revisor de OUTRA área (sem equipe) | Acesso restrito à equipe.
+app_ch_documents() | visitante | Acesso restrito à equipe de conteúdo.
+app_ch_documents() | aluno | Acesso restrito à equipe de conteúdo.
+app_ch_processing_settings() | visitante | permission denied for function app_ch_processing_settings
+app_ch_processing_settings() | aluno | Acesso restrito a administradores.
+app_ch_processing_settings() | revisor da área (sem equipe) | Acesso restrito a administradores.
+app_ch_processing_settings() | revisor de OUTRA área (sem equipe) | Acesso restrito a administradores.
+app_ch_processing_settings() | editor | Acesso restrito a administradores.
+app_ch_processing_settings() | editor + revisor da área | Acesso restrito a administradores.
+app_ch_set_processing_settings(teto) | visitante | permission denied for function app_ch_set_processing_settings
+app_ch_set_processing_settings(teto) | aluno | Acesso restrito a administradores.
+app_ch_set_processing_settings(teto) | revisor da área (sem equipe) | Acesso restrito a administradores.
+app_ch_set_processing_settings(teto) | revisor de OUTRA área (sem equipe) | Acesso restrito a administradores.
+app_ch_set_processing_settings(teto) | editor | Acesso restrito a administradores.
+app_ch_set_processing_settings(teto) | editor + revisor da área | Acesso restrito a administradores.
+ch_worker_processing_settings() (serviço) | visitante | permission denied for function ch_worker_processing_settings
+ch_worker_processing_settings() (serviço) | aluno | permission denied for function ch_worker_processing_settings
+ch_worker_processing_settings() (serviço) | revisor da área (sem equipe) | permission denied for function ch_worker_processing_settings
+ch_worker_processing_settings() (serviço) | revisor de OUTRA área (sem equipe) | permission denied for function ch_worker_processing_settings
+ch_worker_processing_settings() (serviço) | editor | permission denied for function ch_worker_processing_settings
+ch_worker_processing_settings() (serviço) | editor + revisor da área | permission denied for function ch_worker_processing_settings
+ch_worker_processing_settings() (serviço) | administrador | permission denied for function ch_worker_processing_settings
+ch_worker_note_credit_pause() (serviço) | visitante | permission denied for function ch_worker_note_credit_pause
+ch_worker_note_credit_pause() (serviço) | aluno | permission denied for function ch_worker_note_credit_pause
+ch_worker_note_credit_pause() (serviço) | revisor da área (sem equipe) | permission denied for function ch_worker_note_credit_pause
+ch_worker_note_credit_pause() (serviço) | revisor de OUTRA área (sem equipe) | permission denied for function ch_worker_note_credit_pause
+ch_worker_note_credit_pause() (serviço) | editor | permission denied for function ch_worker_note_credit_pause
+ch_worker_note_credit_pause() (serviço) | editor + revisor da área | permission denied for function ch_worker_note_credit_pause
+ch_worker_note_credit_pause() (serviço) | administrador | permission denied for function ch_worker_note_credit_pause
+app_ch_publish_preview(unidade) | visitante | permission denied for function app_ch_publish_preview
+app_ch_publish_preview(unidade) | aluno | Acesso restrito a administradores.
+app_ch_publish_preview(unidade) | revisor da área (sem equipe) | Acesso restrito a administradores.
+app_ch_publish_preview(unidade) | revisor de OUTRA área (sem equipe) | Acesso restrito a administradores.
+app_ch_publish_preview(unidade) | editor | Acesso restrito a administradores.
+app_ch_publish_preview(unidade) | editor + revisor da área | Acesso restrito a administradores.
+app_ch_publish_preview(unidade) | administrador | Versão não encontrada.
+app_ch_publish(unidade, opções) | visitante | permission denied for function app_ch_publish
+app_ch_publish(unidade, opções) | aluno | Acesso restrito a administradores.
+app_ch_publish(unidade, opções) | revisor da área (sem equipe) | Acesso restrito a administradores.
+app_ch_publish(unidade, opções) | revisor de OUTRA área (sem equipe) | Acesso restrito a administradores.
+app_ch_publish(unidade, opções) | editor | Acesso restrito a administradores.
+app_ch_publish(unidade, opções) | editor + revisor da área | Acesso restrito a administradores.
+app_ch_publish(unidade, opções) | administrador | Modo sombra ligado: a IA analisa e sugere, mas nada é publicado. Um administrador precisa desligá-lo
+app_ch_retire(unidade, motivo) | visitante | permission denied for function app_ch_retire
+app_ch_retire(unidade, motivo) | aluno | Acesso restrito a administradores.
+app_ch_retire(unidade, motivo) | revisor da área (sem equipe) | Acesso restrito a administradores.
+app_ch_retire(unidade, motivo) | revisor de OUTRA área (sem equipe) | Acesso restrito a administradores.
+app_ch_retire(unidade, motivo) | editor | Acesso restrito a administradores.
+app_ch_retire(unidade, motivo) | editor + revisor da área | Acesso restrito a administradores.
+app_ch_retire(unidade, motivo) | administrador | Não há publicação ativa dessa versão.
+app_ch_new_version(unidade) | visitante | permission denied for function app_ch_new_version
+app_ch_new_version(unidade) | aluno | Acesso restrito à equipe de conteúdo.
+app_ch_new_version(unidade) | revisor da área (sem equipe) | Versão não encontrada.
+app_ch_new_version(unidade) | revisor de OUTRA área (sem equipe) | Versão não encontrada.
+app_ch_new_version(unidade) | editor | Versão não encontrada.
+app_ch_new_version(unidade) | editor + revisor da área | Versão não encontrada.
+app_ch_new_version(unidade) | administrador | Versão não encontrada.
+app_ch_claim_can_confirm(afirmação) | visitante | permission denied for function app_ch_claim_can_confirm
+app_ch_claim_can_confirm(afirmação) | aluno | Acesso restrito à equipe de conteúdo.
+app_ch_discard_evidence(evidência) | visitante | permission denied for function app_ch_discard_evidence
+app_ch_discard_evidence(evidência) | aluno | Acesso restrito à equipe de conteúdo.
+app_ch_discard_evidence(evidência) | revisor da área (sem equipe) | Evidência não encontrada.
+app_ch_discard_evidence(evidência) | revisor de OUTRA área (sem equipe) | Evidência não encontrada.
+app_ch_discard_evidence(evidência) | editor | Evidência não encontrada.
+app_ch_discard_evidence(evidência) | editor + revisor da área | Evidência não encontrada.
+app_ch_discard_evidence(evidência) | administrador | Evidência não encontrada.
+app_ch_confirm_critical(afirmação) | visitante | permission denied for function app_ch_confirm_critical
+app_ch_confirm_critical(afirmação) | aluno | Acesso restrito à equipe de conteúdo.
+app_ch_confirm_critical(afirmação) | revisor da área (sem equipe) | Afirmação não encontrada.
+app_ch_confirm_critical(afirmação) | revisor de OUTRA área (sem equipe) | Afirmação não encontrada.
+app_ch_confirm_critical(afirmação) | editor | Afirmação não encontrada.
+app_ch_confirm_critical(afirmação) | editor + revisor da área | Afirmação não encontrada.
+app_ch_confirm_critical(afirmação) | administrador | Afirmação não encontrada.
+app_ch_visual_review(material) | visitante | permission denied for function app_ch_visual_review
+app_ch_visual_review(material) | aluno | Acesso restrito à equipe.
+app_ch_visual_review(material) | revisor da área (sem equipe) | Acesso restrito à equipe.
+app_ch_visual_review(material) | revisor de OUTRA área (sem equipe) | Acesso restrito à equipe.
+app_ch_visual_review(material) | editor | Versão não encontrada.
+app_ch_visual_review(material) | editor + revisor da área | Versão não encontrada.
+app_ch_visual_review(material) | administrador | Versão não encontrada.
+app_ch_visual_list() | visitante | permission denied for function app_ch_visual_list
+app_ch_visual_list() | aluno | Acesso restrito à equipe.
+app_ch_visual_list() | revisor da área (sem equipe) | Acesso restrito à equipe.
+app_ch_visual_list() | revisor de OUTRA área (sem equipe) | Acesso restrito à equipe.
+ch_publish_problems(unidade) (interna) | visitante | permission denied for function ch_publish_problems
+ch_publish_problems(unidade) (interna) | aluno | permission denied for function ch_publish_problems
+ch_publish_problems(unidade) (interna) | revisor da área (sem equipe) | permission denied for function ch_publish_problems
+ch_publish_problems(unidade) (interna) | revisor de OUTRA área (sem equipe) | permission denied for function ch_publish_problems
+ch_publish_problems(unidade) (interna) | editor | permission denied for function ch_publish_problems
+ch_publish_problems(unidade) (interna) | editor + revisor da área | permission denied for function ch_publish_problems
+ch_publish_problems(unidade) (interna) | administrador | permission denied for function ch_publish_problems
+app_ch_reanalysis_status() | visitante | permission denied for function app_ch_reanalysis_status
+app_ch_reanalysis_status() | aluno | Acesso restrito à equipe de conteúdo.
+app_ch_reanalysis_request() | visitante | permission denied for function app_ch_reanalysis_request
+app_ch_reanalysis_request() | aluno | Acesso restrito a administradores.
+app_ch_reanalysis_request() | revisor da área (sem equipe) | Acesso restrito a administradores.
+app_ch_reanalysis_request() | revisor de OUTRA área (sem equipe) | Acesso restrito a administradores.
+app_ch_reanalysis_request() | editor | Acesso restrito a administradores.
+app_ch_reanalysis_request() | editor + revisor da área | Acesso restrito a administradores.
+app_ch_reanalysis_request() | administrador | Nenhuma questão está esperando reanálise agora.
+app_ch_request_sources_check() | visitante | permission denied for function app_ch_request_sources_check
+app_ch_request_sources_check() | aluno | Acesso restrito a administradores.
+app_ch_request_sources_check() | revisor da área (sem equipe) | Acesso restrito a administradores.
+app_ch_request_sources_check() | revisor de OUTRA área (sem equipe) | Acesso restrito a administradores.
+app_ch_request_sources_check() | editor | Acesso restrito a administradores.
+app_ch_request_sources_check() | editor + revisor da área | Acesso restrito a administradores.
+app_ch_taxonomy_draft() | visitante | permission denied for function app_ch_taxonomy_draft
+app_ch_taxonomy_draft() | aluno | Acesso restrito à equipe.
+app_ch_taxonomy_draft() | revisor da área (sem equipe) | Acesso restrito à equipe.
+app_ch_taxonomy_draft() | revisor de OUTRA área (sem equipe) | Acesso restrito à equipe.
+app_ch_taxonomy_publish() | visitante | permission denied for function app_ch_taxonomy_publish
+app_ch_taxonomy_publish() | aluno | Acesso restrito a administradores.
+app_ch_taxonomy_publish() | revisor da área (sem equipe) | Acesso restrito a administradores.
+app_ch_taxonomy_publish() | revisor de OUTRA área (sem equipe) | Acesso restrito a administradores.
+app_ch_taxonomy_publish() | editor | Acesso restrito a administradores.
+app_ch_taxonomy_publish() | editor + revisor da área | Acesso restrito a administradores.
+app_ch_taxonomy_publish() | administrador | Não há rascunho para publicar.
+ch_worker_reanalysis_claim() (serviço) | visitante | permission denied for function ch_worker_reanalysis_claim
+ch_worker_reanalysis_claim() (serviço) | aluno | permission denied for function ch_worker_reanalysis_claim
+ch_worker_reanalysis_claim() (serviço) | revisor da área (sem equipe) | permission denied for function ch_worker_reanalysis_claim
+ch_worker_reanalysis_claim() (serviço) | revisor de OUTRA área (sem equipe) | permission denied for function ch_worker_reanalysis_claim
+ch_worker_reanalysis_claim() (serviço) | editor | permission denied for function ch_worker_reanalysis_claim
+ch_worker_reanalysis_claim() (serviço) | editor + revisor da área | permission denied for function ch_worker_reanalysis_claim
+ch_worker_reanalysis_claim() (serviço) | administrador | permission denied for function ch_worker_reanalysis_claim
+ch_worker_document_extraction() (serviço) | visitante | permission denied for function ch_worker_document_extraction
+ch_worker_document_extraction() (serviço) | aluno | permission denied for function ch_worker_document_extraction
+ch_worker_document_extraction() (serviço) | revisor da área (sem equipe) | permission denied for function ch_worker_document_extraction
+ch_worker_document_extraction() (serviço) | revisor de OUTRA área (sem equipe) | permission denied for function ch_worker_document_extraction
+ch_worker_document_extraction() (serviço) | editor | permission denied for function ch_worker_document_extraction
+ch_worker_document_extraction() (serviço) | editor + revisor da área | permission denied for function ch_worker_document_extraction
+ch_worker_document_extraction() (serviço) | administrador | permission denied for function ch_worker_document_extraction
+app_plans_info() | visitante | permission denied for function app_plans_info
+app_admin_tutor_save_config() | visitante | permission denied for function app_admin_tutor_save_config
+app_admin_tutor_save_config() | aluno | Acesso restrito a administradores.
+app_admin_tutor_save_config() | revisor da área (sem equipe) | Acesso restrito a administradores.
+app_admin_tutor_save_config() | revisor de OUTRA área (sem equipe) | Acesso restrito a administradores.
+app_admin_tutor_save_config() | editor | Acesso restrito a administradores.
+app_admin_tutor_save_config() | editor + revisor da área | Acesso restrito a administradores.
+ch_worker_tutor_settings() (serviço) | visitante | permission denied for function ch_worker_tutor_settings
+ch_worker_tutor_settings() (serviço) | aluno | permission denied for function ch_worker_tutor_settings
+ch_worker_tutor_settings() (serviço) | revisor da área (sem equipe) | permission denied for function ch_worker_tutor_settings
+ch_worker_tutor_settings() (serviço) | revisor de OUTRA área (sem equipe) | permission denied for function ch_worker_tutor_settings
+ch_worker_tutor_settings() (serviço) | editor | permission denied for function ch_worker_tutor_settings
+ch_worker_tutor_settings() (serviço) | editor + revisor da área | permission denied for function ch_worker_tutor_settings
+ch_worker_tutor_settings() (serviço) | administrador | permission denied for function ch_worker_tutor_settings
+ch_worker_tutor_stt_today() (serviço) | visitante | permission denied for function ch_worker_tutor_stt_today
+ch_worker_tutor_stt_today() (serviço) | aluno | permission denied for function ch_worker_tutor_stt_today
+ch_worker_tutor_stt_today() (serviço) | revisor da área (sem equipe) | permission denied for function ch_worker_tutor_stt_today
+ch_worker_tutor_stt_today() (serviço) | revisor de OUTRA área (sem equipe) | permission denied for function ch_worker_tutor_stt_today
+ch_worker_tutor_stt_today() (serviço) | editor | permission denied for function ch_worker_tutor_stt_today
+ch_worker_tutor_stt_today() (serviço) | editor + revisor da área | permission denied for function ch_worker_tutor_stt_today
+ch_worker_tutor_stt_today() (serviço) | administrador | permission denied for function ch_worker_tutor_stt_today
+ch_worker_ai_save_settings() (serviço) | visitante | permission denied for function ch_worker_ai_save_settings
+ch_worker_ai_save_settings() (serviço) | aluno | permission denied for function ch_worker_ai_save_settings
+ch_worker_ai_save_settings() (serviço) | revisor da área (sem equipe) | permission denied for function ch_worker_ai_save_settings
+ch_worker_ai_save_settings() (serviço) | revisor de OUTRA área (sem equipe) | permission denied for function ch_worker_ai_save_settings
+ch_worker_ai_save_settings() (serviço) | editor | permission denied for function ch_worker_ai_save_settings
+ch_worker_ai_save_settings() (serviço) | editor + revisor da área | permission denied for function ch_worker_ai_save_settings
+ch_worker_ai_save_settings() (serviço) | administrador | permission denied for function ch_worker_ai_save_settings
+tabela student_reports (select) | visitante | permission denied for table student_reports
+tabela support_config (select) | visitante | permission denied for table support_config
+tabela support_config (select) | aluno | permission denied for table support_config
+tabela support_config (select) | revisor da área (sem equipe) | permission denied for table support_config
+tabela support_config (select) | revisor de OUTRA área (sem equipe) | permission denied for table support_config
+tabela support_config (select) | editor | permission denied for table support_config
+tabela support_config (select) | editor + revisor da área | permission denied for table support_config
+tabela support_config (select) | administrador | permission denied for table support_config
+tabela ch_reanalysis_control (select) | visitante | permission denied for table ch_reanalysis_control
+tabela ch_reanalysis_control (select) | aluno | permission denied for table ch_reanalysis_control
+tabela ch_reanalysis_control (select) | revisor da área (sem equipe) | permission denied for table ch_reanalysis_control
+tabela ch_reanalysis_control (select) | revisor de OUTRA área (sem equipe) | permission denied for table ch_reanalysis_control
+tabela ch_reanalysis_control (select) | editor | permission denied for table ch_reanalysis_control
+tabela ch_reanalysis_control (select) | editor + revisor da área | permission denied for table ch_reanalysis_control
+tabela ch_reanalysis_control (select) | administrador | permission denied for table ch_reanalysis_control

@@ -110,7 +110,7 @@ describe("Tempo escolhido pelo aluno (montagem do simulado)", () => {
   it("o histórico mostra o simulado pausado e quanto falta", async () => {
     renderBuilder();
     expect(await screen.findByText("Pausado")).toBeTruthy();
-    expect(screen.getByText(/4\/30 respondidas · faltam 35:00/)).toBeTruthy();
+    expect(screen.getByText(/4\/30 · .*faltam 35:00/)).toBeTruthy();
   });
 
   it("horas e minutos e ritmo por questão", () => {
@@ -160,7 +160,11 @@ describe("Cronômetro durante o simulado", () => {
     expect(await screen.findByText(/Caso clínico número 1/)).toBeTruthy();
     expect(backend.rpc).toHaveBeenCalledWith("app_resume_session", { p_session_id: "s1" });
     fireEvent.keyDown(window, { key: "b" });
+    // escolher não grava: só "Confirmar resposta" guarda e trava a resposta (sem correção no simulado)
+    expect(backend.rpc).not.toHaveBeenCalledWith("app_answer_question", expect.anything());
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar resposta" }));
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_answer_question", expect.objectContaining({ p_question_id: "q1", p_option: "B" })));
+    expect(await screen.findByText("Resposta confirmada")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Encerrar o simulado" }));
     expect(await screen.findByRole("heading", { name: "Encerrar o simulado?" })).toBeTruthy();
@@ -216,7 +220,7 @@ describe("Cronômetro durante o simulado", () => {
     });
     renderSession();
     await screen.findByText(/Caso clínico número 1/);
-    expect(screen.getByRole("group", { name: "Cronômetro do simulado" })).toBeTruthy();
+    expect(screen.getByRole("timer", { name: /Tempo restante do simulado/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Encerrar o simulado" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Pausar o simulado" }));
     expect(await screen.findByRole("button", { name: "Continuar o simulado" })).toBeTruthy();

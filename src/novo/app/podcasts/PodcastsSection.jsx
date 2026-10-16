@@ -6,6 +6,7 @@ import { Badge, Button, Icon } from "../../ds";
 import { IconTile } from "../../prototype/RealIcons.jsx";
 import { areaLabel } from "../practice/format.js";
 import { durationText, podcastAudioUrl, podcastsAvailable } from "./podcastsApi.js";
+import { explainError } from "../../../shared/errors/explicarErro";
 
 const dateBR = (iso) => (iso ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(new Date(iso)) : "");
 const SPEAKER = { ANA: "Ana", BRUNO: "Bruno" };
@@ -21,7 +22,7 @@ function Episode({ episode, backend }) {
     try {
       setAudio({ url: await podcastAudioUrl(backend, episode.id), busy: false, error: null });
     } catch (error) {
-      setAudio({ url: null, busy: false, error: error.message });
+      setAudio({ url: null, busy: false, error: explainError(error) });
     }
   };
   const toggleText = async () => {

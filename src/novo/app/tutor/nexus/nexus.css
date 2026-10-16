@@ -521,7 +521,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-brand, #0b6f68);
+  color: var(--text-brand, #0a6fd8);
 }
 .nx-q__ref {
   font-family: var(--font-mono, "JetBrains Mono", monospace);

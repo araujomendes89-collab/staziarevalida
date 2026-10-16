@@ -1,0 +1,99 @@
+STAZIAMED REVALIDA - LEVA 3 (SQL para colar no Supabase) - feito em 12/10/2026 (versão com as correções da 3ª revisão independente)
+
+O QUE É ESTA PASTA
+Quatro partes de SQL (1 a 4) e uma conferência (0). Elas passaram pelas 4 frentes da leva 3: Questões, Aulas, Podcasts e Planos.
+Tudo já foi ensaiado numa cópia do banco de produção (com as partes 1 a 7 de 11/10, a Arena, as Fontes oficiais e a Fonte complementar
+já coladas): colou duas vezes sem erro, e uma terceira colagem não muda nada. NADA foi colado no banco de verdade.
+
+ORDEM (siga assim)
+  0. Rode o arquivo 0-CONFERIR-primeiro-nao-altera-nada.sql. Ele SÓ LÊ. Mostre o resultado ao Claude antes de seguir.
+  1. 1-colar-ANTES-do-site-parte-1-Questoes.sql
+  2. 2-colar-ANTES-do-site-parte-2-Aulas.sql
+  3. 3-colar-ANTES-do-site-parte-3-Podcasts.sql
+  4. 4-colar-ANTES-do-site-parte-4-Planos.sql
+  Depois do SQL, o Claude publica a IMAGEM do Cloud Run e, por último, o SITE. (SQL primeiro, imagem depois, site por último.)
+
+COMO COLAR CADA PARTE
+  Abra o editor SQL do Supabase, cole o arquivo INTEIRO sem selecionar nada e clique em Run. No fim aparece uma linha "OK: <parte> colada"
+  e uma lista de conferências: todas têm de estar "true". Se alguma estiver "false" ou der erro, pare e mostre ao Claude.
+  Para colar de novo: cole DESTA parte até a última, na ordem. Pode colar duas vezes sem estragar nada.
+  Se o editor perguntar sobre "operação destrutiva" (aparece porque o arquivo recria as próprias peças com "drop ... if exists"), pode confirmar.
+  O arquivo OPCIONAL-lista-dos-arquivos-esquecidos-de-podcast-so-leitura.sql só lê: mostra quais arquivos de podcast ninguém usa. Nada é apagado por ele.
+
+O QUE CADA PARTE MUDA
+  Parte 1 - Questões (migrações 9700, 9701, 9702)
+    Equipe: editor e administrador enviam a figura da questão (uma por questão, PNG ou JPG até 5 MB, com texto alternativo de 10 a 300 letras);
+            a questão que citava figura sem imagem entra nos treinos quando a figura chega; não dá para desmarcar "Cita figura" sem a figura;
+            o editor mostra o histórico de mudanças da questão.
+    Aluno:  explicação das alternativas, conduta esperada e "o que a questão avalia" que forem gravados NOVOS ou ALTERADOS ficam
+            "Em revisão" e somem da correção e do Tutor até o revisor médico da área (ou o administrador) aprovar. O texto que já está
+            gravado hoje continua visível.
+  Parte 2 - Aulas (9710, 9711)
+    Equipe: remover um material, trocar o PDF/áudio ou apagar a aula também apaga o arquivo do depósito (sem volta), se mais nada o usa.
+            Antes de apagar, o servidor reserva o arquivo no banco e confere de novo a cada exclusão; quem tenta usar o arquivo
+            nesse instante recebe um aviso em português e tenta de novo. Se a limpeza não terminar, o site avisa em português
+            (nunca diz "feito" sem ter terminado) e o arquivo segue na fila para a próxima limpeza. Só funciona com a Fonte complementar (9620) já colada.
+    Aluno:  o XP de concluir a aula (20) só vem para quem assistiu até o fim DE VERDADE (conta o tempo realmente assistido; pular para o final não vale).
+  Parte 3 - Podcasts (9720, 9721)
+    Equipe: o roteiro só é aprovado pelo administrador ou pelo revisor médico da área do episódio (a permissão é conferida com o episódio
+            já travado); arquivos antigos que ficariam esquecidos no depósito passam a ser apagados quando o áudio deixa de valer ou a
+            fonte/episódio some. O servidor novo nunca apaga na hora: reserva o arquivo, confere de novo a cada exclusão e só então apaga.
+            Se a limpeza de podcast não terminar, o site avisa em português e o arquivo continua na fila. Se a parte 3 faltar quando o site novo entrar no ar, o site NÃO apaga arquivo nenhum e avisa em português.
+    Aluno:  nada que apareça.
+  Parte 4 - Planos (9730, 9731, 9732)
+    Equipe: teste grátis vencido conta como "sem acesso pago"; bloco "Benefícios do plano Elite" nas Configurações (nasce igual ao Pro);
+            a chave "Oferecer teste grátis no cadastro" passa a valer de verdade.
+    Aluno:  quem está sem acesso pago não começa simulado completo nem o teste novo do Tutor.
+
+EFEITOS QUE VOCÊ VAI VER (leia antes de colar)
+  - Parte 4 (9730) tira o direito de começar simulados completos e o teste NOVO do Tutor de quem está sem acesso pago: teste grátis vencido,
+    plano pago vencido/cancelado/expirado e conta sem assinatura. Questões e flashcards continuam abertos. Equipe, revisor médico, plano
+    pago válido e teste dentro do prazo NÃO perdem nada. Quem já começou o teste do Tutor segue até o prazo dele. A LISTA POR E-MAIL de quem
+    perde está no bloco 1 da conferência (arquivo 0). Se alguém da lista deve continuar com acesso, dê um plano ou um teste em
+    Administração > Usuários ANTES de colar a parte 4.
+  - Parte 4 (9732): olhe o bloco 4 da conferência. Se a chave "Oferecer teste grátis no cadastro" estiver DESLIGADA, depois da parte 4
+    todo cadastro novo nasce SEM teste (como "Teste grátis · Expirado") e, pela regra acima, sem simulado completo nem Tutor novo até a
+    equipe dar um plano ou teste. Ligada, nada muda no cadastro.
+  - Parte 2 (9711): só ganha o XP de aula quem assistiu até o fim. Aula com link .m3u8, com outro endereço (que abre em outra aba) ou sem
+    vídeo medido DEIXA de dar XP (concluir continua marcando a aula como feita). O bloco 5 da conferência conta quantas aulas publicadas
+    estão nesse caso (é uma contagem aproximada pelo endereço). Ninguém perde o XP que já ganhou: nada é retroativo.
+  - Parte 1 (9701): explicações novas das questões ficam "Em revisão" até o revisor médico da área ou o administrador aprovar. Isso vale
+    também para importação com "atualizar" e para o assistente de IA: uma importação grande cria uma fila grande de revisão. Olhe o bloco 7:
+    nas áreas SEM revisor médico cadastrado só o administrador aprova.
+  - Parte 1 (9700): o banco só aceita como figura um arquivo que o servidor conferiu. Por isso o envio de figura só funciona depois que o
+    site novo e a imagem do Cloud Run estiverem no ar.
+  - Parte 3 (9720): editor comum deixa de aprovar roteiro de podcast (a tela explica o motivo). Episódio sem grande área: só o administrador.
+  - Parte 2 (9710): se a Fonte complementar (9620) não estiver colada, a parte PARA no começo com o aviso "Cole antes a migração 9620" e não
+    altera nada. Em produção ela já está colada (o bloco 8 da conferência mostra OK).
+  - Parte 3 (9721) e Parte 2 (9710): nada é apagado retroativamente. Os arquivos que já estão esquecidos hoje ficam onde estão (a lista
+    opcional mostra quais); só os eventos DE AGORA EM DIANTE entram na fila de limpeza.
+
+JANELA CURTA ENTRE COLAR E PUBLICAR O SITE
+  Entre colar o SQL e publicar a imagem e o site, o site antigo continua funcionando, com estas diferenças (curtas e aceitas):
+  - Questões: o comentário salvo por uma pessoa nessa janela já entra "Em revisão" (sem o aviso novo na tela); não dá para enviar figura.
+  - Aulas: quem concluir uma aula nessa janela não ganha o XP na hora (o site antigo não manda o "assistiu até o fim"); o XP vem quando
+    assistir até o fim no site novo. O servidor antigo não apaga arquivos de aula (como hoje).
+  - Podcasts: o servidor antigo apaga os arquivos direto, como hoje; editor comum já é barrado de aprovar (o botão aparece, o banco recusa).
+  - Planos: com a chave do Tutor "Planos pagos + teste grátis" DESLIGADA (estado antigo), o Tutor continua aberto a todos mesmo para quem
+    perdeu o acesso pago; os avisos não chamam o Tutor de pago nesse caso. Ligar a chave é decisão do dono.
+  - Planos: quem perdeu o acesso e tentar um simulado vê no site antigo uma mensagem genérica ("Ajuste os filtros e tente de novo").
+  Por isso a ordem é SQL, imagem do Cloud Run e site em seguida, sem pausa longa.
+  O contrário (site novo antes do SQL) deve ser EVITADO. Se acontecer, o site novo percebe que falta o SQL e volta a falar como antes
+  (não promete revisão de comentário, XP pelo fim da aula nem aviso de plano), e o servidor não apaga arquivo nenhum e avisa em português.
+  Questões: quem aprova um comentário em revisão é o revisor médico da área OU o administrador (o administrador não precisa estar
+  cadastrado como revisor; fica registrado quem decidiu). A tela aprova exatamente o texto que mostra, a fila vem de 50 em 50 e o revisor vê a figura.
+
+SE FOR PRECISO COLAR DE NOVO ALGO ANTIGO
+  Depois desta leva, NÃO cole de novo, sozinhos:
+  - COLAR-fonte-complementar-9620-9621.sql  -> volta ao texto antigo as duas funções que escondem o comentário em revisão. Se colar,
+    cole de novo a parte 1 desta pasta (a conferência final da parte 1 mostra "false" quando isso acontece).
+  - a parte 4 do pacote de 11/10 (Acesso e Usuários)  -> volta o Tutor ao desenho antigo. Se colar, cole de novo a parte 4 desta pasta.
+  As outras partes e arquivos antigos podem ser coladas de novo sem mexer em nada desta leva.
+
+LIMITES (honestos)
+  - O ensaio foi numa cópia do banco feita em PGlite (Postgres 18), não no Supabase de verdade. Nada nestes arquivos usa recurso novo do Postgres.
+  - O depósito de arquivos (figuras, aulas, podcasts) foi ensaiado com depósito de mentira. Depois de publicar, vale enviar uma figura de
+    verdade e abrir uma aula de cada tipo (YouTube, Vimeo, MP4) assistindo até o fim para ver o "+20 XP".
+  - Se uma limpeza de arquivo de aula for refeita por outra ao mesmo tempo, o Registro da Administração pode mostrar duas anotações do
+    mesmo arquivo apagado (as duas são verdadeiras; apagar o que já não existe é inofensivo).
+  - O banco não prova a visualização do vídeo: o tempo vem do navegador. Para 20 XP isso foi aceito.

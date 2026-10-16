@@ -12,7 +12,7 @@ import type { AiProviderId } from "./models";
 import { estimateCostUsd, type ModelPrice } from "./prices";
 import { googleAiAccess, GOOGLE_KEY_MISSING } from "./googleKey";
 
-export type AiFunctionKey = "criacao" | "verificacao" | "engenharia_reversa" | "assistente_preencher" | "assistente_conferir" | "assistente_revisar" | "busca_fontes";
+export type AiFunctionKey = "criacao" | "verificacao" | "engenharia_reversa" | "assistente_preencher" | "assistente_conferir" | "assistente_revisar" | "busca_fontes" | "similaridade" | "analise_mudancas";
 export type AiMode = "sozinha" | "linha" | "comite";
 
 export interface ModelRef {
@@ -34,7 +34,7 @@ export interface FunctionConfig {
 export interface AiConfig {
   providers: Record<AiProviderId, { enabled: boolean; models: { id: string; label: string }[]; status: string | null }>;
   functions: Partial<Record<AiFunctionKey, FunctionConfig>>;
-  settings: { monthly_cap_usd: number | null; per_run_cap_usd: number | null; caps_enabled: boolean; tab_override_enabled: boolean };
+  settings: { monthly_cap_usd: number | null; per_run_cap_usd: number | null; caps_enabled: boolean; tab_override_enabled: boolean; overall_monthly_cap_usd?: number | null; overall_cap_enabled?: boolean };
   prices: ModelPrice[];
 }
 
@@ -52,6 +52,12 @@ export const SEARCH_NO_GEMINI = "A busca de fontes oficiais não funciona com o 
 
 /** Funções que buscam na internet: só modo sozinha, sem Ollama, com máximo de buscas e preço por busca. */
 export const isSearchFunction = (fn: AiFunctionKey): boolean => fn === "busca_fontes";
+/**
+ * Funções que só rodam com a configuração SALVA na Central de IAs e a Análise do que mudou da Vigilância científica (sem ela ficam desligadas; as variáveis de ambiente nunca as
+ * definem): a busca de fontes oficiais e as Questões parecidas (similaridade: vetores das questões e classificação dos pares
+ * duvidosos; começa desligada por decisão do dono, 2026-10-12).
+ */
+export const requiresSavedConfig = (fn: AiFunctionKey): boolean => isSearchFunction(fn) || fn === "similaridade" || fn === "analise_mudancas";
 
 export const isProviderId = (v: unknown): v is AiProviderId => PROVIDER_IDS.includes(v as AiProviderId);
 
@@ -111,6 +117,10 @@ export const TYPICAL_CALLS: Record<AiFunctionKey, TypicalCall[]> = {
   // busca de fontes oficiais (sources/search.ts): o pedido, a lista de sites e as instruções (~6 mil caracteres), 8.192 de saída
   // e o máximo de buscas (o salvo na função, senão DEFAULT_MAX_SEARCHES)
   busca_fontes: [{ use: "busca de fontes oficiais", inputChars: 6_000, maxOut: 8192, searches: DEFAULT_MAX_SEARCHES }],
+  // Questões parecidas (similarity/classifier.ts): 4 pares por chamada, com enunciado, alternativas e perfil (~24 mil caracteres)
+  similaridade: [{ use: "pares duvidosos de questões parecidas", inputChars: 24_000, maxOut: 4096 }],
+  // Vigilância científica (vigilance/analysis.ts): os trechos que mudaram (até 40 de 3 mil caracteres) e as instruções
+  analise_mudancas: [{ use: "análise do que mudou (Vigilância científica)", inputChars: 40_000, maxOut: 4096 }],
 };
 
 /** As chamadas típicas da função; a de busca usa o máximo de buscas salvo nela (senão o padrão). */
@@ -299,6 +309,9 @@ function convert(raw: any): AiConfig {
       per_run_cap_usd: num(s.per_run_cap_usd),
       caps_enabled: s.caps_enabled === true,
       tab_override_enabled: s.tab_override_enabled === true,
+      // IA02: teto geral do mês (tudo junto); só avisa na tela, nada para por causa dele. Nasce desligado e sem valor.
+      overall_monthly_cap_usd: num(s.overall_monthly_cap_usd),
+      overall_cap_enabled: s.overall_cap_enabled === true,
     },
     prices,
   };
@@ -330,12 +343,15 @@ export function functionForPrompt(key: PromptKey): AiFunctionKey {
     case "solve":
     case "currency":
     case "redteam":
+    case "staziamed_pedagogia":
       return "verificacao";
     case "qanalysis":
     case "qreanalysis":
       return "engenharia_reversa";
     case "source_search":
       return "busca_fontes";
+    case "source_change":
+      return "analise_mudancas";
     default:
       return "criacao";
   }
@@ -351,7 +367,7 @@ export function functionForPrompt(key: PromptKey): AiFunctionKey {
  * A função de busca na internet (busca_fontes) não tem modelo nas variáveis: sem configuração salva fica desligada (null).
  */
 export function envFallbackRef(fn: AiFunctionKey, env: NodeJS.ProcessEnv = process.env, uiKind?: AiProviderId): ModelRef | null {
-  if (isSearchFunction(fn)) return null; // a busca na internet só roda com configuração salva; as variáveis nunca a definem
+  if (requiresSavedConfig(fn)) return null; // a busca na internet e as Questões parecidas só rodam com configuração salva; as variáveis nunca as definem
   const get = (k: string) => (env[k] ?? "").trim();
   const assistant = fn.startsWith("assistente_");
   const modelFor = (id: AiProviderId, ...first: string[]) => {
@@ -558,7 +574,7 @@ export interface FunctionCheck {
   warnings: string[];
 }
 
-export const FUNCTION_KEYS: AiFunctionKey[] = ["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes"];
+export const FUNCTION_KEYS: AiFunctionKey[] = ["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes", "similaridade", "analise_mudancas"];
 
 /**
  * Função salva: além da validação da configuração, confere o que ESTE servidor consegue chamar. Bloqueia só o que não
@@ -614,7 +630,7 @@ function savedFunctionCheck(saved: FunctionConfig, cfg: AiConfig, env: NodeJS.Pr
 }
 
 /**
- * Situação de cada uma das 7 funções: pronta ou o motivo. Função sem configuração salva usa as variáveis de ambiente, menos a
+ * Situação de cada uma das 8 funções: pronta ou o motivo. Função sem configuração salva usa as variáveis de ambiente, menos a
  * de busca na internet, que sem configuração fica desligada.
  */
 export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): Record<AiFunctionKey, FunctionCheck> {
@@ -625,7 +641,7 @@ export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.e
       out[key] = savedFunctionCheck(saved, cfg, env);
       continue;
     }
-    if (isSearchFunction(key)) {
+    if (requiresSavedConfig(key)) {
       out[key] = { source: "variaveis", ready: false, ref: null, problems: [SEARCH_OFF], warnings: [] };
       continue;
     }

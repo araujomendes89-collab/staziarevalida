@@ -1043,14 +1043,16 @@ describe("Central", () => {
   // ---------------------------------------------------------------- sem banco
 
   describe("preços e problemas (sem banco)", () => {
-    it("a função é a sétima e a última; só ela é função de busca; as variáveis de ambiente nunca a definem", () => {
-      expect(FUNCTION_KEYS).toEqual(["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes"]);
+    it("a função é a sétima (a oitava, Questões parecidas, veio depois); só ela é função de busca; as variáveis de ambiente nunca a definem", () => {
+      expect(FUNCTION_KEYS).toEqual(["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes", "similaridade", "analise_mudancas"]);
       expect(DEFAULT_MAX_SEARCHES).toBe(5);
       expect(FUNCTION_KEYS.filter((k) => isSearchFunction(k))).toEqual(["busca_fontes"]);
       const env = { CONTENT_HUB_AI_PROVIDER: "anthropic", ANTHROPIC_API_KEY: "x", CONTENT_HUB_MODEL_CREATE: "claude-sonnet-5-5" } as NodeJS.ProcessEnv;
       expect(envFallbackRef("criacao", env)).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" }); // as outras seguem as variáveis
       expect(envFallbackRef("busca_fontes", env)).toBeNull();
       for (const ui of ["anthropic", "openai", "gemini", "ollama"] as const) expect(envFallbackRef("busca_fontes", env, ui)).toBeNull();
+      // Questões parecidas (9910) também só roda com a configuração salva: começa desligada
+      expect(envFallbackRef("similaridade", env)).toBeNull();
     });
 
     it("estimateCostUsd soma buscas × preço por busca MAIS a folga de 30.000 tokens de entrada por busca; costUsd (o gasto real) não tem folga", () => {

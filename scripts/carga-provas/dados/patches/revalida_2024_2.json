@@ -1,0 +1,236 @@
+[
+ {
+  "id": "revalida_2024_2_q012",
+  "campo": "statement",
+  "antes": "20 kg/m2, é",
+  "depois": "20 kg/m², é",
+  "tipo": "sobrescrito",
+  "pagina": 4,
+  "evidencia": "evidencias/q012.png"
+ },
+ {
+  "id": "revalida_2024_2_q016",
+  "campo": "statement",
+  "antes": "apresenta- se em",
+  "depois": "apresenta-se em",
+  "tipo": "caractere",
+  "pagina": 5,
+  "evidencia": "evidencias/q016.png"
+ },
+ {
+  "id": "revalida_2024_2_q016",
+  "campo": "statement",
+  "antes": "córneo- palpebral",
+  "depois": "córneo-palpebral",
+  "tipo": "caractere",
+  "pagina": 5,
+  "evidencia": "evidencias/q016.png"
+ },
+ {
+  "id": "revalida_2024_2_q023",
+  "campo": "statement",
+  "antes": "3.o dia de vida",
+  "depois": "3.º dia de vida",
+  "tipo": "sobrescrito",
+  "pagina": 7,
+  "evidencia": "evidencias/q023.png"
+ },
+ {
+  "id": "revalida_2024_2_q023",
+  "campo": "statement",
+  "antes": "450.000/mm3 250.000",
+  "depois": "450.000/mm³ 250.000",
+  "tipo": "sobrescrito",
+  "pagina": 7,
+  "evidencia": "evidencias/q023.png"
+ },
+ {
+  "id": "revalida_2024_2_q023",
+  "campo": "statement",
+  "antes": "500.000/mm3 Reticulócitos",
+  "depois": "500.000/mm³ Reticulócitos",
+  "tipo": "sobrescrito",
+  "pagina": 7,
+  "evidencia": "evidencias/q023.png"
+ },
+ {
+  "id": "revalida_2024_2_q027",
+  "campo": "statement",
+  "antes": "anti- inflamatório e analgésico",
+  "depois": "anti-inflamatório e analgésico",
+  "tipo": "caractere",
+  "pagina": 8,
+  "evidencia": "evidencias/q027.png"
+ },
+ {
+  "id": "revalida_2024_2_q027",
+  "campo": "options.D",
+  "antes": "anti- inflamatório.",
+  "depois": "anti-inflamatório.",
+  "tipo": "caractere",
+  "pagina": 8,
+  "evidencia": "evidencias/q027.png"
+ },
+ {
+  "id": "revalida_2024_2_q033",
+  "campo": "statement",
+  "antes": "pronto- atendimento",
+  "depois": "pronto-atendimento",
+  "tipo": "caractere",
+  "pagina": 9,
+  "evidencia": "evidencias/q033.png"
+ },
+ {
+  "id": "revalida_2024_2_q037",
+  "campo": "statement",
+  "antes": "corto- contusa",
+  "depois": "corto-contusa",
+  "tipo": "caractere",
+  "pagina": 10,
+  "evidencia": "evidencias/q037.png"
+ },
+ {
+  "id": "revalida_2024_2_q041",
+  "campo": "statement",
+  "antes": "apresenta- se hidratada",
+  "depois": "apresenta-se hidratada",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "evidencias/q041.png"
+ },
+ {
+  "id": "revalida_2024_2_q042",
+  "campo": "statement",
+  "antes": "deve- se realizar",
+  "depois": "deve-se realizar",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "evidencias/q042.png"
+ },
+ {
+  "id": "revalida_2024_2_q044",
+  "campo": "statement",
+  "antes": "pronto- socorro obstétrico",
+  "depois": "pronto-socorro obstétrico",
+  "tipo": "caractere",
+  "pagina": 12,
+  "evidencia": "evidencias/q044.png"
+ },
+ {
+  "id": "revalida_2024_2_q053",
+  "campo": "statement",
+  "antes": "nota- se RN",
+  "depois": "nota-se RN",
+  "tipo": "caractere",
+  "pagina": 16,
+  "evidencia": "evidencias/q053.png"
+ },
+ {
+  "id": "revalida_2024_2_q057",
+  "campo": "statement",
+  "antes": "22 kg/m2. Ao",
+  "depois": "22 kg/m². Ao",
+  "tipo": "sobrescrito",
+  "pagina": 17,
+  "evidencia": "evidencias/q057.png"
+ },
+ {
+  "id": "revalida_2024_2_q066",
+  "campo": "statement",
+  "antes": "(TFG – CKP 74,99 mL/min/1,73 m2 > 90 mL/min/1,73 m2 - EPI) Glicemia",
+  "depois": "(TFG – CKP - EPI) 74,99 mL/min/1,73 m² > 90 mL/min/1,73 m² Glicemia",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 20,
+  "evidencia": "evidencias/q066.png"
+ },
+ {
+  "id": "revalida_2024_2_q066",
+  "campo": "statement",
+  "antes": "amostra isolada de 234 mg/L < 30 mg/L urina Observação",
+  "depois": "amostra isolada de urina 234 mg/L < 30 mg/L Observação",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 20,
+  "evidencia": "evidencias/q066.png"
+ },
+ {
+  "id": "revalida_2024_2_q066",
+  "campo": "options.D",
+  "antes": "acompanha- mento habitual",
+  "depois": "acompanhamento habitual",
+  "tipo": "caractere",
+  "pagina": 20,
+  "evidencia": "evidencias/q066.png"
+ },
+ {
+  "id": "revalida_2024_2_q073",
+  "campo": "statement",
+  "antes": "em RN IG ≥ 35 semanas. Bilirrubina total (mg/dL) Fototerapia Exsanguineotransfusão idade 350/7 - 376/7 ≥380/7 350/7 - 376/7 ≥380/7 semanas semanas semanas semanas 24 horas",
+  "depois": "em RN IG ≥ 35 semanas. idade Bilirrubina total (mg/dL) Fototerapia Exsanguineotransfusão 35⁰⁄⁷ - 37⁶⁄⁷ semanas ≥38⁰⁄⁷ semanas 35⁰⁄⁷ - 37⁶⁄⁷ semanas ≥38⁰⁄⁷ semanas 24 horas",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 21,
+  "evidencia": "evidencias/q073.png"
+ },
+ {
+  "id": "revalida_2024_2_q076",
+  "campo": "statement",
+  "antes": "Valor de Exame Amostra Resultado referência Ácido 5-hidroxiindolacético Urina 5 mg/24h 2 a 7 mg/24h (5-HIAA) Normetanefrina",
+  "depois": "Exame Amostra Resultado Valor de referência Ácido 5-hidroxiindolacético (5-HIAA) Urina 5 mg/24h 2 a 7 mg/24h Normetanefrina",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 22,
+  "evidencia": "evidencias/q076.png"
+ },
+ {
+  "id": "revalida_2024_2_q078",
+  "campo": "statement",
+  "antes": "observa- se genitália",
+  "depois": "observa-se genitália",
+  "tipo": "caractere",
+  "pagina": 23,
+  "evidencia": "evidencias/q078.png"
+ },
+ {
+  "id": "revalida_2024_2_q081",
+  "campo": "statement",
+  "antes": "3.850 mm3, linfócitos",
+  "depois": "3.850 mm³, linfócitos",
+  "tipo": "sobrescrito",
+  "pagina": 24,
+  "evidencia": "evidencias/q081.png"
+ },
+ {
+  "id": "revalida_2024_2_q081",
+  "campo": "statement",
+  "antes": "1.300 mm3 e plaquetas",
+  "depois": "1.300 mm³ e plaquetas",
+  "tipo": "sobrescrito",
+  "pagina": 24,
+  "evidencia": "evidencias/q081.png"
+ },
+ {
+  "id": "revalida_2024_2_q081",
+  "campo": "statement",
+  "antes": "88.000 mm3. Qual",
+  "depois": "88.000 mm³. Qual",
+  "tipo": "sobrescrito",
+  "pagina": 24,
+  "evidencia": "evidencias/q081.png"
+ },
+ {
+  "id": "revalida_2024_2_q092",
+  "campo": "statement",
+  "antes": "pronto- socorro após",
+  "depois": "pronto-socorro após",
+  "tipo": "caractere",
+  "pagina": 26,
+  "evidencia": "evidencias/q092.png"
+ },
+ {
+  "id": "revalida_2024_2_q098",
+  "campo": "statement",
+  "antes": "pós- operatório",
+  "depois": "pós-operatório",
+  "tipo": "caractere",
+  "pagina": 28,
+  "evidencia": "evidencias/q098.png"
+ }
+]

@@ -1,0 +1,239 @@
+## funcoes: antes=640 depois=696 novos=56 removidos=0 mudaram=24
+  novos:
+     app_admin_report_resolve(bigint,boolean) acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_admin_reports(text,integer,integer) acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_admin_save_support_contact(text) acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_ch_claim_can_confirm(uuid) acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_ch_claim_evidence(uuid) acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_ch_discard_evidence(uuid,text) acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_ch_new_version(uuid) acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_ch_processing_settings() acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_ch_publish(uuid,jsonb) acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_ch_publish_preview(uuid,jsonb) acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_ch_reanalysis_request() acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_ch_reanalysis_status() acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_ch_request_sources_check() acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_ch_set_processing_settings(boolean,numeric) acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_ch_visual_review(uuid,text) acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_plans_info() acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_report_problem(text,text) acl= {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     app_support_contact() acl= {postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+     ch_cards_plan(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_claim_area_codes(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_claim_effective_status(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_claim_recompute_status(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_distribute(uuid,jsonb) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_distribute_cards(uuid,uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_distribution_plan(uuid,jsonb) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_evidence_counts(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_evidence_settled(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_hide_card_rows(uuid[]) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_hide_cards(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_is_official_source(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_node_area_code(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_publish_problems_cards(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_publish_problems_student(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_reanalysis_waiting() acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_student_area(text) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_student_lesson(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_student_released() acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_taxonomy_carry_forward(uuid,uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_taxonomy_map(uuid,uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_undistribute(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_version_cards(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_visual_area_code(text) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_visual_can_review(text) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_visual_is_clinical(jsonb) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_visual_review_pending(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_visual_text(jsonb) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_worker_apply_reference_cleanup_free(uuid,uuid,text[],jsonb) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_worker_document_extraction(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_worker_document_spend(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_worker_note_credit_pause(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_worker_processing_settings() acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_worker_reanalysis_claim() acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_worker_reanalysis_done(jsonb) acl= {postgres=X/postgres,service_role=X/postgres}
+     ch_worker_tutor_stt_today(uuid) acl= {postgres=X/postgres,service_role=X/postgres}
+     lessons_central_guard() acl= {postgres=X/postgres,service_role=X/postgres}
+     student_reports_guard() acl= {postgres=X/postgres,service_role=X/postgres}
+  removidos: []
+  mudaram:
+    app_admin_tutor_save_config(jsonb,text): 29 linhas de diff []
+    app_ch_confirm_critical(uuid): 11 linhas de diff ['ACL {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres} -> {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}']
+    app_ch_conflict_decide(uuid,text,uuid,text): 3 linhas de diff []
+    app_ch_documents(): 2 linhas de diff []
+    app_ch_link_evidence(uuid,jsonb): 8 linhas de diff ['ACL {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres} -> {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}']
+    app_ch_publish(uuid): 15 linhas de diff []
+    app_ch_retire(uuid,text): 1 linhas de diff ['ACL {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres} -> {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}']
+    app_ch_taxonomy_add_alias(uuid,text): 6 linhas de diff []
+    app_ch_taxonomy_draft(): 4 linhas de diff ['ACL {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres} -> {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}']
+    app_ch_taxonomy_publish(text): 53 linhas de diff ['ACL {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres} -> {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}']
+    app_ch_taxonomy_remove_alias(uuid): 2 linhas de diff []
+    app_ch_visual_file(uuid): 3 linhas de diff ['ACL {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres} -> {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}']
+    app_ch_visual_list(jsonb): 3 linhas de diff ['ACL {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres} -> {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}']
+    app_ch_visual_material(uuid): 3 linhas de diff ['ACL {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres} -> {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}']
+    ch_assert_document(uuid): 2 linhas de diff []
+    ch_card_shows(jsonb): 3 linhas de diff []
+    ch_publish_problems(uuid): 2 linhas de diff ['ACL {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres} -> {postgres=X/postgres,service_role=X/postgres}']
+    ch_publish_problems_base(uuid): 10 linhas de diff []
+    ch_raw_app_question_timeline(text): 1 linhas de diff []
+    ch_worker_ai_save_settings(uuid,jsonb): 14 linhas de diff []
+    ch_worker_tutor_settings(): 4 linhas de diff []
+    ch_worker_unblock(): 11 linhas de diff []
+    ch_worker_visual_files(uuid): 7 linhas de diff []
+    question_analysis_fits(text,character): 1 linhas de diff []
+## gatilhos: antes=77 depois=79 novos=2 removidos=0 mudaram=0
+  + lessons :: lessons_central_guard_trg {"k": "lessons :: lessons_central_guard_trg", "def": "CREATE TRIGGER lessons_central_guard_trg BEFORE INSERT OR DELETE OR UPDATE ON public.lessons FOR EACH ROW EXECUTE FUNCTION lessons_central_guard()", "en": "O"}
+  + student_reports :: student_reports_guard {"k": "student_reports :: student_reports_guard", "def": "CREATE TRIGGER student_reports_guard BEFORE INSERT ON public.student_reports FOR EACH ROW EXECUTE FUNCTION student_reports_guard()", "en": "O"}
+## politicas: antes=145 depois=148 novos=6 removidos=3 mudaram=0
+  + public.ch_blocks :: blocos: dono ou equipe {"k": "public.ch_blocks :: blocos: dono ou equipe", "def": "PERMISSIVE {authenticated} SELECT using=(EXISTS ( SELECT 1\n   FROM ch_documents d\n  WHERE ((d.id = ch_blocks.document_id) AND ((d.owner_id = ( SELECT auth.uid() AS uid)
+  + public.ch_documents :: documentos: dono ou equipe {"k": "public.ch_documents :: documentos: dono ou equipe", "def": "PERMISSIVE {authenticated} SELECT using=((owner_id = ( SELECT auth.uid() AS uid)) OR is_staff()) check="}
+  + public.ch_pages :: páginas: dono ou equipe {"k": "public.ch_pages :: p\u00e1ginas: dono ou equipe", "def": "PERMISSIVE {authenticated} SELECT using=(EXISTS ( SELECT 1\n   FROM ch_documents d\n  WHERE ((d.id = ch_pages.document_id) AND ((d.owner_id = ( SELECT auth.uid() AS 
+  + public.ch_processing_settings :: ajustes do processamento: administrador lê {"k": "public.ch_processing_settings :: ajustes do processamento: administrador l\u00ea", "def": "PERMISSIVE {authenticated} SELECT using=is_admin() check="}
+  + public.student_reports :: relatos: o aluno grava o próprio {"k": "public.student_reports :: relatos: o aluno grava o pr\u00f3prio", "def": "PERMISSIVE {authenticated} INSERT using= check=(user_id = ( SELECT auth.uid() AS uid))"}
+  + public.student_reports :: relatos: só a equipe lê {"k": "public.student_reports :: relatos: s\u00f3 a equipe l\u00ea", "def": "PERMISSIVE {authenticated} SELECT using=( SELECT is_staff() AS is_staff) check="}
+  - public.ch_blocks :: blocos: dono ou admin {"k": "public.ch_blocks :: blocos: dono ou admin", "def": "PERMISSIVE {authenticated} SELECT using=(EXISTS ( SELECT 1\n   FROM ch_documents d\n  WHERE ((d.id = ch_blocks.document_id) AND ((d.owner_id = ( SELECT auth.uid() AS uid))
+  - public.ch_documents :: documentos: dono ou admin {"k": "public.ch_documents :: documentos: dono ou admin", "def": "PERMISSIVE {authenticated} SELECT using=((owner_id = ( SELECT auth.uid() AS uid)) OR is_admin()) check="}
+  - public.ch_pages :: páginas: dono ou admin {"k": "public.ch_pages :: p\u00e1ginas: dono ou admin", "def": "PERMISSIVE {authenticated} SELECT using=(EXISTS ( SELECT 1\n   FROM ch_documents d\n  WHERE ((d.id = ch_pages.document_id) AND ((d.owner_id = ( SELECT auth.uid() AS u
+## tabelas: antes=172 depois=177 novos=5 removidos=0 mudaram=0
+  + ch_processing_settings {"k": "ch_processing_settings", "kind": "r", "rls": true, "frls": false, "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"}
+  + ch_reanalysis_control {"k": "ch_reanalysis_control", "kind": "r", "rls": true, "frls": false, "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"}
+  + student_reports {"k": "student_reports", "kind": "r", "rls": true, "frls": false, "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=ar/postgres}"}
+  + student_reports_id_seq {"k": "student_reports_id_seq", "kind": "S", "rls": false, "frls": false, "acl": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}"}
+  + support_config {"k": "support_config", "kind": "r", "rls": true, "frls": false, "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"}
+## colunas: antes=1501 depois=1548 novos=47 removidos=0 mudaram=1
+  + ai_settings.overall_cap_enabled {"k": "ai_settings.overall_cap_enabled", "tipo": "boolean", "nn": true, "dflt": "false", "acl": null}
+  + ai_settings.overall_monthly_cap_usd {"k": "ai_settings.overall_monthly_cap_usd", "tipo": "numeric(12,2)", "nn": false, "dflt": null, "acl": null}
+  + ch_evidence.discard_reason {"k": "ch_evidence.discard_reason", "tipo": "text", "nn": false, "dflt": null, "acl": null}
+  + ch_evidence.discarded_at {"k": "ch_evidence.discarded_at", "tipo": "timestamp with time zone", "nn": false, "dflt": null, "acl": null}
+  + ch_evidence.discarded_by {"k": "ch_evidence.discarded_by", "tipo": "uuid", "nn": false, "dflt": null, "acl": null}
+  + ch_processing_settings.document_cap_enabled {"k": "ch_processing_settings.document_cap_enabled", "tipo": "boolean", "nn": true, "dflt": "false", "acl": null}
+  + ch_processing_settings.document_cap_usd {"k": "ch_processing_settings.document_cap_usd", "tipo": "numeric(12,2)", "nn": false, "dflt": null, "acl": null}
+  + ch_processing_settings.id {"k": "ch_processing_settings.id", "tipo": "boolean", "nn": true, "dflt": "true", "acl": null}
+  + ch_processing_settings.updated_at {"k": "ch_processing_settings.updated_at", "tipo": "timestamp with time zone", "nn": true, "dflt": "now()", "acl": null}
+  + ch_processing_settings.updated_by {"k": "ch_processing_settings.updated_by", "tipo": "uuid", "nn": false, "dflt": null, "acl": null}
+  + ch_publications.distribution {"k": "ch_publications.distribution", "tipo": "jsonb", "nn": true, "dflt": "'{}'::jsonb", "acl": null}
+  + ch_publications.lesson_id {"k": "ch_publications.lesson_id", "tipo": "uuid", "nn": false, "dflt": null, "acl": null}
+  + ch_reanalysis_control.id {"k": "ch_reanalysis_control.id", "tipo": "boolean", "nn": true, "dflt": "true", "acl": null}
+  + ch_reanalysis_control.last_finished_at {"k": "ch_reanalysis_control.last_finished_at", "tipo": "timestamp with time zone", "nn": false, "dflt": null, "acl": null}
+  + ch_reanalysis_control.last_manual {"k": "ch_reanalysis_control.last_manual", "tipo": "boolean", "nn": true, "dflt": "false", "acl": null}
+  + ch_reanalysis_control.last_started_at {"k": "ch_reanalysis_control.last_started_at", "tipo": "timestamp with time zone", "nn": false, "dflt": null, "acl": null}
+  + ch_reanalysis_control.last_summary {"k": "ch_reanalysis_control.last_summary", "tipo": "jsonb", "nn": true, "dflt": "'{}'::jsonb", "acl": null}
+  + ch_reanalysis_control.requested_at {"k": "ch_reanalysis_control.requested_at", "tipo": "timestamp with time zone", "nn": false, "dflt": null, "acl": null}
+  + ch_reanalysis_control.requested_by {"k": "ch_reanalysis_control.requested_by", "tipo": "uuid", "nn": false, "dflt": null, "acl": null}
+  + ch_taxonomy_nodes.origin_node_id {"k": "ch_taxonomy_nodes.origin_node_id", "tipo": "uuid", "nn": false, "dflt": null, "acl": null}
+  + ch_visual_versions.medical_review_at {"k": "ch_visual_versions.medical_review_at", "tipo": "timestamp with time zone", "nn": false, "dflt": null, "acl": null}
+  + ch_visual_versions.medical_review_by {"k": "ch_visual_versions.medical_review_by", "tipo": "uuid", "nn": false, "dflt": null, "acl": null}
+  + ch_visual_versions.medical_review_note {"k": "ch_visual_versions.medical_review_note", "tipo": "text", "nn": false, "dflt": null, "acl": null}
+  + flashcard_states.hidden_due {"k": "flashcard_states.hidden_due", "tipo": "timestamp with time zone", "nn": false, "dflt": null, "acl": null}
+  + flashcards.ch_card_key {"k": "flashcards.ch_card_key", "tipo": "text", "nn": false, "dflt": null, "acl": null}
+  + flashcards.ch_unit_id {"k": "flashcards.ch_unit_id", "tipo": "uuid", "nn": false, "dflt": null, "acl": null}
+  + flashcards.ch_version_id {"k": "flashcards.ch_version_id", "tipo": "uuid", "nn": false, "dflt": null, "acl": null}
+  + lessons.central_updated_at {"k": "lessons.central_updated_at", "tipo": "timestamp with time zone", "nn": false, "dflt": null, "acl": null}
+  + lessons.ch_unit_id {"k": "lessons.ch_unit_id", "tipo": "uuid", "nn": false, "dflt": null, "acl": null}
+  + lessons.ch_version_id {"k": "lessons.ch_version_id", "tipo": "uuid", "nn": false, "dflt": null, "acl": null}
+  + lessons.origin {"k": "lessons.origin", "tipo": "text", "nn": true, "dflt": "'manual'::text", "acl": null}
+  + student_reports.created_at {"k": "student_reports.created_at", "tipo": "timestamp with time zone", "nn": true, "dflt": "now()", "acl": null}
+  + student_reports.id {"k": "student_reports.id", "tipo": "bigint", "nn": true, "dflt": null, "acl": null}
+  + student_reports.message {"k": "student_reports.message", "tipo": "text", "nn": true, "dflt": null, "acl": null}
+  + student_reports.resolved_at {"k": "student_reports.resolved_at", "tipo": "timestamp with time zone", "nn": false, "dflt": null, "acl": null}
+  + student_reports.resolved_by {"k": "student_reports.resolved_by", "tipo": "uuid", "nn": false, "dflt": null, "acl": null}
+  + student_reports.screen {"k": "student_reports.screen", "tipo": "text", "nn": false, "dflt": null, "acl": null}
+  + student_reports.status {"k": "student_reports.status", "tipo": "text", "nn": true, "dflt": "'open'::text", "acl": null}
+  + student_reports.user_id {"k": "student_reports.user_id", "tipo": "uuid", "nn": true, "dflt": null, "acl": null}
+  + support_config.email {"k": "support_config.email", "tipo": "text", "nn": true, "dflt": null, "acl": null}
+  + support_config.id {"k": "support_config.id", "tipo": "boolean", "nn": true, "dflt": "true", "acl": null}
+  + support_config.updated_at {"k": "support_config.updated_at", "tipo": "timestamp with time zone", "nn": true, "dflt": "now()", "acl": null}
+  + support_config.updated_by {"k": "support_config.updated_by", "tipo": "uuid", "nn": false, "dflt": null, "acl": null}
+  + tutor_config.stt_account_daily_seconds {"k": "tutor_config.stt_account_daily_seconds", "tipo": "integer", "nn": false, "dflt": null, "acl": null}
+  + tutor_config.stt_paid_daily_seconds {"k": "tutor_config.stt_paid_daily_seconds", "tipo": "integer", "nn": false, "dflt": null, "acl": null}
+  + tutor_config.stt_team_only {"k": "tutor_config.stt_team_only", "tipo": "boolean", "nn": true, "dflt": "true", "acl": null}
+  + tutor_config.stt_trial_daily_seconds {"k": "tutor_config.stt_trial_daily_seconds", "tipo": "integer", "nn": false, "dflt": null, "acl": null}
+  ~ ch_reference_cleanups.license_id 
+      antes: {"k": "ch_reference_cleanups.license_id", "tipo": "uuid", "nn": true, "dflt": null, "acl": null} 
+      depois: {"k": "ch_reference_cleanups.license_id", "tipo": "uuid", "nn": false, "dflt": null, "acl": null}
+## restricoes: antes=1869 depois=1921 novos=54 removidos=2 mudaram=1
+  + ai_settings :: ai_settings_overall_cap_enabled_not_null {"k": "ai_settings :: ai_settings_overall_cap_enabled_not_null", "def": "NOT NULL overall_cap_enabled"}
+  + ai_settings :: ai_settings_overall_cap_needs_value {"k": "ai_settings :: ai_settings_overall_cap_needs_value", "def": "CHECK (((NOT overall_cap_enabled) OR (overall_monthly_cap_usd IS NOT NULL)))"}
+  + ai_settings :: ai_settings_overall_monthly_cap_usd_check {"k": "ai_settings :: ai_settings_overall_monthly_cap_usd_check", "def": "CHECK (((overall_monthly_cap_usd IS NULL) OR (overall_monthly_cap_usd >= (0)::numeric)))"}
+  + ch_evidence :: ch_evidence_discarded_by_fkey {"k": "ch_evidence :: ch_evidence_discarded_by_fkey", "def": "FOREIGN KEY (discarded_by) REFERENCES auth.users(id) ON DELETE SET NULL"}
+  + ch_processing_settings :: ch_processing_settings_document_cap_enabled_not_null {"k": "ch_processing_settings :: ch_processing_settings_document_cap_enabled_not_null", "def": "NOT NULL document_cap_enabled"}
+  + ch_processing_settings :: ch_processing_settings_document_cap_usd_check {"k": "ch_processing_settings :: ch_processing_settings_document_cap_usd_check", "def": "CHECK (((document_cap_usd IS NULL) OR (document_cap_usd > (0)::numeric)))"}
+  + ch_processing_settings :: ch_processing_settings_id_check {"k": "ch_processing_settings :: ch_processing_settings_id_check", "def": "CHECK (id)"}
+  + ch_processing_settings :: ch_processing_settings_id_not_null {"k": "ch_processing_settings :: ch_processing_settings_id_not_null", "def": "NOT NULL id"}
+  + ch_processing_settings :: ch_processing_settings_pkey {"k": "ch_processing_settings :: ch_processing_settings_pkey", "def": "PRIMARY KEY (id)"}
+  + ch_processing_settings :: ch_processing_settings_updated_at_not_null {"k": "ch_processing_settings :: ch_processing_settings_updated_at_not_null", "def": "NOT NULL updated_at"}
+  + ch_processing_settings :: ch_processing_settings_updated_by_fkey {"k": "ch_processing_settings :: ch_processing_settings_updated_by_fkey", "def": "FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL"}
+  + ch_publications :: ch_publications_distribution_not_null {"k": "ch_publications :: ch_publications_distribution_not_null", "def": "NOT NULL distribution"}
+  + ch_publications :: ch_publications_lesson_id_fkey {"k": "ch_publications :: ch_publications_lesson_id_fkey", "def": "FOREIGN KEY (lesson_id) REFERENCES lessons(id)"}
+  + ch_reanalysis_control :: ch_reanalysis_control_id_check {"k": "ch_reanalysis_control :: ch_reanalysis_control_id_check", "def": "CHECK (id)"}
+  + ch_reanalysis_control :: ch_reanalysis_control_id_not_null {"k": "ch_reanalysis_control :: ch_reanalysis_control_id_not_null", "def": "NOT NULL id"}
+  + ch_reanalysis_control :: ch_reanalysis_control_last_manual_not_null {"k": "ch_reanalysis_control :: ch_reanalysis_control_last_manual_not_null", "def": "NOT NULL last_manual"}
+  + ch_reanalysis_control :: ch_reanalysis_control_last_summary_not_null {"k": "ch_reanalysis_control :: ch_reanalysis_control_last_summary_not_null", "def": "NOT NULL last_summary"}
+  + ch_reanalysis_control :: ch_reanalysis_control_pkey {"k": "ch_reanalysis_control :: ch_reanalysis_control_pkey", "def": "PRIMARY KEY (id)"}
+  + ch_reanalysis_control :: ch_reanalysis_control_requested_by_fkey {"k": "ch_reanalysis_control :: ch_reanalysis_control_requested_by_fkey", "def": "FOREIGN KEY (requested_by) REFERENCES auth.users(id) ON DELETE SET NULL"}
+  + ch_taxonomy_nodes :: ch_taxonomy_nodes_origin_node_id_fkey {"k": "ch_taxonomy_nodes :: ch_taxonomy_nodes_origin_node_id_fkey", "def": "FOREIGN KEY (origin_node_id) REFERENCES ch_taxonomy_nodes(id) ON DELETE SET NULL"}
+  + ch_visual_versions :: ch_visual_versions_medical_review_by_fkey {"k": "ch_visual_versions :: ch_visual_versions_medical_review_by_fkey", "def": "FOREIGN KEY (medical_review_by) REFERENCES auth.users(id) ON DELETE SET NULL"}
+  + ch_visual_versions :: ch_visual_versions_medical_review_note_check {"k": "ch_visual_versions :: ch_visual_versions_medical_review_note_check", "def": "CHECK (((medical_review_note IS NULL) OR (char_length(medical_review_note) <= 500)))"}
+  + flashcards :: flashcards_central_check {"k": "flashcards :: flashcards_central_check", "def": "CHECK (((ch_unit_id IS NULL) OR (owner_id IS NULL)))"}
+  + flashcards :: flashcards_central_key_check {"k": "flashcards :: flashcards_central_key_check", "def": "CHECK (((ch_unit_id IS NULL) = (ch_card_key IS NULL)))"}
+  + flashcards :: flashcards_ch_unit_id_fkey {"k": "flashcards :: flashcards_ch_unit_id_fkey", "def": "FOREIGN KEY (ch_unit_id) REFERENCES ch_units(id) ON DELETE RESTRICT"}
+  + flashcards :: flashcards_ch_version_id_fkey {"k": "flashcards :: flashcards_ch_version_id_fkey", "def": "FOREIGN KEY (ch_version_id) REFERENCES ch_unit_versions(id)"}
+  + lessons :: lessons_central_check {"k": "lessons :: lessons_central_check", "def": "CHECK (((origin = 'central'::text) = (ch_unit_id IS NOT NULL)))"}
+  + lessons :: lessons_ch_unit_id_fkey {"k": "lessons :: lessons_ch_unit_id_fkey", "def": "FOREIGN KEY (ch_unit_id) REFERENCES ch_units(id) ON DELETE RESTRICT"}
+  + lessons :: lessons_ch_version_id_fkey {"k": "lessons :: lessons_ch_version_id_fkey", "def": "FOREIGN KEY (ch_version_id) REFERENCES ch_unit_versions(id)"}
+  + lessons :: lessons_origin_check {"k": "lessons :: lessons_origin_check", "def": "CHECK ((origin = ANY (ARRAY['manual'::text, 'central'::text])))"}
+  + lessons :: lessons_origin_not_null {"k": "lessons :: lessons_origin_not_null", "def": "NOT NULL origin"}
+  + lessons :: lessons_summary_len_check {"k": "lessons :: lessons_summary_len_check", "def": "CHECK (((summary IS NULL) OR (char_length(summary) <=\nCASE\n    WHEN (origin = 'central'::text) THEN 60000\n    ELSE 8000\nEND)))"}
+  + student_reports :: student_reports_created_at_not_null {"k": "student_reports :: student_reports_created_at_not_null", "def": "NOT NULL created_at"}
+  + student_reports :: student_reports_id_not_null {"k": "student_reports :: student_reports_id_not_null", "def": "NOT NULL id"}
+  + student_reports :: student_reports_message_check {"k": "student_reports :: student_reports_message_check", "def": "CHECK (((char_length(message) >= 10) AND (char_length(message) <= 1000)))"}
+  + student_reports :: student_reports_message_not_null {"k": "student_reports :: student_reports_message_not_null", "def": "NOT NULL message"}
+  + student_reports :: student_reports_pkey {"k": "student_reports :: student_reports_pkey", "def": "PRIMARY KEY (id)"}
+  + student_reports :: student_reports_resolved_by_fkey {"k": "student_reports :: student_reports_resolved_by_fkey", "def": "FOREIGN KEY (resolved_by) REFERENCES auth.users(id) ON DELETE SET NULL"}
+  + student_reports :: student_reports_screen_check {"k": "student_reports :: student_reports_screen_check", "def": "CHECK (((screen IS NULL) OR (char_length(screen) <= 60)))"}
+  + student_reports :: student_reports_status_check {"k": "student_reports :: student_reports_status_check", "def": "CHECK ((status = ANY (ARRAY['open'::text, 'resolved'::text])))"}
+  + student_reports :: student_reports_status_not_null {"k": "student_reports :: student_reports_status_not_null", "def": "NOT NULL status"}
+  + student_reports :: student_reports_user_id_fkey {"k": "student_reports :: student_reports_user_id_fkey", "def": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"}
+  + student_reports :: student_reports_user_id_not_null {"k": "student_reports :: student_reports_user_id_not_null", "def": "NOT NULL user_id"}
+  + support_config :: support_config_email_check {"k": "support_config :: support_config_email_check", "def": "CHECK ((((char_length(email) >= 5) AND (char_length(email) <= 120)) AND (email ~ '^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$'::text)))"}
+  + support_config :: support_config_email_not_null {"k": "support_config :: support_config_email_not_null", "def": "NOT NULL email"}
+  + support_config :: support_config_id_check {"k": "support_config :: support_config_id_check", "def": "CHECK (id)"}
+  + support_config :: support_config_id_not_null {"k": "support_config :: support_config_id_not_null", "def": "NOT NULL id"}
+  + support_config :: support_config_pkey {"k": "support_config :: support_config_pkey", "def": "PRIMARY KEY (id)"}
+  + support_config :: support_config_updated_at_not_null {"k": "support_config :: support_config_updated_at_not_null", "def": "NOT NULL updated_at"}
+  + support_config :: support_config_updated_by_fkey {"k": "support_config :: support_config_updated_by_fkey", "def": "FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL"}
+  + tutor_config :: tutor_config_stt_account_daily_seconds_check {"k": "tutor_config :: tutor_config_stt_account_daily_seconds_check", "def": "CHECK (((stt_account_daily_seconds IS NULL) OR ((stt_account_daily_seconds >= 1) AND (stt_account_daily_seconds <= 86400))))"}
+  + tutor_config :: tutor_config_stt_paid_daily_seconds_check {"k": "tutor_config :: tutor_config_stt_paid_daily_seconds_check", "def": "CHECK (((stt_paid_daily_seconds IS NULL) OR ((stt_paid_daily_seconds >= 1) AND (stt_paid_daily_seconds <= 86400))))"}
+  + tutor_config :: tutor_config_stt_team_only_not_null {"k": "tutor_config :: tutor_config_stt_team_only_not_null", "def": "NOT NULL stt_team_only"}
+  + tutor_config :: tutor_config_stt_trial_daily_seconds_check {"k": "tutor_config :: tutor_config_stt_trial_daily_seconds_check", "def": "CHECK (((stt_trial_daily_seconds IS NULL) OR ((stt_trial_daily_seconds >= 1) AND (stt_trial_daily_seconds <= 86400))))"}
+  - ch_reference_cleanups :: ch_reference_cleanups_license_id_not_null {"k": "ch_reference_cleanups :: ch_reference_cleanups_license_id_not_null", "def": "NOT NULL license_id"}
+  - lessons :: lessons_summary_check {"k": "lessons :: lessons_summary_check", "def": "CHECK ((char_length(summary) <= 8000))"}
+  ~ ch_documents :: ch_documents_status_check 
+      antes: {"k": "ch_documents :: ch_documents_status_check", "def": "CHECK ((status = ANY (ARRAY['received'::text, 'extracting'::text, 'classifying'::text, 'verifying_sources'::text, 'drafting'::text, 'awaiting_review'::text, 'failed'::text])))"} 
+      depois: {"k": "ch_documents :: ch_documents_status_check", "def": "CHECK ((status = ANY (ARRAY['received'::text, 'extracting'::text, 'classifying'::text, 'verifying_sources'::text, 'drafting'::text, 'awaiting_review'::text, 'no_drafts'::text, 'failed'::text])))"}
+## indices: antes=271 depois=280 novos=9 removidos=0 mudaram=0
+  + ch_nodes_origin_idx {"k": "ch_nodes_origin_idx", "def": "CREATE INDEX ch_nodes_origin_idx ON public.ch_taxonomy_nodes USING btree (origin_node_id)"}
+  + ch_processing_settings_pkey {"k": "ch_processing_settings_pkey", "def": "CREATE UNIQUE INDEX ch_processing_settings_pkey ON public.ch_processing_settings USING btree (id)"}
+  + ch_reanalysis_control_pkey {"k": "ch_reanalysis_control_pkey", "def": "CREATE UNIQUE INDEX ch_reanalysis_control_pkey ON public.ch_reanalysis_control USING btree (id)"}
+  + flashcards_ch_card_uidx {"k": "flashcards_ch_card_uidx", "def": "CREATE UNIQUE INDEX flashcards_ch_card_uidx ON public.flashcards USING btree (ch_unit_id, ch_card_key) WHERE (ch_unit_id IS NOT NULL)"}
+  + lessons_ch_unit_uidx {"k": "lessons_ch_unit_uidx", "def": "CREATE UNIQUE INDEX lessons_ch_unit_uidx ON public.lessons USING btree (ch_unit_id) WHERE (ch_unit_id IS NOT NULL)"}
+  + student_reports_pkey {"k": "student_reports_pkey", "def": "CREATE UNIQUE INDEX student_reports_pkey ON public.student_reports USING btree (id)"}
+  + student_reports_status_idx {"k": "student_reports_status_idx", "def": "CREATE INDEX student_reports_status_idx ON public.student_reports USING btree (status, created_at DESC)"}
+  + student_reports_user_idx {"k": "student_reports_user_idx", "def": "CREATE INDEX student_reports_user_idx ON public.student_reports USING btree (user_id, created_at DESC)"}
+  + support_config_pkey {"k": "support_config_pkey", "def": "CREATE UNIQUE INDEX support_config_pkey ON public.support_config USING btree (id)"}
+## enums: antes=4 depois=4 novos=0 removidos=0 mudaram=0
+## dados: antes=139 depois=143 novos=4 removidos=0 mudaram=3
+  + ch_processing_settings {"n": 1, "h": "a03f2175d87949d207529fb40de12848"}
+  + ch_reanalysis_control {"n": 1, "h": "bb25d05755a036a41d47b47c1d8cf91d"}
+  + student_reports {"n": 0, "h": ""}
+  + support_config {"n": 1, "h": "8b97d15919348a9713e84018a4f40345"}
+  ~ ai_settings 
+      antes: {"n": 1, "h": "9a5de151ffa4fe56e0074be4edc05e4e"} 
+      depois: {"n": 1, "h": "77f8e3121e5d3480a23372dfee5f6da9"}
+  ~ ch_taxonomy_nodes 
+      antes: {"n": 96, "h": "2f4204aacd9d9cc708482880d959f2c1"} 
+      depois: {"n": 96, "h": "2a759aa9f2c0f256a0a4d9b685fc73cb"}
+  ~ tutor_config 
+      antes: {"n": 1, "h": "5fe1579157552b1983dfdb1101ea6785"} 
+      depois: {"n": 1, "h": "7bafd455c21550736d8404ec12c7e7b0"}

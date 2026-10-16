@@ -18,6 +18,7 @@ import {
   FUNCTION_KEYS,
   isProviderId,
   isSearchFunction,
+  requiresSavedConfig,
   loadAiConfig,
   makeProvider,
   PROVIDER_NAMES,
@@ -59,7 +60,7 @@ export interface MaestroDeps {
 }
 
 export interface MaestroOrigin {
-  source: "central" | "analise" | "conferencia" | "aula" | "podcast" | "assistente" | "fontes";
+  source: "central" | "analise" | "conferencia" | "aula" | "podcast" | "assistente" | "fontes" | "questoes_staziamed" | "similaridade" | "vigilancia";
   itemId?: string | null;
   actorId?: string | null;
 }
@@ -286,9 +287,11 @@ function resolveRefs(cfg: AiConfig, fn: AiFunctionKey, env: NodeJS.ProcessEnv, o
   const fc = cfg.functions[fn] ?? null;
   // busca na internet: só roda com a configuração salva, e a escolha da aba ou de quem chama não troca a IA dela (nem as
   // variáveis de ambiente a definem); sem configuração, desligada
-  if (isSearchFunction(fn)) {
+  if (requiresSavedConfig(fn)) {
     return fc ? { fc, mode: fc.mode, primary: fc.primary, fallback: fc.fallback, reviewers: fc.reviewers } : { fc: null, mode: "sozinha", primary: null, fallback: null, reviewers: [] };
   }
+  // Questões parecidas: sem configuração salva fica desligada (nem as variáveis nem a escolha da aba a ligam)
+  if (!fc && requiresSavedConfig(fn)) return { fc: null, mode: "sozinha", primary: null, fallback: null, reviewers: [] };
   if (fc) {
     let primary = fc.primary;
     if (cfg.settings.tab_override_enabled) {
@@ -770,7 +773,7 @@ export async function runFunction<T>(deps: MaestroDeps, fn: AiFunctionKey, req: 
   const cfg = await loadAiConfig(deps.db);
   const rs = resolveRefs(cfg, fn, env, override);
   const early = (message: string) => emptyResult<T>(crypto.randomUUID(), "falhou", message);
-  if (!rs.primary) return early(isSearchFunction(fn) ? SEARCH_OFF : `Nenhuma IA definida para ${fn}: configure na Central de IAs.`);
+  if (!rs.primary) return early(requiresSavedConfig(fn) ? SEARCH_OFF : `Nenhuma IA definida para ${fn}: configure na Central de IAs.`);
 
   // busca de fontes oficiais com o Gemini salvo (principal ou reserva): fica desligada, nunca busca (nem na reserva)
   if (isSearchFunction(fn) && [rs.primary, rs.fallback].some((r) => r?.provider === "gemini")) return early(`Desligada: ${SEARCH_NO_GEMINI}`);
@@ -845,7 +848,7 @@ async function buildAdapter(deps: MaestroDeps, cfg: AiConfig, origin: MaestroOri
         // a última falha foi resposta fora do formato: a Central de Conteúdo precisa da classe e do que a IA devolveu para
         // gravar invalid_output em ch_ai_runs. As outras origens (Aulas, Podcasts...) tentam de novo sozinhas ao receber
         // AiInvalidOutput e cada tentativa é uma execução inteira do maestro: para elas, erro comum, sem multiplicar chamadas.
-        if (origin.source === "central" && run.lastError instanceof AiInvalidOutput) throw new AiInvalidOutput(message ?? run.lastError.message, run.lastError.raw);
+        if ((origin.source === "central" || origin.source === "questoes_staziamed") && run.lastError instanceof AiInvalidOutput) throw new AiInvalidOutput(message ?? run.lastError.message, run.lastError.raw);
         throw new Error(message ?? "A IA não respondeu.");
       }
       return { ...r.res, costUsd: r.cost, ...(run.webSearches > 0 ? { webSearches: run.webSearches } : {}) };

@@ -15,6 +15,7 @@ import { AiCapReached, maestroProvider } from "../ai/maestro";
 import type { ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { normalize, numbers, numbersOutside } from "./checks";
+import { ComplementarTermsUnavailable, loadComplementarTerms, mentionsSupportMaterial } from "./complementarGuard";
 import type { ContentDb } from "./infra";
 import { aiAllowed, registerPrompts } from "./ai/registry";
 import { verdictOf, type Finding, type Spend } from "./draftChecks";
@@ -81,7 +82,7 @@ function analysisTexts(a: Analysis) {
   ].filter(Boolean) as string[];
 }
 
-export function analysisChecks(q: QuestionForAnalysis, a: Analysis): Finding[] {
+export function analysisChecks(q: QuestionForAnalysis, a: Analysis, terms: readonly string[] = []): Finding[] {
   const f: Finding[] = [];
   const add = (severity: Finding["severity"], code: string, detail: string, where?: string) => f.push({ severity, code, detail, where });
   const official = q.official?.answer ?? q.correct_option;
@@ -107,6 +108,10 @@ export function analysisChecks(q: QuestionForAnalysis, a: Analysis): Finding[] {
   }
   const all = analysisTexts(a).join("\n");
   if (LAZY.test(all)) add("major", "lazy_distractors", "A análise usa a fórmula 'as demais estão incorretas' em vez de analisar cada alternativa.");
+
+  // 2b. o texto vai ao aluno: não pode citar apostila nem material complementar (nem "Sangue nos Olhos")
+  const cited = mentionsSupportMaterial(all, terms);
+  if (cited.length) add("critical", "cites_support_material", `A análise cita material de apoio (${cited.map((c) => `"${c}"`).join(", ")}): o aluno não vê essas fontes. Tire a citação.`);
 
   // 3. gabarito intocável
   if (CHALLENGE.test(all)) add("critical", "challenges_official_answer", "A análise contesta o gabarito oficial ou diz que a questão está errada/desatualizada: isso não cabe nesta etapa.");
@@ -189,6 +194,10 @@ export interface AnalysisRunDeps {
   mockRespond?: (req: StructuredRequest) => unknown;
   /** Só para testes: cria o provedor de uma ref (as regras da Central de IAs continuam valendo). */
   aiMaker?: (ref: ModelRef) => AiProvider | null;
+  /** Só para testes e desenvolvimento: provedor de simulação já pronto (o do processamento da Central). */
+  mockProvider?: AiProvider | null;
+  /** Chamado logo depois de cada chamada paga à IA (antes de gravar qualquer coisa), para o gasto não se perder numa falha. */
+  onSpend?: (delta: { calls: number; costUsd: number }) => Promise<void> | void;
   log?: (m: string) => void;
 }
 
@@ -215,6 +224,7 @@ export async function generateAnalysis(deps: AnalysisRunDeps, provider: AiProvid
   spend.inputTokens += r.inputTokens ?? 0;
   spend.outputTokens += r.outputTokens ?? 0;
   if (r.costUsd != null) spend.costUsd = (spend.costUsd ?? 0) + r.costUsd;
+  await deps.onSpend?.({ calls: 1, costUsd: r.costUsd ?? 0 });
   await deps.db.service("ch_worker_log_ai_run", {
     p_run: { document_id: null, step: "question_analysis", provider: r.provider, model: r.model, prompt_id: prompt.id, prompt_version: prompt.version, schema_version: prompt.version, input_hash: inputHash, status: "ok", output: r.output, input_tokens: r.inputTokens, output_tokens: r.outputTokens, cost_usd: r.costUsd, latency_ms: r.latencyMs },
   });
@@ -225,6 +235,16 @@ export interface AnalysisRunOptions {
   limit?: number;
   exam?: string;
   dryRun?: boolean;
+  /** Pedido pela tela: exatamente estas questões (nunca outras). */
+  ids?: string[];
+  /** Com `ids`: false = refaz também as que já têm análise do conteúdo atual (padrão: só as sem análise). */
+  onlyMissing?: boolean;
+  /** Parada de segurança: para quando o gasto real passa deste valor em dólares. */
+  maxCostUsd?: number | null;
+  /** Com `ids`: questões que este pedido já refez numa tentativa anterior (não entram de novo). */
+  skipIds?: string[];
+  /** Chamado depois de cada questão (andamento do pedido). */
+  onProgress?: (r: AnalysisReport) => Promise<void> | void;
 }
 
 export interface AnalysisReport {
@@ -232,6 +252,10 @@ export interface AnalysisReport {
   saved: number;
   verdicts: Record<string, number>;
   skipped: number;
+  /** Questões gravadas nesta execução. */
+  savedIds: string[];
+  /** Parou pela parada de segurança do pedido (não pela falta de configuração). */
+  stop?: "seguranca";
   pending?: string;
   spend: Spend;
   estimate?: { calls: number; inputTokens: number; outputTokens: number };
@@ -242,8 +266,14 @@ export function estimateAnalysisTokens(q: QuestionForAnalysis) {
 }
 
 export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: AnalysisRunOptions = {}): Promise<AnalysisReport> {
-  const report: AnalysisReport = { considered: 0, saved: 0, skipped: 0, verdicts: {}, spend: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: null } };
-  const questions = await deps.db.service<QuestionForAnalysis[]>("ch_worker_questions_for_analysis", { p_limit: options.limit ?? 20, p_exam: options.exam ?? null, p_only_missing: true });
+  const report: AnalysisReport = { considered: 0, saved: 0, skipped: 0, savedIds: [], verdicts: {}, spend: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: null } };
+  const questions = options.ids
+    ? await deps.db.service<QuestionForAnalysis[]>("ch_worker_questions_for_analysis_ids", { p_ids: options.ids, p_only_missing: options.onlyMissing ?? true })
+    : await deps.db.service<QuestionForAnalysis[]>("ch_worker_questions_for_analysis", { p_limit: options.limit ?? 20, p_exam: options.exam ?? null, p_only_missing: true });
+  if (options.skipIds?.length) {
+    const skip = new Set(options.skipIds);
+    for (let i = questions.length - 1; i >= 0; i--) if (skip.has(questions[i].id)) questions.splice(i, 1);
+  }
   report.considered = questions.length;
   if (!questions.length) return report;
   if (options.dryRun) {
@@ -256,9 +286,25 @@ export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: Analys
     return report;
   }
   await registerPrompts(deps.db);
-  const mockProvider = deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null;
+  // lista de fontes que o aluno não pode ver: sem ela nada é gerado nem gravado (a equipe vê o aviso e tenta de novo)
+  let supportTerms: string[];
+  try {
+    supportTerms = await loadComplementarTerms(deps.db, undefined, deps.log);
+  } catch (error) {
+    if (error instanceof ComplementarTermsUnavailable) {
+      report.pending = error.message;
+      return report;
+    }
+    throw error;
+  }
+  const mockProvider = deps.mockProvider ?? (deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null);
   const aiDeps = { db: deps.db, mockProvider, makeProviderFor: deps.aiMaker, log: deps.log };
   for (const q of questions) {
+    if (options.maxCostUsd != null && (report.spend.costUsd ?? 0) > options.maxCostUsd) {
+      report.pending = `Parada de segurança: o gasto (US$ ${(report.spend.costUsd ?? 0).toFixed(2)}) passou do limite deste pedido (US$ ${options.maxCostUsd.toFixed(2)}).`;
+      report.stop = "seguranca";
+      break;
+    }
     // a origem leva o id da questão; o maestro refaz o provedor a cada questão
     const { provider, status } = await maestroProvider(aiDeps, "engenharia_reversa", { source: "analise", itemId: q.id });
     if (!provider) {
@@ -268,7 +314,7 @@ export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: Analys
     try {
       const who = { provider: provider.name, model: provider.model };
       const analysis = await generateAnalysis(deps, provider, q, report.spend, who);
-      const findings = analysisChecks(q, analysis);
+      const findings = analysisChecks(q, analysis, supportTerms);
       const verdict = verdictOf(findings);
       const saved = await deps.db.service<{ analysis_id: string }>("ch_worker_save_question_analysis", {
         p_question_id: q.id,
@@ -279,7 +325,9 @@ export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: Analys
       });
       await deps.db.service("ch_worker_save_analysis_check", { p_analysis_id: saved.analysis_id, p_layer: "software", p_verdict: verdict, p_findings: findings, p_meta: { provider: "software", model: "regras", prompt_version: ANALYSIS_VERSION } });
       report.saved++;
+      report.savedIds.push(q.id);
       report.verdicts[verdict] = (report.verdicts[verdict] ?? 0) + 1;
+      await options.onProgress?.(report);
     } catch (error) {
       // teto de gasto atingido: para aqui, com a mensagem do teto, em vez de seguir pelas outras questões gravando linhas de teto
       if (error instanceof AiCapReached) {

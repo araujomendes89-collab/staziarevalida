@@ -10,7 +10,8 @@ import { PROFESSOR_CHANGED, TutorError, consentError, type TutorDeps } from "./e
 import { CHARS_PER_MINUTE } from "./speech";
 import { elevenLabsReadiness, officialVoiceForPersonality, type Approval, type ReadinessRow } from "./officialVoices";
 import { hangup, reasonError, voiceReady } from "./realtime";
-import { sttConfig } from "./stt";
+import { sttConfig, studentMicOpen } from "./stt";
+import { tutorSettings } from "./settings";
 import type { OfficialVoice } from "../../src/shared/tutor/officialVoices";
 
 export type ElevenBlock = "voice_off" | "not_configured" | "not_approved" | "team_only" | "student_limit" | "account_day" | "account_month";
@@ -104,6 +105,12 @@ const reserveOf = (deps: TutorDeps, q: TtsQuota) => ({
   reserve_minutes: Math.floor(Math.max(0, q.reserve_remaining_s) / 60),
 });
 const sttReady = (deps: TutorDeps) => (deps.stt ?? sttConfig()).ready;
+/**
+ * Microfone da voz do professor e do "por escrito" (transcrição no servidor). CF02: equipe sempre; aluno só quando o dono abriu a
+ * chave e preencheu os tetos diários (studentMicOpen). A voz reserva fica de fora: o microfone dela vai do navegador direto à voz ao
+ * vivo, com limites próprios no banco.
+ */
+const micOf = async (deps: TutorDeps, q: TtsQuota) => sttReady(deps) && (q.staff === true || studentMicOpen(await tutorSettings(deps), q.mode));
 
 /** O que a entrada da Nexus mostra: por professor, se a voz do professor vale agora e se há amostra para o "Ouvir". */
 export async function nexusStatus(deps: TutorDeps, userId: string): Promise<NexusStatus> {
@@ -111,7 +118,7 @@ export async function nexusStatus(deps: TutorDeps, userId: string): Promise<Nexu
   if (q?.consent_pending) throw consentError();
   const { reserve, reserve_minutes } = reserveOf(deps, q);
   return {
-    voice_enabled: q.voice_enabled, stt: sttReady(deps), reserve, reserve_minutes, minutes_today: minutesToday(q),
+    voice_enabled: q.voice_enabled, stt: await micOf(deps, q), reserve, reserve_minutes, minutes_today: minutesToday(q),
     professors: NEXUS_PROFESSORS.map((id) => {
       const row = rowFor(deps, q, id);
       const access = elevenAccessOf({ quota: q, row });
@@ -150,12 +157,12 @@ export async function openNexus(deps: TutorDeps, userId: string, sessionId: stri
   let reason = access.reason;
   if (access.ok && !skip) {
     const r = await tts(true);
-    if (r.ok) return { jeito: "eleven", voice_call_id: r.voice_call_id!, mic: sttReady(deps), reason: null, ...base };
+    if (r.ok) return { jeito: "eleven", voice_call_id: r.voice_call_id!, mic: await micOf(deps, q), reason: null, ...base };
     if (!SPOKEN_LIMITS.has(r.reason ?? "")) throw reasonError(r.reason, null);
     reason = r.reason as ElevenBlock;
   }
   if (skip !== "voice" && reserveOf(deps, q).reserve) return { jeito: "reserva", voice_call_id: null, mic: true, reason, ...base };
   const r = await tts(false);
   if (!r.ok) throw reasonError(r.reason, null);
-  return { jeito: "escrito", voice_call_id: r.voice_call_id!, mic: sttReady(deps), reason, ...base };
+  return { jeito: "escrito", voice_call_id: r.voice_call_id!, mic: await micOf(deps, q), reason, ...base };
 }

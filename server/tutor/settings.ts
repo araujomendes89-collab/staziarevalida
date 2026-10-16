@@ -29,6 +29,14 @@ export interface TutorSettings {
   /** Preços do plano contratado (0 = ainda não preenchido: o painel avisa). */
   tts_price_per_1k_chars_usd: number;
   stt_price_per_min_usd: number;
+  /** Microfone da Nexus (transcrição no servidor) só para a equipe. Nasce ligado (CF02): o aluno só fala ao microfone depois que o dono abre. */
+  stt_team_only: boolean;
+  /** Tetos diários da transcrição em SEGUNDOS (dia de Brasília): por aluno no teste, por aluno no plano pago e da plataforma toda. null = ainda sem valor. */
+  stt_trial_daily_seconds: number | null;
+  stt_paid_daily_seconds: number | null;
+  stt_account_daily_seconds: number | null;
+  /** Dica do Tutor nas questões do treino (interruptor do painel; a variável TUTOR_QUESTION_HINT=1 também liga). Nasce desligada. */
+  question_hint_enabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: TutorSettings = {
@@ -36,6 +44,8 @@ export const DEFAULT_SETTINGS: TutorSettings = {
   transcript_retention_days: 180, emotion_engine: true, inside_jokes: true, durona_level: "forte", pronunciations: [], max_profanity: "moderate",
   tts_team_only: true, tts_trial_daily_chars: 4500, tts_paid_daily_chars: 4500, tts_account_daily_chars: 4500, tts_account_monthly_chars: 30000,
   tts_price_per_1k_chars_usd: 0, stt_price_per_min_usd: 0,
+  stt_team_only: true, stt_trial_daily_seconds: null, stt_paid_daily_seconds: null, stt_account_daily_seconds: null,
+  question_hint_enabled: false,
 };
 
 const cache = new WeakMap<object, { at: number; value: TutorSettings }>();

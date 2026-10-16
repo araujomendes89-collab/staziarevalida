@@ -100,7 +100,8 @@ describe("Treino — montar", () => {
 
   it("sem login não monta treino nem enxerga questões", async () => {
     expect((await rpc(null, "app_question_filters")).total).toBe(0);
-    await expect(rpc(null, "app_start_session", { p_kind: "questoes", p_filters: {}, p_count: 5 })).rejects.toThrow(/Entre na sua conta/);
+    // 010800: o visitante (anon) nem tem permissão de chamar app_start_session; antes a própria função recusava com "Entre na sua conta"
+    await expect(rpc(null, "app_start_session", { p_kind: "questoes", p_filters: {}, p_count: 5 })).rejects.toThrow(/Entre na sua conta|permission denied for function app_start_session/);
   });
 });
 
@@ -123,7 +124,7 @@ describe("Treino — sessão de questões", () => {
 
     first = session.questions[0];
     expect(Object.keys(first).sort()).toEqual(
-      ["active_ms", "area", "bookmarked", "code", "correction", "exam", "id", "images", "number", "options", "selected", "statement"].sort()
+      ["active_ms", "area", "bookmarked", "code", "correction", "exam", "id", "images", "number", "options", "origin", "preliminary", "selected", "statement", "support"].sort()
     );
     expect(first.options[0]).toEqual({ id: "A", text: "alternativa A" });
     const sent = JSON.stringify(session.questions);

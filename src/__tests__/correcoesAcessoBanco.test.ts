@@ -49,7 +49,9 @@ async function acesso(uid: string) {
   return { hasPro, tutorPro, isPaid: ent.is_paid, mode: ent.mode };
 }
 const PAGO = { hasPro: true, tutorPro: true, isPaid: true, mode: "paid" };
-const SEM_PAGO = { hasPro: false, tutorPro: false, isPaid: false, mode: "trial" };
+// Sem plano pago válido e sem teste grátis valendo (plano pago vencido, cancelado ou expirado): desde a …9730 (PL02) o Tutor fica
+// bloqueado para quem nunca começou o teste do Tutor (antes caía no teste do Tutor, mode "trial").
+const SEM_PAGO = { hasPro: false, tutorPro: false, isPaid: false, mode: "blocked" };
 
 /** Quem usa o app (visitante e logado) pode chamar a função? */
 const podeChamar = async (fn: string) =>
@@ -201,12 +203,13 @@ describe("Revisão (ACREV) — tentando quebrar a regra do plano pago", () => {
     await plano(REV, "pro", "active", "now() - interval '1 day'");
     await plano(ANA, "pro", "active", "now() - interval '1 day'");
     expect(await acesso(REV)).toEqual(PAGO);
-    expect(await acesso(ANA)).toEqual(SEM_PAGO);
+    // ANA já começou o teste do Tutor em testes anteriores: ele segue até o prazo próprio (mode "trial"), sem acesso pago
+    expect(await acesso(ANA)).toEqual({ ...SEM_PAGO, mode: "trial" });
     // plano nenhum (cancelado, sem data)
     await plano(REV, "pro", "canceled", null);
     await plano(ANA, "pro", "canceled", null);
     expect(await acesso(REV)).toEqual(PAGO);
-    expect(await acesso(ANA)).toEqual(SEM_PAGO);
+    expect(await acesso(ANA)).toEqual({ ...SEM_PAGO, mode: "trial" });
     // teste grátis vencido, inclusive o teste do Tutor
     const teste = (uid: string) =>
       db.query(

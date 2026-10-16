@@ -13,6 +13,7 @@
  *   ouvir     → link assinado (Supabase) ou o arquivo pelo servidor (desenvolvimento); aluno só ouve episódio publicado;
  *   Flashcast → copia o MP3 aprovado para a aula ligada ao episódio (vira o "Áudio Flashcast" da aula).
  */
+import { sweepLessonFiles } from "../lessons/files";
 import crypto from "crypto";
 import path from "path";
 import express, { type NextFunction, type Request, type Response } from "express";
@@ -21,8 +22,11 @@ import type { AiProvider, StructuredRequest } from "../contentHub/ai/provider";
 import type { ModelRef } from "../ai/config";
 import { aiChoices } from "../ai/maestro";
 import { chunkPagesInfo, extractDocx, extractPdf, fetchLink, isPdf, isZip, MAX_SOURCE_BYTES, readLimited, TooBigError, type ExtractedPage } from "./extract";
+import { loadComplementarTerms } from "../contentHub/complementarGuard";
+import { holdFile, recordFileSha, releaseFile, SHA_WARNING } from "../contentHub/fileSha";
 import { checkScript, generateScript, PODCAST_PROMPT_VERSION, type PodcastScript, type ScriptLine, type SourceChunk } from "./script";
 import { DEFAULT_VOICES, geminiTtsEnabled, pcmToMp3, pickVoices, SAMPLE_RATE, silence, splitParts, synthesizePart, ttsCost, ttsStatus, VOICE_OPTIONS, type PodcastVoices, type TtsKind } from "./audio";
+import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 
 export const PODCASTS_BUCKET = "podcasts";
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -97,7 +101,8 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       req.user = user;
       next();
     } catch (error) {
-      fail(res, 500, message(error));
+      (deps as { log?: (m: string) => void } | null)?.log?.(`conferência de login falhou: ${message(error)}`.slice(0, 300));
+      fail(res, 500, ACCESS_CHECK_FAILED);
     }
   });
   const asUser = <T>(req: Authed, fn: string, args: Record<string, unknown> = {}) => deps!.db.asUser<T>(req.user!, fn, args);
@@ -112,6 +117,90 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       log(`podcasts: não consegui apagar ${list.length} arquivo(s): ${message(error)}`);
     }
   };
+  /**
+   * Apaga do depósito os arquivos que ficaram sem uso (áudio que deixou de valer, fonte tirada, episódio apagado). Nunca apaga "na
+   * hora": o banco RESERVA o caminho (ch_worker_podcast_files_pending: só devolve o que nenhuma linha usa, com um código da reserva,
+   * e, enquanto a reserva vale, recusa quem tentar criar referência a ele). ANTES DE CADA exclusão o servidor pede ao banco para
+   * RENOVAR a reserva (ch_worker_podcast_files_renew): se o banco não confirmar (código trocado, reserva vencida ou o caminho passou
+   * a ser usado), o arquivo é pulado e nada é apagado. Só então apaga e confirma com o código (ch_worker_podcast_files_done, que só
+   * vale para a reserva vigente). A fila é única: qualquer evento (ou a rota de repetir) limpa o que ficou pendente de qualquer
+   * episódio, inclusive de episódio já apagado. Só lança "Acesso restrito" (quem não é equipe); qualquer outra falha NÃO desfaz a
+   * operação principal. Não há varredura de arquivos antigos.
+   * Sempre que algo não terminou (falha ao apagar, depósito sem resposta, banco sem a migração) devolve `note` em português simples,
+   * nunca sucesso silencioso. O número da migração vai só para o log técnico.
+   */
+  const SQL_ANTIGO = "A atualização necessária para limpar os arquivos antigos ainda não foi concluída. Nada foi apagado e nada se perdeu: os arquivos continuam guardados e aparecem na lista de arquivos esquecidos.";
+  const SEM_LIMPEZA = "Os arquivos antigos ainda não foram apagados do depósito (a limpeza não terminou). Nada se perdeu: eles saem na próxima limpeza.";
+  const comFalhas = (n: number) =>
+    `${n === 1 ? "1 arquivo antigo não pôde ser apagado agora" : `${n} arquivos antigos não puderam ser apagados agora`} (o depósito não respondeu). Nada se perdeu: ${n === 1 ? "ele sai" : "eles saem"} na próxima limpeza.`;
+  const REMOVE_TIMEOUT_MS = 60_000;
+  const withTimeout = <T>(work: Promise<T>, ms: number) =>
+    new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(Object.assign(new Error("o depósito demorou demais para responder"), { timeout: true })), ms);
+      work.then(
+        (v) => { clearTimeout(timer); resolve(v); },
+        (e) => { clearTimeout(timer); reject(e); },
+      );
+    });
+  type Released = { ok: boolean; failed: number; note?: string };
+  const releaseFiles = async (user: string): Promise<Released> => {
+    let failed = 0;
+    let incomplete = 0; // desta rodada: o banco recusou renovar (reserva vencida / código trocado); seguem na fila e a rodada seguinte tenta de novo
+    let otherHolds = 0; // no total: arquivos cuja reserva vigente está com OUTRA tentativa (a limpeza está com ela; sem garantia, avisa)
+    try {
+      if (!deps!.storage.remove) return { ok: true, failed: 0 };
+      for (let round = 0; round < 5; round++) {
+        incomplete = 0;
+        const pending = await service<Array<{ id: number; path: string; token: string }>>("ch_worker_podcast_files_pending", { p_user: user, p_podcast: null });
+        if (!Array.isArray(pending) || !pending.length) break;
+        const results: Array<{ id: number; token: string; ok: boolean; error?: string }> = [];
+        let aborted: unknown = null;
+        for (const file of pending) {
+          try {
+            // a reserva pode ter vencido enquanto os anteriores eram apagados: só apaga o que o banco confirmar agora
+            const verdict = await service<string>("ch_worker_podcast_files_renew", { p_user: user, p_id: file.id, p_token: file.token });
+            if (verdict !== "ok") {
+              // 'em_uso' e 'resolvida': nada a fazer. 'incompleta': tenta de novo na rodada seguinte. 'outra': está com outra tentativa
+              if (verdict === "incompleta") incomplete++;
+              else if (verdict === "outra") otherHolds++;
+              continue;
+            }
+          } catch (error) {
+            aborted = error;
+            break;
+          }
+          try {
+            await withTimeout(deps!.storage.remove([file.path]), REMOVE_TIMEOUT_MS);
+            results.push({ id: file.id, token: file.token, ok: true });
+          } catch (error) {
+            log(`podcasts: não consegui apagar ${file.path}: ${message(error)}`);
+            failed++;
+            // se o depósito nem respondeu, o pedido pode ainda estar em andamento: não solta a reserva (ela vence sozinha)
+            if (!(error as { timeout?: boolean })?.timeout) results.push({ id: file.id, token: file.token, ok: false, error: message(error) });
+          }
+        }
+        if (results.length) await service("ch_worker_podcast_files_done", { p_user: user, p_results: results });
+        if (aborted) throw aborted;
+        if (failed || (pending.length < 50 && !incomplete)) break;
+      }
+    } catch (error) {
+      if (/Acesso restrito/i.test(message(error))) throw error; // a rota de repetir é só da equipe: quem não é equipe recebe 403
+      if (/ch_worker_podcast_files_/.test(message(error)) && /could not find the function|schema cache|PGRST202|42883|does not exist/i.test(message(error))) {
+        log("podcasts: a migração 9721 não está aplicada no banco; nenhum arquivo antigo foi apagado");
+        return { ok: false, failed: 0, note: SQL_ANTIGO };
+      }
+      log(`podcasts: limpeza de arquivos antigos não terminou (fica para a próxima): ${message(error)}`);
+      return { ok: false, failed, note: SEM_LIMPEZA };
+    }
+    // saiu das rodadas ainda com arquivos recusados pelo banco (reserva vencida de novo ou na mão de outra tentativa): nunca "tudo certo" em silêncio
+    if (!failed && (incomplete || otherHolds)) {
+      log(`podcasts: limpeza incompleta (${incomplete} arquivo(s) seguem na fila)`);
+      return { ok: false, failed: 0, note: SEM_LIMPEZA };
+    }
+    return failed ? { ok: false, failed, note: comFalhas(failed) } : { ok: true, failed: 0 };
+  };
+  /** Resposta das rotas de limpeza (repetir e a que a tela chama depois de editar o roteiro). */
+  const cleanupBody = (r: Released) => (r.ok ? { ok: true } : { ok: false, ...(r.failed ? { falhas: r.failed } : {}), note: r.note });
   /** Custo de IA no mesmo livro-caixa do Tutor (sem contar como interação do aluno). */
   const ledger = async (user: string, entry: Record<string, unknown>) => {
     try {
@@ -149,6 +238,23 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     const note = `Documento longo: entraram só os primeiros ${chunks.length} de ${info.total} trechos${ate}. O resto não foi usado. Divida o documento em partes menores para o podcast cobrir tudo.`;
     return { ...view, note };
   };
+  /**
+   * Fonte de arquivo (PDF/DOCX) com o SHA-256 gravado, FECHANDO POR SEGURANÇA (ver contentHub/fileSha.ts): a retenção do caminho
+   * é pedida antes de registrar; se o SHA-256 não puder ser gravado (nem na nova tentativa), a fonte fica escondida do aluno e a
+   * resposta traz o aviso em `note`.
+   */
+  const ingestFile = async (req: Authed, source: Record<string, unknown>, pages: ExtractedPage[], key: string, bytes: Buffer) => {
+    await holdFile(deps!.db, key, log, "podcasts");
+    let view: any;
+    try {
+      view = await ingest(req, source, pages);
+    } catch (error) {
+      await releaseFile(deps!.db, key, log, "podcasts"); // registro recusado: não deixa retenção órfã (o banco nunca solta a de arquivo já registrado)
+      throw error;
+    }
+    if (!(await recordFileSha(deps!.db, key, async () => bytes, log, "podcasts"))) return { ...view, note: [view?.note, SHA_WARNING].filter(Boolean).join(" ") };
+    return { ...((await staffPodcast(req).catch(() => null)) ?? view), ...(view?.note ? { note: view.note } : {}) }; // a visão volta sem a marca de retenção
+  };
   const extractFile = (buf: Buffer, ext: "pdf" | "docx") => (ext === "pdf" ? extractPdf(buf) : extractDocx(buf));
 
   /** O que está pronto no servidor: IA do roteiro, vozes e as opções de voz. */
@@ -163,7 +269,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       });
       res.json({ script: await aiChoices(deps!.db), tts, voices: VOICE_OPTIONS, default_voices: DEFAULT_VOICES });
     } catch (error) {
-      fail(res, statusOf(error, 500), message(error));
+      fail(res, statusOf(error, 500), shown(error));
     }
   });
 
@@ -183,7 +289,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const signed = await deps!.storage.signedUpload(key);
       res.json({ mode: "signed", bucket: PODCASTS_BUCKET, key, path: signed.path, token: signed.token });
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -199,9 +305,10 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const buf = await deps!.storage.get(key);
       if (!spec.magic(buf)) throw httpError(415, "O conteúdo não corresponde ao tipo informado.");
       const pages = await extractFile(buf, spec.ext);
-      res.status(201).json(await ingest(req, { kind: spec.ext, title: String(title || "Documento").slice(0, 200), storage_path: key }, pages));
+      const view = await ingestFile(req, { kind: spec.ext, title: String(title || "Documento").slice(0, 200), storage_path: key }, pages, key, buf);
+      res.status(201).json(view);
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -220,9 +327,10 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       if (!(await deps!.storage.exists(key))) await deps!.storage.put(key, body, type);
       const pages = await extractFile(body, spec.ext);
       const name = decodeURIComponent(String(req.headers["x-file-name"] ?? "Documento")).slice(0, 200) || "Documento";
-      res.status(201).json(await ingest(req, { kind: spec.ext, title: name, storage_path: key }, pages));
+      const view = await ingestFile(req, { kind: spec.ext, title: name, storage_path: key }, pages, key, body);
+      res.status(201).json(view);
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -235,7 +343,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const title = String(req.body?.title ?? "").trim().slice(0, 200) || "Texto colado";
       res.status(201).json(await ingest(req, { kind: "text", title }, [{ page: null, text }]));
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -248,12 +356,12 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       try {
         fetched = await fetchLink(url, deps!.fetchImpl ?? fetch, deps!.checkHost);
       } catch (error) {
-        throw httpError(422, message(error));
+        throw httpError(422, shown(error));
       }
       const title = String(req.body?.title ?? "").trim() || fetched.title || url;
       res.status(201).json(await ingest(req, { kind: "link", title: title.slice(0, 200), url }, fetched.pages));
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -285,7 +393,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
           try {
             pages.push(...(await extractPdf(await readLimited(deps!.lessons, lesson.slides, MAX_SOURCE_BYTES, deps!.fetchImpl ?? fetch))));
           } catch (error) {
-            note = error instanceof TooBigError ? tooBig() : `O PDF da aula não foi lido (${message(error)}); entraram o resumo e os pontos-chave.`;
+            note = error instanceof TooBigError ? tooBig() : `O PDF da aula não foi lido (${shown(error)}); entraram o resumo e os pontos-chave.`;
           }
         }
       }
@@ -293,7 +401,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const notes = [view?.note, note].filter(Boolean).join(" ");
       res.status(201).json(notes ? { ...view, note: notes } : view);
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -304,11 +412,11 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const before = await staffPodcast(req);
       const source = (before.sources ?? []).find((s: any) => s.id === req.params.sourceId);
       if (!source) throw httpError(404, "Fonte não encontrada.");
-      const view = await asUser(req, "app_admin_podcast_remove_source", { p_source_id: req.params.sourceId });
-      await removeQuietly(deps!.storage, [source.storage_path]);
-      res.json(view);
+      const view = await asUser<any>(req, "app_admin_podcast_remove_source", { p_source_id: req.params.sourceId });
+      const released = await releaseFiles(req.user!.id); // o arquivo da fonte (se nenhuma outra linha o usa) e o áudio que deixou de valer
+      res.json(released.note ? { ...(view ?? {}), note: released.note } : view);
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -322,7 +430,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       if (!(before.sources ?? []).some((s: any) => s.id === req.params.sourceId)) throw httpError(404, "Fonte não encontrada.");
       res.json(await asUser(req, "app_admin_podcast_rename_source", { p_source_id: req.params.sourceId, p_title: title }));
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -345,11 +453,13 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       if (m.status === "published") throw httpError(409, "Despublique o episódio antes de gerar outro roteiro.");
       if (!chunks.length) throw httpError(409, "Adicione fontes com texto antes de gerar o roteiro.");
       const started = Date.now();
+      // lista de fontes que o aluno não pode ver: sem ela o roteiro não é gerado (503), nunca segue sem conferência
+      const terms = await loadComplementarTerms(deps!.db, undefined, log);
       let r;
       try {
-        r = await generateScript({ kind: kind as any, topic: m.topic || m.title, minutes: Number(m.target_minutes) || 8, chunks, notes, mockRespond: kind === "mock" ? deps!.mockScript : undefined, db: deps!.db, actorId: req.user!.id, podcastId: req.params.id, aiMaker: deps!.aiMaker });
+        r = await generateScript({ terms, kind: kind as any, topic: m.topic || m.title, minutes: Number(m.target_minutes) || 8, chunks, notes, mockRespond: kind === "mock" ? deps!.mockScript : undefined, db: deps!.db, actorId: req.user!.id, podcastId: req.params.id, aiMaker: deps!.aiMaker });
       } catch (error: any) {
-        throw httpError(error?.status ?? 502, `A IA do roteiro falhou: ${message(error)}`);
+        throw httpError(error?.status ?? 502, `A IA do roteiro falhou: ${shown(error)}`);
       }
       const simulated = kind === "mock";
       const meta = {
@@ -361,9 +471,10 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
         await ledger(req.user!.id, { feature: "podcast_script", provider: r.usage.provider, model: r.usage.model, input_text_tokens: r.usage.input_tokens, output_text_tokens: r.usage.output_tokens, estimated_cost_usd: r.usage.cost_usd, meta: { podcast_id: req.params.id, calls: r.usage.calls } });
       }
       log(`podcasts: roteiro ${simulated ? "simulado" : r.usage.model} no episódio ${req.params.id} (${r.script.lines.length} falas, ${r.warnings.length} avisos)`);
-      res.json({ podcast: view, warnings: r.warnings });
+      const released = await releaseFiles(req.user!.id); // o áudio do roteiro anterior deixou de valer
+      res.json({ podcast: view, warnings: r.warnings, ...(released.note ? { note: released.note } : {}) });
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -380,9 +491,9 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       // roteiro antigo, sem essa lista, aceita todos os trechos do episódio
       const sent: unknown = view?.script_meta?.sent_chunks;
       const valid = Array.isArray(sent) ? new Map(chunks.filter((c) => (sent as unknown[]).map(Number).includes(c.id)).map((c) => [c.id, c])) : all;
-      res.json({ warnings: checkScript(script, valid, all) });
+      res.json({ warnings: checkScript(script, valid, all, await loadComplementarTerms(deps!.db, undefined, log)) });
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -434,7 +545,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       await deps!.storage.put(manifestKey(req.params.id, manifest.job), Buffer.from(JSON.stringify(manifest)), "application/json");
       res.json({ job: manifest.job, parts: manifest.parts.length, provider: kind, model: st.model, voices: manifest.voices, lines: lines.length });
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -498,7 +609,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
             pcm = Buffer.concat([await synthesizePart(manifest.provider, partLines, manifest.voices, deps!.tts), silence(320)]);
           } catch (error: any) {
             log(`podcasts: voz falhou na parte ${index + 1} do episódio ${id}: ${error?.technical ?? message(error)}`);
-            throw httpError(error?.status ?? 502, `A voz falhou na parte ${index + 1}: ${message(error)}`);
+            throw httpError(error?.status ?? 502, `A voz falhou na parte ${index + 1}: ${shown(error)}`);
           }
           const mp3 = await pcmToMp3(pcm);
           const seconds = pcm.length / 2 / SAMPLE_RATE;
@@ -516,7 +627,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
         partsInFlight.delete(flight);
       }
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -525,7 +636,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     let newKey: string | null = null;
     try {
       await staffPodcast(req);
-      const { manifest, oldAudio } = await currentJob(req);
+      const { manifest } = await currentJob(req);
       const id = req.params.id;
       const pieces: Buffer[] = [];
       let seconds = 0;
@@ -549,12 +660,37 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
         await ledger(req.user!.id, { feature: "podcast_tts", provider: manifest.provider, model: manifest.model, duration_seconds: Math.round(seconds), characters: manifest.chars, estimated_cost_usd: cost, meta: { podcast_id: id, job: manifest.job } });
       }
       const tmp = manifest.parts.flatMap((_, i) => [partKey(id, manifest.job, i, "mp3"), partKey(id, manifest.job, i, "json"), partKey(id, manifest.job, i, "lock")]);
-      await removeQuietly(deps!.storage, [...tmp, manifestKey(id, manifest.job), oldAudio && oldAudio !== newKey ? oldAudio : null]);
+      await removeQuietly(deps!.storage, [...tmp, manifestKey(id, manifest.job)]);
+      const released = await releaseFiles(req.user!.id); // o áudio anterior (a fila só o apaga se nenhuma linha do banco o usa)
       log(`podcasts: áudio pronto no episódio ${id} (${Math.round(seconds)} s, ${manifest.provider})`);
-      res.json(view);
+      res.json(released.note ? { ...(view ?? {}), note: released.note } : view);
     } catch (error) {
       if (newKey) await removeQuietly(deps?.storage, [newKey]);
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
+    }
+  });
+
+  /**
+   * Repetir a limpeza da fila inteira (qualquer episódio, inclusive já apagado). Só a equipe (o banco confere pela conta). Declarada
+   * ANTES das rotas por episódio. Se a 9721 não está aplicada, diz isso em vez de responder sucesso.
+   */
+  router.post("/files/cleanup", async (req: Authed, res) => {
+    try {
+      const released = await releaseFiles(req.user!.id);
+      res.json(cleanupBody(released));
+    } catch (error) {
+      fail(res, statusOf(error), shown(error));
+    }
+  });
+
+  /** A tela chama depois de editar o roteiro (a edição é feita direto no banco): apaga o áudio que deixou de valer. */
+  router.post("/:id/files/cleanup", async (req: Authed, res) => {
+    try {
+      await staffPodcast(req);
+      const released = await releaseFiles(req.user!.id);
+      res.json(cleanupBody(released));
+    } catch (error) {
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -572,7 +708,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const p = await audioPath(req);
       res.json({ url: deps!.storage.signedUrl ? await deps!.storage.signedUrl(p, AUDIO_LINK_SECONDS) : null });
     } catch (error) {
-      fail(res, statusOf(error, 404), message(error));
+      fail(res, statusOf(error, 404), shown(error));
     }
   });
 
@@ -584,7 +720,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       res.setHeader("Cache-Control", "private, no-store");
       res.send(data);
     } catch (error) {
-      fail(res, statusOf(error, 404), message(error));
+      fail(res, statusOf(error, 404), shown(error));
     }
   });
 
@@ -607,10 +743,11 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
         p_lesson_id: lessonId,
         p_material: { kind: "flashcast", title: `Flashcast: ${f.title}`.slice(0, 200), storage_path: copied, content_type: "audio/mpeg", size_bytes: audio.length },
       });
+      await sweepLessonFiles(deps!.db, req.user!, deps!.lessons, deps!.log).catch(() => null); // o Flashcast que este substituiu sai do depósito (A07)
       res.status(201).json({ lesson });
     } catch (error) {
       if (copied) await removeQuietly(deps?.lessons, [copied]);
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -618,11 +755,11 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
   router.delete("/:id", async (req: Authed, res) => {
     try {
       if (!ID.test(req.params.id)) throw httpError(400, "Episódio inválido.");
-      const r = await asUser<{ paths?: string[] }>(req, "app_admin_delete_podcast", { p_id: req.params.id });
-      await removeQuietly(deps!.storage, r?.paths ?? []);
-      res.json({ deleted: true });
+      await asUser(req, "app_admin_delete_podcast", { p_id: req.params.id });
+      const released = await releaseFiles(req.user!.id); // áudio e arquivos das fontes do episódio apagado
+      res.json({ deleted: true, ...(released.note ? { aviso: released.note } : {}) });
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 

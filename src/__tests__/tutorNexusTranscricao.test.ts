@@ -69,6 +69,8 @@ beforeAll(async () => {
   await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id in ($1, $2)`, [ALUNA, SEM_ACEITE]);
   await aceitarTermos(dev.db, ALUNA);
   for (const uid of [ALUNA, SEM_ACEITE]) tokens[uid] = await dev.createSession(uid);
+  // CF02: o microfone dos alunos só abre com os tetos diários e o preço preenchidos; aqui o dono "já abriu" (direto no banco)
+  await dev.db.query(`update public.tutor_config set stt_team_only = false, stt_trial_daily_seconds = 300, stt_paid_daily_seconds = 1800, stt_account_daily_seconds = 36000`);
   await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, requires_pro: true, voice_enabled: true, stt_price_per_min_usd: 0.003, pronunciations: [{ term: "INEP", say: "inépi" }, { term: "DPOC", say: "dê-pê-ó-cê" }] }, "Ajuste para os testes da transcrição do Nexus.");
   const app = express();
   app.use(express.json());

@@ -1,11 +1,12 @@
 // Resultado de um treino ou simulado: placar, desempenho por área e revisão questão a questão.
 // O protótipo não tem esta tela; ela usa só componentes do design system.
 import React from "react";
-import { AnswerOption, Badge, Banner, Button, Card, Icon, ProgressBar, StatCard, Tabs } from "../../ds";
+import { Badge, Banner, Button, Card, Icon, ProgressBar, StatCard, Tabs } from "../../ds";
 import { useMQ } from "../Shell.jsx";
-import { Correction, answerState, isAnnulled } from "./Correction.jsx";
-import { areaLabel, areaOf, examLabel, formatClock, formatWhen, percent, splitStatement } from "./format.js";
-import { QuestionFigures } from "./QuestionFigures.jsx";
+import { PreliminarySeal, isAnnulled } from "./Correction.jsx";
+import { areaLabel, areaOf, formatClock, formatWhen, percent } from "./format.js";
+import { QuestionReview } from "./tela/QuestionReview.jsx";
+import { TriResult } from "./TriResult.jsx";
 
 // Anulada pela banca: fora de certas, erradas e em branco (não conta como acerto nem erro).
 const stateOf = (question) =>
@@ -17,9 +18,8 @@ const STATE = {
   annulled: { icon: "ban", color: "var(--text-tertiary)", label: "Anulada" },
 };
 
-function ReviewRow({ question, position, first, open, onToggle }) {
+function ReviewRow({ question, position, first, open, onToggle, go, showDifficulty }) {
   const state = STATE[stateOf(question)];
-  const { stem, ask } = splitStatement(question.statement);
   return (
     <div style={{ borderTop: first ? 0 : "1px solid var(--border-subtle)" }}>
       <button
@@ -31,32 +31,13 @@ function ReviewRow({ question, position, first, open, onToggle }) {
         <Icon name={state.icon} size={20} label={state.label} style={{ color: state.color, flex: "none" }} />
         <span style={{ font: "600 13px var(--font-mono)", color: "var(--text-tertiary)", width: 28, flex: "none" }}>{position}</span>
         <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", font: "var(--type-body-sm)" }}>{question.statement}</span>
+        <PreliminarySeal info={question.preliminary} compact />
         <Badge size="sm">{areaLabel(question.area)}</Badge>
         <Icon name={open ? "chevron-up" : "chevron-down"} size={18} style={{ color: "var(--text-tertiary)", flex: "none" }} />
       </button>
       {open && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "4px 0 24px" }}>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Badge tone="brand">{areaLabel(question.area)}</Badge>
-            <Badge>
-              {examLabel(question.exam)} · Q{question.number}
-            </Badge>
-          </div>
-          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, textWrap: "pretty" }}>{stem}</p>
-          <QuestionFigures images={question.images} />
-          {ask && <p style={{ margin: 0, font: "600 16px/1.45 var(--font-sans)" }}>{ask}</p>}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {question.options.map((option) => (
-              <AnswerOption
-                key={option.id}
-                letter={option.id}
-                state={answerState(option.id, question.selected, question.correction)}
-              >
-                {option.text}
-              </AnswerOption>
-            ))}
-          </div>
-          <Correction selected={question.selected} correction={question.correction} question={question} />
+        <div style={{ padding: "4px 0 24px" }}>
+          <QuestionReview question={question} selected={question.selected} correction={question.correction} go={go} showDifficulty={showDifficulty} />
         </div>
       )}
     </div>
@@ -98,6 +79,9 @@ export function SessionResult({ session, go, timeUp = false }) {
             O simulado foi finalizado com as respostas que estavam marcadas.
           </Banner>
         )}
+
+        {/* simulado corrigido em TRI (opcional): a estimativa vem em cima; o placar clássico continua logo abaixo */}
+        {sim && <TriResult sessionId={session.id} mobile={mobile} />}
 
         <Card style={{ borderRadius: 24 }} padding={mobile ? 22 : 32}>
           <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
@@ -186,6 +170,8 @@ export function SessionResult({ session, go, timeUp = false }) {
                 open={openId === row.question.id}
                 onToggle={() => setOpenId(openId === row.question.id ? null : row.question.id)}
                 first={index === 0}
+                go={go}
+                showDifficulty={!sim}
               />
             ))}
           </div>

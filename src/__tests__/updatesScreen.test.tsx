@@ -4,6 +4,8 @@
  * questão de treino e "Treinar questões deste tema". As regras estão em supabaseGuidelineUpdatesApi.test.ts.
  * AT04 (10/10/2026): o selo "Sem conferência médica" aparece também no cartão da lista e na tabela comparativa (no
  * computador e no celular), não só dentro do detalhe.
+ * Visual de 14/10/2026: filtros de área viram botões (aria-pressed) e o detalhe fica em abas; as interações novas
+ * (filtro, busca, abas com teclado, marcar como lida, flashcards na cor do tema) estão em updatesScreenVisual.test.tsx.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -62,9 +64,9 @@ describe("Lista", () => {
     render(<UpdatesScreen go={vi.fn()} />);
     expect(await screen.findByText("Atualizações em destaque")).toBeTruthy();
     expect(screen.getAllByText("Prevenção da pré-eclâmpsia").length).toBe(2); // destaque + lista
-    fireEvent.click(screen.getByRole("tab", { name: /Clínica Médica/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Clínica Médica/ }));
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_guideline_updates", { p_area: "CLINICA_MEDICA", p_year: null, p_search: null }));
-    fireEvent.click(screen.getByRole("button", { name: "2026" }));
+    fireEvent.click(screen.getByRole("radio", { name: "2026" })); // ano: controle segmentado (onda 4)
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_guideline_updates", { p_area: "CLINICA_MEDICA", p_year: 2026, p_search: null }));
     fireEvent.change(screen.getByLabelText("Buscar atualização"), { target: { value: "aas" } });
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_guideline_updates", { p_area: "CLINICA_MEDICA", p_year: 2026, p_search: "aas" }));
@@ -129,10 +131,15 @@ describe("Detalhe", () => {
     expect(screen.getByText(/Conferido por revisor médico no documento oficial em 06\/10\/2026/)).toBeTruthy();
     expect(screen.getByText("Conduta antiga de teste.")).toBeTruthy();
     expect(screen.getByText("Conduta vigente de teste.")).toBeTruthy();
-    expect(screen.getByText("Mudança de 2025 de teste.")).toBeTruthy();
-    expect(screen.getByText("Pegadinha de teste.")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Abrir documento oficial/ })).toBeTruthy();
+    // 14/10/2026: o resto fica em abas
+    fireEvent.click(screen.getByRole("tab", { name: "Linha do tempo" }));
+    expect(screen.getByText("Mudança de 2025 de teste.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Armadilha" }));
+    expect(screen.getByText("Pegadinha de teste.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Flashcards" }));
     expect(screen.getByText("Frente de teste?")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Miniquiz" }));
     fireEvent.click(screen.getByRole("radio", { name: /Alternativa A/ }));
     fireEvent.click(screen.getByRole("button", { name: /Confirmar/ }));
     expect(await screen.findByText(/Comentário de teste\./)).toBeTruthy();

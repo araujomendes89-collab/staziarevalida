@@ -1,0 +1,443 @@
+[
+ {
+  "id": "revalida_2020_1_q006",
+  "campo": "statement",
+  "antes": "23,5 kg/m2, PA",
+  "depois": "23,5 kg/m², PA",
+  "tipo": "unidade",
+  "pagina": 4,
+  "evidencia": "evidencia/q006.png"
+ },
+ {
+  "id": "revalida_2020_1_q009",
+  "campo": "statement",
+  "antes": "(39,6 oC), com",
+  "depois": "(39,6 ºC), com",
+  "tipo": "simbolo",
+  "pagina": 6,
+  "evidencia": "evidencia/q009.png"
+ },
+ {
+  "id": "revalida_2020_1_q009",
+  "campo": "statement",
+  "antes": "= 22.000/mm3 (valor",
+  "depois": "= 22.000/mm³ (valor",
+  "tipo": "unidade",
+  "pagina": 6,
+  "evidencia": "evidencia/q009.png"
+ },
+ {
+  "id": "revalida_2020_1_q009",
+  "campo": "statement",
+  "antes": "10 000/mm3), com",
+  "depois": "10 000/mm³), com",
+  "tipo": "unidade",
+  "pagina": 6,
+  "evidencia": "evidencia/q009.png"
+ },
+ {
+  "id": "revalida_2020_1_q015",
+  "campo": "statement",
+  "antes": "38,2 oC), eupneico,",
+  "depois": "38,2 ºC), eupneico,",
+  "tipo": "simbolo",
+  "pagina": 7,
+  "evidencia": "evidencia/q015.png"
+ },
+ {
+  "id": "revalida_2020_1_q016",
+  "campo": "statement",
+  "antes": "que 105 UFC/mL",
+  "depois": "que 10⁵ UFC/mL",
+  "tipo": "sobrescrito",
+  "pagina": 7,
+  "evidencia": "evidencia/q016.png"
+ },
+ {
+  "id": "revalida_2020_1_q019",
+  "campo": "statement",
+  "antes": "40 oC), tosse",
+  "depois": "40 ºC), tosse",
+  "tipo": "simbolo",
+  "pagina": 8,
+  "evidencia": "evidencia/q019.png"
+ },
+ {
+  "id": "revalida_2020_1_q028",
+  "campo": "statement",
+  "antes": "39 oC, FC",
+  "depois": "39 ºC, FC",
+  "tipo": "simbolo",
+  "pagina": 13,
+  "evidencia": "evidencia/q028.png"
+ },
+ {
+  "id": "revalida_2020_1_q028",
+  "campo": "statement",
+  "antes": "5, PaO2/FiO2 de",
+  "depois": "5, PaO₂/FiO₂ de",
+  "tipo": "sobrescrito",
+  "pagina": 13,
+  "evidencia": "evidencia/q028.png"
+ },
+ {
+  "id": "revalida_2020_1_q032",
+  "campo": "statement",
+  "antes": "38 oC), inapetência",
+  "depois": "38 ºC), inapetência",
+  "tipo": "simbolo",
+  "pagina": 16,
+  "evidencia": "evidencia/q032.png"
+ },
+ {
+  "id": "revalida_2020_1_q034",
+  "campo": "statement",
+  "antes": "37,8 oC e",
+  "depois": "37,8 ºC e",
+  "tipo": "simbolo",
+  "pagina": 17,
+  "evidencia": "evidencia/q034.png"
+ },
+ {
+  "id": "revalida_2020_1_q044",
+  "campo": "statement",
+  "antes": "23,5 kg/m2. Além",
+  "depois": "23,5 kg/m². Além",
+  "tipo": "unidade",
+  "pagina": 20,
+  "evidencia": "evidencia/q044.png"
+ },
+ {
+  "id": "revalida_2020_1_q045",
+  "campo": "statement",
+  "antes": "(40 oC) há",
+  "depois": "(40 ºC) há",
+  "tipo": "simbolo",
+  "pagina": 21,
+  "evidencia": "evidencia/q045.png"
+ },
+ {
+  "id": "revalida_2020_1_q045",
+  "campo": "statement",
+  "antes": "37,5 oC, mucosas",
+  "depois": "37,5 ºC, mucosas",
+  "tipo": "simbolo",
+  "pagina": 21,
+  "evidencia": "evidencia/q045.png"
+ },
+ {
+  "id": "revalida_2020_1_q045",
+  "campo": "statement",
+  "antes": "3 500/mm3 (valor",
+  "depois": "3 500/mm³ (valor",
+  "tipo": "unidade",
+  "pagina": 21,
+  "evidencia": "evidencia/q045.png"
+ },
+ {
+  "id": "revalida_2020_1_q045",
+  "campo": "statement",
+  "antes": "12 000/mm3, bastões",
+  "depois": "12 000/mm³, bastões",
+  "tipo": "unidade",
+  "pagina": 21,
+  "evidencia": "evidencia/q045.png"
+ },
+ {
+  "id": "revalida_2020_1_q045",
+  "campo": "statement",
+  "antes": "50 000/mm3 (valor",
+  "depois": "50 000/mm³ (valor",
+  "tipo": "unidade",
+  "pagina": 21,
+  "evidencia": "evidencia/q045.png"
+ },
+ {
+  "id": "revalida_2020_1_q045",
+  "campo": "statement",
+  "antes": "450 000/mm3). Quais",
+  "depois": "450 000/mm³). Quais",
+  "tipo": "unidade",
+  "pagina": 21,
+  "evidencia": "evidencia/q045.png"
+ },
+ {
+  "id": "revalida_2020_1_q046",
+  "campo": "statement",
+  "antes": "da 12.a semana",
+  "depois": "da 12.ª semana",
+  "tipo": "sobrescrito",
+  "pagina": 21,
+  "evidencia": "evidencia/q046.png"
+ },
+ {
+  "id": "revalida_2020_1_q048",
+  "campo": "statement",
+  "antes": "120 000/mm3 (valor",
+  "depois": "120 000/mm³ (valor",
+  "tipo": "unidade",
+  "pagina": 23,
+  "evidencia": "evidencia/q048.png"
+ },
+ {
+  "id": "revalida_2020_1_q048",
+  "campo": "statement",
+  "antes": "424 000/mm3). A",
+  "depois": "424 000/mm³). A",
+  "tipo": "unidade",
+  "pagina": 23,
+  "evidencia": "evidencia/q048.png"
+ },
+ {
+  "id": "revalida_2020_1_q051",
+  "campo": "statement",
+  "antes": "da 24.a semana",
+  "depois": "da 24.ª semana",
+  "tipo": "sobrescrito",
+  "pagina": 24,
+  "evidencia": "evidencia/q051.png"
+ },
+ {
+  "id": "revalida_2020_1_q051",
+  "campo": "statement",
+  "antes": "com 105 Unidades",
+  "depois": "com 10⁵ Unidades",
+  "tipo": "sobrescrito",
+  "pagina": 24,
+  "evidencia": "evidencia/q051.png"
+ },
+ {
+  "id": "revalida_2020_1_q056",
+  "campo": "statement",
+  "antes": "36,5 oC. Seu",
+  "depois": "36,5 ºC. Seu",
+  "tipo": "simbolo",
+  "pagina": 26,
+  "evidencia": "evidencia/q056.png"
+ },
+ {
+  "id": "revalida_2020_1_q059",
+  "campo": "statement",
+  "antes": "33 kg/m2, eupneica",
+  "depois": "33 kg/m², eupneica",
+  "tipo": "unidade",
+  "pagina": 28,
+  "evidencia": "evidencia/q059.png"
+ },
+ {
+  "id": "revalida_2020_1_q059",
+  "campo": "statement",
+  "antes": "com 2.a bulha",
+  "depois": "com 2.ª bulha",
+  "tipo": "sobrescrito",
+  "pagina": 28,
+  "evidencia": "evidencia/q059.png"
+ },
+ {
+  "id": "revalida_2020_1_q059",
+  "campo": "statement",
+  "antes": "no 1.o segundo",
+  "depois": "no 1.º segundo",
+  "tipo": "sobrescrito",
+  "pagina": 28,
+  "evidencia": "evidencia/q059.png"
+ },
+ {
+  "id": "revalida_2020_1_q064",
+  "campo": "statement",
+  "antes": "no 1.o quirodáctilo",
+  "depois": "no 1.º quirodáctilo",
+  "tipo": "sobrescrito",
+  "pagina": 30,
+  "evidencia": "evidencia/q064.png"
+ },
+ {
+  "id": "revalida_2020_1_q065",
+  "campo": "statement",
+  "antes": "38 oC) há",
+  "depois": "38 ºC) há",
+  "tipo": "simbolo",
+  "pagina": 31,
+  "evidencia": "evidencia/q065.png"
+ },
+ {
+  "id": "revalida_2020_1_q072",
+  "campo": "statement",
+  "antes": "Sat. O2 =",
+  "depois": "Sat. O₂ =",
+  "tipo": "sobrescrito",
+  "pagina": 33,
+  "evidencia": "evidencia/q072.png"
+ },
+ {
+  "id": "revalida_2020_1_q073",
+  "campo": "statement",
+  "antes": "2,5 L/min.m2 (valor",
+  "depois": "2,5 L/min.m² (valor",
+  "tipo": "unidade",
+  "pagina": 33,
+  "evidencia": "evidencia/q073.png"
+ },
+ {
+  "id": "revalida_2020_1_q073",
+  "campo": "statement",
+  "antes": "4,0 L/min.m2), resistência",
+  "depois": "4,0 L/min.m²), resistência",
+  "tipo": "unidade",
+  "pagina": 33,
+  "evidencia": "evidencia/q073.png"
+ },
+ {
+  "id": "revalida_2020_1_q073",
+  "campo": "statement",
+  "antes": "1 cmH20 (valor",
+  "depois": "1 cmH₂0 (valor",
+  "tipo": "sobrescrito",
+  "pagina": 33,
+  "evidencia": "evidencia/q073.png"
+ },
+ {
+  "id": "revalida_2020_1_q073",
+  "campo": "statement",
+  "antes": "12 cmH20), pressão",
+  "depois": "12 cmH₂0), pressão",
+  "tipo": "sobrescrito",
+  "pagina": 33,
+  "evidencia": "evidencia/q073.png"
+ },
+ {
+  "id": "revalida_2020_1_q073",
+  "campo": "statement",
+  "antes": "15 cmH20 (valor",
+  "depois": "15 cmH₂0 (valor",
+  "tipo": "sobrescrito",
+  "pagina": 33,
+  "evidencia": "evidencia/q073.png"
+ },
+ {
+  "id": "revalida_2020_1_q073",
+  "campo": "statement",
+  "antes": "9 cmH20). A",
+  "depois": "9 cmH₂0). A",
+  "tipo": "sobrescrito",
+  "pagina": 33,
+  "evidencia": "evidencia/q073.png"
+ },
+ {
+  "id": "revalida_2020_1_q075",
+  "campo": "statement",
+  "antes": "7,45); HCO3 =",
+  "depois": "7,45); HCO₃ =",
+  "tipo": "sobrescrito",
+  "pagina": 34,
+  "evidencia": "evidencia/q075.png"
+ },
+ {
+  "id": "revalida_2020_1_q075",
+  "campo": "options.D",
+  "antes": "50 mg/m2 subcutânea/dia.",
+  "depois": "50 mg/m² subcutânea/dia.",
+  "tipo": "unidade",
+  "pagina": 34,
+  "evidencia": "evidencia/q075.png"
+ },
+ {
+  "id": "revalida_2020_1_q080",
+  "campo": "statement",
+  "antes": "57 000/mm3 (valor",
+  "depois": "57 000/mm³ (valor",
+  "tipo": "unidade",
+  "pagina": 37,
+  "evidencia": "evidencia/q080.png"
+ },
+ {
+  "id": "revalida_2020_1_q080",
+  "campo": "statement",
+  "antes": "450 000/mm3), com",
+  "depois": "450 000/mm³), com",
+  "tipo": "unidade",
+  "pagina": 37,
+  "evidencia": "evidencia/q080.png"
+ },
+ {
+  "id": "revalida_2020_1_q085",
+  "campo": "statement",
+  "antes": "de O2 em",
+  "depois": "de O₂ em",
+  "tipo": "sobrescrito",
+  "pagina": 40,
+  "evidencia": "evidencia/q085.png"
+ },
+ {
+  "id": "revalida_2020_1_q095",
+  "campo": "statement",
+  "antes": "18 000 mm3 (valor de",
+  "depois": "18 000 mm³ (valor de",
+  "tipo": "unidade",
+  "pagina": 45,
+  "evidencia": "evidencia/q095.png"
+ },
+ {
+  "id": "revalida_2020_1_q095",
+  "campo": "statement",
+  "antes": "15 000/mm3), plaquetas",
+  "depois": "15 000/mm³), plaquetas",
+  "tipo": "unidade",
+  "pagina": 45,
+  "evidencia": "evidencia/q095.png"
+ },
+ {
+  "id": "revalida_2020_1_q095",
+  "campo": "statement",
+  "antes": "300 000 mm3 (valor de",
+  "depois": "300 000 mm³ (valor de",
+  "tipo": "unidade",
+  "pagina": 45,
+  "evidencia": "evidencia/q095.png"
+ },
+ {
+  "id": "revalida_2020_1_q095",
+  "campo": "statement",
+  "antes": "450 000/mm3), segmentados",
+  "depois": "450 000/mm³), segmentados",
+  "tipo": "unidade",
+  "pagina": 45,
+  "evidencia": "evidencia/q095.png"
+ },
+ {
+  "id": "revalida_2020_1_q099",
+  "campo": "statement",
+  "antes": "de 4.a bulha",
+  "depois": "de 4.ª bulha",
+  "tipo": "sobrescrito",
+  "pagina": 47,
+  "evidencia": "evidencia/q099.png"
+ },
+ {
+  "id": "revalida_2020_1_q099",
+  "campo": "statement",
+  "antes": "no 2.o espaço",
+  "depois": "no 2.º espaço",
+  "tipo": "sobrescrito",
+  "pagina": 47,
+  "evidencia": "evidencia/q099.png"
+ },
+ {
+  "id": "revalida_2020_1_q099",
+  "campo": "statement",
+  "antes": "0,9 cm2 (normal:",
+  "depois": "0,9 cm² (normal:",
+  "tipo": "unidade",
+  "pagina": 47,
+  "evidencia": "evidencia/q099.png"
+ },
+ {
+  "id": "revalida_2020_1_q099",
+  "campo": "statement",
+  "antes": "4 cm2), sendo",
+  "depois": "4 cm²), sendo",
+  "tipo": "unidade",
+  "pagina": 47,
+  "evidencia": "evidencia/q099.png"
+ }
+]

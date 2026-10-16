@@ -52,7 +52,7 @@ const byAddress = (a: string) => domains.find((d) => d.address === a)!;
 
 describe("Sites e download", () => {
   it("encaixe na lista: subdomínio, caminho inteiro, falsos e não ASCII", () => {
-    expect(domains).toHaveLength(11);
+    expect(domains).toHaveLength(21); // 11 sementes + 10 sites da Vigilância científica (9940)
     expect(matchDomain("https://www.gov.br/saude/x.pdf", domains)?.institution).toBe("Ministério da Saúde");
     expect(matchDomain("https://www.gov.br/saude", domains)?.address).toBe("www.gov.br/saude");
     // o site do ministério é o www.gov.br: prefeitura e estado (qualquer *.gov.br com /saude) NÃO são o Ministério da Saúde
@@ -471,9 +471,16 @@ describe("Conferência", () => {
     expect(web.calls.filter((x) => x.url.includes("copia-b")).length).toBe(1);
     const count = (await sql(`select count(*)::int as n from public.ch_source_candidates where sha256 = $1`, [crypto.createHash("sha256").update(pdf).digest("hex")]))[0].n;
     expect(count).toBe(1);
-    // fonte já cadastrada pelo link
-    await t.db.asUser(t.adminUser, "app_ch_register_source", { p_source: { title: "Manual já cadastrado", organ: "Ministério da Saúde", url: "https://www.gov.br/saude/cadastrada.pdf" } });
-    expect(await verifyFinding(finding({ link: "https://www.gov.br/saude/cadastrada.pdf" }), c)).toEqual({ ok: false, motivo: "Repetido: fonte já cadastrada." });
+    // fonte já cadastrada pelo ARQUIVO: repetida, mesmo por outro endereço
+    const dupPdf = makePdf([LONG + "\nTexto exclusivo da fonte cadastrada para o teste."]);
+    await t.db.asUser(t.adminUser, "app_ch_register_source", { p_source: { title: "Manual já cadastrado", organ: "Ministério da Saúde", url: "https://www.gov.br/saude/cadastrada.pdf", sha256: crypto.createHash("sha256").update(dupPdf).digest("hex") } });
+    const web2 = fakeWeb({ "https://www.gov.br/saude/cadastrada.pdf": pdfRoute(dupPdf), "https://www.gov.br/saude/espelho.pdf": pdfRoute(dupPdf) });
+    expect(await verifyFinding(finding({ link: "https://www.gov.br/saude/cadastrada.pdf" }), await ctx({ fetchImpl: web2 }))).toEqual({ ok: false, motivo: "Repetido: fonte já cadastrada." });
+    expect(await verifyFinding(finding({ link: "https://www.gov.br/saude/espelho.pdf" }), await ctx({ fetchImpl: web2 }))).toEqual({ ok: false, motivo: "Repetido: fonte já cadastrada." });
+    // fonte cadastrada pelo endereço, mas o arquivo daquele endereço MUDOU (edição nova no mesmo endereço): vira candidato
+    const newer = makePdf([LONG + "\nTexto da edicao nova publicada no mesmo endereco da fonte cadastrada."]);
+    const webNew = fakeWeb({ "https://www.gov.br/saude/cadastrada.pdf": pdfRoute(newer) });
+    expect((await verifyFinding(finding({ link: "https://www.gov.br/saude/cadastrada.pdf" }), await ctx({ fetchImpl: webNew }))).ok).toBe(true);
   });
 
   it("data inválida da IA vira nula e não descarta", async () => {

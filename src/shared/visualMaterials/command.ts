@@ -103,6 +103,9 @@ const KEY_ALIASES: Record<string, string> = {
   resposta_completa: "explicacao",
   como_lembrar: "como_lembrar",
   referencia: "referencia",
+  tema_cor: "tema_cor",
+  cor_do_tema: "tema_cor",
+  cor_tema: "tema_cor",
 };
 
 const LIST_KEYS = new Set(["pontos_chave", "bloco.itens", "mnemonico.itens"]);
@@ -213,6 +216,7 @@ export function visualCommandText(input: Record<string, any>): string {
     put("mnemonico.itens", input.mnemonico.itens);
   }
   put("referencia", input.referencia);
+  put("tema_cor", input.tema_cor);
   put("fonte", input.fonte);
   return out.join("\n");
 }

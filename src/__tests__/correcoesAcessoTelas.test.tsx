@@ -1,6 +1,6 @@
 /**
  * Correções da Administração nas telas:
- * PL01 — a aba Planos não diz mais que os planos aparecem para os alunos: avisa que ainda não aparecem e que a cobrança será
+ * PL01 — a aba Planos diz a verdade sobre a tela de planos do aluno (só informativa, sem preço nem assinatura) e que a cobrança será
  *        pela Stripe.
  * CF01 — o painel do Tutor avisa, antes de salvar, que o Tutor ligado precisa de "Planos pagos + teste grátis" ligado.
  * PL03 — depois que o teste grátis acaba, a faixa do Início diz "Seu teste grátis terminou" (e não "termina hoje" para sempre).
@@ -48,18 +48,19 @@ describe("PL01 — aba Planos", () => {
     { code: "pro", name: "Pro", description: null, price_cents: 12990, billing_period: "monthly", features: ["Tutor"], active: true },
   ];
 
-  it("avisa que os planos ainda não aparecem para os alunos e que a cobrança será pela Stripe", async () => {
+  it("explica o que o aluno vê (tela só informativa, sem preço nem assinatura) e que a cobrança será pela Stripe", async () => {
     backend.rpc.mockImplementation(async (fn: string) => (fn === "app_admin_plans" ? PLANS : null));
     render(<AdminPlans />);
-    expect(await screen.findByText("Os planos ainda não aparecem para os alunos")).toBeTruthy();
-    expect(screen.getByText(/O app ainda não tem a tela de planos do aluno/)).toBeTruthy();
-    expect(screen.getByText(/A cobrança será pela Stripe/)).toBeTruthy();
-    // nada na aba afirma que os planos já aparecem para os alunos
-    expect(screen.queryByText(/aparecem para os alunos\./)).toBeNull();
-    expect(screen.queryByText(/Aparecem na tela de planos do aluno/)).toBeNull();
+    expect(await screen.findByText("O que o aluno vê dos planos")).toBeTruthy();
+    expect(screen.getByText(/O aluno tem uma tela de Planos só para informar/)).toBeTruthy();
+    expect(screen.getByText(/Ela não mostra preço e não tem botão de assinar/)).toBeTruthy();
+    expect(screen.getByText(/pela Stripe, numa próxima etapa/)).toBeTruthy();
+    // nada na aba afirma que o aluno já assina ou vê o preço
+    expect(screen.queryByText(/Os planos ainda não aparecem para os alunos/)).toBeNull();
     expect(screen.queryByText("À venda")).toBeNull();
     expect(screen.getByText("Marcado para venda")).toBeTruthy();
-    expect(screen.getByText(/Ainda não aparece para os alunos\./)).toBeTruthy();
+    expect(screen.getAllByText(/Aparecem para o aluno na tela de Planos\./).length).toBeGreaterThan(0);
+    expect(screen.getByText(/não muda nada para o aluno/)).toBeTruthy();
   });
 });
 
@@ -236,8 +237,12 @@ describe("PL05, PL06 e PL08 — aba Planos", () => {
     { code: "trial", name: "Teste grátis", description: null, price_cents: 0, billing_period: "monthly", features: [], active: true },
     { code: "pro", name: "Pro", description: null, price_cents: null, billing_period: "monthly", features: [], active: false },
   ];
-  const abrir = async (saved: any[]) => {
+  const abrir = async (saved: any[], regraNoBanco = true) => {
     backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_signup_trial_rule") {
+        if (!regraNoBanco) throw new Error("function public.app_admin_signup_trial_rule() does not exist");
+        return { applies: true };
+      }
       if (fn === "app_admin_plans") return PLANS;
       if (fn === "app_admin_save_plan") return (saved.push(args.p_plan), PLANS);
       throw new Error(`rpc inesperada: ${fn}`);
@@ -293,8 +298,16 @@ describe("PL05, PL06 e PL08 — aba Planos", () => {
     expect(saved[0].features).toEqual(["Tutor", "Simulados"]);
   });
 
-  it("PL06: a chave do teste grátis diz a verdade, enquanto o cadastro não a consulta", async () => {
+  it("PL06: a chave do teste grátis diz a verdade (o cadastro agora a consulta, migração 9732)", async () => {
     await abrir([]);
+    expect(await screen.findByText(/Desligado: quem se cadastrar depois entra sem teste, só com questões e flashcards/)).toBeTruthy();
+    expect(screen.queryByText(/Hoje todo cadastro novo recebe o teste/)).toBeNull();
+  });
+
+  it("PL06: com o banco ainda sem a 9732 (site novo + SQL antigo) a chave mantém o texto de antes, sem prometer o que o banco não faz", async () => {
+    await abrir([], false);
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_signup_trial_rule"));
     expect(screen.getByText(/Hoje todo cadastro novo recebe o teste, com esta chave ligada ou desligada\./)).toBeTruthy();
+    expect(screen.queryByText(/entra sem teste/)).toBeNull();
   });
 });

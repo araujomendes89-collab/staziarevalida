@@ -3,27 +3,48 @@
 // Os interruptores de lembrete e de alertas do protótipo saíram: o produto ainda não envia
 // notificações.
 import React from "react";
-import { Avatar, Badge, Banner, Button, Card, Icon, SectionHeader, SegmentedControl, SelectField, TextField } from "../../ds";
+import { Badge, Banner, Button, Icon, SegmentedControl, SelectField, TextField } from "../../ds";
 import { isStaffRole } from "../admin/AdminScreen.jsx";
-import { isPhase2Locked, paidPlanLapsed, trialLapsed } from "../admin/common.jsx";
+import { isPhase2Locked } from "../admin/common.jsx";
 import { PASSWORD_MIN_LENGTH } from "../../data";
 import { useSession } from "../session.jsx";
+import { planStatusLabel as planBadge, planSummary, usePlanLock } from "../plan/planAccess.js";
+import { ReportProblem } from "../support/ReportProblem.jsx";
+import { SupportMail, useSupportEmail } from "../support/supportContact.jsx";
 import { useMobile } from "../Shell.jsx";
+import { Panel, RichIcon, Tile, useBreakpoint } from "../evolucao/ui.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
 import { COUNTRIES, normalizePhone, phoneError, splitPhone } from "../legal/phone.js";
 import "./account.css";
 
+// icon = ícone ilustrado do pacote (RichIcon); tone = cor do azulejo. "Ajuda e suporte" fica fora do bloco "Sua conta" (vem depois, junto de "Sair da conta").
 const SECTIONS = [
-  { id: "conta", label: "Minha conta", sub: "Nome, e-mail, WhatsApp e aparência", icon: "user" },
-  { id: "play", label: "Minha Stazia Arena", sub: "Nível, score, ranking e visibilidade", icon: "trophy" },
-  { id: "estudo", label: "Estudo e prova", sub: "Fase, prova-alvo e rotina", icon: "graduation-cap" },
-  { id: "seg", label: "Segurança", sub: "Senha e sessão", icon: "shield-check" },
-  { id: "priv", label: "Privacidade e dados", sub: "Exportação e exclusão (LGPD)", icon: "file-lock" },
+  { id: "conta", label: "Minha conta", sub: "Nome, e-mail, WhatsApp e aparência", icon: "users", tone: "blue" },
+  { id: "play", label: "Minha Stazia Arena", sub: "Nível, score, ranking e visibilidade", icon: "trophy", tone: "orange" },
+  { id: "estudo", label: "Estudo e prova", sub: "Fase, prova-alvo e rotina", icon: "calendar", tone: "blue" },
+  { id: "seg", label: "Segurança", sub: "Senha e sessão", icon: "lock", tone: "blue" },
+  { id: "priv", label: "Privacidade e dados", sub: "Exportação e exclusão (LGPD)", icon: "privacy", tone: "green" },
+  { id: "ajuda", label: "Ajuda e suporte", sub: "Fale com a equipe ou relate um problema", icon: "question", tone: "blue" },
 ];
+// No celular a seção abre dentro da lista, que já mostra o nome dela: o título interno some (o texto de apoio fica).
+const InlineContext = React.createContext(false);
+function SectionHeader({ title, subtitle }) {
+  const inline = React.useContext(InlineContext);
+  if (inline) return subtitle ? <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{subtitle}</p> : null;
+  // mesma marcação do SectionHeader do design system, com o título em 800 como no pacote (estilo em account.css)
+  return (
+    <div className="ac-sh">
+      <h2 className="ac-sh__t">{title}</h2>
+      {subtitle && <p className="ac-sh__s">{subtitle}</p>}
+    </div>
+  );
+}
+const MAIN_SECTIONS = SECTIONS.filter((s) => s.id !== "ajuda");
+const HELP = SECTIONS.find((s) => s.id === "ajuda");
 const THEMES = [
-  { value: "light", label: "Claro" },
-  { value: "dark", label: "Escuro" },
-  { value: "system", label: "Do sistema" },
+  { value: "light", label: "Claro", icon: "sun" },
+  { value: "dark", label: "Escuro", icon: "moon" },
+  { value: "system", label: "Do sistema", icon: "monitor" },
 ];
 const MINUTES = [
   { value: "", label: "Não definido" },
@@ -32,10 +53,6 @@ const MINUTES = [
   { value: "120", label: "2 h por dia" },
   { value: "180", label: "3 h ou mais por dia" },
 ];
-const PLAN_LABEL = { trial: "Teste grátis", pro: "Plano Pro", elite: "Plano Elite" };
-
-const dateBR = (iso) => new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso));
-
 // Data e hora do aceite sempre no fuso de Brasília, qualquer que seja o deslocamento do texto que o banco devolve.
 const dateTimeBR = (iso) => {
   const parts = Object.fromEntries(
@@ -46,19 +63,6 @@ const dateTimeBR = (iso) => {
   return `${parts.day}/${parts.month}/${parts.year} às ${parts.hour}:${parts.minute}`;
 };
 
-function planBadge(subscription, role, reviewer = false) {
-  if (isStaffRole(role)) return "Equipe · acesso completo";
-  if (reviewer) return "Revisor médico · acesso completo";
-  if (!subscription) return null;
-  const label = PLAN_LABEL[subscription.plan] ?? subscription.plan;
-  if (trialLapsed(subscription)) return `${label} · encerrado`;
-  if (subscription.status === "trialing" && subscription.trial_ends_at) return `${label} até ${dateBR(subscription.trial_ends_at)}`;
-  // plano pago depois de "Plano pago até" (com pagamento pendente, depois dos 3 dias de tolerância) já não dá acesso
-  if (subscription.status === "canceled" || subscription.status === "expired" || paidPlanLapsed(subscription)) return `${label} · encerrado`;
-  if (subscription.status === "past_due") return `${label} · pagamento pendente`;
-  return label;
-}
-
 function SaveBar({ saving, status, onCancel, dirty }) {
   return (
     <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -66,7 +70,7 @@ function SaveBar({ saving, status, onCancel, dirty }) {
         {status === "saved" && "Alterações salvas."}
         {status === "error" && "Não foi possível salvar. Confira os campos e tente de novo."}
       </span>
-      <Button variant="ghost" onClick={onCancel} disabled={!dirty || saving}>
+      <Button variant="ghost" className="ac-cancel" onClick={onCancel} disabled={!dirty || saving}>
         Cancelar
       </Button>
       <Button type="submit" loading={saving} disabled={!dirty}>
@@ -116,7 +120,7 @@ function PhoneInputs({ code, number, onChange, error, codeError, id }) {
   const [other, setOther] = React.useState(() => !COUNTRY_CODES.has(code));
   const selectValue = !other && COUNTRY_CODES.has(code) ? code : "outro";
   return (
-    <div style={{ display: "grid", gridTemplateColumns: other ? "minmax(150px,1fr) 110px minmax(0,2fr)" : "minmax(150px,1fr) minmax(0,2fr)", gap: 12, alignItems: "start" }}>
+    <div style={{ display: "grid", gridTemplateColumns: other ? "minmax(150px,1fr) 110px minmax(0,2fr)" : "minmax(0,1fr) minmax(0,1fr)", gap: 12, alignItems: "start" }}>
       <SelectField
         id={`${id}-country`}
         label="País do WhatsApp"
@@ -182,7 +186,9 @@ function AccountSection({ email }) {
         <div className="sm-field__label" style={{ marginBottom: 10 }}>
           Aparência
         </div>
-        <SegmentedControl label="Aparência" value={boot.profile.theme} onChange={(theme) => updateProfile({ theme }).catch(() => {})} options={THEMES} />
+        <div className="ac-theme">
+          <SegmentedControl label="Aparência" value={boot.profile.theme} onChange={(theme) => updateProfile({ theme }).catch(() => {})} options={THEMES} />
+        </div>
       </div>
       <SaveBar saving={form.saving} status={form.status} dirty={form.dirty || phoneDirty} onCancel={() => (form.reset(), setPhone(savedPhone), setPhoneKey((k) => k + 1), setShowPhoneError(false))} />
     </form>
@@ -403,76 +409,311 @@ function PrivacySection() {
   );
 }
 
+/** Ajuda e suporte: o e-mail da equipe (configuração única da Administração) e o botão de relatar um problema. */
+function HelpSection({ email }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <SectionHeader title="Ajuda e suporte" subtitle="Dúvida, problema ou sugestão? Fale com a equipe do StaziaMed" />
+      <div>
+        <div style={{ font: "var(--type-label)" }}>E-mail de suporte</div>
+        <div style={{ font: "var(--type-body)" }}>
+          <SupportMail email={email} />
+        </div>
+        <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Escreva por aqui para tirar dúvidas, pedir acesso ou falar sobre seu plano.</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 20, borderTop: "1px solid var(--border-subtle)" }}>
+        <div>
+          <div style={{ font: "var(--type-label)" }}>Relatar um problema</div>
+          <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Algo não funcionou ou uma questão parece errada? Conte aqui e a mensagem chega direto à equipe.</div>
+        </div>
+        <ReportProblem email={email} />
+      </div>
+    </div>
+  );
+}
+
+/** "Seu plano": a data de fim como está na assinatura do aluno (sem número inventado). O nome do plano já aparece no selo de cima. */
+function PlanCard({ summary, email }) {
+  return (
+    <Panel className="ac-plan">
+      <Tile tone="orange" size={44} radius={13}>
+        <RichIcon name="crown" size={29} />
+      </Tile>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+        <h3 style={{ margin: 0, font: "800 16px var(--font-sans)" }}>Seu plano</h3>
+        <div style={{ font: "var(--type-label)" }}>
+          <span>{summary.lead}</span>
+          {summary.date && (
+            <>
+              {" "}
+              <strong>{summary.date}</strong>
+            </>
+          )}
+        </div>
+        {summary.note && <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{summary.note}</div>}
+        <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+          Dúvidas sobre o seu plano? Fale com o suporte: <SupportMail email={email} />
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+/**
+ * Benefícios do plano Elite (PL04). Só aparecem para quem tem Elite pago e dentro da data, e só os que o dono ligou/preencheu em
+ * Administração > Configurações: sem valor definido, nada é mostrado (e nada é inventado).
+ */
+function EliteBenefits({ benefits }) {
+  const items = [];
+  if (benefits?.voice_daily_minutes != null) items.push(`Voz do Tutor: até ${benefits.voice_daily_minutes} minutos por dia`);
+  if (benefits?.station_feedback) items.push("Correção de estação com devolutiva");
+  if (!benefits?.elite || items.length === 0) return null;
+  return (
+    <Banner tone="brand" icon="crown" title="Benefícios do seu plano Elite">
+      <ul style={{ margin: 0, paddingLeft: 18 }}>
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </Banner>
+  );
+}
+
 export function AccountScreen({ go }) {
-  const { boot, user, signOut, dupla } = useSession();
-  const mobile = useMobile();
-  const [section, setSection] = React.useState("conta");
+  const { boot, user, signOut, backend } = useSession();
+  const [benefits, setBenefits] = React.useState(null);
+  const isElite = boot.subscription?.plan === "elite";
+  // refaz a consulta quando o plano, a situação ou a data do plano pagão mudam (ex.: Elite cancelado ou vencido), e apaga o que estava na tela
+  const eliteKey = [boot.subscription?.plan, boot.subscription?.status, boot.subscription?.current_period_end].join("|");
+  // o plano mudou: o que estava na tela sai até o banco responder de novo
+  React.useEffect(() => {
+    setBenefits(null);
+  }, [eliteKey]);
+  // "tick" pede uma nova consulta sem mudar o plano: no instante em que o plano pago vence (pelo relógio) e ao voltar para a aba
+  const [tick, setTick] = React.useState(0);
+  const periodEnd = boot.subscription?.current_period_end;
+  React.useEffect(() => {
+    if (!isElite) return undefined;
+    const again = () => setTick((n) => n + 1);
+    const onVisible = () => {
+      if (document.visibilityState !== "hidden") again();
+    };
+    window.addEventListener("focus", again);
+    document.addEventListener("visibilitychange", onVisible);
+    // o temporizador do navegador aceita no máximo ~24,8 dias: se o vencimento é mais longe, acorda antes e agenda de novo
+    const end = periodEnd ? new Date(periodEnd).getTime() : NaN;
+    const wait = end - Date.now() + 1000;
+    const timer = Number.isFinite(wait) && wait > 0 ? window.setTimeout(again, Math.min(wait, 2_000_000_000)) : null;
+    return () => {
+      window.removeEventListener("focus", again);
+      document.removeEventListener("visibilitychange", onVisible);
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [isElite, periodEnd, tick]);
+  React.useEffect(() => {
+    if (!isElite || !backend) return undefined;
+    let alive = true;
+    Promise.resolve(backend.rpc("app_my_benefits"))
+      .then((result) => alive && setBenefits(result ?? null))
+      .catch(() => alive && setBenefits(null)); // sem o aviso dos benefícios a Conta funciona igual
+    return () => {
+      alive = false;
+    };
+  }, [backend, isElite, eliteKey, tick]);
+  const bp = useBreakpoint();
+  // no celular a lista abre com as seções fechadas (D9); no computador e no tablet a primeira seção já aparece
+  const [section, setSection] = React.useState(() => (bp === "narrow" ? "" : "conta"));
+  const active = section || "conta";
   const profile = boot.profile;
   const plan = planBadge(boot.subscription, boot.role, Boolean(boot.reviewer_areas?.length));
+  const supportEmail = useSupportEmail();
+  const summary = planSummary(boot.subscription, boot.role, Boolean(boot.reviewer_areas?.length));
+  const lock = usePlanLock(); // teste grátis terminado ou sem plano pago: o que fica nos planos pagos (PL02); o banco decide
   const phase2Locked = isPhase2Locked(boot.role, dupla); // 2ª fase "em breve" para o aluno: o selo mostra a 1ª mesmo se a 2ª estiver gravada
   const goal = profile.target_edition ? `Meta: ${profile.exam_type === "ENAMED" ? "ENAMED" : "Revalida INEP"} ${profile.target_edition}` : null;
+  const staff = isStaffRole(boot.role);
+  const staffTitle = boot.role === "admin" ? "Você é administrador" : "Você é editor";
+  const fullAccess = staff || Boolean(boot.reviewer_areas?.length);
+  const initials = (profile.name || user?.email || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 
-  return (
+  const content = (id) => (
     <>
-      <Card>
-        <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-          <Avatar name={profile.name || user?.email || ""} size={64} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ margin: 0, font: "var(--type-h3)" }}>{profile.name || "Sua conta"}</h2>
-            <div style={{ color: "var(--text-secondary)", font: "var(--type-body-sm)", overflowWrap: "anywhere" }}>{user?.email}</div>
-            <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-              {plan && (
-                <Badge tone="pro" size="sm">
-                  {plan}
-                </Badge>
-              )}
-              {goal && <Badge size="sm">{goal}</Badge>}
-              <Badge size="sm">{profile.phase === 2 && !phase2Locked ? "2ª fase" : "1ª fase"}</Badge>
-            </div>
-          </div>
-        </div>
-      </Card>
-      {isStaffRole(boot.role) && (
-        <Banner
-          tone="brand"
-          icon="shield-check"
-          title={boot.role === "admin" ? "Você é administrador" : "Você é editor"}
-          action={
-            <Button size="sm" iconRight="arrow-right" onClick={() => go("admin")}>
-              Abrir administração
-            </Button>
-          }
-        >
-          Acesso completo ao app, sem período de teste.{" "}
-          {boot.role === "admin" ? "Na administração: usuários, planos, conteúdo e configurações." : "Na administração: questões, aulas, atualizações, estações e Central de Conteúdo."}
+      {id === "conta" && <AccountSection email={user?.email} />}
+      {id === "play" && <PlayProfileSection go={go} />}
+      {id === "estudo" && <StudySection />}
+      {id === "seg" && <SecuritySection />}
+      {id === "priv" && <PrivacySection />}
+      {id === "ajuda" && <HelpSection email={supportEmail} />}
+    </>
+  );
+  const planBadgeNode = plan && (
+    <Badge tone={fullAccess ? "success" : "pro"} size="sm">
+      {plan}
+    </Badge>
+  );
+  const badges = (
+    <div className="ac-badges">
+      {planBadgeNode}
+      {goal && <Badge size="sm">{goal}</Badge>}
+      <Badge tone="info" size="sm">{profile.phase === 2 && !phase2Locked ? "2ª fase" : "1ª fase"}</Badge>
+    </div>
+  );
+  // no celular o cartão "Seu plano" sai (D9): a linha "Meu plano" logo abaixo já leva à tela do plano
+  const notices = (
+    <>
+      {summary && bp !== "narrow" && <PlanCard summary={summary} email={supportEmail} />}
+      {lock && (
+        <Banner tone="warning" icon="lock" title={lock.title} action={<Button size="sm" variant="secondary" onClick={() => go("planos")}>Ver planos</Button>}>
+          {lock.text}
         </Banner>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: mobile ? "minmax(0,1fr)" : "260px minmax(0,1fr)", gap: 24, alignItems: "start" }}>
-        <Card padding={8}>
-          <nav aria-label="Seções da conta" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {SECTIONS.map((s) => (
-              <button key={s.id} type="button" className="sm-nav__item" aria-current={section === s.id ? "page" : undefined} onClick={() => setSection(s.id)} style={{ height: "auto", padding: "10px 12px", alignItems: "flex-start" }}>
-                <Icon name={s.icon} size={18} />
-                <span style={{ display: "flex", flexDirection: "column", gap: 2, textAlign: "left" }}>
-                  <span>{s.label}</span>
-                  <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{s.sub}</span>
-                </span>
+      <EliteBenefits benefits={benefits} />
+    </>
+  );
+
+  if (bp === "narrow") {
+    return (
+      <div className="ev ev-stack ac ac--narrow">
+        <div className="ac-me">
+          <span className="ac-avatar ac-avatar--sm" aria-hidden="true">{initials}</span>
+          <div className="ac-me__txt">
+            <h2 className="ac-name">{profile.name || "Sua conta"}</h2>
+            <div className="ac-mail">{user?.email}</div>
+            {badges}
+          </div>
+        </div>
+        {notices}
+        <h2 className="ac-grp">Plano e acesso</h2>
+        <Panel className="ac-list">
+          <button type="button" className="ac-row" onClick={() => go("planos")}>
+            <Tile tone="orange" size={38} radius={11}><RichIcon name="crown" size={26} /></Tile>
+            <span className="ac-row__t"><b>Meu plano</b><small>{plan ?? "Ver o que cada plano inclui"}</small></span>
+            <Icon name="chevron-right" size={18} className="ac-chev" />
+          </button>
+          {staff && (
+            <button type="button" className="ac-row" onClick={() => go("admin")}>
+              <Tile tone="blue" size={38} radius={11}><RichIcon name="settings" size={26} /></Tile>
+              <span className="ac-row__t"><b>Administração</b><small>{staffTitle}</small></span>
+              <span className="ac-open">Abrir</span>
+            </button>
+          )}
+        </Panel>
+        <h2 className="ac-grp">Sua conta</h2>
+        <Panel className="ac-list">
+          {MAIN_SECTIONS.map((s) => {
+            const open = section === s.id;
+            return (
+              <div key={s.id} className="ac-acc">
+                <button type="button" className="ac-row" aria-expanded={open} aria-controls={`ac-sec-${s.id}`} onClick={() => setSection(open ? "" : s.id)}>
+                  <Tile tone={s.tone} size={38} radius={11}><RichIcon name={s.icon} size={26} /></Tile>
+                  <span className="ac-row__t"><b>{s.label}</b><small>{s.sub}</small></span>
+                  <Icon name="chevron-right" size={18} className={`ac-chev${open ? " is-open" : ""}`} />
+                </button>
+                {open && (
+                  <div id={`ac-sec-${s.id}`} className="ac-inline">
+                    <InlineContext.Provider value>{content(s.id)}</InlineContext.Provider>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </Panel>
+        <Panel className="ac-list">
+          <div className="ac-acc">
+            <button type="button" className="ac-row" aria-expanded={section === "ajuda"} aria-controls="ac-sec-ajuda" onClick={() => setSection(section === "ajuda" ? "" : "ajuda")}>
+              <Tile tone="blue" size={38} radius={11}><RichIcon name={HELP.icon} size={26} /></Tile>
+              <span className="ac-row__t"><b>{HELP.label}</b></span>
+              <Icon name="chevron-right" size={18} className={`ac-chev${section === "ajuda" ? " is-open" : ""}`} />
+            </button>
+            {section === "ajuda" && (
+              <div id="ac-sec-ajuda" className="ac-inline">
+                <InlineContext.Provider value>{content("ajuda")}</InlineContext.Provider>
+              </div>
+            )}
+          </div>
+          <button type="button" className="ac-row ac-row--out" onClick={() => signOut()}>
+            <Tile tone="slate" size={38} radius={11}><RichIcon name="logout" size={26} /></Tile>
+            <span className="ac-row__t"><b>Sair da conta</b></span>
+          </button>
+        </Panel>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ev ev-stack ac">
+      <Panel className="ac-me ac-me--card" aria-label="Perfil">
+        <span className="ac-avatar" aria-hidden="true">{initials}</span>
+        <div className="ac-me__txt">
+          <h2 className="ac-name">{profile.name || "Sua conta"}</h2>
+          <div className="ac-mail">{user?.email}</div>
+          {badges}
+        </div>
+        <button type="button" className="ac-ghost" onClick={() => go("planos")}>
+          <RichIcon name="crown" size={22} />
+          Ver os planos
+        </button>
+      </Panel>
+      {notices}
+      {staff && (
+        <div className="ac-admin" role="region" aria-label={staffTitle}>
+          <Tile tone="blue" size={40} radius={12}><RichIcon name="settings" size={28} /></Tile>
+          <span className="ac-admin__t">
+            <span className="ac-admin__h"><b>{staffTitle}</b>.</span>
+            <small>
+              Acesso completo ao app, sem período de teste.{" "}
+              {boot.role === "admin" ? "Na administração: usuários, planos, conteúdo e configurações." : "Na administração: questões, aulas, atualizações, estações e Central de Conteúdo."}
+            </small>
+          </span>
+          <button type="button" className="ac-admin__btn" onClick={() => go("admin")}>
+            Abrir administração
+            <Icon name="arrow-right" size={15} />
+          </button>
+        </div>
+      )}
+      <div className={`ac-cols${bp === "mid" ? " ac-cols--mid" : ""}`}>
+        {bp === "wide" ? (
+          <Panel as="nav" className="ac-nav" aria-label="Seções da conta">
+            {MAIN_SECTIONS.map((s) => (
+              <button key={s.id} type="button" className="ac-nav__item" aria-current={active === s.id ? "page" : undefined} onClick={() => setSection(s.id)}>
+                <Tile tone={s.tone} size={40} radius={12}><RichIcon name={s.icon} size={26} /></Tile>
+                <span className="ac-row__t"><b>{s.label}</b><small>{s.sub}</small></span>
               </button>
             ))}
-            <button type="button" className="sm-nav__item" style={{ color: "var(--danger-text)" }} onClick={() => signOut()}>
-              <Icon name="log-out" size={18} />
+            <div className="ac-nav__sep" />
+            <button type="button" className="ac-nav__link" aria-current={section === "ajuda" ? "page" : undefined} onClick={() => setSection("ajuda")}>
+              <RichIcon name={HELP.icon} size={26} />
+              <span>{HELP.label}</span>
+            </button>
+            <button type="button" className="ac-nav__link ac-nav__link--out" onClick={() => signOut()}>
+              <RichIcon name="logout" size={26} />
+              <span>Sair da conta</span>
+            </button>
+          </Panel>
+        ) : (
+          <nav aria-label="Seções da conta" className="ac-chips">
+            {MAIN_SECTIONS.map((s) => (
+              <button key={s.id} type="button" className="ac-chip" aria-current={active === s.id ? "page" : undefined} onClick={() => setSection(s.id)}>
+                <RichIcon name={s.icon} size={22} />
+                {s.label}
+              </button>
+            ))}
+          </nav>
+        )}
+        <Panel className="ac-panel">{content(active)}</Panel>
+        {bp === "mid" && (
+          <div className="ac-foot2">
+            <button type="button" className="ac-ghost" aria-current={section === "ajuda" ? "page" : undefined} onClick={() => setSection("ajuda")}>
+              <RichIcon name={HELP.icon} size={22} />
+              {HELP.label}
+            </button>
+            <button type="button" className="ac-ghost ac-ghost--out" onClick={() => signOut()}>
+              <RichIcon name="logout" size={22} />
               Sair da conta
             </button>
-          </nav>
-        </Card>
-        <Card padding={mobile ? 20 : 28}>
-          {section === "conta" && <AccountSection email={user?.email} />}
-          {section === "play" && <PlayProfileSection go={go} />}
-          {section === "estudo" && <StudySection />}
-          {section === "seg" && <SecuritySection />}
-          {section === "priv" && <PrivacySection />}
-        </Card>
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }

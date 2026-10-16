@@ -41,6 +41,11 @@ export async function tutorSpeech(backend, body) {
   return res.blob();
 }
 
+/** Dica do Tutor antes de responder (só treino; nasce desligada no servidor). Devolve { hint, source }. Nunca traz gabarito, explicação nem fontes. */
+export async function tutorQuestionHint(backend, questionId) {
+  return parse(await fetch(`${BASE}/question-hint`, { method: "POST", headers: await headers(backend, { "Content-Type": "application/json" }), body: JSON.stringify({ question_id: questionId }) }));
+}
+
 export async function tutorServerStatus(backend) {
   return parse(await fetch(`${BASE}/status`, { headers: await headers(backend) }));
 }

@@ -74,7 +74,7 @@ describe("Aula aberta", () => {
     const cards = await screen.findAllByRole("button", { name: /Bronquiolite viral aguda/ });
     fireEvent.click(cards[cards.length - 1]);
     expect(await screen.findByRole("heading", { name: "Bronquiolite viral aguda" })).toBeTruthy();
-    expect(screen.getByTitle("Vídeo da aula").getAttribute("src")).toBe("https://www.youtube-nocookie.com/embed/abc123");
+    expect(screen.getByTitle("Vídeo da aula").getAttribute("src")).toMatch(/^https:\/\/www\.youtube-nocookie\.com\/embed\/abc123\?enablejsapi=1/); // A08: liga o aviso do player
     expect(screen.getByText(/Professor: Dra\. Teste · Pneumologia pediátrica · 45 min/)).toBeTruthy();
     expect(screen.getByText("Resumo & racionalidade clínica")).toBeTruthy();
     expect(screen.getByText("Não usar broncodilatador de rotina")).toBeTruthy();

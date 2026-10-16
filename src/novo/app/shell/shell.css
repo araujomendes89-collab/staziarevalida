@@ -1,0 +1,199 @@
+/* Casca nova do app (Novas telas, ondas 0 e 1): menu sanfona (computador), trilho de ícones (tablet) e barra de baixo (celular).
+   Só tokens do design system. Alvos de toque >= 44 px; foco visível; sem animação com "reduzir movimento". */
+.smn-skip{position:fixed;left:16px;top:-80px;z-index:100;padding:12px 16px;border-radius:12px;background:var(--action-primary);color:var(--action-on-primary);font:700 14px var(--font-sans);text-decoration:none}
+.smn-skip:focus{top:16px}
+.smn{--smn-tabs-h:76px}
+.smn button{font-family:var(--font-sans)}
+.smn :is(button,a):focus-visible{outline:none;box-shadow:var(--focus-ring)}
+
+/* ---------- barra lateral (computador) ---------- */
+.smn-side{transition:width var(--dur-base) var(--ease-standard);position:fixed;box-shadow:var(--shadow-lg);left:16px;top:16px;bottom:16px;width:264px;z-index:20;display:flex;flex-direction:column;border-radius:24px;background:var(--surface-card);border:1px solid var(--border-default)}
+.smn-logo{display:flex;justify-content:center;padding:20px 20px 12px;border:0;background:none;cursor:pointer;border-radius:16px}
+.smn-logo img{display:block;width:100%;max-width:176px;height:auto}
+.smn-user{display:flex;align-items:center;gap:10px;margin:0 12px 8px;padding:10px;border-radius:16px;border:1px solid var(--border-subtle);background:var(--surface-card);cursor:pointer;text-align:left;color:var(--text-primary);font:inherit;min-height:56px}
+.smn-user:hover{background:var(--action-ghost-hover)}
+.smn-user b{display:block;font:600 14px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.smn-user small{display:flex;align-items:center;gap:4px;font:500 12px var(--font-sans);color:var(--text-tertiary)}
+.smn-user .smn-grow{flex:1;min-width:0}
+.smn-list{flex:1;min-height:0;overflow-y:auto;padding:4px 12px 8px;display:flex;flex-direction:column;gap:2px;scrollbar-width:thin}
+.smn-grp{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:0 10px 0 6px;border:0;border-radius:12px;background:transparent;color:var(--text-secondary);font:600 14px var(--font-sans);cursor:pointer;text-align:left}
+.smn-grp:hover{background:var(--action-ghost-hover);color:var(--text-primary)}
+.smn-grp[aria-expanded="true"]{color:var(--text-primary);font-weight:700}
+.smn-grp.is-current{background:var(--selected-bg);color:var(--text-primary);font-weight:700}
+.smn-ic{display:inline-flex;width:32px;height:32px;align-items:center;justify-content:center;flex:none}
+.smn-lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.smn-chev{flex:none;color:var(--text-tertiary);transition:transform var(--dur-base) var(--ease-standard)}
+.smn-grp[aria-expanded="true"] .smn-chev{transform:rotate(90deg)}
+.smn-sub{display:flex;flex-direction:column;gap:2px;margin:2px 0 6px 22px;padding-left:10px;border-left:1px solid var(--border-default);animation:smn-in var(--dur-base) var(--ease-out)}
+.smn-item{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 10px 0 8px;border:0;border-radius:10px;background:transparent;color:var(--text-secondary);font:500 14px var(--font-sans);cursor:pointer;text-align:left}
+.smn-item:hover{background:var(--action-ghost-hover);color:var(--text-primary)}
+.smn-item[aria-current="page"]{background:var(--selected-bg);color:var(--text-primary);font-weight:700;box-shadow:inset 3px 0 0 var(--focus-color)}
+.smn-item .smn-ic{width:28px;height:28px}
+.smn-badge{flex:none;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--danger-bg);color:var(--danger-text);font:700 12px/20px var(--font-sans);text-align:center}
+.smn-badge--ai{background:var(--ai-bg);color:var(--ai-text);letter-spacing:.04em}
+.smn-foot{padding:8px 12px 12px;border-top:1px solid var(--border-subtle);display:flex;flex-direction:column;gap:2px}
+.smn-cta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;margin-bottom:6px;border:0;border-radius:14px;background:var(--action-primary);color:var(--action-on-primary);font:700 14px var(--font-sans);cursor:pointer;box-shadow:var(--shadow-brand)}
+.smn-cta:hover{background:var(--action-primary-hover)}
+.smn-overline{padding:8px 8px 4px;font:700 12px var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary)}
+
+/* ---------- trilho de ícones (tablet, 834 px) ---------- */
+.smn-rail{position:fixed;left:12px;top:12px;bottom:12px;width:88px;z-index:20;display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 6px;border-radius:24px;background:var(--surface-card);border:1px solid var(--border-default);box-shadow:var(--shadow-sm);overflow-y:auto;scrollbar-width:none}
+.smn-rail .smn-logo{padding:4px 0 8px}
+.smn-rail .smn-logo img{width:34px}
+.smn-rb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative;width:76px;min-height:60px;padding:4px 2px;border:0;border-radius:14px;background:transparent;color:var(--text-secondary);font:600 12px/1.15 var(--font-sans);cursor:pointer}
+.smn-rb:hover{background:var(--action-ghost-hover);color:var(--text-primary)}
+.smn-rb.is-current,.smn-rb[aria-expanded="true"]{background:var(--selected-bg);color:var(--text-primary);font-weight:700}
+.smn-rb .smn-badge{position:absolute;top:2px;right:10px;min-width:20px}
+.smn-rail-sp{flex:1;min-height:8px}
+.smn-fly{position:fixed;z-index:45;left:112px;width:min(300px,calc(100vw - 128px));max-height:calc(100vh - 32px);overflow-y:auto;padding:8px;border-radius:20px;background:var(--surface-card);border:1px solid var(--border-default);box-shadow:var(--shadow-lg);animation:smn-in var(--dur-base) var(--ease-out)}
+.smn-fly h2{margin:0;padding:8px 10px 6px;font:700 12px var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary)}
+.smn-fly .smn-item{min-height:48px;border-radius:12px;font-size:15px}
+
+/* ---------- barra de baixo (celular) ---------- */
+.smn-tabs{position:fixed;left:0;right:0;bottom:0;z-index:60;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:end;height:calc(var(--smn-tabs-h) + env(safe-area-inset-bottom));padding:8px 6px calc(8px + env(safe-area-inset-bottom));box-sizing:border-box;background:color-mix(in srgb,var(--surface-card) 94%,transparent);border-top:1px solid var(--border-subtle);box-shadow:0 -8px 24px -12px rgba(13,28,66,.18);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.smn-tab{min-width:0;height:58px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;padding:0;border:0;border-radius:14px;background:transparent;color:var(--text-secondary);font:600 12px/1 var(--font-sans);cursor:pointer}
+.smn-tab-pill{position:relative;width:60px;height:32px;border-radius:999px;display:grid;place-items:center;transition:background var(--dur-base) var(--ease-standard)}
+.smn-tab.is-current .smn-tab-pill{background:var(--selected-bg)}
+.smn-tab.is-current{color:var(--text-primary);font-weight:800}
+.smn-tab-l{white-space:nowrap}
+.smn-tab-badge{position:absolute;top:-3px;right:8px;min-width:18px;height:18px;box-sizing:border-box;padding:0 5px;border-radius:999px;background:var(--danger-solid);color:#fff;font:600 12px/18px var(--font-mono);text-align:center;box-shadow:0 0 0 2px var(--surface-card)}
+.smn-tab--fab .smn-tab-l{color:var(--violet-700,#5230c9);font-weight:800}
+[data-theme="dark"] .smn-tab--fab .smn-tab-l{color:var(--ai-text)}
+.smn-fab{position:absolute;top:-26px;left:50%;margin-left:-29px;width:58px;height:58px;border-radius:999px;display:grid;place-items:center;color:#fff;background:linear-gradient(155deg,#7a58ee,#5230c9);box-shadow:0 10px 22px -6px rgba(82,48,201,.6),0 0 0 5px var(--surface-card)}
+.smn-tab--fab:focus-visible{box-shadow:none!important}
+.smn-tab--fab:focus-visible .smn-fab{box-shadow:0 0 0 5px var(--surface-card),0 0 0 8px var(--focus-color)}
+
+/* ---------- "Mais" (celular e tablet) ---------- */
+.smn-more-back{position:fixed;inset:0;z-index:60;background:rgba(13,28,66,.45)}
+.smn-more{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));max-height:calc(100vh - 120px - env(safe-area-inset-bottom));overflow-y:auto;z-index:61;border-radius:24px;background:var(--surface-card);border:1px solid var(--border-default);box-shadow:var(--shadow-lg);padding:8px 14px 14px;animation:smn-in var(--dur-base) var(--ease-out)}
+.smn-more--tablet{left:112px;right:auto;bottom:16px;width:min(420px,calc(100vw - 128px));max-height:calc(100vh - 32px)}
+.smn-more-item{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border:1px solid var(--border-subtle);border-radius:14px;background:transparent;color:var(--text-secondary);font:500 14px var(--font-sans);cursor:pointer;text-align:left}
+.smn-more-item[aria-current="page"]{border-color:var(--action-primary);background:var(--surface-subtle);color:var(--text-primary);font-weight:700}
+
+@keyframes smn-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.smn *,.smn-more,.smn-fly,.smn-sub{animation:none!important;transition:none!important}}
+
+/* ---------- cabeçalho ---------- */
+.smn-pill{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card);font:600 14px var(--font-sans);color:var(--text-primary);cursor:pointer}
+.smn-pill:hover{border-color:var(--border-strong)}
+.smn-hdr-btn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:0;background:none;padding:0;cursor:pointer;border-radius:50%}
+@media (max-width:860px){.smn-phase button{min-height:44px}}
+
+/* ---------- recolher e expandir (computador) ---------- */
+.smn-toggle{position:absolute;top:34px;right:-14px;z-index:2;width:28px;height:28px;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-tertiary);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow-sm)}
+.smn-toggle:hover{color:var(--text-primary)}
+.smn-toggle::after{content:"";position:absolute;inset:-8px} /* alvo de toque maior (44 px) */
+.smn-toggle-ic{transition:transform var(--dur-base) var(--ease-standard)}
+.smn-side.is-collapsed .smn-toggle-ic{transform:rotate(180deg)}
+.smn-side.is-collapsed{width:84px}
+.smn-side.is-collapsed .smn-logo{padding:18px 0 12px;min-height:72px;align-items:center}
+.smn-side.is-collapsed .smn-user{margin:0 auto 8px;padding:4px;width:52px;min-height:52px;justify-content:center;border-color:transparent}
+.smn-side.is-collapsed .smn-list{padding:4px 12px 8px}
+.smn-side.is-collapsed .smn-grp,.smn-side.is-collapsed .smn-item,.smn-side.is-collapsed .smn-cta{justify-content:center;padding:0;position:relative}
+.smn-side.is-collapsed .smn-cta{width:52px;margin-inline:auto}
+.smn-side.is-collapsed .smn-foot{padding:8px 12px 12px;align-items:stretch}
+.smn-dot{position:absolute;top:8px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--danger-solid);border:2px solid var(--surface-card)}
+.smn-fly .smn-item{width:100%}
+@media (prefers-reduced-motion:reduce){.smn-side,.smn-toggle-ic,main{transition:none!important}}
+
+/* ---------- cabeçalhos do Início e do Plano de Hoje (Novas telas, onda 2) ---------- */
+.smn-mono{font-family:var(--font-mono);font-weight:600}
+.smn-ph{display:flex;flex-direction:column;gap:12px}
+.smn-ph-row{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap}
+.smn-ph-row--plan{align-items:flex-end}
+.smn-ph-l{display:flex;align-items:center;gap:14px;flex-wrap:wrap;min-width:0}
+.smn-ph-r{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.smn-ph-h1{margin:0;font:800 30px/1.15 var(--font-sans);letter-spacing:-.025em;color:var(--text-primary)}
+.smn-ph-date{font:500 13px var(--font-sans);color:var(--text-tertiary)}
+.smn-ph-date--m{padding:0 4px;font-size:13px}
+.smn-ph-eyebrow{font:500 13px var(--font-sans);color:var(--text-secondary)}
+.smn-ph-eyebrow--m{margin-top:2px}
+.smn-streak{position:relative;display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 12px;border-radius:999px;border:0;background:var(--streak-bg);color:var(--streak-text);font:700 13px var(--font-sans);cursor:pointer}
+.smn-streak::after{content:"";position:absolute;inset:-6px 0}
+.smn-ph-btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-primary);font:700 14px var(--font-sans);cursor:pointer}
+.smn-ph-btn:hover{border-color:var(--border-strong)}
+.smn-ph-back{align-self:flex-start;display:inline-flex;align-items:center;gap:2px;min-height:44px;padding:0 10px 0 0;border:0;border-radius:12px;background:transparent;color:var(--action-primary);font:700 15px var(--font-sans);cursor:pointer}
+.smn-mtop{display:flex;align-items:center;gap:8px;height:64px;margin:-24px -6px 0 -2px} /* G1.3: barra do logo com 64 px, colada no alto */
+.smn-mtop-logo{border:0;background:none;padding:0;cursor:pointer;min-height:44px;display:flex;align-items:center}
+.smn-mtop-logo img{height:30px;width:auto;display:block}
+.smn-mtop-phase{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-primary);font:700 13px var(--font-sans);cursor:pointer}
+.smn-mtop-phase:disabled{cursor:default;color:var(--text-secondary)}
+.smn-mtop-dot{width:7px;height:7px;border-radius:50%}
+@media (max-width:719px){.smn-ph-h1{font-size:22px}.smn-ph-row--plan .smn-ph-h1{font-size:26px}}
+.smn-ph--plan{width:100%} /* G1.7: mesma largura das outras telas (antes 960 px presos à esquerda) */
+.smn-ph--plan .smn-ph-h1{font-size:32px}
+@media (max-width:719px){.smn-ph--plan .smn-ph-h1{font-size:26px}} /* G1.6: vem depois da regra de 32 px para valer no celular */
+@media (max-width:719px){.smn-ph-l{width:100%;justify-content:space-between;flex-wrap:nowrap}.smn-ph-row--plan{flex-wrap:nowrap;align-items:center}.smn-ph-row--plan .smn-ph-btn{flex:none}}
+.smn-mtop-logo .sym{display:none;height:34px;width:auto}
+.smn-mtop .smn-phase{padding:3px;gap:3px}
+.smn-mtop .smn-phase button{padding:0 10px;white-space:nowrap;font-size:13px}
+@media (max-width:370px){.smn-mtop-logo .wm{display:none}.smn-mtop-logo .sym{display:block}}
+
+/* ---------- casca final (15/10/2026): selos e sanfona como no pacote (Sidebar.html), trilho do tablet, Início simples ---------- */
+.smn-badge{font:600 12px/20px var(--font-mono)}
+.smn-badge--neutral{background:var(--surface-sunken);color:var(--text-secondary)}
+.smn-badge--danger{background:var(--danger-bg);color:var(--danger-text)}
+.smn-badge--ai{font:800 11px/20px var(--font-sans)}
+.smn-dot--neutral{background:var(--gray-400,#94a0af)}
+.smn-dot--danger{background:var(--danger-solid)}
+.smn-dot--ai{background:var(--violet-600)}
+.smn-dot{top:6px;right:12px;width:9px;height:9px}
+.smn-grpwrap{display:flex;flex-direction:column}
+.smn-list{gap:4px}
+.smn-grp{color:var(--text-primary);font-weight:600}
+.smn-grp.is-open{background:transparent;color:var(--text-primary);font-weight:700}
+.smn-sub{margin:2px 0 6px 21px;border-left:2px solid var(--border-subtle)}
+.smn-sub--up{margin:2px 0 6px 21px}
+.smn-chev--up{transform:rotate(-90deg)}
+.smn-grp[aria-expanded="true"] .smn-chev--up{transform:rotate(90deg)}
+.smn-item{min-height:44px}
+.smn-userwrap{padding:0 12px 12px}
+.smn-user{margin:0;width:100%;border-color:var(--border-subtle)}
+.smn-user small{color:var(--text-brand);font-weight:600}
+.smn-phase-dot{width:6px;height:6px;border-radius:999px;background:var(--teal-400)}
+.smn-side.is-collapsed .smn-userwrap{padding:0 12px 12px}
+.smn-side.is-collapsed .smn-user{margin:0;width:100%;padding:8px 0;min-height:52px;border-color:var(--border-subtle)}
+.smn-foot{padding:8px 12px 14px;gap:4px}
+.smn-foot .smn-grp{min-height:44px}
+/* trilho do tablet */
+.smn-rail-av{width:52px;height:52px;margin-bottom:6px;border-radius:999px;box-shadow:0 0 0 2px var(--surface-card),0 0 0 4px var(--teal-200)}
+.smn-rail-hr{width:40px;margin:6px 0;border:0;border-top:1px solid var(--border-subtle)}
+.smn-rb-badge{position:absolute;top:2px;right:12px;min-width:18px;height:18px;box-sizing:border-box;padding:0 5px;border-radius:999px;background:var(--danger-solid);color:#fff;font:600 12px/18px var(--font-mono);text-align:center;box-shadow:0 0 0 2px var(--surface-card)}
+/* Início do celular "simples" (pacote MobileMenu) */
+.smn-stop{display:flex;align-items:center;gap:8px;margin:-24px -18px 4px;padding:0 16px;height:64px;background:var(--surface-card);border-bottom:1px solid var(--border-default)}
+.smn-stop .smn-mtop-logo img{height:30px}
+.smn-ph--simples{gap:14px}
+.smn-ph-h1--simples{margin-top:2px;font-size:26px!important}
+
+/* ---------- G1 (16/10/2026): largura única, cabeçalho como no pacote, barra das subpáginas e pílula da fase ---------- */
+.smn-box{max-width:var(--content-max);margin:0 auto;display:flex;flex-direction:column;gap:20px}
+/* computador e tablet: subtítulo e título 32/800 à esquerda; ações, sequência e fase à direita, na mesma linha */
+.smn-gh{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 20px;flex-wrap:wrap}
+.smn-gh-l{display:flex;flex-direction:column;gap:4px;min-width:0}
+.smn-gh-sub{font:500 13px/1.3 var(--font-sans);color:var(--text-tertiary)}
+.smn-gh-h1{font-size:32px}
+.smn-gh-r{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+@media (max-width:719px){.smn-gh-h1{font-size:26px}}
+/* celular, telas com o logo (Banco, Simulados, Trilha, Flashcards...): barra de 64 px e título 26/800 logo abaixo */
+.smn-ph--root{gap:4px}
+@media (max-width:719px){.smn-ph:not(.smn-ph--plan):not(.smn-ph--root):not(.smn-ph--simples){gap:8px}}
+.smn-ph--root .smn-gh-l{padding:0 2px}
+/* celular, subpáginas do Mais: barra do pacote "‹ Mais | Título" (56 px, presa no alto ao rolar) */
+.smn-sbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;height:56px;box-sizing:border-box;margin:-24px -18px -12px;padding:0 6px;background:color-mix(in srgb,var(--bg-app) 90%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.smn-sbar-back{position:relative;z-index:1;display:inline-flex;align-items:center;height:44px;padding:0 8px 0 4px;border:0;border-radius:12px;background:transparent;color:var(--action-primary);font:700 15px var(--font-sans);cursor:pointer}
+.smn-sbar-back:hover{background:var(--action-ghost-hover)}
+.smn-sbar-h1{position:absolute;left:96px;right:96px;margin:0;text-align:center;font:800 16.5px/1.2 var(--font-sans);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-primary)}
+/* Plano de Hoje no celular: "‹ Início" de 36 px (alvo de 44 px) e espaços do pacote */
+@media (max-width:719px){.smn-ph--plan{gap:6px}.smn-ph--plan .smn-ph-back{position:relative;min-height:36px}.smn-ph--plan .smn-ph-back::after{content:"";position:absolute;inset:-4px 0}}
+/* pílula compacta da fase (celular e tablet): ~100x36, alvo de 44 px; abre o seletor logo abaixo */
+.smn-pp{position:relative;flex:none}
+.smn-mtop-phase{position:relative;min-height:36px;height:36px;white-space:nowrap}
+.smn-mtop-phase::after{content:"";position:absolute;inset:-4px 0}
+.smn-mtop-phase:hover{border-color:var(--border-strong)}
+.smn-pp-chev{color:var(--text-tertiary)}
+.smn-pp-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:40;padding:6px;border-radius:16px;background:var(--surface-card);border:1px solid var(--border-default);box-shadow:var(--shadow-lg);animation:smn-in var(--dur-base) var(--ease-out)}
+.smn-pp-pop .smn-phase{border:0!important;padding:0!important;background:transparent!important}
+.smn-pp-pop .smn-phase button{white-space:nowrap}
+@media (prefers-reduced-motion:reduce){.smn-pp-pop{animation:none}}
+@media (min-width:720px){.smn-ph-row--plan .smn-ph-eyebrow{margin-bottom:4px}} /* título do Plano na mesma altura das outras telas (y=52 em 1440) */
+.smn-gh-acts{display:contents}

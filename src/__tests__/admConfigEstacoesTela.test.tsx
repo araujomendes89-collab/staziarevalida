@@ -141,8 +141,10 @@ describe("Visão geral (GE01, GE02, GE04, GE05, GE06)", () => {
     expect(screen.queryByText("Planos pagos")).toBeNull();
   });
 
-  it("GE06: o cartão 'Sem figura' avisa que o envio da imagem ainda não está na tela", async () => {
+  it("GE06: o cartão 'Sem figura' manda enviar a figura em Questões (o envio já existe na tela)", async () => {
     render(<AdminOverview isAdmin />);
-    expect(textOf(cardOf(await screen.findByText("Sem figura")))).toMatch(/o envio da imagem ainda não está na tela/);
+    const texto = textOf(cardOf(await screen.findByText("Sem figura")));
+    expect(texto).toMatch(/citam figura sem imagem vinculada e ficam fora dos treinos; envie a figura em Questões/);
+    expect(texto).not.toMatch(/ainda não está na tela/);
   });
 });

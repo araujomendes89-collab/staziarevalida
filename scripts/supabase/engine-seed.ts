@@ -153,23 +153,24 @@ export function buildDraftStatements(): string[] {
       const r = reviewed.get(q.id);
       // revisão automática: só o que ajuda o revisor humano; o "APPROVED" da IA não aprova nada
       const aiReview = r ? scrub({ medical: r.medical_review, pedagogical: r.pedagogical_review, status: r.status, model: r.review_model, reviewed_at: r.reviewed_at_utc }) : null;
-      const hash = crypto.createHash("sha256").update(JSON.stringify([x.stem, x.alternatives, x.correct_answer, x.professor_explanation, x.support_rows ?? []])).digest("hex");
       rows.push(
-        `(${[batch, q.id].map(sqlLiteral).join(", ")}, ${q.slot}, ${sqlLiteral(area)}, ${sqlLiteral(q.blueprint.primary_subarea ?? null)}, ${sqlLiteral(q.blueprint.primary_competency ?? null)}, ${sqlLiteral(x.title ?? null)}, ${sqlLiteral(x.stem)}, ${sqlLiteral(x.alternatives)}, ${sqlLiteral(x.correct_answer)}, ${sqlLiteral(x.professor_explanation ?? null)}, ${sqlLiteral(x.alternative_explanations ?? {})}, ${sqlLiteral(x.source_citations ?? [])}, ${sqlLiteral(x.update_application ?? null)}, ${sqlLiteral(typeof q.maximum_similarity_to_official_percent === "number" ? q.maximum_similarity_to_official_percent : null)}, ${sqlLiteral(q.model ?? null)}, ${sqlLiteral(q.generated_at_utc ?? null)}, ${sqlLiteral(aiReview)}, ${sqlLiteral(hash)}, ${sqlLiteral(x.support_type ?? null)}, ${sqlLiteral(x.support_title ?? null)}, ${sqlLiteral(x.support_rows ?? [])}, ${sqlLiteral(x.clinical_decision ?? null)}, ${sqlLiteral(x.key_concepts ?? [])})`
+        `(${[batch, q.id].map(sqlLiteral).join(", ")}, ${q.slot}, ${sqlLiteral(area)}, ${sqlLiteral(q.blueprint.primary_subarea ?? null)}, ${sqlLiteral(q.blueprint.primary_competency ?? null)}, ${sqlLiteral(x.title ?? null)}, ${sqlLiteral(x.stem)}, ${sqlLiteral(x.alternatives)}, ${sqlLiteral(x.correct_answer)}, ${sqlLiteral(x.professor_explanation ?? null)}, ${sqlLiteral(x.alternative_explanations ?? {})}, ${sqlLiteral(x.source_citations ?? [])}, ${sqlLiteral(x.update_application ?? null)}, ${sqlLiteral(typeof q.maximum_similarity_to_official_percent === "number" ? q.maximum_similarity_to_official_percent : null)}, ${sqlLiteral(q.model ?? null)}, ${sqlLiteral(q.generated_at_utc ?? null)}, ${sqlLiteral(aiReview)}, ${sqlLiteral(x.support_type ?? null)}, ${sqlLiteral(x.support_title ?? null)}, ${sqlLiteral(x.support_rows ?? [])}, ${sqlLiteral(x.clinical_decision ?? null)}, ${sqlLiteral(x.key_concepts ?? [])})`
       );
     }
   }
   if (!rows.length) return [];
-  const cols = "batch, source_id, slot, area, subarea, competency, title, stem, alternatives, correct_answer, explanation, alternative_explanations, source_citations, update_application, similarity_to_official, model, generated_at, ai_review, content_hash, support_type, support_title, support_rows, clinical_decision, key_concepts";
-  const content = cols.split(", ").slice(2).filter((c) => c !== "content_hash");
+  // content_hash fica de fora: é calculado pelo banco (gatilho draft_questions_hash), e excluded.content_hash já é o do arquivo
+  const cols = "batch, source_id, slot, area, subarea, competency, title, stem, alternatives, correct_answer, explanation, alternative_explanations, source_citations, update_application, similarity_to_official, model, generated_at, ai_review, support_type, support_title, support_rows, clinical_decision, key_concepts";
+  const content = cols.split(", ").slice(2);
   const statements: string[] = [];
   for (let i = 0; i < rows.length; i += 50) {
     statements.push(
       `insert into public.draft_questions (${cols}) values\n${rows.slice(i, i + 50).join(",\n")}\n` +
-        // reaplicar a carga não apaga decisões: só se o conteúdo mudou a revisão volta a "aguardando"
+        // reaplicar a carga não apaga decisões nem edições: rascunho editado no servidor (ou criado por ele) fica como está;
+        // nos outros, só se o conteúdo mudou a revisão volta a "aguardando" (o gatilho recalcula o hash)
         `on conflict (batch, source_id) do update set ${content.map((c) => `${c} = excluded.${c}`).join(", ")}, ` +
-        `status = case when public.draft_questions.content_hash = excluded.content_hash then public.draft_questions.status else 'awaiting_medical_review' end, ` +
-        `content_hash = excluded.content_hash;`
+        `status = case when public.draft_questions.content_hash = excluded.content_hash then public.draft_questions.status else 'awaiting_medical_review' end ` +
+        `where public.draft_questions.generated_by = 'gerador_antigo' and public.draft_questions.edited_at is null;`
     );
   }
   return statements;
@@ -181,12 +182,13 @@ export function buildEngineStatements(): string[] {
   const version = manifest.schema_version as string;
   const out: string[] = [];
 
-  // gabarito oficial como versão 1 (definitivo, ou anulada), com a procedência que a questão já traz; reaplicar não duplica
+  // gabarito oficial como versão 1 (definitivo, ou anulada), com a procedência que a questão já traz; reaplicar não duplica.
+  // Só questão oficial: a Questão StaziaMed nunca tem gabarito oficial (a coluna origin nasce na migração …9801)
   out.push(`insert into public.question_official_answers (question_id, answer, answer_status, source, recorded_by)
 select q.id, case when q.status = 'annulled' then null else q.correct_option end,
        case q.status when 'annulled' then 'ANNULLED' when 'changed_after_appeal' then 'CHANGED_AFTER_APPEAL' else 'FINAL' end,
        coalesce(q.sources -> 0 ->> 'title', 'Gabarito oficial (pacote do motor)'), null
-from public.questions q where not exists (select 1 from public.question_official_answers o where o.question_id = q.id);`);
+from public.questions q where q.origin = 'official' and not exists (select 1 from public.question_official_answers o where o.question_id = q.id);`);
 
   // imagens (o texto da questão continua vindo do seed-builder)
   const withImages = questions.filter((q) => q.visual.assets.length);

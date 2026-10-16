@@ -3,9 +3,8 @@ import React, { useEffect } from "react";
 import "../auth/login.css";
 import "./legal.css";
 import { LegalText, Inline } from "./LegalText.jsx";
-import { PRIVACIDADE } from "./privacidade.js";
 import { TERMO_VERSAO } from "./versions.js";
-import termoFonte from "./termo-uso-v1.0.md?raw";
+import { documentosDa } from "./documentos.js";
 
 function Secao({ bloco }) {
   return (
@@ -28,7 +27,9 @@ function Secao({ bloco }) {
   );
 }
 
-export function Privacidade() {
+/** versao: a do Termo que a Política acompanha (padrão: a de versions.js). */
+export function Privacidade({ versao = TERMO_VERSAO } = {}) {
+  const PRIVACIDADE = documentosDa(versao).privacidade;
   return (
     <>
       <header className="lgl-head">
@@ -63,14 +64,14 @@ export function LegalPage({ doc }) {
     <div className="lg-root lgl-root">
       <div className="lgl-shell">
         <div className="lgl-top">
-          <img className="lgl-logo" src="/novo-assets/logo-staziamed-revalida-v2-escuro.png" alt="StaziaMed Revalida" width="200" height="61" />
+          <img className="lgl-logo" src="/brand/horizontal-escuro-480w.png" alt="StaziaMed Revalida" width="200" height="62" />
           <a className="lgl-back" href="/novo">Voltar para o app</a>
         </div>
         <main className="lgl-paper">
           {doc === "termos" ? (
             <>
               <p className="lgl-meta">Versão {TERMO_VERSAO}</p>
-              <div data-testid="legal-texto"><LegalText source={termoFonte} /></div>
+              <div data-testid="legal-texto"><LegalText source={documentosDa(TERMO_VERSAO).termo} /></div>
             </>
           ) : (
             <Privacidade />

@@ -10,6 +10,7 @@ import crypto from "crypto";
 import { extractPdf, htmlToText, type ExtractedPage } from "../../podcasts/extract";
 import { validate, type Schema } from "../ai/schema";
 import type { ContentDb, Storage } from "../infra";
+import { proveDates } from "./currency";
 import { downloadOfficial, linkProblem, matchDomain, normalizeLink, type DomainKind, type OfficialDomain } from "./officialDomains";
 
 export type SourceKind = "final" | "preliminary" | "public_consultation" | "society_guideline" | "rectification";
@@ -25,7 +26,9 @@ export const FINDING_SCHEMA: Schema = {
     titulo: { type: "string", minLength: 3, maxLength: 300, description: "Título do documento, como aparece nele." },
     instituicao: { type: "string", minLength: 2, maxLength: 200, description: "Instituição que publicou o documento." },
     link: { type: "string", minLength: 10, maxLength: 2000, description: "Endereço https do arquivo (PDF) ou da página, num dos sites oficiais permitidos." },
-    data_publicacao: { type: "string", maxLength: 40, nullable: true, description: "Data de publicação (AAAA-MM-DD ou só AAAA); nula se o documento não diz." },
+    data_publicacao: { type: "string", maxLength: 40, nullable: true, description: "Data de publicação ou da última atualização da versão (AAAA-MM-DD ou só AAAA); nula se o documento não diz." },
+    // opcional: respostas guardadas antes deste campo continuam valendo
+    vigente_ate: { type: "string", maxLength: 40, nullable: true, description: "Data até a qual o documento vale (AAAA-MM-DD ou só AAAA), só se ele ou a página a mostram; senão nula." },
     natureza: { type: "string", maxLength: 80, description: "Natureza do documento (por exemplo: PCDT, diretriz, manual, consenso, portaria)." },
     tipo: { type: "string", enum: SOURCE_KINDS, description: "final, preliminary, public_consultation, society_guideline ou rectification." },
     nivel_sugerido: { type: "string", enum: ["A", "B", "C", "D"], description: "Nível de evidência sugerido (A a D)." },
@@ -39,6 +42,7 @@ export interface Finding {
   instituicao: string;
   link: string;
   data_publicacao: string | null;
+  vigente_ate?: string | null;
   natureza: string;
   tipo: SourceKind;
   nivel_sugerido: "A" | "B" | "C" | "D";
@@ -82,6 +86,8 @@ function firstLine(text: string, max: number): string | null {
   const line = text.split("\n").map((l) => l.replace(/\s+/g, " ").trim()).find(Boolean);
   return line ? line.slice(0, max) : null;
 }
+
+const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
 const clip = (s: string | null, max: number) => (s ? s.replace(/\s+/g, " ").trim().slice(0, max) || null : null);
 
@@ -215,6 +221,9 @@ export interface VerifyContext {
 
 export type VerifyOutcome = { ok: true; candidateId: string } | { ok: false; motivo: string };
 
+/** Resposta de ch_worker_source_known para um candidato do mesmo endereço que ainda aguarda a conferência. */
+const WAITING = "Repetido: candidato aguardando sua conferência.";
+
 const discard = (motivo: string): VerifyOutcome => ({ ok: false, motivo });
 
 const messageOf = (error: unknown) => {
@@ -239,9 +248,11 @@ export async function verifyFinding(item: unknown, ctx: VerifyContext): Promise<
   if (foldForQuote(quote).length < MIN_FOLDED_QUOTE) return discard("Trecho curto demais para conferir.");
   const published = normalizeDate(f.data_publicacao, true);
 
-  // 2. link já conhecido
+  // 2. link já conhecido: só o que ainda AGUARDA para o mesmo endereço dispensa o download. Endereço de fonte cadastrada, vigiada,
+  // aprovada ou rejeitada pode ter conteúdo novo (órgãos mantêm o mesmo endereço para a edição atualizada): baixa e compara o
+  // SHA-256 no passo 4. O mesmo arquivo continua repetido; o conteúdo novo entra como candidato à parte.
   const knownByLink = await ctx.db.service<string | null>("ch_worker_source_known", { p_url: link, p_sha256: null });
-  if (knownByLink) return discard(knownByLink);
+  if (knownByLink === WAITING) return discard(knownByLink);
 
   // 3. download conferido
   let got: Awaited<ReturnType<typeof downloadOfficial>>;
@@ -255,7 +266,7 @@ export async function verifyFinding(item: unknown, ctx: VerifyContext): Promise<
 
   // 4. o mesmo arquivo já é conhecido?
   const sha256 = crypto.createHash("sha256").update(got.body).digest("hex");
-  const knownByFile = await ctx.db.service<string | null>("ch_worker_source_known", { p_url: got.finalUrl, p_sha256: sha256 });
+  const knownByFile = await ctx.db.service<string | null>("ch_worker_source_known", { p_url: null, p_sha256: sha256 });
   if (knownByFile) return discard(knownByFile);
 
   // 5. texto do arquivo
@@ -275,6 +286,8 @@ export async function verifyFinding(item: unknown, ctx: VerifyContext): Promise<
   // 7. guarda o arquivo e cria o candidato "aguardando"
   const key = candidateKey(sha256, got.kind);
   await ctx.storage.put(key, got.body, got.kind === "pdf" ? "application/pdf" : "text/html");
+  // atualidade: só vale a data que o documento (ou a página) comprova; a conta do estado é feita no fim da busca (currency.ts)
+  const proof = proveDates({ aiPublished: published, aiValidUntil: text(f.vigente_ate, 40) || null, fileDate: file.date, fileKind: got.kind, pages: file.pages });
   const wanted = normalizeLink(link);
   const finalLink = normalizeLink(got.finalUrl);
   const created = await ctx.db.service<{ id: string; duplicate: boolean }>("ch_worker_source_candidate_create", {
@@ -286,6 +299,9 @@ export async function verifyFinding(item: unknown, ctx: VerifyContext): Promise<
       ai_title: f.titulo,
       ai_institution: f.instituicao,
       ai_published: published,
+      ai_valid_until: text(f.vigente_ate, 40) || null,
+      currency_date: proof.date,
+      currency_info: { basis: proof.basis, valid_until: proof.validUntil, valid_until_proven: proof.validUntilProven, notes: proof.notes },
       ai_nature: f.natureza,
       ai_kind: f.tipo,
       ai_level: f.nivel_sugerido,

@@ -17,6 +17,8 @@ export const AI_FUNCTION_NAME = {
   assistente_conferir: "Assistente: conferir",
   assistente_revisar: "Assistente: conversar e revisar",
   busca_fontes: "Busca de fontes oficiais",
+  similaridade: "Questões parecidas",
+  analise_mudancas: "Análise do que mudou (Vigilância científica)",
 };
 /** Dólar em pt-BR: "US$ 0,0123" (até 4 casas); zero vira "US$ 0" (igual ao da Central de IAs). */
 const usd = (n) => {
@@ -30,13 +32,21 @@ export const ACTION_LABEL = {
   "user.subscription": "Plano alterado",
   "user.delete": "Usuário excluído",
   "plan.save": "Plano editado",
+  "plan.benefits": "Benefícios do Elite alterados",
+  "plan.ineditas_limits": "Limite de Questões Inéditas por plano alterado", // 010300
   "settings.save": "Configurações salvas",
+  "support.contact": "Contato de suporte alterado",
+  "report.resolve": "Relato de aluno atendido",
   // questões
   "questions.import": "Questões importadas",
   "question.inserted": "Questão criada",
   "question.updated": "Questão editada",
   "question.delete": "Questão apagada",
   "question.analysis_unpublished": "Análise da questão tirada do ar",
+  "question.figure_set": "Figura da questão enviada",
+  "question.figure_removed": "Figura da questão retirada",
+  "question.comment_approved": "Comentário da questão aprovado pelo revisor",
+  "question.comment_returned": "Comentário da questão devolvido pelo revisor",
   "question.official_answer": "Gabarito oficial registrado",
   "question.explanations_reviewed": "Explicações marcadas como revisadas",
   // estações
@@ -52,15 +62,20 @@ export const ACTION_LABEL = {
   "lesson.delete": "Aula apagada",
   "lesson.material": "Material de aula adicionado",
   "lesson.material.delete": "Material de aula apagado",
+  "lesson.file.delete": "Arquivo de aula apagado do depósito",
   // podcasts
+  "source.audience": "Classe da fonte alterada",
+  "source.check_request": "Conferência das fontes monitoradas pedida",
   "podcast.save": "Podcast salvo",
   "podcast.delete": "Podcast apagado",
   "podcast.source": "Fonte do podcast adicionada",
   "podcast.source_rename": "Fonte do podcast renomeada",
+  "podcast.source_complementar": "Classe da fonte do podcast alterada",
   "podcast.script.ai": "Roteiro do podcast escrito pela IA",
   "podcast.script.edit": "Roteiro do podcast editado",
   "podcast.approve": "Roteiro do podcast aprovado",
   "podcast.audio": "Áudio do podcast gerado",
+  "podcast.files.cleanup": "Arquivos antigos do podcast apagados do depósito",
   "podcast.publish": "Podcast publicado",
   "podcast.unpublish": "Podcast tirado do ar",
   // tutor
@@ -86,6 +101,17 @@ export const ACTION_LABEL = {
   retire: "Conteúdo retirado do ar",
   "approval.invalidate": "Aprovação do conteúdo desfeita",
   "unit.regenerate": "Conteúdo gerado de novo",
+  "unit.new_version": "Nova versão criada para corrigir o conteúdo",
+  "unit.import": "Aula pronta importada na Central",
+  "unit.material.insert": "Material inserido na unidade",
+  "unit.material.retire": "Material retirado da unidade",
+  "unit.material.restore": "Material devolvido à lista da unidade",
+  "review.sheet_import": "Ficha do revisor médico importada",
+  "review.decision": "Decisão do revisor registrada na ficha",
+  "publish.distribute": "Conteúdo publicado na aula e nos flashcards dos alunos",
+  "evidence.discard": "Evidência descartada na correção",
+  "processing.settings": "Teto de gasto por documento alterado",
+  "content.clean_references": "Marcas de terceiros tiradas do texto do documento",
   "reviewer.areas": "Áreas do revisor médico definidas",
   "flag.set": "Chave da Central de Conteúdo alterada",
   "guideline_update.save": "Atualização salva",
@@ -106,8 +132,15 @@ export const ACTION_LABEL = {
   "block.resolve": "Trecho do documento resolvido",
   "source.register": "Fonte oficial cadastrada",
   "source.authority": "Nível de autoridade da fonte definido",
+  "source.aliases": "Siglas da fonte alteradas",
   "source.registry": "Registro da fonte atualizado",
   "source.change_resolved": "Mudança de fonte resolvida",
+  "vigilance.mark": "Vigilância científica: decisão na fila",
+  "vigilance.interval": "Vigilância científica: frequência do site",
+  "vigilance.quality_override": "Vigilância científica: quarentena decidida",
+  "vigilance.identifiers": "Vigilância científica: DOI/PMID corrigido",
+  "vigilance.analysis_request": "Vigilância científica: análise do que mudou pedida",
+  "vigilance.topic": "Vigilância científica: dossiê do tema",
   "conflict.detect": "Conflitos entre fontes detectados",
   "conflict.resolved": "Conflito entre fontes resolvido",
   "conflict.deferred": "Conflito entre fontes adiado",
@@ -115,18 +148,38 @@ export const ACTION_LABEL = {
   "draft_question.approved": "Questão inédita aprovada",
   "draft_question.needs_changes": "Questão inédita devolvida para ajustes",
   "draft_question.rejected": "Questão inédita recusada",
+  "staziamed.request": "Questões inéditas pedidas",
+  "staziamed.check": "Conferência de Questões inéditas pedida",
+  "staziamed.source": "Busca de fonte oficial para uma Questão StaziaMed pedida",
+  "staziamed.source_accept": "Fontes oficiais aplicadas a uma Questão StaziaMed",
+  "staziamed.source_discard": "Proposta de fonte oficial descartada",
+  "staziamed.publicada": "Questão StaziaMed publicada",
+  "staziamed.republicada": "Questão StaziaMed republicada",
+  "staziamed.retired": "Questão StaziaMed recolhida",
   "question_analysis.approved": "Análise da questão aprovada",
   "question_analysis.rejected": "Análise da questão recusada",
+  "question_analysis.reanalysis_request": "Reanálise das questões pedida",
   "question_update.no_change": "Atualização de questão: sem mudança",
   "question_update.publish_update": "Atualização de questão publicada",
   "question_update.reject_proposal": "Proposta de atualização de questão recusada",
   "question.confirm_currency": "Questão confirmada como atual",
+  // fontes vinculadas da questão (migração 20261003009900): a equipe confirma ou tira o vínculo com o trecho do documento oficial
+  "question.source_link_confirmed": "Fonte vinculada confirmada",
+  "question.source_link_removed": "Fonte vinculada tirada",
+  // carga das explicações (migração 20261003009920)
+  "question.comment_approved_exam": "Comentários de uma prova inteira aprovados",
+  "question.explanations_released": "Explicações liberadas direto ao aluno (regra B da carga)",
+  "question.update_note_saved": "Nota “O que mudou desde a prova” salva",
+  "question.update_note_removed": "Nota “O que mudou desde a prova” tirada",
+  "question.update_note_approved": "Nota “O que mudou desde a prova” aprovada",
+  "question.update_note_returned": "Nota “O que mudou desde a prova” devolvida",
   "job.retry": "Processamento tentado de novo",
   "visual.create": "Material visual criado",
   "visual.keep": "Material visual mantido",
   "visual.version": "Nova versão de material visual",
   "visual.duplicate": "Material visual duplicado",
   "visual.regenerate": "Material visual gerado de novo",
+  "visual.medical_review": "Material visual revisado por médico da área",
   // busca de fontes oficiais com IA (migração 20261003009610: sites oficiais, buscas e candidatos a fonte)
   "source_domain.save": "Site oficial salvo",
   "source_search.request": "Busca de fontes pedida",
@@ -134,16 +187,27 @@ export const ACTION_LABEL = {
   "source_candidate.edit": "Candidato a fonte editado",
   "source_candidate.approve": "Candidato a fonte aprovado",
   "source_candidate.reject": "Candidato a fonte rejeitado",
+  // pedidos de IA feitos pela tela (migração 20261003009810): análise de questões e conferência de rascunhos inéditos
+  "question_analysis.request": "Análise de questões por IA pedida",
+  "question_analysis.result": "Análise de questões por IA terminou",
+  "draft_check.request": "Conferência de questões inéditas por IA pedida",
+  "draft_check.result": "Conferência de questões inéditas por IA terminou",
+  "ai_request.cancel": "Pedido de IA cancelado",
+  // questões parecidas (migração 20261003009910)
+  "similarity.relation.review": "Relação entre questões revisada",
+  "similarity.reprocess": "Questões parecidas: reprocessamento pedido",
+  "similarity.classify": "Questões parecidas: classificação por IA pedida",
 };
 
 // começo do nome técnico → parte da Administração (para uma ação nova que ainda não ganhou nome acima)
 const PART = {
   user: "Usuários", plan: "Planos", settings: "Configurações", questions: "Questões", question: "Questões", station: "Estações",
   guideline_update: "Atualizações", lesson: "Aulas", podcast: "Podcasts", tutor: "Tutor", gamification: "Stazia Arena", ai: "Central de IAs",
+  similarity: "Questões",
 };
 
 // começo do nome técnico → ação da Central de Conteúdo (ch_audit)
-const CENTRAL_PART = new Set(["approve", "approval", "publish", "retire", "unit", "reviewer", "flag", "taxonomy", "document", "license", "block", "source", "source_domain", "source_search", "source_candidate", "conflict", "draft_question", "question_analysis", "question_update", "job", "visual"]);
+const CENTRAL_PART = new Set(["approve", "approval", "publish", "retire", "unit", "reviewer", "flag", "taxonomy", "document", "license", "block", "source", "source_domain", "source_search", "source_candidate", "conflict", "draft_question", "staziamed", "draft_check", "ai_request", "question_analysis", "question_update", "job", "visual"]);
 
 const own = (map, key) => (Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined);
 const join = (parts) => parts.filter(Boolean).join(" · ");
@@ -206,6 +270,13 @@ function explanationsReviewed(d, entry) {
   ]);
 }
 
+// comentário da questão decidido pelo revisor médico (Q09): a questão, o que foi decidido e a nota
+const commentField = (c) => (/^explanation_[A-D]$/.test(c) ? `explicação da ${c.slice(-1)}` : own({ expected_conduct: "conduta esperada", inep_intent: "o que a questão avalia" }, c));
+function commentDecided(d, entry) {
+  const fields = (Array.isArray(d.campos) ? d.campos : []).map(commentField).filter(Boolean);
+  return join([questionName(entry.target), fields.length > 0 && `${entry.action === "question.comment_approved" ? "Liberado ao aluno" : "Continua escondido do aluno"}: ${fields.join(", ")}`, d.note && `Nota: ${d.note}`]);
+}
+
 const questionSaved = (d, entry) =>
   join([questionName(entry.target), d.status && d.status !== "valid" && own(QUESTION_STATUS_LABEL, d.status) && `Situação: ${QUESTION_STATUS_LABEL[d.status]}`, d.reason && `Motivo: ${d.reason}`]);
 
@@ -253,6 +324,18 @@ const AREA_NAME = {
 };
 // chaves da Central de Conteúdo (a tela de Configuração da Central usa estes nomes)
 const FLAG_NAME = { enabled: "Central de Conteúdo", ai_enabled: "IA da Central", shadow_mode: "Modo sombra", publish_enabled: "Publicação", auto_analysis_enabled: "Análise automática", notebook_provider_enabled: "Provedor NotebookLM" };
+// fontes vinculadas: a questão, o documento, qual referência, o papel, a página e (ao tirar) o motivo
+const LINK_TEMPORAL = { vigente: "Referência atual", historica: "Versão da época da prova" };
+const LINK_ROLE = { diagnostico: "Diagnóstico", conduta: "Conduta", exame: "Exame", tratamento: "Tratamento", prevencao: "Prevenção", conceito: "Conceito", outro: "Outro" };
+const sourceLinkSummary = (d, entry) =>
+  join([
+    questionName(entry.target),
+    typeof d.source === "string" && d.source.trim() && `Fonte: ${d.source.trim()}`,
+    own(LINK_TEMPORAL, d.temporal),
+    own(LINK_ROLE, d.role),
+    d.page && `Página: ${d.page}`,
+    typeof d.reason === "string" && d.reason.trim() && `Motivo: ${d.reason.trim()}`,
+  ]);
 const noteOf = (d, label = "Nota") => (typeof d.note === "string" && d.note.trim() ? `${label}: ${d.note.trim()}` : "");
 const whyOf = (d) => (typeof (d.reason ?? d.why) === "string" && String(d.reason ?? d.why).trim() ? `Motivo: ${String(d.reason ?? d.why).trim()}` : "");
 const versionOf = (entry) => (entry.target && /^\d+$/.test(String(entry.target)) ? `Versão ${entry.target}` : "");
@@ -260,6 +343,8 @@ const guidelineDecision = (d) => join([topic(d), noteOf(d, "Nota do revisor"), d
 
 // busca de fontes oficiais: nomes em português dos valores que a migração 9610 grava
 const DOMAIN_KIND = { governo: "governo", internacional: "organização internacional", sociedade: "sociedade médica" };
+// atualidade da fonte achada pela busca (migração 9820): os mesmos nomes da tela de candidatos
+const CURRENCY_LABEL = { versao_mais_nova: "versão mais nova que a da biblioteca", mesma_versao: "mesma versão da biblioteca", versao_mais_antiga: "mais antiga que a da biblioteca", outra_mais_nova: "outra mais nova do mesmo tema achada pela IA", data_nao_comprovada: "data não comprovada", sem_comparacao: "documento novo na biblioteca" };
 const SEARCH_ORIGIN = { tema: "Tema escrito pelo administrador", incidencia: "Tema mais cobrado nas provas" };
 const SEARCH_STATUS = {
   na_fila: "Na fila", buscando: "Buscando", conferindo: "Conferindo os links", concluida: "Busca concluída",
@@ -270,16 +355,40 @@ const CANDIDATE_FIELD = {
   nature: "natureza", level: "nível", area: "área", theme: "tema", valid_until: "vigência",
 };
 
+const REQUEST_RESULT = { concluido: "Concluído", falhou: "Falhou" };
+const DRAFT_LAYER = { software: "regras", sources: "fontes oficiais", currency: "atualidade", redteam: "revisão clínica" };
+const aiRequestBase = (d, noun) => join([count(d.items, noun[0], noun[1]), d.estimate_usd != null && `custo estimado ${usd(d.estimate_usd)}`]);
+const aiRequestResult = (d, noun) =>
+  join([
+    own(REQUEST_RESULT, d.status),
+    d.done != null && `${d.done} de ${d.items} ${noun}`,
+    d.calls != null && count(d.calls, "chamada de IA", "chamadas de IA"),
+    d.cost_usd != null && `custo ${usd(d.cost_usd)}`,
+    typeof d.message === "string" && d.message.trim() && `Aviso: ${d.message.trim()}`,
+  ]);
+
 const SUMMARY = {
   "user.role": (d, entry) => join([person(entry), `${ROLE_LABEL[d.from] ?? d.from} → ${ROLE_LABEL[d.to] ?? d.to}`]),
   "user.subscription": (d, entry) => join([person(entry), `${PLAN_LABEL[d.to?.plan] ?? d.to?.plan} · ${SUB_STATUS_LABEL[d.to?.status] ?? d.to?.status}`]),
   "user.delete": (d) => d.email,
-  "plan.save": (d, entry) => `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · marcado para venda" : ""}`,
+  "plan.save": (d, entry) =>
+    entry.target === "trial"
+      ? `${PLAN_LABEL.trial} · ${d.active ? "oferta de teste no cadastro ligada" : "oferta de teste no cadastro desligada"}`
+      : `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · marcado para venda" : ""}`,
+  "plan.benefits": (d) => {
+    const to = d.to ?? {};
+    return join([
+      to.elite_voice_daily_minutes != null ? `Voz do Tutor no Elite: ${to.elite_voice_daily_minutes} min por dia` : "Voz do Tutor no Elite: igual ao Pro",
+      `Correção de estação com devolutiva (só Elite): ${to.elite_station_feedback ? "ligada" : "desligada"}`,
+    ]);
+  },
   "settings.save": (d) =>
     join([
       d.trial_days != null && `Dias de teste grátis: ${d.trial_days}`,
       d.announcement && `Aviso no Início ${d.announcement.active ? "ligado" : "desligado"}${d.announcement.title ? `: ${d.announcement.title}` : ""}`,
     ]),
+  "support.contact": (d) => d.email && `E-mail de suporte: ${d.email}`,
+  "report.resolve": (d) => join([d.resolved === false ? "Relato reaberto" : "Relato marcado como resolvido", d.screen && `Tela: ${d.screen}`]),
   "questions.import": (d) =>
     join([
       count(d.inserted, "nova", "novas"),
@@ -289,9 +398,15 @@ const SUMMARY = {
     ]),
   "question.inserted": questionSaved,
   "question.updated": questionSaved,
+  "source.check_request": (d) => d.sources != null && `${d.sources} fonte(s) monitorada(s)`,
+  "source.audience": (d) => join([d.title, d.to === "complementar" ? "Fonte complementar: o aluno não vê esta fonte" : "Fonte oficial", d.reason && `Motivo: ${d.reason}`]),
   // apagar: o código e o tema que o banco guardou (a questão já não existe); análise tirada do ar: o texto mudou
   "question.delete": (d, entry) => join([d.code ?? entry.target, d.topic]),
   "question.analysis_unpublished": (d, entry) => `${entry.target}: o enunciado ou o texto de uma alternativa mudou`,
+  "question.figure_set": (d, entry) => join([d.code ?? questionName(entry.target), d.replaced ? "Figura trocada" : "Figura nova", d.alt && `Texto alternativo: ${d.alt}`]),
+  "question.figure_removed": (d, entry) => join([d.code ?? questionName(entry.target), d.needs_image ? "A questão cita uma figura: saiu dos treinos até uma nova figura ser enviada" : "A questão continua nos treinos, sem figura"]),
+  "question.comment_approved": commentDecided,
+  "question.comment_returned": commentDecided,
   "question.official_answer": (d, entry) =>
     join([
       questionName(entry.target),
@@ -310,6 +425,7 @@ const SUMMARY = {
   "lesson.audio.release": (d, entry) => entry.title,
   "lesson.review": (d, entry) => join([d.title ?? entry.title, d.note && `Conferido: ${d.note}`]),
   "lesson.delete": (d, entry) => entry.title,
+  "lesson.file.delete": (d, entry) => join([entry.title && `Aula: ${entry.title}`, d.path && `Arquivo apagado: ${d.path}`]),
   "lesson.material": (d, entry) => join([entry.title && `Aula: ${entry.title}`, d.title && `Material: ${d.title}`, d.aguardando_conferencia && "Áudio aguardando conferência"]),
   "podcast.save": (d, entry) => d.title ?? entry.title,
   "podcast.delete": (d, entry) => entry.title,
@@ -317,6 +433,8 @@ const SUMMARY = {
   "podcast.unpublish": (d, entry) => entry.title,
   "podcast.source_rename": (d, entry) => entry.title,
   "podcast.source": (d, entry) => join([entry.title && `Episódio: ${entry.title}`, d.title && `Fonte: ${d.title}`]),
+  "podcast.source_complementar": (d, entry) =>
+    join([entry.title && `Episódio: ${entry.title}`, d.title && `Fonte: ${d.title}`, d.to === "complementar" ? "Fonte complementar: o aluno não vê esta fonte" : "Fonte oficial: o aluno volta a ver esta fonte"]),
   "podcast.script.ai": (d, entry) =>
     join([
       entry.title,
@@ -327,6 +445,15 @@ const SUMMARY = {
   "podcast.script.edit": (d, entry) => join([entry.title, d.lines != null && count(d.lines, "fala", "falas")]),
   "podcast.approve": (d, entry) => join([entry.title, d.note && `Nota: ${d.note}`]),
   "podcast.audio": (d, entry) => join([entry.title, d.seconds && `Duração: ${duration(d.seconds)}`, d.simulated && "áudio de teste, sem voz de verdade"]),
+  // P08: o que saiu do depósito quando um áudio deixou de valer, uma fonte foi tirada ou o episódio foi apagado (só o que nenhuma linha do banco usava)
+  "podcast.files.cleanup": (d, entry) =>
+    join([
+      entry.title,
+      Number(d.audios) > 0 && `${count(d.audios, "áudio antigo apagado", "áudios antigos apagados")}`,
+      Number(d.fontes) > 0 && `${count(d.fontes, "arquivo de fonte apagado", "arquivos de fonte apagados")}`,
+      Array.isArray(d.arquivos) && d.arquivos.length > 0 && `Arquivos: ${d.arquivos.join(", ")}`,
+      Number(d.falhas) > 0 && `${count(d.falhas, "arquivo não pôde ser apagado agora", "arquivos não puderam ser apagados agora")} (nova tentativa na próxima ação do episódio)`,
+    ]),
   // O motivo é obrigatório na tela do Tutor ("fica no registro"): aparece inteiro. O "de → para" da configuração é um objeto
   // técnico e não vira texto.
   "tutor.config": (d) => reasonOf(d),
@@ -370,6 +497,7 @@ const SUMMARY = {
   "document.rights": (d, entry) => entry.title,
   "source.register": (d, entry) => entry.title ?? d.title,
   "source.authority": (d, entry) => entry.title,
+  "source.aliases": (d, entry) => join([entry.title, Array.isArray(d.aliases) && d.aliases.length ? `Siglas: ${d.aliases.join(", ")}` : "Sem siglas"]),
   "source.registry": (d, entry) => entry.title,
   "source.change_resolved": (d, entry) => join([entry.title, noteOf(d)]),
   "source_domain.save": (d) =>
@@ -401,8 +529,27 @@ const SUMMARY = {
     return fields.length ? `Dados ajustados: ${fields.join(", ")}` : "";
   },
   "source_candidate.approve": (d) =>
-    join([d.site && `Site: ${d.site}`, d.level && `Nível ${d.level}`, d.superseded && "Substituiu uma versão anterior da fonte"]),
+    join([
+      d.site && `Site: ${d.site}`,
+      d.level && `Nível ${d.level}`,
+      d.superseded && "Substituiu uma versão anterior da fonte",
+      own(CURRENCY_LABEL, d.currency) && `Atualidade: ${CURRENCY_LABEL[d.currency]}`,
+      d.confirmed_older === true && "Versão mais antiga aprovada com confirmação",
+    ]),
   "source_candidate.reject": (d) => join([d.site && `Site: ${d.site}`, whyOf(d)]),
+  "question_analysis.request": (d) =>
+    join([aiRequestBase(d, ["questão", "questões"]), d.exam && `Prova: ${d.exam}`, d.area && `Área: ${own(AREA_NAME, d.area) ?? "outra área"}`, d.only_missing === false && "Refazendo também as que já tinham análise"]),
+  "question_analysis.result": (d) => aiRequestResult(d, "questões"),
+  "draft_check.request": (d) =>
+    join([
+      aiRequestBase(d, ["rascunho", "rascunhos"]),
+      d.batch && `Lote: ${d.batch}`,
+      d.area && `Área: ${own(AREA_NAME, d.area) ?? "outra área"}`,
+      Array.isArray(d.layers) && `Camadas: ${d.layers.map((l) => own(DRAFT_LAYER, l) ?? "outra").join(", ")}`,
+      d.recheck && "Conferindo de novo",
+    ]),
+  "draft_check.result": (d) => aiRequestResult(d, "rascunhos"),
+  "ai_request.cancel": (d) => (d.kind === "draft_check" ? count(d.items, "rascunho", "rascunhos") : count(d.items, "questão", "questões")),
   "block.resolve": () => "",
   "conflict.detect": (d) => d.new != null && count(d.new, "novo", "novos"),
   "conflict.resolved": (d) => noteOf(d, "Motivo"),
@@ -410,10 +557,19 @@ const SUMMARY = {
   "conflict.open": (d) => noteOf(d, "Motivo"),
   "question_analysis.approved": (d) => d.question && questionName(d.question),
   "question_analysis.rejected": (d) => d.question && questionName(d.question),
+  "question_analysis.reanalysis_request": (d) => d.waiting != null && `${d.waiting} questão(ões) esperando`,
   "question_update.no_change": (d) => join([d.question && questionName(d.question), noteOf(d)]),
   "question_update.publish_update": (d) => join([d.question && questionName(d.question), noteOf(d)]),
   "question_update.reject_proposal": (d) => join([d.question && questionName(d.question), noteOf(d)]),
   "question.confirm_currency": (d, entry) => join([questionName(entry.target), noteOf(d)]),
+  "question.source_link_confirmed": (d, entry) => sourceLinkSummary(d, entry),
+  "question.source_link_removed": (d, entry) => sourceLinkSummary(d, entry),
+  "question.comment_approved_exam": (d) => join([typeof d.prova === "string" && d.prova, Number.isFinite(d.aprovadas) && `${d.aprovadas} questões`, noteOf(d)]),
+  "question.explanations_released": (d) => join([Number.isFinite(d.liberadas) && `${d.liberadas} questões`]),
+  "question.update_note_saved": (d, entry) => join([questionName(entry.target)]),
+  "question.update_note_removed": (d, entry) => join([questionName(entry.target)]),
+  "question.update_note_approved": (d, entry) => join([questionName(entry.target), noteOf(d)]),
+  "question.update_note_returned": (d, entry) => join([questionName(entry.target), noteOf(d, "Motivo")]),
   "gamification.achievement": (d) => d.name,
   "gamification.mission": (d) => d.title,
   "gamification.reward": (d) => d.name,
@@ -422,7 +578,9 @@ const SUMMARY = {
   "ai.settings": (d) =>
     join([
       "monthly_cap_usd" in d && `Teto do mês: ${cap(d.monthly_cap_usd)}`,
-      "per_run_cap_usd" in d && `Teto por execução: ${cap(d.per_run_cap_usd)}`,
+      "per_run_cap_usd" in d && `Teto por chamada: ${cap(d.per_run_cap_usd)}`,
+      "overall_monthly_cap_usd" in d && `Teto geral do mês: ${cap(d.overall_monthly_cap_usd)}`,
+      "overall_cap_enabled" in d && `Teto geral ${d.overall_cap_enabled ? "ligado (só avisa)" : "desligado"}`,
       "caps_enabled" in d && `Tetos ${d.caps_enabled ? "ligados" : "desligados"}`,
       "tab_override_enabled" in d && `Trocar a IA nas abas: ${d.tab_override_enabled ? "permitido" : "não permitido"}`,
     ]),

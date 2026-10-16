@@ -1,0 +1,1129 @@
+{
+  "esquema": 1,
+  "slug": "assistencia-ao-pre-natal",
+  "codigo": "GR-043",
+  "area": "go",
+  "titulo": "Assistência ao pré-natal",
+  "subtitulo": "Da captação precoce à gestante Rh negativo",
+  "emblema": "cruz",
+  "revisao": {
+    "status": "pre-revisado por agente",
+    "origem": "Aula GR-043 versao 4 (pacote 2026-10-15-aulas-corrigidas), afirmacoes PN01 a PN140",
+    "gerado_em": "2026-10-15",
+    "aprovacao_humana": null,
+    "pendencias": [
+      "Coombs indireto na Rh negativo: a aula afirma a regra para parceiro Rh positivo ou desconhecido e, noutro trecho, que toda gestante Rh negativo faz o exame. Mantida a redação 'toda Rh negativo', que aparece nos erros frequentes; vale conferência médica da fonte.",
+      "Limiar de hipertensão: a afirmacao de origem escreve 'PA > 140/90' em alguns pontos, mas a aula usa 'a partir de 140/90'; seguido o texto da aula.",
+      "A aula não traz doses nem esquema de tratamento da pré-eclâmpsia, da pielonefrite nem do diabetes gestacional: omitidos.",
+      "A aula não traz o ferro de tratamento para Hb abaixo de 9 g/dL além de 'ferro endovenoso preferível'; nada acrescentado.",
+      "Conferência 15/10: pesquisa do estreptococo do grupo B recebeu a ressalva da aula 'quando disponível' (PN26).",
+      "Revisão reescrita em palavras-chave em 15/10 (sem fato novo)",
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): dTpa (PN31, PN70) e vacina do vírus sincicial respiratório (PN32) passadas de `faixas` para `itens`."
+    ]
+  },
+  "ramos": [
+    {
+      "id": "captacao",
+      "titulo": "Captação e calendário",
+      "cor": "azul",
+      "icone": "calendario",
+      "revisao": {
+        "linhas": [
+          {
+            "rotulo": "Início e número",
+            "itens": [
+              "Captação na APS até a 12ª semana",
+              "Rede Alyne: no mínimo 7 consultas"
+            ]
+          },
+          {
+            "rotulo": "Calendário",
+            "itens": [
+              "Mensal até a 28ª semana",
+              "Quinzenal da 28ª à 36ª"
+            ]
+          },
+          {
+            "rotulo": "Fim do cuidado",
+            "itens": [
+              {
+                "t": "Não existe alta antes do parto",
+                "tom": "alerta"
+              }
+            ]
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Semanal da 36ª à 41ª",
+            "Acompanhamento só se encerra após o 42º dia de puerpério",
+            "Puerpério: pelo menos 2 consultas (1ª semana e cerca de 30 dias)",
+            "Rede Alyne: no mínimo 7 consultas, intercaladas entre enfermeiros e médicos; no mínimo 1 consulta odontológica.",
+            "Captação na Atenção Primária (APS) até a 12ª semana."
+          ]
+        },
+        {
+          "titulo": "41 semanas",
+          "itens": [
+            "Se o parto não ocorre até a 41ª semana, encaminhar para avaliação do bem-estar fetal.",
+            "Idade gestacional a partir de 41 semanas confirmadas está entre os motivos de envio à urgência obstétrica."
+          ]
+        },
+        {
+          "titulo": "Risco é dinâmico",
+          "itens": [
+            "Gravidez de baixo risco só se confirma após o parto e o puerpério.",
+            "Ter um fator de risco não obriga, por si só, a encaminhar ao alto risco.",
+            "Mesmo encaminhada, a gestante continua sob responsabilidade da UBS.",
+            "O pré-natal do(a) parceiro(a) é um direito."
+          ]
+        },
+        {
+          "titulo": "Antes da gravidez",
+          "itens": [
+            "A consulta pré-concepcional é a hora de atualizar vacinas (rubéola e hepatite B, se suscetível), iniciar ácido fólico e fazer exame clínico das mamas e preventivo do colo do útero."
+          ]
+        }
+      ],
+      "claims": [
+        "PN01",
+        "PN03",
+        "PN04",
+        "PN05",
+        "PN06",
+        "PN07",
+        "PN08",
+        "PN39",
+        "PN46",
+        "PN91",
+        "PN96",
+        "PN97",
+        "PN98",
+        "PN105",
+        "PN137",
+        "PN138"
+      ]
+    },
+    {
+      "id": "risco",
+      "titulo": "Risco e encaminhamento",
+      "cor": "laranja",
+      "icone": "alerta",
+      "revisao": {
+        "linhas": [
+          {
+            "rotulo": "Alto risco (UBS segue)",
+            "itens": [
+              "Hipertensão crônica (≥ 140/90)",
+              "Diabetes gestacional"
+            ]
+          },
+          {
+            "rotulo": "Urgência obstétrica",
+            "itens": [
+              "Suspeita de pré-eclâmpsia",
+              "Crise hipertensiva (≥ 160/110)"
+            ]
+          },
+          {
+            "rotulo": "Urgência (outras)",
+            "itens": [
+              "Sangramento em qualquer idade gestacional",
+              "Perda de líquido persistente"
+            ]
+          }
+        ],
+        "itens": [
+          "Sinais premonitórios de eclâmpsia: urgência",
+          "Contrações com colo alterado antes de 36 sem",
+          {
+            "t": "Edema não é critério de pré-eclâmpsia",
+            "tom": "atencao"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Febre (axilar ≥ 37,8 °C) sem quadro de vias aéreas; pielonefrite: hospital de referência",
+            "Hipertensão crônica: PA ≥ 140/90 antes da gestação ou de 20 semanas; o pré-natal de alto risco não tira o acompanhamento da UBS.",
+            "Urgência obstétrica: suspeita de pré-eclâmpsia, sinais premonitórios de eclâmpsia e crise hipertensiva (≥ 160/110).",
+            "Sangramento (descolamento, placenta prévia) em qualquer idade gestacional; perda de líquido persistente; contrações com modificação do colo antes de 36 semanas.",
+            "Edema não é mais critério diagnóstico de pré-eclâmpsia."
+          ]
+        },
+        {
+          "titulo": "Hipertensão",
+          "itens": [
+            "Na gravidez, hipertensão é PA sistólica ≥ 140 e/ou diastólica ≥ 90 mmHg.",
+            "Pré-eclâmpsia: hipertensão a partir da 20ª semana em gestante antes normotensa; PA medida após pelo menos 5 minutos de repouso, sentada.",
+            "Sinais premonitórios de eclâmpsia: escotomas, cefaleia occipital, epigastralgia ou dor intensa no hipocôndrio direito.",
+            "Crise hipertensiva: PAS ≥ 160 ou PAD ≥ 110 mmHg."
+          ]
+        },
+        {
+          "titulo": "Pielonefrite",
+          "itens": [
+            "Gestante com pielonefrite é encaminhada inicialmente ao hospital de referência."
+          ]
+        }
+      ],
+      "claims": [
+        "PN07",
+        "PN08",
+        "PN09",
+        "PN10",
+        "PN11",
+        "PN12",
+        "PN13",
+        "PN14",
+        "PN15",
+        "PN16",
+        "PN17",
+        "PN41",
+        "PN42",
+        "PN114",
+        "PN115",
+        "PN116",
+        "PN136"
+      ]
+    },
+    {
+      "id": "exames",
+      "titulo": "Exames e rastreamentos",
+      "cor": "azul",
+      "icone": "microscopio",
+      "revisao": {
+        "linhas": [
+          {
+            "rotulo": "1ª consulta",
+            "itens": [
+              "Glicemia em jejum (não TOTG)",
+              "Sífilis, HIV, hepatites B e C, HTLV"
+            ]
+          },
+          {
+            "rotulo": "Repetir",
+            "itens": [
+              "Sífilis e HIV na 28ª sem e no parto"
+            ]
+          },
+          {
+            "rotulo": "Glicemia de jejum",
+            "itens": [
+              "92 a 125 mg/dL: diabetes gestacional",
+              "≥ 126 mg/dL: diabetes prévio"
+            ]
+          }
+        ],
+        "itens": [
+          "Hemograma, ABO/Rh, eletroforese de hemoglobina",
+          "Toxoplasmose (IgG, IgM), urina I e urocultura",
+          {
+            "t": "Citomegalovírus: sem rastreio de rotina",
+            "tom": "atencao"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Gonorreia e clamídia se 30 anos ou menos, quando disponível",
+            "Toxoplasmose se IgG não reagente: 2º e 3º trimestres",
+            "Estreptococo do grupo B: swab vaginal e endoanal da 35ª à 37ª semana, quando disponível",
+            "1ª consulta: teste rápido de gravidez, hemograma, tipagem ABO e Rh, eletroforese de hemoglobina.",
+            "Glicemia em jejum (TOTG 75 g só se IG > 24 semanas); sífilis, HIV, hepatite B e C, toxoplasmose (IgG e IgM), HTLV, urina tipo I e urocultura.",
+            "Repetir sífilis e HIV no início do 3º trimestre (28ª semana) e no parto (sífilis também no aborto).",
+            "Diabetes: rastreamento universal; jejum de 92 a 125 mg/dL = diabetes gestacional; ≥ 126 = diabetes prévio.",
+            "Citomegalovírus não tem rastreamento de rotina."
+          ]
+        },
+        {
+          "titulo": "Diabetes",
+          "itens": [
+            "Com glicemia de jejum < 92 mg/dL no 1º trimestre, faz-se TOTG com 75 g entre 24 e 28 semanas.",
+            {
+              "t": "Na primeira consulta, o exame de glicose é a glicemia em jejum: não trocar pelo TOTG.",
+              "tom": "atencao"
+            }
+          ]
+        },
+        {
+          "titulo": "Terceiro trimestre",
+          "itens": [
+            "Repetem-se hemograma, glicemia em jejum, testes de sífilis e HIV e urina tipo I com urocultura."
+          ]
+        },
+        {
+          "titulo": "Outros testes da lista",
+          "itens": [
+            "Hepatite B: se não reagente e sem vacinação prévia, vacinar.",
+            "Doença de Chagas em casos suspeitos e malária em regiões endêmicas."
+          ]
+        }
+      ],
+      "claims": [
+        "PN22",
+        "PN23",
+        "PN24",
+        "PN25",
+        "PN26",
+        "PN27",
+        "PN28",
+        "PN29",
+        "PN99",
+        "PN111",
+        "PN118",
+        "PN119",
+        "PN120",
+        "PN121",
+        "PN123",
+        "PN124",
+        "PN125",
+        "PN126",
+        "PN127",
+        "PN128",
+        "PN139",
+        "PN140"
+      ]
+    },
+    {
+      "id": "datacao",
+      "titulo": "Datação e exame obstétrico",
+      "cor": "ciano",
+      "icone": "gestante",
+      "revisao": {
+        "linhas": [
+          {
+            "rotulo": "Ultrassom",
+            "itens": [
+              "Idealmente 7 a 12 sem, por cabeça-nádega",
+              {
+                "t": "A idade gestacional da 1ª ultrassonografia nunca é recalculada",
+                "tom": "alerta"
+              }
+            ]
+          },
+          {
+            "rotulo": "Palpação",
+            "itens": [
+              "Palpar antes de medir a altura uterina",
+              "Leopold: 4 passos de palpação"
+            ]
+          },
+          {
+            "rotulo": "Situação fetal",
+            "itens": [
+              "Longitudinal, transversa ou oblíqua"
+            ]
+          }
+        ],
+        "itens": [
+          "Malformações, se feito: 18 a 22 semanas"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Altura uterina normal: entre os percentis 10 e 90",
+            "Apresentação: cefálica, pélvica ou córmica",
+            "Transversa ou pélvica no fim da gestação: hospital que atenda distócia",
+            "Ultrassom do 1º trimestre, idealmente entre 7 e 12 semanas, pelo comprimento cabeça-nádega; a idade gestacional da primeira USG nunca é recalculada.",
+            "Rastreamento de malformações, se feito: 18 a 22 semanas.",
+            "Palpação antes da medida da altura uterina; Leopold: 4 passos de palpação do abdome.",
+            "Situação (longitudinal, transversa ou oblíqua) não é o mesmo que apresentação."
+          ]
+        },
+        {
+          "titulo": "Passos de Leopold",
+          "itens": [
+            "1º: delimitar o fundo do útero e reconhecer a parte fetal que o ocupa.",
+            "2º e 3º: deslizar as mãos até o polo inferior sentindo dorso e pequenas partes; explorar a mobilidade do polo que se apresenta no estreito superior.",
+            "4º: mãos nas fossas ilíacas, deslizando para a escava pélvica e abarcando o polo que se apresenta."
+          ]
+        },
+        {
+          "titulo": "Situação",
+          "itens": [
+            "A longitudinal é a mais comum.",
+            "A transversa reduz a altura uterina e pode falsear sua relação com a idade gestacional.",
+            "Polos e dorso são facilmente identificados a partir do terceiro trimestre."
+          ]
+        },
+        {
+          "titulo": "Altura uterina",
+          "itens": [
+            "Serve para acompanhar o crescimento fetal e detectar alterações precocemente; marcar cada medida na curva."
+          ]
+        }
+      ],
+      "claims": [
+        "PN52",
+        "PN53",
+        "PN54",
+        "PN57",
+        "PN58",
+        "PN59",
+        "PN60",
+        "PN61",
+        "PN62",
+        "PN92",
+        "PN93",
+        "PN100",
+        "PN101",
+        "PN102",
+        "PN117",
+        "PN122"
+      ]
+    },
+    {
+      "id": "rh",
+      "titulo": "Gestante Rh negativo",
+      "cor": "verde",
+      "icone": "gota",
+      "lado": "centro",
+      "revisao": {
+        "fluxo": [
+          {
+            "t": "1ª consulta: ABO e Rh; Rh neg.: Coombs",
+            "tom": "diag"
+          },
+          {
+            "t": "Coombs positivo: pré-natal de alto risco",
+            "tom": "alerta"
+          },
+          {
+            "t": "Coombs negativo: anti-D 300 µg na 28ª sem",
+            "tom": "conduta"
+          }
+        ],
+        "itens": [
+          "Negativo: repetir a cada 4 semanas desde a 24ª",
+          "Até 72 h após parto de RN Rh+ ou desconhecido",
+          "Até 72 h após sangramento, aborto ou ectópica",
+          {
+            "t": "Após a anti-D, não repetir o Coombs indireto",
+            "tom": "atencao"
+          },
+          {
+            "t": "Anti-D só se Coombs negativo",
+            "tom": "alerta"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Sensibilizada",
+          "itens": [
+            "Coombs indireto positivo, sem imunoglobulina anti-D recente, indica anticorpos anti-D.",
+            "O alto risco identifica e titula o anticorpo e avalia a hemólise fetal."
+          ]
+        },
+        {
+          "titulo": "Eventos de risco",
+          "itens": [
+            "Sangramento vaginal, abortamento, gestação molar ou ectópica, procedimento invasivo intrauterino, cirurgia fetal intraútero, óbito fetal, versão cefálica externa e trauma abdominal."
+          ]
+        },
+        {
+          "titulo": "Depois da profilaxia",
+          "itens": [
+            "Títulos de anti-D costumam ficar baixos (em geral até 1:4) e podem continuar positivos por 8 a 12 semanas.",
+            "A dose após o parto continua indicada se o bebê for Rh positivo ou de Rh desconhecido."
+          ]
+        },
+        {
+          "titulo": "Sem cartão e sem exames",
+          "itens": [
+            "Pedir primeiro o Coombs indireto; se negativo, aplicar a imunoglobulina em até 72 horas após o sangramento."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Definir ABO e Rh antes da gravidez ou na 1ª consulta; Rh negativo faz Coombs indireto.",
+            "Coombs positivo (sensibilizada): pré-natal de alto risco; negativo: repetir a cada 4 semanas desde a 24ª e imunoglobulina anti-D 300 µg na 28ª semana.",
+            "Anti-D também até 72 h após parto de RN Rh positivo ou de Rh desconhecido, e após sangramento, aborto, gestação molar ou ectópica, procedimento invasivo.",
+            "Depois da imunoglobulina, não repetir o Coombs indireto: pode ficar positivo; a anti-D é só para não sensibilizada (Coombs negativo)."
+          ]
+        }
+      ],
+      "claims": [
+        "PN63",
+        "PN64",
+        "PN65",
+        "PN66",
+        "PN67",
+        "PN69",
+        "PN94",
+        "PN95",
+        "PN112",
+        "PN119",
+        "PN130",
+        "PN131",
+        "PN132"
+      ]
+    },
+    {
+      "id": "vacinas",
+      "titulo": "Vacinas na gestação",
+      "cor": "verde",
+      "icone": "seringa",
+      "revisao": {
+        "linhas": [
+          {
+            "rotulo": "Cada gestação",
+            "itens": [
+              "dTpa: 1 dose da 20ª sem, a cada gestação",
+              "Influenza: 1 dose por temporada"
+            ]
+          },
+          {
+            "rotulo": "VSR e Covid",
+            "itens": [
+              "VSR: dose única desde a 28ª sem",
+              "Covid: 1 dose; 6 meses da última"
+            ]
+          },
+          {
+            "rotulo": "Sem histórico",
+            "itens": [
+              "3 doses de toxoide diftérico/tetânico",
+              "Intervalo de 60 dias"
+            ]
+          }
+        ],
+        "itens": [
+          "Analisar o cartão já na 1ª consulta",
+          "Completar no puerpério, até 45 dias"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Hepatite B sem esquema completo: começar no início do pré-natal",
+            {
+              "t": "Tríplice viral não se aplica; se foi inadvertida, não se interrompe a gravidez",
+              "tom": "alerta"
+            },
+            "dTpa: 1 dose a partir da 20ª semana, mesmo com esquema completo; influenza, 1 dose por temporada; VSR, dose única a partir da 28ª semana.",
+            "Covid: 1 dose, em qualquer idade gestacional, com 6 meses da última.",
+            "Sem histórico vacinal: 3 doses com toxoide diftérico e tetânico, com intervalo de 60 dias.",
+            "Analisar o cartão já na 1ª consulta; completar o que faltar no puerpério, até 45 dias."
+          ]
+        },
+        {
+          "titulo": "dTpa",
+          "itens": [
+            "Com esquema básico completo (pelo menos 3 doses), 1 dose a partir da 20ª semana, a cada gravidez.",
+            "Sem histórico vacinal: 3 doses de vacinas com toxoide diftérico e tetânico; a dTpa entra a partir da 20ª semana."
+          ]
+        },
+        {
+          "titulo": "Vírus sincicial respiratório",
+          "itens": [
+            "Protege o lactente por meio da vacinação da gestante.",
+            "Sem limite superior, exceto em trabalho de parto ativo.",
+            "Pode ser aplicada junto com as demais vacinas do calendário, em locais diferentes e sem intervalo."
+          ]
+        },
+        {
+          "titulo": "Influenza e hepatite B",
+          "itens": [
+            "Influenza: se não vacinou na gestação, aplicar no pós-parto até 45 dias.",
+            "Hepatite B: avaliar no início do pré-natal e dar a 1ª dose da vacina monovalente, agendando as demais."
+          ]
+        }
+      ],
+      "claims": [
+        "PN31",
+        "PN32",
+        "PN34",
+        "PN35",
+        "PN36",
+        "PN70",
+        "PN71",
+        "PN72",
+        "PN73",
+        "PN74",
+        "PN113",
+        "PN133",
+        "PN134",
+        "PN135"
+      ]
+    },
+    {
+      "id": "suplementos",
+      "titulo": "Suplementos e anemia",
+      "cor": "amarelo",
+      "icone": "pilula",
+      "revisao": {
+        "linhas": [
+          {
+            "rotulo": "Rotina",
+            "itens": [
+              "Ferro elementar 40 mg + fólico 400 µg",
+              "Ácido fólico: ao menos 1 mês antes"
+            ]
+          },
+          {
+            "rotulo": "Cálcio",
+            "itens": [
+              "Cálcio elementar 1.000 mg/dia",
+              "Da 12ª semana ao parto (pré-eclâmpsia)"
+            ]
+          },
+          {
+            "rotulo": "Anemia",
+            "itens": [
+              "Hb > 11 afasta; 9 a 11: ferro oral",
+              "Hb < 9 e idade gestacional ≥ 14 semanas: preferir ferro endovenoso"
+            ]
+          }
+        ],
+        "itens": [
+          "Hemograma obrigatório",
+          "Meta do ferro oral: 160 a 200 mg/dia elementar"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Transfusão só em anemia grave por perda aguda de sangue",
+              "tom": "alerta"
+            },
+            "Rotina: ferro elementar 40 mg/dia e ácido fólico 400 µg/dia, do pré-gestacional ao fim da gestação; o ácido fólico começa pelo menos 1 mês antes da concepção.",
+            "Cálcio para todas: 1.000 mg de cálcio elementar/dia, da 12ª semana ao parto, para prevenir pré-eclâmpsia.",
+            "Anemia: hemograma obrigatório; Hb > 11 g/dL afasta anemia; Hb de 9,0 a 11,0: ferro oral (meta 160 a 200 mg/dia de ferro elementar); Hb < 9,0 com IG ≥ 14 semanas: ferro endovenoso preferível."
+          ]
+        },
+        {
+          "titulo": "Cálcio",
+          "itens": [
+            "Dois comprimidos de carbonato de cálcio 1.250 mg (500 mg de cálcio) ao dia.",
+            "Tomar com intervalo mínimo de 2 horas do sulfato ferroso ou de polivitamínicos com ferro."
+          ]
+        },
+        {
+          "titulo": "Ferro",
+          "itens": [
+            "O ferro preventivo vale para praticamente todas as gestantes, exceto doenças com sobrecarga de ferro.",
+            "Na anemia ferropriva, pedir parasitológico de fezes.",
+            "O ferro parenteral deve ser evitado no 1º trimestre.",
+            "A transfusão não é tratamento habitual da anemia ferropriva."
+          ]
+        }
+      ],
+      "claims": [
+        "PN75",
+        "PN76",
+        "PN78",
+        "PN79",
+        "PN80",
+        "PN81",
+        "PN82",
+        "PN83",
+        "PN84",
+        "PN85",
+        "PN107",
+        "PN108",
+        "PN109"
+      ]
+    },
+    {
+      "id": "revalida",
+      "titulo": "Revalida INEP: decisões e pegadinhas",
+      "cor": "vermelho",
+      "icone": "alerta",
+      "revisao": {
+        "itens": [
+          {
+            "t": "TOTG em vez de glicemia de jejum; CMV na rotina",
+            "tom": "alerta"
+          },
+          {
+            "t": "Anti-D se Coombs +; repetir Coombs após anti-D",
+            "tom": "alerta"
+          },
+          {
+            "t": "Esquecer anti-D até 72 h após sangramento/parto",
+            "tom": "alerta"
+          },
+          {
+            "t": "Pular a dTpa; recalcular a idade gestacional por ultrassom tardio",
+            "tom": "alerta"
+          },
+          {
+            "t": "Alto risco por 1 fator; alta antes do parto",
+            "tom": "alerta"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "O que mudou desde a prova",
+          "itens": [
+            "Consultas: antes o mínimo era 6; hoje, na Rede Alyne (que substituiu a Rede Cegonha, em setembro de 2024), são no mínimo 7.",
+            "Exames: antes hepatite C e estreptococo do grupo B não eram de rotina; hoje a hepatite C é testada na 1ª consulta e o EGB é pesquisado da 35ª à 37ª semana. Eletroforese de hemoglobina deixou de ser restrita a grupos, e entrou o teste para HTLV.",
+            "Datação: antes o ultrassom ideal era entre 10 e 13 semanas; hoje, entre 7 e 12.",
+            "Rh negativo: a recomendação de 2022 acrescenta 300 µg de anti-D na 28ª semana e orienta não repetir o Coombs após a profilaxia.",
+            "Diabetes e anemia: antes jejum de 85 a 119 mg/dL levava ao TOTG e a anemia leve a moderada usava 120 a 240 mg de ferro elementar; hoje o rastreamento é universal com corte de 92 mg/dL e a conduta é por faixa de hemoglobina.",
+            "Cálcio: antes só para baixo consumo e alto risco; hoje universal, da 12ª semana ao parto."
+          ]
+        },
+        {
+          "titulo": "Mais armadilhas",
+          "itens": [
+            "Pedir Coombs indireto só quando o parceiro é Rh positivo: a aula diz que toda gestante Rh negativo faz o exame.",
+            "Reservar o cálcio só para a gestante de alto risco."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Imunoglobulina anti-D na Rh negativo com Coombs positivo; repetir o Coombs após a imunoglobulina.",
+            "Esquecer a anti-D em até 72 h após sangramento, aborto ou parto de RN Rh positivo.",
+            "Não dar dTpa porque tomou na gravidez anterior; recalcular a idade gestacional com USG tardia.",
+            "Chamar a situação de cefálica ou a apresentação de longitudinal.",
+            "Alto risco só por um fator de risco; alta antes do parto; transfundir anemia ferropriva sem perda aguda."
+          ]
+        }
+      ],
+      "claims": [
+        "PN02",
+        "PN04",
+        "PN07",
+        "PN25",
+        "PN26",
+        "PN27",
+        "PN28",
+        "PN29",
+        "PN31",
+        "PN47",
+        "PN51",
+        "PN52",
+        "PN59",
+        "PN64",
+        "PN65",
+        "PN66",
+        "PN70",
+        "PN81",
+        "PN82",
+        "PN84",
+        "PN85",
+        "PN87",
+        "PN88",
+        "PN89",
+        "PN90",
+        "PN99",
+        "PN103",
+        "PN104",
+        "PN105",
+        "PN106",
+        "PN107",
+        "PN109",
+        "PN110",
+        "PN119",
+        "PN120",
+        "PN122",
+        "PN123",
+        "PN129",
+        "PN130",
+        "PN131"
+      ]
+    }
+  ],
+  "pontos_chave": [
+    "Captação até a 12ª semana; mínimo de 7 consultas",
+    "Mensal até a 28ª semana; sem alta antes do parto",
+    "1ª consulta: glicemia de jejum, não TOTG",
+    "Rh negativo e Coombs negativo: anti-D na 28ª semana"
+  ],
+  "atencao": [
+    "Coombs indireto positivo é sensibilização: alto risco, sem anti-D",
+    "Após a anti-D da 28ª semana, não repetir o Coombs indireto",
+    "Edema não é mais critério diagnóstico de pré-eclâmpsia",
+    "Tríplice viral não se aplica; se foi inadvertida, não interrompe"
+  ],
+  "foto": {
+    "webp": "/mapas-mentais/assistencia-ao-pre-natal.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  },
+  "cartoes": {
+    "conceito": {
+      "titulo": "Captação e calendário",
+      "icone": "calendario",
+      "cor": "azul",
+      "itens": [
+        "Captação na Atenção Primária até a 12ª semana",
+        "Rede Alyne: no mínimo 7 consultas",
+        "Mensal até a 28ª semana; quinzenal até a 36ª",
+        "Não existe alta antes do parto"
+      ],
+      "claims": [
+        "PN01",
+        "PN03",
+        "PN04",
+        "PN05",
+        "PN06",
+        "PN07",
+        "PN08",
+        "PN39",
+        "PN46",
+        "PN91",
+        "PN96",
+        "PN97",
+        "PN98",
+        "PN105",
+        "PN137",
+        "PN138"
+      ]
+    },
+    "quadro": {
+      "titulo": "Urgência obstétrica",
+      "icone": "alerta",
+      "cor": "vermelho",
+      "itens": [
+        "Suspeita de pré-eclâmpsia",
+        "Sinais premonitórios de eclâmpsia",
+        "Crise hipertensiva (≥ 160/110)",
+        "Sangramento em qualquer semana",
+        "Perda de líquido persistente"
+      ],
+      "claims": [
+        "PN07",
+        "PN08",
+        "PN09",
+        "PN10",
+        "PN11",
+        "PN12",
+        "PN13",
+        "PN14",
+        "PN15",
+        "PN16",
+        "PN17",
+        "PN41",
+        "PN42",
+        "PN114",
+        "PN115",
+        "PN116",
+        "PN136"
+      ]
+    },
+    "fatores": {
+      "titulo": "Alto risco e encaminhamento",
+      "icone": "pessoas",
+      "cor": "amarelo",
+      "itens": [
+        "Hipertensão crônica (≥ 140/90)",
+        "Diabetes gestacional",
+        "Um fator isolado não obriga",
+        "UBS mantém a responsabilidade"
+      ],
+      "claims": [
+        "PN07",
+        "PN08",
+        "PN09",
+        "PN10",
+        "PN11",
+        "PN12",
+        "PN13",
+        "PN14",
+        "PN15",
+        "PN16",
+        "PN17",
+        "PN41",
+        "PN42",
+        "PN114",
+        "PN115",
+        "PN116",
+        "PN136",
+        "PN63",
+        "PN64",
+        "PN65",
+        "PN66",
+        "PN67",
+        "PN69",
+        "PN94",
+        "PN95",
+        "PN112",
+        "PN119",
+        "PN130",
+        "PN131",
+        "PN132"
+      ]
+    },
+    "diagnostico": {
+      "titulo": "Exames da 1ª consulta",
+      "icone": "prancheta",
+      "cor": "verde",
+      "linhas": [
+        {
+          "icone": "gota",
+          "rotulo": "Glicose",
+          "itens": [
+            "Glicemia em jejum, não TOTG"
+          ]
+        },
+        {
+          "icone": "virus",
+          "rotulo": "Infecções",
+          "itens": [
+            "Sífilis, HIV, hepatites B e C, HTLV",
+            "Repetir sífilis e HIV: 28ª semana e parto"
+          ]
+        },
+        {
+          "icone": "tubo",
+          "rotulo": "Sangue",
+          "itens": [
+            "Hemograma, tipagem ABO e Rh",
+            "Eletroforese de hemoglobina"
+          ]
+        }
+      ],
+      "claims": [
+        "PN22",
+        "PN23",
+        "PN24",
+        "PN25",
+        "PN26",
+        "PN27",
+        "PN28",
+        "PN29",
+        "PN99",
+        "PN111",
+        "PN118",
+        "PN119",
+        "PN120",
+        "PN121",
+        "PN123",
+        "PN124",
+        "PN125",
+        "PN126",
+        "PN127",
+        "PN128",
+        "PN139",
+        "PN140"
+      ]
+    },
+    "exames": {
+      "titulo": "Interpretação dos exames",
+      "icone": "microscopio",
+      "cor": "roxo",
+      "linhas": [
+        {
+          "icone": "gota",
+          "rotulo": "Jejum de 92 a 125 mg/dL",
+          "texto": "Diabetes gestacional"
+        },
+        {
+          "icone": "gota",
+          "rotulo": "Jejum ≥ 126 mg/dL",
+          "texto": "Diabetes prévio"
+        },
+        {
+          "icone": "tubo",
+          "rotulo": "Hemoglobina 9 a 11 g/dL",
+          "texto": "Ferro oral, meta de 160 a 200 mg/dia de ferro elementar"
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "Hemoglobina < 9 g/dL",
+          "texto": "Com 14 semanas ou mais: ferro endovenoso preferível"
+        }
+      ],
+      "claims": [
+        "PN22",
+        "PN23",
+        "PN24",
+        "PN25",
+        "PN26",
+        "PN27",
+        "PN28",
+        "PN29",
+        "PN99",
+        "PN111",
+        "PN118",
+        "PN119",
+        "PN120",
+        "PN121",
+        "PN123",
+        "PN124",
+        "PN125",
+        "PN126",
+        "PN127",
+        "PN128",
+        "PN139",
+        "PN140",
+        "PN75",
+        "PN76",
+        "PN78",
+        "PN79",
+        "PN80",
+        "PN81",
+        "PN82",
+        "PN83",
+        "PN84",
+        "PN85",
+        "PN107",
+        "PN108",
+        "PN109"
+      ]
+    },
+    "conduta": {
+      "titulo": "Gestante Rh negativo",
+      "icone": "gota",
+      "cor": "azul-forte",
+      "linhas": [
+        {
+          "icone": "tubo",
+          "rotulo": "Rh negativo",
+          "itens": [
+            "Fazer o Coombs indireto",
+            "Coombs positivo: alto risco, sem anti-D"
+          ]
+        },
+        {
+          "icone": "seringa",
+          "rotulo": "Coombs negativo",
+          "itens": [
+            "Repetir a cada 4 semanas desde a 24ª",
+            "Anti-D 300 µg na 28ª semana"
+          ]
+        },
+        {
+          "icone": "relogio",
+          "rotulo": "Anti-D em até 72 h",
+          "itens": [
+            "Parto de bebê Rh positivo ou desconhecido",
+            "Após sangramento, aborto ou ectópica"
+          ]
+        }
+      ],
+      "claims": [
+        "PN63",
+        "PN64",
+        "PN65",
+        "PN66",
+        "PN67",
+        "PN69",
+        "PN94",
+        "PN95",
+        "PN112",
+        "PN119",
+        "PN130",
+        "PN131",
+        "PN132"
+      ]
+    },
+    "objetivos": {
+      "titulo": "Objetivos do atendimento",
+      "icone": "alvo",
+      "cor": "ciano",
+      "itens": [
+        "Cálcio 1.000 mg/dia: 12ª semana ao parto",
+        "Ferro 40 mg e ácido fólico 400 µg ao dia",
+        "Analisar o cartão vacinal na 1ª consulta",
+        "Acompanhar até o 42º dia de puerpério"
+      ],
+      "claims": [
+        "PN01",
+        "PN03",
+        "PN04",
+        "PN05",
+        "PN06",
+        "PN07",
+        "PN08",
+        "PN39",
+        "PN46",
+        "PN91",
+        "PN96",
+        "PN97",
+        "PN98",
+        "PN105",
+        "PN137",
+        "PN138",
+        "PN31",
+        "PN32",
+        "PN34",
+        "PN35",
+        "PN36",
+        "PN70",
+        "PN71",
+        "PN72",
+        "PN73",
+        "PN74",
+        "PN113",
+        "PN133",
+        "PN134",
+        "PN135",
+        "PN75",
+        "PN76",
+        "PN78",
+        "PN79",
+        "PN80",
+        "PN81",
+        "PN82",
+        "PN83",
+        "PN84",
+        "PN85",
+        "PN107",
+        "PN108",
+        "PN109"
+      ]
+    },
+    "tratamento": {
+      "titulo": "Vacinas na gestação",
+      "icone": "seringa",
+      "cor": "laranja",
+      "itens": [
+        "dTpa: 1 dose a partir da 20ª semana, em cada gestação",
+        "Vírus sincicial respiratório: dose única, desde a 28ª semana",
+        "Influenza: 1 dose por temporada",
+        "Covid: 1 dose, 6 meses após a última",
+        "Sem histórico: 3 doses de toxoide diftérico e tetânico"
+      ],
+      "claims": [
+        "PN31",
+        "PN32",
+        "PN34",
+        "PN35",
+        "PN36",
+        "PN70",
+        "PN71",
+        "PN72",
+        "PN73",
+        "PN74",
+        "PN113",
+        "PN133",
+        "PN134",
+        "PN135"
+      ]
+    }
+  },
+  "poster": {
+    "webp": "/mapas-mentais/poster-assistencia-ao-pre-natal.webp",
+    "estado": "pendente de revisão médica (aprovada)",
+    "ressalvas": [
+      "placenta pouco evidente na ilustração"
+    ],
+    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K (versão com logo no topo e marca d'água, 15/10)"
+  },
+  "icone": {
+    "webp": "/mapas-mentais/icone-assistencia-ao-pre-natal.webp",
+    "origem": "ícone 3D sintético gerado pelo diretor de arte (decorativo)"
+  }
+}

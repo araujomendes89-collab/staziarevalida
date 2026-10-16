@@ -10,11 +10,16 @@ import { endVoice, purgeVoiceTranscripts, recordVoiceMetrics, recordVoiceUsage, 
 import { runTutorTool, TOOL_NAMES } from "./tools";
 import { delegateVoice, sayVoice, type Letter } from "./delegate";
 import { tutorSettings } from "./settings";
-import { planProviders } from "./voiceProviders";
+import { questionHint, questionHintEnabled } from "./questionHint";
+import { geminiVoiceConfig, planProviders, vertexPonteConfig } from "./voiceProviders";
+import { relatorioConfere } from "../vozPonte/bilhete";
+import { planPersonaTurn } from "./voiceReactions";
+import { personaPromptLayer } from "./personalityEngine";
 import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
 import { samplePath } from "./voicePreview";
 import { elevenAccessOf, nexusStatus, openNexus, type TtsQuota } from "./nexus";
-import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, STT_BUSY, STT_PER_MINUTE, audioFitsSeconds, sttConfig, transcribe } from "./stt";
+import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, STT_BLOCK, STT_BUSY, STT_PER_MINUTE, audioFitsSeconds, sttAccessOf, sttConfig, transcribe } from "./stt";
+import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -38,7 +43,31 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       // a tarefa diária também aplica a retenção das transcrições da voz (painel)
       res.json({ expired: await sweepVoice(deps), purged_transcripts: await purgeVoiceTranscripts(deps).catch(() => 0) });
     } catch (error) {
-      fail(res, 500, (error as Error).message.slice(0, 120));
+      fail(res, 500, shown(error));
+    }
+  });
+
+  /**
+   * Relatório de uso da PONTE de voz (Cloud Run → app), no fim de cada ligação pelo Vertex: tokens e custo estimado vão para o
+   * registro de custos (ai_usage_ledger). Sem login de aluno: assinatura HMAC com VOZ_PONTE_SEGREDO (a mesma do bilhete).
+   */
+  router.post("/voice/ponte-uso", async (req, res) => {
+    const ponte = vertexPonteConfig();
+    const corpo = typeof (req as Request & { rawBody?: string }).rawBody === "string" ? (req as Request & { rawBody?: string }).rawBody! : JSON.stringify(req.body ?? {});
+    if (!deps || !ponte || !relatorioConfere(corpo, String(req.headers["x-stazia-ponte-assinatura"] ?? ""), ponte.segredo)) return fail(res, 401, "Não autorizado.");
+    try {
+      const b = JSON.parse(corpo) as { vc?: string; u?: string; modelo?: string; duracao_s?: number; uso?: Record<string, number>; custo_usd?: number; t?: number };
+      if (!uuid.test(String(b.vc ?? "")) || !uuid.test(String(b.u ?? "")) || Math.abs(Date.now() - Number(b.t ?? 0)) > 10 * 60_000) return fail(res, 400, "Relatório inválido.");
+      const v = await voiceCall(deps, String(b.u), String(b.vc));
+      const n = (x: unknown) => (Number.isFinite(Number(x)) ? Math.max(0, Math.round(Number(x))) : 0);
+      await deps.db.service("ch_worker_tutor_ledger", { p_user: b.u, p_session_id: v.session_id, p_entry: {
+        feature: "tutor_voice_gemini", provider: "google-vertex", model: String(b.modelo ?? "").slice(0, 60),
+        input_text_tokens: n(b.uso?.textoEntrada), input_audio_tokens: n(b.uso?.audioEntrada), output_text_tokens: n(b.uso?.textoSaida), output_audio_tokens: n(b.uso?.audioSaida),
+        duration_seconds: n(b.duracao_s), estimated_cost_usd: Math.max(0, Number(b.custo_usd) || 0), meta: { voice_call: b.vc, via: "vertex-ponte", por: "tokens" },
+      } });
+      res.json({ ok: true });
+    } catch (error) {
+      fail(res, 500, shown(error));
     }
   });
 
@@ -50,7 +79,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       req.user = user;
       next();
     } catch (error) {
-      fail(res, 500, (error as Error).message);
+      fail(res, 500, ACCESS_CHECK_FAILED);
     }
   });
 
@@ -70,7 +99,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     // GPT-Live disponível agora? (o navegador manda a oferta WebRTC antes de abrir; se o GPT-Live falhar, o servidor cai no Realtime)
     const plan = planProviders(settings.voice_provider, process.env, vr.live, vr.realtime, true, vr.gemini);
     res.json({
-      ready: status.ready, simulated: status.isMock, neural_voice: voice.ready, realtime_voice: vr.ready && settings.voice_enabled !== false, live_voice: plan.first === "live",
+      ready: status.ready, simulated: status.isMock, question_hint: questionHintEnabled(process.env, settings.question_hint_enabled === true) && settings.enabled && status.ready, neural_voice: voice.ready, realtime_voice: vr.ready && settings.voice_enabled !== false, live_voice: plan.first === "live",
       // qual voz o aplicativo abre primeiro (o Gemini não precisa da oferta WebRTC; o GPT-Live precisa)
       voice_hint: plan.first,
       voice_session_max_seconds: settings.voice_session_max_seconds,
@@ -141,7 +170,8 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
 
   /**
    * Transcrição da fala do aluno na Nexus: o áudio (até 4 MB e 45 s) vem no corpo, com X-Voice-Call-Id (a conversa de voz aberta)
-   * e X-Audio-Seconds. Ordem: conversa de voz do aluno, aceite, transcrição ligada, tamanho. Devolve só o texto.
+   * e X-Audio-Seconds. Ordem: conversa de voz do aluno, aceite, microfone liberado ao aluno (CF02), transcrição ligada, tamanho,
+   * tetos diários. Devolve só o texto.
    */
   const TOO_BIG = "Áudio acima de 45 segundos ou de 4 MB.";
   // teto da transcrição por aluno nesta instância: uma por vez e até STT_PER_MINUTE por minuto
@@ -154,12 +184,23 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       if (!v || v.status !== "active" || v.provider !== "tts") return fail(res, 409, "A conversa por voz foi encerrada.");
       const quota = await deps!.db.service<TtsQuota>("ch_worker_tutor_tts_quota", { p_user: req.user!.id });
       if (quota?.consent_pending) return failTutor(res, consentError());
+      // CF02: o microfone é da equipe até o dono abrir aos alunos e preencher os tetos diários; recusa antes de olhar o áudio e de qualquer gasto
+      const staff = quota?.staff === true;
+      const settings = await tutorSettings(deps!);
+      const closed = sttAccessOf({ staff, mode: quota?.mode, settings });
+      if (closed) return res.status(403).json({ error: STT_BLOCK[closed].message, code: STT_BLOCK[closed].code });
       if (!(deps!.stt ?? sttConfig()).ready) return fail(res, 503, "A transcrição não está ligada no servidor.");
       const seconds = Number(req.headers["x-audio-seconds"]);
       const audio = Buffer.isBuffer(req.body) ? req.body : null;
       if (req.headers["x-audio-seconds"] == null || !Number.isFinite(seconds) || seconds <= 0 || seconds > MAX_AUDIO_SECONDS || !audio?.length) return fail(res, 413, TOO_BIG);
       if (!audioFitsSeconds(audio.length, seconds)) return fail(res, 413, TOO_BIG);
       const uid = req.user!.id;
+      // tetos diários do aluno e da plataforma: o que já foi transcrito hoje (registro de uso) mais este áudio
+      if (!staff) {
+        const used = await deps!.db.service<{ user_seconds: number; account_seconds: number }>("ch_worker_tutor_stt_today", { p_user: uid });
+        const over = sttAccessOf({ staff, mode: quota?.mode, settings, used: { user_seconds: Number(used?.user_seconds ?? 0), account_seconds: Number(used?.account_seconds ?? 0) }, seconds });
+        if (over) return res.status(403).json({ error: STT_BLOCK[over].message, code: STT_BLOCK[over].code });
+      }
       const now = Date.now();
       const recent = (sttRecent.get(uid) ?? []).filter((t) => now - t < 60_000);
       if (sttBusy.has(uid) || recent.length >= STT_PER_MINUTE) return res.status(429).json({ error: STT_BUSY, code: "stt_busy" });
@@ -197,6 +238,21 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       if (error instanceof TutorError) return failTutor(res, error);
       deps!.log?.(`[tutor] erro: ${(error as Error).message}`);
       fail(res, 500, "O Tutor não conseguiu responder agora.");
+    }
+  });
+
+  /**
+   * Dica ANTES de responder (só treino; nasce desligada: interruptor do painel ou TUTOR_QUESTION_HINT=1). body: { question_id }. Nunca traz gabarito, explicação nem fontes.
+   */
+  router.post("/question-hint", async (req: Authed, res) => {
+    try {
+      const questionId = String(req.body?.question_id ?? "");
+      if (!/^[A-Za-z0-9_.:-]{3,80}$/.test(questionId)) return fail(res, 400, "Questão inválida.");
+      res.json(await questionHint(deps!, req.user!, questionId));
+    } catch (error) {
+      if (error instanceof TutorError) return failTutor(res, error);
+      deps!.log?.(`[tutor] dica: erro: ${(error as Error).message}`);
+      fail(res, 500, "O Tutor não conseguiu dar a dica agora.");
     }
   });
 
@@ -309,7 +365,18 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       args = {};
     }
     const persona = await deps!.db.service<{ personality: { id: string } } | null>("ch_worker_tutor_context", { p_user: req.user!.id, p_session_id: v.session_id });
-    return { output: await runTutorTool({ deps: deps!, userId: req.user!.id, sessionId: v.session_id, personaId: persona?.personality.id ?? "direto", remember: (t) => rememberEvidence(id, t) }, name, args) };
+    const output = await runTutorTool({ deps: deps!, userId: req.user!.id, sessionId: v.session_id, personaId: persona?.personality.id ?? "direto", remember: (t) => rememberEvidence(id, t) }, name, args);
+    // voz do Gemini pelo Vertex: depois da correção, o tom novo do professor vem do Personality Engine (acerto ou erro)
+    if (name === "submit_answer" && v.provider === "gemini" && geminiVoiceConfig().via === "vertex" && output && typeof output === "object" && "result" in output) {
+      try {
+        const correct = Boolean((output as { result?: { is_correct?: boolean } }).result?.is_correct);
+        const d = await planPersonaTurn(deps!, { userId: req.user!.id, personality: persona?.personality.id ?? "direto", provider: "gemini_live", memory: null, facts: [correct ? "correct" : "wrong"] });
+        (output as Record<string, unknown>).tom_do_professor = personaPromptLayer(d);
+      } catch {
+        // sem o motor no banco: fica o "tone" de sempre
+      }
+    }
+    return { output };
   }));
 
   // corpo grande demais no express.raw da transcrição: o mesmo aviso, em JSON

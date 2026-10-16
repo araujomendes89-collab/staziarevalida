@@ -1,0 +1,1199 @@
+[
+ {
+  "id": "enamed_2025_q003",
+  "campo": "statement",
+  "antes": "pré- hospitalar.",
+  "depois": "pré-hospitalar.",
+  "tipo": "caractere",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q003.png"
+ },
+ {
+  "id": "enamed_2025_q006",
+  "campo": "statement",
+  "antes": "família. \"A",
+  "depois": "família. “À",
+  "tipo": "simbolo",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q006.png"
+ },
+ {
+  "id": "enamed_2025_q006",
+  "campo": "statement",
+  "antes": "preventiva.\"",
+  "depois": "preventiva.”",
+  "tipo": "simbolo",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q006.png"
+ },
+ {
+  "id": "enamed_2025_q007",
+  "campo": "statement",
+  "antes": "\"torto\".",
+  "depois": "“torto”.",
+  "tipo": "simbolo",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q007.png"
+ },
+ {
+  "id": "enamed_2025_q009",
+  "campo": "statement",
+  "antes": "39 °C),",
+  "depois": "39 ºC),",
+  "tipo": "unidade",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q009.png"
+ },
+ {
+  "id": "enamed_2025_q009",
+  "campo": "statement",
+  "antes": "39 °C;",
+  "depois": "39 ºC;",
+  "tipo": "unidade",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q009.png"
+ },
+ {
+  "id": "enamed_2025_q010",
+  "campo": "statement",
+  "antes": "ANULADA Paciente",
+  "depois": "Paciente",
+  "tipo": "selo",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q010.png"
+ },
+ {
+  "id": "enamed_2025_q010",
+  "campo": "statement",
+  "antes": "direita Apresentou",
+  "depois": "direita. Apresentou",
+  "tipo": "caractere",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q010.png"
+ },
+ {
+  "id": "enamed_2025_q010",
+  "campo": "statement",
+  "antes": "maços/ ano.",
+  "depois": "maços/ano.",
+  "tipo": "caractere",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q010.png"
+ },
+ {
+  "id": "enamed_2025_q010",
+  "campo": "statement",
+  "antes": "kg/m?.",
+  "depois": "kg/m².",
+  "tipo": "sobrescrito",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q010.png"
+ },
+ {
+  "id": "enamed_2025_q010",
+  "campo": "options.A",
+  "antes": "",
+  "depois": "isquemia mesentérica.",
+  "tipo": "texto_faltando",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q010.png"
+ },
+ {
+  "id": "enamed_2025_q010",
+  "campo": "options.B",
+  "antes": "",
+  "depois": "hérnia inguinal indireta.",
+  "tipo": "texto_faltando",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q010.png"
+ },
+ {
+  "id": "enamed_2025_q011",
+  "campo": "statement",
+  "antes": "milhões Ul",
+  "depois": "milhões UI",
+  "tipo": "unidade",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q011.png"
+ },
+ {
+  "id": "enamed_2025_q012",
+  "campo": "statement",
+  "antes": "kg/m',",
+  "depois": "kg/m²,",
+  "tipo": "sobrescrito",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q012.png"
+ },
+ {
+  "id": "enamed_2025_q012",
+  "campo": "options.D",
+  "antes": "tezes,",
+  "depois": "fezes,",
+  "tipo": "caractere",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q012.png"
+ },
+ {
+  "id": "enamed_2025_q015",
+  "campo": "statement",
+  "antes": "apresentaram os",
+  "depois": "apresentaram os seguintes resultados:",
+  "tipo": "texto_faltando",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q015.png"
+ },
+ {
+  "id": "enamed_2025_q016",
+  "campo": "options.D",
+  "antes": "especificas",
+  "depois": "específicas",
+  "tipo": "caractere",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q016.png"
+ },
+ {
+  "id": "enamed_2025_q016",
+  "campo": "options.D",
+  "antes": "sindrome",
+  "depois": "síndrome",
+  "tipo": "caractere",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q016.png"
+ },
+ {
+  "id": "enamed_2025_q017",
+  "campo": "statement",
+  "antes": "\"automóvel",
+  "depois": "“automóvel",
+  "tipo": "simbolo",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q017.png"
+ },
+ {
+  "id": "enamed_2025_q017",
+  "campo": "statement",
+  "antes": "muro\",",
+  "depois": "muro”,",
+  "tipo": "simbolo",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q017.png"
+ },
+ {
+  "id": "enamed_2025_q017",
+  "campo": "statement",
+  "antes": "de O, de",
+  "depois": "de O₂ de",
+  "tipo": "sobrescrito",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q017.png"
+ },
+ {
+  "id": "enamed_2025_q017",
+  "campo": "statement",
+  "antes": "à Qual",
+  "depois": "à esquerda. Qual",
+  "tipo": "texto_faltando",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q017.png"
+ },
+ {
+  "id": "enamed_2025_q017",
+  "campo": "options.C",
+  "antes": "• Pericardiocentese.",
+  "depois": "Pericardiocentese.",
+  "tipo": "lixo_ocr",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q017.png"
+ },
+ {
+  "id": "enamed_2025_q019",
+  "campo": "statement",
+  "antes": "Mulherde",
+  "depois": "Mulher de",
+  "tipo": "caractere",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q019.png"
+ },
+ {
+  "id": "enamed_2025_q019",
+  "campo": "statement",
+  "antes": "x mmHg.",
+  "depois": "x 88 mmHg.",
+  "tipo": "texto_faltando",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q019.png"
+ },
+ {
+  "id": "enamed_2025_q020",
+  "campo": "statement",
+  "antes": "pós- exposição",
+  "depois": "pós-exposição",
+  "tipo": "caractere",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q020.png"
+ },
+ {
+  "id": "enamed_2025_q021",
+  "campo": "statement",
+  "antes": "kg/m');",
+  "depois": "kg/m²);",
+  "tipo": "sobrescrito",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q021.png"
+ },
+ {
+  "id": "enamed_2025_q021",
+  "campo": "statement",
+  "antes": "frequência Qual",
+  "depois": "frequência respiratória = 15 irpm. Qual",
+  "tipo": "texto_faltando",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q021.png"
+ },
+ {
+  "id": "enamed_2025_q022",
+  "campo": "statement",
+  "antes": "130 × 80",
+  "depois": "130 x 80",
+  "tipo": "simbolo",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q022.png"
+ },
+ {
+  "id": "enamed_2025_q023",
+  "campo": "options.A",
+  "antes": "em MMIl",
+  "depois": "em MMII",
+  "tipo": "caractere",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q023.png"
+ },
+ {
+  "id": "enamed_2025_q023",
+  "campo": "options.C",
+  "antes": "retro- orbitária,",
+  "depois": "retro-orbitária,",
+  "tipo": "caractere",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q023.png"
+ },
+ {
+  "id": "enamed_2025_q023",
+  "campo": "options.D",
+  "antes": "bilateralmente",
+  "depois": "bilateralmente.",
+  "tipo": "caractere",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q023.png"
+ },
+ {
+  "id": "enamed_2025_q024",
+  "campo": "statement",
+  "antes": "38,2 °C",
+  "depois": "38,2 ºC",
+  "tipo": "unidade",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q024.png"
+ },
+ {
+  "id": "enamed_2025_q026",
+  "campo": "statement",
+  "antes": "(38,5 °C),",
+  "depois": "(38,5 ºC),",
+  "tipo": "unidade",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q026.png"
+ },
+ {
+  "id": "enamed_2025_q028",
+  "campo": "statement",
+  "antes": "\"Internações",
+  "depois": "“Internações",
+  "tipo": "simbolo",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q028.png"
+ },
+ {
+  "id": "enamed_2025_q028",
+  "campo": "statement",
+  "antes": "agressões\".",
+  "depois": "agressões”.",
+  "tipo": "simbolo",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q028.png"
+ },
+ {
+  "id": "enamed_2025_q028",
+  "campo": "statement",
+  "antes": "2024. |",
+  "depois": "2024.",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q028.png"
+ },
+ {
+  "id": "enamed_2025_q031",
+  "campo": "statement",
+  "antes": "médio porte",
+  "depois": "médio porte.",
+  "tipo": "caractere",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q031.png"
+ },
+ {
+  "id": "enamed_2025_q032",
+  "campo": "statement",
+  "antes": "pressão",
+  "depois": "pressão arterial de 140 x 90 mmHg.",
+  "tipo": "texto_faltando",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q032.png"
+ },
+ {
+  "id": "enamed_2025_q033",
+  "campo": "options.C",
+  "antes": "basico",
+  "depois": "básico",
+  "tipo": "caractere",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q033.png"
+ },
+ {
+  "id": "enamed_2025_q035",
+  "campo": "statement",
+  "antes": "\"Estou",
+  "depois": "“Estou",
+  "tipo": "simbolo",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q035.png"
+ },
+ {
+  "id": "enamed_2025_q035",
+  "campo": "statement",
+  "antes": "insuportável\".",
+  "depois": "insuportável”.",
+  "tipo": "simbolo",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q035.png"
+ },
+ {
+  "id": "enamed_2025_q035",
+  "campo": "options.A",
+  "antes": "ansiosos",
+  "depois": "ansiosos.",
+  "tipo": "caractere",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q035.png"
+ },
+ {
+  "id": "enamed_2025_q037",
+  "campo": "statement",
+  "antes": "38,5 °C,",
+  "depois": "38,5 ºC,",
+  "tipo": "unidade",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q037.png"
+ },
+ {
+  "id": "enamed_2025_q037",
+  "campo": "statement",
+  "antes": "\"doloroso",
+  "depois": "“doloroso",
+  "tipo": "simbolo",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q037.png"
+ },
+ {
+  "id": "enamed_2025_q037",
+  "campo": "statement",
+  "antes": "inchado\".",
+  "depois": "inchado”.",
+  "tipo": "simbolo",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q037.png"
+ },
+ {
+  "id": "enamed_2025_q037",
+  "campo": "statement",
+  "antes": "\"inchado",
+  "depois": "“inchado",
+  "tipo": "simbolo",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q037.png"
+ },
+ {
+  "id": "enamed_2025_q037",
+  "campo": "statement",
+  "antes": "avermelhado\",",
+  "depois": "avermelhado”,",
+  "tipo": "simbolo",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q037.png"
+ },
+ {
+  "id": "enamed_2025_q038",
+  "campo": "statement",
+  "antes": "Indice",
+  "depois": "Índice",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q038.png"
+ },
+ {
+  "id": "enamed_2025_q038",
+  "campo": "statement",
+  "antes": "kg/m?;",
+  "depois": "kg/m²;",
+  "tipo": "sobrescrito",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q038.png"
+ },
+ {
+  "id": "enamed_2025_q038",
+  "campo": "statement",
+  "antes": "37 °C.",
+  "depois": "37 ºC.",
+  "tipo": "unidade",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q038.png"
+ },
+ {
+  "id": "enamed_2025_q039",
+  "campo": "options.B",
+  "antes": "bem- estar",
+  "depois": "bem-estar",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q039.png"
+ },
+ {
+  "id": "enamed_2025_q039",
+  "campo": "options.C",
+  "antes": "mecônic",
+  "depois": "mecônio",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q039.png"
+ },
+ {
+  "id": "enamed_2025_q039",
+  "campo": "options.D",
+  "antes": "eia se",
+  "depois": "dias e",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q039.png"
+ },
+ {
+  "id": "enamed_2025_q039",
+  "campo": "options.D",
+  "antes": "até 11",
+  "depois": "até 41",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q039.png"
+ },
+ {
+  "id": "enamed_2025_q039",
+  "campo": "options.D",
+  "antes": "semanas",
+  "depois": "semanas e 6 dias.",
+  "tipo": "texto_faltando",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q039.png"
+ },
+ {
+  "id": "enamed_2025_q041",
+  "campo": "statement",
+  "antes": "arterial Os",
+  "depois": "arterial de 110 x 70 mmHg. Os",
+  "tipo": "texto_faltando",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q041.png"
+ },
+ {
+  "id": "enamed_2025_q042",
+  "campo": "statement",
+  "antes": "de 02 em",
+  "depois": "de O₂ em",
+  "tipo": "sobrescrito",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q042.png"
+ },
+ {
+  "id": "enamed_2025_q043",
+  "campo": "statement",
+  "antes": "pós-operatório",
+  "depois": "Homem de 66 anos, em pós-operatório",
+  "tipo": "texto_faltando",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q043.png"
+ },
+ {
+  "id": "enamed_2025_q043",
+  "campo": "statement",
+  "antes": "38 °C e",
+  "depois": "38 ºC e",
+  "tipo": "unidade",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q043.png"
+ },
+ {
+  "id": "enamed_2025_q043",
+  "campo": "statement",
+  "antes": "100 mm3",
+  "depois": "100 mm³ no local.",
+  "tipo": "sobrescrito",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q043.png"
+ },
+ {
+  "id": "enamed_2025_q045",
+  "campo": "options.C",
+  "antes": "• solicitar",
+  "depois": "solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q045.png"
+ },
+ {
+  "id": "enamed_2025_q045",
+  "campo": "options.C",
+  "antes": "meses, caso",
+  "depois": "meses, caso seja confirmada a tuberculose.",
+  "tipo": "texto_faltando",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q045.png"
+ },
+ {
+  "id": "enamed_2025_q045",
+  "campo": "options.D",
+  "antes": "investigação",
+  "depois": "investigação diagnóstica de tuberculose.",
+  "tipo": "texto_faltando",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q045.png"
+ },
+ {
+  "id": "enamed_2025_q046",
+  "campo": "statement",
+  "antes": "provável'",
+  "depois": "provável?",
+  "tipo": "caractere",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q046.png"
+ },
+ {
+  "id": "enamed_2025_q048",
+  "campo": "options.A",
+  "antes": "cirúrgica",
+  "depois": "cirúrgica.",
+  "tipo": "caractere",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q048.png"
+ },
+ {
+  "id": "enamed_2025_q049",
+  "campo": "statement",
+  "antes": "métodos",
+  "depois": "métodos contraceptivos.",
+  "tipo": "texto_faltando",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q049.png"
+ },
+ {
+  "id": "enamed_2025_q050",
+  "campo": "statement",
+  "antes": "médico",
+  "depois": "médico na consulta",
+  "tipo": "texto_faltando",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q050.png"
+ },
+ {
+  "id": "enamed_2025_q050",
+  "campo": "statement",
+  "antes": "seguimento desse",
+  "depois": "seguimento desse caso?",
+  "tipo": "texto_faltando",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q050.png"
+ },
+ {
+  "id": "enamed_2025_q050",
+  "campo": "options.A",
+  "antes": "Ul subcutânea",
+  "depois": "UI subcutânea",
+  "tipo": "unidade",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q050.png"
+ },
+ {
+  "id": "enamed_2025_q050",
+  "campo": "options.A",
+  "antes": "introdução da",
+  "depois": "introdução da insulina regular.",
+  "tipo": "texto_faltando",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q050.png"
+ },
+ {
+  "id": "enamed_2025_q050",
+  "campo": "options.C",
+  "antes": "3 Ul a",
+  "depois": "3 UI a",
+  "tipo": "unidade",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q050.png"
+ },
+ {
+  "id": "enamed_2025_q051",
+  "campo": "statement",
+  "antes": "Questionado, •",
+  "depois": "Questionado, o",
+  "tipo": "lixo_ocr",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q051.png"
+ },
+ {
+  "id": "enamed_2025_q054",
+  "campo": "statement",
+  "antes": "de anos",
+  "depois": "de 15 anos",
+  "tipo": "texto_faltando",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q054.png"
+ },
+ {
+  "id": "enamed_2025_q055",
+  "campo": "options.A",
+  "antes": "- contra",
+  "depois": "– contra",
+  "tipo": "simbolo",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q055.png"
+ },
+ {
+  "id": "enamed_2025_q055",
+  "campo": "options.B",
+  "antes": "- contra",
+  "depois": "– contra",
+  "tipo": "simbolo",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q055.png"
+ },
+ {
+  "id": "enamed_2025_q055",
+  "campo": "options.C",
+  "antes": "- contra",
+  "depois": "– contra",
+  "tipo": "simbolo",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q055.png"
+ },
+ {
+  "id": "enamed_2025_q055",
+  "campo": "options.D",
+  "antes": "herpes- zoster,",
+  "depois": "herpes-zoster,",
+  "tipo": "caractere",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q055.png"
+ },
+ {
+  "id": "enamed_2025_q055",
+  "campo": "options.D",
+  "antes": "- contra",
+  "depois": "– contra",
+  "tipo": "simbolo",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q055.png"
+ },
+ {
+  "id": "enamed_2025_q056",
+  "campo": "statement",
+  "antes": "território em um",
+  "depois": "território em um processo cíclico, tais como",
+  "tipo": "texto_faltando",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q056.png"
+ },
+ {
+  "id": "enamed_2025_q056",
+  "campo": "options.C",
+  "antes": ") vigilância",
+  "depois": "vigilância",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q056.png"
+ },
+ {
+  "id": "enamed_2025_q058",
+  "campo": "statement",
+  "antes": "38 °C),",
+  "depois": "38 ºC),",
+  "tipo": "unidade",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q058.png"
+ },
+ {
+  "id": "enamed_2025_q060",
+  "campo": "statement",
+  "antes": "°C nas",
+  "depois": "ºC nas",
+  "tipo": "unidade",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q060.png"
+ },
+ {
+  "id": "enamed_2025_q060",
+  "campo": "statement",
+  "antes": "mg/kg'.",
+  "depois": "mg/kg².",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q060.png"
+ },
+ {
+  "id": "enamed_2025_q060",
+  "campo": "statement",
+  "antes": "17.000/mm",
+  "depois": "17.000/mm³",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q060.png"
+ },
+ {
+  "id": "enamed_2025_q060",
+  "campo": "statement",
+  "antes": "10.000/ mm3),",
+  "depois": "10.000/mm³),",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q060.png"
+ },
+ {
+  "id": "enamed_2025_q060",
+  "campo": "statement",
+  "antes": "referência: O",
+  "depois": "referência: 0",
+  "tipo": "caractere",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q060.png"
+ },
+ {
+  "id": "enamed_2025_q062",
+  "campo": "options.A",
+  "antes": "Parte l:",
+  "depois": "Parte I:",
+  "tipo": "caractere",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q062.png"
+ },
+ {
+  "id": "enamed_2025_q062",
+  "campo": "options.B",
+  "antes": "Parte Il:",
+  "depois": "Parte II:",
+  "tipo": "caractere",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q062.png"
+ },
+ {
+  "id": "enamed_2025_q062",
+  "campo": "options.C",
+  "antes": "Parte l:",
+  "depois": "Parte I:",
+  "tipo": "caractere",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q062.png"
+ },
+ {
+  "id": "enamed_2025_q064",
+  "campo": "statement",
+  "antes": "de si O",
+  "depois": "de si. O",
+  "tipo": "caractere",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q064.png"
+ },
+ {
+  "id": "enamed_2025_q064",
+  "campo": "statement",
+  "antes": "estar \"sem",
+  "depois": "estar “sem",
+  "tipo": "simbolo",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q064.png"
+ },
+ {
+  "id": "enamed_2025_q064",
+  "campo": "statement",
+  "antes": "na vida\"",
+  "depois": "na vida”",
+  "tipo": "simbolo",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q064.png"
+ },
+ {
+  "id": "enamed_2025_q064",
+  "campo": "statement",
+  "antes": "\"ninguém",
+  "depois": "“ninguém",
+  "tipo": "simbolo",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q064.png"
+ },
+ {
+  "id": "enamed_2025_q064",
+  "campo": "statement",
+  "antes": "falta\"",
+  "depois": "falta”",
+  "tipo": "simbolo",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q064.png"
+ },
+ {
+  "id": "enamed_2025_q065",
+  "campo": "options.D",
+  "antes": "Willebrand",
+  "depois": "Willebrand.",
+  "tipo": "caractere",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q065.png"
+ },
+ {
+  "id": "enamed_2025_q068",
+  "campo": "statement",
+  "antes": "\"atipias",
+  "depois": "“atipias",
+  "tipo": "simbolo",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q068.png"
+ },
+ {
+  "id": "enamed_2025_q068",
+  "campo": "statement",
+  "antes": "(ASC-H)\".",
+  "depois": "(ASC-H)”.",
+  "tipo": "simbolo",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q068.png"
+ },
+ {
+  "id": "enamed_2025_q069",
+  "campo": "options.C",
+  "antes": "recuperar- se",
+  "depois": "recuperar-se",
+  "tipo": "caractere",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q069.png"
+ },
+ {
+  "id": "enamed_2025_q070",
+  "campo": "options.A",
+  "antes": "ampliar",
+  "depois": "colchões e ampliar",
+  "tipo": "texto_faltando",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q070.png"
+ },
+ {
+  "id": "enamed_2025_q070",
+  "campo": "options.B",
+  "antes": "coletivo",
+  "depois": "coletivo com",
+  "tipo": "texto_faltando",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q070.png"
+ },
+ {
+  "id": "enamed_2025_q072",
+  "campo": "statement",
+  "antes": "kg/m?,",
+  "depois": "kg/m²,",
+  "tipo": "sobrescrito",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q072.png"
+ },
+ {
+  "id": "enamed_2025_q072",
+  "campo": "options.A",
+  "antes": "rifaximina",
+  "depois": "rifaximina.",
+  "tipo": "caractere",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q072.png"
+ },
+ {
+  "id": "enamed_2025_q073",
+  "campo": "statement",
+  "antes": "tônico- clônica",
+  "depois": "tônico-clônica",
+  "tipo": "caractere",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q073.png"
+ },
+ {
+  "id": "enamed_2025_q073",
+  "campo": "statement",
+  "antes": "39,3 °C,",
+  "depois": "39,3 ºC,",
+  "tipo": "unidade",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q073.png"
+ },
+ {
+  "id": "enamed_2025_q075",
+  "campo": "statement",
+  "antes": "41,5 kg/m'",
+  "depois": "41,5 kg/m²",
+  "tipo": "sobrescrito",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q075.png"
+ },
+ {
+  "id": "enamed_2025_q075",
+  "campo": "statement",
+  "antes": "se cares artica maluns meses, esta de",
+  "depois": "se",
+  "tipo": "lixo_ocr",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q075.png"
+ },
+ {
+  "id": "enamed_2025_q076",
+  "campo": "options.A",
+  "antes": "tenofovir/ lamivudina",
+  "depois": "tenofovir/lamivudina",
+  "tipo": "caractere",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q076.png"
+ },
+ {
+  "id": "enamed_2025_q078",
+  "campo": "options.C",
+  "antes": ", Encaminhar",
+  "depois": "Encaminhar",
+  "tipo": "lixo_ocr",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q078.png"
+ },
+ {
+  "id": "enamed_2025_q079",
+  "campo": "statement",
+  "antes": "glicazida. A",
+  "depois": "glicazida. À",
+  "tipo": "caractere",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q079.png"
+ },
+ {
+  "id": "enamed_2025_q079",
+  "campo": "statement",
+  "antes": "38 °C.",
+  "depois": "38 ºC.",
+  "tipo": "unidade",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q079.png"
+ },
+ {
+  "id": "enamed_2025_q079",
+  "campo": "statement",
+  "antes": "14.000/mm3",
+  "depois": "14.000/mm³",
+  "tipo": "sobrescrito",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q079.png"
+ },
+ {
+  "id": "enamed_2025_q079",
+  "campo": "statement",
+  "antes": "10.000/mm'),",
+  "depois": "10.000/mm³),",
+  "tipo": "sobrescrito",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q079.png"
+ },
+ {
+  "id": "enamed_2025_q079",
+  "campo": "statement",
+  "antes": "210.000/mm?.",
+  "depois": "210.000/mm³.",
+  "tipo": "sobrescrito",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q079.png"
+ },
+ {
+  "id": "enamed_2025_q080",
+  "campo": "statement",
+  "antes": "1° minuto",
+  "depois": "1º minuto",
+  "tipo": "simbolo",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q080.png"
+ },
+ {
+  "id": "enamed_2025_q083",
+  "campo": "statement",
+  "antes": "\"presença",
+  "depois": "“presença",
+  "tipo": "simbolo",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q083.png"
+ },
+ {
+  "id": "enamed_2025_q083",
+  "campo": "statement",
+  "antes": "intrapitelial",
+  "depois": "intraepitelial",
+  "tipo": "caractere",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q083.png"
+ },
+ {
+  "id": "enamed_2025_q083",
+  "campo": "statement",
+  "antes": "grau\".",
+  "depois": "grau”.",
+  "tipo": "simbolo",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q083.png"
+ },
+ {
+  "id": "enamed_2025_q086",
+  "campo": "statement",
+  "antes": "encontra- se",
+  "depois": "encontra-se",
+  "tipo": "caractere",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q086.png"
+ },
+ {
+  "id": "enamed_2025_q088",
+  "campo": "statement",
+  "antes": "kg/m?.",
+  "depois": "kg/m².",
+  "tipo": "sobrescrito",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q088.png"
+ },
+ {
+  "id": "enamed_2025_q088",
+  "campo": "options.A",
+  "antes": "Ultrassonografia",
+  "depois": "Ultrassonografia de",
+  "tipo": "texto_faltando",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q088.png"
+ },
+ {
+  "id": "enamed_2025_q088",
+  "campo": "options.A",
+  "antes": "dosagem",
+  "depois": "dosagem de",
+  "tipo": "texto_faltando",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q088.png"
+ },
+ {
+  "id": "enamed_2025_q088",
+  "campo": "options.D",
+  "antes": "dosagem de CA",
+  "depois": "dosagem de CA 19.9.",
+  "tipo": "texto_faltando",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q088.png"
+ },
+ {
+  "id": "enamed_2025_q090",
+  "campo": "options.A",
+  "antes": "de Ul.",
+  "depois": "de UI.",
+  "tipo": "unidade",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q090.png"
+ },
+ {
+  "id": "enamed_2025_q091",
+  "campo": "statement",
+  "antes": "troponina-l,",
+  "depois": "troponina-I,",
+  "tipo": "caractere",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q091.png"
+ },
+ {
+  "id": "enamed_2025_q093",
+  "campo": "options.A",
+  "antes": "lubrificante",
+  "depois": "lubrificante.",
+  "tipo": "caractere",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q093.png"
+ },
+ {
+  "id": "enamed_2025_q094",
+  "campo": "statement",
+  "antes": "e • 3º",
+  "depois": "e o 3º",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q094.png"
+ },
+ {
+  "id": "enamed_2025_q095",
+  "campo": "statement",
+  "antes": "meses. Ac",
+  "depois": "meses. Ao",
+  "tipo": "caractere",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q095.png"
+ },
+ {
+  "id": "enamed_2025_q095",
+  "campo": "statement",
+  "antes": "cutânea Pulso",
+  "depois": "cutânea. Pulso",
+  "tipo": "caractere",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q095.png"
+ },
+ {
+  "id": "enamed_2025_q095",
+  "campo": "options.B",
+  "antes": "espera- se",
+  "depois": "espera-se",
+  "tipo": "caractere",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q095.png"
+ },
+ {
+  "id": "enamed_2025_q097",
+  "campo": "statement",
+  "antes": "<z<+1);",
+  "depois": "< z < +1);",
+  "tipo": "caractere",
+  "pagina": 25,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q097.png"
+ },
+ {
+  "id": "enamed_2025_q097",
+  "campo": "statement",
+  "antes": "(z O),",
+  "depois": "(z 0),",
+  "tipo": "caractere",
+  "pagina": 25,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q097.png"
+ },
+ {
+  "id": "enamed_2025_q098",
+  "campo": "statement",
+  "antes": "37,4 °C.",
+  "depois": "37,4 ºC.",
+  "tipo": "unidade",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/evid/enamed_2025_q098.png"
+ }
+]

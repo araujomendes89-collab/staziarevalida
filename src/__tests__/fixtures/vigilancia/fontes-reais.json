@@ -1,0 +1,234 @@
+{
+  "_origem": {
+    "catalogo": "Amostra do catálogo conferido de fontes (catalogo-v2.json, conferência de 2026-10-12 feita pelos agentes do catálogo, na pasta de trabalho da sessão do coordenador: scratchpad/fontes-catalogo/catalogo-v2.json). Os campos de cada fonte foram copiados por script, sem nenhuma mudança.",
+    "questoes_com_vinculo_validado": "Códigos das questões com vínculo validado a cada fonte no estudo de vínculos de 2026-10-12 (scratchpad/vinculos/revalida_*.json), contados por script.",
+    "retratacao_real": "Artigo retratado de verdade, conferido na API pública do Crossref em 2026-10-12 (o catálogo conferido não tem nenhum artigo retratado). O DOI está como o Crossref devolveu.",
+    "link_recusado": "wses-apendicite-jerusalem-2025: o endereço respondeu HTTP 403 (acesso recusado) a GET feito deste Mac em 2026-10-12 às 23:02 (-03), com e sem identificação de navegador. Na mesma conferência, os outros endereços do catálogo abriram.",
+    "estado_real_vigia": "Contagem do banco de produção passada pelo coordenador em 2026-10-12: 159 fontes vigiadas, 147 'ok', 12 links fora do ar, 0 mudanças.",
+    "dominios_no_catalogo": "Quantidade de endereços vigentes do catálogo por domínio (os 5 maiores; contagem do catálogo, não do banco de produção)."
+  },
+  "fontes": [
+    {
+      "id": "pcdt-avci-agudo-texto-conitec-2022",
+      "titulo": "Protocolo Clínico e Diretrizes Terapêuticas do Acidente Vascular Cerebral Isquêmico Agudo (texto do relatório Conitec, capa \"Brasília - DF 2022\")",
+      "instituicao": "Conitec / Ministério da Saúde",
+      "ano": "2022",
+      "versao": "Texto-base em PDF de 133 páginas hospedado na Conitec (arquivo rr_pcdt-avci-agudo_722_final)",
+      "url": "https://www.gov.br/conitec/pt-br/midias/relatorios/2023/rr_pcdt-avci-agudo_722_final.pdf/@@download/file",
+      "nivel": 3,
+      "status": "revogado",
+      "vigente": false,
+      "ato": "Portaria Conjunta SAES/SECTICS nº 29, de 12/12/2023",
+      "substituido_por": "pcdt-avci-isquemico-agudo-2023",
+      "substitui": null,
+      "fonte_primaria": true,
+      "situacao_atualizacao": "Versão de trabalho (2022) que antecedeu a portaria de 12/12/2023; a vigente é a Portaria Conjunta SAES/SECTICS nº 29/2023 (entrada pcdt-avci-agudo). | 2ª passada (2026-10-12): SUBSTITUÍDO por pcdt-avci-isquemico-agudo-2023.",
+      "observacoes": "O número 722 vem do nome do arquivo (não vi o número no texto que consegui ler). Usar só como referência histórica.",
+      "data_verificacao": "2026-10-12"
+    },
+    {
+      "id": "pcdt-avci-isquemico-agudo-2023",
+      "titulo": "Protocolo Clínico e Diretrizes Terapêuticas do Acidente Vascular Cerebral Isquêmico Agudo",
+      "instituicao": "Ministério da Saúde (SAES e SECTICS)",
+      "ano": "2023",
+      "versao": "Portaria Conjunta SAES/SECTICS nº 29, de 12/12/2023 (Relatórios Conitec nº 589/2021 e nº 677/2021)",
+      "url": "https://www.gov.br/saude/pt-br/assuntos/pcdt/a/acidente-vascular-cerebral-isquemico-agudo",
+      "nivel": 3,
+      "status": "verificado",
+      "vigente": true,
+      "ato": "Portaria Conjunta SAES/SECTICS nº 29, de 12/12/2023",
+      "substituido_por": null,
+      "substitui": [
+        "pcdt-avci-agudo-texto-conitec-2022"
+      ],
+      "fonte_primaria": true,
+      "situacao_atualizacao": "Vigente em 2026-10-12; não achei portaria mais nova nem consulta pública de atualização.",
+      "observacoes": "A página oficial abre um PDF de 83 páginas com a portaria e o protocolo. Área e grande área escolhidas por mim, pois o lote não trazia.",
+      "data_verificacao": "2026-10-12"
+    },
+    {
+      "id": "ms-pcdt-transmissao-vertical-2020",
+      "titulo": "Protocolo Clínico e Diretrizes Terapêuticas para Prevenção da Transmissão Vertical do HIV, Sífilis e Hepatites Virais (PCDT-TV)",
+      "instituicao": "Ministério da Saúde (SCTIE e Secretaria de Vigilância em Saúde)",
+      "ano": "2020",
+      "versao": "Portaria SCTIE/MS nº 55, de 11/11/2020 (revogou a Portaria SCTIE/MS nº 50/2017); PDF de 206 páginas",
+      "url": "https://www.gov.br/conitec/pt-br/midias/protocolos/20201113_pcdt_para_ptv_hiv_final.pdf/@@display-file/file",
+      "nivel": 3,
+      "status": "revogado",
+      "vigente": false,
+      "ato": "Portaria SCTIE/MS nº 55, de 11/11/2020 (texto atualizado na edição de 2022)",
+      "substituido_por": "ms-pcdt-transmissao-vertical-2022",
+      "substitui": null,
+      "fonte_primaria": true,
+      "situacao_atualizacao": "A página de PCDTs do Departamento de HIV/Aids (gov.br/aids, modificada em 17/07/2026) ainda lista esta Portaria 55/2020 como o PCDT-TV, sem aviso de versão mais nova. | 2ª passada (2026-10-12): SUBSTITUÍDO por ms-pcdt-transmissao-vertical-2022.",
+      "observacoes": "O texto do PDF não menciona 2022 nem 'edição'. Ver a linha da edição de 2022.",
+      "data_verificacao": "2026-10-12"
+    },
+    {
+      "id": "ms-pcdt-transmissao-vertical-2022",
+      "titulo": "Protocolo Clínico e Diretrizes Terapêuticas para Prevenção da Transmissão Vertical de HIV, Sífilis e Hepatites Virais",
+      "instituicao": "Ministério da Saúde (SECTICS e SVS)",
+      "ano": "2022",
+      "versao": "2ª edição revisada, Brasília-DF 2022 (224 p.; ISBN 978-65-5993-234-4); ato: Portaria SCTIE/MS nº 55, de 11/11/2020",
+      "url": "https://bvsms.saude.gov.br/bvs/publicacoes/protocolo_clinico_hiv_sifilis_hepatites.pdf",
+      "nivel": 3,
+      "status": "verificado",
+      "vigente": true,
+      "ato": "Portaria SCTIE/MS nº 55, de 11/11/2020",
+      "substituido_por": null,
+      "substitui": [
+        "ms-pcdt-transmissao-vertical-2020"
+      ],
+      "fonte_primaria": true,
+      "situacao_atualizacao": "Edição mais recente achada (2022); não achei edição ou portaria posterior em busca de 2026-10-12.",
+      "observacoes": "Tamanho 2,4 MB é o que a ferramenta informou na abertura. Área e grande área escolhidas por mim, pois o lote não trazia.",
+      "data_verificacao": "2026-10-12"
+    },
+    {
+      "id": "pni-manual-normas-vacinacao-2024-rev",
+      "titulo": "Manual de normas e procedimentos para vacinação",
+      "instituicao": "Ministério da Saúde (Secretaria de Vigilância em Saúde e Ambiente, Departamento do Programa Nacional de Imunizações)",
+      "ano": 2024,
+      "versao": "2ª edição revisada, 2024 (versão eletrônica)",
+      "url": "https://www.gov.br/saude/pt-br/vacinacao/manuais/manual-de-normas-e-procedimentos-para-vacinacao",
+      "nivel": 3,
+      "status": "verificado",
+      "vigente": true,
+      "ato": "Instrução Normativa do Calendário Nacional de Vacinação 2026 (número não visto no PDF)",
+      "substituido_por": null,
+      "substitui": [
+        "pni-manual-normas-vacinacao-2024"
+      ],
+      "fonte_primaria": true,
+      "situacao_atualizacao": "Edição vigente na página oficial de manuais do PNI (gov.br, publicada na página em 10/07/2026 segundo a lista de manuais; o PDF é de 2024). Para o calendário atual use a Instrução Normativa 2026.",
+      "observacoes": "Também vigente: Instrução Normativa do Calendário Nacional de Vacinação - Ano 2026 (PDF https://www.gov.br/saude/pt-br/vacinacao/publicacoes/instrucao-normativa-que-instrui-o-calendario-nacional-de-vacinacao-2026.pdf, aberto, 21 vacinas), sugerida como item próprio do catálogo.",
+      "data_verificacao": "2026-10-12"
+    },
+    {
+      "id": "sbc-ic-2026",
+      "titulo": "Diretriz Brasileira de Insuficiência Cardíaca - 2026",
+      "instituicao": "Sociedade Brasileira de Cardiologia (SBC), Departamento de Insuficiência Cardíaca (DEIC), publicado nos Arquivos Brasileiros de Cardiologia",
+      "ano": "2026",
+      "versao": "Arq Bras Cardiol 2026; v.123, n.10, e20260830; DOI 10.36660/abc.20260830; out/2026; 1º autor Marcus Vinicius Simões",
+      "url": "https://abccardiol.org/article/diretriz-brasileira-de-insuficiencia-cardiaca-2026/",
+      "nivel": 4,
+      "status": "verificado",
+      "vigente": true,
+      "ato": null,
+      "substituido_por": null,
+      "substitui": [
+        "sbc-ic-2018"
+      ],
+      "fonte_primaria": true,
+      "situacao_atualizacao": "Edição mais recente de IC da SBC, publicada em out/2026; substitui a de 2018 e a atualização de 2021.",
+      "observacoes": "PDF em português listado na página: https://abccardiol.org/wp-content/uploads/articles_xml/0066-782x-abc-123-10-e20260830/0066-782x-abc-123-10-e20260830.x69353.pdf (não aberto).",
+      "data_verificacao": "2026-10-12"
+    },
+    {
+      "id": "wses-apendicite-jerusalem-2025",
+      "titulo": "Diagnosis and Treatment of Acute Appendicitis: 2025 Edition of the World Society of Emergency Surgery Jerusalem Guidelines",
+      "instituicao": "World Society of Emergency Surgery (WSES) - JAMA Surgery",
+      "ano": "2026",
+      "versao": "JAMA Surg 2026;161(3):283-295; online 28/01/2026; DOI 10.1001/jamasurg.2025.6218; PMID 41604201",
+      "url": "https://jamanetwork.com/journals/jamasurgery/fullarticle/10.1001/jamasurg.2025.6218",
+      "nivel": 4,
+      "status": "verificado",
+      "vigente": true,
+      "ato": null,
+      "substituido_por": null,
+      "substitui": [
+        "wses-apendicite-jerusalem-2020"
+      ],
+      "fonte_primaria": false,
+      "situacao_atualizacao": "Vigente: edição 2025 das Diretrizes de Jerusalém, publicada em JAMA Surgery em janeiro/2026; substitui a atualização de 2020.",
+      "observacoes": "Sociedade internacional (não é órgão brasileiro/Revalida).",
+      "data_verificacao": "2026-10-12"
+    },
+    {
+      "id": "hda-nao-varicosa-esge-2026",
+      "titulo": "Endoscopic diagnosis and management of peptic ulcer bleeding: ESGE Guideline update 2026",
+      "instituicao": "European Society of Gastrointestinal Endoscopy (ESGE), Endoscopy",
+      "ano": "2026",
+      "versao": "Publicado online antecipado em 13/05/2026; atualiza a diretriz ESGE de 2021 (título e DOI 10.1055/a-2863-8314 vêm de resultado de busca; a página do periódico bloqueou meu acesso)",
+      "url": "https://www.grupomedcof.com.br/blog/?p=7185",
+      "nivel": 4,
+      "status": "versao_a_confirmar",
+      "vigente": true,
+      "ato": null,
+      "substituido_por": null,
+      "substitui": null,
+      "fonte_primaria": false,
+      "situacao_atualizacao": "Existe diretriz ESGE de 2026 que a página abri (blog Medcof) diz 'substituir integralmente a versão de 2021'. Não achei documento brasileiro (SOBED) novo. Fonte primária não aberta.",
+      "observacoes": "URL é de blog secundário. Abrir Endoscopy/Thieme (DOI 10.1055/a-2863-8314) ou PubMed 42127996 com navegador para confirmar título e escopo (a diretriz trata de úlcera péptica sangrante).",
+      "data_verificacao": "2026-10-12"
+    }
+  ],
+  "questoes_com_vinculo_validado": {
+    "pcdt-avci-agudo-texto-conitec-2022": [
+      "REV-2022.2-Q081"
+    ],
+    "pcdt-avci-isquemico-agudo-2023": [],
+    "ms-pcdt-transmissao-vertical-2020": [],
+    "ms-pcdt-transmissao-vertical-2022": [
+      "REV-2020-Q034",
+      "REV-2022.2-Q025",
+      "REV-2022.2-Q099",
+      "REV-2023.1-Q010",
+      "REV-2023.1-Q029",
+      "REV-2024.1-Q038",
+      "REV-2024.1-Q040",
+      "REV-2025.2-Q011"
+    ],
+    "pni-manual-normas-vacinacao-2024-rev": [],
+    "sbc-ic-2026": [],
+    "wses-apendicite-jerusalem-2025": [],
+    "hda-nao-varicosa-esge-2026": []
+  },
+  "retratacao_real": {
+    "titulo_no_crossref": "RETRACTED: Hydroxychloroquine or chloroquine with or without a macrolide for treatment of COVID-19: a multinational registry analysis",
+    "titulo": "Hydroxychloroquine or chloroquine with or without a macrolide for treatment of COVID-19: a multinational registry analysis",
+    "revista": "The Lancet",
+    "publicado": "2020-05",
+    "autores": [
+      "Mehra",
+      "Desai",
+      "Ruschitzka",
+      "Patel"
+    ],
+    "doi": "10.1016/s0140-6736(20)31180-6",
+    "url": "https://doi.org/10.1016/s0140-6736(20)31180-6",
+    "retratacao": {
+      "doi": "10.1016/s0140-6736(20)31324-6",
+      "data": "2020-06-05",
+      "registro": "Retraction Watch (no Crossref)"
+    }
+  },
+  "estado_real_vigia_2026_10_12": {
+    "vigiadas": 159,
+    "ok": 147,
+    "links_fora_do_ar": 12,
+    "mudancas": 0
+  },
+  "dominios_no_catalogo": [
+    {
+      "dominio": "download.inep.gov.br",
+      "fontes": 129
+    },
+    {
+      "dominio": "www.gov.br",
+      "fontes": 107
+    },
+    {
+      "dominio": "bvsms.saude.gov.br",
+      "fontes": 38
+    },
+    {
+      "dominio": "www.sbp.com.br",
+      "fontes": 23
+    },
+    {
+      "dominio": "abccardiol.org",
+      "fontes": 12
+    }
+  ]
+}

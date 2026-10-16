@@ -1,0 +1,22 @@
+[
+ {
+  "id": "enamed_2025_q041",
+  "veredito": "corrigir",
+  "problemas": [
+   "O terceiro ponto de atenção comenta falha de extração do texto do enunciado; isso é observação interna para a revisão e não deve aparecer para o aluno.",
+   "Na alternativa D, afirmar que a creatinina elevada reflete a desidratação é dito com certeza demais; o mais seguro é dizer que provavelmente reflete.",
+   "A conduta sobre insulina e potássio baixo depende de ponto de corte que o enunciado não informa; manter a marcação de conferência de diretriz e encaminhar à revisão médica."
+  ],
+  "severidade": "baixa",
+  "correcoes": {
+   "explicacao": {
+    "D": "Incorreta. A creatinina elevada neste contexto provavelmente reflete a desidratação e não define o diagnóstico. O bicarbonato não faz parte da conduta inicial de rotina, e a acidose tende a melhorar com reposição de volume e insulina."
+   },
+   "pontos_de_atencao": [
+    "Potássio sérico baixo na admissão exige reposição antes de iniciar a insulina.",
+    "A alteração da creatinina costuma ser pré-renal e melhora com hidratação."
+   ]
+  },
+  "precisa_revisao_medica": true
+ }
+]

@@ -79,6 +79,7 @@ beforeAll(async () => {
   for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
+  await db.exec(`update public.ch_flags set value = case key when 'publish_enabled' then true when 'shadow_mode' then false else value end`); // CC19: o aluno só recebe com o modo sombra desligado e a publicação ligada
   for (const [id, email, name] of [
     [ADMIN, "master@teste.dev", "Master"],
     [EDITOR, "editor@teste.dev", "Editora"],
@@ -337,7 +338,7 @@ describe("Q15 — o Início conta, no tema prioritário, só as questões que en
     const topic = "Tema do Início Q15";
     for (const n of [140, 141, 142, 143, 144]) await save(q(n, { topic }));
     await sql(`update public.questions set needs_image = true where id = any ($1)`, [[142, 143].map(idOf)]); // cita figura
-    await sql(`update public.questions set images = '[{"path": "q143.png"}]'::jsonb where id = $1`, [idOf(143)]); // esta tem a imagem
+    await sql(`update public.questions set images = '[{"url": "/question-assets/q143.png", "alt": "Figura da questão 143"}]'::jsonb where id = $1`, [idOf(143)]); // esta tem a imagem (recorte do caderno)
     await sql(`update public.questions set status = 'annulled' where id = $1`, [idOf(144)]);
     // o aluno erra a 140 (a 141 fica sem resposta)
     const s = await session(ANA, [140]);

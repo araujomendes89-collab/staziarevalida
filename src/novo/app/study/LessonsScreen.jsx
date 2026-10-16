@@ -10,7 +10,9 @@ import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
 import { XPToast } from "../play/PlayFeedback.jsx";
 import { durationLabel, lessonFileUrl, lessonsAvailable, materialTitle, sizeLabel, videoEmbed } from "./lessonsApi.js";
+import { canMeasureEnd, clearPendingEnd, createWatchTracker, flushPendingEnds, isMissingFunction, MEASURE_TIMEOUT_MS, parsePlayerMessage, savePendingEnd, subscribeToPlayer, withPlayerApi, xpNote } from "./lessonWatch.js";
 import { PodcastsSection } from "../podcasts/PodcastsSection.jsx";
+import { explainError } from "../../../shared/errors/explicarErro";
 
 const AREA_ICON = { CLINICA_MEDICA: "stethoscope", CIRURGIA_GERAL: "scissors", PEDIATRIA: "baby", GINECOLOGIA_OBSTETRICIA: "heart-pulse", MEDICINA_FAMILIA_COMUNIDADE: "shield-plus" };
 const AREA_COLOR = { CLINICA_MEDICA: "#2F5FD0", CIRURGIA_GERAL: "#D9650A", PEDIATRIA: "#0E8A5F", GINECOLOGIA_OBSTETRICIA: "#C23A74", MEDICINA_FAMILIA_COMUNIDADE: "#6A47E0" };
@@ -46,7 +48,7 @@ export function AreaTabs({ value, onChange, counts }) {
 }
 
 function Poster({ lesson, big, hideTitle = false }) {
-  const c = AREA_COLOR[lesson.area] ?? "#0B6F68";
+  const c = AREA_COLOR[lesson.area] ?? "#0A6FD8";
   return (
     <div style={{ position: "relative", height: "100%", borderRadius: 14, overflow: "hidden", background: `linear-gradient(160deg,${c} 0%,color-mix(in oklab,${c} 45%,#08122B) 100%)`, display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 14, color: "#fff" }}>
       <span style={{ alignSelf: "flex-start", font: "700 10px var(--font-sans)", letterSpacing: ".1em", textTransform: "uppercase", padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,.18)" }}>{areaLabel(lesson.area)}</span>
@@ -74,7 +76,7 @@ function Carousel({ lessons, onOpen }) {
     addEventListener("keydown", k);
     return () => removeEventListener("keydown", k);
   }, []);
-  const c = cur ? AREA_COLOR[cur.area] : "#0B6F68";
+  const c = cur ? AREA_COLOR[cur.area] : "#0A6FD8";
   const CW = mobile ? 180 : 220;
   const CH = mobile ? 250 : 300;
   const GAP = mobile ? 120 : 170;
@@ -127,8 +129,41 @@ function Carousel({ lessons, onOpen }) {
   );
 }
 
-function Video({ url, lesson }) {
+/**
+ * Vídeo da aula. `watch` (A08) recebe o que o player avisa: { onAlive(), onTime(segundos, duração), onEnd() }. YouTube e Vimeo avisam por
+ * mensagens do player incorporado; o arquivo MP4/WebM, pelos eventos do próprio <video>. Link aberto em outra aba não avisa nada.
+ */
+function Video({ url, lesson, watch }) {
   const v = videoEmbed(url);
+  const frame = React.useRef(null);
+  const handlers = React.useRef(watch);
+  handlers.current = watch;
+  const kind = v?.kind;
+  React.useEffect(() => {
+    if (kind !== "youtube" && kind !== "vimeo") return undefined;
+    let alive = false;
+    const listener = (e) => {
+      if (!frame.current || e.source !== frame.current.contentWindow) return;
+      const m = parsePlayerMessage(e.origin, e.data);
+      if (!m) return;
+      alive = true;
+      handlers.current?.onAlive?.();
+      if (m.kind === "ready") subscribeToPlayer(kind, frame.current.contentWindow);
+      else if (m.kind === "time") handlers.current?.onTime?.(m.seconds, m.duration);
+      else if (m.kind === "ended") handlers.current?.onEnd?.();
+    };
+    window.addEventListener("message", listener);
+    // o player só começa a avisar depois do pedido; o pedido se repete até chegar o primeiro aviso
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      if (alive || ++tries > 12 || !frame.current) return window.clearInterval(timer);
+      subscribeToPlayer(kind, frame.current.contentWindow);
+    }, 1000);
+    return () => {
+      window.removeEventListener("message", listener);
+      window.clearInterval(timer);
+    };
+  }, [kind, url]);
   if (!v) {
     // sem vídeo: o pôster da área (como no protótipo), mais baixo, com o aviso
     return (
@@ -140,8 +175,30 @@ function Video({ url, lesson }) {
       </div>
     );
   }
-  if (v.kind === "youtube" || v.kind === "vimeo") return <iframe title="Vídeo da aula" src={v.src} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen style={{ width: "100%", aspectRatio: "16/9", border: 0, borderRadius: 18, background: "#000", display: "block" }} />;
-  if (v.kind === "file") return <video src={v.src} controls preload="metadata" style={{ width: "100%", aspectRatio: "16/9", borderRadius: 18, background: "#000", display: "block" }} />;
+  if (v.kind === "youtube" || v.kind === "vimeo")
+    return (
+      <iframe
+        ref={frame}
+        title="Vídeo da aula"
+        src={withPlayerApi(v.kind, v.src, typeof window !== "undefined" ? window.location.origin : undefined)}
+        onLoad={() => subscribeToPlayer(v.kind, frame.current?.contentWindow)}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        allowFullScreen
+        style={{ width: "100%", aspectRatio: "16/9", border: 0, borderRadius: 18, background: "#000", display: "block" }}
+      />
+    );
+  if (v.kind === "file")
+    return (
+      <video
+        src={v.src}
+        controls
+        preload="metadata"
+        onLoadedMetadata={() => watch?.onAlive?.()}
+        onTimeUpdate={(e) => watch?.onTime?.(e.currentTarget.currentTime, e.currentTarget.duration)}
+        onEnded={() => watch?.onEnd?.()}
+        style={{ width: "100%", aspectRatio: "16/9", borderRadius: 18, background: "#000", display: "block" }}
+      />
+    );
   return (
     <a href={v.src} target="_blank" rel="noreferrer" style={{ display: "flex", aspectRatio: "16/9", borderRadius: 18, background: "#000", alignItems: "center", justifyContent: "center", gap: 8, color: "#fff", font: "600 14px var(--font-sans)" }}>
       <Icon name="external-link" size={18} /> Abrir o vídeo em outra aba
@@ -191,7 +248,7 @@ function Material({ m, backend }) {
       setState({ url, busy: false, error: null });
       return url;
     } catch (error) {
-      setState({ url: null, busy: false, error: error.message });
+      setState({ url: null, busy: false, error: explainError(error) });
       return null;
     }
   };
@@ -239,14 +296,101 @@ function Material({ m, backend }) {
 }
 
 export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
-  const { backend, boot } = useSession();
+  const { backend, boot, user } = useSession();
   const mobile = useMobile();
   const [lesson, setLesson] = React.useState(initial);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState(null);
   const [play, setPlay] = React.useState(null);
-  const c = AREA_COLOR[lesson.area] ?? "#0B6F68";
+  const c = AREA_COLOR[lesson.area] ?? "#0A6FD8";
   const done = Boolean(lesson.progress?.completed_at);
+  const embed = videoEmbed(lesson.video_url);
+  const measurable = canMeasureEnd(embed);
+  // A08: o XP da conclusão só vem de quem assistiu a aula COMPLETA; o navegador mede os trechos assistidos, o player avisa o fim e
+  // o banco guarda (app_lesson_watch). Fim validado e ainda não confirmado fica guardado neste aparelho e é reenviado depois.
+  const [watch, setWatch] = React.useState({ endedAt: lesson.progress?.watched_to_end_at ?? null, measure: measurable ? "waiting" : "none", supported: true });
+  const tracker = React.useRef(createWatchTracker());
+  const sent = React.useRef({ max: 0, ended: false });
+  const live = React.useRef({});
+  live.current = { backend, id: lesson.id, uid: user?.id ?? null };
+  const retry = React.useRef({ timer: null, n: 0 });
+  const mounted = React.useRef(true);
+  const confirmed = React.useCallback((r) => {
+    if (!mounted.current) return;
+    setWatch((w) => ({ ...w, endedAt: r.watched_to_end_at ?? w.endedAt }));
+    setLesson((l) => ({ ...l, progress: { ...(l.progress ?? {}), ...r } }));
+    if (r.xp) setPlay({ xp: { total: r.xp, valid: true }, bonus: [], coins: 0 });
+  }, []);
+  const report = React.useCallback(async () => {
+    const { backend: b, id, uid } = live.current;
+    const t = tracker.current;
+    const watched = t.watched;
+    const wantEnd = t.ended && !sent.current.ended;
+    if (!wantEnd && watched <= sent.current.max) return;
+    if (wantEnd) savePendingEnd(uid, id, { seconds: watched, duration: t.length }); // guardado antes de enviar: rede ou SQL ausente não perdem o fim
+    const before = { ...sent.current };
+    sent.current = { max: Math.max(watched, before.max), ended: before.ended || wantEnd };
+    try {
+      const r = await b.rpc("app_lesson_watch", { p_id: id, p_seconds: watched, p_ended: wantEnd, p_duration: t.length || null });
+      if (!r) return;
+      if (wantEnd) clearPendingEnd(uid, id); // o banco respondeu: aceitou o fim, ou não o aceita (não adianta repetir)
+      confirmed(r);
+    } catch (error) {
+      sent.current = before; // não chegou ao banco
+      if (isMissingFunction(error)) {
+        // site novo + SQL antigo: a tela volta a se comportar como antes (sem prometer XP pelo fim); o fim guardado segue para quando o SQL chegar
+        if (mounted.current) setWatch((w) => ({ ...w, supported: false }));
+      } else if (mounted.current && retry.current.n < 3 && !retry.current.timer) {
+        retry.current.timer = window.setTimeout(() => {
+          retry.current.timer = null;
+          retry.current.n += 1;
+          report();
+        }, 5000 * 3 ** retry.current.n);
+      }
+    }
+  }, [confirmed]);
+  const watcher = React.useMemo(
+    () => ({
+      onAlive: () => setWatch((w) => (w.measure === "waiting" || w.measure === "unavailable" ? { ...w, measure: "ok" } : w)),
+      onTime: (t, total) => (tracker.current.time(t, total), setWatch((w) => (w.measure === "ok" ? w : { ...w, measure: "ok" }))),
+      onEnd: () => {
+        if (tracker.current.end()) report();
+      },
+    }),
+    [report]
+  );
+  React.useEffect(() => {
+    let alive = true;
+    Promise.resolve()
+      .then(() => backend.rpc("app_lesson_watch_state", { p_id: lesson.id }))
+      .then((r) => alive && r?.watched_to_end_at && setWatch((w) => ({ ...w, endedAt: r.watched_to_end_at })))
+      .catch((error) => alive && isMissingFunction(error) && setWatch((w) => ({ ...w, supported: false }))); // sem o SQL novo: como antes
+    flushPendingEnds(backend, user?.id, (id, r) => id === lesson.id && confirmed(r)); // fim guardado de uma visita anterior
+    return () => {
+      alive = false;
+    };
+  }, [backend, lesson.id, user?.id, confirmed]);
+  React.useEffect(() => {
+    if (!measurable) return undefined;
+    const timer = window.setTimeout(() => setWatch((w) => (w.measure === "waiting" ? { ...w, measure: "unavailable" } : w)), MEASURE_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [measurable, lesson.id]);
+  React.useEffect(() => {
+    const again = () => void report();
+    window.addEventListener("online", again);
+    return () => window.removeEventListener("online", again);
+  }, [report]);
+  React.useEffect(
+    () => {
+      mounted.current = true;
+      return () => {
+        mounted.current = false;
+        window.clearTimeout(retry.current.timer);
+        void report(); // ao sair da aula: o fim ainda não confirmado é reenviado e o tempo assistido guardado
+      };
+    },
+    [report]
+  );
   const train = async () => {
     setBusy(true);
     setError(null);
@@ -297,11 +441,13 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
             </Button>
           </div>
         </div>
-        <Video url={lesson.video_url} lesson={lesson} />
+        <Video url={lesson.video_url} lesson={lesson} watch={watcher} />
       </div>
       {error && <Banner tone="danger">{error}</Banner>}
       {play && <XPToast play={play} />}
-      {boot?.play?.enabled && !done && <p style={{ margin: 0, font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Concluir a aula vale XP na Stazia Arena (uma vez por aula).</p>}
+      {boot?.play?.enabled && xpNote({ embed, measure: watch.measure, done, ended: Boolean(watch.endedAt), supported: watch.supported }) && (
+        <p role="note" style={{ margin: 0, font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{xpNote({ embed, measure: watch.measure, done, ended: Boolean(watch.endedAt), supported: watch.supported })}</p>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "minmax(0,1.6fr) minmax(280px,1fr)", gap: 20, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <Card style={{ borderRadius: 24 }} padding={mobile ? 18 : 24}>
@@ -355,7 +501,7 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
 }
 
 export function LessonsScreen({ go }) {
-  const { backend } = useSession();
+  const { backend, user } = useSession();
   useCarouselStyles();
   const [area, setArea] = React.useState("");
   const [q, setQ] = React.useState("");
@@ -363,6 +509,9 @@ export function LessonsScreen({ go }) {
   const [error, setError] = React.useState(null);
   const [open, setOpen] = React.useState(null);
   const [tick, setTick] = React.useState(0);
+  React.useEffect(() => {
+    flushPendingEnds(backend, user?.id); // fim de aula que não chegou ao banco numa visita anterior (rede ou SQL ainda ausente)
+  }, [backend, user?.id]);
   React.useEffect(() => {
     let alive = true;
     setError(null);

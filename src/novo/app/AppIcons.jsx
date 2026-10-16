@@ -3,6 +3,7 @@
 // (classes ri-*). O arquivo do protótipo é gerado a partir do Design System e não é editado à mão; por isso estes ficam aqui.
 import React from "react";
 import { RealIcon } from "../prototype/RealIcons.jsx";
+import { NOVAS_TELAS_ICONS } from "./AppIconsNovasTelas.jsx";
 
 const g = (id, a, b, x2 = "0", y2 = "1") => (
   <linearGradient id={id} x1="0" y1="0" x2={x2} y2={y2}>
@@ -20,8 +21,8 @@ const DEF = {
     d: (p) => (
       <>
         <defs>
-          {g(p + "r", "#6CDDD2", "#0B7F76", "1", "0")}
-          {g(p + "a", "#6CDDD2", "#0B7F76")}
+          {g(p + "r", "#7AC2FF", "#0A5FC4", "1", "0")}
+          {g(p + "a", "#7AC2FF", "#0A5FC4")}
           {g(p + "b", "#7C9BE0", "#1E3F8A")}
           {g(p + "f", "#FF7B72", "#D63B3B")}
         </defs>
@@ -44,7 +45,7 @@ const DEF = {
       <>
         <defs>
           {g(p + "t", "#FF7B72", "#D63B3B")}
-          {g(p + "s", "#6CDDD2", "#0B7F76")}
+          {g(p + "s", "#7AC2FF", "#0A5FC4")}
         </defs>
         <circle cx="15" cy="17.5" r="11.5" fill={u(p, "t")} />
         <circle cx="15" cy="17.5" r="8.4" fill="#fff" />
@@ -102,11 +103,30 @@ const DEF = {
       <>
         <defs>
           {g(p + "s", "#FFD2B0", "#E8A77E")}
-          {g(p + "a", "#3CCFC2", "#0B7F76")}
+          {g(p + "a", "#4DB2FF", "#0A5FC4")}
         </defs>
         <circle cx="16" cy="10.5" r="5.6" fill={u(p, "s")} />
         <path d="M5.5 28c0-6 4.7-10.5 10.5-10.5S26.5 22 26.5 28z" fill={u(p, "a")} />
         <path d="M12.3 7.4a4.6 4.6 0 0 1 3.3-1.6" stroke={SH} strokeWidth="1" strokeLinecap="round" />
+      </>
+    ),
+  },
+  // Mapas Mentais: tema central com ramos coloridos
+  network: {
+    an: "pop",
+    d: (p) => (
+      <>
+        <defs>
+          {g(p + "c", "#3D6FD6", "#0F2E7A")}
+          {g(p + "a", "#7AC2FF", "#0A5FC4")}
+          {g(p + "o", "#FFB15C", "#D9650A")}
+        </defs>
+        <path d="M13 13 7 8M19 13l6-5M13 19l-6 5M19 19l6 5" stroke="#9AA7BD" strokeWidth="1.6" strokeLinecap="round" />
+        <circle cx="16" cy="16" r="5.4" fill={u(p, "c")} />
+        <circle cx="6.5" cy="7" r="3.2" fill={u(p, "a")} />
+        <circle cx="25.5" cy="7" r="3.2" fill={u(p, "o")} />
+        <circle cx="6.5" cy="25" r="3.2" fill={u(p, "o")} />
+        <circle cx="25.5" cy="25" r="3.2" fill={u(p, "a")} />
       </>
     ),
   },
@@ -118,7 +138,7 @@ const DEF = {
         <defs>
           {g(p + "b", "#7C9BE0", "#1E3F8A")}
           {g(p + "s", "#E9F0FF", "#C6D4F2")}
-          {g(p + "a", "#6CDDD2", "#0B7F76")}
+          {g(p + "a", "#7AC2FF", "#0A5FC4")}
         </defs>
         <rect x="3" y="5" width="26" height="18" rx="3.2" fill={u(p, "b")} />
         <rect x="5.4" y="7.4" width="21.2" height="13.2" rx="1.6" fill={u(p, "s")} />
@@ -160,7 +180,7 @@ const DEF = {
       <>
         <defs>
           {g(p + "b", "#7C9BE0", "#1E3F8A")}
-          {g(p + "t", "#6CDDD2", "#0B7F76")}
+          {g(p + "t", "#7AC2FF", "#0A5FC4")}
           {g(p + "o", "#FFB15C", "#D9650A")}
         </defs>
         <path d="M14.5 6.2A11.3 11.3 0 1 0 25.8 17.5H14.5z" fill={u(p, "b")} />
@@ -174,6 +194,15 @@ const DEF = {
 
 /** Ícone ilustrado: o do protótipo quando existe; senão, os desenhados aqui; senão, nada (quem chama usa o ícone de linha). */
 export function AppRealIcon({ name, size = 28 }) {
+  // desenhos novos do pacote "Novas telas" (onda 2) têm prioridade sobre os antigos
+  const N = NOVAS_TELAS_ICONS[name];
+  if (N) {
+    return (
+      <svg className={`ri ri-${N.an}`} width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" style={{ flexShrink: 0, filter: "drop-shadow(0 2px 2px rgba(13,28,66,.18))", overflow: "visible" }}>
+        {N.d()}
+      </svg>
+    );
+  }
   const base = RealIcon({ name, size });
   if (base) return base;
   const D = DEF[name];

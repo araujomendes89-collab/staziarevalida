@@ -1,0 +1,12 @@
+[
+ {
+  "id": "revalida_2023_1_q011",
+  "arquivo": "revalida_2023_1_q011-tabela.png",
+  "alt": "Três tabelas de exames da paciente, com resultado e valores de referência: hemograma (hemácias, hemoglobina, hematócrito, leucócitos, plaquetas, com valores para mulheres e homens), coagulograma e outros exames laboratoriais, como Coombs e enzima ADAMTS13.",
+  "tabela_removida_do_texto": "Valores de referência Hemograma Resultado Mulheres Homens Hemácias 4,0 x 1012/L 0,5-4,3 x 1012/L 0,5-5,0 x 1012/L Hemoglobina 10 g/dL 12,0-16,0 g/dL 13,5-17,5 g/dL Hematócrito 30% 36-46 (%) 41-53 (%) Leucócitos 5,0 x 103/L 3,0-7,0 x 103/L Plaquetas 10 x 103/L 150-400 x 103/L OBS.: foram observadas macroplaquetas na lâmina do esfregaço de sangue. Valor de Coagulograma Resultado referência TP (tempo de protrombina) 12 seg 11,7±0,5 seg Atividade 100% 70 a 120% RNI (razão Normalizada Internacional) 1,0 1,0 TTPA (tempo de tromboplastina parcial ativada) 20 seg 22 a 40 seg R (relação = tempo paciente/tempo de 1,0 0,8 a 1,3 controle interno) Outros exames laboratoriais Resultado Valor de referência Ureia 30 mg/dL 13 a 43 mg/dL Creatinina 0,8 mg/dL 0,6 a 1,2 mg/dL DHL (desidrogenase lática) 150 U/dL 125 a 220 U/dL Bilirrubina total 1,0 mg/dL Até 1,2 mg/dL Bilirrubina direta 0,3 mg/dL Até 0,3 mg/dL Bilirrubina indireta 0,6 mg/dL Até 0,6 mg/dL Teste de Coombs direto Negativo Negativo Teste de Coombs indireto Negativo Negativo Atividade da enzima ADAMTS13 >10% ≥10%",
+  "pagina": 4,
+  "arquivo_origem": "revisao-questoes/revalida_2023_1/tabelas/revalida_2023_1_q011.png",
+  "sha256": "36a0475d4ba6ecc399037b6407a25b2e7bab786d6be0ac87d0a7ed6a1a0f8b30",
+  "tamanho": 133073
+ }
+]

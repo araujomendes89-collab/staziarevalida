@@ -1,136 +1,123 @@
-// Grandes Temas: incidência REAL nas questões oficiais catalogadas (Revalida e ENAMED).
-// Só contagens, com o método à vista. Nada de "recorrência" estimada ou previsão de prova.
+// Grandes Temas: os 100 Grandes Temas Prioritários do StaziaMed, nas 7 áreas, com a contagem REAL de questões oficiais
+// catalogadas (Revalida e ENAMED) ligadas a cada tema. Seleção pedagógica, não é ranking do Inep nem previsão de prova.
+// Os dados vêm de app_grandes_temas (migração 9960); o treino do tema usa o filtro grande_tema do sorteio de questões.
 import React from "react";
-import { Badge, Banner, Button, Card, EmptyState, SegmentedControl, TextField } from "../../ds";
+import { Banner, EmptyState, TextField } from "../../ds";
+import { AreaBloco, AreaFiltro, Recolhivel } from "./casca.jsx";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { LoadError, Loading, useDebounced, useLoad } from "../admin/common.jsx";
-import { AREAS, areaLabel } from "../practice/format.js";
-import { TutorButton } from "../tutor/TutorDrawer.jsx";
+import { TemaAula } from "./TemaAula.jsx";
+import { TemaCartao } from "./TemaCartao.jsx";
+import { useInRouterContext, useSearchParams } from "react-router-dom";
+import "./temas.css";
 
-const DIMENSIONS = [
-  { value: "subarea", label: "Subárea" },
-  { value: "competency", label: "Competência" },
-  { value: "topic", label: "Tema detalhado" },
-];
+// Sem acento e em minúsculas, para a busca achar "ginecologia" em "Ginecologia" e "pre natal" em "pré-natal".
+const fold = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
-// O motor classifica com códigos em inglês; aqui só a tradução do rótulo (sem mudar o sentido).
-const LABELS = {
-  INFECTIOUS_DISEASES: "Infectologia", GASTROENTEROLOGY_HEPATOLOGY: "Gastroenterologia e hepatologia", NEUROLOGY: "Neurologia", HEMATOLOGY_ONCOLOGY: "Hematologia e oncologia",
-  CARDIOLOGY: "Cardiologia", ENDOCRINOLOGY: "Endocrinologia", PULMONOLOGY: "Pneumologia", PSYCHIATRY: "Psiquiatria", DERMATOLOGY: "Dermatologia",
-  CLINICAL_EMERGENCIES: "Emergências clínicas", RHEUMATOLOGY: "Reumatologia", NEPHROLOGY_ELECTROLYTES: "Nefrologia e eletrólitos", GERIATRICS: "Geriatria",
-  PRIMARY_CARE: "Atenção primária", ETHICS_COMMUNICATION: "Ética e comunicação", HEALTH_SURVEILLANCE: "Vigilância em saúde", SUS_HEALTH_SYSTEM: "SUS e sistema de saúde",
-  PREVENTION_SCREENING: "Prevenção e rastreamento", EPIDEMIOLOGY_BIOSTATISTICS: "Epidemiologia e bioestatística", OCCUPATIONAL_HEALTH: "Saúde do trabalhador",
-  MENTAL_HEALTH_PRIMARY_CARE: "Saúde mental na atenção primária", IMMUNIZATION_PUBLIC_HEALTH: "Imunização (saúde pública)",
-  TRAUMA_ATLS: "Trauma (ATLS)", PERIOPERATIVE_CARE: "Cuidados perioperatórios", UROLOGY: "Urologia", COLOPROCTOLOGY: "Coloproctologia", ACUTE_ABDOMEN: "Abdome agudo",
-  ORTHOPEDICS_TRAUMA: "Ortopedia e trauma", BURNS: "Queimaduras", VASCULAR_SURGERY: "Cirurgia vascular", HERNIAS: "Hérnias",
-  OBSTETRICS: "Obstetrícia", GYNECOLOGY: "Ginecologia",
-  NEONATOLOGY: "Neonatologia", PEDIATRIC_GASTRO_NUTRITION: "Gastroenterologia e nutrição pediátricas", PEDIATRIC_EMERGENCIES: "Emergências pediátricas",
-  WELL_CHILD_CARE_GROWTH_DEVELOPMENT: "Puericultura, crescimento e desenvolvimento", PEDIATRIC_RESPIRATORY: "Respiratório pediátrico", IMMUNIZATION: "Imunização",
-  PEDIATRIC_INFECTIOUS_EXANTHEMS: "Exantemas e infecciosas pediátricas", PEDIATRIC_ENDOCRINOLOGY: "Endocrinologia pediátrica", PEDIATRIC_NEUROLOGY: "Neurologia pediátrica",
-  PEDIATRIC_NEPHROLOGY: "Nefrologia pediátrica", PEDIATRIC_HEMATOLOGY_ONCOLOGY: "Hematologia e oncologia pediátricas",
-  // competências
-  SELECT_TREATMENT: "Escolher o tratamento", DIAGNOSIS: "Diagnóstico", SELECT_DIAGNOSTIC_TEST: "Escolher exame diagnóstico", EMERGENCY_STABILIZATION: "Estabilização na emergência",
-  PHARMACOLOGIC_TREATMENT: "Tratamento medicamentoso", PUBLIC_HEALTH_ACTION: "Ação de saúde pública", SURGICAL_MANAGEMENT: "Conduta cirúrgica", ETHICAL_LEGAL_DECISION: "Decisão ético-legal",
-  INTERPRET_DIAGNOSTIC_TEST: "Interpretar exame", FOLLOW_UP: "Seguimento", PREVENTION: "Prevenção", REFERRAL: "Encaminhamento", SCREENING: "Rastreamento", VACCINATION: "Vacinação",
-  EPIDEMIOLOGIC_REASONING: "Raciocínio epidemiológico", NONPHARMACOLOGIC_TREATMENT: "Tratamento não medicamentoso", INITIAL_ASSESSMENT: "Avaliação inicial",
-  CONTRAINDICATION_ASSESSMENT: "Avaliar contraindicação", RISK_STRATIFICATION: "Estratificar risco", RECOGNIZE_COMPLICATION: "Reconhecer complicação",
-  RISK_FACTOR_ASSESSMENT: "Avaliar fatores de risco", DIFFERENTIAL_DIAGNOSIS: "Diagnóstico diferencial", PROGNOSIS: "Prognóstico",
-};
-// Código sem tradução cadastrada aparece como veio, em vez de ganhar um nome inventado.
-const pretty = (key) => LABELS[key] ?? key;
+/** Qual aula está aberta: guardado no endereço (?aula=ordem, sem código interno) para o botão Voltar do navegador funcionar; sem roteador (testes), em memória. */
+function useAulaAberta() {
+  const inRouter = useInRouterContext();
+  const local = React.useState(null);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const url = inRouter ? useSearchParams() : null;
+  if (!url) return local;
+  const [params, setParams] = url;
+  const value = params.get("aula");
+  return [value ? Number(value) : null, (next) => setParams(next ? { aula: String(next) } : {}, { replace: false })];
+}
+
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 export function ThemesScreen({ go }) {
   const { backend } = useSession();
   const mobile = useMobile();
-  const [dimension, setDimension] = React.useState("subarea");
   const [area, setArea] = React.useState("");
   const [search, setSearch] = React.useState("");
-  const q = useDebounced(search, 200);
+  const q = fold(useDebounced(search, 200));
+  const [aberta, setAberta] = useAulaAberta();
+  const scroll = React.useRef(null);
   const [starting, setStarting] = React.useState(null);
   const [startError, setStartError] = React.useState(null);
-  const { data, error, reload } = useLoad(() => backend.rpc("app_incidence", { p_dimension: dimension, p_area: area || null }), [backend, dimension, area]);
+  const { data, error, reload } = useLoad(() => backend.rpc("app_grandes_temas"), [backend]);
+  // Temas com aula PUBLICADA (só o aluno vê o botão nesses). Se a função ainda não existe no banco, simplesmente não há botão.
+  const { data: comAula } = useLoad(() => backend.rpc("app_temas_com_aula").catch(() => []), [backend]);
+  const temAula = React.useMemo(() => new Set(Array.isArray(comAula) ? comAula : []), [comAula]);
+  // Progresso real da aula (seções estudadas), que a própria aula calcula quando é aberta; fica guardado enquanto a tela vive.
+  const [progresso, setProgresso] = React.useState({});
+  const onProgresso = React.useCallback((id, pct) => setProgresso((p) => (p[id] === pct ? p : { ...p, [id]: pct })), []);
+  // Ao voltar da aula, a lista volta para o mesmo ponto (filtro e busca ficam guardados porque esta tela não é desmontada).
+  React.useLayoutEffect(() => {
+    if (aberta == null && scroll.current != null) window.scrollTo({ top: scroll.current, behavior: "instant" });
+  }, [aberta]);
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
 
-  // revalida-2024-1 → "Rev. 2024/1" · enamed-2025 → "ENAMED 2025"
-  const examName = (id) => {
-    const m = id.match(/^(revalida|enamed)-(\d{4})(?:-(\d))?$/);
-    return m ? `${m[1] === "enamed" ? "ENAMED" : "Rev."} ${m[2]}${m[3] ? `/${m[3]}` : ""}` : id;
+  const openAula = (t) => {
+    scroll.current = window.scrollY;
+    setAberta(t.order);
+    window.scrollTo({ top: 0, behavior: "instant" });
   };
-  const rows = data.rows.filter((r) => pretty(r.key).toLowerCase().includes(q.trim().toLowerCase()));
-  const max = rows[0]?.total ?? 1;
-  const train = async (r) => {
-    if (dimension === "topic") return go("questoes", { area: r.area, tema: r.key });
-    // subárea e competência: começa um treino de 20 questões desse recorte (sem repetir equivalentes)
-    setStarting(r.key);
+  const themes = data.themes.filter(
+    (t) => (!area || t.area === area) && (!q || fold(`${t.title} ${t.subarea ?? ""} ${t.area_name}`).includes(q))
+  );
+  const groups = data.areas.map((a) => ({ ...a, items: themes.filter((t) => t.area === a.id) })).filter((g) => g.items.length > 0);
+
+  const train = async (t) => {
+    setStarting(t.id);
     setStartError(null);
     try {
-      const filters = dimension === "subarea" ? { subarea: r.key } : { competency: r.key, ...(area ? { area } : {}) };
-      const started = await backend.rpc("app_start_session", { p_kind: "questoes", p_filters: filters, p_count: 20 });
+      const started = await backend.rpc("app_start_session", { p_kind: "questoes", p_filters: { grande_tema: t.id }, p_count: 20 });
       go("sessao", { s: started.session_id });
     } catch (e) {
-      setStartError("Não há questões disponíveis nesse recorte agora.");
+      setStartError("Não há questões disponíveis nesse tema agora.");
       setStarting(null);
     }
   };
 
+  const aulaTema = aberta != null ? data.themes.find((t) => t.order === aberta && temAula.has(t.id)) : null;
+  if (aulaTema) {
+    return <TemaAula tema={aulaTema} mobile={mobile} onBack={() => setAberta(null)} go={{ train, flash: () => go("flash") }} onProgresso={onProgresso} />;
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Banner tone="info" icon="chart-column" title="Como contamos">
-        {data.method} Nesta contagem: {data.counted} questões, {data.annulled} anuladas (fora) e {data.unclassified} sem classificação detalhada.
-      </Banner>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-        <div style={{ flex: "1 1 280px" }}>
-          <TextField icon="search" aria-label="Buscar" placeholder="Buscar tema, subárea ou competência" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <SegmentedControl label="Agrupar por" value={dimension} onChange={setDimension} options={DIMENSIONS} />
-      </div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }} role="group" aria-label="Grande área">
-        {[{ id: "", label: "Todas" }, ...AREAS].map((a) => (
-          <button key={a.id} type="button" className={`sm-chip${area === a.id ? " is-selected" : ""}`} aria-pressed={area === a.id} onClick={() => setArea(a.id)}>
-            {a.label}
-          </button>
-        ))}
-      </div>
+      <Recolhivel titulo="Como contamos">
+        {data.method} Hoje o catálogo tem {plural(data.official_total, "questão oficial", "questões oficiais")} (fora as {data.annulled} anuladas):{" "}
+        {data.linked} {data.linked === 1 ? "está ligada" : "estão ligadas"} a algum dos 100 temas e {data.unlinked} ainda não {data.unlinked === 1 ? "tem" : "têm"} tema,
+        porque o assunto delas fica fora dos 100 temas ou não tem uma casa clara.
+      </Recolhivel>
+      <div className="ap-busca"><TextField icon="search" aria-label="Buscar" placeholder="Buscar tema, subárea ou área" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+      <AreaFiltro valor={area} onChange={setArea} itens={[{ id: "", label: "Todas", k: "todas" }, ...data.areas.map((a) => ({ id: a.id, label: a.name, k: a.id }))]} />
       {startError && <Banner tone="warning">{startError}</Banner>}
-      <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
-        {rows.length} {rows.length === 1 ? "item" : "itens"}
-      </div>
-      {rows.length === 0 && <EmptyState icon="search" title="Nada encontrado" description="Tente outra busca ou outra área." />}
-      <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "repeat(auto-fill,minmax(320px,1fr))", gap: 16 }}>
-        {rows.map((r) => (
-          <Card key={r.key} padding={20} style={{ borderRadius: 20, display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-              {r.area ? <Badge size="sm">{areaLabel(r.area)}</Badge> : <span />}
-              <Badge size="sm" tone="brand">
-                {r.total} {r.total === 1 ? "questão" : "questões"} · {Object.keys(r.by_exam).length} {Object.keys(r.by_exam).length === 1 ? "prova" : "provas"}
-              </Badge>
+      <div className="ap-conta">{plural(themes.length, "tema", "temas")}</div>
+      {themes.length === 0 && <EmptyState icon="search" title="Nada encontrado" description="Tente outra busca ou outra área." />}
+      {groups.map((g) => (
+        <section key={g.id} aria-labelledby={`gt-${g.id}`} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="ap-grupo">
+            <AreaBloco k={g.id} tamanho={40} />
+            <div className="ap-grupo-tx">
+              <h2 id={`gt-${g.id}`} className="ap-grupo-nome">
+                {g.name}
+                <span className="ap-grupo-sub">{plural(g.themes, "tema", "temas")} · {plural(g.questions, "questão ligada", "questões ligadas")}</span>
+              </h2>
             </div>
-            <div style={{ font: "600 16px/1.35 var(--font-sans)", overflowWrap: "anywhere" }}>{pretty(r.key)}</div>
-            <div style={{ height: 6, borderRadius: 999, background: "var(--chart-track)" }} aria-hidden="true">
-              <div style={{ width: `${Math.max((r.total / max) * 100, 4)}%`, height: "100%", borderRadius: 999, background: "var(--chart-1)" }} />
-            </div>
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-              {Object.entries(r.by_exam)
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([id, n]) => (
-                  <span key={id} style={{ font: "var(--type-caption)", color: "var(--text-secondary)", background: "var(--surface-sunken)", borderRadius: 6, padding: "2px 6px" }}>
-                    {examName(id)}: {n}
-                  </span>
-                ))}
-            </div>
-            <div style={{ marginTop: "auto", paddingTop: 10, borderTop: "1px solid var(--border-subtle)" }}>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                <Button variant="link" size="sm" iconRight="chevron-right" loading={starting === r.key} onClick={() => train(r)}>
-                  Treinar {dimension === "topic" ? "este tema" : dimension === "subarea" ? "esta subárea" : "esta competência"}
-                </Button>
-                <TutorButton request={{ mode: "perguntas", topic: pretty(r.key), context: { type: "theme", id: r.key, label: pretty(r.key), area: r.area ?? undefined } }} label="Me teste" variant="ghost" />
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+          </div>
+          <div className="gt-grade">
+            {g.items.map((t) => (
+              <TemaCartao
+                key={t.id}
+                t={t}
+                aula={temAula.has(t.id)}
+                progresso={progresso[t.id]}
+                starting={starting === t.id}
+                onAbrir={() => openAula(t)}
+                onTreinar={() => train(t)}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

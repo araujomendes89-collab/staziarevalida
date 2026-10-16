@@ -1,0 +1,50 @@
+[
+ {
+  "id": "revalida_2021_1_q064",
+  "tema": "Prevenção e rastreamento",
+  "subtema": "Rastreamento do câncer do colo do útero: idade de início",
+  "o_que_a_questao_avalia": "Saber a idade de início do rastreamento do câncer do colo do útero no Brasil e aplicá-la a uma adolescente assintomática que pede o exame. A banca monta o caso com uma jovem que já iniciou a vida sexual justamente para ver se o aluno troca a regra da idade pela antiga lógica de começar após a primeira relação.",
+  "conduta_esperada": "Acolher a adolescente, colher a história clínica e explicar que, sem sintomas, ela não precisa fazer o exame preventivo agora, porque o rastreamento começa aos 25 anos. A razão é que, antes dessa idade, as alterações causadas pelo HPV costumam regredir sozinhas, e rastrear cedo leva a procedimentos desnecessários que podem prejudicar gestações futuras. A consulta é uma boa oportunidade para orientar prevenção de infecções sexualmente transmissíveis, uso de preservativo e conferir a situação vacinal.",
+  "explicacao": {
+   "A": "Incorreta. O exame clínico e ginecológico pode até ser feito se houver queixa, mas coletar citopatológico aos 18 anos, em mulher sem sintomas, contraria a recomendação brasileira de rastreamento, que começa aos 25 anos. O início da atividade sexual não antecipa o rastreamento. Coletar agora aumenta a chance de achar alterações transitórias pelo HPV, que tendem a regredir, e de levar a jovem a exames e procedimentos sem benefício. A armadilha é achar que ser sexualmente ativa já basta para indicar o preventivo.",
+   "B": "Incorreta. O teste de DNA-HPV é, de fato, mais sensível que a citologia, mas o problema aqui é a idade, e não o método. Nas mulheres jovens a infecção pelo HPV é muito comum e quase sempre transitória, então testar aos 18 anos detectaria muitas infecções que vão desaparecer sozinhas, gerando ansiedade e intervenções desnecessárias. Por isso nenhum método de rastreamento é indicado antes dos 25 anos. A alternativa tenta seduzir com um argumento verdadeiro sobre sensibilidade aplicado à paciente errada.",
+   "C": "Correta. O dado que decide a questão é a idade: 18 anos, sem nenhuma queixa. Nas diretrizes brasileiras citadas no enunciado, o rastreamento do câncer do colo do útero começa aos 25 anos em quem já teve atividade sexual, e a sexarca aos 17 não muda isso. O raciocínio é que, nessa faixa etária, o câncer é raro e as lesões causadas pelo HPV costumam regredir sozinhas, de modo que rastrear traz mais dano, sobretudo tratamento desnecessário, do que benefício. Colher a história clínica e orientar é a conduta certa, sem deixar de acolher a demanda da jovem.",
+   "D": "Incorreta. O esquema descrito, com duas citologias anuais normais e depois coleta a cada 3 anos, é a periodicidade usada no rastreamento por citologia, mas só a partir dos 25 anos. Aplicá-lo a uma jovem de 18 anos é começar cedo demais. A alternativa monta a armadilha da regra certa na idade errada: o aluno reconhece o intervalo e esquece de conferir se a paciente está na faixa do rastreamento."
+  },
+  "pontos_de_atencao": [
+   "O início da vida sexual não antecipa o rastreamento: a idade de início é 25 anos.",
+   "Mulher jovem com queixa, como sangramento, corrimento ou dor, não está em rastreamento e deve ser examinada.",
+   "Antes dos 25 anos, as lesões pelo HPV tendem a regredir; rastrear cedo gera tratamento desnecessário."
+  ],
+  "precisa_conferir_diretriz": {
+   "sim": true,
+   "motivo": "O método de rastreamento do colo do útero no SUS está em transição da citologia para o teste de DNA-HPV, e a nota de atualização precisa ser confirmada na diretriz vigente."
+  },
+  "divergencia_gabarito": {
+   "suspeita": false,
+   "motivo": ""
+  },
+  "confianca": 88,
+  "perfil": {
+   "competencia": "prevencao_rastreamento",
+   "cenario": "atencao_primaria",
+   "problema_central": "pedido de exame preventivo por adolescente assintomática de 18 anos",
+   "conceitos": [
+    "rastreamento do câncer do colo do útero",
+    "exame citopatológico",
+    "teste de DNA-HPV",
+    "idade de início do rastreamento",
+    "sobrediagnóstico"
+   ],
+   "achados_discriminatorios": [
+    "adolescente com 18 anos de idade",
+    "procura o exame preventivo sem queixas",
+    "sexarca aos 17 anos"
+   ],
+   "raciocinio_cobrado": "Aplicar a idade de início do rastreamento independentemente do início da vida sexual.",
+   "tipo": "caso_clinico",
+   "complexidade": 1
+  },
+  "nota_atualizacao": "O que mudou desde a prova: na época, o rastreamento era feito pela citologia, o exame preventivo tradicional. Nos últimos anos, o Ministério da Saúde passou a adotar o teste de DNA-HPV oncogênico como exame inicial do rastreamento, com implantação gradual no SUS. A idade de início continua sendo 25 anos, então a conduta para esta paciente de 18 anos não muda."
+ }
+]

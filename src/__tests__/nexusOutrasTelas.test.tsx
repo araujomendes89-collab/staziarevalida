@@ -137,7 +137,10 @@ describe("Nexus por cima das outras telas", () => {
     const go = vi.fn();
     render(<ReportScreen go={go} />);
     expect(await screen.findByText("Meu relatório")).toBeInTheDocument();
-    expect(screen.getByText(/2 sessões · 30 min de estudo/)).toBeInTheDocument();
+    // visual novo (onda 5): o resumo virou três azulejos (Sessões, De estudo, Questões discutidas), com os mesmos números do banco
+    expect(screen.getByText("Sessões").nextElementSibling).toHaveTextContent("2");
+    expect(screen.getByText("De estudo").nextElementSibling).toHaveTextContent("30 min");
+    expect(screen.getByText("Questões discutidas")).toBeInTheDocument();
     expect(screen.getByText(/Não há previsão de aprovação aqui/)).toBeInTheDocument();
     cleanup();
     rpcImpl.app_tutor_status = () => status({ consent_required: true, consent_version: "1.0" });

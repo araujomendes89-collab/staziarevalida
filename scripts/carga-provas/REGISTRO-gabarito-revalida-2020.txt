@@ -1,0 +1,9 @@
+REGISTRO À PARTE (não muda nada): gabarito do Revalida 2020 (a prova 2020/1)
+
+O banco diz "definitivo": as 100 questões da revalida-2020 trazem a fonte "Gabarito Oficial Definitivo Revalida INEP 2020" (campo sources;
+o 0-CONFERIR.sql mostra na linha 61 o que está gravado e, na linha 60, a situação do gabarito oficial registrado por prova).
+O relatório da revisão de fidelidade (revalida_2020_1/relatorio.md) diz que o gabarito desta prova é PRELIMINAR.
+Conferido em 13/10/2026 (só leitura, PyMuPDF): o único arquivo de gabarito da pasta, "Provas revalida/2020:1/gabarito_caderno_1.pdf",
+tem no título "2020 REVALIDA 01 GABARITO PRELIMINAR DAS QUESTÕES DE MÚLTIPLA ESCOLHA".
+Nada foi mudado (nem fonte, nem letras, nem situação). Para decidir: buscar no Inep o gabarito definitivo de 2020 e, se houver diferença,
+registrar pela função oficial de registro do gabarito (cada questão, com fonte e motivo).

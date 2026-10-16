@@ -13,6 +13,7 @@ import { ASSIST_ERRORS } from "../../src/shared/adminAssistant/errors";
 import { assistantStatus, runAssistant, type AssistMaterial, type EngineDeps } from "./engine";
 import { httpError, type TabAdapter, type Whoami } from "./types";
 import { ADAPTERS } from "./adapters";
+import { shown } from "../auth/friendlyError";
 
 export interface AdminAssistantDeps extends EngineDeps {
   /** Testes: links sem rede e endereço conferido por um falso. */
@@ -40,8 +41,8 @@ const forbidden = (error: unknown) => /restrito|sem acesso|administrador|42501|A
  */
 function failFrom(res: Response, error: unknown, log?: (m: string) => void) {
   const status = (error as { status?: unknown } | null)?.status;
-  if (typeof status === "number") return fail(res, status, message(error));
-  if (forbidden(error)) return fail(res, 403, message(error));
+  if (typeof status === "number") return fail(res, status, shown(error));
+  if (forbidden(error)) return fail(res, 403, shown(error));
   log?.(`[assistente] erro inesperado: ${message(error)}`.slice(0, 300));
   return fail(res, 500, ASSIST_ERRORS.failed);
 }

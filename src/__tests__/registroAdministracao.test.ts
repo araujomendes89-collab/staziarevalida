@@ -62,6 +62,7 @@ describe("Registro: nome em português para toda ação gravada", () => {
       "'question_update.' || p_decision": ["question_update.no_change", "question_update.publish_update", "question_update.reject_proposal"],
       "'conflict.' || p_status": ["conflict.resolved", "conflict.deferred", "conflict.open"],
       "'guideline_update.' || p_decision": ["guideline_update.approve", "guideline_update.reject"],
+      "'staziamed.' || v_action": ["staziamed.publicada", "staziamed.republicada"], // app_staziamed_publish
     };
     expect(new Set(dynamic)).toEqual(new Set(Object.keys(DYNAMIC)));
     const actions = [...new Set([...found.keys(), ...Object.values(DYNAMIC).flat()])];
@@ -193,7 +194,7 @@ describe("Registro: outras ações mostram o que tem nome (título, tema, nota),
       [{ action: "ai.provider", target: "gemini", details: { enabled: true } }, "Gemini: ligada"],
       [{ action: "ai.function", target: "assistente_preencher", details: { removed: true } }, "Assistente: preencher · configuração apagada (volta ao padrão do servidor)"],
       [{ action: "ai.function", target: "criacao", details: { mode: "comite", care: "caprichado" } }, "Criação"],
-      [{ action: "ai.settings", target: "ai_settings", details: { monthly_cap_usd: 50, per_run_cap_usd: null, caps_enabled: true } }, "Teto do mês: US$ 50,00 · Teto por execução: sem teto · Tetos ligados"],
+      [{ action: "ai.settings", target: "ai_settings", details: { monthly_cap_usd: 50, per_run_cap_usd: null, caps_enabled: true } }, "Teto do mês: US$ 50,00 · Teto por chamada: sem teto · Tetos ligados"],
       [{ action: "ai.settings", target: "ai_settings", details: { tab_override_enabled: false } }, "Trocar a IA nas abas: não permitido"],
       [{ action: "ai.price", target: "anthropic:claude-teste", details: { input_per_mtok: 3, output_per_mtok: 15 } }, "Claude · claude-teste · entrada US$ 3,00 e saída US$ 15,00 por milhão de tokens"],
       [{ action: "settings.save", target: null, details: { trial_days: "7", announcement: { active: true, title: "Bem-vindo", text: "Oi", tone: "info" } } }, "Dias de teste grátis: 7 · Aviso no Início ligado: Bem-vindo"],
@@ -237,6 +238,16 @@ describe("Registro: toda ação tem resumo em linguagem simples (RG03)", () => {
     expect(auditSummary(ep("podcast.audio", { seconds: "90", simulated: true }))).toBe("Episódio 1: sepse · Duração: 1 min 30 s · áudio de teste, sem voz de verdade");
     // sem título (item apagado antes de o registro guardar o título): só o nome da ação
     expect(auditSummary({ action: "podcast.delete", target: UUID, title: null, details: {} })).toBe("");
+  });
+
+  it("P08: arquivos antigos do podcast apagados do depósito: quantos, de que tipo e quais, sem código interno", () => {
+    expect(auditLabel({ action: "podcast.files.cleanup", details: {} })).toBe("Arquivos antigos do podcast apagados do depósito");
+    const ep = (details: Record<string, unknown>) => ({ action: "podcast.files.cleanup", target: UUID, title: "Episódio 1: sepse", details });
+    expect(auditSummary(ep({ audios: 1, fontes: 0, falhas: 0, arquivos: ["audio-1a2b3c.mp3"] }))).toBe("Episódio 1: sepse · 1 áudio antigo apagado · Arquivos: audio-1a2b3c.mp3");
+    expect(auditSummary(ep({ audios: 2, fontes: 1, falhas: 0, arquivos: ["audio-a.mp3", "audio-b.mp3", "src-c.pdf"] })))
+      .toBe("Episódio 1: sepse · 2 áudios antigos apagados · 1 arquivo de fonte apagado · Arquivos: audio-a.mp3, audio-b.mp3, src-c.pdf");
+    expect(auditSummary(ep({ audios: 1, fontes: 0, falhas: 2, arquivos: ["audio-a.mp3"] }))).toBe("Episódio 1: sepse · 1 áudio antigo apagado · Arquivos: audio-a.mp3 · 2 arquivos não puderam ser apagados agora (nova tentativa na próxima ação do episódio)");
+    expect(auditSummary(ep({ audios: 1, fontes: 0, falhas: 0, arquivos: ["audio-a.mp3"] }))).not.toMatch(INTERNAL);
   });
 
   it("roteiro do podcast escrito pela IA: quem escreveu, quantos trechos das fontes e o custo; roteiro de teste é dito como teste", () => {
@@ -400,6 +411,8 @@ describe("Registro: o que se faz na Central de Conteúdo (RG01)", () => {
       ["source_search.result", { status: "concluida", message: null, found_count: 5, verified_count: 3, discarded_count: 2, web_searches: 4, cost_usd: 0.05, provider: "anthropic", model: "claude-x", run_id: UUID }, {}, "Busca de fontes concluída", "Busca concluída · 5 links achados, 3 conferidos, 2 descartados · 4 buscas na internet · custo US$ 0,05 · IA: Claude (claude-x)"],
       ["source_candidate.edit", { fields: { title: "Novo título", level: "B" } }, {}, "Candidato a fonte editado", "Dados ajustados: título, nível"],
       ["source_candidate.approve", { source_id: UUID, document_id: UUID, level: "A", site: "who.int", superseded: UUID }, {}, "Candidato a fonte aprovado", "Site: who.int · Nível A · Substituiu uma versão anterior da fonte"],
+      ["source_candidate.approve", { source_id: UUID, document_id: UUID, level: "B", site: "who.int", superseded: UUID, currency: "versao_mais_antiga", confirmed_older: true }, {}, "Candidato a fonte aprovado", "Site: who.int · Nível B · Substituiu uma versão anterior da fonte · Atualidade: mais antiga que a da biblioteca · Versão mais antiga aprovada com confirmação"],
+      ["source_candidate.approve", { source_id: UUID, document_id: UUID, level: "A", site: "who.int", currency: "versao_mais_nova", confirmed_older: false }, {}, "Candidato a fonte aprovado", "Site: who.int · Nível A · Atualidade: versão mais nova que a da biblioteca"],
       ["source_candidate.reject", { reason: "Não é oficial", site: "who.int" }, {}, "Candidato a fonte rejeitado", "Site: who.int · Motivo: Não é oficial"],
     ];
     for (const [action, details, extra, label, summary] of cases) {

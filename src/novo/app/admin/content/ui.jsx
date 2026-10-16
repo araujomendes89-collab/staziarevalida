@@ -2,9 +2,10 @@
 import React from "react";
 import { Badge, Banner, Button, Card, ProgressBar, SelectField } from "../../../ds";
 import { useSession } from "../../session.jsx";
-import { dateBR, messageOf, TextArea } from "../common.jsx";
-import { CLAIM_STATUS, CRITICAL, isMockModel, pick, VERDICTS } from "./labels.js";
+import { dateBR, LoadError, Loading, messageOf, TextArea, useLoad } from "../common.jsx";
+import { AREA_LABEL, CLAIM_STATUS, CRITICAL, isMockModel, pick, VERDICTS } from "./labels.js";
 import { hubAvailable, hubPost } from "./api.js";
+import { SearchSourcesButton, OPEN_CONTEXT } from "../assistant/SearchSourcesButton.jsx";
 
 /** Como o trecho foi achado (busca por significado ligada): só pelas palavras, só pelo sentido ou pelos dois. */
 const MATCH_LABEL = { significado: "pelo sentido", ambos: "palavras e sentido" };
@@ -74,7 +75,7 @@ export function useAction() {
       setState({ busy: false, error: null, done });
       return result;
     } catch (error) {
-      setState({ busy: false, error: messageOf(error, error?.message || "Não foi possível concluir."), done: null });
+      setState({ busy: false, error: messageOf(error), done: null });
       return undefined;
     }
   };
@@ -149,7 +150,19 @@ export function ClaimCard({ claim, onChanged, canConfirm }) {
   const { backend } = useSession();
   const act = useAction();
   const [linking, setLinking] = React.useState(false);
+  const [fixing, setFixing] = React.useState(false);
   const pending = claim.critical_kinds?.length > 0 && !claim.critical_checked;
+  // Dose, via, frequência e contraindicação só são conferidas por revisor médico cadastrado na área da afirmação: o banco decide e diz a área.
+  const [review, setReview] = React.useState(null);
+  React.useEffect(() => {
+    if (!pending || !claim.id) return undefined;
+    let alive = true;
+    backend.rpc("app_ch_claim_can_confirm", { p_claim_id: claim.id }).then((r) => alive && setReview(r), () => {});
+    return () => {
+      alive = false;
+    };
+  }, [backend, claim.id, pending]);
+  const mayConfirm = review ? review.can : canConfirm;
   return (
     <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "12px 0" }}>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
@@ -180,7 +193,7 @@ export function ClaimCard({ claim, onChanged, canConfirm }) {
             <StatusBadge map={CLAIM_STATUS} value={e.verdict} />
             {e.numeric_check?.by === "worker" && <Badge size="sm" tone="ai">proposta pela IA</Badge>}
             {e.numeric_check?.simulated && <Badge size="sm" tone="danger">simulação (não vale)</Badge>}
-            {e.stale && <Badge size="sm" tone="warning">fonte substituída</Badge>}
+            {e.stale && <Badge size="sm" tone="warning">não conta mais (fonte substituída ou evidência descartada)</Badge>}
             {e.numeric_check && e.numeric_check.ok === false && (
               <Badge size="sm" tone="danger">
                 não confere: {[...(e.numeric_check.missing_in_evidence ?? []), ...(e.numeric_check.negations_missing_in_evidence ?? [])].join(", ")}
@@ -199,14 +212,81 @@ export function ClaimCard({ claim, onChanged, canConfirm }) {
         <Button size="sm" variant="secondary" icon="link" onClick={() => setLinking((v) => !v)}>
           {linking ? "Fechar" : "Vincular evidência"}
         </Button>
-        {pending && canConfirm && (
+        {claim.id && (claim.evidence ?? []).length > 0 && (
+          <Button size="sm" variant="ghost" icon="wrench" onClick={() => setFixing((v) => !v)}>
+            {fixing ? "Fechar correção" : "Corrigir evidências"}
+          </Button>
+        )}
+        {pending && mayConfirm && (
           <Button size="sm" variant="secondary" icon="badge-check" loading={act.busy} onClick={() => act.run(() => backend.rpc("app_ch_confirm_critical", { p_claim_id: claim.id }), "Conferência registrada.").then((r) => r && onChanged?.())}>
             Confirmar conferência de {claim.critical_kinds.map((k) => CRITICAL[k] ?? k).join(", ")}
           </Button>
         )}
       </div>
+      {pending && !mayConfirm && (
+        <p style={{ margin: "8px 0 0", font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
+          A conferência de {claim.critical_kinds.map((k) => CRITICAL[k] ?? k).join(", ")} é de um revisor médico cadastrado na área
+          {review?.areas?.length ? ` (${review.areas.map((a) => AREA_LABEL[a] ?? a).join(", ")})` : ""}. Peça a ele para abrir esta afirmação e confirmar.
+          {review && review.areas.length === 0 ? " Esta afirmação ainda não tem área: classifique o trecho ou a unidade primeiro." : ""}
+        </p>
+      )}
       {act.feedback}
+      {fixing && <EvidenceFix claim={claim} onChanged={onChanged} />}
       {linking && <EvidenceForm claim={claim} onLinked={() => (setLinking(false), onChanged?.())} />}
+    </div>
+  );
+}
+
+/** Corrigir evidências ligadas errado: descartar (com motivo) tira a evidência do cálculo sem apagá-la. Conflito/desatualização: só o administrador. */
+function EvidenceFix({ claim, onChanged }) {
+  const { backend } = useSession();
+  const act = useAction();
+  const { data, error, reload } = useLoad(() => backend.rpc("app_ch_claim_evidence", { p_claim_id: claim.id }), [backend, claim.id]);
+  const [target, setTarget] = React.useState(null);
+  const [reason, setReason] = React.useState("");
+  if (error) return <LoadError error={error} retry={reload} />;
+  if (!data) return <Loading />;
+  const label = Object.fromEntries(VERDICTS);
+  return (
+    <div style={{ marginTop: 10, padding: 12, border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", display: "flex", flexDirection: "column", gap: 8 }}>
+      <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+        Evidência ligada à fonte errada ou com a conferência errada pode ser descartada, com o motivo. Ela não é apagada: continua guardada, mas deixa de contar. Descartar evidência de conflito ou de desatualização é decisão de um administrador.
+      </p>
+      {data.map((e) => (
+        <div key={e.id} style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 8, opacity: e.discarded ? 0.6 : 1 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", font: "var(--type-caption)", color: "var(--text-secondary)" }}>
+            <Badge size="sm">{label[e.verdict] ?? e.verdict}</Badge>
+            <span>
+              {e.source} · {e.organ}
+              {e.version ? ` · versão ${e.version}` : ""}
+              {e.page != null ? ` · p. ${e.page}` : ""}
+            </span>
+            {e.discarded && <Badge size="sm" tone="warning">descartada</Badge>}
+            {e.settled && <Badge size="sm" tone="info">conflito decidido a favor da outra fonte</Badge>}
+          </div>
+          <div style={{ font: "var(--type-body-sm)", margin: "4px 0" }}>{e.quote.slice(0, 240)}{e.quote.length > 240 ? "…" : ""}</div>
+          {e.discarded ? (
+            <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Motivo: {e.discard_reason}</span>
+          ) : target === e.id ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <TextArea label="Motivo do descarte (pelo menos 10 caracteres)" value={reason} onChange={setReason} rows={2} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <Button size="sm" variant="secondary" icon="trash-2" disabled={reason.trim().length < 10} loading={act.busy} onClick={() => act.run(() => backend.rpc("app_ch_discard_evidence", { p_evidence_id: e.id, p_reason: reason }), "Evidência descartada. A situação da afirmação foi recalculada.").then((r) => r && (setTarget(null), setReason(""), reload(), onChanged?.()))}>
+                  Descartar esta evidência
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setTarget(null)}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button size="sm" variant="ghost" icon="trash-2" onClick={() => (setTarget(e.id), setReason(""))}>
+              Descartar
+            </Button>
+          )}
+        </div>
+      ))}
+      {act.feedback}
     </div>
   );
 }
@@ -243,6 +323,7 @@ function EvidenceForm({ claim, onLinked }) {
         {mode && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Busca por {mode}</span>}
       </div>
       {results && results.length === 0 && <Banner tone="warning">Nenhum trecho encontrado. Cadastre a fonte oficial com o documento completo (aba Fontes).</Banner>}
+      {results && results.length === 0 && <SearchSourcesButton tab="evidencias" context={OPEN_CONTEXT} />}
       {(results ?? []).map((p) => (
         <button
           key={p.passage_id}

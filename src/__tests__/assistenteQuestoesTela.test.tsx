@@ -19,6 +19,7 @@ const ROW = {
   id: "q1", code: "REV-2024-1-001", attempts: 3, exam: { kind: "REVALIDA", year: 2024, semester: 1 }, number: 1, area: "PEDIATRIA", topic: "Bronquiolite", subtopic: "",
   statement: "Lactente com desconforto respiratório.", options: ["A", "B", "C", "D"].map((id) => ({ id, text: `Alt ${id}`, explanation: "" })),
   correct_option: "B", status: "valid", expected_conduct: "", inep_intent: "", needs_image: false, images: [],
+  comment_review_ready: true, // o banco pratica a revisão de comentários: o aviso do assistente a promete
 };
 const textarea = (label: string) => screen.getAllByLabelText(label).find((el) => el.tagName === "TEXTAREA") as HTMLTextAreaElement;
 const saveCalls = () => backend.rpc.mock.calls.filter((c: any[]) => c[0] === "app_admin_save_question");
@@ -48,7 +49,7 @@ describe("Questões: assistente", () => {
     expect(button.getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(button);
     expect(button.getAttribute("aria-pressed")).toBe("true");
-    expect(await screen.findByText("O que você salvar aparece na hora para o aluno.")).toBeTruthy();
+    expect(await screen.findByText("Enunciado e alternativas aparecem na hora para o aluno. Explicações, conduta e “o que avalia” esperam a aprovação do revisor médico.")).toBeTruthy();
     fireEvent.click(await screen.findByRole("button", { name: "Preencher campos" }));
     const card = await screen.findByRole("region", { name: "Sugestão: Conduta esperada" });
     const body = JSON.parse(runCall()[1].body);
@@ -141,7 +142,7 @@ describe("Questões: assistente", () => {
       const button = await screen.findByRole("button", { name: "Assistente" });
       button.focus();
       fireEvent.click(button);
-      await screen.findByText("O que você salvar aparece na hora para o aluno.");
+      await screen.findByText("Enunciado e alternativas aparecem na hora para o aluno. Explicações, conduta e “o que avalia” esperam a aprovação do revisor médico.");
       const after = screen.getByRole("button", { name: "Assistente" });
       expect(after).toBe(button);
       expect(document.body.contains(button)).toBe(true);

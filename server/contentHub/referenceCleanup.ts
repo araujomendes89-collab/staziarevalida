@@ -1,8 +1,10 @@
 /**
- * Retirada das referências do LICENCIANTE de um material (nome, marca, @, site, direitos reservados), só quando a licença
- * cadastrada autoriza. Conservadora de propósito: remove apenas o que identifica o licenciante; links oficiais (gov.br,
- * sociedades, periódicos) e citações de fontes clínicas ficam. O original extraído nunca é tocado: o resultado vai para o
- * texto revisado (ou exclui o bloco inteiro quando ele só continha a referência), com prévia, registro e desfazer.
+ * "Tirar marcas de terceiros" (CC09): retirada do nome, da marca, do @, do site e dos avisos de direitos reservados de outro curso
+ * que aparecem no material extraído. Sem licença cadastrada (as regras de licença saíram em 2026-10-09): quem decide o que tirar
+ * é o administrador, que digita os nomes e endereços na tela e vê a prévia antes de aplicar. Conservadora de propósito: remove
+ * apenas o que foi digitado (mais @contatos e avisos de direitos reservados); links oficiais (gov.br, sociedades, periódicos) e
+ * citações de fontes clínicas ficam. O original extraído nunca é tocado: o resultado vai para o texto revisado (ou exclui o bloco
+ * inteiro quando ele só continha a marca), com prévia, registro e desfazer.
  */
 import type { ContentDb } from "./infra";
 
@@ -136,39 +138,61 @@ export function planCleanup(blocks: CleanupBlock[], terms: string[]): CleanupCha
   return changes;
 }
 
-export interface LicenseRow {
-  id: string;
-  licensor: string;
-  reference_terms: string[];
-  allows_attribution_removal: boolean;
-  expired: boolean;
+/** No máximo 30 nomes ou endereços por vez, de 3 a 80 letras cada (menos que isso apagaria palavras comuns do texto clínico). */
+export const MAX_TERMS = 30;
+export const TERM_MIN = 3;
+export const TERM_MAX = 80;
+
+/** Confere o que o administrador digitou: texto simples, sem repetir, dentro dos limites. */
+export function cleanTerms(raw: unknown): string[] {
+  if (raw == null) return [];
+  if (!Array.isArray(raw)) throw new Error("Os nomes a tirar precisam vir em uma lista.");
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (typeof item !== "string") throw new Error("Cada nome a tirar precisa ser um texto.");
+    const term = item.replace(/\s+/g, " ").trim();
+    if (!term) continue;
+    if (term.length < TERM_MIN) throw new Error(`O termo "${term}" é curto demais (mínimo de ${TERM_MIN} letras): tiraria palavras comuns do texto.`);
+    if (term.length > TERM_MAX) throw new Error(`"${term.slice(0, 30)}…" é longo demais (máximo de ${TERM_MAX} letras).`);
+    const key = strip(term).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(term);
+  }
+  if (out.length > MAX_TERMS) throw new Error(`Informe no máximo ${MAX_TERMS} nomes por vez.`);
+  return out;
 }
 
-async function load(db: ContentDb, documentId: string) {
-  const license = await db.service<LicenseRow | null>("ch_worker_license", { p_document_id: documentId });
-  if (!license) throw new Error("Este documento não tem licença cadastrada.");
-  if (license.expired) throw new Error("A licença está vencida.");
-  if (!license.allows_attribution_removal) throw new Error("A licença cadastrada não autoriza retirar as referências do licenciante.");
-  return license;
+const MISSING_SQL = "Falta aplicar no Supabase a atualização 'Tirar marcas de terceiros' (migração 9844): peça para colar o SQL e tente de novo.";
+const isMissingFunction = (error: unknown) => /ch_worker_apply_reference_cleanup_free/.test(String((error as Error)?.message ?? error)) && /does not exist|could not find|schema cache/i.test(String((error as Error)?.message ?? error));
+
+async function documentBlocks(db: ContentDb, documentId: string) {
+  return db.service<CleanupBlock[]>("ch_worker_blocks", { p_document_id: documentId });
 }
 
 /** Prévia: nada é gravado. */
-export async function previewReferenceCleanup(db: ContentDb, documentId: string) {
-  const license = await load(db, documentId);
-  const blocks = await db.service<CleanupBlock[]>("ch_worker_blocks", { p_document_id: documentId });
-  const changes = planCleanup(blocks, license.reference_terms);
-  return { license_id: license.id, terms: license.reference_terms, edited: changes.filter((c) => !c.exclude).length, excluded: changes.filter((c) => c.exclude).length, changes };
+export async function previewReferenceCleanup(db: ContentDb, documentId: string, rawTerms: unknown) {
+  const terms = cleanTerms(rawTerms);
+  const blocks = await documentBlocks(db, documentId);
+  const changes = planCleanup(blocks, terms);
+  return { terms, edited: changes.filter((c) => !c.exclude).length, excluded: changes.filter((c) => c.exclude).length, changes };
 }
 
-export async function applyReferenceCleanup(db: ContentDb, documentId: string, actor: string) {
-  const preview = await previewReferenceCleanup(db, documentId);
-  const r = await db.service<{ edited: number; excluded: number; skipped: number }>("ch_worker_apply_reference_cleanup", {
-    p_document_id: documentId,
-    p_license_id: preview.license_id,
-    p_actor: actor,
-    p_changes: preview.changes.map((c) => ({ block_id: c.block_id, before: c.before, after: c.after, exclude: c.exclude, removed: c.removed })),
-  });
-  return { ...r, planned: preview.changes.length };
+export async function applyReferenceCleanup(db: ContentDb, documentId: string, actor: string, rawTerms: unknown) {
+  const preview = await previewReferenceCleanup(db, documentId, rawTerms);
+  try {
+    const r = await db.service<{ edited: number; excluded: number; skipped: number }>("ch_worker_apply_reference_cleanup_free", {
+      p_document_id: documentId,
+      p_actor: actor,
+      p_terms: preview.terms,
+      p_changes: preview.changes.map((c) => ({ block_id: c.block_id, before: c.before, after: c.after, exclude: c.exclude, removed: c.removed })),
+    });
+    return { ...r, planned: preview.changes.length };
+  } catch (error) {
+    if (isMissingFunction(error)) throw new Error(MISSING_SQL);
+    throw error;
+  }
 }
 
 export const undoReferenceCleanup = (db: ContentDb, documentId: string, actor: string) =>

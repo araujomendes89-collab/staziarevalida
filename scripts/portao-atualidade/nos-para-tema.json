@@ -1,0 +1,1781 @@
+{
+ "GR-001": [
+  {
+   "no": "cm.tuberculose.tuberculose-pulmonar",
+   "nome": "Tuberculose pulmonar"
+  },
+  {
+   "no": "cm.tuberculose.retratamento-e-resistencia",
+   "nome": "Abandono e retratamento da tuberculose"
+  },
+  {
+   "no": "cm.tuberculose.tuberculose-drogarresistente",
+   "nome": "Tuberculose drogarresistente"
+  },
+  {
+   "no": "cm.tuberculose.infeccao-latente-e-contatos",
+   "nome": "Infecção latente da tuberculose e avaliação de contatos"
+  },
+  {
+   "no": "cm.tuberculose.tuberculose-e-hiv",
+   "nome": "Tuberculose na pessoa vivendo com HIV"
+  },
+  {
+   "no": "sc.vigilancia.tuberculose",
+   "nome": "Tuberculose: controle na atenção primária"
+  }
+ ],
+ "GR-002": [
+  {
+   "no": "cm.diabetes-mellitus.diabetes-mellitus-tipo-2",
+   "nome": "Diabetes mellitus tipo 2"
+  },
+  {
+   "no": "cm.diabetes-mellitus.diagnostico-e-rastreamento",
+   "nome": "Diagnóstico, rastreamento e pré-diabetes"
+  },
+  {
+   "no": "cm.diabetes-mellitus.complicacoes-cronicas-do-diabetes",
+   "nome": "Complicações crônicas do diabetes"
+  },
+  {
+   "no": "cm.diabetes-mellitus.pe-diabetico",
+   "nome": "Pé diabético"
+  },
+  {
+   "no": "cm.diabetes-mellitus.insulinoterapia",
+   "nome": "Insulinoterapia e suas complicações"
+  },
+  {
+   "no": "cm.oftalmologia.retinopatia-diabetica",
+   "nome": "Retinopatia diabética"
+  }
+ ],
+ "GR-003": [
+  {
+   "no": "cm.cardiologia.hipertensao-arterial-sistemica",
+   "nome": "Hipertensão arterial sistêmica"
+  },
+  {
+   "no": "cm.cardiologia.hipertensao-arterial-secundaria",
+   "nome": "Hipertensão arterial secundária"
+  },
+  {
+   "no": "cm.cardiologia.crise-hipertensiva",
+   "nome": "Crise hipertensiva"
+  },
+  {
+   "no": "cm.oftalmologia.retinopatia-hipertensiva",
+   "nome": "Retinopatia hipertensiva"
+  }
+ ],
+ "GR-004": [
+  {
+   "no": "cm.pneumologia.pneumonia-adquirida-na-comunidade",
+   "nome": "Pneumonia adquirida na comunidade no adulto"
+  }
+ ],
+ "GR-005": [
+  {
+   "no": "cm.hiv-e-ist.infeccao-pelo-hiv",
+   "nome": "Infecção pelo HIV"
+  },
+  {
+   "no": "cm.hiv-e-ist.infeccoes-oportunistas",
+   "nome": "Infecções oportunistas na aids"
+  },
+  {
+   "no": "cm.hiv-e-ist.prevencao-do-hiv-e-profilaxias",
+   "nome": "Profilaxias pós-exposição sexual e prevenção combinada do HIV"
+  },
+  {
+   "no": "sc.vigilancia.prevencao-ist-hiv",
+   "nome": "Prevenção de IST e do HIV na atenção primária"
+  }
+ ],
+ "GR-006": [
+  {
+   "no": "cm.hepatologia-e-vias-biliares.hepatites-virais-agudas",
+   "nome": "Hepatites virais agudas"
+  },
+  {
+   "no": "cm.hepatologia-e-vias-biliares.hepatite-b",
+   "nome": "Hepatite B"
+  },
+  {
+   "no": "cm.hepatologia-e-vias-biliares.hepatite-c",
+   "nome": "Hepatite C"
+  }
+ ],
+ "GR-007": [
+  {
+   "no": "cm.infectologia.dengue",
+   "nome": "Dengue"
+  },
+  {
+   "no": "cm.infectologia.chikungunya",
+   "nome": "Chikungunya"
+  },
+  {
+   "no": "cm.infectologia.zika",
+   "nome": "Zika"
+  },
+  {
+   "no": "cm.infectologia.febre-amarela",
+   "nome": "Febre amarela"
+  },
+  {
+   "no": "sc.vigilancia.dengue",
+   "nome": "Dengue: vigilância epidemiológica"
+  },
+  {
+   "no": "sc.vigilancia.chikungunya",
+   "nome": "Febre de chikungunya: vigilância e conduta inicial na atenção primária"
+  },
+  {
+   "no": "sc.vigilancia.controle-vetorial-aedes",
+   "nome": "Controle vetorial do Aedes aegypti"
+  },
+  {
+   "no": "sc.vigilancia.febre-amarela",
+   "nome": "Febre amarela: vigilância e controle"
+  },
+  {
+   "no": "ped.infectologia.dengue-na-crianca",
+   "nome": "Dengue na criança"
+  },
+  {
+   "no": "go.infeccoes-na-gestacao.arboviroses-na-gestacao",
+   "nome": "Arboviroses na gestação"
+  }
+ ],
+ "GR-008": [
+  {
+   "no": "cm.hiv-e-ist.sifilis-adquirida",
+   "nome": "Sífilis adquirida"
+  },
+  {
+   "no": "go.infeccoes-genitais.ulceras-genitais",
+   "nome": "Úlceras genitais e sífilis fora da gestação"
+  }
+ ],
+ "GR-009": [
+  {
+   "no": "cm.nefrologia.infeccao-urinaria-no-adulto",
+   "nome": "Infecção do trato urinário no adulto"
+  }
+ ],
+ "GR-010": [
+  {
+   "no": "cm.urgencias-e-terapia-intensiva.sepse",
+   "nome": "Sepse e choque séptico"
+  }
+ ],
+ "GR-011": [
+  {
+   "no": "cm.cardiologia.sca-com-supra-de-st",
+   "nome": "Infarto agudo do miocárdio com supradesnivelamento do segmento ST"
+  },
+  {
+   "no": "cm.cardiologia.sca-sem-supra-de-st",
+   "nome": "Síndrome coronariana aguda sem supradesnivelamento do segmento ST"
+  },
+  {
+   "no": "cm.cardiologia.dor-toracica-aguda",
+   "nome": "Dor torácica aguda"
+  }
+ ],
+ "GR-012": [
+  {
+   "no": "cm.cardiologia.insuficiencia-cardiaca-cronica",
+   "nome": "Insuficiência cardíaca crônica"
+  },
+  {
+   "no": "cm.cardiologia.insuficiencia-cardiaca-aguda",
+   "nome": "Insuficiência cardíaca aguda e edema agudo de pulmão"
+  }
+ ],
+ "GR-013": [
+  {
+   "no": "cm.cardiologia.fibrilacao-atrial-e-flutter",
+   "nome": "Fibrilação atrial e flutter atrial"
+  },
+  {
+   "no": "cm.cardiologia.taquiarritmias-ventriculares",
+   "nome": "Taquiarritmias ventriculares"
+  },
+  {
+   "no": "cm.cardiologia.taquicardias-supraventriculares",
+   "nome": "Taquicardias supraventriculares"
+  }
+ ],
+ "GR-014": [
+  {
+   "no": "cm.neurologia.avc-isquemico",
+   "nome": "Acidente vascular cerebral isquêmico"
+  },
+  {
+   "no": "cm.neurologia.avc-hemorragico",
+   "nome": "Hemorragia intracerebral"
+  }
+ ],
+ "GR-015": [
+  {
+   "no": "cm.pneumologia.tromboembolismo-pulmonar",
+   "nome": "Tromboembolismo pulmonar"
+  },
+  {
+   "no": "cir.cirurgia-vascular.trombose-venosa-profunda",
+   "nome": "Trombose venosa profunda"
+  },
+  {
+   "no": "go.doencas-clinicas-na-gestacao.tromboembolismo-na-gestacao",
+   "nome": "Tromboembolismo venoso e tromboprofilaxia na gestação"
+  }
+ ],
+ "GR-016": [
+  {
+   "no": "cm.pneumologia.asma-no-adulto",
+   "nome": "Asma no adulto"
+  }
+ ],
+ "GR-017": [
+  {
+   "no": "cm.pneumologia.dpoc",
+   "nome": "Doença pulmonar obstrutiva crônica"
+  }
+ ],
+ "GR-018": [
+  {
+   "no": "cm.nefrologia.lesao-renal-aguda",
+   "nome": "Lesão renal aguda"
+  }
+ ],
+ "GR-019": [
+  {
+   "no": "cm.nefrologia.doenca-renal-cronica",
+   "nome": "Doença renal crônica"
+  },
+  {
+   "no": "cm.nefrologia.dialise",
+   "nome": "Diálise e suas complicações"
+  }
+ ],
+ "GR-020": [
+  {
+   "no": "cm.disturbios-hidroeletroliticos.disturbios-do-sodio",
+   "nome": "Distúrbios do sódio"
+  },
+  {
+   "no": "cm.disturbios-hidroeletroliticos.disturbios-do-potassio",
+   "nome": "Distúrbios do potássio"
+  }
+ ],
+ "GR-021": [
+  {
+   "no": "cm.gastroenterologia.hemorragia-digestiva-alta",
+   "nome": "Hemorragia digestiva alta"
+  }
+ ],
+ "GR-022": [
+  {
+   "no": "cm.hepatologia-e-vias-biliares.cirrose-hepatica",
+   "nome": "Cirrose hepática e suas complicações"
+  }
+ ],
+ "GR-023": [
+  {
+   "no": "cm.hematologia-e-oncologia-clinica.investigacao-das-anemias",
+   "nome": "Investigação das anemias"
+  },
+  {
+   "no": "cm.hematologia-e-oncologia-clinica.anemias-megaloblasticas",
+   "nome": "Anemias megaloblásticas"
+  },
+  {
+   "no": "cm.hematologia-e-oncologia-clinica.anemias-hemoliticas",
+   "nome": "Anemias hemolíticas"
+  },
+  {
+   "no": "cm.hematologia-e-oncologia-clinica.anemia-ferropriva",
+   "nome": "Anemia ferropriva no adulto"
+  }
+ ],
+ "GR-024": [
+  {
+   "no": "cm.endocrinologia.hipotireoidismo",
+   "nome": "Hipotireoidismo"
+  },
+  {
+   "no": "cm.endocrinologia.hipertireoidismo-e-tireotoxicose",
+   "nome": "Hipertireoidismo e tireotoxicose"
+  },
+  {
+   "no": "cm.endocrinologia.tireoidites",
+   "nome": "Tireoidites"
+  },
+  {
+   "no": "go.doencas-clinicas-na-gestacao.disfuncoes-tireoidianas-na-gestacao",
+   "nome": "Disfunções tireoidianas na gestação"
+  },
+  {
+   "no": "ped.endocrinologia.hipotireoidismo-congenito",
+   "nome": "Hipotireoidismo congênito"
+  },
+  {
+   "no": "ped.endocrinologia.hipotireoidismo-adquirido",
+   "nome": "Hipotireoidismo adquirido na criança e no adolescente"
+  }
+ ],
+ "GR-025": [
+  {
+   "no": "cm.neurologia.epilepsia",
+   "nome": "Epilepsia e crise epiléptica no adulto"
+  },
+  {
+   "no": "cm.neurologia.estado-de-mal-epileptico",
+   "nome": "Estado de mal epiléptico no adulto"
+  },
+  {
+   "no": "ped.neurologia.estado-de-mal-epileptico",
+   "nome": "Estado de mal epiléptico na criança"
+  },
+  {
+   "no": "ped.neurologia.epilepsias-da-infancia",
+   "nome": "Epilepsias da infância"
+  },
+  {
+   "no": "go.doencas-clinicas-na-gestacao.epilepsia-na-gestacao",
+   "nome": "Epilepsia na gestação"
+  }
+ ],
+ "GR-026": [
+  {
+   "no": "cm.infectologia.meningites",
+   "nome": "Meningites e meningoencefalites"
+  }
+ ],
+ "GR-027": [
+  {
+   "no": "cir.abdome-agudo.apendicite-aguda",
+   "nome": "Apendicite aguda"
+  },
+  {
+   "no": "ped.cirurgia-pediatrica.apendicite-aguda-na-crianca",
+   "nome": "Apendicite aguda na criança"
+  }
+ ],
+ "GR-028": [
+  {
+   "no": "cir.vias-biliares-e-pancreas.colecistite-aguda",
+   "nome": "Colecistite aguda"
+  },
+  {
+   "no": "cir.vias-biliares-e-pancreas.colangite-aguda",
+   "nome": "Colangite aguda"
+  },
+  {
+   "no": "cir.vias-biliares-e-pancreas.colelitiase",
+   "nome": "Colelitíase sintomática"
+  },
+  {
+   "no": "cir.vias-biliares-e-pancreas.coledocolitiase",
+   "nome": "Coledocolitíase"
+  }
+ ],
+ "GR-029": [
+  {
+   "no": "cir.vias-biliares-e-pancreas.pancreatite-aguda",
+   "nome": "Pancreatite aguda"
+  }
+ ],
+ "GR-030": [
+  {
+   "no": "cir.abdome-agudo.obstrucao-intestinal",
+   "nome": "Obstrução intestinal mecânica"
+  },
+  {
+   "no": "cir.cuidados-perioperatorios.ileo-paralitico",
+   "nome": "Íleo paralítico pós-operatório"
+  }
+ ],
+ "GR-031": [
+  {
+   "no": "cir.abdome-agudo.abdome-agudo-perfurativo",
+   "nome": "Abdome agudo perfurativo"
+  },
+  {
+   "no": "cir.abdome-agudo.abordagem-do-abdome-agudo",
+   "nome": "Abordagem inicial e diagnóstico diferencial do abdome agudo"
+  }
+ ],
+ "GR-032": [
+  {
+   "no": "cir.atendimento-inicial-ao-trauma.avaliacao-primaria-e-secundaria",
+   "nome": "Avaliação primária e secundária no trauma"
+  },
+  {
+   "no": "cir.atendimento-inicial-ao-trauma.via-aerea-no-trauma",
+   "nome": "Via aérea no trauma"
+  },
+  {
+   "no": "cir.atendimento-inicial-ao-trauma.controle-da-hemorragia-externa",
+   "nome": "Controle da hemorragia externa grave"
+  },
+  {
+   "no": "cir.atendimento-inicial-ao-trauma.choque-hemorragico-no-trauma",
+   "nome": "Choque hemorrágico no trauma"
+  },
+  {
+   "no": "cir.atendimento-inicial-ao-trauma.trauma-na-gestante",
+   "nome": "Trauma na gestante"
+  },
+  {
+   "no": "cir.atendimento-inicial-ao-trauma.atendimento-pre-hospitalar-e-transferencia",
+   "nome": "Atendimento pré-hospitalar e transferência do traumatizado"
+  },
+  {
+   "no": "cir.trauma-abdominal-e-pelvico.trauma-pelvico",
+   "nome": "Trauma pélvico e fratura pélvica instável"
+  },
+  {
+   "no": "ped.urgencias.trauma-pediatrico",
+   "nome": "Atendimento inicial ao trauma na criança"
+  },
+  {
+   "no": "go.doencas-clinicas-na-gestacao.trauma-na-gestante",
+   "nome": "Trauma na gestante: conduta obstétrica"
+  }
+ ],
+ "GR-033": [
+  {
+   "no": "cir.trauma-toracico.pneumotorax-traumatico",
+   "nome": "Pneumotórax traumático"
+  },
+  {
+   "no": "cir.trauma-toracico.hemotorax-traumatico",
+   "nome": "Hemotórax e hemopneumotórax traumáticos"
+  },
+  {
+   "no": "cir.trauma-toracico.tamponamento-cardiaco-traumatico",
+   "nome": "Tamponamento cardíaco traumático"
+  },
+  {
+   "no": "cir.trauma-toracico.lesao-traumatica-da-aorta",
+   "nome": "Lesão traumática da aorta torácica"
+  },
+  {
+   "no": "cir.trauma-toracico.torax-instavel-e-contusao-pulmonar",
+   "nome": "Tórax instável e contusão pulmonar"
+  }
+ ],
+ "GR-034": [
+  {
+   "no": "cir.trauma-cranioencefalico-raquimedular-e-facial.tce-leve",
+   "nome": "Traumatismo cranioencefálico leve"
+  },
+  {
+   "no": "cir.trauma-cranioencefalico-raquimedular-e-facial.tce-moderado-e-grave",
+   "nome": "Traumatismo cranioencefálico moderado e grave"
+  },
+  {
+   "no": "ped.urgencias.traumatismo-cranioencefalico",
+   "nome": "Traumatismo cranioencefálico na criança"
+  }
+ ],
+ "GR-035": [
+  {
+   "no": "cir.trauma-abdominal-e-pelvico.trauma-abdominal-fechado",
+   "nome": "Trauma abdominal fechado"
+  },
+  {
+   "no": "cir.trauma-abdominal-e-pelvico.lesoes-de-figado-e-baco",
+   "nome": "Lesões de vísceras sólidas no trauma (fígado e baço)"
+  },
+  {
+   "no": "cir.trauma-abdominal-e-pelvico.trauma-abdominal-penetrante",
+   "nome": "Trauma abdominal penetrante"
+  },
+  {
+   "no": "cir.urologia.trauma-urogenital",
+   "nome": "Trauma urogenital"
+  }
+ ],
+ "GR-036": [
+  {
+   "no": "cir.queimaduras.avaliacao-do-queimado",
+   "nome": "Avaliação do paciente queimado"
+  },
+  {
+   "no": "cir.queimaduras.reposicao-volemica-no-queimado",
+   "nome": "Reposição volêmica no queimado"
+  },
+  {
+   "no": "cir.queimaduras.lesao-inalatoria",
+   "nome": "Lesão inalatória no queimado"
+  },
+  {
+   "no": "cir.queimaduras.queimadura-eletrica",
+   "nome": "Queimadura elétrica"
+  },
+  {
+   "no": "cir.queimaduras.queimadura-quimica",
+   "nome": "Queimadura química"
+  },
+  {
+   "no": "ped.urgencias.queimaduras",
+   "nome": "Queimaduras na criança"
+  }
+ ],
+ "GR-037": [
+  {
+   "no": "cir.cuidados-perioperatorios.infeccao-do-sitio-cirurgico",
+   "nome": "Infecção do sítio cirúrgico"
+  },
+  {
+   "no": "cir.cuidados-perioperatorios.antibioticoprofilaxia-cirurgica",
+   "nome": "Antibioticoprofilaxia cirúrgica"
+  },
+  {
+   "no": "cir.cuidados-perioperatorios.infeccoes-intra-abdominais-pos-operatorias",
+   "nome": "Infecções intra-abdominais pós-operatórias"
+  },
+  {
+   "no": "cir.cuidados-perioperatorios.fistulas-e-deiscencias",
+   "nome": "Fístulas e deiscências no pós-operatório"
+  },
+  {
+   "no": "cir.cuidados-perioperatorios.febre-e-complicacoes-respiratorias",
+   "nome": "Febre no pós-operatório"
+  },
+  {
+   "no": "cir.cuidados-perioperatorios.complicacoes-pulmonares-pos-operatorias",
+   "nome": "Complicações pulmonares pós-operatórias"
+  },
+  {
+   "no": "cir.cuidados-perioperatorios.disturbios-hidroeletroliticos-no-pos-operatorio",
+   "nome": "Distúrbios hidroeletrolíticos no pós-operatório"
+  },
+  {
+   "no": "cir.cuidados-perioperatorios.complicacoes-da-tireoidectomia",
+   "nome": "Complicações da tireoidectomia"
+  },
+  {
+   "no": "cir.cuidados-perioperatorios.choque-no-pos-operatorio",
+   "nome": "Instabilidade hemodinâmica e choque no pós-operatório"
+  },
+  {
+   "no": "cir.cuidados-perioperatorios.tromboprofilaxia-perioperatoria",
+   "nome": "Tromboprofilaxia no paciente cirúrgico"
+  },
+  {
+   "no": "cir.esofago-estomago-e-bariatrica.complicacoes-da-cirurgia-bariatrica",
+   "nome": "Complicações da cirurgia bariátrica"
+  }
+ ],
+ "GR-038": [
+  {
+   "no": "cir.feridas-e-pequenos-procedimentos.classificacao-e-reparo-de-feridas",
+   "nome": "Classificação e reparo de feridas traumáticas"
+  },
+  {
+   "no": "cir.feridas-e-pequenos-procedimentos.complicacoes-de-feridas-suturadas",
+   "nome": "Complicações de feridas suturadas"
+  },
+  {
+   "no": "cir.feridas-e-pequenos-procedimentos.anestesia-local",
+   "nome": "Anestesia local"
+  },
+  {
+   "no": "cir.feridas-e-pequenos-procedimentos.remocao-de-corpo-estranho",
+   "nome": "Remoção de corpo estranho de partes moles"
+  },
+  {
+   "no": "cir.feridas-e-pequenos-procedimentos.mordeduras-de-animais",
+   "nome": "Mordeduras de animais: cuidado da ferida"
+  },
+  {
+   "no": "cm.infectologia.tetano",
+   "nome": "Tétano e profilaxia antitetânica"
+  }
+ ],
+ "GR-039": [
+  {
+   "no": "cir.hernias-da-parede-abdominal.hernia-inguinal-no-adulto",
+   "nome": "Hérnia inguinal no adulto"
+  },
+  {
+   "no": "cir.hernias-da-parede-abdominal.hernia-femoral",
+   "nome": "Hérnia femoral"
+  },
+  {
+   "no": "cir.hernias-da-parede-abdominal.hernia-umbilical-e-epigastrica",
+   "nome": "Hérnias da linha média no adulto"
+  },
+  {
+   "no": "cir.hernias-da-parede-abdominal.hernia-incisional",
+   "nome": "Hérnia incisional"
+  },
+  {
+   "no": "ped.cirurgia-pediatrica.hernia-inguinal-e-hidrocele",
+   "nome": "Hérnia inguinal e hidrocele na criança"
+  },
+  {
+   "no": "ped.cirurgia-pediatrica.hernia-umbilical",
+   "nome": "Hérnia umbilical na criança"
+  }
+ ],
+ "GR-040": [
+  {
+   "no": "cir.urologia.litiase-urinaria",
+   "nome": "Litíase urinária"
+  }
+ ],
+ "GR-041": [
+  {
+   "no": "cir.coloproctologia.cancer-colorretal",
+   "nome": "Câncer colorretal"
+  },
+  {
+   "no": "cir.coloproctologia.polipos-e-sindromes-hereditarias",
+   "nome": "Pólipos colorretais e síndromes hereditárias"
+  },
+  {
+   "no": "mfc.prevencao.rastreamento-cancer-colorretal",
+   "nome": "Rastreamento do câncer colorretal"
+  }
+ ],
+ "GR-042": [
+  {
+   "no": "cir.cirurgia-vascular.isquemia-arterial-aguda-de-membro",
+   "nome": "Isquemia arterial aguda de membro"
+  }
+ ],
+ "GR-043": [
+  {
+   "no": "go.pre-natal.rotina-do-pre-natal",
+   "nome": "Rotina do pré-natal de risco habitual"
+  },
+  {
+   "no": "go.pre-natal.datacao-da-gestacao",
+   "nome": "Datação da gestação e idade gestacional"
+  },
+  {
+   "no": "go.pre-natal.estatica-fetal",
+   "nome": "Estática fetal e exame obstétrico"
+  },
+  {
+   "no": "go.pre-natal.vacinacao-na-gestacao",
+   "nome": "Vacinação na gestação"
+  },
+  {
+   "no": "go.pre-natal.consulta-pre-concepcional",
+   "nome": "Consulta pré-concepcional"
+  },
+  {
+   "no": "go.pre-natal.estratificacao-de-risco-gestacional",
+   "nome": "Estratificação de risco gestacional e encaminhamento ao pré-natal de alto risco"
+  },
+  {
+   "no": "go.pre-natal.diagnostico-da-gestacao-e-modificacoes-gravidicas",
+   "nome": "Diagnóstico da gestação"
+  },
+  {
+   "no": "go.pre-natal.modificacoes-fisiologicas-da-gestacao",
+   "nome": "Modificações fisiológicas da gestação"
+  },
+  {
+   "no": "go.pre-natal.queixas-comuns-da-gestacao",
+   "nome": "Queixas comuns da gestação"
+  },
+  {
+   "no": "go.pre-natal.nutricao-e-suplementacao-na-gestacao",
+   "nome": "Nutrição, ganho de peso e suplementação na gestação"
+  },
+  {
+   "no": "go.crescimento-e-vitalidade-fetal.aloimunizacao-rh",
+   "nome": "Aloimunização materno-fetal pelo fator Rh"
+  },
+  {
+   "no": "go.doencas-clinicas-na-gestacao.anemia-na-gestacao",
+   "nome": "Anemia na gestação"
+  },
+  {
+   "no": "go.doencas-clinicas-na-gestacao.gestacao-apos-cirurgia-bariatrica",
+   "nome": "Gestação após cirurgia bariátrica"
+  },
+  {
+   "no": "go.doencas-clinicas-na-gestacao.hiperemese-gravidica",
+   "nome": "Hiperêmese gravídica"
+  }
+ ],
+ "GR-044": [
+  {
+   "no": "go.infeccoes-na-gestacao.sifilis-na-gestacao",
+   "nome": "Sífilis na gestação"
+  },
+  {
+   "no": "go.infeccoes-na-gestacao.toxoplasmose-na-gestacao",
+   "nome": "Toxoplasmose na gestação"
+  },
+  {
+   "no": "go.infeccoes-na-gestacao.hiv-na-gestacao",
+   "nome": "Infecção pelo HIV na gestação"
+  },
+  {
+   "no": "go.infeccoes-na-gestacao.hepatites-virais-na-gestacao",
+   "nome": "Hepatites virais na gestação"
+  },
+  {
+   "no": "go.infeccoes-na-gestacao.infeccao-urinaria-na-gestacao",
+   "nome": "Infecção urinária na gestação"
+  },
+  {
+   "no": "go.infeccoes-na-gestacao.estreptococo-do-grupo-b",
+   "nome": "Colonização materna por estreptococo do grupo B"
+  },
+  {
+   "no": "go.infeccoes-na-gestacao.herpes-genital-na-gestacao",
+   "nome": "Herpes genital na gestação"
+  },
+  {
+   "no": "go.infeccoes-na-gestacao.infeccoes-virais-na-gestacao",
+   "nome": "Outras infecções virais na gestação"
+  },
+  {
+   "no": "ped.neonatologia.infeccoes-congenitas",
+   "nome": "Infecções congênitas (TORCH) exceto sífilis"
+  },
+  {
+   "no": "ped.neonatologia.sifilis-congenita",
+   "nome": "Sífilis congênita"
+  },
+  {
+   "no": "ped.neonatologia.crianca-exposta-ao-hiv",
+   "nome": "Criança exposta ao HIV e prevenção da transmissão vertical"
+  }
+ ],
+ "GR-045": [
+  {
+   "no": "go.sindromes-hipertensivas.pre-eclampsia",
+   "nome": "Pré-eclâmpsia"
+  },
+  {
+   "no": "go.sindromes-hipertensivas.eclampsia",
+   "nome": "Eclâmpsia"
+  },
+  {
+   "no": "go.sindromes-hipertensivas.hipertensao-gestacional",
+   "nome": "Hipertensão gestacional"
+  },
+  {
+   "no": "go.sindromes-hipertensivas.hipertensao-arterial-cronica-na-gestacao",
+   "nome": "Hipertensão arterial crônica na gestação"
+  },
+  {
+   "no": "go.sindromes-hipertensivas.prevencao-da-pre-eclampsia",
+   "nome": "Rastreamento e prevenção da pré-eclâmpsia"
+  },
+  {
+   "no": "go.sindromes-hipertensivas.sindrome-hellp",
+   "nome": "Síndrome HELLP"
+  },
+  {
+   "no": "go.sindromes-hipertensivas.pre-eclampsia-sobreposta",
+   "nome": "Pré-eclâmpsia sobreposta à hipertensão arterial crônica"
+  }
+ ],
+ "GR-046": [
+  {
+   "no": "go.doencas-clinicas-na-gestacao.diabetes-mellitus-gestacional",
+   "nome": "Diabetes mellitus gestacional"
+  },
+  {
+   "no": "go.doencas-clinicas-na-gestacao.diabetes-previo-a-gestacao",
+   "nome": "Diabetes mellitus prévio à gestação (diabetes manifesto)"
+  }
+ ],
+ "GR-047": [
+  {
+   "no": "go.hemorragias-da-gestacao.abortamento",
+   "nome": "Abortamento"
+  },
+  {
+   "no": "go.hemorragias-da-gestacao.gravidez-ectopica",
+   "nome": "Gravidez ectópica"
+  },
+  {
+   "no": "go.hemorragias-da-gestacao.doenca-trofoblastica-gestacional",
+   "nome": "Doença trofoblástica gestacional"
+  },
+  {
+   "no": "go.ginecologia-endocrina.perda-gestacional-recorrente",
+   "nome": "Perda gestacional recorrente"
+  }
+ ],
+ "GR-048": [
+  {
+   "no": "go.hemorragias-da-gestacao.descolamento-prematuro-de-placenta",
+   "nome": "Descolamento prematuro de placenta"
+  },
+  {
+   "no": "go.hemorragias-da-gestacao.placenta-previa",
+   "nome": "Placenta prévia"
+  },
+  {
+   "no": "go.hemorragias-da-gestacao.acretismo-placentario",
+   "nome": "Acretismo placentário"
+  }
+ ],
+ "GR-049": [
+  {
+   "no": "go.assistencia-ao-parto.trabalho-de-parto-e-partograma",
+   "nome": "Trabalho de parto e partograma"
+  },
+  {
+   "no": "go.assistencia-ao-parto.periodo-expulsivo",
+   "nome": "Assistência ao período expulsivo"
+  },
+  {
+   "no": "go.assistencia-ao-parto.terceiro-periodo-do-parto",
+   "nome": "Terceiro período do parto (dequitação)"
+  },
+  {
+   "no": "go.assistencia-ao-parto.parto-vaginal-operatorio",
+   "nome": "Parto vaginal operatório"
+  },
+  {
+   "no": "go.assistencia-ao-parto.via-de-parto-e-cesarea",
+   "nome": "Via de parto e cesárea"
+  },
+  {
+   "no": "go.assistencia-ao-parto.gestacao-a-termo-tardio-e-pos-termo",
+   "nome": "Gestação a termo tardio e pós-termo"
+  },
+  {
+   "no": "go.assistencia-ao-parto.laceracoes-perineais",
+   "nome": "Lacerações perineais"
+  },
+  {
+   "no": "go.assistencia-ao-parto.inducao-do-parto",
+   "nome": "Indução do parto"
+  },
+  {
+   "no": "go.assistencia-ao-parto.apresentacoes-anomalas",
+   "nome": "Apresentações anômalas e parto pélvico"
+  },
+  {
+   "no": "go.assistencia-ao-parto.analgesia-no-parto",
+   "nome": "Analgesia no parto"
+  }
+ ],
+ "GR-050": [
+  {
+   "no": "go.assistencia-ao-parto.distocia-de-ombros",
+   "nome": "Distocia de ombros"
+  },
+  {
+   "no": "go.assistencia-ao-parto.monitorizacao-fetal-intraparto",
+   "nome": "Monitorização fetal intraparto"
+  },
+  {
+   "no": "go.assistencia-ao-parto.distocias-do-trabalho-de-parto",
+   "nome": "Distocias do trabalho de parto"
+  },
+  {
+   "no": "go.hemorragias-da-gestacao.rotura-uterina",
+   "nome": "Rotura uterina"
+  }
+ ],
+ "GR-051": [
+  {
+   "no": "go.puerperio.hemorragia-pos-parto",
+   "nome": "Hemorragia pós-parto"
+  }
+ ],
+ "GR-052": [
+  {
+   "no": "go.puerperio.puerperio-normal",
+   "nome": "Puerpério normal"
+  },
+  {
+   "no": "go.puerperio.infeccao-puerperal",
+   "nome": "Infecção puerperal"
+  },
+  {
+   "no": "go.puerperio.mastite-e-abscesso-mamario-lactacional",
+   "nome": "Mastite lactacional e abscesso mamário"
+  },
+  {
+   "no": "go.puerperio.lactacao-e-aleitamento",
+   "nome": "Lactação e aleitamento materno (cuidado materno)"
+  },
+  {
+   "no": "sm.humor-e-ansiedade.tristeza-puerperal",
+   "nome": "Tristeza puerperal"
+  }
+ ],
+ "GR-053": [
+  {
+   "no": "go.prematuridade-e-rotura-de-membranas.prevencao-do-parto-pre-termo",
+   "nome": "Prevenção do parto pré-termo"
+  },
+  {
+   "no": "go.prematuridade-e-rotura-de-membranas.trabalho-de-parto-pre-termo",
+   "nome": "Trabalho de parto pré-termo"
+  },
+  {
+   "no": "go.prematuridade-e-rotura-de-membranas.rotura-prematura-de-membranas",
+   "nome": "Rotura prematura de membranas"
+  },
+  {
+   "no": "go.prematuridade-e-rotura-de-membranas.corioamnionite",
+   "nome": "Corioamnionite (infecção intra-amniótica)"
+  }
+ ],
+ "GR-054": [
+  {
+   "no": "go.crescimento-e-vitalidade-fetal.restricao-de-crescimento-fetal",
+   "nome": "Restrição de crescimento fetal"
+  },
+  {
+   "no": "go.crescimento-e-vitalidade-fetal.vitalidade-fetal-anteparto",
+   "nome": "Avaliação da vitalidade fetal anteparto"
+  },
+  {
+   "no": "go.crescimento-e-vitalidade-fetal.oligoamnio",
+   "nome": "Oligoâmnio"
+  },
+  {
+   "no": "go.crescimento-e-vitalidade-fetal.polidramnio",
+   "nome": "Polidrâmnio"
+  }
+ ],
+ "GR-055": [
+  {
+   "no": "go.contracepcao.criterios-de-elegibilidade",
+   "nome": "Critérios de elegibilidade dos contraceptivos"
+  },
+  {
+   "no": "go.contracepcao.contracepcao-hormonal",
+   "nome": "Contracepção hormonal combinada e de progestagênio"
+  },
+  {
+   "no": "go.contracepcao.dispositivo-intrauterino",
+   "nome": "Dispositivo intrauterino"
+  },
+  {
+   "no": "go.contracepcao.contracepcao-no-puerperio",
+   "nome": "Contracepção no puerpério e na lactação"
+  },
+  {
+   "no": "go.contracepcao.esterilizacao-cirurgica",
+   "nome": "Esterilização cirúrgica"
+  },
+  {
+   "no": "go.contracepcao.contracepcao-de-emergencia",
+   "nome": "Contracepção de emergência"
+  },
+  {
+   "no": "go.contracepcao.direitos-sexuais-e-reprodutivos",
+   "nome": "Direitos sexuais e reprodutivos e acesso à contracepção"
+  }
+ ],
+ "GR-056": [
+  {
+   "no": "go.colo-do-utero.rastreamento-do-cancer-do-colo",
+   "nome": "Rastreamento do câncer do colo do útero"
+  },
+  {
+   "no": "go.colo-do-utero.vacinacao-contra-hpv",
+   "nome": "Vacinação contra o HPV"
+  },
+  {
+   "no": "go.colo-do-utero.asc-us",
+   "nome": "Atipias escamosas de significado indeterminado, possivelmente não neoplásicas (ASC-US)"
+  },
+  {
+   "no": "go.colo-do-utero.asc-h",
+   "nome": "Atipias escamosas de significado indeterminado, não se podendo afastar lesão de alto grau (ASC-H)"
+  },
+  {
+   "no": "go.colo-do-utero.lesao-intraepitelial-de-baixo-grau",
+   "nome": "Lesão intraepitelial escamosa de baixo grau"
+  },
+  {
+   "no": "go.colo-do-utero.lesao-intraepitelial-de-alto-grau",
+   "nome": "Lesão intraepitelial escamosa de alto grau"
+  },
+  {
+   "no": "go.colo-do-utero.atipias-glandulares",
+   "nome": "Atipias em células glandulares (AGC)"
+  },
+  {
+   "no": "go.colo-do-utero.cancer-do-colo-do-utero",
+   "nome": "Câncer do colo do útero"
+  },
+  {
+   "no": "ped.imunizacoes.vacina-hpv",
+   "nome": "Vacina contra o papilomavírus humano"
+  }
+ ],
+ "GR-057": [
+  {
+   "no": "go.mama.rastreamento-do-cancer-de-mama",
+   "nome": "Mamografia alterada: categorias BI-RADS e conduta"
+  },
+  {
+   "no": "go.mama.nodulo-mamario",
+   "nome": "Nódulo mamário"
+  },
+  {
+   "no": "go.mama.doencas-benignas-da-mama",
+   "nome": "Doenças benignas da mama"
+  },
+  {
+   "no": "go.mama.cancer-de-mama",
+   "nome": "Câncer de mama"
+  },
+  {
+   "no": "go.mama.mastalgia",
+   "nome": "Mastalgia"
+  },
+  {
+   "no": "go.mama.derrame-papilar",
+   "nome": "Derrame papilar"
+  },
+  {
+   "no": "mfc.prevencao.rastreamento-cancer-de-mama",
+   "nome": "Rastreamento do câncer de mama"
+  }
+ ],
+ "GR-058": [
+  {
+   "no": "go.infeccoes-genitais.vaginose-bacteriana",
+   "nome": "Vaginose bacteriana"
+  },
+  {
+   "no": "go.infeccoes-genitais.candidiase-vulvovaginal",
+   "nome": "Candidíase vulvovaginal"
+  },
+  {
+   "no": "go.infeccoes-genitais.tricomoniase",
+   "nome": "Tricomoníase"
+  },
+  {
+   "no": "go.infeccoes-genitais.cervicites",
+   "nome": "Cervicites"
+  },
+  {
+   "no": "go.infeccoes-genitais.vaginose-citolitica",
+   "nome": "Vaginose citolítica"
+  }
+ ],
+ "GR-059": [
+  {
+   "no": "go.sangramento-uterino-anormal.sangramento-uterino-anormal-na-menacme",
+   "nome": "Sangramento uterino anormal na menacme"
+  },
+  {
+   "no": "go.sangramento-uterino-anormal.sangramento-uterino-anormal-na-adolescencia",
+   "nome": "Sangramento uterino anormal na adolescência"
+  },
+  {
+   "no": "go.sangramento-uterino-anormal.sangramento-pos-menopausa",
+   "nome": "Sangramento pós-menopausa"
+  },
+  {
+   "no": "go.sangramento-uterino-anormal.polipo-endometrial",
+   "nome": "Pólipo endometrial"
+  },
+  {
+   "no": "go.sangramento-uterino-anormal.leiomioma-uterino",
+   "nome": "Leiomioma uterino"
+  },
+  {
+   "no": "go.sangramento-uterino-anormal.hiperplasia-endometrial",
+   "nome": "Hiperplasia endometrial"
+  },
+  {
+   "no": "go.sangramento-uterino-anormal.adenomiose",
+   "nome": "Adenomiose"
+  },
+  {
+   "no": "go.sangramento-uterino-anormal.sangramento-uterino-anormal-por-coagulopatia",
+   "nome": "Sangramento uterino anormal por coagulopatia"
+  },
+  {
+   "no": "go.sangramento-uterino-anormal.cancer-de-endometrio",
+   "nome": "Câncer de endométrio"
+  }
+ ],
+ "GR-060": [
+  {
+   "no": "go.infeccoes-genitais.doenca-inflamatoria-pelvica",
+   "nome": "Doença inflamatória pélvica"
+  },
+  {
+   "no": "go.endometriose-e-dor-pelvica.dor-pelvica-aguda",
+   "nome": "Dor pélvica aguda: diagnóstico diferencial"
+  },
+  {
+   "no": "go.endometriose-e-dor-pelvica.endometriose",
+   "nome": "Endometriose"
+  },
+  {
+   "no": "go.endometriose-e-dor-pelvica.dispareunia",
+   "nome": "Dispareunia"
+  },
+  {
+   "no": "go.endometriose-e-dor-pelvica.dismenorreia",
+   "nome": "Dismenorreia"
+  },
+  {
+   "no": "go.endometriose-e-dor-pelvica.dor-pelvica-cronica",
+   "nome": "Dor pélvica crônica"
+  },
+  {
+   "no": "go.massas-anexiais.torcao-anexial",
+   "nome": "Torção anexial"
+  }
+ ],
+ "GR-061": [
+  {
+   "no": "ped.neonatologia.reanimacao-neonatal",
+   "nome": "Reanimação neonatal e assistência na sala de parto"
+  }
+ ],
+ "GR-062": [
+  {
+   "no": "ped.nutricao.aleitamento-materno",
+   "nome": "Aleitamento materno"
+  }
+ ],
+ "GR-063": [
+  {
+   "no": "ped.puericultura.avaliacao-do-crescimento",
+   "nome": "Avaliação do crescimento e do estado nutricional"
+  },
+  {
+   "no": "ped.puericultura.baixa-estatura",
+   "nome": "Baixa estatura e variantes normais do crescimento"
+  },
+  {
+   "no": "ped.puericultura.desenvolvimento-neuropsicomotor",
+   "nome": "Desenvolvimento neuropsicomotor e sinais de alerta"
+  },
+  {
+   "no": "ped.puericultura.puberdade-normal",
+   "nome": "Puberdade normal e suas variações"
+  },
+  {
+   "no": "ped.puericultura.transtorno-do-espectro-autista",
+   "nome": "Transtorno do espectro autista: sinais de alerta e triagem"
+  },
+  {
+   "no": "ped.puericultura.saude-ocular-e-auditiva",
+   "nome": "Saúde ocular e auditiva da criança"
+  }
+ ],
+ "GR-064": [
+  {
+   "no": "ped.imunizacoes.calendario-vacinal-da-crianca",
+   "nome": "Calendário vacinal da criança"
+  },
+  {
+   "no": "ped.imunizacoes.vacina-bcg",
+   "nome": "Vacina BCG"
+  },
+  {
+   "no": "ped.imunizacoes.calendario-vacinal-do-adolescente",
+   "nome": "Calendário vacinal do adolescente"
+  },
+  {
+   "no": "ped.imunizacoes.atraso-vacinal",
+   "nome": "Atraso vacinal e esquemas de resgate"
+  },
+  {
+   "no": "ped.imunizacoes.vacinacao-em-situacoes-especiais",
+   "nome": "Vacinação em situações clínicas especiais"
+  },
+  {
+   "no": "ped.imunizacoes.imunoprofilaxia-pos-exposicao",
+   "nome": "Imunoprofilaxia pós-exposição"
+  },
+  {
+   "no": "ped.imunizacoes.recusa-vacinal",
+   "nome": "Recusa vacinal e obrigatoriedade legal da vacinação"
+  },
+  {
+   "no": "sc.imunizacao.programa-nacional-de-imunizacoes",
+   "nome": "Programa Nacional de Imunizações e Calendário Nacional de Vacinação"
+  },
+  {
+   "no": "sc.imunizacao.eventos-adversos-pos-vacinacao",
+   "nome": "Eventos supostamente atribuíveis à vacinação ou imunização"
+  }
+ ],
+ "GR-065": [
+  {
+   "no": "ped.neonatologia.ictericia-neonatal",
+   "nome": "Icterícia neonatal e hiperbilirrubinemia indireta"
+  },
+  {
+   "no": "ped.gastroenterologia.colestase-neonatal",
+   "nome": "Colestase neonatal"
+  },
+  {
+   "no": "ped.gastroenterologia.atresia-biliar",
+   "nome": "Atresia biliar"
+  }
+ ],
+ "GR-066": [
+  {
+   "no": "ped.neonatologia.sepse-neonatal",
+   "nome": "Sepse neonatal"
+  }
+ ],
+ "GR-067": [
+  {
+   "no": "ped.gastroenterologia.doenca-diarreica-aguda",
+   "nome": "Doença diarreica aguda"
+  },
+  {
+   "no": "ped.gastroenterologia.desidratacao",
+   "nome": "Desidratação e terapia de reidratação"
+  },
+  {
+   "no": "ped.gastroenterologia.diarreia-persistente-e-ma-absorcao",
+   "nome": "Diarreia persistente e diarreia crônica na criança"
+  }
+ ],
+ "GR-068": [
+  {
+   "no": "ped.respiratorio.pneumonia-adquirida-na-comunidade",
+   "nome": "Pneumonia adquirida na comunidade na criança"
+  }
+ ],
+ "GR-069": [
+  {
+   "no": "ped.respiratorio.bronquiolite-viral-aguda",
+   "nome": "Bronquiolite viral aguda"
+  },
+  {
+   "no": "ped.respiratorio.prevencao-vsr",
+   "nome": "Prevenção da infecção grave pelo vírus sincicial respiratório"
+  }
+ ],
+ "GR-070": [
+  {
+   "no": "ped.respiratorio.asma-manutencao",
+   "nome": "Asma na infância: diagnóstico, controle e tratamento de manutenção"
+  },
+  {
+   "no": "ped.respiratorio.crise-de-asma",
+   "nome": "Crise de asma na criança"
+  },
+  {
+   "no": "ped.respiratorio.sibilancia-recorrente-do-lactente",
+   "nome": "Sibilância recorrente do lactente"
+  }
+ ],
+ "GR-071": [
+  {
+   "no": "ped.urgencias.febre-aguda",
+   "nome": "Febre aguda na criança"
+  }
+ ],
+ "GR-072": [
+  {
+   "no": "ped.infectologia.meningites-bacterianas",
+   "nome": "Meningites bacterianas na criança"
+  },
+  {
+   "no": "ped.infectologia.doenca-meningococica",
+   "nome": "Doença meningocócica"
+  }
+ ],
+ "GR-073": [
+  {
+   "no": "ped.hematologia-oncologia.anemia-ferropriva",
+   "nome": "Anemia ferropriva e deficiência de ferro"
+  },
+  {
+   "no": "ped.nutricao.carencias-de-micronutrientes",
+   "nome": "Carências de micronutrientes"
+  },
+  {
+   "no": "ped.nutricao.desnutricao",
+   "nome": "Desnutrição energético-proteica"
+  }
+ ],
+ "GR-074": [
+  {
+   "no": "ped.infectologia.doencas-exantematicas",
+   "nome": "Doenças exantemáticas: diagnóstico diferencial"
+  },
+  {
+   "no": "ped.infectologia.sarampo",
+   "nome": "Sarampo"
+  },
+  {
+   "no": "ped.infectologia.escarlatina",
+   "nome": "Escarlatina"
+  },
+  {
+   "no": "ped.infectologia.exantema-subito",
+   "nome": "Exantema súbito"
+  },
+  {
+   "no": "ped.infectologia.doenca-mao-pe-boca",
+   "nome": "Doença mão-pé-boca"
+  },
+  {
+   "no": "ped.infectologia.varicela",
+   "nome": "Varicela"
+  },
+  {
+   "no": "ped.infectologia.rubeola",
+   "nome": "Rubéola"
+  },
+  {
+   "no": "ped.infectologia.eritema-infeccioso",
+   "nome": "Eritema infeccioso"
+  }
+ ],
+ "GR-075": [
+  {
+   "no": "ped.nefrologia.infeccao-do-trato-urinario",
+   "nome": "Infecção do trato urinário na criança"
+  },
+  {
+   "no": "ped.nefrologia.refluxo-vesicoureteral",
+   "nome": "Refluxo vesicoureteral"
+  },
+  {
+   "no": "ped.nefrologia.uropatias-obstrutivas",
+   "nome": "Uropatias obstrutivas congênitas e hidronefrose"
+  }
+ ],
+ "GR-076": [
+  {
+   "no": "ped.urgencias.choque",
+   "nome": "Choque não séptico na criança"
+  },
+  {
+   "no": "ped.urgencias.sepse-e-choque-septico",
+   "nome": "Sepse e choque séptico na criança"
+  }
+ ],
+ "GR-077": [
+  {
+   "no": "ped.neurologia.convulsao-febril",
+   "nome": "Convulsão febril"
+  }
+ ],
+ "GR-078": [
+  {
+   "no": "ped.cirurgia-pediatrica.invaginacao-intestinal",
+   "nome": "Invaginação intestinal"
+  }
+ ],
+ "GR-079": [
+  {
+   "no": "mfc.aps.atributos-da-aps",
+   "nome": "Atributos da atenção primária à saúde"
+  },
+  {
+   "no": "mfc.aps.territorializacao",
+   "nome": "Territorialização e adscrição da clientela"
+  },
+  {
+   "no": "mfc.aps.acesso-e-demanda-espontanea",
+   "nome": "Acesso, acolhimento à demanda espontânea e organização da agenda"
+  },
+  {
+   "no": "mfc.aps.trabalho-em-equipe-e-apoio-multiprofissional",
+   "nome": "Trabalho em equipe e apoio multiprofissional"
+  }
+ ],
+ "GR-080": [
+  {
+   "no": "mfc.abordagem.metodo-clinico-centrado-na-pessoa",
+   "nome": "Método clínico centrado na pessoa"
+  },
+  {
+   "no": "mfc.abordagem.projeto-terapeutico-singular",
+   "nome": "Projeto terapêutico singular e clínica ampliada"
+  },
+  {
+   "no": "mfc.abordagem.entrevista-motivacional",
+   "nome": "Entrevista motivacional e estágios de mudança de comportamento"
+  }
+ ],
+ "GR-081": [
+  {
+   "no": "mfc.prevencao.niveis-de-prevencao",
+   "nome": "Níveis de prevenção"
+  },
+  {
+   "no": "mfc.prevencao.principios-do-rastreamento",
+   "nome": "Princípios do rastreamento e exames preventivos no adulto"
+  },
+  {
+   "no": "mfc.prevencao.rastreamento-cancer-de-prostata",
+   "nome": "Rastreamento do câncer de próstata"
+  },
+  {
+   "no": "mfc.prevencao.prevencao-quaternaria",
+   "nome": "Prevenção quaternária"
+  }
+ ],
+ "GR-082": [
+  {
+   "no": "mfc.condicoes-cronicas-e-problemas-comuns.hipertensao-na-aps",
+   "nome": "Hipertensão arterial sistêmica na atenção primária"
+  },
+  {
+   "no": "mfc.condicoes-cronicas-e-problemas-comuns.linha-de-cuidado-dcnt",
+   "nome": "Linha de cuidado das doenças crônicas não transmissíveis"
+  }
+ ],
+ "GR-083": [
+  {
+   "no": "mfc.abordagem.abordagem-familiar",
+   "nome": "Abordagem familiar"
+  },
+  {
+   "no": "mfc.aps.visita-domiciliar",
+   "nome": "Visita domiciliar pela equipe de Saúde da Família"
+  },
+  {
+   "no": "mfc.aps.atencao-domiciliar",
+   "nome": "Atenção domiciliar e cuidado à pessoa restrita ao domicílio"
+  }
+ ],
+ "GR-084": [],
+ "GR-085": [
+  {
+   "no": "cm.geriatria.avaliacao-multidimensional",
+   "nome": "Avaliação multidimensional da pessoa idosa"
+  },
+  {
+   "no": "cm.geriatria.quedas-no-idoso",
+   "nome": "Quedas no idoso"
+  },
+  {
+   "no": "cm.geriatria.polifarmacia",
+   "nome": "Polifarmácia e prescrição inapropriada"
+  },
+  {
+   "no": "cm.geriatria.imobilidade",
+   "nome": "Síndrome de imobilidade"
+  },
+  {
+   "no": "cm.geriatria.incontinencia-urinaria-no-idoso",
+   "nome": "Incontinência urinária no idoso"
+  },
+  {
+   "no": "cm.geriatria.desnutricao-e-disfagia-no-idoso",
+   "nome": "Desnutrição e disfagia no idoso"
+  }
+ ],
+ "GR-086": [
+  {
+   "no": "cm.cuidados-paliativos.controle-de-sintomas",
+   "nome": "Controle da dor e de outros sintomas"
+  },
+  {
+   "no": "cm.cuidados-paliativos.terminalidade-e-decisoes-de-fim-de-vida",
+   "nome": "Terminalidade e decisões de fim de vida"
+  },
+  {
+   "no": "mfc.abordagem.comunicacao-clinica",
+   "nome": "Comunicação clínica e comunicação de más notícias"
+  }
+ ],
+ "GR-087": [
+  {
+   "no": "sc.sus.principios-e-diretrizes-do-sus",
+   "nome": "Princípios e diretrizes do SUS"
+  },
+  {
+   "no": "sc.sus.legislacao-e-financiamento",
+   "nome": "Legislação e financiamento do SUS"
+  },
+  {
+   "no": "sc.sus.participacao-e-controle-social",
+   "nome": "Participação e controle social no SUS"
+  },
+  {
+   "no": "sc.sus.direitos-dos-usuarios",
+   "nome": "Direitos dos usuários do SUS"
+  }
+ ],
+ "GR-088": [
+  {
+   "no": "mfc.aps.pnab-e-estrategia-saude-da-familia",
+   "nome": "Política Nacional de Atenção Básica e organização da Estratégia Saúde da Família"
+  },
+  {
+   "no": "sc.sus.redes-de-atencao-a-saude",
+   "nome": "Redes de Atenção à Saúde"
+  },
+  {
+   "no": "sc.sus.regulacao-e-referencia",
+   "nome": "Regulação do acesso, referência e contrarreferência"
+  }
+ ],
+ "GR-089": [
+  {
+   "no": "sc.vigilancia.notificacao-compulsoria",
+   "nome": "Notificação compulsória, investigação epidemiológica e surtos"
+  },
+  {
+   "no": "sc.vigilancia.emergencias-em-saude-publica-e-desastres",
+   "nome": "Emergências em saúde pública e desastres"
+  },
+  {
+   "no": "sc.vigilancia.colera",
+   "nome": "Cólera: vigilância e conduta"
+  },
+  {
+   "no": "sc.vigilancia.doencas-diarreicas-agudas",
+   "nome": "Doenças diarreicas agudas: vigilância e monitorização"
+  },
+  {
+   "no": "sc.vigilancia.hepatite-a",
+   "nome": "Hepatite A: vigilância de surtos"
+  },
+  {
+   "no": "sc.vigilancia.leptospirose",
+   "nome": "Leptospirose: vigilância e controle ambiental"
+  },
+  {
+   "no": "sc.vigilancia.esquistossomose",
+   "nome": "Esquistossomose: vigilância e controle"
+  },
+  {
+   "no": "sc.vigilancia.escabiose",
+   "nome": "Escabiose: controle de surtos em instituições"
+  },
+  {
+   "no": "sc.vigilancia.covid-19",
+   "nome": "COVID-19: vigilância e resposta à pandemia"
+  }
+ ],
+ "GR-090": [
+  {
+   "no": "sc.epidemiologia.sistemas-de-informacao",
+   "nome": "Sistemas de informação em saúde"
+  }
+ ],
+ "GR-091": [
+  {
+   "no": "sc.epidemiologia.medidas-de-frequencia",
+   "nome": "Medidas de frequência: incidência e prevalência"
+  },
+  {
+   "no": "sc.epidemiologia.indicadores-de-saude",
+   "nome": "Indicadores de saúde: mortalidade, letalidade e morbidade"
+  },
+  {
+   "no": "sc.epidemiologia.indicadores-materno-infantis",
+   "nome": "Indicadores de saúde materno-infantil"
+  },
+  {
+   "no": "sc.epidemiologia.transicao-demografica-e-epidemiologica",
+   "nome": "Transição demográfica e epidemiológica"
+  }
+ ],
+ "GR-092": [
+  {
+   "no": "sc.epidemiologia.validade-de-testes-diagnosticos",
+   "nome": "Validade de testes diagnósticos"
+  }
+ ],
+ "GR-093": [
+  {
+   "no": "sc.sus.planejamento-e-gestao",
+   "nome": "Planejamento e gestão em saúde"
+  },
+  {
+   "no": "sc.sus.avaliacao-e-qualidade-dos-servicos",
+   "nome": "Avaliação, qualidade e segurança do paciente nos serviços de saúde"
+  }
+ ],
+ "GR-094": [
+  {
+   "no": "mfc.etica.autonomia-e-recusa-de-tratamento",
+   "nome": "Autonomia, consentimento e recusa de tratamento pelo adulto capaz"
+  },
+  {
+   "no": "mfc.etica.sigilo-e-atendimento-do-adolescente",
+   "nome": "Sigilo e atendimento do adolescente"
+  },
+  {
+   "no": "mfc.etica.etica-em-meios-digitais",
+   "nome": "Sigilo e ética na comunicação digital"
+  },
+  {
+   "no": "mfc.etica.gravidez-nao-desejada-e-aborto-legal",
+   "nome": "Gravidez não desejada e aborto: aspectos éticos e legais"
+  },
+  {
+   "no": "mfc.etica.declaracao-de-obito",
+   "nome": "Declaração de óbito"
+  },
+  {
+   "no": "mfc.etica.prontuario-e-atestado",
+   "nome": "Prontuário e outros documentos médicos"
+  },
+  {
+   "no": "mfc.etica.morte-encefalica-e-doacao-de-orgaos",
+   "nome": "Morte encefálica e doação de órgãos"
+  },
+  {
+   "no": "mfc.etica.responsabilidade-profissional",
+   "nome": "Responsabilidade profissional e infrações éticas"
+  },
+  {
+   "no": "mfc.etica.recusa-por-responsavel-de-menor",
+   "nome": "Recusa de tratamento pelos responsáveis por criança ou adolescente"
+  },
+  {
+   "no": "mfc.etica.capacidade-decisoria-e-curatela",
+   "nome": "Capacidade decisória e curatela"
+  },
+  {
+   "no": "mfc.etica.prescricao-a-distancia",
+   "nome": "Orientação e prescrição a distância"
+  },
+  {
+   "no": "mfc.etica.atestado-medico",
+   "nome": "Atestado médico e afastamento do trabalho"
+  }
+ ],
+ "GR-095": [
+  {
+   "no": "sm.humor-e-ansiedade.transtorno-depressivo-maior",
+   "nome": "Transtorno depressivo maior"
+  },
+  {
+   "no": "sm.humor-e-ansiedade.transtorno-depressivo-por-outra-condicao-medica",
+   "nome": "Transtorno depressivo devido a outra condição médica"
+  },
+  {
+   "no": "sm.humor-e-ansiedade.depressao-pos-parto",
+   "nome": "Depressão pós-parto"
+  },
+  {
+   "no": "sm.humor-e-ansiedade.transtorno-depressivo-persistente",
+   "nome": "Transtorno depressivo persistente"
+  },
+  {
+   "no": "sm.urgencias.comportamento-suicida",
+   "nome": "Comportamento suicida"
+  },
+  {
+   "no": "sm.avaliacao-e-tratamento.antidepressivos",
+   "nome": "Antidepressivos: monitoramento e efeitos adversos"
+  },
+  {
+   "no": "sm.avaliacao-e-tratamento.sindrome-serotoninergica",
+   "nome": "Síndrome serotoninérgica"
+  }
+ ],
+ "GR-096": [
+  {
+   "no": "sm.humor-e-ansiedade.transtorno-de-ansiedade-generalizada",
+   "nome": "Transtorno de ansiedade generalizada"
+  },
+  {
+   "no": "sm.humor-e-ansiedade.transtorno-de-panico",
+   "nome": "Transtorno de pânico"
+  },
+  {
+   "no": "sm.humor-e-ansiedade.fobias-e-ansiedade-social",
+   "nome": "Fobias específicas e transtorno de ansiedade social"
+  },
+  {
+   "no": "sm.humor-e-ansiedade.transtorno-obsessivo-compulsivo",
+   "nome": "Transtorno obsessivo-compulsivo"
+  },
+  {
+   "no": "sm.humor-e-ansiedade.transtorno-de-estresse-pos-traumatico",
+   "nome": "Transtorno de estresse pós-traumático"
+  },
+  {
+   "no": "sm.humor-e-ansiedade.reacoes-ao-estresse-e-transtorno-de-adaptacao",
+   "nome": "Reação aguda ao estresse e transtorno de adaptação"
+  }
+ ],
+ "GR-097": [
+  {
+   "no": "sm.transtornos-psicoticos.esquizofrenia",
+   "nome": "Esquizofrenia"
+  },
+  {
+   "no": "sm.transtornos-psicoticos.primeiro-episodio-psicotico",
+   "nome": "Primeiro episódio psicótico e psicose aguda"
+  },
+  {
+   "no": "sm.transtornos-psicoticos.psicose-puerperal",
+   "nome": "Psicose puerperal"
+  },
+  {
+   "no": "sm.avaliacao-e-tratamento.efeitos-adversos-de-antipsicoticos",
+   "nome": "Efeitos adversos de antipsicóticos"
+  },
+  {
+   "no": "sm.avaliacao-e-tratamento.sindrome-neuroleptica-maligna",
+   "nome": "Síndrome neuroléptica maligna"
+  }
+ ],
+ "GR-098": [
+  {
+   "no": "sm.humor-e-ansiedade.transtorno-bipolar",
+   "nome": "Transtorno bipolar"
+  },
+  {
+   "no": "sm.avaliacao-e-tratamento.litio",
+   "nome": "Lítio: monitoramento e intoxicação"
+  }
+ ],
+ "GR-099": [
+  {
+   "no": "cm.geriatria.delirium",
+   "nome": "Delirium"
+  },
+  {
+   "no": "cm.neurologia.demencias",
+   "nome": "Demências e comprometimento cognitivo"
+  }
+ ],
+ "GR-100": [
+  {
+   "no": "sm.uso-de-substancias.transtornos-por-uso-de-alcool",
+   "nome": "Transtornos por uso de álcool"
+  },
+  {
+   "no": "sm.uso-de-substancias.sindrome-de-abstinencia-alcoolica",
+   "nome": "Síndrome de abstinência alcoólica e delirium tremens"
+  },
+  {
+   "no": "sm.uso-de-substancias.benzodiazepinicos",
+   "nome": "Uso prolongado e dependência de benzodiazepínicos"
+  },
+  {
+   "no": "sm.uso-de-substancias.transtornos-por-uso-de-outras-substancias",
+   "nome": "Transtornos por uso de outras drogas"
+  },
+  {
+   "no": "sm.uso-de-substancias.reducao-de-danos",
+   "nome": "Redução de danos"
+  },
+  {
+   "no": "cm.neurologia.encefalopatia-de-wernicke",
+   "nome": "Encefalopatia de Wernicke"
+  }
+ ]
+}

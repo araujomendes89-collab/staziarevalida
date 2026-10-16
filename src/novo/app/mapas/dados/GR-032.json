@@ -1,0 +1,848 @@
+{
+  "esquema": 1,
+  "slug": "atendimento-inicial-ao-politraumatizado",
+  "codigo": "GR-032",
+  "area": "cir",
+  "titulo": "Politraumatizado: atendimento inicial",
+  "subtitulo": "Do sangramento que mata ao transporte seguro",
+  "emblema": "cruz",
+  "revisao": {
+    "status": "pre-revisado por agente",
+    "origem": "Aula GR-032 versão 5.2 (v5 + revisores + verificador final) sem o Protocolo SAMU 192 como fonte (pacote 2026-10-15-aulas-corrigidas/GR-032-sem-samu), 96 afirmações: PT01 a PT105 e W01",
+    "gerado_em": "2026-10-15",
+    "aprovacao_humana": null,
+    "pendencias": [
+      "Mapa refeito só com o que sobreviveu à retirada do Protocolo SAMU 192 (regra do dono, 15/10): 8 afirmações removidas, 63 re-fonteadas no ATLS 11 (cópia local traduzida) ou na Resolução CFM 1.672/2003, 13 novas. Revisão dos 2 revisores médicos pendente.",
+      "Saíram do mapa: pulso radial como critério de choque, AVDI, ringer lactato de 1ª escolha, torniquete 'imediatamente acima', torniquete frouxo, largura de 10 cm, curativo encharcado por cima, 2 tentativas em 90 s, coxim de 2 a 3 cm, 'crico por punção até 10-12 anos', epiglote curta, compressão látero-medial da pelve, Central de Regulação e Regulação Médica como conduta, 'suprimir etapas da secundária'.",
+      "Líquidos no choque (v5.1, ajuste dos revisores): o padrão do PEP 2024/2 (cristaloide inicial; sangue imediato inadequado) vale só para aquela estação; na pelve instável com choque o Inep cobrou hemocomponentes precoces (2021, prova objetiva 1, Q83, gabarito B); o cristaloide é só ponte, em volume pequeno.",
+      "Transferência: regras da Resolução CFM 1.672/2003 (2003); em vigor (portal do CFM, 15/10/2026: 'Situação: Em vigor').",
+      "Texto do mapa conferido pelos 2 revisores (Fable e Opus) contra a aula v5.2 em 15/10, com correções aplicadas; pôster regerado e conferido palavra por palavra pelos mesmos 2 revisores."
+    ]
+  },
+  "ramos": [
+    {
+      "id": "sequencia",
+      "titulo": "Sequência xABCDE",
+      "cor": "azul",
+      "icone": "prancheta",
+      "revisao": {
+        "fluxo": [
+          {
+            "t": "x: hemorragia externa maciça, na chegada",
+            "tom": "alerta"
+          },
+          "A via aérea · B respiração · C circulação",
+          "D neurológico · E exposição/hipotermia"
+        ],
+        "itens": [
+          "Avaliação primária antes da secundária",
+          "Piorou: voltar ao xABCDE",
+          "Reavaliar com frequência"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "A e B",
+          "itens": [
+            "A: manobras da via aérea com restrição do movimento da coluna cervical (colar ou similar); se o paciente fala, a via aérea provavelmente não está em risco imediato; aspirar secreções e usar a elevação da mandíbula.",
+            "B: examinar pulmões, parede torácica e diafragma."
+          ]
+        },
+        {
+          "titulo": "C, D e E",
+          "itens": [
+            "C: sangramento externo compressível controlado de forma escalonada: pressão direta, tamponamento, torniquete.",
+            "D: nível de consciência (escala de Glasgow), pupilas e sinais de lateralização.",
+            "E: retirar todas as roupas e joias; hipotermia agrava o choque e a coagulopatia (cobertores, ambiente e fluidos aquecidos)."
+          ]
+        },
+        {
+          "titulo": "Avaliação secundária",
+          "itens": [
+            "É o exame da cabeça aos pés com a história; começa quando a primária termina e o paciente está estável ou melhorado.",
+            "Sinais vitais reavaliados; história pelo AMPLE; inspecionar e palpar costas e coluna; considerar o mecanismo da lesão.",
+            "Se os sinais vitais pioram, reavaliar desde o xABCDE."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Em 2025, o ATLS acrescentou o x: avaliação rápida da hemorragia externa maciça, controlada na chegada, antes do A.",
+            "Reavaliação e monitoramento frequentes são necessários em todo o atendimento."
+          ]
+        }
+      ],
+      "claims": [
+        "W01",
+        "PT83",
+        "PT01",
+        "PT03",
+        "PT84",
+        "PT02",
+        "PT04",
+        "PT05",
+        "PT07",
+        "PT104",
+        "PT105",
+        "PT08",
+        "PT85",
+        "PT50",
+        "PT09",
+        "PT10",
+        "PT11",
+        "PT86",
+        "PT12",
+        "PT13",
+        "PT14"
+      ]
+    },
+    {
+      "id": "via-aerea",
+      "titulo": "Via aérea definitiva",
+      "cor": "ciano",
+      "icone": "pulmao",
+      "revisao": {
+        "itens": [
+          "Glasgow 8 ou menos: via aérea definitiva",
+          "Coluna cervical protegida na intubação",
+          "Capnografia: tubo na via aérea, não a posição exata"
+        ],
+        "fluxo": [
+          "Falhou: remover o tubo; máscara laríngea ou facial",
+          {
+            "t": "Sem oxigenar nem ventilar: via aérea cirúrgica",
+            "tom": "conduta"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Paciente que chega intubado",
+          "itens": [
+            {
+              "t": "Se piorar, voltar ao xABCDE e conferir o tubo; a capnografia confirma que está na via aérea, não a posição exata. Conferir o tubo não encerra a reavaliação.",
+              "tom": "atencao"
+            }
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Traumatismo craniano com alteração da consciência ou Glasgow 8 ou menos geralmente precisa de via aérea definitiva.",
+            "Manter a restrição do movimento cervical é parte importante da intubação.",
+            "Intubação traqueal que falha: remover o tubo e ventilar por máscara laríngea ou facial.",
+            "Via aérea cirúrgica quando a oxigenação e a ventilação não podem ser fornecidas por outros meios."
+          ]
+        }
+      ],
+      "claims": [
+        "PT16",
+        "PT18",
+        "PT17",
+        "PT19",
+        "PT20",
+        "PT09",
+        "PT14"
+      ]
+    },
+    {
+      "id": "hemorragia",
+      "titulo": "Hemorragia externa e torniquete",
+      "cor": "laranja",
+      "icone": "gota",
+      "lado": "centro",
+      "revisao": {
+        "fluxo": [
+          {
+            "t": "Pressão direta com gaze: 1º passo",
+            "tom": "conduta"
+          },
+          "Feridas profundas: tamponar",
+          {
+            "t": "Não controla rápido, jato ou amputação: torniquete",
+            "tom": "alerta"
+          }
+        ],
+        "itens": [
+          {
+            "t": "Amputação c/ sangramento abundante: torniquete",
+            "tom": "alerta"
+          },
+          "5 a 8 cm acima, fora da articulação",
+          "Apertar até parar sangramento e pulso distal",
+          "Anotar a hora, de preferência no dispositivo"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Torniquete",
+          "itens": [
+            "Indicado se a extremidade não é controlada rápido com pressão, há hemorragia arterial em jato ou amputação completa ou quase completa.",
+            "5 a 8 cm acima do local do sangramento, e não sobre uma articulação.",
+            "Apertado até o sangramento cessar e o pulso distal sumir; se continuar, segundo torniquete 5 a 8 cm acima do primeiro.",
+            "Menos de 2 horas: sem aumento aparente de amputações. Depois do exame primário e da ressuscitação, avaliar a conversão."
+          ]
+        },
+        {
+          "titulo": "Amputação e objetos",
+          "itens": [
+            "Parte amputada: gaze com toalha úmida e estéril, saco plástico selado, caixa térmica com gelo picado.",
+            {
+              "t": "Não imergir a parte direto no gelo: o congelamento pode inviabilizar o reimplante.",
+              "tom": "alerta"
+            },
+            "Objeto cravado geralmente não é removido no pronto-socorro."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Pescoço, faringe e boca: pressão direta, porque nem toda hemorragia pode receber torniquete.",
+            "Registrar o horário, de preferência no próprio dispositivo.",
+            "Amputação com sangramento ativo e abundante: torniquete acima do local, como intervenção prioritária inicial."
+          ]
+        }
+      ],
+      "claims": [
+        "W01",
+        "PT83",
+        "PT34",
+        "PT89",
+        "PT35",
+        "PT36",
+        "PT37",
+        "PT40",
+        "PT38",
+        "PT39",
+        "PT70",
+        "PT43",
+        "PT87",
+        "PT45",
+        "PT78",
+        "PT82",
+        "PT05"
+      ]
+    },
+    {
+      "id": "choque",
+      "titulo": "Choque no trauma",
+      "cor": "verde",
+      "icone": "seringa",
+      "revisao": {
+        "itens": [
+          {
+            "t": "Hemorragia: causa mais comum; excluir primeiro",
+            "tom": "diag"
+          },
+          "Controlar o sangramento; volume só tira do choque depois",
+          "Acesso difícil: intraósseo",
+          {
+            "t": "Soro é ponte, em volume pequeno; pedir exames, tipagem e prova cruzada",
+            "tom": "conduta"
+          },
+          "Pelve instável + choque + banco de sangue: hemocomponentes precoces",
+          "Fluidos aquecidos a 39 °C"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Reposição",
+          "itens": [
+            "Padrão da estação prática de choque hipovolêmico do trauma: soro fisiológico, ringer ou cristaloide como reposição inicial; sangue e hemoderivados de imediato são pontuados como inadequados, só nessa estação.",
+            "Na edição atual do ATLS, hemácias e hemoderivados, inclusive sangue total, são os fluidos ideais; cristaloide se não houver.",
+            "Pedir tipagem sanguínea e prova cruzada, reserva de sangue ou transfusão.",
+            "Cristaloide só como ponte, em volume pequeno.",
+            "Fratura pélvica instável com choque, com banco de sangue: cinta ou lençol pélvico e hemocomponentes precoces (cobrado pelo Inep)."
+          ]
+        },
+        {
+          "titulo": "Adjuntos e exames",
+          "itens": [
+            "Monitorização com ECG contínuo, oximetria e capnografia; radiografias de tórax e pelve; FAST ou eFAST.",
+            "Gasometria e lactato podem estar alterados antes de outros achados.",
+            "Estação prática: pedir três ou mais entre hemograma, gasometria, lactato e tipagem; ultrassonografia de abdome ou FAST também pontua."
+          ]
+        },
+        {
+          "titulo": "Hipotermia",
+          "itens": [
+            "Cobertores aquecidos, ambiente aquecido e fluidos aquecidos; a hipotermia agrava o choque."
+          ]
+        },
+        {
+          "titulo": "Limite da aula",
+          "itens": [
+            "A aula não traz metas de pressão nem regras de transfusão no adulto: seguir a orientação oficial em vigor e a rotina do serviço."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Imobilizar fêmur e estabilizar a pelve podem ser feitos já na avaliação primária.",
+            "A reposição de volume só recupera o choque quando o sangramento é controlado.",
+            "Identificar a causa específica; sem especialista disponível, iniciar a transferência."
+          ]
+        }
+      ],
+      "claims": [
+        "PT46",
+        "PT51",
+        "PT47",
+        "PT91",
+        "PT92",
+        "PT48",
+        "PT71",
+        "PT72",
+        "PT79",
+        "PT80",
+        "PT81",
+        "PT50",
+        "PT85",
+        "PT96",
+        "PT97",
+        "PT98",
+        "PT99",
+        "PT100",
+        "PT101",
+        "PT102",
+        "PT103"
+      ]
+    },
+    {
+      "id": "pelve",
+      "titulo": "Trauma de pelve",
+      "cor": "roxo",
+      "icone": "alvo",
+      "revisao": {
+        "itens": [
+          "Dor pélvica, rotação externa, sangue no meato",
+          {
+            "t": "Sem empurrões e puxões agressivos",
+            "tom": "alerta"
+          },
+          "Palpar a sensibilidade",
+          "Dispositivo de compressão nos trocanteres",
+          "Pernas imobilizadas, rotação interna"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Sinais",
+          "itens": [
+            "Sensibilidade suprapúbica, sínfise alargada, dor nos ossos pélvicos, rotação externa dos quadris, hematoma perineal, sangue no meato uretral.",
+            "Fraturas graves podem perder vários litros de sangue."
+          ]
+        },
+        {
+          "titulo": "Conduta",
+          "itens": [
+            "Se o quadro corrobora fratura, o dispositivo de compressão pélvica pode salvar vidas; centralizar nos trocanteres maiores.",
+            "Imobilizar os membros inferiores com rotação interna ajuda a manter a compressão."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Empurrões e puxões agressivos para testar a instabilidade são desnecessários, dolorosos e sem informação útil.",
+              "tom": "alerta"
+            }
+          ]
+        }
+      ],
+      "claims": [
+        "PT55",
+        "PT56",
+        "PT15",
+        "PT52",
+        "PT53",
+        "PT90",
+        "PT74",
+        "PT51"
+      ]
+    },
+    {
+      "id": "especiais",
+      "titulo": "Criança e gestante",
+      "cor": "amarelo",
+      "icone": "bebe",
+      "revisao": {
+        "linhas": [
+          {
+            "rotulo": "Criança",
+            "itens": [
+              "Prioridades iguais às do adulto",
+              "Acolchoamento sob o tronco (occipício)",
+              {
+                "t": "Crico cirúrgica: rara em bebê e criança pequena",
+                "tom": "alerta"
+              }
+            ]
+          },
+          {
+            "rotulo": "Criança em choque",
+            "itens": [
+              "Sem veia: agulha intraóssea",
+              "20 mL/kg cristaloides ou hemoderivados"
+            ]
+          },
+          {
+            "rotulo": "Gestante",
+            "itens": [
+              "Supina: útero comprime cava e aorta",
+              "> 20 sem: inclinar em bloco à esquerda"
+            ]
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Anatomia da criança",
+          "itens": [
+            "Occipício proporcionalmente maior: flexiona o pescoço em decúbito dorsal; acolchoamento sob o tronco, com coluna imobilizada.",
+            "Língua relativamente grande; laringe mais cefálica e anterior; epiglote relativamente grande e flácida."
+          ]
+        },
+        {
+          "titulo": "Via aérea e circulação da criança",
+          "itens": [
+            "Cricotireoidostomia cirúrgica rara em bebês e crianças pequenas; possível em maiores (cerca de 12 anos).",
+            "Sem acesso percutâneo: agulha intraóssea; incisão venosa só como último recurso (raramente leva menos de 10 min).",
+            "20 mL/kg de cristaloides ou hemoderivados; sem resposta sustentada: 10 mL/kg de concentrado de hemácias ou sangue total.",
+            "Lesões graves ou múltiplas: transferência precoce para unidade que trate lesões multissistêmicas."
+          ]
+        },
+        {
+          "titulo": "Gestante",
+          "itens": [
+            "O útero comprime a aorta e a veia cava; supina pode dar hipotensão; via aérea difícil e hipoxemia mais rápida.",
+            "> 20 semanas na prancha: inclinar em bloco, 15 a 30 graus para a esquerda, sem soltar a coluna; ou desvio manual do útero.",
+            "Reanimação com útero acima da cicatriz umbilical: desvio manual do útero para a esquerda."
+          ]
+        }
+      ],
+      "claims": [
+        "PT28",
+        "PT26",
+        "PT27",
+        "PT23",
+        "PT24",
+        "PT25",
+        "PT21",
+        "PT22",
+        "PT29",
+        "PT33",
+        "PT30",
+        "PT32",
+        "PT31",
+        "PT65",
+        "PT75",
+        "PT88",
+        "PT66",
+        "PT67"
+      ]
+    },
+    {
+      "id": "transferencia",
+      "titulo": "Transferência inter-hospitalar",
+      "cor": "azul-forte",
+      "icone": "relogio",
+      "revisao": {
+        "itens": [
+          "Indicação: via aérea, pneumotórax, choque, pelve sangrando",
+          "Plano antecipado, durante a reanimação",
+          {
+            "t": "Falar com o médico receptor ou diretor técnico",
+            "tom": "conduta"
+          },
+          "Relatório completo, assinado, com CRM",
+          "Grave: médico, enfermagem, ambulância avançada"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Preparar",
+          "itens": [
+            "Otimizar o transporte, identificar o que pode piorar e manter a temperatura normal.",
+            "Antecipar: intubar quem corre risco de perder a via aérea e descomprimir pneumotórax que possa se expandir.",
+            "Tubos, cateteres e talas verificados e bem fixados.",
+            "Lesões acima da capacidade da unidade: não atrasar por exames de imagem secundários."
+          ]
+        },
+        {
+          "titulo": "Regras do médico (CFM)",
+          "itens": [
+            "Risco de vida: não remover sem diagnóstico, avaliação e atendimento básico respiratório e hemodinâmico.",
+            "Contato e concordância do médico receptor ou diretor técnico antes da remoção.",
+            "Paciente grave: médico, enfermagem e motorista em ambulância de suporte avançado; se impossível, pesar o risco.",
+            "Responsabilidade inicial do médico que transfere até o paciente ser recebido pelo médico receptor."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Transferência para cuidados definitivos: ambiente com capacidade de tratar as lesões.",
+            "Via aérea comprometida, pneumotórax hipertensivo ou aberto, choque e fratura pélvica com hemorragia: transferência rápida."
+          ]
+        }
+      ],
+      "claims": [
+        "PT57",
+        "PT93",
+        "PT68",
+        "PT94",
+        "PT58",
+        "PT63",
+        "PT64",
+        "PT95",
+        "PT59",
+        "PT61",
+        "PT60",
+        "PT62"
+      ]
+    },
+    {
+      "id": "revalida",
+      "titulo": "Revalida INEP: decisões e pegadinhas",
+      "cor": "vermelho",
+      "icone": "alerta",
+      "revisao": {
+        "itens": [
+          {
+            "t": "Colar, cânula ou soro antes de conter hemorragia",
+            "tom": "alerta"
+          },
+          {
+            "t": "Amputação: só comprimir; sem registrar a hora",
+            "tom": "alerta"
+          },
+          {
+            "t": "Não conferir o tubo se o intubado piora",
+            "tom": "alerta"
+          },
+          {
+            "t": "Crico cirúrgica em bebê ou criança pequena; empurrar a pelve",
+            "tom": "alerta"
+          },
+          {
+            "t": "Transferir sem falar com o receptor ou sem relatório",
+            "tom": "alerta"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "O que mudou desde a prova",
+          "itens": [
+            "Em 2025, a nova edição do ATLS acrescentou um x antes do ABCDE: o controle rápido da hemorragia externa exsanguinante salva a vida em certos pacientes.",
+            "Amputação traumática: amputação completa ou quase completa é indicação de torniquete; com sangramento ativo e abundante, o torniquete acima do local é a intervenção prioritária inicial.",
+            "Líquidos no choque: a edição atual do ATLS prefere hemoderivados; o padrão da estação prática (só ela) pontua o cristaloide como reposição inicial; na pelve instável com choque, o Inep cobrou hemocomponentes precoces."
+          ]
+        },
+        {
+          "titulo": "Mais armadilhas",
+          "itens": [
+            "Deixar a gestante traumatizada, acima de 20 semanas, reta na prancha, sem inclinar para a esquerda.",
+            "Insistir na veia periférica da criança em choque em vez da agulha intraóssea."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Começar pela cânula, colar ou soro quando há sangramento externo maciço de membro.",
+            "Esquecer de conferir o tubo em quem chega intubado e piora.",
+            "Empurrar e puxar a pelve para testar a estabilidade.",
+            "Transferir sem contato prévio com o médico receptor ou sem relatório."
+          ]
+        }
+      ],
+      "claims": [
+        "W01",
+        "PT83",
+        "PT34",
+        "PT78",
+        "PT82",
+        "PT35",
+        "PT38",
+        "PT37",
+        "PT17",
+        "PT14",
+        "PT21",
+        "PT88",
+        "PT52",
+        "PT29",
+        "PT33",
+        "PT59",
+        "PT60",
+        "PT92",
+        "PT79",
+        "PT103",
+        "PT96"
+      ]
+    }
+  ],
+  "pontos_chave": [
+    "Hemorragia externa maciça antes do A (x)",
+    "Pressão direta; se segue sangrando, torniquete",
+    "Amputação sangrando muito: torniquete direto, acima",
+    "Choque no trauma: hemorragia primeiro; soro é ponte"
+  ],
+  "atencao": [
+    "Torniquete: 5 a 8 cm acima, fora da articulação; anotar a hora",
+    "Menos de 2 horas de torniquete: sem aumento aparente de amputações",
+    "Gestante acima de 20 semanas: inclinar em bloco à esquerda",
+    "Pelve: sem empurrões e puxões agressivos"
+  ],
+  "foto": {
+    "webp": "/mapas-mentais/atendimento-inicial-ao-politraumatizado.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  },
+  "cartoes": {
+    "conceito": {
+      "titulo": "Sequência xABCDE",
+      "icone": "prancheta",
+      "cor": "azul",
+      "itens": [
+        "x: hemorragia externa maciça, na chegada",
+        "A via aérea, B respiração, C circulação",
+        "D neurológico, E exposição e hipotermia",
+        "Avaliação primária antes da secundária"
+      ],
+      "claims": [
+        "W01",
+        "PT83",
+        "PT01",
+        "PT03",
+        "PT02",
+        "PT04",
+        "PT05",
+        "PT07",
+        "PT08",
+        "PT85",
+        "PT09",
+        "PT11",
+        "PT12",
+        "PT13",
+        "PT14"
+      ]
+    },
+    "quadro": {
+      "titulo": "Sinais de alerta no trauma",
+      "icone": "alerta",
+      "cor": "vermelho",
+      "itens": [
+        "Hemorragia externa maciça",
+        "Pelve: dor, rotação externa, sangue no meato",
+        "Hemorragia: causa mais comum de choque",
+        "Intubado piorando: conferir o tubo"
+      ],
+      "claims": [
+        "W01",
+        "PT83",
+        "PT55",
+        "PT46",
+        "PT17",
+        "PT14"
+      ]
+    },
+    "fatores": {
+      "titulo": "Particularidades da criança",
+      "icone": "bebe",
+      "cor": "amarelo",
+      "itens": [
+        "Língua relativamente grande",
+        "Laringe mais cefálica e anterior",
+        "Epiglote grande e flácida; occipício maior",
+        "Acolchoamento sob o tronco",
+        "Prioridades iguais às do adulto"
+      ],
+      "claims": [
+        "PT23",
+        "PT24",
+        "PT25",
+        "PT26",
+        "PT27",
+        "PT28"
+      ]
+    },
+    "diagnostico": {
+      "titulo": "Via aérea definitiva",
+      "icone": "pulmao",
+      "cor": "verde",
+      "linhas": [
+        {
+          "icone": "pulmao",
+          "rotulo": "Quando",
+          "itens": [
+            "Glasgow 8 ou menos",
+            "Traumatismo craniano e consciência alterada"
+          ]
+        },
+        {
+          "icone": "estetoscopio",
+          "rotulo": "Conferir o tubo",
+          "itens": [
+            "Capnografia: está na via aérea",
+            "Não mostra a posição exata"
+          ]
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "Se falhar",
+          "itens": [
+            "Remover o tubo; máscara laríngea ou facial",
+            "Sem oxigenar nem ventilar: via aérea cirúrgica"
+          ]
+        }
+      ],
+      "claims": [
+        "PT16",
+        "PT17",
+        "PT18",
+        "PT19",
+        "PT20"
+      ]
+    },
+    "exames": {
+      "titulo": "Avaliação da pelve",
+      "icone": "lupa",
+      "cor": "roxo",
+      "linhas": [
+        {
+          "icone": "lupa",
+          "rotulo": "Sinais",
+          "texto": "Sensibilidade suprapúbica, sínfise alargada, rotação externa, sangue no meato"
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "Sem empurrar e puxar",
+          "texto": "Palpar a sensibilidade; manobras agressivas são inúteis"
+        },
+        {
+          "icone": "gota",
+          "rotulo": "Sangramento",
+          "texto": "Fraturas graves podem perder vários litros"
+        },
+        {
+          "icone": "estetoscopio",
+          "rotulo": "Tratamento",
+          "texto": "Dispositivo de compressão nos trocanteres maiores"
+        }
+      ],
+      "claims": [
+        "PT55",
+        "PT56",
+        "PT15",
+        "PT52",
+        "PT53",
+        "PT90"
+      ]
+    },
+    "conduta": {
+      "titulo": "Choque no trauma",
+      "icone": "gota",
+      "cor": "azul-forte",
+      "linhas": [
+        {
+          "icone": "alvo",
+          "rotulo": "Causa",
+          "itens": [
+            "Hemorragia é a mais comum",
+            "Buscar a causa específica"
+          ]
+        },
+        {
+          "icone": "seringa",
+          "rotulo": "Acesso",
+          "itens": [
+            "Difícil: dispositivo intraósseo"
+          ]
+        },
+        {
+          "icone": "gota",
+          "rotulo": "Reposição",
+          "itens": [
+            "Soro é ponte, em volume pequeno: exames, tipagem e prova cruzada",
+            "Pelve instável + choque, com banco de sangue: hemocomponentes",
+            "Fluidos aquecidos a 39 °C"
+          ]
+        }
+      ],
+      "claims": [
+        "PT46",
+        "PT47",
+        "PT48",
+        "PT71",
+        "PT79",
+        "PT80",
+        "PT81",
+        "PT91",
+        "PT96",
+        "PT101",
+        "PT103"
+      ]
+    },
+    "objetivos": {
+      "titulo": "Condutas essenciais",
+      "icone": "alvo",
+      "cor": "ciano",
+      "itens": [
+        "Criança: crico cirúrgica rara em bebê e criança pequena",
+        "Criança em choque sem veia: agulha intraóssea",
+        "Gestante: via aérea difícil e hipoxemia mais rápida",
+        "Gestante >20 semanas: inclinar à esquerda"
+      ],
+      "claims": [
+        "PT21",
+        "PT22",
+        "PT29",
+        "PT33",
+        "PT30",
+        "PT65",
+        "PT66",
+        "PT67",
+        "PT75",
+        "PT88"
+      ]
+    },
+    "tratamento": {
+      "titulo": "Hemorragia externa",
+      "icone": "gota",
+      "cor": "laranja",
+      "itens": [
+        "Pressão direta com gaze é o 1º passo",
+        "Não controla rápido ou jato: torniquete",
+        "Amputação com sangramento abundante: torniquete",
+        "5 a 8 cm acima, fora da articulação; anotar a hora",
+        "Pescoço, faringe, boca: pressão direta inicial"
+      ],
+      "claims": [
+        "W01",
+        "PT34",
+        "PT35",
+        "PT36",
+        "PT37",
+        "PT38",
+        "PT39",
+        "PT89",
+        "PT78",
+        "PT82"
+      ]
+    }
+  },
+  "poster": {
+    "webp": "/mapas-mentais/poster-atendimento-inicial-ao-politraumatizado.webp",
+    "estado": "pendente de revisão médica (aprovada pelos 2 revisores, v5.2 sem SAMU)",
+    "ressalvas": [
+      "ícones de cabeçalho nem todos iguais ao campo icone do JSON (estético)",
+      "cartão Hemorragia externa: um item sem marcador (estético)"
+    ],
+    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K (versão com logo no topo e marca d'água, 15/10, regerado da aula v5.2)"
+  },
+  "icone": {
+    "webp": "/mapas-mentais/icone-atendimento-inicial-ao-politraumatizado.webp",
+    "origem": "ícone 3D sintético gerado pelo diretor de arte (decorativo), regerado em 15/10"
+  }
+}

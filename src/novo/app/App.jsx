@@ -6,15 +6,19 @@ import React from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Banner, Button, EmptyState, SegmentedControl } from "../ds";
 import { AppShell, useMobile } from "./Shell.jsx";
-import { AuthFlow } from "./AuthScreens.jsx";
+import { AuthFlow, NewPasswordScreen } from "./AuthScreens.jsx";
 import { LegalPage } from "./legal/LegalPage.jsx";
 import { AcceptanceScreen } from "./legal/AcceptanceScreen.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
+import { forgetShellCounts } from "./shell/useShellCounts.js";
+import { rememberScreen } from "./support/lastScreen.js";
 import { NexusScreen } from "./tutor/nexus/NexusScreen.jsx";
 import { ReportScreen } from "./tutor/ReportScreen.jsx";
 import { TutorDockProvider } from "./tutor/TutorDrawer.jsx";
 import { LessonsScreen } from "./study/LessonsScreen.jsx";
+import { aulasParaAluno } from "./features.js";
 import { UpdatesScreen } from "./study/UpdatesScreen.jsx";
+import { MapasScreen } from "./mapas/MapasScreen.jsx";
 import { Home2, Station, Peps, Perf2, SimPatient } from "../prototype/Phase2.jsx";
 import { DuplaGate, duplaAllowed } from "./dupla/DuplaGate.jsx";
 import { StationsScreen } from "./dupla/StationsScreen.jsx";
@@ -29,8 +33,10 @@ import { ErrorNotebook } from "./review/ErrorNotebook.jsx";
 import { PerformanceScreen } from "./review/PerformanceScreen.jsx";
 import { FlashcardsScreen } from "./review/FlashcardsScreen.jsx";
 import { AccountScreen } from "./account/AccountScreen.jsx";
+import { PlansScreen } from "./plan/PlansScreen.jsx";
 import { AdminScreen, isStaffRole } from "./admin/AdminScreen.jsx";
 import { isPhase2Locked } from "./admin/common.jsx";
+import { useRadarAvisos } from "./admin/radar/useRadarAvisos.js";
 import { ThemesScreen } from "./study/ThemesScreen.jsx";
 import { QuestionBuilder } from "./practice/QuestionBuilder.jsx";
 import { PracticeSession } from "./practice/PracticeSession.jsx";
@@ -44,23 +50,25 @@ const Vitrine = import.meta.env.DEV ? React.lazy(() => import("./dupla/Vitrine.j
 
 // [título, subtítulo] de cada rota (o início é montado com nome e data reais).
 const TITLES = {
-  aulas: ["Aulas teórico-práticas", "Estudar · conteúdo audiovisual por grande área"],
-  temas: ["Grandes Temas do Revalida", "Estudar · incidência real nas provas oficiais"],
-  atualizacoes: ["Atualizações", "Estudar · o que mudou nas condutas e onde conferir"],
-  hoje: ["Plano de hoje", "Estudar · praticar · revisar"],
-  questoes: ["Questões", "Monte seu treino"],
+  aulas: ["Aulas teórico-práticas", "Aprender · conteúdo audiovisual por grande área"],
+  temas: ["Temas Essenciais", "Aprender · os 100 temas prioritários, com as questões oficiais de cada um"],
+  atualizacoes: ["Diretrizes e Atualizações", "Aprender · o que mudou nas condutas e onde conferir"],
+  mapas: ["Mapas Mentais", "Aprender · resumos visuais por tema, da revisão rápida ao aprofundado"],
+  hoje: ["Plano de Hoje", "Ciclo diário · aprender, praticar, revisar"],
+  questoes: ["Banco de Questões", "Monte seu treino"],
   simulados: ["Simulados", "Condições de prova"],
   flash: ["Flashcards", "Revisão espaçada"],
-  erros: ["Caderno de erros", "Revisar"],
+  erros: ["Caderno de Erros", "Revisar"],
   plano: ["Planejamento", "Cronograma até a prova"],
   desempenho: ["Desempenho", "Seus dados reais"],
-  analise: ["Análise", "Evolução · o que o Tutor percebeu nos seus erros e acertos"],
-  tutor: ["Stazia Tutor", "Seu professor particular para o Revalida"],
-  trilha: ["Trilha de aprendizado", "Stazia Arena · uma etapa de cada vez"],
-  classificacao: ["Classificação", "Stazia Arena · ranking e liga da semana"],
+  analise: ["Análise Inteligente", "Minha Evolução · o que o Tutor percebeu nos seus erros e acertos"],
+  tutor: ["Nexus · Tutor com IA", "Seu professor particular para o Revalida"],
+  trilha: ["Minha Trilha", "Stazia Arena · uma etapa de cada vez"],
+  classificacao: ["Ranking", "Stazia Arena · ranking e liga da semana"],
   missoes: ["Missões", "Stazia Arena · metas de hoje e da semana"],
   conquistas: ["Conquistas", "Stazia Arena · medalhas e recompensas"],
-  perfil: ["Conta", "Dados, segurança e privacidade"],
+  perfil: ["Minha conta", "Dados, segurança e privacidade"],
+  planos: ["Meu plano", "Conta · o que cada plano inclui"],
   teoria2: ["Teoria para a prática", "Esqueletos, documentos médicos e protocolos aplicados às estações"],
   estacoes: ["Banco de estações", null],
   dupla: ["Praticar em dupla", null],
@@ -77,7 +85,7 @@ const SOON = ["home2", "teoria2", "peps", "paciente", "desempenho2", "estacao"];
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", "dupla-sala", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "estacoes", "dupla", "dupla-perfil", "dupla-sala", ...(import.meta.env.DEV ? ["vitrine-dupla"] : [])]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "mapas", "planos", "estacoes", "dupla", "dupla-perfil", "dupla-sala"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -99,11 +107,13 @@ function resolveTheme(theme) {
 }
 
 function Screen({ view }) {
-  const { boot, dupla, updateProfile, signOut } = useSession();
+  const { boot, dupla, updateProfile, signOut, backend } = useSession();
   const params = useParams();
   const navigate = useNavigate();
   const mobile = useMobile();
   const profile = boot.profile;
+  // aviso das mudanças GRAVES do Radar de Evidências: só o administrador pede (para os outros papéis nem chama o banco)
+  const radar = useRadarAvisos(boot.role === "admin");
   // 2ª fase · prática "em breve": a equipe entra sempre; aluno e revisor médico só com a chave do Treinamento em Dupla ligada
   // (ou liberados pelo banco). O plano é conferido dentro das telas (DuplaGate).
   const phase2Locked = isPhase2Locked(boot.role, dupla);
@@ -116,13 +126,12 @@ function Screen({ view }) {
 
   React.useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    // O novo.html aplica este tema antes da primeira pintura na próxima visita (sem a tela clara piscando até o perfil chegar).
-    try {
-      localStorage.setItem("smn-theme", theme);
-    } catch {
-      // armazenamento bloqueado (janela privada): o tema do perfil continua valendo
-    }
   }, [theme]);
+
+  // a tela de antes da Conta vai pré-escolhida em "Relatar um problema"
+  React.useEffect(() => {
+    rememberScreen(route);
+  }, [route]);
 
   // "Materiais oficiais" virou "Atualizações": endereços antigos continuam funcionando
   if (route === "materiais") return <Navigate to="/atualizacoes" replace />;
@@ -131,9 +140,11 @@ function Screen({ view }) {
   if (route === "admin" && !isStaffRole(boot.role) && !boot.reviewer_areas?.length) return <Navigate to="/" replace />;
   if (phase2Locked && PHASE2_ROUTES.includes(route)) return <Navigate to="/" replace />;
   if (studentPhase2 && SOON.includes(route)) return <Navigate to="/estacoes" replace />;
+  // Aulas fechadas ao aluno por enquanto (ver features.js): quem abrir o endereço antigo cai no início
+  if (route === "aulas" && !aulasParaAluno() && !isStaffRole(boot.role)) return <Navigate to="/" replace />;
 
   const go = (next, query) => {
-    const target = next === "planos" ? "perfil" : next;
+    const target = next;
     if (target === "dupla-perfil") navigate("/dupla/perfil");
     else if (target === "dupla-sala") navigate(`/dupla/sala/${encodeURIComponent(query?.sala ?? "")}`);
     else navigate((target === defaultRoute ? "/" : `/${target}`) + (query ? `?${new URLSearchParams(query)}` : ""));
@@ -149,6 +160,8 @@ function Screen({ view }) {
   const setTheme = (next) => updateProfile({ theme: next }).catch(() => {});
 
   // o Tutor abre em qualquer tela de estudo, com o contexto que a tela já conhece
+  // (ao sair da sessão os selos do menu, como o do Caderno de Erros, são perguntados de novo ao banco)
+  if (route === "sessao") forgetShellCounts(backend);
   if (route === "sessao") return <TutorDockProvider go={go}><PracticeSession go={go} /></TutorDockProvider>;
   // a tela de uma estação abre sem a moldura: o aviso de "em reconstrução" entra aqui, antes dela
   if (route === "estacao")
@@ -169,6 +182,7 @@ function Screen({ view }) {
   else if (route === "aulas") body = <LessonsScreen go={go} />;
   else if (route === "temas") body = <ThemesScreen go={go} />;
   else if (route === "atualizacoes") body = <UpdatesScreen go={go} />;
+  else if (route === "mapas") body = <MapasScreen go={go} />;
   else if (route === "questoes") body = <QuestionBuilder key="q" go={go} mode="q" />;
   else if (route === "simulados") body = <QuestionBuilder key="sim" go={go} mode="sim" />;
   else if (route === "flash") body = <FlashcardsScreen go={go} />;
@@ -191,6 +205,7 @@ function Screen({ view }) {
   else if (route === "peps") body = <Peps go={go} />;
   else if (route === "paciente") body = <SimPatient go={go} />;
   else if (route === "desempenho2") body = <Perf2 go={go} data={data} />;
+  else if (route === "planos") body = <PlansScreen go={go} />;
   else if (route === "admin") body = <AdminScreen />;
   else if (import.meta.env.DEV && Vitrine && route === "vitrine-dupla") body = <React.Suspense fallback={null}><Vitrine /></React.Suspense>;
   else body = <AccountScreen go={go} />;
@@ -208,7 +223,7 @@ function Screen({ view }) {
         onChange={(v) => go(v)}
         options={[
           { value: "flash", label: "Flashcards" },
-          { value: "erros", label: "Caderno de erros" },
+          { value: "erros", label: "Caderno de Erros" },
         ]}
       />
     </div>
@@ -229,6 +244,7 @@ function Screen({ view }) {
       bare={route === "dupla-sala" && duplaAllowed(boot, dupla)}
       title={title}
       sub={sub}
+      headerKind={route === "home" ? "inicio" : route === "hoje" ? "plano" : undefined}
       info={{
         name: profile.name || "Sua conta",
         streakDays: boot.play?.enabled ? boot.play.streak : boot.streak_days,
@@ -236,6 +252,8 @@ function Screen({ view }) {
         onSignOut: () => signOut(),
         isStaff: isStaffRole(boot.role),
         isReviewer: Boolean(boot.reviewer_areas?.length),
+        radarGraves: radar.graves,
+        themeChoice: profile.theme || "light",
       }}
     >
       {!CONNECTED.has(route) && <ReconstructionNotice />}
@@ -258,7 +276,7 @@ function ReconstructionNotice() {
 function Splash({ children }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, background: "var(--bg-app)", padding: 24 }}>
-      <img src="/novo-assets/logo-mark.png" alt="StaziaMed" style={{ height: 56 }} />
+      <img src="/brand/simbolo-96w.png" alt="StaziaMed Revalida" width="38" height="56" style={{ height: 56, width: "auto" }} />
       {children}
     </div>
   );
@@ -295,6 +313,8 @@ function Root() {
     );
   }
   if (session.status === "signed-out") return <AuthFlow />;
+  // Veio pelo link de recuperar senha: antes de qualquer tela do app, a pessoa cria a nova senha
+  if (session.recovery) return <NewPasswordScreen />;
   // Aluno sem aceite do Termo vigente ou sem WhatsApp: a tela de aceite vem antes de qualquer rota (o servidor decide em gate_required)
   if (session.boot?.legal?.gate_required) return <AcceptanceScreen />;
 

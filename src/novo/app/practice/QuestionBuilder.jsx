@@ -3,11 +3,16 @@
 import React from "react";
 import { useSearchParams } from "react-router-dom";
 import { Badge, Banner, Button, Card, Chip, EmptyState, Icon, SegmentedControl, SelectField, TextField } from "../../ds";
-import { IconTile } from "../../prototype/RealIcons.jsx";
-import { useMobile } from "../Shell.jsx";
+import { AreaArtTile } from "../../ds/area-icons/AreaArtTile.jsx";
+import { useMQ } from "../Shell.jsx";
 import { useSession } from "../session.jsx";
+import { isPlanLockMessage, usePlanLock, withSupport } from "../plan/planAccess.js";
+import { useSupportEmail } from "../support/supportContact.jsx";
 import "./practice.css";
-import { AREAS, SIM_MAX_MINUTES, areaLabel, examLabel, formatClock, formatMinutes, formatWhen, paceLabel, parseDuration, percent } from "./format.js";
+import { AREAS, SIM_MAX_MINUTES, STAZIAMED_NOTICE, areaLabel, examLabel, formatClock, formatMinutes, formatWhen, paceLabel, parseDuration, percent } from "./format.js";
+import { IneditasQuota, isIneditasLimited, quotaText } from "./IneditasQuota.jsx";
+import { IneditasCard } from "./IneditasCard.jsx";
+import { SCORING_MODES, TRI_MIN_QUESTIONS } from "./tri.js";
 
 const STATUS_OPTIONS = [
   { value: "unanswered", label: "Não resolvidas" },
@@ -25,6 +30,8 @@ const SIM_TYPES = [
 const PACE = { prova: 180, acelerado: 72 };
 // Atalhos do tempo personalizado (minutos); o aluno também digita horas e minutos.
 const DURATION_PRESETS = [30, 60, 90, 120, 180, 300];
+// Nomes curtos no seletor de área do simulado no celular (como no pacote e no filtro de área do Aprender); o nome inteiro fica no aria-label.
+const PICK_LABEL = { CLINICA_MEDICA: "Clínica", GINECOLOGIA_OBSTETRICIA: "GO", MEDICINA_FAMILIA_COMUNIDADE: "Preventiva" };
 
 function useDebounced(value, delay) {
   const [debounced, setDebounced] = React.useState(value);
@@ -35,34 +42,99 @@ function useDebounced(value, delay) {
   return debounced;
 }
 
-function RecentSessions({ sessions, go, sim }) {
+// "Como corrigir?" do simulado: Clássico por acertos (padrão) ou TRI (estimativa StaziaMed, opcional).
+// Computador e tablet: dois cartões com bolinha (visual do pacote). Celular: dois botões lado a lado e o texto do escolhido embaixo.
+function ScoringChoice({ value, onChange, compact }) {
+  if (compact) {
+    const current = SCORING_MODES.find((m) => m.value === value) ?? SCORING_MODES[0];
+    return (
+      <div>
+        <div id="sim-correcao" className="qb-label">
+          Correção
+        </div>
+        <div className="qb-corrseg">
+          <SegmentedControl fullWidth label="Como corrigir?" value={value} onChange={onChange} options={SCORING_MODES.map((m) => ({ value: m.value, label: m.value === "irt" ? "TRI · estimativa" : "Clássico" }))} />
+        </div>
+        <p className="sm-field__hint" style={{ margin: "10px 0 0" }}>
+          {current.text}
+        </p>
+      </div>
+    );
+  }
   return (
-    <Card style={{ borderRadius: 24 }} padding={20}>
-      <span className="sm-overline" style={{ color: "var(--text-secondary)" }}>
-        {sim ? "Seus simulados" : "Seus treinos"}
+    <div>
+      <div id="sim-correcao" className="qb-label">
+        Como corrigir?
+      </div>
+      <div role="radiogroup" aria-labelledby="sim-correcao" className="qb-corr">
+        {SCORING_MODES.map((mode) => {
+          const on = value === mode.value;
+          return (
+            <button key={mode.value} type="button" role="radio" aria-checked={on} aria-describedby={`sim-correcao-${mode.value}`} onClick={() => onChange(mode.value)} className="qb-corr__opt">
+              <span className="qb-corr__head">
+                <span className="qb-corr__dot" aria-hidden="true" />
+                <span className="qb-corr__title">{mode.title}</span>
+                <Badge size="sm" tone={mode.value === "irt" ? "info" : "neutral"}>
+                  {mode.badge}
+                </Badge>
+              </span>
+              <span id={`sim-correcao-${mode.value}`} className="qb-corr__text">
+                {mode.text}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Ring({ pct, done }) {
+  return (
+    <span className="qb-ring" aria-hidden="true">
+      <svg width="42" height="42" viewBox="0 0 42 42">
+        <circle cx="21" cy="21" r="18" fill="none" stroke="var(--info-bg)" strokeWidth="4" />
+        <circle cx="21" cy="21" r="18" fill="none" stroke={done ? "var(--success-solid)" : "var(--action-primary)"} strokeWidth="4" strokeLinecap="round" pathLength="100" strokeDasharray={`${pct} 100`} />
+      </svg>
+      <span className={`qb-ring__dot${done ? " qb-ring__dot--done" : ""}`}>
+        <Icon name={done ? "check" : "play"} size={12} />
       </span>
-      <div style={{ display: "flex", flexDirection: "column", marginTop: 8 }}>
-        {sessions.map((s, index) => {
+    </span>
+  );
+}
+
+function RecentSessions({ sessions, go, sim }) {
+  const anyOpen = sessions.some((s) => !s.finished_at);
+  const title = sim ? "Seus simulados" : anyOpen ? "Continue um treino" : "Seus treinos";
+  return (
+    <section className="qb-recent" aria-label={title}>
+      <h2>{title}</h2>
+      <div>
+        {sessions.map((s) => {
           const open = !s.finished_at;
           // anuladas pela banca não contam como acerto nem erro (o banco já as tira de respondidas e acertos)
           const base = sim ? s.total - (s.annulled ?? 0) : s.answered;
+          const pct = open ? Math.max(3, Math.round((s.answered / Math.max(s.total, 1)) * 100)) : 100;
           return (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => go("sessao", { s: s.id })}
-              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", border: 0, borderTop: index ? "1px solid var(--border-subtle)" : 0, background: "transparent", cursor: "pointer", font: "inherit", color: "var(--text-primary)", textAlign: "left" }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ font: "var(--type-label)" }}>
+            <button key={s.id} type="button" className="qb-row" onClick={() => go("sessao", { s: s.id })}>
+              <Ring pct={pct} done={!open} />
+              <span className="qb-row__body">
+                <span className="qb-row__title">
                   {s.total} questões · {areaLabel(s.filters?.area)}
-                </div>
-                <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
-                  {formatWhen(s.started_at)}
-                  {open && ` · ${s.answered}/${s.total} respondidas`}
-                  {open && s.paused && s.remaining_seconds != null && ` · faltam ${formatClock(s.remaining_seconds)}`}
-                </div>
-              </div>
+                </span>
+                <span className="qb-row__meta">
+                  {open && (
+                    <span className="qb-row__bar" aria-hidden="true">
+                      <i style={{ width: `${pct}%` }} />
+                    </span>
+                  )}
+                  <span>
+                    {open && `${s.answered}/${s.total} · `}
+                    {formatWhen(s.started_at)}
+                    {open && s.paused && s.remaining_seconds != null && ` · faltam ${formatClock(s.remaining_seconds)}`}
+                  </span>
+                </span>
+              </span>
               {open && s.paused ? (
                 <Badge icon="pause">Pausado</Badge>
               ) : open ? (
@@ -76,14 +148,19 @@ function RecentSessions({ sessions, go, sim }) {
           );
         })}
       </div>
-    </Card>
+    </section>
   );
 }
 
 export function QuestionBuilder({ go, mode }) {
   const { backend } = useSession();
-  const mobile = useMobile();
+  const compact = useMQ("(max-width: 719px)"); // celular: barra fixa com o resumo, abas e "Mais filtros"
+  const [simTab, setSimTab] = React.useState("novo");
   const sim = mode === "sim";
+  // Teste grátis terminado (ou sem plano pago): simulado completo fica nos planos pagos; o treino de questões segue aberto (PL02).
+  const planLock = usePlanLock();
+  const supportEmail = useSupportEmail();
+  const lock = sim ? planLock : null;
   const kind = sim ? "simulado" : "questoes";
 
   // O endereço pode trazer um ponto de partida (ex.: tema prioritário escolhido no Início).
@@ -94,7 +171,7 @@ export function QuestionBuilder({ go, mode }) {
     return {
       area: AREAS.some((a) => a.id === area) ? area : "",
       search: params.get("tema") ?? "",
-      exam: "",
+      exam: !sim && params.get("prova") === "staziamed" ? "staziamed" : "",
       status: sim ? "all" : STATUS_OPTIONS.some((o) => o.value === status) ? status : "unanswered",
       count: sim ? "30" : "20",
       timer: "prova",
@@ -103,6 +180,8 @@ export function QuestionBuilder({ go, mode }) {
     };
   });
   const set = (patch) => setForm((current) => ({ ...current, ...patch }));
+  // celular, simulado: tema e prova ficam em "Mais filtros" (abre sozinho se veio um filtro no endereço)
+  const [moreOpen, setMoreOpen] = React.useState(() => Boolean(form.search || form.exam));
   // O tipo de simulado é um atalho: preenche os campos. Mexer num campo depois vira "Personalizado"
   // (menos a área em "Por área" e o cronômetro, que não fazem parte do atalho: o cronômetro muda por set()).
   const [simType, setSimType] = React.useState("rapido");
@@ -120,6 +199,8 @@ export function QuestionBuilder({ go, mode }) {
   const [counts, setCounts] = React.useState(null);
   const [recent, setRecent] = React.useState([]);
   const [starting, setStarting] = React.useState(false);
+  // correção do simulado: "classic" (padrão) ou "irt" (TRI, estimativa StaziaMed)
+  const [scoring, setScoring] = React.useState("classic");
   const [error, setError] = React.useState(null);
 
   React.useEffect(() => {
@@ -163,22 +244,52 @@ export function QuestionBuilder({ go, mode }) {
       set({ timer, hours: String(Math.floor(minutes / 60)), minutes: String(minutes % 60) });
     } else set({ timer });
   };
+  const tri = sim && scoring === "irt";
+  const triTooFew = tri && total < TRI_MIN_QUESTIONS;
   const setDuration = (minutes) => set({ hours: String(Math.floor(minutes / 60)), minutes: String(minutes % 60) });
 
+  // Questões Inéditas (a prova "staziamed" da lista): aberta a quem tem plano pago ou teste grátis em dia; para os outros, cadeado e convite
+  const ineditas = (options?.exams ?? []).find((e) => e.id === "staziamed") ?? null;
+  const onIneditas = form.exam === "staziamed";
+  const lockedIneditas = onIneditas && (ineditas?.locked === true || !ineditas);
+  const lockMessage = ineditas?.lock_message || "As Questões Inéditas são abertas a quem tem plano pago ou teste grátis em dia. As questões das provas oficiais continuam abertas.";
+  // limite do plano (ex.: teste grátis): a tela mostra o total existente e quantas o plano libera
+  // no Banco de Questões o cartão "Questões Inéditas" do topo já mostra o contador; no Simulado o quadro aparece junto do filtro
+  const limitedIneditas = isIneditasLimited(ineditas);
   const topics = (options?.topics ?? []).filter((t) => !form.area || t.area === form.area).slice(0, 6);
   const start = async () => {
     setStarting(true);
     setError(null);
     try {
-      const started = await backend.rpc("app_start_session", {
-        p_kind: kind,
-        p_filters: { area: form.area, exam_id: form.exam, search: form.search.trim(), status: form.status },
-        p_count: requested,
-        p_time_limit_seconds: limitSeconds,
-      });
+      const filters = { area: form.area, exam_id: sim && form.exam === "staziamed" ? "" : form.exam, search: form.search.trim(), status: form.status };
+      const started = tri
+        ? await backend.rpc("app_start_simulado_tri", { p_filters: filters, p_count: requested, p_time_limit_seconds: limitSeconds })
+        : await backend.rpc("app_start_session", { p_kind: kind, p_filters: filters, p_count: requested, p_time_limit_seconds: limitSeconds });
       go("sessao", { s: started.session_id });
-    } catch {
-      setError("Não foi possível iniciar. Ajuste os filtros e tente de novo.");
+    } catch (e) {
+      setError(
+        isPlanLockMessage(e?.message)
+          ? withSupport(e.message, supportEmail)
+          : tri && /simulado TRI/.test(e?.message ?? "")
+            ? e.message
+            : "Não foi possível iniciar. Ajuste os filtros e tente de novo."
+      );
+      setStarting(false);
+    }
+  };
+
+  // Atalho do cartão "Questões Inéditas": abre direto um treino só com elas (as que faltam; se já fez todas, as respondidas).
+  // Se não abrir, deixa a prova "Questões Inéditas" escolhida no montador, com o aviso do motivo.
+  const openIneditas = async ({ status }) => {
+    setStarting(true);
+    setError(null);
+    try {
+      const filters = { area: "", exam_id: "staziamed", search: "", status };
+      const started = await backend.rpc("app_start_session", { p_kind: "questoes", p_filters: filters, p_count: 20, p_time_limit_seconds: null });
+      go("sessao", { s: started.session_id });
+    } catch (e) {
+      set({ exam: "staziamed", status });
+      setError(isPlanLockMessage(e?.message) ? withSupport(e.message, supportEmail) : "Não foi possível abrir as Questões Inéditas agora. Ajuste os filtros abaixo e tente de novo.");
       setStarting(false);
     }
   };
@@ -187,148 +298,289 @@ export function QuestionBuilder({ go, mode }) {
     return <EmptyState icon="file-question" title="Banco de questões vazio" description="Ainda não há questões carregadas neste ambiente." />;
   }
 
-  const areaCards = [{ id: "", label: "Todas", icon: "library", tone: "brand" }, ...AREAS];
+  const areaCards = [{ id: "", label: "Todas" }, ...AREAS];
   const summary = [
     areaLabel(form.area),
     sim ? (limitSeconds ? `${formatMinutes(limitSeconds / 60)} de prova` : form.timer === "none" ? "sem cronômetro" : "tempo a definir") : `~${formatMinutes(total * 2)}`,
     form.search.trim(),
+    tri && "correção TRI (estimativa)",
   ].filter(Boolean);
+  const noun = total === 1 ? "questão" : "questões";
+  const canStart = Boolean(available) && !customInvalid && !lock && !lockedIneditas && !triTooFew;
+  const startLabel = sim ? "Iniciar simulado" : "Começar treino";
+  const onlyNew = compact && sim && simTab === "novo";
+  const onlyMine = compact && sim && simTab === "meus";
 
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: mobile ? "minmax(0,1fr)" : "minmax(0,1fr) 340px", gap: 24, alignItems: "start" }}>
-      <Card style={{ borderRadius: 24 }} padding={mobile ? 22 : 32}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-          {sim && (
-            <div className="qb-simtype">
-              <SegmentedControl fullWidth label="Tipo de simulado" value={simType} onChange={applySimType} options={SIM_TYPES} />
-            </div>
-          )}
-          <TextField
-            label="Tema ou assunto"
-            icon="search"
-            placeholder="Ex.: asma, sepse, pré-eclâmpsia"
-            value={form.search}
-            onChange={(e) => edit({ search: e.target.value })}
-          />
-          {topics.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: -16 }}>
-              {topics.map((t) => (
-                <Chip key={`${t.area}-${t.topic}`} selected={form.search === t.topic} onClick={() => edit({ search: form.search === t.topic ? "" : t.topic })}>
-                  {t.topic}
-                </Chip>
-              ))}
-            </div>
-          )}
-          <div role="radiogroup" aria-label="Grande área" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 10 }}>
-            {areaCards.map((area) => {
-              const on = form.area === area.id;
-              const count = counts ? (area.id ? counts.by_area[area.id] ?? 0 : counts.total) : null;
-              return (
-                <button
-                  key={area.id || "todas"}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => edit({ area: area.id })}
-                  style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10, padding: 16, borderRadius: 16, border: `${on ? 2 : 1}px solid ${on ? "var(--selected-border)" : "var(--border-default)"}`, background: on ? "var(--selected-bg)" : "var(--surface-card)", cursor: "pointer", font: "inherit", color: "var(--text-primary)", textAlign: "left" }}
-                >
-                  <IconTile name={area.icon} size={40} tone={area.tone} />
-                  <span style={{ font: "var(--type-label)" }}>{area.label}</span>
-                  <span style={{ font: "500 12px var(--font-mono)", color: "var(--text-tertiary)" }}>{count === null ? "…" : `${count} q.`}</span>
-                </button>
-              );
-            })}
+  const areaPicker = compact && sim ? (
+    <div role="radiogroup" aria-label="Grande área" className="qb-scroll">
+      {areaCards.map((area) => {
+        const on = form.area === area.id;
+        const count = counts ? (area.id ? counts.by_area[area.id] ?? 0 : counts.total) : null;
+        return (
+          <button key={area.id || "todas"} type="button" role="radio" aria-checked={on} aria-label={`${area.label} ${count === null ? "…" : count}`} onClick={() => edit({ area: area.id })} className="qb-pick">
+            <AreaArtTile area={area.id} size={52} />
+            <span className="qb-pick__name">{PICK_LABEL[area.id] ?? area.label}</span>
+            <span className="qb-pick__n">{count === null ? "…" : count}</span>
+          </button>
+        );
+      })}
+    </div>
+  ) : (
+    <div role="radiogroup" aria-label="Grande área" className="qb-areas">
+      {areaCards.map((area) => {
+        const on = form.area === area.id;
+        const count = counts ? (area.id ? counts.by_area[area.id] ?? 0 : counts.total) : null;
+        return (
+          <button key={area.id || "todas"} type="button" role="radio" aria-checked={on} onClick={() => edit({ area: area.id })} className="qb-area">
+            <AreaArtTile area={area.id} />
+            <span className="qb-area__name">{area.label}</span>
+            <span className="qb-area__n">{count === null ? "…" : `${count} q.`}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const searchField = (
+    <div className="qb-search" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <TextField label={<>Tema ou assunto <small style={{ fontWeight: 500, color: "var(--text-tertiary)" }}>(opcional)</small></>} icon="search" placeholder="Ex.: asma, sepse, pré-eclâmpsia" value={form.search} onChange={(e) => edit({ search: e.target.value })} />
+      {topics.length > 0 && (
+        <div className="qb-topics">
+          {topics.map((t) => (
+            <Chip key={`${t.area}-${t.topic}`} selected={form.search === t.topic} onClick={() => edit({ search: form.search === t.topic ? "" : t.topic })}>
+              {t.topic}
+            </Chip>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const examField = (
+    <SelectField
+      label="Prova / edição"
+      value={form.exam}
+      onChange={(e) => edit({ exam: e.target.value })}
+      options={[{ value: "", label: "Todas as provas oficiais" }, ...(options?.exams ?? []).filter((e) => !sim || e.id !== "staziamed").map((e) => ({ value: e.id, label: e.id === "staziamed" && e.locked ? `${examLabel(e)} (indisponível no seu plano agora)` : e.id === "staziamed" && isIneditasLimited(e) ? `${examLabel(e)} (${e.released} de ${e.total})` : examLabel(e) }))]}
+    />
+  );
+  const timerField = (
+    <SelectField
+      label="Cronômetro"
+      value={form.timer}
+      onChange={(e) => chooseTimer(e.target.value)}
+      options={[
+        { value: "prova", label: `Tempo de prova (${formatMinutes((total * PACE.prova) / 60)})` },
+        { value: "acelerado", label: `Acelerado (${formatMinutes((total * PACE.acelerado) / 60)})` },
+        { value: "custom", label: form.timer === "custom" && custom.minutes ? `Tempo personalizado (${formatMinutes(custom.minutes)})` : "Tempo personalizado" },
+        { value: "none", label: "Sem cronômetro" },
+      ]}
+    />
+  );
+  const statusField = <SelectField label="Status" value={form.status} onChange={(e) => edit({ status: e.target.value })} options={STATUS_OPTIONS} />;
+
+  const noticeBlocks = (
+    <>
+      {onIneditas && !lockedIneditas && (
+        <Banner tone="info" icon="shield-check" title="Questões Inéditas">
+          {STAZIAMED_NOTICE} Aqui "inéditas" quer dizer escritas pela StaziaMed; não é o mesmo que "ainda não respondidas" (isso é o filtro Status).
+        </Banner>
+      )}
+      {sim && onIneditas && limitedIneditas && <IneditasQuota ineditas={ineditas} onPlans={() => go("planos")} />}
+      {lockedIneditas && (
+        <Banner tone="warning" icon="lock" title="Questões Inéditas indisponíveis agora" action={<Button size="sm" variant="secondary" onClick={() => go("planos")}>Ver planos</Button>}>
+          {lockMessage}
+          {ineditas?.total > 0 && <div style={{ marginTop: 6 }}>Existem {ineditas.total} Questões Inéditas no banco.</div>}
+        </Banner>
+      )}
+      {sim && form.timer === "custom" && (
+        <div role="group" aria-labelledby="sim-duracao">
+          <div id="sim-duracao" className="qb-label">
+            Duração do simulado
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: 16 }}>
-            <SelectField
-              label="Prova / edição"
-              value={form.exam}
-              onChange={(e) => edit({ exam: e.target.value })}
-              options={[{ value: "", label: "Todas as provas oficiais" }, ...(options?.exams ?? []).map((e) => ({ value: e.id, label: examLabel(e) }))]}
-            />
-            {sim ? (
-              <SelectField
-                label="Cronômetro"
-                value={form.timer}
-                onChange={(e) => chooseTimer(e.target.value)}
-                options={[
-                  { value: "prova", label: `Tempo de prova (${formatMinutes((total * PACE.prova) / 60)})` },
-                  { value: "acelerado", label: `Acelerado (${formatMinutes((total * PACE.acelerado) / 60)})` },
-                  { value: "custom", label: form.timer === "custom" && custom.minutes ? `Tempo personalizado (${formatMinutes(custom.minutes)})` : "Tempo personalizado" },
-                  { value: "none", label: "Sem cronômetro" },
-                ]}
-              />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+            {DURATION_PRESETS.map((minutes) => (
+              <Chip key={minutes} selected={custom.minutes === minutes} onClick={() => setDuration(minutes)}>
+                {formatMinutes(minutes)}
+              </Chip>
+            ))}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <TextField label="Horas" type="number" inputMode="numeric" min={0} max={12} step={1} value={form.hours} onChange={(e) => set({ hours: e.target.value })} />
+            <TextField label="Minutos" type="number" inputMode="numeric" min={0} max={59} step={1} value={form.minutes} onChange={(e) => set({ minutes: e.target.value })} />
+          </div>
+          <div className={custom.error ? "sm-field__error" : "sm-field__hint"} style={{ marginTop: 8 }} aria-live="polite">
+            {custom.error ? (
+              <>
+                <Icon name="circle-alert" size={14} />
+                {custom.error}
+              </>
             ) : (
-              <SelectField label="Status" value={form.status} onChange={(e) => edit({ status: e.target.value })} options={STATUS_OPTIONS} />
+              `${formatMinutes(custom.minutes)} para ${total} ${total === 1 ? "questão" : "questões"} · ${paceLabel((custom.minutes * 60) / Math.max(total, 1))} · você pode pausar durante o simulado`
             )}
           </div>
-          {sim && form.timer === "custom" && (
-            <div role="group" aria-labelledby="sim-duracao">
-              <div id="sim-duracao" className="sm-field__label" style={{ marginBottom: 10 }}>
-                Duração do simulado
+        </div>
+      )}
+    </>
+  );
+
+  const availability =
+    available === null
+      ? null
+      : lockedIneditas
+        ? "Disponível nos planos pagos e no teste grátis em dia."
+        : onIneditas && limitedIneditas && available === 0
+          ? `Você já usou as ${ineditas.released} Questões Inéditas do seu plano com esses filtros. ${quotaText(ineditas)}.`
+          : onIneditas && limitedIneditas
+            ? `${available} disponíveis com esses filtros · ${quotaText(ineditas)}.`
+            : available === 0
+              ? "Nenhuma questão com esses filtros."
+              : available < requested
+                ? `Só há ${available} com esses filtros.`
+                : `${available} disponíveis com esses filtros.`;
+  const triNote = tri
+    ? triTooFew
+      ? `O simulado TRI precisa de pelo menos ${TRI_MIN_QUESTIONS} questões. Escolha mais questões ou tire filtros.`
+      : total < 100
+        ? `Correção TRI (estimativa StaziaMed): com ${total} questões a faixa de incerteza fica larga; com 100 fica mais precisa.`
+        : "Correção TRI (estimativa StaziaMed): o resultado mostra a nota de 0 a 100 com a faixa de incerteza."
+    : null;
+
+  const recentBlock = recent.length > 0 && !onlyNew && <RecentSessions sessions={recent} go={go} sim={sim} />;
+
+  return (
+    <div className={`qb${sim ? " qb--sim" : ""}${compact ? " qb-compact" : ""}`}>
+      {lock && (
+        <Banner tone="warning" icon="lock" title={lock.title} action={<Button size="sm" variant="secondary" onClick={() => go("planos")}>Ver planos</Button>}>
+          {lock.text}
+        </Banner>
+      )}
+      {!sim && ineditas && <IneditasCard ineditas={ineditas} variant={compact ? "linha" : "banco"} onOpen={openIneditas} onPlans={() => go("planos")} busy={starting} />}
+      {compact && sim && (
+        <div className="qb-tabs" role="tablist" aria-label="Simulados">
+          <button type="button" role="tab" className="qb-tab" aria-selected={simTab === "novo"} onClick={() => setSimTab("novo")}>
+            Novo simulado
+          </button>
+          <button type="button" role="tab" className="qb-tab" aria-selected={simTab === "meus"} onClick={() => setSimTab("meus")}>
+            Meus simulados
+            {recent.length > 0 && <span className="qb-tab__n">{recent.length}</span>}
+          </button>
+        </div>
+      )}
+      {compact && !sim && recentBlock}
+      {onlyMine && recent.length === 0 && <EmptyState icon="timer" title="Nenhum simulado ainda" description="Os simulados que você começar aparecem aqui." />}
+      <div className="qb-grid">
+        {!onlyMine && (
+          <section className="qb-main" aria-label={sim ? "Montar simulado" : "Montar treino"}>
+            {sim && (
+              <div className="qb-simtype">
+                <SegmentedControl fullWidth label="Tipo de simulado" value={simType} onChange={applySimType} options={SIM_TYPES} />
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-                {DURATION_PRESETS.map((minutes) => (
-                  <Chip key={minutes} selected={custom.minutes === minutes} onClick={() => setDuration(minutes)}>
-                    {formatMinutes(minutes)}
-                  </Chip>
-                ))}
+            )}
+            {sim && !compact && <ScoringChoice value={scoring} onChange={setScoring} />}
+            <fieldset className="qb-set">
+              <legend className="qb-label">Área</legend>
+              {areaPicker}
+            </fieldset>
+            {sim && compact && (
+              <div>
+                <div className="qb-label">Questões</div>
+                <div className="qb-num">
+                  <SegmentedControl fullWidth label="Quantidade" value={form.count} onChange={(count) => edit({ count })} options={["30", "50", "100"]} />
+                </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <TextField label="Horas" type="number" inputMode="numeric" min={0} max={12} step={1} value={form.hours} onChange={(e) => set({ hours: e.target.value })} />
-                <TextField label="Minutos" type="number" inputMode="numeric" min={0} max={59} step={1} value={form.minutes} onChange={(e) => set({ minutes: e.target.value })} />
-              </div>
-              <div className={custom.error ? "sm-field__error" : "sm-field__hint"} style={{ marginTop: 8 }} aria-live="polite">
-                {custom.error ? (
-                  <>
-                    <Icon name="circle-alert" size={14} />
-                    {custom.error}
-                  </>
-                ) : (
-                  `${formatMinutes(custom.minutes)} para ${total} ${total === 1 ? "questão" : "questões"} · ${paceLabel((custom.minutes * 60) / Math.max(total, 1))} · você pode pausar durante o simulado`
+            )}
+            {sim && compact && <ScoringChoice value={scoring} onChange={setScoring} compact />}
+            {sim && compact ? (
+              <div className="qb-more">
+                <button type="button" aria-expanded={moreOpen} aria-controls="qb-more-body" onClick={() => setMoreOpen(!moreOpen)}>
+                  Mais filtros
+                  <Icon name={moreOpen ? "chevron-up" : "chevron-down"} size={18} />
+                </button>
+                {moreOpen && (
+                  <div id="qb-more-body" className="qb-more__body">
+                    {searchField}
+                    {examField}
+                    {timerField}
+                    {noticeBlocks}
+                  </div>
                 )}
               </div>
-            </div>
-          )}
-          <div>
-            <div className="sm-field__label" style={{ marginBottom: 10 }}>
-              Quantidade
-            </div>
-            <SegmentedControl fullWidth label="Quantidade" value={form.count} onChange={(count) => edit({ count })} options={sim ? ["30", "50", "100"] : ["10", "20", "30", "50"]} />
+            ) : (
+              <>
+                {searchField}
+                <div className="qb-two">
+                  {examField}
+                  {sim ? timerField : statusField}
+                </div>
+                {noticeBlocks}
+              </>
+            )}
+            {!(sim && compact) && (
+              <fieldset className="qb-set">
+                <legend className="qb-label">Quantidade de questões</legend>
+                <div className="qb-num">
+                  <SegmentedControl fullWidth label="Quantidade" value={form.count} onChange={(count) => edit({ count })} options={sim ? ["30", "50", "100"] : ["10", "20", "30", "50"]} />
+                </div>
+              </fieldset>
+            )}
+            {compact && sim && !moreOpen && noticeBlocks}
+          </section>
+        )}
+        {!compact && (
+          <div className="qb-aside">
+            <section className="qb-summary" aria-label="Resumo">
+              <span className="qb-summary__eyebrow">{sim ? "Seu simulado" : "Seu treino"}</span>
+              <span className="qb-summary__total">
+                {total} {noun}
+              </span>
+              <span className="qb-summary__meta">{summary.join(" · ")}</span>
+              {availability && (
+                <span className={`qb-summary__note${available < requested || lockedIneditas ? " qb-summary__note--warn" : ""}`} aria-live="polite">
+                  {availability}
+                </span>
+              )}
+              {triNote && (
+                <span className={`qb-summary__note${triTooFew ? " qb-summary__note--warn" : ""}`} aria-live="polite">
+                  {triNote}
+                </span>
+              )}
+              {error && (
+                <div style={{ marginTop: 8 }}>
+                  <Banner tone="danger">{error}</Banner>
+                </div>
+              )}
+              <Button className="qb-summary__go" size="lg" fullWidth iconRight="arrow-right" onClick={start} loading={starting} disabled={!canStart}>
+                {startLabel}
+              </Button>
+            </section>
+            {recentBlock}
           </div>
-        </div>
-      </Card>
-      <div style={{ position: mobile ? "static" : "sticky", top: 24, display: "flex", flexDirection: "column", gap: 16 }}>
-        <Card style={{ borderRadius: 24 }} padding={24}>
-          <span className="sm-overline" style={{ color: "var(--text-secondary)" }}>
-            Resumo
-          </span>
-          <div style={{ font: "700 34px/1.1 var(--font-sans)", letterSpacing: "-0.02em", marginTop: 10 }}>
-            {total} {total === 1 ? "questão" : "questões"}
+        )}
+        {compact && !onlyMine && (error || triNote || (availability && (lockedIneditas || available < requested))) && (
+          <div aria-live="polite" style={{ gridColumn: "1 / -1" }}>
+            {error ? <Banner tone="danger">{error}</Banner> : <p className="sm-field__hint" style={{ margin: 0, color: available < requested ? "var(--warning-text)" : undefined }}>{[availability, triNote].filter(Boolean).join(" ")}</p>}
           </div>
-          <div style={{ color: "var(--text-secondary)", marginTop: 4 }}>{summary.join(" · ")}</div>
-          {available !== null && (
-            <div style={{ font: "var(--type-body-sm)", color: available < requested ? "var(--warning-text)" : "var(--text-tertiary)", marginTop: 8 }} aria-live="polite">
-              {available === 0
-                ? "Nenhuma questão com esses filtros."
-                : available < requested
-                  ? `Só há ${available} com esses filtros.`
-                  : `${available} disponíveis com esses filtros.`}
-            </div>
-          )}
-          {error && (
-            <div style={{ marginTop: 16 }}>
-              <Banner tone="danger">{error}</Banner>
-            </div>
-          )}
-          <div style={{ marginTop: 20 }}>
-            <Button size="lg" fullWidth iconRight="arrow-right" onClick={start} loading={starting} disabled={!available || customInvalid}>
-              {sim ? "Iniciar simulado" : "Começar treino"}
-            </Button>
-          </div>
-        </Card>
-        {recent.length > 0 && <RecentSessions sessions={recent} go={go} sim={sim} />}
+        )}
+        {compact && sim && onlyMine && recentBlock}
       </div>
+      {compact && !onlyMine && (
+        <div className="qb-bar" role="region" aria-label="Resumo">
+          <span className="qb-bar__text">
+            <strong>
+              {total} {noun}
+              {sim ? ` · ${limitSeconds ? `${formatMinutes(limitSeconds / 60)} de prova` : form.timer === "none" ? "sem cronômetro" : "tempo a definir"}` : ` · ~${formatMinutes(total * 2)}`}
+            </strong>
+            <span>
+              {areaLabel(form.area)}
+              {available !== null && ` · ${available} disponíveis`}
+            </span>
+          </span>
+          <Button size="md" aria-label={startLabel} onClick={start} loading={starting} disabled={!canStart}>
+            {sim ? "Iniciar" : "Começar"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

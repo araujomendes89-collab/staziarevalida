@@ -4,6 +4,7 @@ import React from "react";
 import { Banner } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { AssistantPanel } from "./AssistantPanel.jsx";
+import { SearchSourcesButton } from "./SearchSourcesButton.jsx";
 import { assistantAvailable, assistantErrorText, fetchAssistantStatus, postAssistantRun } from "./assistantApi.js";
 import { ASSIST_ERRORS } from "../../../../shared/adminAssistant/errors";
 
@@ -31,6 +32,7 @@ export function TabAssistant({ spec, title, notice, form, materialLink, onUse, o
       <AssistantPanel
         title={title}
         notice={notice}
+        sourceAction={<SearchSourcesButton tab={spec.tab} form={form} />}
         fields={spec.fields}
         values={spec.values(form)}
         material={spec.material}

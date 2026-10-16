@@ -15,10 +15,11 @@ import { NexusLobby, withArticle } from "./NexusLobby.jsx";
 import { QuestionCard } from "./QuestionCard.jsx";
 import { useNexusVoice } from "./useNexusVoice.js";
 import "./nexus.css";
+import { explainError } from "../../../../shared/errors/explicarErro";
 
 export const JEITO_LABEL = { eleven: "Voz do professor", reserva: "Voz reserva", escrito: "Por escrito" };
 export const PROFESSOR_CHANGED = "Este professor mudou. Comece uma conversa nova.";
-const messageOf = (error) => error?.message || "Não foi possível concluir. Tente de novo.";
+const messageOf = (error) => explainError(error);
 
 /** Argumentos de app_tutor_start: o modo, o professor e o contexto ("Me teste" pelos pontos fracos; "Perguntar" livre). */
 export function startArgs(personalityId, mode, request = null) {
@@ -156,8 +157,8 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
     if (skip === "voice") void Promise.resolve(live.stop?.()).catch(() => {});
     try {
       const o = await nexusApi.open(backend, s.id, true, skip);
-      if (o.jeito === "reserva") releaseMic(); // a voz ao vivo pede o microfone por conta própria
-      setMicStream(o.jeito === "reserva" ? null : mic.current);
+      if (o.jeito === "reserva" || !o.mic) releaseMic(); // a voz ao vivo pede o microfone por conta própria; sem microfone liberado (CF02) não fica nada aberto
+      setMicStream(o.jeito === "reserva" || !o.mic ? null : mic.current);
       liveStarted.current = null;
       ttsStarted.current = null;
       setOpened(o);
@@ -176,7 +177,9 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
   const gesture = () => {
     unlockAudio();
     const md = typeof navigator !== "undefined" ? navigator.mediaDevices : null;
-    return status.voice_enabled && md?.getUserMedia ? md.getUserMedia({ audio: true }).catch(() => null) : Promise.resolve(null);
+    // sem transcrição liberada a esta pessoa (CF02) e sem voz reserva, o microfone nem é pedido
+    const noMic = Boolean(nexus) && !nexus.stt && !nexus.reserve;
+    return status.voice_enabled && !noMic && md?.getUserMedia ? md.getUserMedia({ audio: true }).catch(() => null) : Promise.resolve(null);
   };
 
   const openSession = async (s, force = false) => {
@@ -190,8 +193,8 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
       setPicked(null);
       setLiveNote(null);
       setLiveAvatar(null);
-      if (o.jeito === "reserva") releaseMic(); // a voz ao vivo pede o microfone por conta própria
-      setMicStream(o.jeito === "reserva" ? null : mic.current);
+      if (o.jeito === "reserva" || !o.mic) releaseMic(); // a voz ao vivo pede o microfone por conta própria; sem microfone liberado (CF02) não fica nada aberto
+      setMicStream(o.jeito === "reserva" || !o.mic ? null : mic.current);
       liveStarted.current = null;
       ttsStarted.current = null;
       setPhase("conversation");

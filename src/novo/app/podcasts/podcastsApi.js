@@ -92,6 +92,8 @@ export async function podcastAudioUrl(backend, id) {
 }
 
 export const attachFlashcast = (backend, id, lessonId) => call(backend, `/${id}/flashcast`, { method: "POST", body: { lesson_id: lessonId, confirm: true } });
+/** Depois de editar o roteiro (feito direto no banco): o servidor apaga o áudio que deixou de valer, se nada mais o usa. Melhor esforço. */
+export const cleanupPodcastFiles = (backend, id) => call(backend, `/${id}/files/cleanup`, { method: "POST", body: {} });
 export const deletePodcast = (backend, id) => call(backend, `/${id}`, { method: "DELETE" });
 
 /** IAs ou vozes indisponíveis, juntando as que têm o mesmo motivo: "Gemini, Claude e OpenAI: motivo". */

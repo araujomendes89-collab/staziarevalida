@@ -561,15 +561,12 @@ Checklist Esperado: ${JSON.stringify(params.checklist)}`;
     }
   }
 
+  /**
+   * Radar de atualizações (RT06): a rota /api/radar/updates devolvia notícias médicas fixas e inventadas e foi removida.
+   * Fica a lista vazia (a seção some); atualizações reais estão na aba Atualizações & Diretrizes, com revisão médica.
+   */
   static async fetchRadarUpdates(): Promise<RadarUpdate[]> {
-    try {
-      const response = await fetch("/api/radar/updates");
-      if (!response.ok) throw new Error("Failed to fetch updates");
-      const data = await response.json();
-      return data.updates || [];
-    } catch {
-      return [];
-    }
+    return [];
   }
 }
 

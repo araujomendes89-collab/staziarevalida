@@ -18,12 +18,16 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import { PROMPTS, asDocument, type PromptKey } from "./ai/prompts";
 import { resolveProviderKind, type AiProvider, type StructuredRequest, type VerifierRole } from "./ai/provider";
-import { maestroRoleProvider } from "../ai/maestro";
+import { maestroCheckerProvider, maestroRoleProvider } from "../ai/maestro";
 import type { ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { copyRatio, isVerbatim, negations, normalize, numbers, numbersOutside } from "./checks";
 import type { ContentDb } from "./infra";
 import { embedderAllowed, queryEmbedding, type Embedder } from "./embeddings";
+import { citesLetter } from "./questoes/validate";
+import { passagesByIds } from "./questoes/passages";
+import { maxSimilarity } from "./questoes/similarity";
+import type { OfficialPassage, SimilarityCorpus, SimilarityHit, StaziaCitation } from "./questoes/types";
 
 const run = promisify(execFile);
 
@@ -47,7 +51,7 @@ export interface DraftRow {
   correct_answer: string;
   explanation: string | null;
   alternative_explanations: Record<string, string>;
-  source_citations: { source_file?: string; supported_claim?: string }[];
+  source_citations: (LegacyCitation | StaziaCitation)[];
   update_application: string | null;
   similarity_to_official: number | string | null;
   support_type: string | null;
@@ -56,7 +60,16 @@ export interface DraftRow {
   clinical_decision: string | null;
   model: string | null;
   content_hash: string;
+  /** Tema da lista de temas das provas oficiais (rascunhos do servidor e os 200 depois de editados). */
+  topic?: string | null;
+  generated_by?: string;
 }
+
+/** Citação do gerador antigo (apostila): serve para descobrir o assunto, nunca como fonte. */
+export type LegacyCitation = { source_file?: string; supported_claim?: string };
+export const isStaziaCitation = (c: LegacyCitation | StaziaCitation): c is StaziaCitation => typeof (c as StaziaCitation).passage_id === "string";
+/** Trecho oficial carregado do banco para conferir uma citação (official = A–D, final, vigente). */
+export type PassageInfo = OfficialPassage & { official: boolean };
 
 export const CHECKS_VERSION = "draft-checks-1.0.0";
 const LETTERS = ["A", "B", "C", "D"];
@@ -75,9 +88,22 @@ export function studentVisibleText(d: DraftRow) {
 }
 
 // ---------------------------------------------------------------------------- camada software
-export function softwareChecks(d: DraftRow, opts: { referenceTexts?: Record<string, string>; officialFiles?: Set<string> } = {}): Finding[] {
+export function softwareChecks(
+  d: DraftRow,
+  opts: {
+    referenceTexts?: Record<string, string>;
+    officialFiles?: Set<string>;
+    /** Semelhança calculada no servidor (70 recusa, 50 alerta); sem ela vale `similarity_to_official` do gerador antigo. */
+    similarity?: { official: SimilarityHit; staziamed: SimilarityHit };
+    /** Trechos citados pelas citações novas (por passage_id). */
+    passages?: Map<string, PassageInfo>;
+  } = {}
+): Finding[] {
   const f: Finding[] = [];
   const add = (severity: Finding["severity"], code: string, detail: string, where?: string) => f.push({ severity, code, detail, where });
+  const citations = d.source_citations ?? [];
+  const fresh = citations.filter(isStaziaCitation);
+  const legacy = citations.filter((c): c is LegacyCitation => !isStaziaCitation(c));
 
   // 1. resposta única e explicações coerentes
   const exp = d.alternative_explanations ?? {};
@@ -101,16 +127,17 @@ export function softwareChecks(d: DraftRow, opts: { referenceTexts?: Record<stri
   }
 
   // 3. números/unidades da resposta e da explicação sem sustentação no enunciado, na tabela ou nas citações
-  const bases = [studentVisibleText(d), ...(d.source_citations ?? []).map((c) => c.supported_claim ?? "")];
+  const bases = [studentVisibleText(d), ...legacy.map((c) => c.supported_claim ?? ""), ...fresh.flatMap((c) => [c.quote, c.supports])];
   const checked = [`${d.alternatives?.[d.correct_answer] ?? ""} ${d.explanation ?? ""} ${exp[d.correct_answer] ?? ""}`];
   const outside = numbersOutside(checked.join(" "), bases);
-  if (outside.length) add("major", "numbers_unsupported", `Valores sem sustentação no enunciado, na tabela de apoio ou nas citações: ${outside.join(", ")}.`, "resposta/explicação");
+  // com citação oficial (formato novo) o número sem sustentação é crítico; só com a citação antiga continua importante
+  if (outside.length) add(fresh.length ? "critical" : "major", "numbers_unsupported", `Valores sem sustentação no enunciado, na tabela de apoio ou nas citações: ${outside.join(", ")}.`, "resposta/explicação");
 
   // 4. negação perdida entre a afirmação citada e a alternativa correta
-  const claimNeg = new Set((d.source_citations ?? []).flatMap((c) => negations(c.supported_claim ?? "")));
+  const claimNeg = new Set([...legacy.map((c) => c.supported_claim ?? ""), ...fresh.map((c) => c.quote)].flatMap((c) => negations(c)));
   const answerNeg = new Set(negations(d.alternatives?.[d.correct_answer] ?? ""));
   const flipped = [...answerNeg].filter((n) => !claimNeg.has(n) && claimNeg.size > 0);
-  if (flipped.length && (d.source_citations ?? []).length) add("minor", "negation_check", `A alternativa correta traz negação (${flipped.join(", ")}) que não consta das citações: conferir o sentido.`, d.correct_answer);
+  if (flipped.length && citations.length) add("minor", "negation_check", `A alternativa correta traz negação (${flipped.join(", ")}) que não consta das citações: conferir o sentido.`, d.correct_answer);
 
   // 5. pista de resposta: a correta é bem mais longa que as outras
   const len = (l: string) => normalize(d.alternatives?.[l] ?? "").length;
@@ -118,27 +145,51 @@ export function softwareChecks(d: DraftRow, opts: { referenceTexts?: Record<stri
   const avg = others.reduce((a, b) => a + b, 0) / (others.length || 1);
   if (avg > 0 && len(d.correct_answer) > avg * 1.8 && len(d.correct_answer) - avg > 60) add("minor", "answer_cue", "A alternativa correta é bem mais longa que as outras (pista de resposta).", d.correct_answer);
 
-  // 6. semelhança com questão oficial (originalidade)
-  const sim = Number(d.similarity_to_official);
-  if (Number.isFinite(sim)) {
-    if (sim >= 85) add("critical", "too_similar_official", `Semelhança de ${sim}% com questão oficial: reescrever.`);
-    else if (sim >= 70) add("major", "similar_official", `Semelhança de ${sim}% com questão oficial.`);
+  // 6. semelhança (originalidade): 70% ou mais recusa, 50% ou mais alerta; calculada no servidor contra as questões oficiais e
+  //    contra as outras StaziaMed (sem isso, vale a nota que o gerador antigo trouxe, só contra as oficiais)
+  const sims: [string, string, number][] = opts.similarity
+    ? [["official", "questão oficial", opts.similarity.official.score], ["staziamed", "outra Questão StaziaMed", opts.similarity.staziamed.score]]
+    : [["official", "questão oficial", Number(d.similarity_to_official)]];
+  for (const [kind, label, sim] of sims) {
+    if (!Number.isFinite(sim)) continue;
+    if (sim >= 70) add("critical", `too_similar_${kind}`, `Semelhança de ${sim}% com ${label}: reescrever.`);
+    else if (sim >= 50) add("major", `similar_${kind}`, `Semelhança de ${sim}% com ${label}.`);
   }
 
-  // 7. cópia do material-fonte (6-gramas), quando o texto de referência está disponível
-  for (const c of d.source_citations ?? []) {
+  // 7. cópia: das sequências de 6 palavras do material-fonte (apostila, quando o texto de referência está disponível) e, nas
+  //    citações novas, dos trechos oficiais citados (acima de 50% crítico, acima de 25% importante)
+  const ownText = `${d.stem} ${Object.values(d.alternatives ?? {}).join(" ")}`;
+  for (const c of legacy) {
     const ref = opts.referenceTexts?.[c.source_file ?? ""];
     if (!ref) continue;
-    const ratio = copyRatio(`${d.stem} ${Object.values(d.alternatives ?? {}).join(" ")}`, ref);
+    const ratio = copyRatio(ownText, ref);
     if (ratio > 0.5) add("critical", "copied_from_source", `${Math.round(ratio * 100)}% das sequências de 6 palavras vêm de "${c.source_file}": reescrever.`);
     else if (ratio > 0.25) add("major", "close_to_source", `${Math.round(ratio * 100)}% das sequências de 6 palavras vêm de "${c.source_file}".`);
     break; // uma referência basta para o alerta
   }
+  const citedText = fresh.map((c) => opts.passages?.get(c.passage_id)?.text ?? "").filter(Boolean).join(" ");
+  if (citedText) {
+    const ratio = copyRatio(ownText, citedText);
+    if (ratio > 0.5) add("critical", "copied_from_source", `${Math.round(ratio * 100)}% das sequências de 6 palavras vêm dos trechos oficiais citados: reescrever com palavras próprias.`);
+    else if (ratio > 0.25) add("major", "close_to_source", `${Math.round(ratio * 100)}% das sequências de 6 palavras vêm dos trechos oficiais citados.`);
+  }
 
-  // 8. fonte única de terceiros: não é evidência (nível E)
-  const files = [...new Set((d.source_citations ?? []).map((c) => c.source_file ?? "").filter(Boolean))];
-  if (!files.length) add("critical", "no_citation", "Nenhuma fonte citada.");
-  else if (files.every((x) => !opts.officialFiles?.has(x))) add("major", "third_party_source_only", `Só cita material que não é fonte oficial cadastrada (${files.join("; ")}): serve para descobrir o assunto, não para provar.`);
+  // 8. fontes: a citação nova precisa ser de trecho oficial vigente e literal; a antiga (apostila) não é evidência
+  if (!citations.length) add("critical", "no_citation", "Nenhuma fonte citada.");
+  if (opts.passages) {
+    for (const c of fresh) {
+      const p = opts.passages.get(c.passage_id);
+      if (!p || !p.official) add("critical", "citation_not_official", `A citação de "${c.source}" não aponta para um trecho de fonte oficial vigente (nível A a D, versão final).`, "citações");
+      else if (!isVerbatim(c.quote, p.text)) add("critical", "quote_not_verbatim", `O trecho citado não aparece literalmente na fonte "${p.source}".`, "citações");
+    }
+  }
+  const files = [...new Set(legacy.map((c) => c.source_file ?? "").filter(Boolean))];
+  if (files.length && files.every((x) => !opts.officialFiles?.has(x))) add("critical", "third_party_source_only", `Só cita material que não é fonte oficial cadastrada (${files.join("; ")}): serve para descobrir o assunto, não para provar.`);
+
+  // 8b. a explicação não cita alternativa por letra (o gabarito pode ser embaralhado)
+  if ([d.explanation ?? "", ...Object.values(d.alternative_explanations ?? {})].some(citesLetter)) {
+    add("major", "explanation_cites_letter", "A explicação cita alternativa por letra: o gabarito pode ser equilibrado e a letra deixaria de valer.", "explicação");
+  }
 
   // 9. o gerador pediu uma imagem que não existe: sem ela a questão não pode ser respondida
   if (d.support_type === "IMAGE_REQUEST") add("critical", "image_requested", "O gerador pediu uma imagem para esta questão e ela não existe: não dá para responder sem a figura.");
@@ -168,27 +219,38 @@ export interface RunDeps {
   log?: (m: string) => void;
   /** Busca por significado (embeddings.ts); sem ele, só palavras. */
   embedder?: Embedder | null;
+  /** Só para testes e desenvolvimento: provedor simulado já pronto (vale no lugar das IAs da Central). */
+  mockProvider?: AiProvider | null;
+  /** Chamado logo depois de cada chamada paga à IA (antes de gravar qualquer coisa), para o gasto não se perder numa falha. */
+  onSpend?: (delta: { calls: number; costUsd: number }) => Promise<void> | void;
+  /**
+   * Conferência por outra empresa (decisão do dono, 2026-10-10): a IA que confere é da função Verificação, mas nunca da mesma
+   * empresa de quem criou o rascunho; se a Verificação for da mesma empresa, troca sozinha (maestroCheckerProvider). Usado nos
+   * pedidos feitos pela tela; o comando de linha segue com os conferentes por papel e a recusa por mesma família.
+   */
+  crossCompany?: boolean;
 }
 
 const sha256 = (v: string) => crypto.createHash("sha256").update(v).digest("hex");
 
-async function callAi<T>(deps: RunDeps, provider: AiProvider, key: PromptKey, payload: unknown, spend: Spend, draft: DraftRow, layer: Layer, who?: Answerer): Promise<T> {
+export async function callAi<T>(deps: RunDeps, provider: AiProvider, key: PromptKey, payload: unknown, spend: Spend, step: string, who?: Answerer, maxOutputTokens = 4096, opts: { noCache?: boolean } = {}): Promise<T> {
   const allowed = await aiAllowed(deps.db);
   if (!allowed.ok) throw new Error(allowed.why);
   await registerPromptsOnce(deps.db);
   const prompt = PROMPTS[key];
   const input = `Responda no formato "${key}". O material segue como dado:\n${asDocument(payload)}`;
   const inputHash = sha256(`${prompt.system}\n${input}`);
-  const cached = await deps.db.service<T | null>("ch_worker_cached_run", { p_prompt_id: prompt.id, p_prompt_version: prompt.version, p_model: provider.model, p_input_hash: inputHash });
+  const cached = opts.noCache ? null : await deps.db.service<T | null>("ch_worker_cached_run", { p_prompt_id: prompt.id, p_prompt_version: prompt.version, p_model: provider.model, p_input_hash: inputHash });
   if (cached && validate(prompt.schema, cached).length === 0) return cached;
-  const r = await provider.generate<T>({ promptId: prompt.id, promptVersion: prompt.version, system: prompt.system, input, schema: prompt.schema, schemaName: `staziamed_${key}`, maxOutputTokens: 4096 });
+  const r = await provider.generate<T>({ promptId: prompt.id, promptVersion: prompt.version, system: prompt.system, input, schema: prompt.schema, schemaName: `staziamed_${key}`, maxOutputTokens });
   if (who) { who.provider = r.provider; who.model = r.model; }
   spend.calls++;
   spend.inputTokens += r.inputTokens ?? 0;
   spend.outputTokens += r.outputTokens ?? 0;
   if (r.costUsd != null) spend.costUsd = (spend.costUsd ?? 0) + r.costUsd;
+  await deps.onSpend?.({ calls: 1, costUsd: r.costUsd ?? 0 });
   await deps.db.service("ch_worker_log_ai_run", {
-    p_run: { document_id: null, step: `draft_check:${layer}`, provider: r.provider, model: r.model, prompt_id: prompt.id, prompt_version: prompt.version, schema_version: prompt.version, input_hash: inputHash, status: "ok", output: r.output, input_tokens: r.inputTokens, output_tokens: r.outputTokens, cost_usd: r.costUsd, latency_ms: r.latencyMs },
+    p_run: { document_id: null, step, provider: r.provider, model: r.model, prompt_id: prompt.id, prompt_version: prompt.version, schema_version: prompt.version, input_hash: inputHash, status: "ok", output: r.output, input_tokens: r.inputTokens, output_tokens: r.outputTokens, cost_usd: r.costUsd, latency_ms: r.latencyMs },
   });
   return r.output;
 }
@@ -201,9 +263,18 @@ const questionForReview = (d: DraftRow, withKey: boolean) => ({
 });
 
 /** Revisão clínica independente: resolve às cegas e depois revisa com tudo. É opinião de IA, nunca prova. */
-export async function redteamCheck(deps: RunDeps, provider: AiProvider, d: DraftRow, spend: Spend, who?: Answerer): Promise<{ verdict: Verdict; findings: Finding[] }> {
+export async function redteamCheck(
+  deps: RunDeps,
+  provider: AiProvider,
+  d: DraftRow,
+  spend: Spend,
+  who?: Answerer,
+  /** Conferido entre a resolução às cegas e a revisão: se o rascunho mudou nesse meio tempo, para sem a segunda chamada. */
+  shouldContinue?: () => Promise<boolean>
+): Promise<{ verdict: Verdict; findings: Finding[]; stopped?: boolean }> {
   const findings: Finding[] = [];
-  const solved = await callAi<{ answer: string; certainty: string; rationale: string; ambiguity: string }>(deps, provider, "solve", questionForReview(d, false), spend, d, "redteam", who);
+  const solved = await callAi<{ answer: string; certainty: string; rationale: string; ambiguity: string }>(deps, provider, "solve", questionForReview(d, false), spend, "draft_check:redteam", who);
+  if (shouldContinue && !(await shouldContinue())) return { verdict: "inconclusive", findings: [], stopped: true };
   if (solved.answer !== d.correct_answer) {
     findings.push({ severity: "critical", code: "blind_answer_differs", where: "gabarito", detail: `Resolvendo sem ver o gabarito, o revisor escolheu ${solved.answer} (certeza ${solved.certainty}) e o criador marcou ${d.correct_answer}. Opinião do revisor: ${solved.rationale}` });
   } else if (solved.certainty === "low") {
@@ -215,7 +286,7 @@ export async function redteamCheck(deps: RunDeps, provider: AiProvider, d: Draft
   if (ambiguity.length > 8 && !none && solved.answer === d.correct_answer && solved.certainty !== "low") {
     findings.push({ severity: "minor", code: "blind_ambiguity", where: "enunciado", detail: solved.ambiguity });
   }
-  const review = await callAi<{ issues: { severity: Finding["severity"]; kind: string; where: string; detail: string; basis: string }[] }>(deps, provider, "redteam", questionForReview(d, true), spend, d, "redteam", who);
+  const review = await callAi<{ issues: { severity: Finding["severity"]; kind: string; where: string; detail: string; basis: string }[] }>(deps, provider, "redteam", questionForReview(d, true), spend, "draft_check:redteam", who);
   for (const i of review.issues) {
     findings.push({
       severity: i.severity,
@@ -225,6 +296,35 @@ export async function redteamCheck(deps: RunDeps, provider: AiProvider, d: Draft
     });
   }
   return { verdict: verdictOf(findings), findings };
+}
+
+/**
+ * Revisão pedagógica (opinião de IA para o revisor médico; gravada em `ai_review`, nunca aprova): resposta única, clareza,
+ * distratores, pistas e alinhamento com a competência. Devolve também a resposta inteira da IA em `review`.
+ */
+export async function pedagogyCheck(
+  deps: RunDeps,
+  provider: AiProvider,
+  d: DraftRow,
+  spend: Spend,
+  who?: Answerer
+): Promise<{ verdict: Verdict; findings: Finding[]; review: Record<string, unknown> }> {
+  const out = await callAi<{
+    verdict: "sem_problemas" | "revisar" | "recusar";
+    single_best_answer: boolean; stem_clear_and_sufficient: boolean; distractors_plausible: boolean; no_unintended_clues: boolean; competency_aligned: boolean;
+    issues: { severity: Finding["severity"]; where: string; detail: string }[];
+  }>(deps, provider, "staziamed_pedagogia", { ...questionForReview(d, true), tema: d.topic ?? null, area: d.area }, spend, "draft_check:pedagogy", who);
+  const findings: Finding[] = out.issues.map((i) => ({ severity: i.severity, code: "pedagogy_issue", where: i.where, detail: i.detail }));
+  const flags: [boolean, string, string][] = [
+    [out.single_best_answer, "pedagogy_single_best_answer", "O revisor pedagógico não vê uma única melhor resposta."],
+    [out.stem_clear_and_sufficient, "pedagogy_stem", "O revisor pedagógico achou o enunciado pouco claro ou insuficiente."],
+    [out.distractors_plausible, "pedagogy_distractors", "O revisor pedagógico achou algum distrator pouco plausível."],
+    [out.no_unintended_clues, "pedagogy_clues", "O revisor pedagógico achou uma pista que denuncia a resposta."],
+    [out.competency_aligned, "pedagogy_competency", "O revisor pedagógico achou a questão pouco alinhada à competência."],
+  ];
+  for (const [ok, code, detail] of flags) if (!ok) findings.push({ severity: "major", code, detail });
+  if (out.verdict === "recusar" && !findings.some((f) => f.severity === "critical")) findings.push({ severity: "major", code: "pedagogy_refused", detail: "O revisor pedagógico recomenda recusar a questão." });
+  return { verdict: verdictOf(findings), findings, review: { ...out, at: new Date().toISOString() } };
 }
 
 /** Passagens oficiais para a afirmação central (palavras e, se ligada, significado; só fontes nível A–D). */
@@ -248,7 +348,7 @@ export async function sourcesCheck(deps: RunDeps, provider: AiProvider | null, d
   const out = await callAi<{ verdict: string; passage_id: string; quote: string; rationale: string }>(
     deps, provider, "evidence",
     { afirmacao: { text: claim, context: { area: d.area } }, trechos: passages.map((p: any) => ({ passage_id: p.passage_id, source: p.source, organ: p.organ, version: p.version, section: p.section, page: p.page, text: String(p.text).slice(0, 2500) })) },
-    spend, d, "sources", who,
+    spend, "draft_check:sources", who,
   );
   const p = byId.get(out.passage_id) as any;
   const findings: Finding[] = [];
@@ -284,7 +384,7 @@ export async function currencyCheck(deps: RunDeps, provider: AiProvider | null, 
   const out = await callAi<{ verdict: string; passage_id: string; quote: string; rationale: string }>(
     deps, provider, "currency",
     { afirmacao: claim, hoje: today, trechos: passages.map((p: any) => ({ passage_id: p.passage_id, source: p.source, organ: p.organ, version: p.version, published_on: p.published_on, valid_until: p.valid_until, page: p.page, text: String(p.text).slice(0, 2500) })) },
-    spend, d, "currency", who,
+    spend, "draft_check:currency", who,
   );
   const p = byId.get(out.passage_id) as any;
   if (!p || !isVerbatim(out.quote, p.text)) return { verdict: "inconclusive", findings: [{ severity: "major", code: "quote_not_verbatim", detail: "A citação proposta não é cópia literal do trecho: descartada." }] };
@@ -320,12 +420,28 @@ export interface RunOptions {
   batch?: string;
   dryRun?: boolean;
   referenceDir?: string;
+  /** Pedido pela tela: exatamente estes rascunhos (nunca outros). */
+  ids?: string[];
+  /** Com `ids`: confere de novo mesmo as camadas que já valem para o texto atual. */
+  force?: boolean;
+  /** Com `ids`: rascunhos que este pedido já conferiu, por camada, numa tentativa anterior (não entram de novo). */
+  skip?: Partial<Record<Layer, string[]>>;
+  /** Parada de segurança: para quando o gasto real somado passa deste valor em dólares. */
+  maxCostUsd?: number | null;
+  /** Chamado depois de cada rascunho conferido numa camada (andamento do pedido). */
+  onProgress?: (reports: RunReport[]) => Promise<void> | void;
 }
 
 export interface RunReport {
   layer: Layer;
   considered: number;
   saved: number;
+  /** Rascunhos gravados nesta execução, nesta camada. */
+  savedIds: string[];
+  /** Parou pela parada de segurança do pedido. */
+  stop?: "seguranca";
+  /** Parou por falha da chamada (não por falta de configuração). */
+  failed?: boolean;
   verdicts: Record<string, number>;
   pending?: string;
   spend: Spend;
@@ -344,18 +460,37 @@ export async function runDraftChecks(deps: RunDeps, options: RunOptions): Promis
   const officialSources = await deps.db.service<{ title: string }[]>("ch_worker_official_sources");
   const officialFiles = new Set(officialSources.map((s) => s.title));
   for (const layer of options.layers) {
-    const report: RunReport = { layer, considered: 0, saved: 0, verdicts: {}, spend: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: null } };
+    const report: RunReport = { layer, considered: 0, saved: 0, savedIds: [], verdicts: {}, spend: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: null } };
     reports.push(report);
-    const drafts = await deps.db.service<DraftRow[]>("ch_worker_drafts_for_check", { p_layer: layer, p_limit: options.limit ?? 50, p_batch: options.batch ?? null });
+    const drafts = options.ids
+      ? await deps.db.service<DraftRow[]>("ch_worker_drafts_for_check_ids", { p_layer: layer, p_ids: options.ids, p_force: options.force ?? false })
+      : await deps.db.service<DraftRow[]>("ch_worker_drafts_for_check", { p_layer: layer, p_limit: options.limit ?? 50, p_batch: options.batch ?? null });
+    if (options.skip?.[layer]?.length) {
+      const skip = new Set(options.skip[layer]);
+      for (let i = drafts.length - 1; i >= 0; i--) if (skip.has(drafts[i].id)) drafts.splice(i, 1);
+    }
     report.considered = drafts.length;
     if (!drafts.length) continue;
 
+    // semelhança calculada no servidor (contra as oficiais e as outras StaziaMed) e os trechos oficiais das citações novas
+    let corpus: SimilarityCorpus | null = null;
+    let passages = new Map<string, PassageInfo>();
+    if (layer === "software" && !options.dryRun) {
+      corpus = await deps.db.service<SimilarityCorpus>("ch_worker_similarity_corpus");
+      passages = await passagesByIds(deps.db, drafts.flatMap((d) => (d.source_citations ?? []).filter(isStaziaCitation).map((c) => c.passage_id)));
+    }
     let referenceTexts: Record<string, string> = {};
     if (layer === "software" && options.referenceDir && !options.dryRun) {
-      referenceTexts = await loadReferenceTexts(options.referenceDir, [...new Set(drafts.flatMap((d) => (d.source_citations ?? []).map((c) => c.source_file ?? "")).filter(Boolean))]);
+      referenceTexts = await loadReferenceTexts(options.referenceDir, [...new Set(drafts.flatMap((d) => (d.source_citations ?? []).map((c) => (c as LegacyCitation).source_file ?? "")).filter(Boolean))]);
     }
 
     for (const d of drafts) {
+      const spentTotal = reports.reduce((a, r) => a + (r.spend.costUsd ?? 0), 0);
+      if (!options.dryRun && options.maxCostUsd != null && spentTotal > options.maxCostUsd) {
+        report.pending = `Parada de segurança: o gasto (US$ ${spentTotal.toFixed(2)}) passou do limite deste pedido (US$ ${options.maxCostUsd.toFixed(2)}).`;
+        report.stop = "seguranca";
+        break;
+      }
       if (options.dryRun) {
         if (layer !== "software") {
           const e = estimateTokens(d, layer);
@@ -366,14 +501,17 @@ export async function runDraftChecks(deps: RunDeps, options: RunOptions): Promis
       let result: { verdict: Verdict; findings: Finding[] };
       let meta: Record<string, unknown> = { prompt_version: CHECKS_VERSION };
       if (layer === "software") {
-        const findings = softwareChecks(d, { referenceTexts, officialFiles });
+        const similarity = corpus ? { official: maxSimilarity(d.stem, corpus.official), staziamed: maxSimilarity(d.stem, corpus.staziamed, { excludeId: d.id }) } : undefined;
+        const findings = softwareChecks(d, { referenceTexts, officialFiles, similarity, passages });
         result = { verdict: verdictOf(findings), findings };
         meta = { provider: "software", model: "regras", prompt_version: CHECKS_VERSION };
       } else {
         const role = layer as VerifierRole;
         const roleIndex = ({ sources: 0, currency: 1, redteam: 2 } as const)[role];
-        const mockProvider = deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null;
-        const { provider, status } = await maestroRoleProvider({ db: deps.db, mockProvider, makeProviderFor: deps.aiMaker, log: deps.log }, roleIndex, d.model, { source: "conferencia", itemId: d.id });
+        const mockProvider = deps.mockProvider ?? (deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null);
+        const maestroDeps = { db: deps.db, mockProvider, makeProviderFor: deps.aiMaker, log: deps.log };
+        const origin = { source: "conferencia" as const, itemId: d.id };
+        const { provider, status } = deps.crossCompany ? await maestroCheckerProvider(maestroDeps, "verificacao", d.model, origin) : await maestroRoleProvider(maestroDeps, roleIndex, d.model, origin);
         const who: Answerer = { provider: provider?.name ?? "software", model: provider?.model ?? "" };
         const needsAi = layer === "redteam";
         // fontes/atualidade só chamam IA quando há trecho oficial; antes disso o resultado é determinístico
@@ -390,13 +528,18 @@ export async function runDraftChecks(deps: RunDeps, options: RunOptions): Promis
             break;
           }
           report.pending = `Falha na chamada (${(error as Error).message.slice(0, 160)})`;
+          report.failed = true;
           break;
         }
         meta = { provider: report.spend.calls > before ? who.provider : (provider?.name ?? "software"), model: report.spend.calls > before ? who.model : "sem chamada de IA", prompt_version: CHECKS_VERSION };
       }
-      await deps.db.service("ch_worker_save_draft_check", { p_draft_id: d.id, p_layer: layer, p_verdict: result.verdict, p_findings: result.findings, p_meta: meta });
+      // com o hash do texto lido: se alguém editou o rascunho no meio (Questões StaziaMed), o banco descarta o resultado (devolve nulo)
+      const savedId = await deps.db.service("ch_worker_save_draft_check", { p_draft_id: d.id, p_layer: layer, p_verdict: result.verdict, p_findings: result.findings, p_meta: { ...meta, content_hash: d.content_hash } });
+      if (savedId === null) continue;
       report.saved++;
+      report.savedIds.push(d.id);
       report.verdicts[result.verdict] = (report.verdicts[result.verdict] ?? 0) + 1;
+      await options.onProgress?.(reports);
     }
   }
   return reports;

@@ -1,0 +1,246 @@
+{
+ "app_support_contact()": [
+  "009835(nova)"
+ ],
+ "app_admin_save_support_contact(text)": [
+  "009835(nova)"
+ ],
+ "student_reports_guard()": [
+  "009835(nova)"
+ ],
+ "app_report_problem(text,text)": [
+  "009835(nova)"
+ ],
+ "app_admin_reports(text,integer,integer)": [
+  "009835(nova)"
+ ],
+ "app_admin_report_resolve(bigint,boolean)": [
+  "009835(nova)"
+ ],
+ "ch_assert_document(uuid)": [
+  "009840"
+ ],
+ "app_ch_documents()": [
+  "009840"
+ ],
+ "ch_worker_note_credit_pause(uuid)": [
+  "009842(nova)"
+ ],
+ "ch_worker_unblock()": [
+  "009842"
+ ],
+ "ch_worker_processing_settings()": [
+  "009843(nova)"
+ ],
+ "app_ch_processing_settings()": [
+  "009843(nova)"
+ ],
+ "app_ch_set_processing_settings(boolean,numeric)": [
+  "009843(nova)"
+ ],
+ "ch_worker_document_spend(uuid)": [
+  "009843(nova)"
+ ],
+ "ch_worker_apply_reference_cleanup_free(uuid,uuid,text[],jsonb)": [
+  "009844(nova)"
+ ],
+ "ch_node_area_code(uuid)": [
+  "009860(nova)"
+ ],
+ "ch_claim_area_codes(uuid)": [
+  "009860(nova)"
+ ],
+ "ch_evidence_settled(uuid)": [
+  "009860(nova)"
+ ],
+ "ch_evidence_counts(uuid)": [
+  "009860(nova)"
+ ],
+ "ch_claim_effective_status(uuid)": [
+  "009860(nova)"
+ ],
+ "ch_claim_recompute_status(uuid)": [
+  "009860(nova)"
+ ],
+ "app_ch_link_evidence(uuid,jsonb)": [
+  "009860"
+ ],
+ "app_ch_claim_evidence(uuid)": [
+  "009860(nova)"
+ ],
+ "app_ch_claim_can_confirm(uuid)": [
+  "009860(nova)"
+ ],
+ "app_ch_confirm_critical(uuid)": [
+  "009860"
+ ],
+ "app_ch_discard_evidence(uuid,text)": [
+  "009860(nova)"
+ ],
+ "app_ch_conflict_decide(uuid,text,uuid,text)": [
+  "009860"
+ ],
+ "ch_publish_problems_base(uuid)": [
+  "009860"
+ ],
+ "app_ch_retire(uuid,text)": [
+  "009861"
+ ],
+ "lessons_central_guard()": [
+  "009861(nova)"
+ ],
+ "ch_distribution_plan(uuid,jsonb)": [
+  "009861(nova)"
+ ],
+ "ch_student_area(text)": [
+  "009861(nova)"
+ ],
+ "ch_is_official_source(uuid)": [
+  "009861(nova)"
+ ],
+ "ch_cards_plan(uuid)": [
+  "009861(nova)",
+  "009862"
+ ],
+ "ch_distribute_cards(uuid,uuid)": [
+  "009861(nova)",
+  "009862"
+ ],
+ "ch_hide_cards(uuid)": [
+  "009861(nova)",
+  "009862"
+ ],
+ "ch_publish_problems_cards(uuid)": [
+  "009861(nova)",
+  "009862"
+ ],
+ "ch_undistribute(uuid)": [
+  "009861(nova)"
+ ],
+ "ch_student_lesson(uuid)": [
+  "009861(nova)"
+ ],
+ "ch_publish_problems_student(uuid)": [
+  "009861(nova)"
+ ],
+ "ch_distribute(uuid,jsonb)": [
+  "009861(nova)"
+ ],
+ "ch_publish_problems(uuid)": [
+  "009861"
+ ],
+ "app_ch_publish_preview(uuid,jsonb)": [
+  "009861(nova)"
+ ],
+ "app_ch_publish(uuid,jsonb)": [
+  "009861(nova)"
+ ],
+ "app_ch_publish(uuid)": [
+  "009861"
+ ],
+ "ch_version_cards(uuid)": [
+  "009862(nova)"
+ ],
+ "ch_hide_card_rows(uuid[])": [
+  "009862(nova)"
+ ],
+ "ch_visual_review_pending(uuid)": [
+  "009863(nova)"
+ ],
+ "ch_visual_can_review(text)": [
+  "009863(nova)"
+ ],
+ "ch_visual_text(jsonb)": [
+  "009863(nova)"
+ ],
+ "ch_visual_is_clinical(jsonb)": [
+  "009863(nova)"
+ ],
+ "ch_visual_area_code(text)": [
+  "009863(nova)"
+ ],
+ "ch_worker_visual_files(uuid)": [
+  "009863"
+ ],
+ "app_ch_visual_review(uuid,text)": [
+  "009863(nova)"
+ ],
+ "app_ch_visual_list(jsonb)": [
+  "009863"
+ ],
+ "app_ch_visual_material(uuid)": [
+  "009863"
+ ],
+ "app_ch_visual_file(uuid)": [
+  "009863"
+ ],
+ "app_ch_new_version(uuid)": [
+  "009864(nova)"
+ ],
+ "ch_taxonomy_map(uuid,uuid)": [
+  "009870(nova)"
+ ],
+ "ch_taxonomy_carry_forward(uuid,uuid)": [
+  "009870(nova)"
+ ],
+ "app_ch_taxonomy_add_alias(uuid,text)": [
+  "009870"
+ ],
+ "app_ch_taxonomy_remove_alias(uuid)": [
+  "009870"
+ ],
+ "app_ch_taxonomy_draft()": [
+  "009870"
+ ],
+ "app_ch_taxonomy_publish(text)": [
+  "009870"
+ ],
+ "ch_student_released()": [
+  "009871(nova)"
+ ],
+ "ch_card_shows(jsonb)": [
+  "009871"
+ ],
+ "ch_raw_app_question_timeline(text)": [
+  "009871"
+ ],
+ "question_analysis_fits(text,character)": [
+  "009871"
+ ],
+ "ch_reanalysis_waiting()": [
+  "009872(nova)"
+ ],
+ "ch_worker_reanalysis_done(jsonb)": [
+  "009872(nova)"
+ ],
+ "app_ch_reanalysis_status()": [
+  "009872(nova)"
+ ],
+ "app_ch_reanalysis_request()": [
+  "009872(nova)"
+ ],
+ "app_ch_request_sources_check()": [
+  "009872(nova)"
+ ],
+ "ch_worker_reanalysis_claim()": [
+  "009872(nova)"
+ ],
+ "ch_worker_document_extraction(uuid)": [
+  "009873(nova)"
+ ],
+ "app_plans_info()": [
+  "009890(nova)"
+ ],
+ "ch_worker_tutor_settings()": [
+  "009891"
+ ],
+ "ch_worker_tutor_stt_today(uuid)": [
+  "009891(nova)"
+ ],
+ "app_admin_tutor_save_config(jsonb,text)": [
+  "009891"
+ ],
+ "ch_worker_ai_save_settings(uuid,jsonb)": [
+  "009892"
+ ]
+}

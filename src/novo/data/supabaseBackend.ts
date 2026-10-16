@@ -17,7 +17,9 @@ function toBackendError(error: { message?: string; code?: string; status?: numbe
   let mapped: BackendErrorCode = "unknown";
   if (code === "invalid_credentials" || /invalid login credentials/i.test(message)) mapped = "invalid_credentials";
   else if (code === "user_already_exists" || /already registered/i.test(message)) mapped = "email_taken";
+  else if (code === "same_password" || /different from the old password/i.test(message)) mapped = "same_password";
   else if (code === "weak_password" || /password should be/i.test(message)) mapped = "weak_password";
+  else if (/auth session missing|session.*(expired|missing|not found)|jwt expired/i.test(message) || code === "session_not_found") mapped = "link_expired";
   else if (code === "validation_failed" || /invalid email|unable to validate email/i.test(message)) mapped = "invalid_email";
   else if (/fetch|network/i.test(message)) mapped = "network";
   return new BackendError(mapped, message || "Erro inesperado.");
@@ -41,8 +43,8 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
     onAuthChange(callback) {
       // O Supabase pede para não chamar a própria API dentro deste callback (trava a fila de
       // autenticação); por isso o aviso sai no próximo ciclo.
-      const { data } = client.auth.onAuthStateChange((_event, session) => {
-        setTimeout(() => callback(toUser(session?.user)), 0);
+      const { data } = client.auth.onAuthStateChange((event, session) => {
+        setTimeout(() => callback(toUser(session?.user), event), 0);
       });
       return () => data.subscription.unsubscribe();
     },

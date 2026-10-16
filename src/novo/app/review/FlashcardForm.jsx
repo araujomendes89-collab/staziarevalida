@@ -1,8 +1,10 @@
 // Formulário de flashcard pessoal: usado na tela de Flashcards e no "Criar flashcard" da correção.
+// Mostra a prévia do cartão no layout padrão (CartaoFlashcard) com o selo "Meu cartão", na cor da área escolhida.
 import React from "react";
 import { Banner, Button, SelectField, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
 import { AREAS } from "../practice/format.js";
+import { CartaoFlashcard } from "./CartaoFlashcard.jsx";
 
 const ERRORS = [
   [/já criou um flashcard desta questão/, "Você já criou um flashcard desta questão."],
@@ -42,6 +44,7 @@ export function FlashcardForm({ initial = {}, onSaved, onCancel, compact = false
   const [form, setForm] = React.useState({ area: initial.area ?? "", topic: initial.topic ?? "", front: initial.front ?? "", back: initial.back ?? "" });
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState(null);
+  const [virado, setVirado] = React.useState(false);
   const set = (patch) => setForm((current) => ({ ...current, ...patch }));
 
   const submit = async (event) => {
@@ -67,15 +70,43 @@ export function FlashcardForm({ initial = {}, onSaved, onCancel, compact = false
     }
   };
 
+  const previa = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }} aria-label="Prévia do cartão" role="group">
+      <span className="sm-field__label">Como o cartão vai ficar</span>
+      <CartaoFlashcard
+        area={form.area}
+        topic={form.topic}
+        front={form.front.trim() || "Sua pergunta aparece aqui."}
+        back={form.back.trim() || "Sua resposta aparece aqui."}
+        selos={{ meu: true }}
+        flipped={virado}
+        onFlip={setVirado}
+      />
+      <span className="sm-field__hint">Toque no cartão para ver o verso. Seus cartões ficam só na sua conta: outros alunos não veem.</span>
+    </div>
+  );
+
   return (
     <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
       {error && <Banner tone="danger">{error}</Banner>}
-      <div style={{ display: "grid", gridTemplateColumns: compact ? "1fr" : "repeat(auto-fit,minmax(220px,1fr))", gap: 16 }}>
-        <SelectField label="Grande área" value={form.area} onChange={(e) => set({ area: e.target.value })} options={[{ value: "", label: "Escolha a área" }, ...AREAS.map((a) => ({ value: a.id, label: a.label }))]} />
-        <TextField label="Tema" value={form.topic} onChange={(e) => set({ topic: e.target.value })} maxLength={200} placeholder="Ex.: Bronquiolite" />
+      <div style={{ display: "grid", gridTemplateColumns: compact ? "1fr" : "repeat(auto-fit,minmax(min(100%,320px),1fr))", gap: 20, alignItems: "start" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+          <div style={{ display: "grid", gridTemplateColumns: compact ? "1fr" : "repeat(auto-fit,minmax(200px,1fr))", gap: 16 }}>
+            <SelectField label="Grande área" value={form.area} onChange={(e) => set({ area: e.target.value })} options={[{ value: "", label: "Escolha a área" }, ...AREAS.map((a) => ({ value: a.id, label: a.label }))]} />
+            <TextField label="Tema" value={form.topic} onChange={(e) => set({ topic: e.target.value })} maxLength={200} placeholder="Ex.: Bronquiolite" />
+          </div>
+          <TextArea id={`${id}-front`} label="Pergunta (frente)" rows={2} maxLength={2000} value={form.front} onChange={(front) => set({ front })} placeholder="Ex.: Qual a conduta inicial na bronquiolite sem sinais de gravidade?" />
+          <TextArea id={`${id}-back`} label="Resposta (verso)" rows={compact ? 4 : 3} maxLength={4000} value={form.back} onChange={(back) => set({ back })} hint={initial.source_question_id ? "Vem preenchido com a conduta esperada da questão. Ajuste como preferir." : undefined} />
+        </div>
+        {compact ? (
+          <details>
+            <summary style={{ cursor: "pointer", font: "600 14px var(--font-sans)", color: "var(--text-brand)" }}>Ver como o cartão vai ficar</summary>
+            <div style={{ marginTop: 12 }}>{previa}</div>
+          </details>
+        ) : (
+          previa
+        )}
       </div>
-      <TextArea id={`${id}-front`} label="Pergunta (frente)" rows={2} maxLength={2000} value={form.front} onChange={(front) => set({ front })} placeholder="Ex.: Qual a conduta inicial na bronquiolite sem sinais de gravidade?" />
-      <TextArea id={`${id}-back`} label="Resposta (verso)" rows={compact ? 4 : 3} maxLength={4000} value={form.back} onChange={(back) => set({ back })} hint={initial.source_question_id ? "Vem preenchido com a conduta esperada da questão. Ajuste como preferir." : undefined} />
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         {onCancel && (
           <Button variant="ghost" onClick={onCancel} disabled={saving}>

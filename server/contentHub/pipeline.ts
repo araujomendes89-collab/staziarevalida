@@ -15,6 +15,7 @@
  *     motivo — nunca é simulada em produção;
  *   - checkpoints permitem retomar; reprocessar reaproveita respostas idênticas e não duplica.
  */
+import { AnalysisFailed, AnalysisPending, runChangeAnalysis } from "./vigilance/analysis";
 import { compareSourceVersions } from "./sourceCompare";
 import { aiAllowed, registerPromptsOnce } from "./ai/registry";
 import crypto from "crypto";
@@ -35,6 +36,12 @@ import type { Renderer } from "./render";
 import { generateVisualVersion, visualVersionOf, VisualRenderUnavailable } from "./visual/service";
 import { runSourceSearch, SearchFailed, SearchPending } from "./sources/search";
 import { snapshotPassages } from "./sourceDiff";
+import { Blocked, Fatal } from "./jobErrors";
+import { stepQuestionCheck } from "./questoes/check";
+import { stepQuestionGenerate } from "./questoes/generate";
+import { stepQuestionSource } from "./questoes/source";
+import { AiRequestFailed, AiRequestPending, runAiRequest } from "./aiRequests";
+import { runSimilarity, SimilarityFailed, SimilarityPending } from "./similarity/run";
 
 const run = promisify(execFile);
 
@@ -43,7 +50,7 @@ export const EXTRACTOR_VERSION = "staziamed-extract-1.0";
 export const MATERIALS_TEMPLATE = "materials-1.0";
 const PAGE_RANGE = 20;
 
-export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search";
+export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search" | "question_generate" | "question_check" | "question_source" | "question_analysis" | "draft_check" | "similarity" | "source_change_analysis";
 
 export interface Job {
   id: string;
@@ -75,10 +82,7 @@ export interface PipelineDeps {
   sleep?: (ms: number) => Promise<void>;
 }
 
-/** Falta configuração: o trabalho fica pendente, sem gastar tentativa. */
-export class Blocked extends Error {}
-/** Falha que nova tentativa não resolve (arquivo protegido, corrompido, hash diferente). */
-export class Fatal extends Error {}
+export { Blocked, Fatal };
 /**
  * Outro processamento pegou o trabalho: este ficou sem dar sinal de vida por mais de CONTENT_HUB_STALE_SECONDS. Ele para ali, sem
  * gravar mais nada, sem registrar o fim e sem pedir a próxima etapa (quem pegou o trabalho termina).
@@ -101,6 +105,8 @@ interface Ctx {
   deps: PipelineDeps;
   job: Job;
   metrics: Metrics;
+  /** Teto de gasto por documento (CC05), lido uma vez por trabalho; ausente até a primeira chamada de IA. */
+  documentCap?: { enabled: boolean; usd: number | null };
   /** Marca que a próxima etapa recebe ao entrar na fila (reconferência automática: só os temas que mudaram). */
   carry?: Record<string, unknown>;
 }
@@ -112,6 +118,11 @@ const docId = (ctx: Ctx) => {
   return ctx.job.document_id;
 };
 const versionScope = (ctx: Ctx) => (ctx.job.scope_key.startsWith("version:") ? ctx.job.scope_key.slice("version:".length) : null);
+/**
+ * Aula pronta importada na Central (app_ch_import_lesson_package, migração 9950): a importação pede só o arquivo final (etapa
+ * "render") da versão importada, que já está aguardando revisão. Nada de IA e nada de etapa seguinte.
+ */
+const importScope = (ctx: Ctx) => (ctx.job.scope_key.startsWith("import:") ? ctx.job.scope_key.slice("import:".length) : null);
 /**
  * Situação do documento: trabalho de uma versão só (edição manual) não mexe no documento. Trabalho da reconferência automática
  * (marca no checkpoint) também não, em nenhuma etapa: o documento continua como estava, mesmo se a etapa falhar no meio (CC01,
@@ -150,6 +161,11 @@ const passMark = (ctx: Ctx) => {
 };
 /** Versões em rascunho a processar: as do documento ou, em trabalho de versão, só aquela (ou só as da reconferência automática). */
 async function targetVersions(ctx: Ctx): Promise<any[]> {
+  const imported = importScope(ctx);
+  if (imported) {
+    const v = await svc<any>(ctx, "ch_worker_unit_version", { p_version_id: imported });
+    return v && (v.status === "draft" || v.status === "awaiting_review") ? [v] : [];
+  }
   const only = versionScope(ctx);
   const auto = versionsMark(ctx);
   const ids = only ? [only] : auto ? auto.versions : null;
@@ -206,6 +222,47 @@ export function stepVersions(step: Step, deps: PipelineDeps): Record<string, unk
   };
 }
 
+// ---------------------------------------------------------------------------- falta de crédito e teto por documento
+/**
+ * A IA recusou por falta de crédito ou de cota (CC06)? Repetir não resolve até o saldo ser recarregado, então o trabalho fica
+ * PARADO (pendência, sem gastar tentativa) em vez de virar "Falhou". Limite por minuto não conta: esse passa sozinho e a própria
+ * IA já tenta de novo (shouldRetrySame).
+ */
+export function isNoCreditError(message: string): boolean {
+  const text = String(message ?? "");
+  const credit = /credit balance|insufficient[_ ]?(?:quota|funds|credits?)|exceeded your current quota|billing|prepay|payment required|out of credits?|\b402\b|sem cr[eé]dito|cr[eé]dito insuficiente|saldo insuficiente|saldo (?:de cr[eé]dito )?esgotado/i;
+  if (!credit.test(text)) return false;
+  return !(/per[_ ]?minute|rate[_ ]?limit/i.test(text) && !/credit balance|billing|prepay|insufficient|cr[eé]dito|saldo/i.test(text));
+}
+/** Começo do aviso de pausa por falta de crédito: o banco o reconhece para só reenfileirar de tempos em tempos (migração 9842). */
+export const NO_CREDIT_MARK = "Sem crédito na IA";
+const noCreditNotice = (detail: string) =>
+  `${NO_CREDIT_MARK}: o provedor recusou o pedido por falta de crédito ou de cota (${detail.replace(/\s+/g, " ").trim().slice(0, 160)}). O processamento ficou parado, sem perder o que já foi feito, e tenta de novo sozinho a cada 10 minutos. Recarregue o crédito no site do provedor da IA.`;
+
+/**
+ * Teto de gasto de IA por documento (CC05): estrutura que nasce DESLIGADA. Ligado pelo administrador, o trabalho para quando o gasto já
+ * registrado do documento alcança o teto. Banco sem a atualização (migração 9843): sem teto.
+ */
+async function enforceDocumentCap(ctx: Ctx): Promise<void> {
+  if (!ctx.job.document_id) return;
+  if (!ctx.documentCap) {
+    try {
+      const r = await svc<{ document_cap_enabled?: boolean; document_cap_usd?: number | string | null } | null>(ctx, "ch_worker_processing_settings");
+      const usd = r?.document_cap_usd == null ? null : Number(r.document_cap_usd);
+      ctx.documentCap = { enabled: r?.document_cap_enabled === true && usd != null && usd > 0, usd };
+    } catch {
+      ctx.documentCap = { enabled: false, usd: null };
+    }
+  }
+  if (!ctx.documentCap.enabled) return;
+  const spent = Number(await svc<number | string>(ctx, "ch_worker_document_spend", { p_document_id: ctx.job.document_id })) || 0;
+  const cap = ctx.documentCap.usd as number;
+  if (spent >= cap) {
+    const brl = (n: number) => String(Number(n.toFixed(4))).replace(".", ",");
+    throw new Blocked(`Teto de gasto de IA por documento atingido: US$ ${brl(spent)} gastos de US$ ${brl(cap)}. O processamento ficou parado; aumente ou desligue o teto em Configuração para continuar.`);
+  }
+}
+
 // ---------------------------------------------------------------------------- IA
 type Rejection = { where: string; reason: string };
 
@@ -249,6 +306,7 @@ async function ai<T>(
     return { output: cached, rejections, model: provider.model };
   }
 
+  await enforceDocumentCap(ctx);
   ctx.metrics.ai_calls++;
   let result;
   try {
@@ -260,6 +318,8 @@ async function ai<T>(
     await svc(ctx, "ch_worker_log_ai_run", {
       p_run: { ...base, status: invalid ? "invalid_output" : "failed", output: invalid ? { raw: String(JSON.stringify((error as AiInvalidOutput).raw) ?? "").slice(0, 4000) } : null, error: (error as Error).message.slice(0, 1000) },
     });
+    // sem crédito ou cota no provedor (CC06): não é falha do documento; o trabalho espera o saldo voltar
+    if (!invalid && isNoCreditError((error as Error).message)) throw new Blocked(noCreditNotice((error as Error).message));
     throw error;
   }
   const rejections = check?.(result.output) ?? [];
@@ -451,7 +511,9 @@ async function stepExtract(ctx: Ctx): Promise<Step | null> {
   }
   const nonEmpty = Object.keys(kinds).filter((k) => k !== "empty" && kinds[k] > 0);
   const textKind = nonEmpty.length > 1 ? "mixed" : nonEmpty[0] ?? "text";
-  const reference = doc.purpose === "reference_source";
+  // a finalidade é lida de novo: o PDF pode ter virado fonte oficial enquanto era lido (o mesmo arquivo enviado antes em Documentos)
+  const latest = await svc<any>(ctx, "ch_worker_document", { p_document_id: docId(ctx) });
+  const reference = (latest ?? doc).purpose === "reference_source";
   await setMeta(ctx, {
     page_count: pageCount,
     text_kind: textKind,
@@ -866,6 +928,49 @@ const recheckNotice = (c: any, docName: string) => ({
   by: "reconferencia",
 });
 
+// ------------------------------------------------- documento sem nada para revisar (CC03)
+/** Por que nenhum rascunho foi gerado, em português simples, com o que fazer. */
+export function describeNoDrafts(claims: { status: string; theme_node_id: string | null }[]): string {
+  if (!claims.length) {
+    return "Sem rascunhos para revisar: nenhum rascunho foi gerado porque nenhuma afirmação clínica foi extraída deste documento. Confira o texto lido (Original × extração) e use Reprocessar na etapa de afirmações.";
+  }
+  const n = (...status: string[]) => claims.filter((c) => status.includes(c.status)).length;
+  const compatible = n("compatible");
+  const parts = [
+    n("insufficient") ? `${n("insufficient")} sem fonte oficial que a sustente` : null,
+    n("needs_review") ? `${n("needs_review")} para conferir à mão` : null,
+    n("conflicting", "outdated") ? `${n("conflicting", "outdated")} em conflito ou desatualizada(s)` : null,
+    n("context_dependent") ? `${n("context_dependent")} que dependem do contexto` : null,
+    n("extracted", "evidence_linked") ? `${n("extracted", "evidence_linked")} ainda sem conferência` : null,
+  ].filter(Boolean);
+  const detail = parts.length ? ` (${parts.join("; ")})` : "";
+  const total = claims.length;
+  if (compatible && !claims.some((c) => c.status === "compatible" && c.theme_node_id)) {
+    return `Sem rascunhos para revisar: ${compatible === 1 ? "1 afirmação ficou compatível" : `${compatible} afirmações ficaram compatíveis`} com fonte oficial, mas ${compatible === 1 ? "ela não tem" : "nenhuma tem"} tema, então nenhum rascunho foi gerado. Classifique os trechos por tema e use Reprocessar na etapa de rascunho.`;
+  }
+  if (compatible) {
+    return `Sem rascunhos para revisar: ${compatible === 1 ? "1 afirmação ficou compatível" : `${compatible} afirmações ficaram compatíveis`} com fonte oficial, mas o texto escrito pela IA foi barrado pela conferência do sistema (trecho sem sustentação nas afirmações), então nenhum rascunho foi gerado. Use Reprocessar na etapa de rascunho.`;
+  }
+  const none = total === 1 ? "a afirmação extraída não ficou compatível" : `nenhuma das ${total} afirmações ficou compatível`;
+  return `Sem rascunhos para revisar: ${none} com uma fonte oficial${detail}, então nenhum rascunho foi gerado. Cadastre ou aprove as fontes oficiais que faltam em Fontes (a conferência é refeita sozinha quando uma fonte nova é lida) ou use Reprocessar na etapa de conferência.`;
+}
+
+/**
+ * O documento terminou sem nenhum rascunho para revisar: situação "Sem rascunhos" com o motivo (em vez de "Aguardando revisão", que
+ * mandava a equipe procurar o que não existe). Banco sem a migração 9841 recusa a situação nova: grava o jeito antigo, com o mesmo
+ * motivo, que não começa com "Pendência:" (assim o desbloqueio das pendências de outro trabalho do documento não o apaga).
+ */
+async function finishWithoutDrafts(ctx: Ctx, claims: { status: string; theme_node_id: string | null }[]): Promise<void> {
+  const failure = describeNoDrafts(claims);
+  ctx.metrics.no_drafts = true;
+  try {
+    await setMeta(ctx, { status: "no_drafts", failure });
+  } catch (error) {
+    if (!/ch_documents_status_check|violates check constraint|no_drafts/i.test(error instanceof Error ? error.message : String(error))) throw error;
+    await setMeta(ctx, { status: "awaiting_review", failure });
+  }
+}
+
 async function stepDraft(ctx: Ctx): Promise<Step | null> {
   // reconferência automática (marca vinda da etapa de evidências): só os temas em que alguma afirmação passou a ser compatível
   const auto = autoMark(ctx);
@@ -939,6 +1044,12 @@ async function stepDraft(ctx: Ctx): Promise<Step | null> {
     }
     await checkpoint(ctx, auto ? { auto_recheck: true, themes: auto.themes, claims: auto.claims, versions: created, theme: i + 1 } : { theme: i + 1 });
   }
+  // CC03: nenhum rascunho novo e nenhuma versão que já existia para revisar: não há o que revisar, e o documento não diz que há
+  if (!auto && drafts + kept === 0) {
+    Object.assign(ctx.metrics, { themes: themes.length, drafts, kept_versions: kept, claims_without_theme: claims.filter((c) => !c.theme_node_id).length });
+    await finishWithoutDrafts(ctx, claims);
+    return null;
+  }
   Object.assign(ctx.metrics, {
     themes: themes.length,
     drafts,
@@ -970,7 +1081,7 @@ export function lessonReferences(claims: any[]) {
   const seen = new Map<string, any>();
   for (const c of claims)
     for (const e of c.evidence ?? [])
-      if (e.verdict === "compatible") {
+      if (e.verdict === "compatible" && e.audience !== "complementar") { // fonte complementar (apostila) nunca entra nas referências impressas
         const key = `${e.source_id}|${e.version ?? ""}|${e.page ?? ""}`;
         if (!seen.has(key))
           seen.set(key, { source: e.source, organ: e.organ, version: e.version, published_on: e.published_on, url: e.url, section: e.section, page: e.page, simulated: e.simulated || undefined });
@@ -1032,7 +1143,7 @@ async function stepMaterials(ctx: Ctx): Promise<Step | null> {
     const rejectedQ = new Set(qs.rejections.map((r) => r.where));
     const questions = qs.output.items
       .filter((_: any, k: number) => !rejectedQ.has(`items[${k}]`))
-      .map((q: any) => ({ ...q, author: "StaziaMed", official: false, label: "Questão inédita StaziaMed (não é questão oficial do Inep)" }));
+      .map((q: any) => ({ ...q, author: "StaziaMed", official: false, label: "Questão StaziaMed (não é questão oficial do Inep)" }));
     if (questions.length) await save(v.version_id, "questions", { title: v.title, items: questions }, qs.model);
 
     await checkpoint(ctx, { ...versionsMark(ctx), version: i + 1 });
@@ -1064,6 +1175,8 @@ async function stepRender(ctx: Ctx): Promise<Step | null> {
     }
   }
   Object.assign(ctx.metrics, { files: rendered, failed_checks: failed });
+  // aula pronta importada: só o arquivo final; a revisão é das pessoas (a versão já está aguardando revisão)
+  if (importScope(ctx)) return null;
   passMark(ctx);
   return "review_check";
 }
@@ -1086,7 +1199,15 @@ async function stepReviewCheck(ctx: Ctx): Promise<Step | null> {
     await svc(ctx, "ch_worker_review_flags", { p_version_id: v.version_id, p_flags: [...kept, ...found] });
     await checkpoint(ctx, { ...versionsMark(ctx), version: i + 1 });
   }
-  await setMeta(ctx, { status: "awaiting_review" });
+  const auto = autoMark(ctx);
+  if (auto) {
+    // reconferência automática: o documento continua como estava, exceto o que terminou "Sem rascunhos" e agora tem rascunho novo
+    const doc = versions.length ? await svc<{ status?: string } | null>(ctx, "ch_worker_document", { p_document_id: docId(ctx) }) : null;
+    if (doc?.status === "no_drafts") await svc(ctx, "ch_worker_document_meta", { p_document_id: docId(ctx), p_meta: { status: "awaiting_review", failure: "" } });
+  } else {
+    // (sem rascunho nenhum, a etapa de rascunho já terminou o documento como "Sem rascunhos" e esta etapa nem entra na fila)
+    await setMeta(ctx, { status: "awaiting_review", failure: "" });
+  }
   Object.assign(ctx.metrics, { versions: versions.length, review_issues: issues });
   return null;
 }
@@ -1120,6 +1241,50 @@ async function stepSourceSearch(ctx: Ctx): Promise<Step | null> {
   return null;
 }
 
+/**
+ * Pedido de IA feito pela tela (análise de questões ou conferência de rascunhos, aiRequests.ts): sem documento. IA desligada ou
+ * teto atingido deixam o trabalho pendente, sem gastar tentativa; falha que nova tentativa não resolve mata o trabalho (repetir
+ * repetiria a chamada paga).
+ */
+async function stepAiRequest(ctx: Ctx): Promise<Step | null> {
+  try {
+    await runAiRequest(ctx.deps, ctx.job, { checkpoint: (data) => checkpoint(ctx, data), metrics: ctx.metrics });
+  } catch (error) {
+    if (error instanceof AiRequestPending) throw new Blocked(error.message);
+    if (error instanceof AiRequestFailed) throw new Fatal(error.message);
+    throw error;
+  }
+  return null;
+}
+
+/**
+ * Questões parecidas (sem documento, similarity/run.ts): só o que mudou; vetores só com a função "Questões parecidas" ligada na
+ * Central de IAs; a IA só nos pares duvidosos, em lote pedido pelo administrador. Função desligada ou teto deixam o trabalho
+ * pendente, sem gastar tentativa.
+ */
+async function stepSimilarity(ctx: Ctx): Promise<Step | null> {
+  try {
+    await runSimilarity(ctx.deps, ctx.job, { checkpoint: (data) => checkpoint(ctx, data), metrics: ctx.metrics });
+  } catch (error) {
+    if (error instanceof SimilarityPending) throw new Blocked(error.message);
+    if (error instanceof SimilarityFailed) throw new Fatal(error.message);
+    throw error;
+  }
+  return null;
+}
+
+/** Vigilância científica: análise do que mudou numa fonte, só quando a equipe pede (vigilance/analysis.ts). */
+async function stepChangeAnalysis(ctx: Ctx): Promise<Step | null> {
+  try {
+    await runChangeAnalysis(ctx.deps, ctx.job, { metrics: ctx.metrics });
+  } catch (error) {
+    if (error instanceof AnalysisPending) throw new Blocked(error.message);
+    if (error instanceof AnalysisFailed) throw new Fatal(error.message);
+    throw error;
+  }
+  return null;
+}
+
 const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   extract: stepExtract,
   source_index: stepSourceIndex,
@@ -1132,6 +1297,13 @@ const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   review_check: stepReviewCheck,
   visual_render: stepVisualRender,
   source_search: stepSourceSearch,
+  question_generate: (ctx) => stepQuestionGenerate(ctx.deps, ctx.job, ctx.metrics),
+  question_check: (ctx) => stepQuestionCheck(ctx.deps, ctx.job, ctx.metrics),
+  question_source: (ctx) => stepQuestionSource(ctx.deps, ctx.job, ctx.metrics),
+  question_analysis: stepAiRequest,
+  draft_check: stepAiRequest,
+  similarity: stepSimilarity,
+  source_change_analysis: stepChangeAnalysis,
 };
 
 /**
@@ -1167,6 +1339,8 @@ export async function runJob(deps: PipelineDeps, job: Job): Promise<{ status: st
     if (error instanceof Blocked) {
       const status = await deps.db.service<string | null>("ch_worker_block", { p_job_id: job.id, p_reason: message, ...owner(job) });
       if (status === "lost") return lost();
+      // pausa por falta de crédito: anota a hora para o banco só reenfileirar de 10 em 10 minutos (banco sem a migração 9842: sem nota)
+      if (message.startsWith(NO_CREDIT_MARK)) await deps.db.service("ch_worker_note_credit_pause", { p_job_id: job.id }).catch(() => undefined);
       deps.log?.(`[central] ${job.step} pendente: ${message}`);
       return { status: "blocked", next: null, error: message };
     }

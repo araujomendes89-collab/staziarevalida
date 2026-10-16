@@ -6,12 +6,12 @@ import "./legal.css";
 import { LegalText } from "./LegalText.jsx";
 import { Privacidade } from "./LegalPage.jsx";
 import { TERMO_VERSAO } from "./versions.js";
-import termoFonte from "./termo-uso-v1.0.md?raw";
+import { documentosDa } from "./documentos.js";
 
 const TITULO = { termos: "Termos de Aceite e Uso", privacidade: "Política de Privacidade" };
 
-/** @param {{ doc: "termos" | "privacidade", onClose: () => void }} props */
-export function DocumentModal({ doc, onClose }) {
+/** @param {{ doc: "termos" | "privacidade", onClose: () => void, versao?: string }} props versao: a do Termo mostrado (padrão: versions.js) */
+export function DocumentModal({ doc, onClose, versao = TERMO_VERSAO }) {
   const closeRef = React.useRef(null);
   React.useEffect(() => {
     closeRef.current?.focus();
@@ -30,11 +30,11 @@ export function DocumentModal({ doc, onClose }) {
         <div className="lgm-body lgl-paper">
           {doc === "termos" ? (
             <>
-              <p className="lgl-meta">Versão {TERMO_VERSAO}</p>
-              <div data-testid="legal-texto"><LegalText source={termoFonte} /></div>
+              <p className="lgl-meta">Versão {versao}</p>
+              <div data-testid="legal-texto"><LegalText source={documentosDa(versao).termo} /></div>
             </>
           ) : (
-            <Privacidade />
+            <Privacidade versao={versao} />
           )}
         </div>
       </div>

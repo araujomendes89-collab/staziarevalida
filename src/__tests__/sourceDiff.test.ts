@@ -106,6 +106,8 @@ describe("Comparação no banco e vigia (fontes sintéticas)", () => {
     db = devContentDb(async () => dev);
     for (const st of buildEngineStatements()) await dev.db.exec(st);
     await dev.db.query(`insert into auth.users (id, email) values ($1, 'a@t.dev'), ($2, 's@t.dev')`, [ADMIN, STUDENT]);
+    // o vigia só baixa endereço da lista de sites oficiais (Vigilância científica, migração 9940): o site de teste entra na lista
+    await dev.db.query(`insert into public.ch_official_domains (address, institution, kind) values ('exemplo.invalid', 'Site de teste', 'governo') on conflict do nothing`);
     await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
     const qs = (await sql(`select question_id from public.question_claims where role = 'solves' order by question_id limit 40`)).map((r) => r.question_id);
     [q1, q3] = [qs[0], qs[20]];
@@ -186,7 +188,7 @@ describe("Comparação no banco e vigia (fontes sintéticas)", () => {
     let html = `<p>${s} Prazo de dois dias entre as doses nesta página oficial sintética.</p>`;
     const fetchImpl = (async () => new Response(html, { status: 200, headers: { "content-type": "text/html" } })) as unknown as typeof fetch;
     const deps = { db, storage: null, ai: { provider: null, status: { ready: false } }, renderer: null } as unknown as PipelineDeps;
-    const worker = createContentHubWorker(deps, { fetchImpl });
+    const worker = createContentHubWorker(deps, { fetchImpl, resolver: async () => ["93.184.216.34"] });
     expect(await worker.checkSources()).toMatchObject({ checked: 1, changed: 0 });
     expect(await sql(`select 1 from public.ch_source_diffs where source_id = $1`, [src])).toHaveLength(0);
     html = `<p>${s} Prazo de cinco dias entre as doses nesta página oficial sintética.</p>`;

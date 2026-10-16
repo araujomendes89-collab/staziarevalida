@@ -6,7 +6,7 @@ import { useMobile } from "../../Shell.jsx";
 import { ListRow, LoadError, Loading, useLoad } from "../common.jsx";
 import { hubAvailable, hubUploadPdf } from "./api.js";
 import { DocumentDetail } from "./DocumentDetail.jsx";
-import { DOC_STATUS, JOB_STATUS, STEP_LABEL, pick } from "./labels.js";
+import { DOC_STATUS, JOB_STATUS, PROCESSING_START_NOTICE, STEP_LABEL, pick } from "./labels.js";
 import { Section, StatusBadge, useAction, useUploadProgress, when } from "./ui.jsx";
 
 const BUSY = new Set(["received", "extracting", "classifying", "verifying_sources", "drafting"]);
@@ -55,7 +55,7 @@ function DocumentList({ go }) {
                     );
                   })}
                 </div>
-                {d.failure && <span style={{ font: "var(--type-body-sm)", color: d.failure.startsWith("Pendência") ? "var(--warning-text)" : "var(--danger-text)" }}>{d.failure}</span>}
+                {d.failure && <span style={{ font: "var(--type-body-sm)", color: d.failure.startsWith("Pendência") || d.failure.startsWith("Sem rascunhos") ? "var(--warning-text)" : "var(--danger-text)" }}>{d.failure}</span>}
                 <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Enviado em {when(d.created_at)}</span>
               </div>
             </ListRow>
@@ -75,7 +75,7 @@ function UploadCard({ onUploaded }) {
   const act = useAction();
   const up = useUploadProgress();
   const submit = async () => {
-    const r = await act.run(() => up.track((opts) => hubUploadPdf(backend, "/documents", file, meta, opts)), "Arquivo recebido. O processamento começou.");
+    const r = await act.run(() => up.track((opts) => hubUploadPdf(backend, "/documents", file, meta, opts)), PROCESSING_START_NOTICE);
     if (r) {
       // arquivo repetido (mesmo hash): abre o documento que já existe, sem duplicar
       setFile(null);
@@ -92,6 +92,7 @@ function UploadCard({ onUploaded }) {
           </label>
           <input id="ch-file" type="file" accept="application/pdf,.pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           <span className="sm-field__hint">A área é identificada pelo conteúdo, não pelo nome do arquivo. O original fica guardado com o hash (SHA-256).</span>
+          <span className="sm-field__hint">A leitura do PDF não usa IA (sem custo de IA). Depois dela a IA trabalha sozinha: abra o documento para ver a estimativa de custo (só o administrador vê).</span>
         </div>
         <div style={grid}>
           <TextField label="Autor" value={meta.author} onChange={(e) => set({ author: e.target.value })} />

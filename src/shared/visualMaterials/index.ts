@@ -4,3 +4,4 @@ export * from "./model";
 export * from "./templates";
 export * from "./command";
 export * from "./fonts";
+export * from "./temas";

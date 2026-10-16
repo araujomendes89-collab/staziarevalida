@@ -1,0 +1,141 @@
+{
+ "descricao": "Ícones do pacote de novas telas que não existem no Lucide (lucide-static 0.468.0). Catálogo; nenhuma tela usa ainda (ondas 2 a 5 aplicam). Ilustrações 3D têm cores próprias; as de linha usam currentColor. Medalhas e ligas 3D NÃO estão aqui (onda 7).",
+ "icones": [
+  {
+   "arquivo": "cadeado-3d.svg",
+   "nome": "cadeado-3d",
+   "origem": "assets/090541c7bb626d5a7dbca37f768e6c97.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Conquistas secretas / bloqueado"
+  },
+  {
+   "arquivo": "route-pacote.svg",
+   "nome": "route",
+   "origem": "assets/5f6b1bd1c9a9918659bc219f216231aa.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Minha Trilha"
+  },
+  {
+   "arquivo": "documento-privacidade-3d.svg",
+   "nome": "documento-privacidade-3d",
+   "origem": "assets/6d914983adf5100b67c8ddb7003532b1.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Privacidade e dados"
+  },
+  {
+   "arquivo": "escudo-mais-3d.svg",
+   "nome": "escudo-mais-3d",
+   "origem": "assets/6f77b95f59abbeb652ba8bcf5843f57b.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Área Preventiva / MFC"
+  },
+  {
+   "arquivo": "simbolo-feminino-coracao-3d.svg",
+   "nome": "simbolo-feminino-coracao-3d",
+   "origem": "assets/71b3b57d6fa2e4eb213fbf88ab8827f8.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Área Ginecologia e Obstetrícia"
+  },
+  {
+   "arquivo": "bisturi-3d.svg",
+   "nome": "bisturi-3d",
+   "origem": "assets/8ba5e3cf1c7485393022bf83a864622f.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Área Cirurgia"
+  },
+  {
+   "arquivo": "coroa-3d.svg",
+   "nome": "coroa-3d",
+   "origem": "assets/c2bada8661bc03acb17302174afae146.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Plano Pro / Ver os planos"
+  },
+  {
+   "arquivo": "chama-sequencia-3d.svg",
+   "nome": "chama-sequencia-3d",
+   "origem": "assets/c50e7bdeecc105ce7aac9d38de15ccfd.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Sequência de dias"
+  },
+  {
+   "arquivo": "network-pacote.svg",
+   "nome": "network",
+   "origem": "assets/cd9195c1eab1a6f44e18210af13f1903.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Mapas Mentais"
+  },
+  {
+   "arquivo": "estetoscopio-3d.svg",
+   "nome": "estetoscopio-3d",
+   "origem": "assets/e807cdfe8b316a6af9a683c8539f4fd7.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Área Clínica Médica"
+  },
+  {
+   "arquivo": "blocos-areas-3d.svg",
+   "nome": "blocos-areas-3d",
+   "origem": "assets/ef639e823b406566450a915a3eb57896.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Áreas (todas)"
+  },
+  {
+   "arquivo": "mamadeira-3d.svg",
+   "nome": "mamadeira-3d",
+   "origem": "assets/f10824d2812ad42bf89d98f4a4119c57.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Área Pediatria"
+  },
+  {
+   "arquivo": "moeda-stazia-3d.svg",
+   "nome": "moeda-stazia-3d",
+   "origem": "assets/fe45fe000f3808f8b3d318489d34c9bf.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Stazia Coins / XP"
+  },
+  {
+   "arquivo": "cerebro-3d.svg",
+   "nome": "cerebro-3d",
+   "origem": "assets/ad076a8bf1e51366dbb352de778cb718.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Saúde mental (Mapas)"
+  },
+  {
+   "arquivo": "grade-colorida-mais.svg",
+   "nome": "grade-colorida-mais",
+   "origem": "inline inline-02",
+   "tipo": "linha-24px",
+   "cores": "4 cores fixas (azul, violeta, verde, laranja) por ser ícone colorido",
+   "tela_uso": "Botão Mais da barra do celular"
+  },
+  {
+   "arquivo": "dado-aleatorio.svg",
+   "nome": "dado-aleatorio",
+   "origem": "inline inline-57",
+   "tipo": "linha-24px",
+   "cores": "currentColor",
+   "tela_uso": "2ª fase: Sortear"
+  },
+  {
+   "arquivo": "google-g.svg",
+   "nome": "google-g",
+   "origem": "inline login",
+   "tipo": "marca",
+   "cores": "cores oficiais da marca Google (não usar currentColor)",
+   "tela_uso": "Login: Continuar com Google"
+  }
+ ]
+}

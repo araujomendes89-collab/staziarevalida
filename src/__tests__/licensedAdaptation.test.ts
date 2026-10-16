@@ -2,6 +2,8 @@
 /**
  * Adaptação licenciada: registro da licença e retirada das referências do licenciante.
  * Material e licença SINTÉTICOS ("Apostila Modelo", "Curso Modelo"): nenhum texto de terceiros foi usado.
+ * CC09 (fase 1, grupo A): a retirada das marcas de terceiros NÃO depende mais de licença (as regras de licença saíram em 2026-10-09);
+ * o administrador digita os nomes a tirar. O registro de licença continua existindo no banco, mas não manda na retirada.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import crypto from "crypto";
@@ -116,8 +118,7 @@ describe("Licença e retirada no banco", () => {
     fs.rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("sem licença cadastrada não há retirada; a licença exige o texto, a referência do documento e o que identifica o licenciante", async () => {
-    await expect(previewReferenceCleanup(db, doc)).rejects.toThrow(/não tem licença/);
+  it("a licença (registro antigo, ainda no banco) exige o texto, a referência do documento e o que identifica o licenciante", async () => {
     await expect(rpc(EDITOR, "app_ch_register_license", doc, licence())).rejects.toThrow(/administradores/);
     await expect(rpc(ADMIN, "app_ch_register_license", doc, licence({ allows_adaptation: false }))).rejects.toThrow(/autorize adaptar/);
     await expect(rpc(ADMIN, "app_ch_register_license", doc, licence({ terms_text: "curto" }))).rejects.toThrow();
@@ -126,25 +127,24 @@ describe("Licença e retirada no banco", () => {
     await expect(rpc(ADMIN, "app_ch_register_license", doc, licence({ granted_on: "" }))).rejects.toThrow(/data da concessão/);
   });
 
-  it("licença que NÃO autoriza retirar referências: a retirada é recusada", async () => {
+  it("licença que não autoriza retirar referências: a retirada não depende dela (CC09)", async () => {
     await rpc(ADMIN, "app_ch_register_license", doc, licence({ allows_attribution_removal: false, reference_terms: [] }));
     expect((await sql(`select rights_status from public.ch_documents where id = $1`, [doc]))[0].rights_status).toBe("licensed_adaptation");
-    await expect(previewReferenceCleanup(db, doc)).rejects.toThrow(/não autoriza retirar/);
-    await expect(applyReferenceCleanup(db, doc, ADMIN)).rejects.toThrow(/não autoriza retirar/);
+    expect((await previewReferenceCleanup(db, doc, TERMS)).edited).toBe(2);
   });
 
-  it("licença com autorização: a prévia mostra antes e depois e não grava nada", async () => {
+  it("a prévia mostra antes e depois e não grava nada", async () => {
     await rpc(ADMIN, "app_ch_register_license", doc, licence());
     expect((await sql(`select count(*)::int n from public.ch_licenses where document_id = $1 and status = 'active'`, [doc]))[0].n).toBe(1);
     const before = await blocks();
-    const p = await previewReferenceCleanup(db, doc);
+    const p = await previewReferenceCleanup(db, doc, TERMS);
     expect(p).toMatchObject({ edited: 2, excluded: 1, terms: TERMS });
     expect(p.changes.find((c) => c.after?.includes("salbutamol"))?.after).toBe("O salbutamol não deve ser usado de rotina. Mais em.".replace("Mais em.", "").trim());
     expect(await blocks()).toEqual(before);
   });
 
   it("aplicar: texto revisado sem as referências, bloco só de referência excluído, ORIGINAL intacto, tudo registrado e auditado", async () => {
-    const r = await applyReferenceCleanup(db, doc, ADMIN);
+    const r = await applyReferenceCleanup(db, doc, ADMIN, TERMS);
     expect(r).toMatchObject({ edited: 2, excluded: 1, skipped: 0 });
     const b = await blocks();
     expect(b[1]).toMatchObject({ original_text: "Oxigênio quando a saturação estiver abaixo de 92% (Apostila Modelo).", revised_text: "Oxigênio quando a saturação estiver abaixo de 92%." });
@@ -154,11 +154,11 @@ describe("Licença e retirada no banco", () => {
     expect(b[3].revised_text).toContain("salbutamol não deve ser usado de rotina");
     expect(b[4].revised_text).toBeNull();
     expect((await sql(`select count(*)::int n from public.ch_reference_cleanups where document_id = $1 and undone_at is null`, [doc]))[0].n).toBe(3);
-    expect((await sql(`select details from public.ch_audit where action = 'license.clean_references'`))[0].details).toMatchObject({ edited: 2, excluded: 1 });
+    expect((await sql(`select details from public.ch_audit where action = 'content.clean_references'`))[0].details).toMatchObject({ edited: 2, excluded: 1 });
     // o worker passa a ler o texto limpo; repetir a retirada não acha mais nada
     const read = await db.service<any[]>("ch_worker_blocks", { p_document_id: doc });
     expect(read.find((x) => x.idx === 1 && x.page_no === 1).text).toBe("Oxigênio quando a saturação estiver abaixo de 92%.");
-    expect((await previewReferenceCleanup(db, doc)).changes).toEqual([]);
+    expect((await previewReferenceCleanup(db, doc, TERMS)).changes).toEqual([]);
     const list = await rpc(EDITOR, "app_ch_reference_cleanups", doc, 50);
     expect(list).toHaveLength(3);
     expect(list.map((x: any) => x.action).sort()).toEqual(["edited", "edited", "excluded"]);
@@ -181,7 +181,6 @@ describe("Licença e retirada no banco", () => {
 
   it("licença vencida ou revogada: nada é retirado, o documento deixa de ser adaptação", async () => {
     await sql(`update public.ch_licenses set expires_on = current_date - 1, granted_on = current_date - 30 where document_id = $1 and status = 'active'`, [doc]);
-    await expect(previewReferenceCleanup(db, doc)).rejects.toThrow(/vencida/);
     expect((await db.service<any>("ch_worker_license", { p_document_id: doc })).expired).toBe(true);
     const lic = (await rpc(ADMIN, "app_ch_licenses", doc))[0];
     expect(lic).toMatchObject({ expired: true, status: "active" });

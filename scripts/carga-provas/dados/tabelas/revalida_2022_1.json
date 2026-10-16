@@ -1,0 +1,32 @@
+[
+ {
+  "id": "revalida_2022_1_q048",
+  "arquivo": "revalida_2022_1_q048-tabela.png",
+  "alt": "Quadro de exames de uma criança com febre: hemoglobina, hematócrito, leucócitos, plaquetas, RT-PCR para SARS-CoV-2, ferritina, albumina, PCR, ureia, creatinina e sorologias para dengue, com valor encontrado e valor de referência.",
+  "tabela_removida_do_texto": "Valor de Exame Valor encontrado Referência 11,0 - 15 g/dL Hemoglobina 10,3 g/dl Hematócrito 31% 35 - 45% 4.000/mm3 4.000 - 12.000/mm3 Leucócitos Neutrófilos 80% 18 - 48% segmentados Eosinófilos 0 - 6% 5% Linfócitos 44 - 68% 8% Monócitos 3 - 10% 7% Plaquetas 680.000/mm3 150.000 - 450.000 mm} RT-POR para detectável não detectável SARS Cov2 20- 120 ng/mL 450 ng/mL FerritinaR 2,8 g/dL Albumina 3,5 - 4,5 g/dL 210 mg/dL até 5,0 mg/dL PCR Ureia 22 mg/dL 10 a 40 mg/dl Creatinina 0.8 mg/dl 0,40 a 0,90 mg/dL Índice <1,0: Não IBM = 0,4; Reagente/ De 1,0 a 1,4: Sorologias Inconclusivo/ Índice > para dengue IgG = 45 1,4: Reagente",
+  "pagina": 14,
+  "arquivo_origem": "revisao-questoes/revalida_2022_1/tabelas/revalida_2022_1_q048.png",
+  "sha256": "4d7b1cb5a7ad9cc2c68effb8a9188b061b8819555218846892643ae2d0cfc90a",
+  "tamanho": 89085
+ },
+ {
+  "id": "revalida_2022_1_q071",
+  "arquivo": "revalida_2022_1_q071-tabela.png",
+  "alt": "Quadro de exames de uma mulher com dores articulares: hemograma, creatinina, ureia, transaminases, bilirrubinas, pesquisa de autoanticorpos, fator reumatoide e plaquetas, com valor encontrado e valor de referência.",
+  "tabela_removida_do_texto": "Valor encontrado Valor de Referência Exame Hemoglobina 12-14 g/dL 10 g/dL 36-42% Hematócrito 30% 80-100 fL 90 fL VCM HCM 27-32 pg 30 pg RDW 11,5-15% 14% Leucócitos 4 mil/mm3 5-10 mil/mm3 Bastões 1% 0-5% Neutrófilos 45-75% 74% Linfócitos 22-40% 20% Eosinófilos 5% 1-5% 150-400 mil/mm3 130 mil/mm} Plaquetas",
+  "pagina": 20,
+  "arquivo_origem": "revisao-questoes/revalida_2022_1/tabelas/revalida_2022_1_q071.png",
+  "sha256": "01347884ab98467b4d83f06a00bba363386026775fbddb2b4fafdf2e3006b0cb",
+  "tamanho": 104453
+ },
+ {
+  "id": "revalida_2022_1_q091",
+  "arquivo": "revalida_2022_1_q091-tabela.png",
+  "alt": "Quadro com provas bioquímicas hepáticas (AST, ALT, bilirrubinas, fosfatase alcalina, gama-glutamil transferase, INR e PTTa) e marcadores virais da hepatite, com valor encontrado e valor de referência.",
+  "tabela_removida_do_texto": "Valor encontrado Provas Bioquímicas Hepáticas 778 UI/L Aspartato aminotransferase (AST) 1.058 UI/L Alanino aminotransferase (ALT) Bilirrubina total 3,8 mg/dL Bilirrubina direita 3,2 mg/dL Fosfotase alcalina 215 UI/L Gama-glutamil transferase 98 UI/L INR 1,0 PTTa 35,2 segundos",
+  "pagina": 25,
+  "arquivo_origem": "revisao-questoes/revalida_2022_1/tabelas/revalida_2022_1_q091.png",
+  "sha256": "7faec81668f6955c5eb69f7d2b853166768f2151de7bccbef353a893fc76f595",
+  "tamanho": 76152
+ }
+]

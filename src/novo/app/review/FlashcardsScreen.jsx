@@ -2,13 +2,16 @@
 // Mesma marcação da FlashcardsScreen do kit (prototype/ReviewScreens.jsx). O "Modo áudio"
 // do protótipo deu lugar a "Novo flashcard": não existe modo áudio no produto.
 import React from "react";
-import { Badge, Banner, Button, Card, Chip, EmptyState, Flashcard, StatCard } from "../../ds";
+import { Badge, Banner, Button, Card, EmptyState, StatCard } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel, formatWhen } from "../practice/format.js";
 import { FlashcardForm } from "./FlashcardForm.jsx";
 import { intervalLabel, nextSchedule, previewDays } from "./fsrs.js";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
+import { CartaoIlustrado, preCarregarCartao } from "../study/AulaImagem.jsx";
+import { CartaoFlashcard } from "./CartaoFlashcard.jsx";
+import { AREA_CHAVE, AreaFiltro } from "../study/casca.jsx";
 
 const RATINGS = [
   { value: 1, label: "Errei", variant: "danger" },
@@ -29,14 +32,27 @@ export function FlashcardsScreen({ go }) {
   const [creating, setCreating] = React.useState(false);
   const [reviewed, setReviewed] = React.useState(0);
   const [reload, setReload] = React.useState(0);
+  const [ilustrados, setIlustrados] = React.useState({});
   const keys = React.useRef(() => {});
 
   React.useEffect(() => {
     let alive = true;
     backend
       .rpc("app_flashcards", { p_area: area || null })
-      .then((result) => {
+      .then(async (result) => {
+        // cartões do baralho StaziaMed que têm imagem (só de aula publicada); se a função não existir ainda ou falhar, fica o texto
+        const ids = (result?.queue ?? []).filter((c) => !c.mine).map((c) => c.id);
+        let map = {};
+        if (ids.length) {
+          try {
+            const m = await backend.rpc("app_flashcards_ilustrados", { p_ids: ids });
+            if (m && typeof m === "object") map = m;
+          } catch {
+            map = {};
+          }
+        }
         if (!alive) return;
+        setIlustrados(map);
         setData(result);
         setIndex(0);
         setFlipped(false);
@@ -46,6 +62,18 @@ export function FlashcardsScreen({ go }) {
       alive = false;
     };
   }, [backend, area, reload]);
+
+  // cartão ilustrado: adianta as imagens do PRÓXIMO cartão (depois das do atual), para "Bom/Fácil…" trocar sem esperar o servidor
+  React.useEffect(() => {
+    const fila = data?.queue ?? [];
+    const proximo = fila[index + 1] && ilustrados[fila[index + 1].id];
+    if (!proximo) return undefined;
+    let alive = true;
+    preCarregarCartao(backend, fila[index] && ilustrados[fila[index].id]).then(() => alive && preCarregarCartao(backend, proximo));
+    return () => {
+      alive = false;
+    };
+  }, [backend, data, ilustrados, index]);
 
   if (!data) return error ? <Banner tone="danger">{error}</Banner> : <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Carregando…</p>;
 
@@ -99,8 +127,8 @@ export function FlashcardsScreen({ go }) {
                 {queue.length} {queue.length === 1 ? "cartão agendado" : "cartões agendados"}
               </Badge>
             </div>
-            <h2 style={{ margin: "6px 0 4px", font: "var(--type-h2)" }}>Flashcards</h2>
-            <p style={{ margin: 0, color: "var(--text-secondary)" }}>Revisão espaçada dos conteúdos clínicos que você precisa manter ativos na memória.</p>
+            {/* o título "Flashcards" já está no cabeçalho da página (h1): aqui fica só a frase */}
+            <p style={{ margin: "6px 0 0", color: "var(--text-secondary)" }}>Revisão espaçada dos conteúdos clínicos que você precisa manter ativos na memória.</p>
           </div>
           <Button variant="secondary" icon="plus" onClick={() => setCreating(!creating)} aria-expanded={creating}>
             Novo flashcard
@@ -123,20 +151,18 @@ export function FlashcardsScreen({ go }) {
       <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "repeat(3,1fr)", gap: 16 }}>
         <StatCard label="Novos" value={counts.new} caption="Aguardando 1ª repetição" />
         <StatCard label="Em aprendizado" value={counts.learning} caption="Em fase de fixação ativa" tone="info" icon="refresh-cw" />
-        <StatCard label="Consolidados" value={counts.consolidated} caption="Intervalo de 21 dias ou mais" tone="success" icon="circle-check" />
+        <StatCard label="Consolidados" value={counts.consolidated ?? 0} caption="Intervalo de 21 dias ou mais" tone="success" icon="circle-check" />
       </div>
-      <Card>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <span className="sm-field__label">Filtrar por grande área</span>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {[{ id: "", label: "Todas as áreas" }, ...AREAS].map((a) => (
-              <Chip key={a.id || "todas"} selected={area === a.id} onClick={() => setArea(a.id)}>
-                {a.label}
-              </Chip>
-            ))}
-          </div>
-        </div>
-      </Card>
+      {/* mesmo filtro de área de Temas, Diretrizes e Mapas (no celular, uma fileira que rola para o lado) */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
+        <span className="sm-field__label">Filtrar por grande área</span>
+        <AreaFiltro
+          rotulo="Filtrar por grande área"
+          valor={area}
+          onChange={setArea}
+          itens={[{ id: "", label: "Todas as áreas", k: "todas", curto: "Todas" }, ...AREAS.map((a) => ({ id: a.id, label: a.label, k: AREA_CHAVE[a.id] }))]}
+        />
+      </div>
       {card ? (
         <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", font: "var(--type-caption)", color: "var(--text-secondary)" }}>
@@ -147,7 +173,12 @@ export function FlashcardsScreen({ go }) {
               {index + 1} / {queue.length}
             </span>
           </div>
-          <Flashcard key={card.id} area={areaLabel(card.area)} front={card.front} back={card.back} flipped={flipped} onFlip={setFlipped} height={280} />
+          {ilustrados[card.id] ? (
+            <CartaoIlustrado key={card.id} tema={ilustrados[card.id].tema} n={ilustrados[card.id].n} front={card.front} back={card.back} flipped={flipped} onFlip={setFlipped} />
+          ) : (
+            // sem imagem: o mesmo layout dos ilustrados, em texto, na cor da área (paleta v2); o cartão do próprio aluno ganha o selo "Meu cartão"
+            <CartaoFlashcard key={card.id} area={card.area} topic={card.topic} front={card.front} back={card.back} selos={{ meu: Boolean(card.mine) }} flipped={flipped} onFlip={setFlipped} />
+          )}
           {flipped ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }} role="group" aria-label="Como foi lembrar?">
               {RATINGS.map((r, k) => (
@@ -179,7 +210,7 @@ export function FlashcardsScreen({ go }) {
         <EmptyState
           icon="layers"
           title={area ? `Nenhum flashcard de ${areaLabel(area)}` : "Nenhum flashcard ainda"}
-          description="Crie seus próprios cartões aqui ou salve um a partir da correção de uma questão. O baralho oficial aparece aqui quando for publicado."
+          description="Crie seus próprios cartões aqui ou salve um a partir da correção de uma questão. O baralho StaziaMed aparece aqui quando for publicado."
           action={
             <Button icon="plus" onClick={() => setCreating(true)}>
               Criar flashcard

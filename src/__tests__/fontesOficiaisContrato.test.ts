@@ -150,16 +150,16 @@ describe("Contrato: Central de IAs (FunctionEditor e AdminAI)", () => {
     expect((await http(ai, "PUT", "/functions/busca_fontes", { config: { ...body.config, primary: { provider: "ollama", model: "llama-x" } } })).status).toBe(400);
   });
 
-  it("o resumo da equipe traz as 7 funções (o texto 'de N' da Central de Conteúdo usa essa lista)", async () => {
+  it("o resumo da equipe traz as 9 funções (o texto 'de N' da Central de Conteúdo usa essa lista)", async () => {
     const summary = (await http(ai, "GET", "/summary")).body;
-    expect(summary.functions).toHaveLength(7);
+    expect(summary.functions).toHaveLength(9); // 9910 (similaridade) e 9941 (analise_mudancas) somaram funções à Central de IAs
     expect(summary.functions.find((f: any) => f.key === "busca_fontes")).toMatchObject({ configured: true });
   });
 
   it("'Desligar a função' manda config null e a função volta a desligada", async () => {
     expect((await http(ai, "PUT", "/functions/busca_fontes", { config: null })).status).toBe(200);
     const status = (await http(hub, "GET", "/source-search/status")).body;
-    expect(Object.keys(status).sort()).toEqual(["max_searches", "problems", "ready", "warnings"]);
+    expect(Object.keys(status).sort()).toEqual(["max_searches", "model", "per_search_usd", "problems", "provider", "ready", "warnings"]); // provider, model e per_search_usd: estimativa de custo na tela das abas
     expect(status).toMatchObject({ ready: false, max_searches: 5 });
     // ligada de novo com máximo 4: o status devolve o 4
     await http(ai, "PUT", "/functions/busca_fontes", { config: { mode: "sozinha", care: "caprichado", primary: { provider: "anthropic", model: "claude-contrato" }, fallback: null, reviewers: [], max_searches: 4 } });
@@ -211,7 +211,7 @@ describe("Contrato: pedir busca, buscas recentes e sites oficiais", () => {
 
   it("sites oficiais: lista com id/address/institution/kind/active; acrescentar sem id; editar e desativar com id", async () => {
     const list = await asAdmin<any[]>("app_ch_official_domains");
-    expect(list).toHaveLength(11);
+    expect(list).toHaveLength(21); // 11 da 9610 e 10 que a Vigilância científica (9940) acrescentou
     expect(has(list[0], ["id", "address", "institution", "kind", "active"])).toEqual([]);
     // OfficialDomains.jsx add(): sem id, active true
     const added = await asAdmin("app_ch_save_official_domain", { p_domain: { address: "gov.br/contrato", institution: "Site do contrato", kind: "governo", active: true } });
@@ -293,8 +293,8 @@ describe("Contrato: fontes encontradas (cartão, salvar, aprovar, rejeitar)", ()
   });
 
   it("substituição: a recusa começa com 'Confirme a substituição' (a tela pergunta) e confirm_replace:true conclui", async () => {
-    const old = await asAdmin("app_ch_register_source", { p_source: { title: "PCDT do contrato", organ: "Ministério da Saúde", version: "2022", sha256: "b".repeat(64) } });
-    const c = await candidate(storage, { ai_title: "pcdt do contrato" });
+    const old = await asAdmin("app_ch_register_source", { p_source: { title: "PCDT do contrato", organ: "Ministério da Saúde", version: "2022", published_on: "2022-05-01", sha256: "b".repeat(64) } });
+    const c = await candidate(storage, { ai_title: "pcdt do contrato", currency_date: "2025-03-14" });
     const first = await http(hub, "POST", `/source-candidates/${c.id}/approve`, { fields: { ...screenFields(), checked: true } });
     expect(first.status).toBe(400);
     expect(first.body.error).toMatch(/^Confirme a substituição/);

@@ -1,6 +1,7 @@
 // Peças comuns das telas de administração.
 import React from "react";
 import { Banner } from "../../ds";
+import { DEFAULT_ERROR_MESSAGE, explainError } from "../../../shared/errors/explicarErro";
 
 export const ROLE_LABEL = { student: "Aluno", editor: "Editor", admin: "Administrador" };
 /** Equipe: administrador ou editor (acesso completo do app, sem período de teste). */
@@ -42,13 +43,12 @@ export const toDateInput = (iso) => (iso ? new Date(iso).toLocaleDateString("en-
 export const fromDateInput = (value) => (value ? new Date(`${value}T23:59:59`).toISOString() : null);
 
 /**
- * Mensagem do banco para mostrar na tela: as funções de administração devolvem frases prontas
- * ("Informe o tema."). Erros técnicos viram a mensagem genérica.
+ * Mensagem para mostrar na tela (TD01). As funções do banco devolvem frases prontas ("Informe o tema.") que passam inteiras;
+ * erro técnico (banco, servidor, rede, IA, login) vira o MOTIVO e o que fazer, em português simples, sem texto técnico cru
+ * e sem segredo (src/shared/errors/explicarErro.ts). O que não for reconhecido vira `fallback`.
  */
-export function messageOf(error, fallback = "Não foi possível concluir. Tente de novo.") {
-  const message = String(error?.message ?? "").trim();
-  if (/permission|syntax|violates|column|relation|function|null value|duplicate key|fetch/i.test(message)) return fallback;
-  return /^[A-ZÁÉÍÓÚÂÊÔÃÕÇ].{3,240}[.!?]$/.test(message) ? message : fallback;
+export function messageOf(error, fallback = DEFAULT_ERROR_MESSAGE) {
+  return explainError(error, fallback);
 }
 
 /** Carrega dados de uma função do banco e permite recarregar. */

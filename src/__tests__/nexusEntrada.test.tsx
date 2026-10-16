@@ -294,7 +294,7 @@ describe("Nexus: entrada", () => {
     render(<NexusScreen go={go} />);
     expect(await screen.findByText("Seu teste grátis do Tutor terminou")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Ver planos/ }));
-    expect(go).toHaveBeenCalledWith("perfil");
+    expect(go).toHaveBeenCalledWith("planos");
     cleanup();
     rpcImpl.app_tutor_status = () => status();
     await mount();

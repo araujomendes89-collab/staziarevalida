@@ -1,0 +1,61 @@
+== 0-CONFERIR (antes de colar)
+   0. Pré-requisito: leva 3 (9731 benefícios do Elite) colada | OK
+   0. Pré-requisito: Fonte complementar (9620) e Central de IAs (5200) coladas | OK
+   0. Pré-requisito: Central de Conteúdo (documentos, unidades, publicações, aulas, | OK
+   1. Esta leva já foi colada? (tabelas novas que ela cria) | NÃO (primeira vez) | suporte e relatos (parte 1): não | documentos (parte 2): não | análise e reanálise (parte 4): não | planos e microfone (parte 5): não
+   2. MODO SOMBRA (parte 4, 9871): análises de questão e cartões de atualização que | análises publicadas: 0 | cartões de atualização publicados: 0 | modo sombra: LIGADO | publicação: desligada | Nada publicado: nada some.
+   2. Linhas da tabela de chaves da Central (devem ser 6) | 6
+   3. Documentos por situação (os que já estão "Aguardando revisão" sem rascunho NÃ | awaiting_review | 1
+   3. Documentos por situação (os que já estão "Aguardando revisão" sem rascunho NÃ | received | 1
+   3. Documentos por dono (o editor passará a ver os de todos da equipe) | donos diferentes: 2 | documentos no total: 2
+   4. Publicações da Central AINDA NO AR (sem aula do aluno: não ganham aula sozinh | 0 | já retiradas: 0
+   4. Aulas e cartões que já existem hoje (a parte 3 passa a trancar só as aulas qu | aulas: 1 | aulas publicadas: 1 | cartões: 0
+   4. Materiais visuais com texto de dose/posologia/contraindicação (a parte 3 trav | 0 | versões de material no total: 0
+   4. Revisores médicos cadastrados por área (só eles, e quem for revisor da área,  | CIRURGIA | 1
+   4. Revisores médicos cadastrados por área (só eles, e quem for revisor da área,  | PEDIATRIA | 1
+   5. Taxonomia: versões por situação (um rascunho aberto com tema já renomeado vol | published | 1
+   5. Fontes monitoradas (o botão "Conferir fontes monitoradas" passa a deixar o pe | 0 | fontes oficiais vigentes: 0
+   5. Questões esperando reanálise por mudança de fonte (botão "Reanalisar agora") | 0
+   6. Tutor hoje (parte 5, 9891: o microfone da Nexus nasce SÓ DA EQUIPE; aluno com | tutor ligado: true | só planos pagos: true | voz ligada: true | transcrições dos últimos 7 dias (registro de uso): 0
+   6. Contas que usariam o microfone se estivesse aberto: planos pagos válidos (não | 2 | em teste valendo: 3 | equipe: 2
+   6. Tetos de IA hoje (9892 cria o teto geral do mês, que nasce desligado e vazio; | tetos da Central ligados: false | teto mensal: vazio | teto por chamada: vazio
+   7. Planos: o que o aluno vai ler na tela de Planos (sem preço, sem botão de assi | elite | ativo: false | descrição: VAZIA | recursos escritos: 0
+   7. Planos: o que o aluno vai ler na tela de Planos (sem preço, sem botão de assi | pro | ativo: false | descrição: VAZIA | recursos escritos: 0
+   7. Planos: o que o aluno vai ler na tela de Planos (sem preço, sem botão de assi | trial | ativo: true | descrição: VAZIA | recursos escritos: 0
+   7. Contas por situação (para saber a quem a tela de Planos e o "Seu plano" na Co | Equipe (administrador ou editor) | 2
+   7. Contas por situação (para saber a quem a tela de Planos e o "Seu plano" na Co | Plano Elite pago e válido | 1
+   7. Contas por situação (para saber a quem a tela de Planos e o "Seu plano" na Co | Plano Pro pago e válido | 1
+   7. Contas por situação (para saber a quem a tela de Planos e o "Seu plano" na Co | SEM linha de assinatura | 1
+   7. Contas por situação (para saber a quem a tela de Planos e o "Seu plano" na Co | Sem acesso pago (teste vencido, plano vencido ou cancelado) | 1
+   7. Contas por situação (para saber a quem a tela de Planos e o "Seu plano" na Co | Teste grátis valendo | 3
+   7. Total de contas | 9
+== partes 1-5, tres voltas
+  volta 1 1-colar-ANTES-do-site-parte-1-Suporte-e-relatos.sql: OK: 1-Suporte colada (9 conferencias, todas true)
+  volta 1 2-colar-ANTES-do-site-parte-2-Documentos-e-processamento.sql: OK: 2-Documentos colada (10 conferencias, todas true)
+  volta 1 3-colar-ANTES-do-site-parte-3-Publicar-ao-aluno-e-conferencias.sql: OK: 3-Publicar colada (11 conferencias, todas true)
+  volta 1 4-colar-ANTES-do-site-parte-4-Modo-sombra-reanalise-e-taxonomia.sql: OK: 4-Sombra colada (11 conferencias, todas true)
+  volta 1 5-colar-ANTES-do-site-parte-5-Planos-microfone-e-teto-de-IA.sql: OK: 5-Planos colada (9 conferencias, todas true)
+  volta 2 1-colar-ANTES-do-site-parte-1-Suporte-e-relatos.sql: OK: 1-Suporte colada (9 conferencias, todas true)
+  volta 2 2-colar-ANTES-do-site-parte-2-Documentos-e-processamento.sql: OK: 2-Documentos colada (10 conferencias, todas true)
+  volta 2 3-colar-ANTES-do-site-parte-3-Publicar-ao-aluno-e-conferencias.sql: OK: 3-Publicar colada (11 conferencias, todas true)
+  volta 2 4-colar-ANTES-do-site-parte-4-Modo-sombra-reanalise-e-taxonomia.sql: OK: 4-Sombra colada (11 conferencias, todas true)
+  volta 2 5-colar-ANTES-do-site-parte-5-Planos-microfone-e-teto-de-IA.sql: OK: 5-Planos colada (9 conferencias, todas true)
+  volta 3 1-colar-ANTES-do-site-parte-1-Suporte-e-relatos.sql: OK: 1-Suporte colada (9 conferencias, todas true)
+  volta 3 2-colar-ANTES-do-site-parte-2-Documentos-e-processamento.sql: OK: 2-Documentos colada (10 conferencias, todas true)
+  volta 3 3-colar-ANTES-do-site-parte-3-Publicar-ao-aluno-e-conferencias.sql: OK: 3-Publicar colada (11 conferencias, todas true)
+  volta 3 4-colar-ANTES-do-site-parte-4-Modo-sombra-reanalise-e-taxonomia.sql: OK: 4-Sombra colada (11 conferencias, todas true)
+  volta 3 5-colar-ANTES-do-site-parte-5-Planos-microfone-e-teto-de-IA.sql: OK: 5-Planos colada (9 conferencias, todas true)
+== 0-CONFERIR depois (so le; deve rodar igual e nao mudar dados)
+  linhas antes/depois: 30 30 | 'ja foi colada': SIM (já colada; pode colar de novo sem estragar)
+  lessons: 1 linha(s) antiga(s) intactas (colunas novas: origin, ch_unit_id, ch_version_id, central_updated_at)
+  ai_settings: 1 linha(s) antiga(s) intactas (colunas novas: overall_monthly_cap_usd, overall_cap_enabled)
+  tutor_config: 1 linha(s) antiga(s) intactas (colunas novas: stt_team_only, stt_trial_daily_seconds, stt_paid_daily_seconds, stt_account_daily_seconds)
+  ch_taxonomy_nodes: 96 linha(s) antiga(s) intactas (colunas novas: origin_node_id)
+  ch_evidence: 0 linha(s) antiga(s) intactas (colunas novas: discarded_at, discarded_by, discard_reason)
+  ch_publications: 0 linha(s) antiga(s) intactas (colunas novas: lesson_id, distribution)
+  ch_visual_versions: 0 linha(s) antiga(s) intactas (colunas novas: medical_review_by, medical_review_at, medical_review_note)
+  flashcards: 0 linha(s) antiga(s) intactas (colunas novas: ch_unit_id, ch_version_id, ch_card_key)
+  flashcard_states: 0 linha(s) antiga(s) intactas (colunas novas: hidden_due)
+  tabelas EXISTENTES cujos dados mudaram com a colagem: nenhuma
+  pacote x migracoes coladas direto: mesma estrutura (funcoes, gatilhos, politicas, permissoes)
+RESULTADO FINAL: pacote cola 3x sem erro, todas as conferencias deram true

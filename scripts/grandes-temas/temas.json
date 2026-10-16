@@ -1,0 +1,919 @@
+{
+ "versao": "2026-10-13",
+ "fonte": "Mapa curricular \"100 Grandes Temas\" (edição editorial revisada de 13/10/2026): seleção pedagógica do StaziaMed, não é ranking oficial do Inep.",
+ "status_legenda": {
+  "aula_pronta_aguardando_revisao": "Aula pronta, aguardando revisão médica",
+  "roteiro_em_validacao": "Roteiro em validação"
+ },
+ "areas": {
+  "cm": "Clínica Médica",
+  "cir": "Cirurgia",
+  "go": "Ginecologia e Obstetrícia",
+  "ped": "Pediatria",
+  "mfc": "Medicina de Família e Comunidade",
+  "sc": "Saúde Coletiva",
+  "sm": "Saúde Mental"
+ },
+ "temas": [
+  {
+   "id": "GR-001",
+   "ordem": 1,
+   "titulo": "Tuberculose pulmonar",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Infectologia",
+   "status": "aula_pronta_aguardando_revisao"
+  },
+  {
+   "id": "GR-002",
+   "ordem": 2,
+   "titulo": "Diabetes mellitus tipo 2",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Endocrinologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-003",
+   "ordem": 3,
+   "titulo": "Hipertensão arterial sistêmica",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Cardiologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-004",
+   "ordem": 4,
+   "titulo": "Pneumonia adquirida na comunidade",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Pneumologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-005",
+   "ordem": 5,
+   "titulo": "Infecção por HIV na atenção geral",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Infectologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-006",
+   "ordem": 6,
+   "titulo": "Hepatites virais",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Hepatologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-007",
+   "ordem": 7,
+   "titulo": "Dengue e outras arboviroses",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Infectologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-008",
+   "ordem": 8,
+   "titulo": "Sífilis adquirida",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Infectologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-009",
+   "ordem": 9,
+   "titulo": "Infecção urinária e pielonefrite",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Nefrologia / Infectologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-010",
+   "ordem": 10,
+   "titulo": "Sepse e choque séptico",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Urgência / Infectologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-011",
+   "ordem": 11,
+   "titulo": "Síndrome coronariana aguda",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Cardiologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-012",
+   "ordem": 12,
+   "titulo": "Insuficiência cardíaca",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Cardiologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-013",
+   "ordem": 13,
+   "titulo": "Fibrilação atrial e taquiarritmias",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Cardiologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-014",
+   "ordem": 14,
+   "titulo": "Acidente vascular cerebral agudo",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Neurologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-015",
+   "ordem": 15,
+   "titulo": "Tromboembolismo venoso",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Vascular / Hematologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-016",
+   "ordem": 16,
+   "titulo": "Asma no adulto",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Pneumologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-017",
+   "ordem": 17,
+   "titulo": "Doença pulmonar obstrutiva crônica",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Pneumologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-018",
+   "ordem": 18,
+   "titulo": "Lesão renal aguda",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Nefrologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-019",
+   "ordem": 19,
+   "titulo": "Doença renal crônica",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Nefrologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-020",
+   "ordem": 20,
+   "titulo": "Distúrbios do sódio e potássio",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Urgência / Clínica",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-021",
+   "ordem": 21,
+   "titulo": "Hemorragia digestiva alta",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Gastroenterologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-022",
+   "ordem": 22,
+   "titulo": "Cirrose e suas complicações",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Hepatologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-023",
+   "ordem": 23,
+   "titulo": "Anemias comuns",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Hematologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-024",
+   "ordem": 24,
+   "titulo": "Tireoide: hipo e hipertireoidismo",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Endocrinologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-025",
+   "ordem": 25,
+   "titulo": "Crise convulsiva e epilepsia",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Neurologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-026",
+   "ordem": 26,
+   "titulo": "Meningite bacteriana no adulto",
+   "area": "cm",
+   "area_nome": "Clínica Médica",
+   "subarea": "Infectologia / Neurologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-027",
+   "ordem": 27,
+   "titulo": "Apendicite aguda",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Abdome agudo",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-028",
+   "ordem": 28,
+   "titulo": "Colecistite e colangite agudas",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Cirurgia hepatobiliar",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-029",
+   "ordem": 29,
+   "titulo": "Pancreatite aguda",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Abdome agudo",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-030",
+   "ordem": 30,
+   "titulo": "Obstrução intestinal",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Abdome agudo",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-031",
+   "ordem": 31,
+   "titulo": "Perfuração visceral e peritonite",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Abdome agudo",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-032",
+   "ordem": 32,
+   "titulo": "Atendimento inicial ao politraumatizado",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Trauma",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-033",
+   "ordem": 33,
+   "titulo": "Trauma torácico",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Trauma",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-034",
+   "ordem": 34,
+   "titulo": "Traumatismo cranioencefálico",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Trauma",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-035",
+   "ordem": 35,
+   "titulo": "Trauma abdominal",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Trauma",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-036",
+   "ordem": 36,
+   "titulo": "Queimaduras e lesão elétrica",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Trauma / Emergência",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-037",
+   "ordem": 37,
+   "titulo": "Complicações pós-operatórias",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Perioperatório",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-038",
+   "ordem": 38,
+   "titulo": "Feridas, suturas e profilaxia do tétano",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Técnica / Feridas",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-039",
+   "ordem": 39,
+   "titulo": "Hérnias da parede abdominal",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Parede abdominal",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-040",
+   "ordem": 40,
+   "titulo": "Cólica renal e obstrução urinária",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Urologia de urgência",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-041",
+   "ordem": 41,
+   "titulo": "Pólipos e câncer colorretal",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Coloproctologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-042",
+   "ordem": 42,
+   "titulo": "Isquemia arterial aguda de membro",
+   "area": "cir",
+   "area_nome": "Cirurgia",
+   "subarea": "Cirurgia vascular",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-043",
+   "ordem": 43,
+   "titulo": "Assistência ao pré-natal",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Obstetrícia / Pré-natal",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-044",
+   "ordem": 44,
+   "titulo": "Infecções na gestação e congênitas",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Obstetrícia / Infectologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-045",
+   "ordem": 45,
+   "titulo": "Síndromes hipertensivas da gestação",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Obstetrícia / Hipertensão",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-046",
+   "ordem": 46,
+   "titulo": "Diabetes gestacional",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Obstetrícia / Endócrino",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-047",
+   "ordem": 47,
+   "titulo": "Sangramento no primeiro trimestre",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Urgências obstétricas",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-048",
+   "ordem": 48,
+   "titulo": "Sangramento na segunda metade da gestação",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Urgências obstétricas",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-049",
+   "ordem": 49,
+   "titulo": "Trabalho de parto e partograma",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Sala de parto",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-050",
+   "ordem": 50,
+   "titulo": "Distócias e emergências intraparto",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Sala de parto",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-051",
+   "ordem": 51,
+   "titulo": "Hemorragia pós-parto",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Urgências obstétricas",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-052",
+   "ordem": 52,
+   "titulo": "Puerpério, endometrite e mastite",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Puerpério",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-053",
+   "ordem": 53,
+   "titulo": "Prematuridade e rotura prematura de membranas",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Medicina fetal",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-054",
+   "ordem": 54,
+   "titulo": "Restrição de crescimento fetal e avaliação do bem-estar",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Medicina fetal",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-055",
+   "ordem": 55,
+   "titulo": "Contracepção e planejamento reprodutivo",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Ginecologia / Planejamento",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-056",
+   "ordem": 56,
+   "titulo": "Rastreamento do câncer do colo do útero",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Ginecologia / Oncologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-057",
+   "ordem": 57,
+   "titulo": "Avaliação mamária e câncer de mama",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Ginecologia / Oncologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-058",
+   "ordem": 58,
+   "titulo": "Vulvovaginites e cervicites",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Ginecologia / Infecções",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-059",
+   "ordem": 59,
+   "titulo": "Sangramento uterino anormal",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Ginecologia / Sangramento",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-060",
+   "ordem": 60,
+   "titulo": "Doença inflamatória pélvica e dor pélvica",
+   "area": "go",
+   "area_nome": "Ginecologia e Obstetrícia",
+   "subarea": "Ginecologia / Urgência",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-061",
+   "ordem": 61,
+   "titulo": "Reanimação neonatal na sala de parto",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Neonatologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-062",
+   "ordem": 62,
+   "titulo": "Aleitamento materno",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Nutrição infantil",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-063",
+   "ordem": 63,
+   "titulo": "Crescimento e desenvolvimento",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Puericultura",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-064",
+   "ordem": 64,
+   "titulo": "Calendário vacinal da criança",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Prevenção / PNI",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-065",
+   "ordem": 65,
+   "titulo": "Icterícia neonatal",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Neonatologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-066",
+   "ordem": 66,
+   "titulo": "Sepse neonatal",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Neonatologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-067",
+   "ordem": 67,
+   "titulo": "Diarreia aguda e desidratação",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Gastroenterologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-068",
+   "ordem": 68,
+   "titulo": "Pneumonia pediátrica",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Infectologia respiratória",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-069",
+   "ordem": 69,
+   "titulo": "Bronquiolite viral aguda",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Pneumologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-070",
+   "ordem": 70,
+   "titulo": "Asma pediátrica",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Pneumologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-071",
+   "ordem": 71,
+   "titulo": "Febre sem sinais localizatórios",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Urgência / Febre",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-072",
+   "ordem": 72,
+   "titulo": "Meningite na criança",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Neuropediatria / Infecção",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-073",
+   "ordem": 73,
+   "titulo": "Desnutrição e anemia ferropriva",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Nutrição / Hematologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-074",
+   "ordem": 74,
+   "titulo": "Doenças exantemáticas e sarampo",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Infectologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-075",
+   "ordem": 75,
+   "titulo": "Infecção urinária em pediatria",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Nefrologia / Infecção",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-076",
+   "ordem": 76,
+   "titulo": "Choque e sepse na criança",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Emergência pediátrica",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-077",
+   "ordem": 77,
+   "titulo": "Convulsão febril",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Neuropediatria",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-078",
+   "ordem": 78,
+   "titulo": "Invaginação intestinal",
+   "area": "ped",
+   "area_nome": "Pediatria",
+   "subarea": "Gastro / Urgência",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-079",
+   "ordem": 79,
+   "titulo": "Estratégia Saúde da Família e territorialização",
+   "area": "mfc",
+   "area_nome": "Medicina de Família e Comunidade",
+   "subarea": "Organização da APS",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-080",
+   "ordem": 80,
+   "titulo": "Método clínico centrado na pessoa",
+   "area": "mfc",
+   "area_nome": "Medicina de Família e Comunidade",
+   "subarea": "Comunicação clínica",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-081",
+   "ordem": 81,
+   "titulo": "Rastreamento e prevenção quaternária",
+   "area": "mfc",
+   "area_nome": "Medicina de Família e Comunidade",
+   "subarea": "Prevenção",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-082",
+   "ordem": 82,
+   "titulo": "Hipertensão e diabetes na APS",
+   "area": "mfc",
+   "area_nome": "Medicina de Família e Comunidade",
+   "subarea": "Cuidado longitudinal",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-083",
+   "ordem": 83,
+   "titulo": "Família, visita domiciliar e vulnerabilidade",
+   "area": "mfc",
+   "area_nome": "Medicina de Família e Comunidade",
+   "subarea": "Abordagem familiar",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-084",
+   "ordem": 84,
+   "titulo": "Saúde sexual e reprodutiva na APS",
+   "area": "mfc",
+   "area_nome": "Medicina de Família e Comunidade",
+   "subarea": "Saúde da mulher",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-085",
+   "ordem": 85,
+   "titulo": "Avaliação multidimensional do idoso",
+   "area": "mfc",
+   "area_nome": "Medicina de Família e Comunidade",
+   "subarea": "Saúde do idoso",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-086",
+   "ordem": 86,
+   "titulo": "Cuidados paliativos e comunicação de más notícias",
+   "area": "mfc",
+   "area_nome": "Medicina de Família e Comunidade",
+   "subarea": "Cuidados paliativos",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-087",
+   "ordem": 87,
+   "titulo": "Princípios e organização do SUS",
+   "area": "sc",
+   "area_nome": "Saúde Coletiva",
+   "subarea": "SUS / Legislação",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-088",
+   "ordem": 88,
+   "titulo": "PNAB e Redes de Atenção à Saúde",
+   "area": "sc",
+   "area_nome": "Saúde Coletiva",
+   "subarea": "Políticas de saúde",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-089",
+   "ordem": 89,
+   "titulo": "Notificação compulsória e investigação de surtos",
+   "area": "sc",
+   "area_nome": "Saúde Coletiva",
+   "subarea": "Vigilância epidemiológica",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-090",
+   "ordem": 90,
+   "titulo": "SINAN, SIM e SINASC",
+   "area": "sc",
+   "area_nome": "Saúde Coletiva",
+   "subarea": "Informação em saúde",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-091",
+   "ordem": 91,
+   "titulo": "Incidência, prevalência e indicadores",
+   "area": "sc",
+   "area_nome": "Saúde Coletiva",
+   "subarea": "Epidemiologia",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-092",
+   "ordem": 92,
+   "titulo": "Sensibilidade, especificidade e valores preditivos",
+   "area": "sc",
+   "area_nome": "Saúde Coletiva",
+   "subarea": "Epidemiologia clínica",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-093",
+   "ordem": 93,
+   "titulo": "Planejamento e avaliação em saúde",
+   "area": "sc",
+   "area_nome": "Saúde Coletiva",
+   "subarea": "Gestão / Saúde pública",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-094",
+   "ordem": 94,
+   "titulo": "Ética médica, sigilo e consentimento",
+   "area": "sc",
+   "area_nome": "Saúde Coletiva",
+   "subarea": "Ética e bioética",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-095",
+   "ordem": 95,
+   "titulo": "Depressão e avaliação de risco de suicídio",
+   "area": "sm",
+   "area_nome": "Saúde Mental",
+   "subarea": "Psiquiatria / Humor",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-096",
+   "ordem": 96,
+   "titulo": "Transtornos de ansiedade e pânico",
+   "area": "sm",
+   "area_nome": "Saúde Mental",
+   "subarea": "Psiquiatria / Ansiedade",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-097",
+   "ordem": 97,
+   "titulo": "Psicoses e esquizofrenia",
+   "area": "sm",
+   "area_nome": "Saúde Mental",
+   "subarea": "Psiquiatria / Psicoses",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-098",
+   "ordem": 98,
+   "titulo": "Transtorno bipolar e mania",
+   "area": "sm",
+   "area_nome": "Saúde Mental",
+   "subarea": "Psiquiatria / Humor",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-099",
+   "ordem": 99,
+   "titulo": "Delirium e comprometimento cognitivo",
+   "area": "sm",
+   "area_nome": "Saúde Mental",
+   "subarea": "Neuropsiquiatria",
+   "status": "roteiro_em_validacao"
+  },
+  {
+   "id": "GR-100",
+   "ordem": 100,
+   "titulo": "Álcool e outras drogas",
+   "area": "sm",
+   "area_nome": "Saúde Mental",
+   "subarea": "Dependência / Redução de danos",
+   "status": "roteiro_em_validacao"
+  }
+ ]
+}

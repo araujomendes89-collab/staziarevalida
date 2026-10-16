@@ -1,0 +1,14 @@
+import fs from "node:fs"; import { montaProducao, sqlLeva } from "./lib.mjs";
+const db = await montaProducao();
+const sql = fs.readFileSync(new URL("./pacote/0-CONFERIR.sql", import.meta.url), "utf8");
+const U = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+for (let i = 1; i <= 4; i++) await db.query(`insert into auth.users (id,email,raw_user_meta_data) values ($1,$2,'{}')`, [U(i), `u${i}@exemplo.com`]);
+await db.exec(`update public.user_roles set role='admin' where user_id='${U(1)}'; update public.subscriptions set plan='pro', status='active', trial_ends_at=null, current_period_end=now()+interval '20 days' where user_id='${U(3)}'`);
+const snap = async () => JSON.stringify((await db.query(`select (select count(*) from public.ch_flags) a, (select count(*) from auth.users) b, (select count(*) from public.subscriptions) c`)).rows);
+const antesDados = await snap();
+const show = (rows) => rows.forEach((r) => console.log("  ", [r.conferencia.slice(0, 95), r.detalhe_1, r.detalhe_2, r.detalhe_3, r.detalhe_4, r.detalhe_5].filter((x) => x != null).join(" | ").slice(0, 330)));
+console.log("== antes de colar"); const a = (await db.query(sql)).rows; show(a);
+for (const s of sqlLeva()) await db.exec(s);
+console.log("== depois de colar (deve rodar igual, sem erro)"); const b = (await db.query(sql)).rows; console.log("  linhas:", a.length, b.length); show(b.filter((r) => /^(1\.|0\.)/.test(r.conferencia)));
+console.log("somente leitura (mesmos dados):", antesDados === (await snap()));
+await db.close();

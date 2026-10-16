@@ -2,11 +2,12 @@
 // Mesma marcação da ErrorsScreen do kit (prototype/ReviewScreens.jsx), que só tinha o estado
 // vazio; a lista, o detalhe com a correção e a anotação usam componentes do design system.
 import React from "react";
-import { AnswerOption, Badge, Banner, Button, Card, Chip, EmptyState, Icon, SelectField, StatCard, Tabs } from "../../ds";
+import { Badge, Banner, Button, Card, Chip, EmptyState, Icon, SelectField, StatCard, Tabs } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
-import { Correction, answerState } from "../practice/Correction.jsx";
-import { AREAS, areaLabel, examLabel, formatWhen, splitStatement } from "../practice/format.js";
+import { PreliminarySeal } from "../practice/Correction.jsx";
+import { AREAS, areaLabel, formatWhen, isStaziamed, questionRef } from "../practice/format.js";
+import { QuestionReview } from "../practice/tela/QuestionReview.jsx";
 
 const REASONS = [
   { value: "conhecimento", label: "Não sabia o conteúdo" },
@@ -80,7 +81,7 @@ function NoteEditor({ questionId, initial, onSaved }) {
   );
 }
 
-function ErrorRow({ item, first, open, onToggle, onNote }) {
+function ErrorRow({ item, first, open, onToggle, onNote, go }) {
   const { backend } = useSession();
   const [detail, setDetail] = React.useState(null);
   const [failed, setFailed] = React.useState(false);
@@ -99,7 +100,6 @@ function ErrorRow({ item, first, open, onToggle, onNote }) {
     };
   }, [open, detail, backend, item.question_id]);
 
-  const parts = detail ? splitStatement(detail.statement) : null;
   return (
     <div style={{ borderTop: first ? 0 : "1px solid var(--border-subtle)" }}>
       <button
@@ -113,9 +113,10 @@ function ErrorRow({ item, first, open, onToggle, onNote }) {
           <span style={{ display: "block", font: "600 15px/1.35 var(--font-sans)" }}>{item.topic}</span>
           <span style={{ display: "block", font: "var(--type-body-sm)", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.excerpt}</span>
           <span style={{ display: "block", font: "var(--type-caption)", color: "var(--text-tertiary)", marginTop: 2 }}>
-            {areaLabel(item.area)} · {examLabel(item.exam)} · Q{item.number} · {formatWhen(item.last_attempt_at)}
+            {areaLabel(item.area)} · {questionRef(item)} · {formatWhen(item.last_attempt_at)}{isStaziamed(item) ? " · não é questão oficial do Inep" : ""}
           </span>
         </span>
+        <PreliminarySeal info={item.preliminary} compact />
         {item.has_note && <Icon name="notebook-pen" size={16} label="Tem anotação" style={{ color: "var(--text-tertiary)", flex: "none" }} />}
         {item.wrong_count >= 2 && (
           <Badge tone="danger" size="sm">
@@ -130,16 +131,7 @@ function ErrorRow({ item, first, open, onToggle, onNote }) {
           {!detail && !failed && <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Carregando…</p>}
           {detail && (
             <>
-              <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, textWrap: "pretty" }}>{parts.stem}</p>
-              {parts.ask && <p style={{ margin: 0, font: "600 16px/1.45 var(--font-sans)" }}>{parts.ask}</p>}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {detail.options.map((option) => (
-                  <AnswerOption key={option.id} letter={option.id} state={answerState(option.id, detail.selected, detail.correction)}>
-                    {option.text}
-                  </AnswerOption>
-                ))}
-              </div>
-              <Correction selected={detail.selected} correction={detail.correction} question={detail} tutorContext="error" />
+              <QuestionReview question={{ ...item, ...detail, id: item.question_id }} selected={detail.selected} correction={detail.correction} tutorContext="error" go={go} />
               <NoteEditor
                 questionId={item.question_id}
                 initial={detail}
@@ -281,6 +273,7 @@ export function ErrorNotebook({ go }) {
                   open={openId === item.question_id}
                   onToggle={() => setOpenId(openId === item.question_id ? null : item.question_id)}
                   onNote={markNote}
+                  go={go}
                 />
               ))}
             </div>

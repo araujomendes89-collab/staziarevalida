@@ -1,0 +1,357 @@
+/* A aula dentro do Grande Tema (aluno). Padrão único para todas as aulas: docs/aula-layout.md.
+   Cores: o tema entra só como variáveis (--gt-p principal, --gt-e escura, --gt-c fundo suave, --gt-b brilho; paleta v2) e esta folha
+   traduz em --al-*; modo escuro usa o brilho. Nenhum código de cor aparece na tela.
+   Fontes: Barlow Condensed (títulos, igual às peças feed/story/A4) e a fonte do sistema para o texto de leitura. */
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 700; font-display: swap; src: url("../auth/fonts/barlow-condensed-700.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 600; font-display: swap; src: url("../auth/fonts/barlow-condensed-600.woff2") format("woff2"); }
+
+.al {
+  --al-c: var(--gt-p); --al-ink: var(--gt-e); --al-soft: var(--gt-c); --al-glow: var(--gt-b); --al-on: #fff;
+  --al-peg: #C8102E; --al-peg-bg: #FFF3F4; --al-peg-ink: #9E0B23;
+  --al-cond: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --al-read: 400 16.5px/1.7 var(--font-sans);
+  display: flex; flex-direction: column; gap: 16px; width: 100%; min-width: 0; max-width: 1120px; margin: 0 auto; color: var(--text-primary);
+}
+[data-theme="dark"] .al {
+  --al-c: var(--gt-b); --al-ink: var(--gt-b); --al-soft: color-mix(in oklab, var(--gt-b) 12%, var(--surface-card)); --al-on: #0B1525;
+  --al-peg: #F28B8B; --al-peg-bg: rgba(198, 40, 40, .16); --al-peg-ink: #F8B4B4;
+}
+.al > * { min-width: 0; max-width: 100%; }
+.al img { -webkit-user-drag: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.al [id] { scroll-margin-top: 76px; }
+.al [tabindex="-1"]:focus { outline: none; }
+.al-show-sm { display: none; }
+.al-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ── barra fixa: voltar, onde estou, índice ───────────────────────────── */
+.al-bar { position: sticky; top: 0; z-index: 25; display: flex; gap: 10px; align-items: center; padding: 10px 0; background: var(--bg-app); border-bottom: 1px solid var(--border-subtle); }
+.al-bar-t { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.al-bar-tema { font: 700 14px/1.25 var(--font-sans); color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.al-bar-sec { font: 500 12.5px/1.3 var(--font-sans); color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.al-bar-toc { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid color-mix(in oklab, var(--al-c) 55%, transparent); background: var(--surface-card); color: var(--al-ink); font: 700 14px/1 var(--font-sans); cursor: pointer; flex: none; }
+.al-bar-toc[aria-expanded="true"] { background: var(--al-c); color: var(--al-on); border-color: var(--al-c); }
+.al-bar-toc:focus-visible { outline: 3px solid var(--focus-color); outline-offset: 2px; }
+
+/* ── capa ─────────────────────────────────────────────────────────────── */
+.al-cover { border-radius: 24px; padding: 30px 32px 26px; color: #fff; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px;
+  background: radial-gradient(130% 150% at 88% 15%, color-mix(in srgb, var(--gt-p) 80%, #fff 6%) 0%, var(--gt-e) 48%, #071A33 100%); }
+.al-cover::after { content: ""; position: absolute; right: -70px; top: -70px; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--gt-b) 36%, transparent), transparent 70%); pointer-events: none; }
+.al-cover > * { position: relative; z-index: 1; }
+.al-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.al-selo { display: inline-flex; align-items: center; gap: 7px; font: 700 13.5px/1 var(--al-cond); text-transform: uppercase; letter-spacing: .7px; border-radius: 999px; padding: 7px 13px 7px 10px; background: var(--gt-b); color: var(--gt-e); }
+.al-selo-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--gt-p); flex: none; }
+.al-pill { display: inline-flex; align-items: center; font: 700 13px/1 var(--al-cond); text-transform: uppercase; letter-spacing: .8px; border: 1.5px solid color-mix(in srgb, var(--gt-b) 75%, transparent); border-radius: 999px; padding: 6px 12px; color: #fff; }
+.al-title { margin: 2px 0 0; font: 700 clamp(30px, 5.4vw, 52px)/.98 var(--al-cond); text-transform: uppercase; letter-spacing: -.2px; overflow-wrap: anywhere; max-width: 22ch; }
+.al-title span { display: block; color: var(--gt-b); font-size: .78em; margin-top: 6px; }
+.al-head { margin: 0; font: 500 14.5px/1.5 var(--font-sans); color: rgba(255,255,255,.86); max-width: 62ch; }
+.al-meta { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; font: 600 13.5px/1.3 var(--font-sans); color: rgba(255,255,255,.92); }
+.al-meta li { display: inline-flex; align-items: center; gap: 6px; }
+.al-meta .sm-icon { color: var(--gt-b); }
+.al-cover .al-prog { max-width: 520px; }
+.al-cover .al-prog-row { color: rgba(255,255,255,.9); }
+.al-cover .al-prog-bar { background: rgba(255,255,255,.18); }
+.al-cover .al-prog-bar > span { background: var(--gt-b); }
+.al-use { border: 1px solid rgba(255,255,255,.22); border-radius: 14px; padding: 10px 16px; background: rgba(255,255,255,.07); }
+.al-use summary { cursor: pointer; font: 700 16px/1.2 var(--al-cond); text-transform: uppercase; letter-spacing: .6px; color: var(--gt-b); }
+.al-use summary:focus-visible { outline: 3px solid var(--gt-b); outline-offset: 3px; border-radius: 4px; }
+.al-use ul { margin: 10px 0 2px; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 6px 22px; font: 400 13.5px/1.45 var(--font-sans); color: rgba(255,255,255,.9); }
+.al-use li { display: flex; gap: 8px; }
+.al-use li::before { content: "→"; color: var(--gt-b); font-weight: 700; }
+
+/* progresso (capa, índice e fim da aula) */
+.al-prog { display: flex; flex-direction: column; gap: 7px; }
+.al-prog-row { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font: 500 13px/1.3 var(--font-sans); color: var(--text-secondary); }
+.al-prog-row span { display: inline-flex; align-items: center; gap: 5px; }
+.al-prog-row .al-prog-txt { display: inline; }
+.al-prog-row b { font-weight: 800; color: inherit; }
+.al-prog-bar { height: 8px; border-radius: 999px; background: var(--chart-track); overflow: hidden; }
+.al-prog-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--al-c); transition: width var(--dur-slow) var(--ease-standard); }
+.al-prog.compact { padding: 12px 4px 2px; border-top: 1px solid var(--border-subtle); margin-top: 6px; }
+.al-prog.compact .al-prog-row { font-size: 12px; }
+
+.al-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.al .sm-btn--primary.al-cta { background: var(--al-c); border-color: var(--al-c); color: var(--al-on); }
+.al .sm-btn--primary.al-cta:hover { filter: brightness(1.08); }
+
+/* ── duas colunas no computador largo: índice fixo + leitura ─────────── */
+.al-layout { display: block; min-width: 0; }
+.al-main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.al-side { min-width: 0; }
+
+/* índice: no celular e na tela média, uma folha que sobe do rodapé (abre pelo botão Índice da barra) */
+.al-toc-panel { display: none; }
+.al-toc-panel.is-open { display: flex; flex-direction: column; position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); max-height: min(72vh, 620px); z-index: 70;
+  background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 22px; box-shadow: var(--shadow-lg); padding: 10px 12px 12px; }
+.al-toc-panel.is-open .al-toc { overflow-y: auto; min-height: 0; flex: 1; }
+.al-toc-backdrop { position: fixed; inset: 0; z-index: 65; background: var(--surface-overlay); }
+.al-toc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 4px 8px; font: 700 15px/1.2 var(--al-cond); text-transform: uppercase; letter-spacing: .8px; color: var(--text-tertiary); }
+.al-toc-close { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--border-default); background: var(--surface-card); color: var(--text-secondary); cursor: pointer; }
+.al-toc-close:focus-visible { outline: 3px solid var(--focus-color); outline-offset: 2px; }
+.al-toc { display: flex; flex-direction: column; gap: 2px; }
+.al-toc-i { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 10px; min-height: 44px; border: 0; border-radius: 12px; background: transparent; color: var(--text-secondary); font: 600 14px/1.3 var(--font-sans); cursor: pointer; position: relative; }
+.al-toc-i:hover { background: var(--surface-subtle); color: var(--text-primary); }
+.al-toc-i:focus-visible { outline: 3px solid var(--focus-color); outline-offset: -1px; }
+.al-toc-i[aria-current] { background: var(--al-soft); color: var(--al-ink); }
+.al-toc-i[aria-current]::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; background: var(--al-c); }
+.al-toc-n { width: 24px; height: 24px; border-radius: 50%; flex: none; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid color-mix(in oklab, var(--al-c) 60%, transparent); color: var(--al-ink); font: 700 13px/1 var(--font-sans); }
+.al-toc-n.sec { width: 18px; height: 18px; margin: 3px; border-width: 2px; }
+.al-toc-i.done .al-toc-n { background: var(--al-c); border-color: var(--al-c); color: var(--al-on); }
+.al-toc-l { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.al-toc-note { color: var(--al-ink); display: inline-flex; flex: none; }
+
+@media (min-width: 1240px) {
+  .al-layout { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 24px; align-items: start; }
+  .al-side { position: sticky; top: 76px; }
+  .al-toc-panel, .al-toc-panel.is-open { display: flex; flex-direction: column; position: static; max-height: calc(100vh - 100px); padding: 12px 8px 8px; border-radius: 20px;
+    background: var(--surface-card); border: 1px solid var(--border-default); box-shadow: var(--shadow-sm); }
+  .al-toc-panel .al-toc { overflow-y: auto; min-height: 0; }
+  .al-toc-close, .al-bar-toc, .al-toc-backdrop { display: none; }
+}
+
+/* ── folhas (cada seção é um cartão) ──────────────────────────────────── */
+.al-sheet { background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 22px; padding: 26px 30px; box-shadow: 0 6px 24px rgba(11, 37, 69, .07); min-width: 0; }
+[data-theme="dark"] .al-sheet { box-shadow: none; }
+.al-sechead { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; }
+.al-secnum { width: 44px; height: 44px; border-radius: 50%; flex: none; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(145deg, var(--gt-p), var(--gt-e)); color: #fff;
+  font: italic 700 25px/1 var(--al-cond); box-shadow: 0 3px 10px color-mix(in srgb, var(--gt-e) 35%, transparent); }
+.al-sechead-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.al-over { font: 700 12px/1.2 var(--font-sans); text-transform: uppercase; letter-spacing: .08em; color: var(--al-ink); }
+.al-sectab { margin: 0; font: 700 25px/1.08 var(--al-cond); text-transform: uppercase; letter-spacing: .3px; color: var(--text-primary); overflow-wrap: anywhere; }
+.al-tag-done { display: inline-flex; align-items: center; gap: 4px; flex: none; padding: 4px 10px; border-radius: 999px; background: var(--success-bg); color: var(--success-text); border: 1px solid var(--success-border); font: 700 12px/1.2 var(--font-sans); }
+.al-body { display: flex; flex-direction: column; }
+
+/* texto de leitura: ~65 caracteres por linha, entrelinha folgada */
+.al-p { margin: 0 0 14px; font: var(--al-read); color: var(--text-primary); max-width: 68ch; overflow-wrap: anywhere; }
+.al-body > .al-p:last-child { margin-bottom: 0; }
+.al-hint { color: var(--text-secondary); font-size: 15px; }
+.al-lead { font-size: 16px; color: var(--text-secondary); }
+
+/* em resumo (pontos-chave) */
+.al-pontos { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.al-pontos li { display: flex; gap: 10px; align-items: flex-start; font: 400 15.5px/1.6 var(--font-sans); max-width: 70ch; }
+.al-pontos .sm-icon { color: var(--al-c); margin-top: 3px; }
+
+/* caso clínico e voltando ao caso */
+.al-caso, .al-volta { display: flex; gap: 14px; align-items: flex-start; border-radius: 16px; padding: 18px 20px; margin: 0 0 14px; }
+.al-caso { background: var(--al-soft); border: 1px solid color-mix(in oklab, var(--al-c) 30%, transparent); }
+.al-volta { background: var(--surface-subtle); border: 1px solid var(--border-default); border-left: 5px solid var(--al-c); }
+.al-caso p, .al-volta p { margin: 0; font: var(--al-read); max-width: 68ch; overflow-wrap: anywhere; }
+.al-caso-ico { width: 38px; height: 38px; border-radius: 12px; flex: none; display: inline-flex; align-items: center; justify-content: center; background: var(--al-c); color: var(--al-on); }
+
+/* caixas: Pegadinha (alerta vermelho), Atenção (âmbar), Tome nota (cor do tema) */
+.al-box { display: flex; gap: 12px; align-items: flex-start; border-radius: 16px; padding: 14px 18px; margin: 4px 0 16px; max-width: 76ch; }
+.al-box-ico { width: 32px; height: 32px; border-radius: 10px; flex: none; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
+.al-box-c { min-width: 0; }
+.al-box .h { font: 700 20px/1.05 var(--al-cond); text-transform: uppercase; letter-spacing: .4px; }
+.al-box .t { font: 400 15.5px/1.6 var(--font-sans); margin-top: 5px; color: var(--text-primary); overflow-wrap: anywhere; }
+.al-peg { background: var(--al-peg-bg); border: 2px solid var(--al-peg); }
+.al-peg .h { color: var(--al-peg-ink); font-style: italic; font-size: 22px; }
+.al-peg .al-box-ico { background: #C8102E; }
+.al-atencao { background: var(--warning-bg); border: 1px solid var(--warning-border); border-left: 6px solid var(--warning-solid); }
+.al-atencao .h { color: var(--warning-text); }
+.al-atencao .al-box-ico { background: #B97800; }
+.al-nota { background: var(--al-soft); border: 1px solid color-mix(in oklab, var(--al-c) 35%, transparent); border-left: 6px solid var(--al-c); }
+.al-nota .h { color: var(--al-ink); }
+.al-nota .al-box-ico { background: var(--al-c); color: var(--al-on); }
+
+/* o que mudou desde a prova */
+.al-muds { display: grid; gap: 12px; }
+.al-mud { border: 1px solid var(--border-default); border-radius: 16px; padding: 16px 18px; background: var(--surface-card); border-top: 4px solid var(--al-c); }
+.al-mud-h { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.al-mud-h h3 { margin: 0; font: 700 16.5px/1.3 var(--font-sans); color: var(--text-primary); overflow-wrap: anywhere; }
+.al-mud-ico { width: 30px; height: 30px; border-radius: 9px; flex: none; display: inline-flex; align-items: center; justify-content: center; background: var(--al-soft); color: var(--al-ink); }
+.al-mud .al-p { margin: 0; font-size: 15.5px; }
+.al-mud-l { font: 700 12px/1.2 var(--font-sans); text-transform: uppercase; letter-spacing: .06em; color: var(--al-ink); }
+.al-mud-h:has(h3) + .al-p::first-letter { text-transform: uppercase; } /* o texto continua o rótulo do título ("Rótulo: texto") */
+.al-compare { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.al-cmp { border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.al-cmp p { margin: 0; font: 400 15px/1.6 var(--font-sans); overflow-wrap: anywhere; }
+.al-cmp-l { font: 700 12px/1.2 var(--font-sans); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+.al-cmp-antes { background: var(--surface-subtle); border: 1px solid var(--border-subtle); color: var(--text-secondary); }
+.al-cmp-antes .al-cmp-l { color: var(--text-tertiary); }
+.al-cmp-agora { background: var(--al-soft); border: 1px solid color-mix(in oklab, var(--al-c) 40%, transparent); }
+.al-cmp-agora .al-cmp-l { color: var(--al-ink); }
+
+/* erros frequentes: lista para marcar */
+.al-chk { border: 1.5px solid color-mix(in oklab, var(--al-peg) 35%, transparent); border-radius: 16px; background: var(--surface-card); padding: 6px 18px 8px; }
+.al-chk-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 0 6px; font: 700 17px/1.2 var(--al-cond); text-transform: uppercase; letter-spacing: .4px; color: var(--al-peg-ink); }
+.al-chk-h small { font: 600 12.5px/1 var(--font-sans); text-transform: none; letter-spacing: 0; color: var(--text-tertiary); white-space: nowrap; }
+.al-row { display: flex; gap: 12px; align-items: flex-start; font: 400 15.5px/1.55 var(--font-sans); padding: 10px 0; border-top: 1px dashed var(--border-default); cursor: pointer; }
+.al-row input { width: 20px; height: 20px; margin-top: 2px; flex: none; accent-color: var(--al-c); cursor: pointer; }
+.al-row.on span { color: var(--text-secondary); text-decoration: line-through; text-decoration-color: color-mix(in oklab, var(--al-c) 60%, transparent); }
+.al-row:focus-within { outline: 2px solid var(--focus-color); outline-offset: 2px; border-radius: 6px; }
+
+/* figuras: tabela, mídia e imagem, sempre com legenda */
+.al-fig { margin: 6px 0 16px; min-width: 0; }
+.al-tblw { border: 1px solid var(--border-default); border-radius: 14px; overflow: hidden; background: var(--surface-card); }
+.al-tbl { border-collapse: collapse; width: 100%; font: 400 14.5px/1.5 var(--font-sans); }
+.al-tbl caption { caption-side: top; text-align: left; padding: 12px 14px; font: 700 17px/1.2 var(--al-cond); text-transform: uppercase; letter-spacing: .4px; color: var(--al-ink); background: var(--al-soft); border-bottom: 1px solid var(--border-default); }
+.al-tbl th { background: var(--gt-e); color: #fff; font: 700 13px/1.2 var(--al-cond); text-transform: uppercase; letter-spacing: .8px; text-align: left; padding: 10px 14px; }
+[data-theme="dark"] .al-tbl th { background: var(--surface-subtle); color: var(--text-primary); }
+.al-tbl td { padding: 10px 14px; border-top: 1px solid var(--border-default); vertical-align: top; overflow-wrap: anywhere; }
+.al-tbl td + td, .al-tbl th + th { border-left: 1px solid var(--border-default); }
+.al-tbl tbody tr:nth-child(even) td { background: var(--surface-subtle); }
+.al-tbl tr.al-tr-alerta td { background: var(--al-peg-bg); color: var(--text-primary); }
+.al-tbl tr.al-tr-alerta td:first-child { box-shadow: inset 4px 0 0 var(--al-peg); font-weight: 700; color: var(--al-peg-ink); }
+@media (max-width: 640px) {
+  /* tabela vira cartões empilhados: nada de rolagem lateral no celular */
+  .al-tbl thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .al-tbl, .al-tbl tbody, .al-tbl tr, .al-tbl td { display: block; width: 100%; }
+  .al-tbl caption { display: block; }
+  .al-tbl tr { border-top: 1px solid var(--border-default); padding: 8px 0; }
+  .al-tbl tbody tr:first-child { border-top: 0; }
+  .al-tbl td { border: 0; padding: 4px 14px; }
+  .al-tbl td + td { border-left: 0; }
+  .al-tbl td::before { content: attr(data-label); display: block; font: 700 11.5px/1.3 var(--font-sans); text-transform: uppercase; letter-spacing: .06em; color: var(--text-tertiary); margin-bottom: 1px; }
+  .al-tbl td[data-label=""]::before { display: none; }
+  .al-tbl tbody tr:nth-child(even) td { background: transparent; }
+  .al-tbl tbody tr:nth-child(even) { background: var(--surface-subtle); }
+  .al-tbl tr.al-tr-alerta { background: var(--al-peg-bg); box-shadow: inset 4px 0 0 var(--al-peg); }
+  .al-tbl tr.al-tr-alerta td, .al-tbl tr.al-tr-alerta td:first-child { background: transparent; box-shadow: none; }
+}
+.al-cap { display: block; margin-top: 8px; font: 400 13.5px/1.5 var(--font-sans); color: var(--text-secondary); }
+.al-cap strong { color: var(--text-primary); }
+.al-cap-l { display: block; margin-top: 2px; }
+.al-cap-c { text-align: center; }
+.al-det { margin-top: 8px; }
+.al-det summary { cursor: pointer; font: 600 14px/1.3 var(--font-sans); color: var(--al-ink); }
+.al-det .al-p { margin-top: 8px; }
+.al-media { display: block; aspect-ratio: 16 / 9; width: 100%; border: 0; border-radius: 14px; background: #000; }
+.al-media-a { height: 152px; aspect-ratio: auto; }
+
+/* ── rodapé de cada seção: anotação, marcar como estudada e próxima ──── */
+.al-secfoot { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 12px; }
+.al-secfoot-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.al-secfoot-row.end { justify-content: flex-end; margin-top: 14px; }
+.al-done { display: inline-flex; gap: 10px; align-items: center; min-height: 44px; padding: 0 16px 0 12px; border-radius: 999px; border: 1.5px solid var(--border-default); background: var(--surface-card); font: 600 14px/1.25 var(--font-sans); color: var(--text-secondary); cursor: pointer; }
+.al-done input { width: 20px; height: 20px; accent-color: var(--al-c); cursor: pointer; flex: none; }
+.al-done.on { background: var(--al-soft); border-color: color-mix(in oklab, var(--al-c) 55%, transparent); color: var(--al-ink); }
+.al-done:focus-within { outline: 3px solid var(--focus-color); outline-offset: 2px; }
+.al-next { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: var(--al-ink); font: 700 14px/1 var(--font-sans); cursor: pointer; }
+.al-next:hover { background: var(--al-soft); }
+.al-next:focus-visible { outline: 3px solid var(--focus-color); outline-offset: 2px; }
+
+/* anotações */
+.al-notes { border: 1.5px dashed color-mix(in oklab, var(--al-c) 50%, transparent); border-radius: 14px; padding: 10px 14px 10px; background: var(--surface-subtle); }
+.al-notes.is-error { border-color: var(--danger-solid); }
+.al-notes .h { display: flex; justify-content: space-between; align-items: center; gap: 10px; font: 700 14px/1.2 var(--font-sans); color: var(--al-ink); }
+.al-notes .h > span { display: inline-flex; align-items: center; gap: 6px; }
+.al-notes .h small { font: 500 12px/1 var(--font-sans); color: var(--text-tertiary); }
+.al-notes.is-error .h small { color: var(--danger-text); font-weight: 700; }
+.al-notes textarea { display: block; width: 100%; min-height: 76px; resize: vertical; border: 0; outline: 0; background: repeating-linear-gradient(180deg, transparent 0 27px, var(--border-default) 27px 28px); font: 400 15.5px/28px var(--font-sans); color: var(--text-primary); padding: 0 2px; margin-top: 6px; }
+.al-notes textarea::placeholder { color: var(--text-tertiary); }
+.al-notes textarea:focus-visible { outline: 2px solid var(--focus-color); outline-offset: 2px; border-radius: 4px; }
+.al-notes textarea:disabled { opacity: .6; }
+
+/* botões pequenos da aula */
+.al-btn { display: inline-flex; gap: 7px; align-items: center; justify-content: center; min-height: 40px; border-radius: 999px; padding: 0 16px; font: 700 14px/1 var(--font-sans); cursor: pointer; border: 1.5px solid color-mix(in oklab, var(--al-c) 50%, transparent); background: var(--surface-card); color: var(--al-ink); }
+.al-btn:hover:not(:disabled) { background: var(--al-soft); }
+.al-btn.pri { background: var(--al-c); color: var(--al-on); border-color: var(--al-c); }
+.al-btn.pri:hover { filter: brightness(1.08); background: var(--al-c); }
+.al-btn:disabled { opacity: .45; cursor: default; }
+.al-btn:focus-visible { outline: 3px solid var(--focus-color); outline-offset: 2px; }
+
+/* questões de fixação */
+.al-q { border: 1px solid var(--border-default); border-radius: 16px; padding: 18px 20px; margin: 0 0 14px; background: var(--surface-card); }
+.al-q-n { font: 700 17px/1 var(--al-cond); text-transform: uppercase; letter-spacing: .5px; color: var(--al-ink); margin-bottom: 10px; }
+.al-q-n span { color: var(--text-tertiary); }
+.al-q-s { font: 400 16px/1.65 var(--font-sans); margin: 0 0 14px; max-width: 70ch; overflow-wrap: anywhere; }
+.al-alt { display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left; border: 1.5px solid var(--border-default); border-radius: 14px; background: var(--surface-card); padding: 11px 14px; margin: 0 0 8px; font: 400 15px/1.5 var(--font-sans); color: var(--text-primary); cursor: pointer; }
+.al-alt:hover:not(:disabled) { border-color: var(--al-c); }
+.al-alt:focus-visible { outline: 3px solid var(--focus-color); outline-offset: 2px; }
+.al-alt .l { width: 30px; height: 30px; border-radius: 50%; flex: none; display: inline-flex; align-items: center; justify-content: center; background: var(--al-soft); color: var(--al-ink); font: 700 17px/1 var(--al-cond); }
+.al-alt .x { flex: 1; min-width: 0; padding-top: 4px; overflow-wrap: anywhere; }
+.al-alt-ic { color: var(--success-solid); margin-top: 6px; }
+.al-alt.ok { border-color: var(--success-solid); background: var(--success-bg); }
+.al-alt.ok .l { background: var(--success-solid); color: #fff; }
+.al-alt.bad { border-color: var(--danger-solid); background: var(--danger-bg); }
+.al-alt.bad .l { background: var(--danger-solid); color: #fff; }
+.al-alt.off { opacity: .7; }
+.al-alt:disabled { cursor: default; }
+.al-fb { margin: 6px 0 12px; font: 400 15px/1.6 var(--font-sans); padding: 12px 16px; border-radius: 12px; }
+.al-fb-t { margin-top: 6px; }
+.al-fb.ok { background: var(--success-bg); border: 1px solid var(--success-border); color: var(--text-primary); }
+.al-fb.bad { background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--text-primary); }
+.al-score { margin: 4px 0 0; font: 700 14px/1.4 var(--font-sans); color: var(--al-ink); }
+
+/* flashcards: um cartão por vez, cores do tema */
+.al-fcv { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.al-fcv-top { width: 100%; max-width: 420px; display: flex; justify-content: space-between; gap: 8px; font: 600 13px/1.2 var(--font-sans); color: var(--text-secondary); }
+.al-fcv-pos { color: var(--al-ink); font-weight: 800; }
+.al-fcv-card { width: 100%; max-width: 420px; }
+.al-fcv-nav { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.al-fcv-dots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 420px; }
+.al-dot { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--border-default); background: var(--surface-card); color: var(--text-secondary); font: 700 13px/1 var(--font-sans); cursor: pointer; }
+.al-dot.seen { border-color: color-mix(in oklab, var(--al-c) 60%, transparent); color: var(--al-ink); }
+.al-dot.on { background: var(--al-c); border-color: var(--al-c); color: var(--al-on); }
+.al-dot:focus-visible { outline: 3px solid var(--focus-color); outline-offset: 2px; }
+.al-flip { display: block; position: relative; width: 100%; perspective: 1400px; cursor: pointer; background: none; border: 0; padding: 0; }
+.al-flip::before { content: ""; display: block; padding-top: 125%; }
+.al-flip:focus-visible { outline: 3px solid var(--focus-color); outline-offset: 3px; border-radius: 16px; }
+.al-flip-in { position: absolute; inset: 0; width: 100%; height: 100%; transition: transform .6s; transform-style: preserve-3d; }
+.al-flip.on .al-flip-in { transform: rotateY(180deg); }
+.al-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 18px; overflow: hidden; background: var(--surface-card); border: 1px solid var(--border-default); box-shadow: var(--shadow-md); }
+.al-face.back { transform: rotateY(180deg); }
+.al-face img { width: 100%; height: 100%; display: block; object-fit: cover; pointer-events: none; }
+.al-face .txt { display: flex; flex-direction: column; justify-content: center; gap: 12px; padding: 26px 24px; height: 100%; overflow: auto; text-align: left; color: var(--text-primary); }
+.al-flip-txt .al-face:not(.back) { background: linear-gradient(160deg, var(--gt-e), color-mix(in srgb, var(--gt-e) 70%, #071A33)); border: 0; }
+.al-flip-txt .al-face:not(.back) .txt { color: #fff; }
+.al-flip-txt .al-face.back { background: var(--al-soft); border-color: color-mix(in oklab, var(--al-c) 40%, transparent); }
+.al-face-l { font: 700 14px/1 var(--al-cond); text-transform: uppercase; letter-spacing: 2px; color: var(--al-ink); }
+.al-flip-txt .al-face:not(.back) .al-face-l { color: var(--gt-b); }
+.al-face-t { font: 700 clamp(19px, 4.6vw, 24px)/1.3 var(--font-sans); overflow-wrap: anywhere; }
+.al-face.back .al-face-t { font-weight: 500; font-size: clamp(16px, 4vw, 19px); line-height: 1.55; }
+.al-face-hint { font: 600 13px/1 var(--font-sans); color: rgba(255,255,255,.75); }
+@media (prefers-reduced-motion: reduce) { .al-flip-in { transition: none; } }
+
+/* Revisão da Aula (imagem A4) */
+.al-a4 { max-width: 640px; margin: 0 auto; border-radius: 14px; overflow: hidden; border: 1px solid var(--border-default); background: #fff; position: relative; }
+.al-a4 img { width: 100%; display: block; pointer-events: none; }
+
+/* fim da aula */
+.al-end { border-radius: 22px; padding: 22px 26px; background: linear-gradient(160deg, var(--al-soft) 0%, var(--surface-card) 70%); border: 1px solid var(--border-default); border-top: 5px solid var(--al-c); display: flex; flex-direction: column; gap: 14px; }
+.al-end-h { display: flex; align-items: center; gap: 8px; font: 700 22px/1 var(--al-cond); text-transform: uppercase; letter-spacing: .4px; color: var(--al-ink); }
+.al-end .al-prog { max-width: 520px; }
+.al-end-a { display: flex; gap: 8px; flex-wrap: wrap; }
+.al-foot { text-align: center; font: 400 12px/1.4 var(--font-sans); color: var(--text-tertiary); margin: 0 0 24px; }
+
+/* carregando */
+.al-loading { display: flex; flex-direction: column; gap: 12px; }
+.al-skel { height: 180px; border-radius: 24px; background: linear-gradient(90deg, var(--surface-sunken), var(--surface-subtle), var(--surface-sunken)); background-size: 200% 100%; animation: al-skel 1.4s ease-in-out infinite; }
+.al-skel.short { height: 320px; border-radius: 22px; }
+@keyframes al-skel { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+
+/* ── celular (gutter da página vem do Shell; aqui só o respiro interno) ─ */
+@media (max-width: 640px) {
+  .al { gap: 14px; }
+  .al-cover { padding: 22px 18px 18px; border-radius: 20px; gap: 12px; }
+  .al-title { max-width: none; }
+  .al-sheet { padding: 20px 16px; border-radius: 18px; }
+  .al-secnum { width: 38px; height: 38px; font-size: 21px; }
+  .al-sectab { font-size: 21px; }
+  .al-sechead { gap: 10px; flex-wrap: wrap; }
+  .al-p, .al-caso p, .al-volta p { font-size: 16px; line-height: 1.65; }
+  /* no celular o ícone não come uma coluna inteira: o texto ocupa a largura toda */
+  .al-caso, .al-volta { display: block; padding: 14px 14px; }
+  .al-caso::after, .al-volta::after { content: ""; display: table; clear: both; }
+  .al-caso-ico { float: left; width: 30px; height: 30px; border-radius: 9px; margin: 3px 10px 2px 0; }
+  .al-box { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 10px; row-gap: 6px; padding: 12px 14px; }
+  .al-box-c { display: contents; }
+  .al-box .t { grid-column: 1 / -1; margin-top: 0; }
+  .al-box-ico { width: 28px; height: 28px; border-radius: 8px; }
+  .al-mud { padding: 14px 14px; }
+  .al-q { padding: 14px 14px; }
+  .al-chk { padding: 4px 14px 6px; }
+  .al-compare { grid-template-columns: minmax(0, 1fr); }
+  .al-end { padding: 18px 16px; }
+  .al-hide-sm { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .al-show-sm { display: inline; }
+  .al-bar .sm-btn { padding-inline: 10px; }
+}
+
+/* PROVISÓRIO: o rodapé das imagens prontas traz o código interno do tema e "Ministério da Saúde". Até as imagens serem refeitas sem isso,
+   a tela cobre esse trecho (o rodapé é azul-marinho liso). Remover quando as imagens novas entrarem. Vale também no baralho (FlashcardsScreen).
+   Na A4 a faixa cobre só os 32% da direita: nas peças novas o logotipo fica no centro do rodapé e não pode ser cortado. */
+.al-face::after { content: ""; position: absolute; right: 0; bottom: 0; width: 48%; height: 7.9%; background: #0B2145; pointer-events: none; }
+.al-flip-txt .al-face::after { display: none; }
+.al-a4::after { content: ""; position: absolute; right: 0; bottom: 0; width: 32%; height: 4.4%; background: #0B2145; pointer-events: none; }

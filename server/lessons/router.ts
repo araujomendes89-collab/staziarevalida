@@ -17,7 +17,11 @@ import type { AiProvider, StructuredRequest } from "../contentHub/ai/provider";
 import { fetchLink, type ExtractedPage } from "../podcasts/extract";
 import { aiChoices } from "../ai/maestro";
 import type { ModelRef } from "../ai/config";
+import { loadComplementarTerms } from "../contentHub/complementarGuard";
+import { holdFile, recordFileSha, releaseFile, SHA_WARNING } from "../contentHub/fileSha";
+import { sweepLessonFiles } from "./files";
 import { AREA_CODES, generateLessonAssist, MAX_ASSIST_CHARS, type AssistProvider } from "./assist";
+import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 
 export const LESSONS_BUCKET = "lessons";
 const MAX_MB = Number(process.env.LESSONS_MAX_FILE_MB || 200);
@@ -63,7 +67,8 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       req.user = user;
       next();
     } catch (error) {
-      fail(res, 500, message(error));
+      (deps as { log?: (m: string) => void } | null)?.log?.(`conferência de login falhou: ${message(error)}`.slice(0, 300));
+      fail(res, 500, ACCESS_CHECK_FAILED);
     }
   });
   const asUser = <T>(req: Authed, fn: string, args: Record<string, unknown> = {}) => deps!.db.asUser<T>(req.user!, fn, args);
@@ -77,6 +82,8 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
     if (!lesson) throw httpError(404, "Aula não encontrada.");
     return id;
   };
+  /** Apaga do depósito os arquivos que ninguém mais usa (A07). Nunca lança erro: falha ao apagar não desfaz a ação da equipe. */
+  const sweep = (req: Authed) => sweepLessonFiles(deps!.db, req.user!, deps!.storage, deps!.log).catch(() => ({ deleted: [], failed: [], skipped: [] }));
   const checkType = (kind: unknown, type: unknown) => {
     const spec = TYPES[String(type)];
     if (!spec) throw httpError(415, "Envie um PDF (slides) ou um MP3 (áudio Flashcast).");
@@ -84,7 +91,25 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
     return spec;
   };
   const keyFor = (id: string, kind: string, ext: string) => `lessons/${id}/${kind}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
-  const register = (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }) =>
+  /**
+   * Registro do material com o SHA-256 gravado, FECHANDO POR SEGURANÇA (ver contentHub/fileSha.ts): a retenção do caminho é pedida
+   * antes; se o SHA-256 não puder ser gravado (nem na nova tentativa), o material fica escondido do aluno e a resposta traz `aviso`.
+   */
+  const register = async (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }, bytes?: Buffer) => {
+    await holdFile(deps!.db, m.key, deps!.log, "aulas");
+    let out;
+    try {
+      out = await registerRaw(req, id, m);
+    } catch (error) {
+      await releaseFile(deps!.db, m.key, deps!.log, "aulas"); // registro recusado: não deixa retenção órfã (o banco nunca solta a de arquivo já registrado)
+      throw error;
+    }
+    const sha = await recordFileSha(deps!.db, m.key, async () => bytes ?? (await deps!.storage.get(m.key)), deps!.log, "aulas");
+    await sweep(req); // o arquivo que este substituiu (PDF ou áudio) sai do depósito
+    if (!sha) return { ...out, aviso: SHA_WARNING };
+    return (await asUser(req, "app_lesson", { p_id: id }).catch(() => out)) ?? out; // a visão volta sem a marca de retenção
+  };
+  const registerRaw = (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }) =>
     asUser(req, "app_admin_lesson_material", {
       p_lesson_id: id,
       p_material: { kind: m.kind, title: m.title.slice(0, 200), storage_path: m.key, content_type: m.type, size_bytes: m.size },
@@ -103,7 +128,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       const signed = await deps!.storage.signedUpload(key);
       res.json({ mode: "signed", bucket: LESSONS_BUCKET, key, path: signed.path, token: signed.token });
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), shown(error));
     }
   });
 
@@ -117,7 +142,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       if (!(await deps!.storage.exists(key))) throw httpError(400, "O arquivo não chegou ao depósito. Envie de novo.");
       res.status(201).json(await register(req, id, { kind: String(kind), title: String(title || "Material"), key, type: String(content_type), size: Number(size_bytes) || 0 }));
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), shown(error));
     }
   });
 
@@ -135,9 +160,44 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       const name = decodeURIComponent(String(req.headers["x-file-name"] ?? "material")).slice(0, 200);
       const key = `lessons/${id}/${kind}-${crypto.createHash("sha256").update(body).digest("hex").slice(0, 16)}.${spec.ext}`;
       if (!(await deps!.storage.exists(key))) await deps!.storage.put(key, body, type);
-      res.status(201).json(await register(req, id, { kind, title: String(req.query.title ?? name), key, type, size: body.length }));
+      res.status(201).json(await register(req, id, { kind, title: String(req.query.title ?? name), key, type, size: body.length }, body));
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), shown(error));
+    }
+  });
+
+  /** Remover um material (equipe): o material sai e o arquivo dele também sai do depósito, se nenhuma outra linha o usa (A07). */
+  router.delete("/materials/:id", async (req: Authed, res) => {
+    try {
+      if (!ID.test(req.params.id)) throw httpError(400, "Material inválido.");
+      const view = await asUser(req, "app_admin_delete_lesson_material", { p_id: req.params.id });
+      await sweep(req);
+      res.json(view);
+    } catch (error: any) {
+      fail(res, error?.status ?? (forbidden(error) ? 403 : /não encontrad/i.test(message(error)) ? 404 : 400), shown(error));
+    }
+  });
+
+  /** Apagar a aula (só administrador): os materiais saem em cascata e os arquivos deles saem do depósito (A07). */
+  router.delete("/:id", async (req: Authed, res) => {
+    try {
+      if (!ID.test(req.params.id)) throw httpError(400, "Aula inválida.");
+      await asUser(req, "app_admin_delete_lesson", { p_id: req.params.id });
+      await sweep(req);
+      res.json({ deleted: true });
+    } catch (error: any) {
+      fail(res, error?.status ?? (forbidden(error) ? 403 : /não encontrad/i.test(message(error)) ? 404 : 400), shown(error));
+    }
+  });
+
+  /** Limpeza avulsa (equipe): depois de liberar um áudio que substitui outro, por exemplo. */
+  router.post("/files/sweep", async (req: Authed, res) => {
+    try {
+      await asUser(req, "app_admin_lessons"); // só a equipe
+      const r = await sweep(req);
+      res.json({ deleted: r.deleted.length, failed: r.failed.length });
+    } catch (error: any) {
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), shown(error));
     }
   });
 
@@ -156,7 +216,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       if (!m.storage_path) throw httpError(404, "Material sem arquivo.");
       res.json({ url: deps!.storage.signedUrl ? await deps!.storage.signedUrl(m.storage_path, m.kind === "flashcast" ? AUDIO_LINK_SECONDS : LINK_SECONDS) : null });
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 404), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 404), shown(error));
     }
   });
 
@@ -171,7 +231,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       res.setHeader("Cache-Control", "private, no-store");
       res.send(data);
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 404), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 404), shown(error));
     }
   });
 
@@ -182,7 +242,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       await asUser(req, "app_admin_lessons");
       res.json(await aiChoices(deps!.db));
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 500), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 500), shown(error));
     }
   });
 
@@ -208,7 +268,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
         try {
           pages = (await fetchLink(url, deps!.fetchImpl ?? fetch, deps!.checkHost)).pages;
         } catch (error) {
-          throw httpError(422, message(error));
+          throw httpError(422, shown(error));
         }
       } else {
         throw httpError(400, "Envie o material: PDF (texto por página), texto ou link.");
@@ -216,9 +276,12 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       const chars = pages.reduce((n, p) => n + p.text.length, 0);
       if (chars < 80) throw httpError(422, "O material não tem texto aproveitável (PDF escaneado?). Cole o texto.");
       if (chars > MAX_ASSIST_CHARS) throw httpError(413, "Material longo demais: até 400 mil caracteres.");
+      // lista de fontes que o aluno não pode ver: sem ela o pedido é recusado (503), nunca segue sem conferência
+      const terms = await loadComplementarTerms(deps!.db, undefined, deps!.log);
       let r;
       try {
         r = await generateLessonAssist({
+          terms,
           kind: kind as AssistProvider,
           db: deps!.db,
           actorId: req.user!.id,
@@ -231,7 +294,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
           mockRespond: kind === "mock" ? deps!.mockAssist : undefined,
         });
       } catch (error: any) {
-        throw httpError(error?.status ?? 502, `O assistente falhou: ${message(error)}`);
+        throw httpError(error?.status ?? 502, `O assistente falhou: ${shown(error)}`);
       }
       if (kind !== "mock") {
         try {
@@ -246,7 +309,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       }
       res.json(r);
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), shown(error));
     }
   });
 

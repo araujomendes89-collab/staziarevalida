@@ -1,0 +1,1370 @@
+{
+  "esquema": 1,
+  "slug": "dengue-e-outras-arboviroses",
+  "codigo": "GR-007",
+  "area": "cm",
+  "titulo": "Dengue e outras arboviroses",
+  "subtitulo": "Do sinal de alarme à chikungunya crônica",
+  "emblema": "gota",
+  "revisao": {
+    "status": "pre-revisado por agente",
+    "origem": "Aula GR-007 versao 4 (pacote 2026-10-15-aulas-corrigidas), afirmacoes AR01 a AR85, CK01 a CK39, FA01 a FA10, MU01 a MU10, VB02 a VB07, VT01 a VT08, ZK01 a ZK12",
+    "gerado_em": "2026-10-15",
+    "aprovacao_humana": null,
+    "pendencias": [
+      "Situação da vacina dengue do Instituto Butantan no SUS (descontinuação por precaução, avaliação de causalidade em curso): registrada como a aula traz; conferir a norma federal vigente antes de publicar.",
+      "A aula não informa a data do documento de suspensão da vacina do Butantan: data omitida.",
+      "Esquema detalhado de hidratação do grupo B além da 'hidratação oral como no grupo A' não consta na aula: omitido.",
+      "Doses de analgésicos (paracetamol e dipirona) não constam na aula: omitidas.",
+      "Conferência 15/10: item de analgésicos, opioides, AINEs e corticoides em casos refratários da chikungunya recebeu o contexto da aula 'na fase crônica' (CK39), para não parecer válido na fase aguda, em que AINE não é recomendado.",
+      "Conferência 15/10: ponto-chave do estadiamento completado com 'comprometimento grave de órgãos' (D) e 'sangramento de pele' (B), como na aula (AR36, AR58).",
+      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): hidratação oral (A e B) e venosa (C e D) passada de `faixas` para `itens`; repetição de \"um único sinal de alarme\" reduzida."
+    ]
+  },
+  "ramos": [
+    {
+      "id": "suspeita",
+      "titulo": "Suspeita e sinais de alarme",
+      "cor": "azul",
+      "icone": "estetoscopio",
+      "revisao": {
+        "itens": [
+          "Febre 2-7 dias + 2 ou mais: mialgia, cefaleia",
+          "Área com casos ou viagem nos últimos 14 dias",
+          "Fases: febril, crítica e de recuperação",
+          {
+            "t": "Sinais de alarme surgem na queda da febre",
+            "tom": "alerta"
+          },
+          "Basta 1 sinal de alarme; criança piora de súbito"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Sinais de alarme (na defervescência)",
+          "itens": [
+            "Dor abdominal intensa e contínua; vômitos persistentes.",
+            "Acúmulo de líquidos; hipotensão postural e/ou lipotimia.",
+            "Hepatomegalia maior que 2 cm abaixo do rebordo costal; sangramento de mucosa.",
+            "Letargia e/ou irritabilidade; aumento progressivo do hematócrito."
+          ]
+        },
+        {
+          "titulo": "Fisiopatologia e tempo",
+          "itens": [
+            "A maioria dos sinais de alarme vem do aumento da permeabilidade vascular, com possível choque por extravasamento plasmático.",
+            "A fase crítica começa com a defervescência, entre o 3º e o 7º dia; o choque costuma ocorrer entre o 4º e o 5º dia, geralmente precedido por sinais de alarme."
+          ]
+        },
+        {
+          "titulo": "Prova do laço",
+          "itens": [
+            "Calcular o valor médio (PAS+PAD)/2 e insuflar o manguito até ele: 5 minutos no adulto, 3 na criança.",
+            "Contar petéquias em quadrado de 2,5 cm no antebraço: positiva com 20 ou mais no adulto e 10 ou mais na criança.",
+            "Costuma ser negativa na obesidade e no choque; revisão de 2022 mostrou baixo valor de predição para formas graves e hospitalização."
+          ]
+        },
+        {
+          "titulo": "Criança sem foco",
+          "itens": [
+            "Pode ser caso suspeito toda criança com febre aguda de 2 a 7 dias sem foco de infecção aparente."
+          ]
+        },
+        {
+          "titulo": "Primeiros dias",
+          "itens": [
+            "Quando é difícil diferenciar a dengue de outras viroses, adotar o manejo clínico de dengue.",
+            "Manifestações da lista: náuseas, vômitos, exantema, mialgias, artralgias, cefaleia, dor retro-orbital, petéquias, prova do laço positiva e leucopenia."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Febre de 2 a 7 dias + 2 ou mais: mialgia, cefaleia, dor retro-orbital, exantema, petéquias...",
+            "Em área com casos ou viagem nos últimos 14 dias a área com transmissão",
+            "Na criança, o agravamento costuma ser súbito",
+            "Basta 1 sinal de alarme"
+          ]
+        }
+      ],
+      "claims": [
+        "AR01",
+        "AR02",
+        "AR03",
+        "AR04",
+        "AR05",
+        "AR06",
+        "AR07",
+        "AR08",
+        "AR09",
+        "AR10",
+        "AR11",
+        "AR12",
+        "AR14",
+        "AR15",
+        "AR16",
+        "AR17",
+        "AR18",
+        "AR19",
+        "AR20"
+      ]
+    },
+    {
+      "id": "estadiamento",
+      "titulo": "Estadiamento A, B, C e D",
+      "cor": "ciano",
+      "icone": "prancheta",
+      "revisao": {
+        "fluxo": [
+          {
+            "t": "Choque, sangramento, órgão grave: D",
+            "tom": "alerta"
+          },
+          {
+            "t": "Algum sinal de alarme: grupo C",
+            "tom": "atencao"
+          },
+          "Sangramento de pele, condição especial: B"
+        ],
+        "itens": [
+          {
+            "t": "Nada disso: grupo A",
+            "tom": "conduta"
+          },
+          "O grupo define exames, local e tratamento",
+          "Pode mudar de grupo: reclassificar",
+          "Hidratação oral em A e B; venosa em C e D",
+          "Notificar todo caso suspeito"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Grupo B: condições especiais, risco social ou comorbidades",
+          "itens": [
+            "Lactentes (menos de 24 meses), gestantes, adultos acima de 65 anos.",
+            "Hipertensão ou outras doenças cardiovasculares graves, diabetes, DPOC, asma, obesidade.",
+            "Doenças hematológicas crônicas, doença renal crônica, doença ácido-péptica, hepatopatias e doenças autoimunes."
+          ]
+        },
+        {
+          "titulo": "Sinais de choque (grupo D)",
+          "itens": [
+            "Taquicardia, extremidades frias, pulso fraco e filiforme, enchimento capilar maior que 2 segundos.",
+            "PA convergente menor que 20 mmHg, taquipneia, oligúria menor que 1,5 mL/kg/h.",
+            {
+              "t": "Hipotensão e cianose são tardias.",
+              "tom": "atencao"
+            }
+          ]
+        },
+        {
+          "titulo": "Grupo A",
+          "itens": [
+            "Caso suspeito sem sinais de alarme e sem comorbidades, grupo de risco ou condição clínica especial."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "O paciente pode mudar de grupo em pouco tempo: reclassificar",
+            "Hidratação oral nos grupos A e B; venosa nos C e D",
+            {
+              "t": "Choque, sangramento grave ou comprometimento grave de órgãos: grupo D",
+              "tom": "alerta"
+            },
+            "Sangramento de pele (espontâneo ou induzido), condição especial, risco social ou comorbidade: grupo B"
+          ]
+        }
+      ],
+      "claims": [
+        "AR21",
+        "AR22",
+        "AR23",
+        "AR24",
+        "AR25",
+        "AR36",
+        "AR37",
+        "AR38",
+        "AR44",
+        "AR57",
+        "AR58",
+        "AR81"
+      ]
+    },
+    {
+      "id": "tratamento",
+      "titulo": "Conduta por grupo",
+      "cor": "laranja",
+      "icone": "seringa",
+      "lado": "centro",
+      "revisao": {
+        "linhas": [
+          {
+            "rotulo": "Grupo A",
+            "itens": [
+              "Ambulatorial; exames a critério médico",
+              "Adulto: 60 mL/kg/dia, 1/3 com sais de reidratação oral"
+            ]
+          },
+          {
+            "rotulo": "Grupo B",
+            "itens": [
+              "Hemograma completo obrigatório",
+              "Resultado em até 2 h (no máximo 4 h)"
+            ]
+          },
+          {
+            "rotulo": "Grupo C e D",
+            "itens": [
+              "C: SF 0,9% 10 mL/kg na 1ª hora",
+              "D: 20 mL/kg em até 20 min, até 3 vezes"
+            ]
+          }
+        ],
+        "itens": [
+          {
+            "t": "Grupos C e D: soro mesmo sem exames",
+            "tom": "conduta"
+          },
+          {
+            "t": "Dor e febre: paracetamol e/ou dipirona",
+            "tom": "conduta"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Retorno no dia da melhora da febre, ou no 5º dia se não houver defervescência",
+            "Observação com hidratação oral até o resultado",
+            "Hematócrito normal: ambulatorial, reavaliação diária até 48 h após a queda da febre",
+            "Hemoconcentração ou sinal de alarme: conduzir como grupo C",
+            "Internação até estabilizar, no mínimo 48 h",
+            "Exames: hemograma, albumina, transaminases",
+            "UTI até estabilizar (mínimo 48 h)",
+            "Reavaliar a cada 15 a 30 min; hematócrito a cada 2 h",
+            {
+              "t": "Não usar salicilatos, anti-inflamatórios não esteroides nem corticosteroides",
+              "tom": "alerta"
+            },
+            "Adulto: 60 mL/kg/dia, 1/3 com sais de reidratação oral",
+            "Hemograma completo obrigatório (resultado em até 2 h, no máximo 4 h)",
+            "Soro fisiológico 0,9%, 10 mL/kg na 1ª hora, mesmo sem exames",
+            "Expansão rápida: 20 mL/kg em até 20 min, até 3 vezes"
+          ]
+        },
+        {
+          "titulo": "Grupo A",
+          "itens": [
+            "Criança (menos de 13 anos): até 10 kg, 130 mL/kg/dia; acima de 10 a 20 kg, 100 mL/kg/dia; acima de 20 kg, 80 mL/kg/dia.",
+            "Manter a hidratação durante toda a febre e por até 24 a 48 horas após a defervescência.",
+            "Retorno imediato se surgirem sinais de alarme; entregar o cartão de acompanhamento; reforçar o repelente (na viremia, o paciente pode ser fonte de vírus para o mosquito).",
+            "Exames específicos de confirmação não são necessários para decidir o tratamento."
+          ]
+        },
+        {
+          "titulo": "Grupo C: passo a passo",
+          "fluxo": [
+            {
+              "t": "10 mL/kg de soro fisiológico na 1ª hora",
+              "tom": "conduta"
+            },
+            "Após 1 hora: sinais vitais, PA e diurese (desejável 1 mL/kg/h)",
+            "Manter 10 mL/kg/hora na 2ª hora até o hematócrito (colhido em 2 horas); cada fase de expansão tem no máximo 20 mL/kg em 2 horas",
+            "Sem melhora: repetir a expansão até 3 vezes",
+            "Com melhora: manutenção com 25 mL/kg em 6 horas e, se melhorar, 25 mL/kg em 8 horas",
+            {
+              "t": "Sem melhora clínica e laboratorial: conduzir como grupo D",
+              "tom": "alerta"
+            }
+          ],
+          "itens": [
+            "Exames recomendados: raio X de tórax (PA, perfil e Laurell) e ultrassonografia de abdome.",
+            "Os exames de confirmação são obrigatórios, mas não essenciais para a conduta."
+          ]
+        },
+        {
+          "titulo": "Grupo D e choque persistente",
+          "itens": [
+            "Qualquer nível de atenção, inclusive na transferência, mesmo sem exames; se melhorar, volta à fase de expansão do grupo C.",
+            "Hematócrito em elevação: expansores plasmáticos (albumina).",
+            "Hematócrito em queda: investigar hemorragia e coagulopatia de consumo; se hemorragia, concentrado de hemácias.",
+            {
+              "t": "Plaquetas só em sangramento persistente não controlado, após corrigir coagulação e choque, com trombocitopenia e INR maior que 1,5 vez o normal.",
+              "tom": "atencao"
+            }
+          ]
+        },
+        {
+          "titulo": "Alta hospitalar (todos os critérios)",
+          "itens": [
+            "Estabilidade hemodinâmica por 48 horas e sem febre por 24 horas.",
+            "Melhora visível, hematócrito normal e estável por 24 horas e plaquetas em elevação.",
+            "Depois, retorno conforme o grupo B. Também indicam internação a recusa de alimentos e líquidos e a impossibilidade de seguimento ou retorno."
+          ]
+        },
+        {
+          "titulo": "Idoso e gestante",
+          "itens": [
+            "Idoso: mais risco de complicações e choque, mas também de sobrecarga de fluidos; acompanhar de perto buscando edema pulmonar.",
+            "Gestante: tratada conforme o estadiamento, com vigilância; com sinal de alarme ou choque, recebe o mesmo volume dos demais.",
+            "Nela, taquicardia, hipotensão postural e hemoconcentração aparecem mais tarde; o diferencial da forma grave inclui pré-eclâmpsia, síndrome HELLP e sepse."
+          ]
+        }
+      ],
+      "claims": [
+        "AR22",
+        "AR23",
+        "AR26",
+        "AR27",
+        "AR28",
+        "AR29",
+        "AR30",
+        "AR31",
+        "AR32",
+        "AR33",
+        "AR34",
+        "AR35",
+        "AR39",
+        "AR40",
+        "AR41",
+        "AR42",
+        "AR43",
+        "AR45",
+        "AR46",
+        "AR47",
+        "AR48",
+        "AR49",
+        "AR50",
+        "AR51",
+        "AR52",
+        "AR53",
+        "AR54",
+        "AR55",
+        "AR56",
+        "AR59",
+        "AR60",
+        "AR61",
+        "AR62",
+        "AR63",
+        "AR64",
+        "AR65",
+        "AR66",
+        "AR67",
+        "AR68",
+        "AR69",
+        "AR70",
+        "AR71",
+        "AR72",
+        "AR73",
+        "AR82",
+        "AR83",
+        "AR85"
+      ]
+    },
+    {
+      "id": "laboratorio",
+      "titulo": "Confirmação laboratorial",
+      "cor": "azul-forte",
+      "icone": "microscopio",
+      "revisao": {
+        "linhas": [
+          {
+            "rotulo": "Dengue",
+            "itens": [
+              "Até o 5º dia: RT-PCR, NS1, isolamento",
+              "A partir do 6º dia: IgM ELISA"
+            ]
+          },
+          {
+            "rotulo": "Chikungunya",
+            "itens": [
+              "RT-PCR até o 5º dia",
+              "IgM/IgG ELISA a partir do 6º dia"
+            ]
+          },
+          {
+            "rotulo": "Febre amarela",
+            "itens": [
+              "IgM ELISA a partir do 7º dia"
+            ]
+          }
+        ],
+        "itens": [
+          {
+            "t": "Dengue e Zika cruzam: resultado inconclusivo",
+            "tom": "atencao"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "RT-PCR e isolamento, de preferência até o 10º dia",
+            "Sem exame, o caso pode ser confirmado por vínculo clínico-epidemiológico",
+            {
+              "t": "Dengue e Zika são flavivírus: a reação cruzada pode dar resultado inconclusivo",
+              "tom": "atencao"
+            },
+            "A partir do 6º dia: sorologia IgM ELISA"
+          ]
+        },
+        {
+          "titulo": "Dengue",
+          "itens": [
+            "Confirmam: NS1 reagente, isolamento viral, RT-PCR e IgM ELISA.",
+            "IgM pode não ser detectável em alguns casos: pode ser preciso segunda amostra para esclarecer dengue, chikungunya ou Zika."
+          ]
+        },
+        {
+          "titulo": "Chikungunya",
+          "itens": [
+            "IgM reagente confirma em uma amostra na fase aguda (a partir do 6º dia) ou convalescente (15 dias após o início).",
+            "Na fase crônica, IgG com clínica sugestiva também confirma.",
+            "Teste rápido é triagem: se positivo, confirmar por ELISA."
+          ]
+        },
+        {
+          "titulo": "Zika",
+          "itens": [
+            "Testagem começa por métodos diretos em amostras colhidas até o 5º dia.",
+            "IgM de Zika e de dengue cruzam: testar em paralelo; IgM reagente para as duas pode ser infecção recente por qualquer uma, reação cruzada ou coinfecção.",
+            "Confirmam: isolamento viral positivo, RT-PCR em tempo real detectável ou IgM reagente."
+          ]
+        }
+      ],
+      "claims": [
+        "AR74",
+        "AR75",
+        "AR76",
+        "AR77",
+        "AR78",
+        "CK23",
+        "CK24",
+        "CK25",
+        "CK26",
+        "CK27",
+        "CK36",
+        "CK37",
+        "FA05",
+        "FA06",
+        "FA07",
+        "ZK03",
+        "ZK04",
+        "ZK05",
+        "ZK10",
+        "ZK12"
+      ]
+    },
+    {
+      "id": "chikungunya",
+      "titulo": "Chikungunya",
+      "cor": "roxo",
+      "icone": "relogio",
+      "revisao": {
+        "linhas": [
+          {
+            "rotulo": "Fases",
+            "itens": [
+              "Aguda até 14 d: febre e poliartralgia",
+              "Pós-aguda 15-90 d; crônica após 3 m"
+            ]
+          },
+          {
+            "rotulo": "Pós-aguda",
+            "itens": [
+              "Dor não inflamatória: AINE",
+              "Reavaliar após 10 dias"
+            ]
+          },
+          {
+            "rotulo": "Crônica",
+            "itens": [
+              "Preferencialmente hidroxicloroquina",
+              "Na falha: metotrexato"
+            ]
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Analgésicos em doses fixas; AINEs não recomendados",
+              "tom": "alerta"
+            },
+            "Artrite/tenossinovite: corticoide após 14 dias",
+            "Dor neuropática (DN4 com 4 ou mais): tricíclico ou anticonvulsivante",
+            "Na falha: metotrexato; depois, reumatologista",
+            "Aguda: até 14 dias",
+            "Pós-aguda: 15 a 90 dias",
+            "Crônica: após 3 meses",
+            "Febre súbita e poliartralgia intensa",
+            "Dor não inflamatória: AINE, reavaliar após 10 dias"
+          ]
+        },
+        {
+          "titulo": "Quadro e suspeita",
+          "itens": [
+            "Febre de início súbito e poliartralgia intensa de grandes e pequenas articulações, com dor nas costas, exantema, cefaleia e fadiga, por até 14 dias.",
+            "Artralgia em mais de 90% dos casos agudos, poliarticular e simétrica.",
+            "A queda da febre não se associa à piora, ao contrário da dengue.",
+            "Suspeito: febre e artralgia ou artrite não explicadas por outra causa, em área de transmissão até duas semanas antes ou com vínculo com caso confirmado; idosos podem não ter febre."
+          ]
+        },
+        {
+          "titulo": "Grupos de risco e gravidade",
+          "itens": [
+            "Gestantes, maiores de 65 anos, menores de 2 anos e pessoas com comorbidades.",
+            "Forma grave: insuficiência de pelo menos um órgão ou sistema, com risco de vida e necessidade de internação.",
+            "Cerca de metade dos óbitos ocorre na fase pós-aguda; 45% a 75% seguem com sintomas por até 3 meses."
+          ]
+        },
+        {
+          "titulo": "Detalhes do tratamento",
+          "itens": [
+            "Corticoide pós-agudo: prednisona 0,5 mg/kg/dia (máximo 40 mg), com retirada lenta (a suspensão abrupta pode causar rebote).",
+            "Fase crônica: pedir sorologia e testes para o diagnóstico diferencial; hidroxicloroquina reavaliada após 8 semanas e, se houver resposta, mantida por mais 3 meses.",
+            "Quem chega à fase crônica sem ter recebido a terapêutica da fase pós-aguda: seguir a terapia da fase correspondente; o corticoide pode ser prescrito se ainda não usado.",
+            "Na fase crônica, em casos refratários ou recidivantes, ou como ponte até a droga da fase crônica agir, podem ser usados analgésicos, opioides, AINEs e corticoides."
+          ]
+        },
+        {
+          "titulo": "Gestação",
+          "itens": [
+            "Sem evidência de efeito teratogênico.",
+            "Risco de transmissão vertical de 50% se a infecção ocorre até uma semana antes do parto.",
+            "Cesariana parece não alterar o risco; o vírus não passa pelo aleitamento."
+          ]
+        }
+      ],
+      "claims": [
+        "CK01",
+        "CK02",
+        "CK03",
+        "CK04",
+        "CK05",
+        "CK06",
+        "CK07",
+        "CK08",
+        "CK09",
+        "CK10",
+        "CK11",
+        "CK12",
+        "CK13",
+        "CK14",
+        "CK15",
+        "CK16",
+        "CK17",
+        "CK18",
+        "CK19",
+        "CK20",
+        "CK21",
+        "CK22",
+        "CK30",
+        "CK31",
+        "CK32",
+        "CK33",
+        "CK38",
+        "CK39"
+      ]
+    },
+    {
+      "id": "zika-fa",
+      "titulo": "Zika e febre amarela",
+      "cor": "ciano",
+      "icone": "virus",
+      "revisao": {
+        "linhas": [
+          {
+            "rotulo": "Zika",
+            "itens": [
+              "Exantema pruriginoso + febre/artralgia",
+              "Gestante: confirmar por método direto"
+            ]
+          },
+          {
+            "rotulo": "Febre amarela",
+            "itens": [
+              "Febre súbita, icterícia e/ou hemorragia",
+              "Não vacinado; exposição em até 15 dias"
+            ]
+          }
+        ],
+        "itens": [
+          "FA: grave bifásica; sinal de Faget (pulso lento)",
+          "FA: notificação compulsória e imediata",
+          "Vacina: ao menos 10 dias antes da área de risco"
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Febre amarela entra no diferencial das síndromes hemorrágicas febris",
+            "Exantema maculopapular pruriginoso + febre (pode ser baixa), conjuntivite ou artralgia",
+            "Gestantes: confirmação específica por método direto, prioridade de investigação (100%)",
+            "Não vacinado, febre súbita com icterícia e/ou hemorragia, exposição em 15 dias a área de risco"
+          ]
+        },
+        {
+          "titulo": "Zika: confirmação clínico-epidemiológica",
+          "itens": [
+            "Depois dos primeiros casos confirmados na área, vale para os demais casos agudos, exceto gestantes, crianças, casos neurológicos e idosos, entre outros.",
+            "No pré-natal, registrar no cartão da gestante e no prontuário infecções, rash, exantema ou febre."
+          ]
+        },
+        {
+          "titulo": "Febre amarela",
+          "itens": [
+            "Também é suspeito quem esteve em local com epizootia em primatas não humanos; a forma grave tem fase de infecção, aparente remissão e fase toxêmica.",
+            "A IgM ELISA confirma em não vacinados, junto com clínica, epidemiologia e laboratório.",
+            "Para impedir a reurbanização, isolar os casos suspeitos no período de viremia em áreas com Aedes aegypti.",
+            "A vacina é a principal ferramenta de prevenção e contenção de surtos; os anticorpos aparecem entre o 7º e o 10º dia."
+          ]
+        },
+        {
+          "titulo": "Outras síndromes hemorrágicas febris",
+          "itens": [
+            "Hantavirose, febre amarela, leptospirose, riquetsioses e púrpuras."
+          ]
+        }
+      ],
+      "claims": [
+        "ZK01",
+        "ZK02",
+        "ZK06",
+        "ZK07",
+        "ZK08",
+        "ZK09",
+        "FA01",
+        "FA02",
+        "FA03",
+        "FA04",
+        "FA06",
+        "FA08",
+        "FA09",
+        "FA10",
+        "AR84"
+      ]
+    },
+    {
+      "id": "vigilancia",
+      "titulo": "Notificação, vetores e vacina",
+      "cor": "verde",
+      "icone": "escudo",
+      "revisao": {
+        "itens": [
+          "Notificação compulsória: dengue, chik., Zika",
+          {
+            "t": "Óbito suspeito: notificar em até 24 h",
+            "tom": "atencao"
+          },
+          "Primeiros casos: controle focal e criadouros",
+          "Vacina do calendário: 10 a <15 anos, 2 doses",
+          {
+            "t": "Butantan: descontinuada no SUS por precaução",
+            "tom": "alerta"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Manejo integrado de vetores (ciclo)",
+          "fluxo": [
+            "Análise situacional (dados epidemiológicos e entomológicos)",
+            "Desenho das operações e planificação",
+            "Implementação",
+            "Monitoramento e avaliação"
+          ],
+          "itens": [
+            "Prioriza métodos sustentáveis e o uso racional de inseticidas.",
+            "Com os primeiros casos suspeitos: orientar a comunidade e intensificar visitas, controle focal e eliminação mecânica de criadouros, com inseticidas quando necessário."
+          ]
+        },
+        {
+          "titulo": "Vacina do Instituto Butantan",
+          "itens": [
+            "A farmacovigilância detectou sinais de segurança relacionados a eventos semelhantes à dengue com sinais de alarme e à dengue grave.",
+            {
+              "t": "A avaliação está em curso e não confirma causalidade neste momento.",
+              "tom": "atencao"
+            },
+            "Por precaução, o Ministério da Saúde orientou descontinuar a estratégia com essa vacina no SUS e recolher todas as doses disponíveis.",
+            "Quem foi vacinado e, de 0 a 21 dias depois, tem quadro compatível com dengue é caso em monitoramento prioritário.",
+            "Conferir sempre a norma federal vigente."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Dengue, chikungunya e Zika: notificação compulsória (suspeito ou confirmado)",
+            {
+              "t": "Óbito suspeito: notificação imediata, em até 24 horas",
+              "tom": "atencao"
+            },
+            "Com os primeiros casos: visitas domiciliares, controle focal, eliminação de criadouros",
+            "Vacina dengue do calendário: 10 anos a 14 anos, 11 meses e 29 dias; 2 doses, intervalo de 3 meses",
+            "Via exclusivamente subcutânea; aguardar 6 meses após ter dengue",
+            {
+              "t": "Vacina do Instituto Butantan: estratégia descontinuada no SUS por precaução",
+              "tom": "alerta"
+            }
+          ]
+        }
+      ],
+      "claims": [
+        "AR79",
+        "AR80",
+        "CK28",
+        "CK29",
+        "ZK11",
+        "VT01",
+        "VT02",
+        "VT03",
+        "VT04",
+        "VT05",
+        "VT06",
+        "VT07",
+        "VT08",
+        "MU04",
+        "MU05",
+        "MU06",
+        "MU07",
+        "MU10",
+        "VB02",
+        "VB03",
+        "VB04",
+        "VB05",
+        "VB06",
+        "VB07"
+      ]
+    },
+    {
+      "id": "revalida",
+      "titulo": "Revalida INEP: decisões e pegadinhas",
+      "cor": "vermelho",
+      "icone": "alerta",
+      "revisao": {
+        "itens": [
+          {
+            "t": "Liberar na queda da febre sem retorno marcado",
+            "tom": "alerta"
+          },
+          {
+            "t": "Grupo B com sinal de alarme (um só já é C)",
+            "tom": "alerta"
+          },
+          {
+            "t": "Esperar exames para iniciar soro em C e D",
+            "tom": "alerta"
+          },
+          {
+            "t": "Salicilato, AINE ou corticoide na suspeita",
+            "tom": "alerta"
+          },
+          {
+            "t": "Plaquetas só por estar baixa; AINE na chik aguda",
+            "tom": "alerta"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais armadilhas",
+          "itens": [
+            "Na chikungunya crônica, esquecer que a droga de escolha é preferencialmente a hidroxicloroquina e o metotrexato entra na falha dela.",
+            "Confirmar Zika em gestante só pela clínica, ou pedir só IgM sem testar dengue em paralelo e sem método direto nos primeiros dias."
+          ]
+        },
+        {
+          "titulo": "O que mudou desde a prova",
+          "itens": [
+            "Dengue: a edição vigente do guia do Ministério da Saúde é a 6ª, de 2024; destaca os idosos como grupo de maior vulnerabilidade para desfechos fatais e revisou a hidratação intravenosa, o manejo em cardiopatas e o uso de anticoagulantes e antiagregantes. Questões antigas podem trazer condutas de edições anteriores.",
+            "Prova do laço: segue na pesquisa de sangramento induzido, mas com baixo valor de predição para formas graves.",
+            "Chikungunya: manejo atualizado a partir de 2023; edição vigente é a 2ª revisada, de 2025. A classificação separa manifestações articulares e extra-articulares; o que era chamado de complicação 'atípica' agora é manifestação extra-articular e grave.",
+            "Vacina dengue do calendário e situação da vacina do Instituto Butantan: ver o ramo de vigilância."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Achar que a queda da febre é melhora e liberar sem retorno marcado",
+              "tom": "alerta"
+            },
+            {
+              "t": "Deixar no grupo B quem tem um sinal de alarme (um só já é grupo C)",
+              "tom": "alerta"
+            },
+            {
+              "t": "Esperar hemograma, NS1 ou vaga para começar o soro nos grupos C e D",
+              "tom": "alerta"
+            },
+            {
+              "t": "Prescrever salicilatos, AINEs ou corticosteroides na suspeita de dengue",
+              "tom": "alerta"
+            },
+            {
+              "t": "Sorologia antes do 6º dia ou detecção viral depois do 5º",
+              "tom": "alerta"
+            },
+            {
+              "t": "Transfundir plaquetas só porque estão baixas; AINE na chikungunya aguda",
+              "tom": "alerta"
+            }
+          ]
+        }
+      ],
+      "claims": [
+        "AR06",
+        "AR07",
+        "AR09",
+        "AR10",
+        "AR44",
+        "AR45",
+        "AR59",
+        "AR28",
+        "AR74",
+        "AR66",
+        "CK07",
+        "CK20",
+        "ZK06",
+        "ZK07",
+        "ZK04",
+        "ZK03",
+        "MU01",
+        "MU02",
+        "MU03",
+        "AR81",
+        "AR20",
+        "MU08",
+        "MU09",
+        "CK34",
+        "CK35"
+      ]
+    }
+  ],
+  "pontos_chave": [
+    "Sinais de alarme: na queda da febre, marcar retorno",
+    "Um único sinal de alarme já é grupo C",
+    "Grupos C e D: soro imediato, mesmo sem exames",
+    "Dengue: viral até o 5º dia; IgM a partir do 6º"
+  ],
+  "atencao": [
+    "Um único sinal de alarme já é grupo C",
+    "Plaquetas só em sangramento persistente não controlado, choque tratado",
+    "Dengue e Zika cruzam na sorologia: testar em paralelo",
+    "Idoso: risco de sobrecarga de fluidos; vigiar edema pulmonar"
+  ],
+  "foto": {
+    "webp": "/mapas-mentais/dengue-e-outras-arboviroses.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  },
+  "cartoes": {
+    "conceito": {
+      "titulo": "Suspeita de dengue",
+      "icone": "virus",
+      "cor": "azul",
+      "itens": [
+        "Febre de 2 a 7 dias e 2 ou mais sintomas",
+        "Área com casos ou viagem nos últimos 14 dias",
+        "Fases: febril, crítica e de recuperação",
+        "Sinais de alarme surgem na queda da febre"
+      ],
+      "claims": [
+        "AR01",
+        "AR02",
+        "AR03",
+        "AR04",
+        "AR05",
+        "AR06",
+        "AR07",
+        "AR08",
+        "AR09",
+        "AR10",
+        "AR11",
+        "AR12",
+        "AR14",
+        "AR15",
+        "AR16",
+        "AR17",
+        "AR18",
+        "AR19",
+        "AR20"
+      ]
+    },
+    "quadro": {
+      "titulo": "Sinais de alarme (queda da febre)",
+      "icone": "alerta",
+      "cor": "vermelho",
+      "itens": [
+        "Dor abdominal intensa e contínua",
+        "Vômitos persistentes",
+        "Hipotensão postural ou lipotimia",
+        "Sangramento de mucosa",
+        "Letargia ou irritabilidade"
+      ],
+      "claims": [
+        "AR01",
+        "AR02",
+        "AR03",
+        "AR04",
+        "AR05",
+        "AR06",
+        "AR07",
+        "AR08",
+        "AR09",
+        "AR10",
+        "AR11",
+        "AR12",
+        "AR14",
+        "AR15",
+        "AR16",
+        "AR17",
+        "AR18",
+        "AR19",
+        "AR20"
+      ]
+    },
+    "fatores": {
+      "titulo": "Grupo B: condições especiais",
+      "icone": "pessoas",
+      "cor": "amarelo",
+      "itens": [
+        "Lactentes (menos de 24 meses)",
+        "Gestantes",
+        "Adultos acima de 65 anos",
+        "Diabetes, obesidade, asma",
+        "Doença renal crônica, hepatopatias"
+      ],
+      "claims": [
+        "AR21",
+        "AR22",
+        "AR23",
+        "AR24",
+        "AR25",
+        "AR36",
+        "AR37",
+        "AR38",
+        "AR44",
+        "AR57",
+        "AR58",
+        "AR81"
+      ]
+    },
+    "diagnostico": {
+      "titulo": "Confirmação laboratorial",
+      "icone": "microscopio",
+      "cor": "verde",
+      "linhas": [
+        {
+          "icone": "microscopio",
+          "rotulo": "Dengue",
+          "itens": [
+            "Até o 5º dia: RT-PCR, NS1, isolamento",
+            "A partir do 6º dia: IgM ELISA"
+          ]
+        },
+        {
+          "icone": "tubo",
+          "rotulo": "Chikungunya",
+          "itens": [
+            "RT-PCR até o 5º dia",
+            "IgM/IgG ELISA a partir do 6º dia"
+          ]
+        },
+        {
+          "icone": "gota",
+          "rotulo": "Febre amarela",
+          "itens": [
+            "IgM ELISA a partir do 7º dia",
+            "Notificação compulsória e imediata"
+          ]
+        }
+      ],
+      "claims": [
+        "AR74",
+        "AR75",
+        "AR76",
+        "AR77",
+        "AR78",
+        "CK23",
+        "CK24",
+        "CK25",
+        "CK26",
+        "CK27",
+        "CK36",
+        "CK37",
+        "FA05",
+        "FA06",
+        "FA07",
+        "ZK03",
+        "ZK04",
+        "ZK05",
+        "ZK10",
+        "ZK12",
+        "CK01",
+        "CK02",
+        "CK03",
+        "CK04",
+        "CK05",
+        "CK06",
+        "CK07",
+        "CK08",
+        "CK09",
+        "CK10",
+        "CK11",
+        "CK12",
+        "CK13",
+        "CK14",
+        "CK15",
+        "CK16",
+        "CK17",
+        "CK18",
+        "CK19",
+        "CK20",
+        "CK21",
+        "CK22",
+        "CK30",
+        "CK31",
+        "CK32",
+        "CK33",
+        "CK38",
+        "CK39",
+        "ZK01",
+        "ZK02",
+        "ZK06",
+        "ZK07",
+        "ZK08",
+        "ZK09",
+        "FA01",
+        "FA02",
+        "FA03",
+        "FA04",
+        "FA08",
+        "FA09",
+        "FA10",
+        "AR84"
+      ]
+    },
+    "exames": {
+      "titulo": "Interpretação dos exames",
+      "icone": "lupa",
+      "cor": "roxo",
+      "linhas": [
+        {
+          "icone": "alerta",
+          "rotulo": "Reação cruzada",
+          "texto": "Dengue e Zika são flavivírus: IgM pode cruzar; testar em paralelo"
+        },
+        {
+          "icone": "prancheta",
+          "rotulo": "Sem exame disponível",
+          "texto": "Caso pode ser confirmado por vínculo clínico-epidemiológico"
+        },
+        {
+          "icone": "tubo",
+          "rotulo": "Teste rápido",
+          "texto": "Chikungunya: é triagem; se positivo, confirmar por ELISA"
+        },
+        {
+          "icone": "gestante",
+          "rotulo": "Zika em gestante",
+          "texto": "Confirmar por método direto, com prioridade de investigação"
+        }
+      ],
+      "claims": [
+        "AR74",
+        "AR75",
+        "AR76",
+        "AR77",
+        "AR78",
+        "CK23",
+        "CK24",
+        "CK25",
+        "CK26",
+        "CK27",
+        "CK36",
+        "CK37",
+        "FA05",
+        "FA06",
+        "FA07",
+        "ZK03",
+        "ZK04",
+        "ZK05",
+        "ZK10",
+        "ZK12",
+        "ZK01",
+        "ZK02",
+        "ZK06",
+        "ZK07",
+        "ZK08",
+        "ZK09",
+        "FA01",
+        "FA02",
+        "FA03",
+        "FA04",
+        "FA08",
+        "FA09",
+        "FA10",
+        "AR84"
+      ]
+    },
+    "conduta": {
+      "titulo": "Conduta por grupo",
+      "icone": "seringa",
+      "cor": "azul-forte",
+      "linhas": [
+        {
+          "icone": "pilula",
+          "rotulo": "Grupo A",
+          "itens": [
+            "Ambulatorial; exames a critério médico",
+            "Adulto: 60 mL/kg/dia, 1/3 com sais orais"
+          ]
+        },
+        {
+          "icone": "microscopio",
+          "rotulo": "Grupo B",
+          "itens": [
+            "Hemograma completo obrigatório",
+            "Resultado em até 2 h (no máximo 4 h)"
+          ]
+        },
+        {
+          "icone": "seringa",
+          "rotulo": "Grupos C e D",
+          "itens": [
+            "C: soro fisiológico 10 mL/kg na 1ª hora",
+            "D: 20 mL/kg em até 20 min, até 3 vezes"
+          ]
+        }
+      ],
+      "claims": [
+        "AR22",
+        "AR23",
+        "AR26",
+        "AR27",
+        "AR28",
+        "AR29",
+        "AR30",
+        "AR31",
+        "AR32",
+        "AR33",
+        "AR34",
+        "AR35",
+        "AR39",
+        "AR40",
+        "AR41",
+        "AR42",
+        "AR43",
+        "AR45",
+        "AR46",
+        "AR47",
+        "AR48",
+        "AR49",
+        "AR50",
+        "AR51",
+        "AR52",
+        "AR53",
+        "AR54",
+        "AR55",
+        "AR56",
+        "AR59",
+        "AR60",
+        "AR61",
+        "AR62",
+        "AR63",
+        "AR64",
+        "AR65",
+        "AR66",
+        "AR67",
+        "AR68",
+        "AR69",
+        "AR70",
+        "AR71",
+        "AR72",
+        "AR73",
+        "AR82",
+        "AR83",
+        "AR85"
+      ]
+    },
+    "objetivos": {
+      "titulo": "Condutas essenciais",
+      "icone": "alvo",
+      "cor": "ciano",
+      "itens": [
+        "Grupos C e D: soro mesmo sem exames",
+        "Reclassificar: o grupo pode mudar",
+        "Grupo B: hemograma completo obrigatório",
+        "Notificar todo caso suspeito"
+      ],
+      "claims": [
+        "AR21",
+        "AR22",
+        "AR23",
+        "AR24",
+        "AR25",
+        "AR36",
+        "AR37",
+        "AR38",
+        "AR44",
+        "AR57",
+        "AR58",
+        "AR81",
+        "AR26",
+        "AR27",
+        "AR28",
+        "AR29",
+        "AR30",
+        "AR31",
+        "AR32",
+        "AR33",
+        "AR34",
+        "AR35",
+        "AR39",
+        "AR40",
+        "AR41",
+        "AR42",
+        "AR43",
+        "AR45",
+        "AR46",
+        "AR47",
+        "AR48",
+        "AR49",
+        "AR50",
+        "AR51",
+        "AR52",
+        "AR53",
+        "AR54",
+        "AR55",
+        "AR56",
+        "AR59",
+        "AR60",
+        "AR61",
+        "AR62",
+        "AR63",
+        "AR64",
+        "AR65",
+        "AR66",
+        "AR67",
+        "AR68",
+        "AR69",
+        "AR70",
+        "AR71",
+        "AR72",
+        "AR73",
+        "AR82",
+        "AR83",
+        "AR85"
+      ]
+    },
+    "tratamento": {
+      "titulo": "Hidratação e medicamentos",
+      "icone": "pilula",
+      "cor": "laranja",
+      "itens": [
+        "Hidratação oral: grupos A e B; venosa: grupos C e D",
+        "Dor e febre: paracetamol e/ou dipirona",
+        "Não usar salicilatos, anti-inflamatórios ou corticoides",
+        "Chikungunya crônica: preferir hidroxicloroquina"
+      ],
+      "claims": [
+        "AR22",
+        "AR23",
+        "AR26",
+        "AR27",
+        "AR28",
+        "AR29",
+        "AR30",
+        "AR31",
+        "AR32",
+        "AR33",
+        "AR34",
+        "AR35",
+        "AR39",
+        "AR40",
+        "AR41",
+        "AR42",
+        "AR43",
+        "AR45",
+        "AR46",
+        "AR47",
+        "AR48",
+        "AR49",
+        "AR50",
+        "AR51",
+        "AR52",
+        "AR53",
+        "AR54",
+        "AR55",
+        "AR56",
+        "AR59",
+        "AR60",
+        "AR61",
+        "AR62",
+        "AR63",
+        "AR64",
+        "AR65",
+        "AR66",
+        "AR67",
+        "AR68",
+        "AR69",
+        "AR70",
+        "AR71",
+        "AR72",
+        "AR73",
+        "AR82",
+        "AR83",
+        "AR85",
+        "CK01",
+        "CK02",
+        "CK03",
+        "CK04",
+        "CK05",
+        "CK06",
+        "CK07",
+        "CK08",
+        "CK09",
+        "CK10",
+        "CK11",
+        "CK12",
+        "CK13",
+        "CK14",
+        "CK15",
+        "CK16",
+        "CK17",
+        "CK18",
+        "CK19",
+        "CK20",
+        "CK21",
+        "CK22",
+        "CK30",
+        "CK31",
+        "CK32",
+        "CK33",
+        "CK38",
+        "CK39"
+      ]
+    }
+  },
+  "poster": {
+    "webp": "/mapas-mentais/poster-dengue-e-outras-arboviroses.webp",
+    "estado": "pendente de revisão médica (aprovada)",
+    "ressalvas": [],
+    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K (versão com logo no topo e marca d'água, 15/10)"
+  },
+  "icone": {
+    "webp": "/mapas-mentais/icone-dengue-e-outras-arboviroses.webp",
+    "origem": "ícone 3D sintético gerado pelo diretor de arte (decorativo)"
+  }
+}

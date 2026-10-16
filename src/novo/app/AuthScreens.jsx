@@ -14,12 +14,17 @@ import { DocumentModal } from "./legal/DocumentModal.jsx";
 import { COUNTRIES, normalizePhone, phoneError } from "./legal/phone.js";
 import { TERMO_VERSAO } from "./legal/versions.js";
 import { rememberGoogleAcceptance } from "./legal/googleAcceptance.js";
+import { DECLARACAO_ADULTO, DECLARACAO_MEDICO, DECLARACOES_ERRO, documentosDa } from "./legal/documentos.js";
+import { clearAuthLinkFromUrl, initialAuthLink } from "./auth/authLink.js";
+import { useSupportEmail } from "./support/supportContact.jsx";
 import "./auth/login.css";
 
 const ERROR_TEXT = {
   invalid_credentials: "Não foi possível entrar com esses dados. Verifique seu e-mail e senha.",
   email_taken: "Já existe uma conta com este e-mail.",
   weak_password: `A senha precisa ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres.`,
+  same_password: "Escolha uma senha diferente da anterior.",
+  link_expired: "Esse link venceu. Peça um novo.",
   invalid_email: "Informe um e-mail válido.",
   google_unavailable: "O login com Google não está disponível neste ambiente.",
   network: "Falha de conexão. Verifique sua internet e tente de novo.",
@@ -57,7 +62,7 @@ function AuthLayout({ children, aside }) {
       >
         <div style={{ padding: mobile ? "32px 24px" : "48px 48px" }}>{children}</div>
         <div style={{ background: "var(--navy-900)", color: "#fff", padding: mobile ? "32px 24px" : 48, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", gap: 20 }}>
-          <img src="/novo-assets/logo-vertical-on-dark.png" alt="StaziaMed Revalida" style={{ height: mobile ? 96 : 140 }} />
+          <img src="/brand/vertical-escuro-240w.png" alt="StaziaMed Revalida" width="140" height="122" style={{ height: mobile ? 96 : 140, width: "auto" }} />
           {aside}
         </div>
       </div>
@@ -85,13 +90,14 @@ function SecureField({ name, label, type = "text", autoComplete, hint, error }) 
   );
 }
 
-function SecureSignupLayout({ children, onLogin, onDoc }) {
+function SecureSignupLayout({ children, onLogin, onDoc, label = "Criar conta", asideTitle = "Já tem conta?", asideCopy = "Entre para continuar sua preparação para o Revalida.", asideButton = "Entrar" }) {
+  const supportEmail = useSupportEmail();
   return (
     <div className="lg-root">
       <div className="lg-shell lg-shell--auth">
-        <header className="lg-top"><img className="lg-logo" src="/novo-assets/logo-staziamed-revalida-v2-escuro.png" alt="StaziaMed Revalida" width="200" height="61" /></header>
+        <header className="lg-top"><img className="lg-logo" src="/brand/horizontal-escuro-480w.png" alt="StaziaMed Revalida" width="200" height="62" /></header>
         <h1 className="lg-h1">Acesso seguro <span className="lg-grad">REVALIDA</span></h1>
-        <section className="lg-card lg-auth-card" aria-label="Criar conta">
+        <section className="lg-card lg-auth-card" aria-label={label}>
           <div className="lg-auth-form">{children}</div>
           <aside className="lg-auth-aside">
             <svg className="lg-auth-mark" aria-hidden="true" viewBox="0 0 120 120" fill="none">
@@ -99,13 +105,13 @@ function SecureSignupLayout({ children, onLogin, onDoc }) {
               <path d="M60 18 94 31v30c0 23-15 40-34 49-19-9-34-26-34-49V31Z" fill="rgba(31,166,160,.12)" stroke="#7FE3DE" strokeWidth="2" />
               <path d="M43 60h34M60 43v34" stroke="#7FE3DE" strokeWidth="6" strokeLinecap="round" />
             </svg>
-            <h2 className="lg-h2">Já tem conta?</h2>
-            <p className="lg-sub lg-auth-copy">Entre para continuar sua preparação para o Revalida.</p>
-            <button type="button" className="lg-btn lg-btn-ghost lg-auth-login" onClick={onLogin}>Entrar</button>
+            <h2 className="lg-h2">{asideTitle}</h2>
+            <p className="lg-sub lg-auth-copy">{asideCopy}</p>
+            {asideButton ? <button type="button" className="lg-btn lg-btn-ghost lg-auth-login" onClick={onLogin}>{asideButton}</button> : null}
           </aside>
         </section>
         <p className="lg-tagline">Foco no que cai <span className="lg-dot">•</span> Memória no que fica <span className="lg-dot">•</span> Confiança na prova</p>
-        <footer className="lg-footer"><span>© 2026 StaziaMed Revalida</span><button type="button" className="lg-link-btn" onClick={() => onDoc("termos")}>Termos de uso</button><button type="button" className="lg-link-btn" onClick={() => onDoc("privacidade")}>Privacidade</button></footer>
+        <footer className="lg-footer"><span>© 2026 StaziaMed Revalida</span><button type="button" className="lg-link-btn" onClick={() => onDoc("termos")}>Termos de uso</button><button type="button" className="lg-link-btn" onClick={() => onDoc("privacidade")}>Privacidade</button><span>Precisa de ajuda? <a className="lg-link-btn" href={`mailto:${supportEmail}`}>{supportEmail}</a></span></footer>
       </div>
     </div>
   );
@@ -115,7 +121,9 @@ const COUNTRY_CODES = new Set(COUNTRIES.filter((c) => c.code !== "outro").map((c
 const ACCEPT_ERROR = "Para criar a conta, é preciso aceitar o Termo de Aceite e Uso e a Política de Privacidade.";
 const ACCEPT_TEXT = "Declaro que li e compreendi os Termos de Aceite e Uso e a Política de Privacidade do StaziaMed Revalida e concordo com suas condições.";
 // ids dos campos, na ordem da tela, para levar o foco ao primeiro com erro
-const FIELD_IDS = { name: "secure-name", email: "secure-email", code: "secure-phone-code", phone: "secure-phone-number", pw: "secure-pw", pw2: "secure-pw2", accept: "secure-accept" };
+const FIELD_IDS = { name: "secure-name", email: "secure-email", code: "secure-phone-code", phone: "secure-phone-number", pw: "secure-pw", pw2: "secure-pw2", accept: "secure-accept", decl: "secure-adulto" };
+// Termo 2.0 em diante: as declarações de maioridade e de formação em Medicina entram no cadastro (a versão de versions.js decide).
+const PEDE_DECLARACOES = documentosDa(TERMO_VERSAO).declaracoes;
 
 function Signup({ go }) {
   const { backend } = useSession();
@@ -125,11 +133,13 @@ function Signup({ go }) {
   const [loading, setLoading] = React.useState(false);
   const [phone, setPhone] = React.useState({ code: "+55", number: "" });
   const [accepted, setAccepted] = React.useState(false);
+  const [adult, setAdult] = React.useState(false);
+  const [physician, setPhysician] = React.useState(false);
   const [doc, setDoc] = React.useState(null);
   const closeDoc = React.useCallback(() => setDoc(null), []);
 
   const focusFirst = (next) => {
-    const first = ["name", "email", "code", "phone", "pw", "pw2", "accept"].find((k) => next[k]);
+    const first = ["name", "email", "code", "phone", "pw", "pw2", "accept", "decl"].find((k) => next[k]);
     if (first) document.getElementById(FIELD_IDS[first])?.focus();
   };
 
@@ -151,6 +161,7 @@ function Signup({ go }) {
     if (password.length < PASSWORD_MIN_LENGTH) next.pw = `Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`;
     else if (password !== field("pw2")) next.pw2 = "As senhas não são iguais.";
     if (!accepted) next.accept = ACCEPT_ERROR;
+    if (PEDE_DECLARACOES && !(adult && physician)) next.decl = DECLARACOES_ERRO;
     setErrors(next);
     setError(null);
     if (Object.keys(next).length) {
@@ -165,6 +176,7 @@ function Signup({ go }) {
         phone: normalizePhone(phone.code, phone.number),
         termsVersion: TERMO_VERSAO,
         userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
+        ...(PEDE_DECLARACOES ? { declaresAdult: adult, declaresPhysician: physician } : {}),
       });
       if (result.needsEmailConfirmation) setConfirmEmail(true);
     } catch (err) {
@@ -174,15 +186,15 @@ function Signup({ go }) {
   };
   const google = async () => {
     setError(null);
-    if (!accepted) {
-      const next = { accept: ACCEPT_ERROR };
+    if (!accepted || (PEDE_DECLARACOES && !(adult && physician))) {
+      const next = { ...(!accepted ? { accept: ACCEPT_ERROR } : {}), ...(PEDE_DECLARACOES && !(adult && physician) ? { decl: DECLARACOES_ERRO } : {}) };
       setErrors(next);
       focusFirst(next);
       return;
     }
     setErrors({});
     try {
-      rememberGoogleAcceptance(TERMO_VERSAO);
+      rememberGoogleAcceptance(TERMO_VERSAO, PEDE_DECLARACOES ? { adult, physician } : undefined);
       await backend.signInWithGoogle();
     } catch (err) {
       setError(messageFor(err));
@@ -222,6 +234,21 @@ function Signup({ go }) {
           </label>
           {errors.accept ? <span id="secure-accept-error" className="lg-field-error">{errors.accept}</span> : null}
         </div>
+        {PEDE_DECLARACOES && (
+          <div className="lg-field" role="group" aria-label="Declarações">
+            <label className="lg-accept">
+              <input id="secure-adulto" aria-label={DECLARACAO_ADULTO} type="checkbox" className="lg-check" checked={adult}
+                onChange={(e) => setAdult(e.target.checked)} aria-invalid={errors.decl && !adult ? "true" : "false"} />
+              <span>{DECLARACAO_ADULTO}</span>
+            </label>
+            <label className="lg-accept">
+              <input id="secure-medico" aria-label={DECLARACAO_MEDICO} type="checkbox" className="lg-check" checked={physician}
+                onChange={(e) => setPhysician(e.target.checked)} aria-invalid={errors.decl && !physician ? "true" : "false"} />
+              <span>{DECLARACAO_MEDICO}</span>
+            </label>
+            {errors.decl ? <span className="lg-field-error" role="alert">{errors.decl}</span> : null}
+          </div>
+        )}
         <button type="submit" className="lg-btn lg-btn-primary" disabled={loading}>{loading ? <><span className="lg-spin" />CRIANDO CONTA…</> : "CRIAR CONTA"}</button>
         <div className="lg-or" aria-hidden="true"><span /><span>ou cadastre-se com</span><span /></div>
         <button type="button" className="lg-btn lg-btn-ghost" onClick={google} disabled={loading}><img src="/novo-assets/google.svg" alt="" width="18" height="18" />Criar conta com Google</button>
@@ -234,17 +261,20 @@ function Signup({ go }) {
 function Forgot({ go }) {
   const { backend } = useSession();
   const [sent, setSent] = React.useState(false);
-  const [emailError, setEmailError] = React.useState(false);
+  const [emailError, setEmailError] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
+  const [doc, setDoc] = React.useState(null);
+  const closeDoc = React.useCallback(() => setDoc(null), []);
 
   const submit = async (e) => {
     e.preventDefault();
-    const email = e.target.email.value.trim();
+    const email = e.target.elements.namedItem("email").value.trim();
     if (!isEmail(email)) {
-      setEmailError(true);
+      setEmailError("Informe um e-mail válido.");
+      document.getElementById("secure-email")?.focus();
       return;
     }
-    setEmailError(false);
+    setEmailError(null);
     setLoading(true);
     try {
       await backend.resetPassword(email);
@@ -256,33 +286,138 @@ function Forgot({ go }) {
   };
 
   return (
-    <AuthLayout
-      aside={
-        <>
-          <h2 style={{ margin: 0, font: "var(--type-h2)", color: "#fff" }}>Olá!</h2>
-          <p style={{ margin: 0, color: "var(--navy-200)" }}>Comece sua jornada com a gente e descubra algo novo.</p>
-        </>
-      }
+    <SecureSignupLayout
+      onLogin={() => go("login")}
+      onDoc={setDoc}
+      label="Recuperar senha"
+      asideTitle="Lembrou da senha?"
+      asideCopy="Volte para o login e continue sua preparação para o Revalida."
+      asideButton="Entrar"
     >
-      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 18 }} noValidate>
-        <div>
-          <h1 style={{ margin: 0, font: "var(--type-h2)" }}>Recuperar senha</h1>
-          <p style={{ margin: "6px 0 0", color: "var(--text-secondary)" }}>Informe seu e-mail para receber as instruções de recuperação.</p>
-        </div>
+      <form onSubmit={submit} className="lg-auth-fields" noValidate>
+        <div><h2 className="lg-h2">Recuperar senha</h2><p className="lg-sub">Informe seu e-mail para receber as instruções de recuperação.</p></div>
         {sent && (
-          <Banner tone="success" title="Instruções enviadas">
+          <div className="lg-msg lg-msg--success" role="status">
             Se houver uma conta com este e-mail, as instruções chegam em instantes. Confira também o spam.
-          </Banner>
+          </div>
         )}
-        <TextField name="email" label="E-mail cadastrado" type="email" icon="mail" autoComplete="email" error={emailError ? "Informe um e-mail válido." : undefined} />
-        <Button type="submit" size="lg" fullWidth loading={loading}>
-          Enviar instruções
-        </Button>
-        <Button variant="ghost" icon="arrow-left" onClick={() => go("login")}>
-          Voltar para o login
-        </Button>
+        <SecureField name="email" label="E-mail cadastrado" type="email" autoComplete="email" error={emailError} />
+        <button type="submit" className="lg-btn lg-btn-primary" disabled={loading}>
+          {loading ? <><span className="lg-spin" />ENVIANDO…</> : "ENVIAR INSTRUÇÕES"}
+        </button>
+        <button type="button" className="lg-link-btn" onClick={() => go("login")}>Voltar para o login</button>
       </form>
-    </AuthLayout>
+      {doc && <DocumentModal doc={doc} onClose={closeDoc} />}
+    </SecureSignupLayout>
+  );
+}
+
+/**
+ * Depois do link do e-mail de recuperar senha: a pessoa já está dentro (o link criou uma sessão de recuperação), mas antes de
+ * usar o app precisa criar a nova senha. Só depois de salvar, a mensagem de sucesso aparece e o botão abre o app.
+ */
+export function NewPasswordScreen() {
+  const { backend, finishRecovery, signOut } = useSession();
+  const [errors, setErrors] = React.useState({});
+  const [error, setError] = React.useState(null);
+  const [expired, setExpired] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [done, setDone] = React.useState(false);
+  const [doc, setDoc] = React.useState(null);
+  const closeDoc = React.useCallback(() => setDoc(null), []);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    const field = (n) => e.target.elements.namedItem(n).value;
+    const password = field("pw");
+    const next = {};
+    if (password.length < PASSWORD_MIN_LENGTH) next.pw = `Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`;
+    else if (password !== field("pw2")) next.pw2 = "As senhas não são iguais.";
+    setErrors(next);
+    setError(null);
+    if (Object.keys(next).length) {
+      document.getElementById(next.pw ? "secure-pw" : "secure-pw2")?.focus();
+      return;
+    }
+    setLoading(true);
+    try {
+      await backend.updatePassword(password);
+      rememberChoice(true);
+      setDone(true);
+    } catch (err) {
+      if (err?.code === "link_expired") setExpired(true);
+      else setError(messageFor(err));
+    }
+    setLoading(false);
+  };
+  // link vencido no meio do caminho: sai da sessão de recuperação e leva ao pedido de um novo link
+  const askAgain = async () => {
+    clearAuthLinkFromUrl();
+    try {
+      await signOut();
+    } catch {
+      /* já estava fora */
+    }
+    finishRecovery();
+  };
+
+  return (
+    <SecureSignupLayout
+      onLogin={() => {}}
+      onDoc={setDoc}
+      label="Criar nova senha"
+      asideTitle="Defina sua nova senha"
+      asideCopy="Escolha uma senha que só você conheça. Depois é só continuar sua preparação para o Revalida."
+      asideButton={null}
+    >
+      <form onSubmit={submit} className="lg-auth-fields" noValidate>
+        <div><h2 className="lg-h2">Criar nova senha</h2><p className="lg-sub">Escreva a nova senha duas vezes para confirmar.</p></div>
+        {error && <div className="lg-msg lg-msg--error" role="alert">{error}</div>}
+        {expired && <div className="lg-msg lg-msg--error" role="alert">Esse link venceu. Peça um novo.</div>}
+        {done && <div className="lg-msg lg-msg--success" role="status">Senha alterada com sucesso. Você já está dentro da sua conta.</div>}
+        {done ? (
+          <button type="button" className="lg-btn lg-btn-primary" onClick={() => finishRecovery()}>ENTRAR NO APP</button>
+        ) : expired ? (
+          <button type="button" className="lg-btn lg-btn-primary" onClick={askAgain}>PEDIR NOVO LINK</button>
+        ) : (
+          <>
+            <SecureField name="pw" label="Nova senha" type="password" hint={`Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`} autoComplete="new-password" error={errors.pw} />
+            <SecureField name="pw2" label="Conferir nova senha" type="password" autoComplete="new-password" error={errors.pw2} />
+            <button type="submit" className="lg-btn lg-btn-primary" disabled={loading}>{loading ? <><span className="lg-spin" />SALVANDO…</> : "SALVAR NOVA SENHA"}</button>
+            <button type="button" className="lg-link-btn" onClick={async () => { try { await signOut(); } catch { /* já estava fora */ } finishRecovery(); }}>Agora não, sair</button>
+          </>
+        )}
+      </form>
+      {doc && <DocumentModal doc={doc} onClose={closeDoc} />}
+    </SecureSignupLayout>
+  );
+}
+
+/** Link do e-mail vencido ou já usado: aviso claro e botão para pedir outro. */
+function ExpiredLink({ go }) {
+  const [doc, setDoc] = React.useState(null);
+  const closeDoc = React.useCallback(() => setDoc(null), []);
+  const askAgain = () => {
+    clearAuthLinkFromUrl();
+    go("forgot");
+  };
+  return (
+    <SecureSignupLayout
+      onLogin={() => { clearAuthLinkFromUrl(); go("login"); }}
+      onDoc={setDoc}
+      label="Link vencido"
+      asideTitle="Lembrou da senha?"
+      asideCopy="Volte para o login e continue sua preparação para o Revalida."
+      asideButton="Entrar"
+    >
+      <div className="lg-auth-fields">
+        <div><h2 className="lg-h2">Link vencido</h2><p className="lg-sub">Por segurança, cada link vale por pouco tempo e só pode ser usado uma vez.</p></div>
+        <div className="lg-msg lg-msg--error" role="alert">Esse link venceu. Peça um novo.</div>
+        <button type="button" className="lg-btn lg-btn-primary" onClick={askAgain}>PEDIR NOVO LINK</button>
+        <button type="button" className="lg-link-btn" onClick={() => { clearAuthLinkFromUrl(); go("login"); }}>Voltar para o login</button>
+      </div>
+      {doc && <DocumentModal doc={doc} onClose={closeDoc} />}
+    </SecureSignupLayout>
   );
 }
 
@@ -347,14 +482,16 @@ function MasterSetup({ go }) {
 }
 
 /** Fluxo de entrada: login → cadastro → recuperar senha (e, no 1º acesso local, conta master). */
-export function AuthFlow() {
-  const [screen, setScreen] = React.useState("login");
+export function AuthFlow({ link = initialAuthLink } = {}) {
+  // link do e-mail vencido ou já usado: abre direto o aviso "Esse link venceu. Peça um novo."
+  const [screen, setScreen] = React.useState(link?.kind === "expired" ? "expired" : "login");
   const go = (next) => {
     setScreen(next);
     window.scrollTo(0, 0);
   };
   if (screen === "signup") return <Signup go={go} />;
   if (screen === "forgot") return <Forgot go={go} />;
+  if (screen === "expired") return <ExpiredLink go={go} />;
   if (screen === "master") return <MasterSetup go={go} />;
   // tela de login "Acesso seguro REVALIDA" (auth/LoginScreen.jsx), com a mesma autenticação de antes
   return <LoginScreen go={go} />;

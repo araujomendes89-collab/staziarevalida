@@ -212,13 +212,15 @@ export function VisualEditor({ material, version, onSaved, onCancel, status }) {
                 {field("pegadinha", { multiline: true, rows: 2, hint: "Opcional · até 2 linhas · sempre no vermelho de alerta" })}
                 {field("referencia", { multiline: true, rows: 2, hint: "1 a 2 linhas" })}
                 <div style={grid}>
-                  {field("fonte", { hint: "Rodapé do verso" })}
+                  {field("fonte", { hint: "Opcional; deixe vazio (as peças saem sem linha de fonte)" })}
                   {field("atualizacao", { placeholder: "ex.: 2026" })}
                 </div>
+                {field("tema_cor", { hint: "Opcional: GR-001 a GR-100 (cor do tema). Vazio = cor da área da especialidade. GR-001@v1 = paleta antiga", placeholder: "ex.: GR-043" })}
               </>
             ) : (
               <>
                 {field("titulo", { hint: "Até 2 linhas" })}
+                {field("tema_cor", { hint: "Opcional: GR-001 a GR-100 (cor do tema). Vazio = cor da área da especialidade. GR-001@v1 = paleta antiga", placeholder: "ex.: GR-043" })}
                 {field("subtitulo", { hint: "1 linha" })}
                 <div style={grid}>
                   {field("selo_prova", { placeholder: "ex.: Revalida 2025/1" })}
@@ -247,7 +249,7 @@ export function VisualEditor({ material, version, onSaved, onCancel, status }) {
                 )}
                 {shows(model, "mnemonico") && <MnemonicEditor form={form} setIn={setIn} error={errorOf("mnemonico")} mobile={mobile} />}
                 <div style={grid}>
-                  {field("fonte", { hint: "Rodapé" })}
+                  {field("fonte", { hint: "Opcional; deixe vazio (as peças saem sem linha de fonte)" })}
                   {field("paginacao", { placeholder: "ex.: 1/3" })}
                 </div>
               </>

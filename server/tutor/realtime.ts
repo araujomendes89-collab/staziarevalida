@@ -25,12 +25,16 @@
  */
 import { createHash } from "crypto";
 import { engineFor, languageIntensity, normalize, profanityForIntensity, stateLayer, type PersonaEngine, type TutorState } from "./emotion";
-import { PROFESSOR_CHANGED, TRIAL_OVER, TutorError, consentError, type Entitlement, type TutorDeps } from "./engine";
+import { PROFESSOR_CHANGED, trialOverMessage, TutorError, consentError, termsOrFail, type Entitlement, type TutorDeps } from "./engine";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings as SessionPrefs } from "./personality";
 import { composeLiveInstructions, composeRealtimeInstructions, type TutorMode } from "./prompts";
+import { redactSupportMaterial } from "../contentHub/complementarGuard";
 import { safetyCheck, type BaseBlock } from "./safety";
 import { realKey } from "./speech";
 import { REALTIME_TOOLS } from "./tools";
+import { selarBilhete } from "../vozPonte/bilhete";
+import { planPersonaTurn } from "./voiceReactions";
+import { personaPromptLayer } from "./personalityEngine";
 import { estimateCost, voiceTimeCost } from "./costs";
 import { deterministicTutor, tutorSettings, type TutorSettings } from "./settings";
 import {
@@ -159,6 +163,8 @@ export interface VoiceStart {
   /** Gemini: chave temporária (instruções travadas no servidor) para o navegador conectar no Google. */
   gemini_token?: string;
   gemini_expires_at?: string;
+  /** Gemini pelo Vertex: endereço da ponte (Cloud Run) e o bilhete selado (o navegador não lê nem altera). */
+  gemini_ponte?: { url: string; bilhete: string; expira_em: string };
   model: string;
   voice: string;
   lease_seconds: number;
@@ -171,7 +177,7 @@ export const reasonError = (reason: string | undefined, e: unknown): TutorError 
     case "busy":
       return Object.assign(new TutorError("Já existe uma conversa por voz aberta em outro aparelho ou aba. Encerre por lá ou assuma aqui.", 409), { code: "busy" });
     case "trial_expired":
-      return new TutorError(TRIAL_OVER, 403);
+      return new TutorError(trialOverMessage(e as { plan_locked?: boolean } | null), 403);
     case "disabled":
       return new TutorError("O Tutor ainda não está ligado.", 503);
     case "voice_disabled":
@@ -303,6 +309,26 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
       // a chave vence junto com o que a ligação pode durar: limite da conversa ou o tempo de voz que o aluno ainda tem hoje
       const left = Number((r.entitlement as { voice?: { remaining_s?: number } } | null)?.voice?.remaining_s);
       const maxSeconds = Number.isFinite(left) ? Math.min(settings.voice_session_max_seconds, left + r.lease_seconds) : settings.voice_session_max_seconds;
+      if (gemini.via === "vertex" && gemini.ponte) {
+        // Vertex pela ponte: Personality Engine (Durona Explosiva etc.) como camada de personalidade da sessão; se o banco ainda
+        // não tiver as funções do motor, fica a camada de sempre
+        let personaVoz = persona;
+        try {
+          personaVoz = personaPromptLayer(await planPersonaTurn(deps, { userId, personality: ctx.personality.id, provider: "gemini_live", memory: null }));
+        } catch (error) {
+          deps.log?.(`[tutor] voz: Personality Engine indisponível, usando a persona de sempre: ${(error as Error).message.slice(0, 120)}`);
+        }
+        const instrucoes = composeRealtimeInstructions({ mode: ctx.session.mode, persona: personaVoz, context: sessionContext(ctx, extras, { live: false, continuity }), pronunciations: settings.pronunciations });
+        const b = selarBilhete({
+          vc: r.voice_call_id, u: userId, modelo: gemini.model, voz: gVoice, instrucoes,
+          ferramentas: REALTIME_TOOLS.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })), maxSegundos: maxSeconds,
+        }, gemini.ponte.segredo);
+        await deps.db.service("ch_worker_tutor_voice_attach", { p_user: userId, p_voice_call: r.voice_call_id, p_call_id: `vertex-${r.voice_call_id.slice(0, 8)}`, p_provider: "gemini" });
+        return {
+          provider: "gemini", voice_call_id: r.voice_call_id, gemini_ponte: { url: gemini.ponte.url, bilhete: b.bilhete, expira_em: new Date(b.expiraEm).toISOString() },
+          model: gemini.model, lease_seconds: r.lease_seconds, entitlement: r.entitlement, ...base, voice: gVoice,
+        };
+      }
       const t = await createGeminiVoiceToken({ key: gemini.key!, model: gemini.model, instructions, voice: gVoice, tools: REALTIME_TOOLS as never, maxSeconds, client: deps.geminiClient });
       await deps.db.service("ch_worker_tutor_voice_attach", { p_user: userId, p_voice_call: r.voice_call_id, p_call_id: `gemini-${r.voice_call_id.slice(0, 8)}`, p_provider: "gemini" });
       return { provider: "gemini", voice_call_id: r.voice_call_id, gemini_token: t.token, gemini_expires_at: t.expiresAt, model: gemini.model, lease_seconds: r.lease_seconds, entitlement: r.entitlement, ...base, voice: gVoice };
@@ -374,7 +400,9 @@ export async function endVoice(deps: TutorDeps, userId: string, voiceCallId: str
     "ch_worker_tutor_voice_end", { p_user: userId, p_voice_call: voiceCallId, p_reason: reason });
   if (!r.ok) throw new TutorError("Chamada de voz não encontrada.", 404);
   void hangup(r.call_id, deps, r.provider ?? "realtime");
-  if (!r.already && (r.provider === "live" || r.provider === "gemini")) await recordLiveMinutes(deps, userId, r.session_id ?? null, r.model ?? null, r.consumed_seconds ?? 0, voiceCallId, r.provider);
+  // Gemini pelo Vertex (ponte): o custo entra pelos TOKENS que a ponte relata no fim (/voice/ponte-uso), não pelo tempo
+  const viaPonte = r.provider === "gemini" && String(r.call_id ?? "").startsWith("vertex-");
+  if (!r.already && !viaPonte && (r.provider === "live" || r.provider === "gemini")) await recordLiveMinutes(deps, userId, r.session_id ?? null, r.model ?? null, r.consumed_seconds ?? 0, voiceCallId, r.provider);
   return { consumed_seconds: r.consumed_seconds ?? 0 };
 }
 
@@ -457,15 +485,19 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
     // Durona "sem filtro cosmético": o teto do professor vale direto (os limites contra ataque pessoal continuam)
     profanity = settings.durona_level === "sem_filtro" && ctx.personality.id === "durona" ? max : RANK[byState] < RANK[max] ? byState : max;
   }
+  // sem a lista de fontes que o aluno não pode ver a fala não é conferida: recusa (503) e NÃO grava a fala no histórico
+  const supportTerms = await termsOrFail(deps);
   const check = safetyCheck(
     { reply: clean, grounding: "GENERAL", citations: [], evaluation: { error_type: "none", knowledge_gap: "", severity: 1, unsafe: false, reasoning_quality: "na", recommended_action: "none", answer_correct: "na", self_corrected: false }, justification: "NONE", reveals_answer: false, suggested_replies: [] },
-    { blocks, conversationTexts: (ctx?.history ?? []).map((h) => h.content), question: q ? { open, officialLetter: q.official_answer ?? null, officialText: (q.options ?? []).find((o: any) => o.id === q.official_answer)?.text ?? null } : null, hintLevel: null, hasUpdateCard: Boolean(q?.update_card), profanity },
+    { blocks, conversationTexts: (ctx?.history ?? []).map((h) => h.content), question: q ? { open, officialLetter: q.official_answer ?? null, officialText: (q.options ?? []).find((o: any) => o.id === q.official_answer)?.text ?? null } : null, hintLevel: null, hasUpdateCard: Boolean(q?.update_card), profanity, supportTerms },
   );
   // valores e documentos ditos sem ferramenta não são conferíveis aqui (as ferramentas trazem fontes): o que importa barrar na voz
   // é gabarito antes da hora, ataque pessoal, palavrão acima do liberado e contestar o gabarito
-  const serious = check.violations.filter((x) => ["answer_leak", "personal_attack", "profanity", "challenges_official_answer", "ungrounded_number", "invented_reference", "currency_claim"].includes(x.code));
+  const serious = check.violations.filter((x) => ["answer_leak", "personal_attack", "profanity", "challenges_official_answer", "ungrounded_number", "invented_reference", "currency_claim", "cites_support_material"].includes(x.code));
   await deps.db.service("ch_worker_tutor_append", {
-    p_user: userId, p_session_id: v.session_id, p_student: null, p_tutor: clean,
+    p_user: userId, p_session_id: v.session_id, p_student: null,
+    // a fala que cita a apostila é gravada SEM a citação (o aluno relê e ouve de novo o que está gravado)
+    p_tutor: serious.some((x) => x.code === "cites_support_material") ? (redactSupportMaterial(clean, supportTerms) || "(trecho retirado)") : clean,
     p_meta: { realtime: true, grounding: "general", ...(serious.length ? { violations: serious.map((x) => x.code) } : {}) }, p_usage: {},
   });
   if (!serious.length) return { correction: null };
@@ -478,6 +510,7 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
       facts ? "você disse um valor, documento ou conduta que não veio das ferramentas; diga que não tem isso confirmado na base e retire." : "",
       serious.some((x) => x.code === "personal_attack" || x.code === "profanity") ? "você passou do tom permitido; retome no limite (a bronca é para a resposta, nunca para a pessoa)." : "",
       serious.some((x) => x.code === "challenges_official_answer") ? "o gabarito oficial não está errado; corrija isso." : "",
+      serious.some((x) => x.code === "cites_support_material") ? "você citou o nome de um material de apoio (apostila ou livro); o aluno não vê essa fonte: nunca cite nome, autor, arquivo ou página desse material, diga o conteúdo com as suas palavras." : "",
     ].filter(Boolean).join(" "),
   };
 }

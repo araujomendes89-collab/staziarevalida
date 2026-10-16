@@ -1,0 +1,55 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Catálogo de ícones · novas telas</title>
+<style>
+:root{--bg:#f7f8fa;--card:#fff;--tx:#052a5a;--tx2:#4f5a69;--bd:#e3e8ef;--ac:#0a6fd8}
+.dark{--bg:#0d1420;--card:#16202f;--tx:#eaf1fb;--tx2:#a9b6c8;--bd:#263449;--ac:#6db3ff}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 'Plus Jakarta Sans',system-ui,sans-serif;background:#e9edf3;color:#052a5a}
+header{position:sticky;top:0;z-index:5;background:#052a5a;color:#fff;padding:12px 20px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+header h1{font-size:17px;margin:0}header a,header button{color:#fff;background:#0a6fd8;border:0;border-radius:999px;padding:6px 14px;font:inherit;cursor:pointer;min-height:36px}
+.mode{display:grid;grid-template-columns:1fr 1fr;gap:0}@media(max-width:900px){.mode{grid-template-columns:1fr}}
+.pane{background:var(--bg);color:var(--tx);padding:16px}
+h2{font-size:16px;margin:18px 0 8px}
+table{width:100%;border-collapse:separate;border-spacing:0 6px}
+th{font-size:11px;text-align:left;color:var(--tx2);padding:0 8px}
+td{background:var(--card);padding:8px;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);vertical-align:middle}
+td:first-child{border-left:1px solid var(--bd);border-radius:12px 0 0 12px}td:last-child{border-right:1px solid var(--bd);border-radius:0 12px 12px 0}
+.sz{display:flex;gap:10px;align-items:center;color:var(--tx)}
+.m{display:inline-block;background:currentColor;-webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat}
+.st{font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.igual{background:#e6f6ec;color:#16632f}.trocado{background:#fff1d6;color:#8a5200}.novo{background:#e6f0ff;color:#0a4fa8}.sem{background:#f3e8ff;color:#5b2aa8}
+.dark .igual{background:#12351f;color:#7be0a0}.dark .trocado{background:#3a2a0a;color:#ffc766}.dark .novo{background:#10284d;color:#8fc0ff}.dark .sem{background:#2b1a4a;color:#c9a6ff}
+small{color:var(--tx2)}.nm{font-weight:700}.none{color:var(--tx2);font-style:italic}
+.ill{display:flex;gap:8px;align-items:center}.ill img,.ill svg{display:block}
+.medals{display:flex;flex-wrap:wrap;gap:10px}.medals figure{margin:0;width:104px;text-align:center;font-size:11px}.medals img{width:64px;height:64px}
+.warn{background:#fff1d6;color:#5b3a00;border-radius:12px;padding:10px 14px}
+</style></head><body>
+<header><h1>Catálogo de ícones · novas telas (ramo nt-icones)</h1><span id="resumo"></span><a href="#" id="dl" onclick="return false"></a></header>
+<div class="mode"><div class="pane" id="claro"></div><div class="pane dark" id="escuro"></div></div>
+<script>
+(async()=>{
+const J=await (await fetch('/icones.json')).json();const APP=await (await fetch('/appicons.json')).json();
+const cls=s=>s==='igual'?'igual':s==='trocado'?'trocado':s==='novo'?'novo':'sem';
+const lucideMask=n=>`<span class="m" style="--i:url(/lucide/${n}.svg)"></span>`;
+const pk=(h,s)=>h.replace(/^<svg[^>]*>/,t=>t.replace(/\s(width|height|style)="[^"]*"/g,'').replace('<svg',`<svg width="${s}" height="${s}"`).replace(/(stroke|fill)="#[0-9a-fA-F]+"/g,'$1="currentColor"')).replace(/stroke="#[0-9a-fA-F]+"/g,'stroke="currentColor"');
+const sizes=[16,20,24];
+function linha(e){
+ const antes=e.app_hoje&&e.app_hoje.nome;const luc=e.lucide_existe?e.lucide:null;
+ const col=(n)=>n?sizes.map(s=>`<span class="sz"><span style="width:${s}px;height:${s}px;display:inline-block" class="m" data-s style="--i:url(/lucide/${n}.svg)"></span></span>`).join(''):'<span class="none">sem ícone hoje</span>';
+ const A=antes?sizes.map(s=>`<span class="m" style="width:${s}px;height:${s}px;--i:url(/lucide/${antes}.svg)"></span>`).join(' '):'<span class="none">'+(e.app_hoje?.onde?'—':'')+'sem ícone hoje</span>';
+ const D=sizes.map(s=>`<span style="display:inline-flex;width:${s}px;height:${s}px">${pk(e.svg_pacote,s)}</span>`).join(' ');
+ return `<tr><td><span class="nm">${e.nome}</span><br><small>${e.id} · ${e.telas.length} tela(s)${e.lucide?' · Lucide: '+e.lucide+(e.lucide_existe?'':' (não existe)'):''}</small></td><td><div class="sz">${A}</div><small>${antes||''}</small></td><td><div class="sz">${D}</div><small>desenho do pacote</small></td><td><span class="st ${cls(e.status)}">${e.status}</span></td></tr>`}
+function ilu(e){const a=e.app_chave;const k={house:'house',hoje:'list-checks',book:'book-open',question:'file-question',timer:'timer',layers:'layers',notebook:'notebook-pen',calendar:'calendar-days',chart:'chart-column',sparkles:'sparkles',settings:'settings',logout:'log-out',clipboard:'clipboard-list',users:'users',route:'route',target:'target',trophy:'trophy',award:'award',network:'network',newspaper:'newspaper','chart-pie':'chart-pie'}[a];
+ const app=k&&APP[k]?`<div class="ill">${APP[k].replace(/width="\d+" height="\d+"/,'width="40" height="40"')}<small>app hoje</small></div>`:'<span class="none">app não tem</span>';
+ const f=e.arquivo_pacote.split('/').pop();
+ return `<tr><td><span class="nm">${e.nome}</span><br><small>${e.uso}</small></td><td>${app}</td><td><div class="ill">${sizes.map(s=>`<img src="/pacote/${f}" width="${s+8}" height="${s+8}" alt="">`).join('')}<small>pacote</small></div></td><td><span class="st ${cls(e.status)}">${e.status}</span></td></tr>`}
+const head='<tr><th>Ícone</th><th>Antes (app hoje)</th><th>Depois (pacote) 16 / 20 / 24 px</th><th>Status</th></tr>';
+const med=J.medalhas_e_ligas;
+const html=`<h2>Ícones de linha (${J.icones_linha.length})</h2><table>${head}${J.icones_linha.map(linha).join('')}</table>
+<h2>Ícones ilustrados 3D (${J.icones_ilustrados.length})</h2><table>${head.replace('16 / 20 / 24 px','')}${J.icones_ilustrados.map(ilu).join('')}</table>
+<h2>Gráficos e marcas (${J.graficos_e_marcas.length})</h2><small>${J.graficos_e_marcas.map(g=>g.nome).join(', ')}</small>
+<h2>Medalhas (${med.filter(m=>m.tipo==='medalha').length}) e ligas (${med.filter(m=>m.tipo==='liga').length}) 3D</h2><p class="warn">Só listadas: dependem da rodada do diretor de arte e do direito de uso (decisão 7, onda 7). Não aplicar agora.</p>
+<div class="medals">${med.map(m=>`<figure><img loading="lazy" src="/pacote/${m.arquivo_pacote.split('/').pop()}" alt=""><figcaption>${m.nome}</figcaption></figure>`).join('')}</div>`;
+for(const id of ['claro','escuro'])document.getElementById(id).innerHTML=`<strong>${id==='claro'?'Tema claro':'Tema escuro'}</strong>`+html;
+const c=k=>[...J.icones_linha,...J.icones_ilustrados].filter(e=>e.status===k).length;
+document.getElementById('resumo').textContent=`igual ${c('igual')} · trocado ${c('trocado')} · novo ${c('novo')} · sem equivalente no Lucide ${c('sem equivalente no Lucide')}`;
+})();
+</script></body></html>

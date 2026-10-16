@@ -1,0 +1,7 @@
+Dados REAIS para os testes da carga das explicações (regra do dono: nada inventado, nem nos testes). Nada aqui foi editado à mão.
+- revisao/revalida_2022_2, revalida_2020_1, enamed_2025: questões reais (corrigidas-todas.json da revisão de fidelidade de 12/10/2026)
+  com as saídas REAIS do piloto dos agentes (comentarios-agentes/saida/prof-piloto-*.json e aud-piloto-*.json): Professor e Auditor,
+  com os vereditos ok, corrigir e divergente como vieram. Só a divisão em pastas por prova é montagem de teste.
+- revisao/revalida_2023_1: a questão anulada q007 com a saída real do Professor (prof-anuladas.json; o Auditor ainda não conferiu).
+- revisao/revalida_2021_1: a q064 com a nota "O que mudou desde a prova" real (prof-06.json, gravada aqui como prof-01.json).
+- decisoes-divergencias.json: a decisão real do dono (tela de divergências, 12/10/2026 15:49) para revalida_2020_1_q008.

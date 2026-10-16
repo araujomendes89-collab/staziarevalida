@@ -1,0 +1,29 @@
+[
+ {
+  "id": "enamed_2025_q041",
+  "tema": "Endocrinologia",
+  "subtema": "Cetoacidose diabética",
+  "o_que_a_questao_avalia": "Avalia o reconhecimento da cetoacidose diabética em paciente com diabetes tipo 1 que suspendeu a insulina. Cobra a prioridade inicial do tratamento, que é a reposição de volume.",
+  "conduta_esperada": "Diagnosticar cetoacidose diabética pela hiperglicemia, acidose metabólica com bicarbonato baixo e cetose em paciente sem insulina, e iniciar com solução fisiológica. O potássio baixo reforça que a insulina não deve ser a primeira medida.",
+  "explicacao": {
+   "A": "Incorreta. O paciente pode ter dor abdominal e vômitos, mas esses sintomas fazem parte da própria cetoacidose. Dieta zero não trata o distúrbio metabólico, que exige reposição de líquidos, correção do potássio e insulina no momento certo.",
+   "B": "Incorreta. O estado hiperosmolar não tem acidose importante nem cetose acentuada, e aqui há bicarbonato muito baixo, pH ácido e hálito cetótico. Além disso, com potássio baixo, iniciar insulina logo no começo pode piorar a hipopotassemia.",
+   "C": "Correta. O quadro de diabetes tipo 1 sem insulina, glicemia alta, pH baixo, bicarbonato baixo e hálito cetótico define cetoacidose diabética. A conduta inicial é reidratação com solução fisiológica, e o potássio baixo mostra que a insulina deve aguardar a reposição de potássio.",
+   "D": "Incorreta. A creatinina elevada neste contexto reflete a desidratação e não define o diagnóstico. Bicarbonato não faz parte da rotina do tratamento, e a acidose melhora com reposição de volume e insulina."
+  },
+  "pontos_de_atencao": [
+   "Potássio sérico baixo na admissão exige reposição antes de iniciar a insulina.",
+   "A alteração da creatinina costuma ser pré-renal e melhora com hidratação.",
+   "O enunciado omite o valor da pressão arterial, provavelmente por falha de extração do texto."
+  ],
+  "precisa_conferir_diretriz": {
+   "sim": true,
+   "motivo": "Os critérios para iniciar insulina conforme o potássio e para uso de bicarbonato são pontos que costumam ser revistos nos protocolos."
+  },
+  "divergencia_gabarito": {
+   "suspeita": false,
+   "motivo": ""
+  },
+  "confianca": 90
+ }
+]

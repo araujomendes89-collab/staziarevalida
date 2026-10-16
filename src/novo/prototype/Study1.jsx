@@ -23,7 +23,7 @@ function Aulas(){
   React.useEffect(()=>{setI(0);},[a,q]);
   React.useEffect(()=>{if(!auto||modal||n<2)return;const t=setInterval(()=>setI(v=>v+1),2800);return ()=>clearInterval(t);},[auto,modal,n]);
   React.useEffect(()=>{const k=e=>{if(modal){if(e.key==='Escape')setModal(null);return;}if(e.target.tagName==='INPUT')return;if(e.key==='ArrowRight')setI(v=>v+1);if(e.key==='ArrowLeft')setI(v=>v-1);};addEventListener('keydown',k);return ()=>removeEventListener('keydown',k);},[modal]);
-  const c=cur?AC[cur[0]]:'#0B6F68';
+  const c=cur?AC[cur[0]]:'#0A6FD8';
   const glass={background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.18)',backdropFilter:'blur(18px) saturate(1.4)',WebkitBackdropFilter:'blur(18px) saturate(1.4)',boxShadow:'0 30px 60px -20px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.12)'};
   const CW=mobile?180:220,CH=mobile?250:300,GAP=mobile?120:170;
   return <>

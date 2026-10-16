@@ -61,7 +61,12 @@ describe("Frescor, verificar ao servir, eventos, conflito, painel (fontes sinté
     dev = await openDevDatabaseForTests(path.join(tmp, "db"));
     db = devContentDb(async () => dev);
     for (const st of buildEngineStatements()) await dev.db.exec(st);
+    await dev.db.exec(`update public.ch_flags set value = case key when 'publish_enabled' then true when 'shadow_mode' then false else value end`); // CC19: o aluno só recebe com o modo sombra desligado e a publicação ligada
     await dev.db.query(`insert into auth.users (id, email) values ($1, 'a@t.dev'), ($2, 's@t.dev'), ($3, 'r@t.dev')`, [ADMIN, STUDENT, REVIEWER]);
+    // o vigia só baixa endereço da lista de sites oficiais (Vigilância científica, migração 9940): o site de teste entra na lista
+    await dev.db.query(`insert into public.ch_official_domains (address, institution, kind) values ('exemplo.invalid', 'Site de teste', 'governo') on conflict do nothing`);
+    // frequência do site de teste = a que este arquivo usa (a regra do site manda na frequência)
+    await dev.db.query(`update public.ch_official_domains set watch_interval_days = 10 where address = 'exemplo.invalid'`);
     await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
     q1 = (await sql(`select question_id from public.question_claims where role = 'solves' order by question_id limit 1`))[0].question_id;
     claim1 = (await sql(`select claim_id from public.question_claims where question_id = $1 and role = 'solves'`, [q1]))[0].claim_id;
@@ -111,7 +116,7 @@ describe("Frescor, verificar ao servir, eventos, conflito, painel (fontes sinté
     expect((await sql(`select public.ch_worker_watch_requested() n`))[0].n).toBe(1);
     // quem não respondeu a questão não dispara verificação
     expect(await rpc(REVIEWER, "app_question_verify_on_serve", q1)).toBe(0);
-    const worker = createContentHubWorker(deps(), { fetchImpl: (async () => new Response("%PDF-1.7 igual", { status: 200, headers: { "content-type": "application/pdf" } })) as unknown as typeof fetch });
+    const worker = createContentHubWorker(deps(), { resolver: async () => ["93.184.216.34"], fetchImpl: (async () => new Response("%PDF-1.7 igual", { status: 200, headers: { "content-type": "application/pdf" } })) as unknown as typeof fetch });
     await sql(`update public.ch_source_watch set requested_at = now(), last_hash = $2 where source_id = $1`, [v1, (await import("../../server/contentHub/worker")).publicationHash(Buffer.from("%PDF-1.7 igual"), "application/pdf")]);
     expect(await worker.checkSources()).toMatchObject({ checked: 1, changed: 0 });
     expect((await sql(`select requested_at from public.ch_source_watch where source_id = $1`, [v1]))[0].requested_at).toBeNull();
@@ -176,6 +181,7 @@ describe("Motivos declarados pelo aluno", () => {
   beforeAll(async () => {
     dev = await openDevDatabaseForTests(path.join(tmp, "db"));
     for (const st of buildEngineStatements()) await dev.db.exec(st);
+    await dev.db.exec(`update public.ch_flags set value = case key when 'publish_enabled' then true when 'shadow_mode' then false else value end`); // CC19: o aluno só recebe com o modo sombra desligado e a publicação ligada
     await dev.db.query(`insert into auth.users (id, email) values ($1, 's@t.dev')`, [S]);
   }, 300_000);
   afterAll(async () => {

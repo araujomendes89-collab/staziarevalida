@@ -2,7 +2,7 @@
 // questão, o erro, o tema, a área). O aluno não copia nem cola nada: quem abre passa o contexto; o modo vem travado e o aluno só
 // escolhe o professor. Nenhuma conversa começa antes do "Começar".
 import React from "react";
-import { Button } from "../../ds";
+import { Button, Icon } from "../../ds";
 import { NexusScreen } from "./nexus/NexusScreen.jsx";
 
 const Dock = React.createContext(null);
@@ -26,11 +26,27 @@ export function TutorDockProvider({ children, go = null }) {
 export const useTutorDock = () => React.useContext(Dock);
 
 /** Botão para abrir o Tutor com o contexto da tela. Fora do app (sem o provedor), não aparece. */
-export function TutorButton({ request, label = "Discutir com o Tutor", size = "sm", variant = "secondary" }) {
+export function TutorButton({ request, label = "Discutir com o Tutor", size = "sm", variant = "secondary", icon = "sparkles", className }) {
   const open = useTutorDock();
   if (!open) return null;
+  // variant "modelo": o botão roxo do painel da questão (modelo "Tela de Questão"; estilo em practice/tela/tela-questao.css)
+  if (variant === "modelo")
+    return (
+      <button type="button" className="tq-tutor" onClick={() => open(request)}>
+        <Icon name="sparkles" size={18} />
+        {label}
+      </button>
+    );
+  // variant "roxo": botão largo roxo das telas novas (Desempenho: "Me teste nos pontos fracos"; estilo em review/desempenho.css)
+  if (variant === "roxo")
+    return (
+      <button type="button" className="ev-ia" onClick={() => open(request)}>
+        <Icon name="sparkles" size={20} />
+        {label}
+      </button>
+    );
   return (
-    <Button size={size} variant={variant} icon="sparkles" onClick={() => open(request)}>
+    <Button size={size} variant={variant} icon={icon} className={className} onClick={() => open(request)}>
       {label}
     </Button>
   );

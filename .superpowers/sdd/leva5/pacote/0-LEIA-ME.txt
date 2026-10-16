@@ -1,0 +1,151 @@
+STAZIAMED REVALIDA - LEVA 5 (finalização do gerenciamento da Fase 1: SQL para colar no Supabase) - feito em 12/10/2026
+
+O QUE É ESTA PASTA
+Cinco partes de SQL (1 a 5) e uma conferência (0). Elas reúnem os seis grupos da Fase 1 objetiva: A (Documentos e processamento), B (Unidades e Publicar ao aluno),
+C (Análise de questões, Taxonomia, Fontes), D (rotas e mensagens de erro: NÃO tem SQL), E (Planos, microfone, tetos de IA) e F (jornada do aluno: senha, suporte, menu).
+Tudo já foi ensaiado numa cópia do banco de produção (com as partes 1 a 7 de 11/10, a Arena, os tetos desligados, as Fontes oficiais, a Fonte complementar
+e a LEVA 3 INTEIRA já coladas): colou três vezes sem erro, e a segunda e a terceira colagem não mudam nada. NADA foi colado no banco de verdade.
+Esta leva NÃO depende da leva 4 (Questões StaziaMed, Análise pela tela, Atualidade das fontes) e a leva 4 não depende desta: as duas foram coladas nas
+duas ordens na cópia do banco e o resultado é o mesmo. Elas só precisam que a leva 3 já esteja no ar (está).
+
+ORDEM (siga assim)
+  0. Rode o arquivo 0-CONFERIR-primeiro-nao-altera-nada.sql. Ele SÓ LÊ. Mostre o resultado ao Claude antes de seguir. Olhe principalmente a linha "2. MODO SOMBRA".
+  1. 1-colar-ANTES-do-site-parte-1-Suporte-e-relatos.sql
+  2. 2-colar-ANTES-do-site-parte-2-Documentos-e-processamento.sql
+  3. 3-colar-ANTES-do-site-parte-3-Publicar-ao-aluno-e-conferencias.sql
+  4. 4-colar-ANTES-do-site-parte-4-Modo-sombra-reanalise-e-taxonomia.sql
+  5. 5-colar-ANTES-do-site-parte-5-Planos-microfone-e-teto-de-IA.sql
+  Depois do SQL, o Claude publica a IMAGEM NOVA do Cloud Run e, por último, o SITE. (SQL primeiro, imagem depois, site por último.)
+
+COMO COLAR CADA PARTE
+  Abra o editor SQL do Supabase, cole o arquivo INTEIRO sem selecionar nada e clique em Run. No fim aparece uma linha "OK: <parte> colada"
+  e uma lista de conferências: todas têm de estar "true". Se alguma estiver "false" ou der erro, pare e mostre ao Claude.
+  Para colar de novo: cole DESTA parte até a última (5), na ordem. Pode colar duas ou três vezes sem estragar nada.
+  Se o editor perguntar sobre "operação destrutiva" (aparece porque os arquivos recriam as próprias peças com "drop ... if exists"), pode confirmar.
+  O arquivo 0-CONFERIR pode ser rodado antes, durante e depois: ele nunca altera nada.
+
+O QUE CADA PARTE MUDA
+  Parte 1 - Suporte e relatos (migração 9835)
+    Equipe: Administração > Configurações ganha "Contato de suporte" (o administrador troca o e-mail; nasce suporte@staziamed.com.br) e
+            "Relatos dos alunos" (data, aluno, tela, texto; filtro Abertos/Resolvidos; marcar como resolvido e reabrir). O Registro anota quem fez.
+    Aluno:  Conta > Ajuda e suporte > "Relatar um problema" (de 10 a 1000 letras, no máximo 5 por dia). O e-mail de suporte aparece no login, no cadastro,
+            na recuperação de senha, na Conta e nos avisos de acesso bloqueado. O visitante (sem login) só consegue ler o e-mail de suporte.
+  Parte 2 - Documentos e processamento (9840 a 9844)
+    Equipe: editor e administrador veem os documentos de QUALQUER pessoa da equipe; documento que termina sem rascunho vira "Sem rascunhos para revisar";
+            falta de crédito da IA vira pausa com aviso (volta sozinha a cada 10 minutos); teto de gasto por documento (nasce DESLIGADO e sem valor);
+            botão "Calcular estimativa" (não inventa dólar sem preço cadastrado); "Tirar marcas de terceiros" (prévia, aplicar, desfazer; sem licença).
+    Aluno:  nada que apareça.
+  Parte 3 - Publicar ao aluno e conferências (9860 a 9864)
+    Equipe: "Publicar para os alunos..." mostra uma PRÉVIA e, confirmado, cria a aula (Estudar > Aulas) e os flashcards no baralho de todos os alunos;
+            "Retirar" tira do ar sem apagar o progresso; "Criar versão para corrigir". A aula que veio da Central fica trancada na tela Aulas.
+            Só o revisor médico da área confirma dose, via, frequência e contraindicação (o administrador só se também for revisor da área).
+            Conflito decidido a favor da fonte e evidência corrigida deixam de travar. Material visual com dose fica com o download travado até a revisão médica.
+            A PUBLICAÇÃO CONTINUA DESLIGADA e em modo sombra (as chaves não mudam).
+    Aluno:  nada aparece enquanto a publicação estiver desligada.
+  Parte 4 - Modo sombra, reanálise e taxonomia (9870 a 9873)
+    Equipe: botão "Reanalisar agora" e chave "Análise automática"; "Conferir fontes monitoradas" deixa o pedido para a próxima rodada (até 10 minutos);
+            fonte enviada em Documentos passa a virar trechos; versão nova da taxonomia leva unidades, afirmações e apelidos; "Aliases" vira "Apelidos".
+    Aluno:  ATENÇÃO, veja o risco 1 abaixo (modo sombra).
+  Parte 5 - Planos, microfone e teto de IA (9890 a 9892)
+    Equipe: Configurações > Nexus ganha "Microfone só para a equipe" (nasce LIGADA) e três tetos diários da transcrição (vazios); Central de IAs ganha o
+            "Teto geral do mês" (desligado, vazio, SÓ AVISA: não para nenhuma IA).
+    Aluno:  nova tela "Planos" (sem preço e sem botão de assinar); veja os riscos 2 e 3 abaixo.
+
+RISCOS E EFEITOS QUE VOCÊ VAI VER (leia antes de colar)
+  1. MODO SOMBRA (parte 4, migração 9871) - pode esconder do aluno uma análise que já está no ar.
+     Hoje, uma análise de questão (ou cartão de atualização) APROVADA por revisor chega ao aluno na correção, no Tutor, no diagnóstico do erro e na linha do tempo
+     da questão, mesmo com o modo sombra ligado. Depois da parte 4 ela só chega se o administrador DESLIGAR o modo sombra E LIGAR a publicação (Configuração > Chaves liga e desliga).
+     Nada é apagado: aparece de volta no instante em que as duas chaves mudarem. Equipe e revisores continuam vendo tudo.
+     COMO CONFERIR: o arquivo 0 já traz isso na linha "2. MODO SOMBRA" (análises publicadas, cartões publicados, estado das duas chaves). Se "análises publicadas"
+     ou "cartões publicados" for maior que zero E o modo sombra estiver LIGADO (ou a publicação desligada), esse conteúdo vai SUMIR do aluno.
+     Se você quer que continue aparecendo, depois de colar a parte 4 ligue "publicação" e desligue "modo sombra" na Configuração.
+     A mesma conferência, para rodar sozinha no Supabase:
+       select (select count(*) from public.question_analysis where status = 'published') as analises_publicadas,
+              (select count(*) from public.question_update_cards where status = 'published') as cartoes_publicados,
+              (select jsonb_object_agg(key, value) from public.ch_flags where key in ('shadow_mode','publish_enabled')) as chaves;
+     Pela nossa memória do projeto não havia análise real publicada (faltam revisores e acervo), mas ninguém conseguiu olhar o banco de produção: confira.
+     Atenção: ligar a publicação também libera as UNIDADES da Central para virarem aula e flashcards (parte 3). Só ligue quando quiser isso.
+  2. MICROFONE DA NEXUS (parte 5, migração 9891) - efeito só para quem tem plano pago.
+     A chave "Microfone só para a equipe" nasce LIGADA. Se a transcrição estiver ligada no servidor (variável TUTOR_STT_ALLOW_EXTERNAL na Vercel), o aluno com plano
+     pago PERDE o microfone da Nexus e passa a escrever pelo Chat, até você preencher os três tetos diários e o preço da transcrição e desligar a chave.
+     A equipe (administrador e editor) continua falando. A voz reserva ao vivo e a voz do professor não mudam, exceto que a voz do professor só pode ser aberta aos alunos
+     com o preço da voz maior que zero.
+  3. TELA DE PLANOS (parte 5 + site). Uma tela nova "Planos" no menu do aluno (e botão "Ver planos" nos avisos de teste vencido, Tutor e Conta).
+     Ela mostra a situação da pessoa e um cartão por plano com o que VOCÊ escreveu em Administração > Planos. NÃO mostra preço e NÃO tem botão de assinar
+     (a cobrança continua parada). Pro e Elite hoje têm a descrição vazia: o aluno veria "A equipe ainda vai descrever o que este plano inclui". Preencha a descrição
+     e os recursos antes de publicar o site, ou aceite esse texto. O bloco 7 da conferência mostra o que está preenchido.
+  4. NOVA TELA DE SENHA (só site, grupo F). Depois do link do e-mail de "esqueci a senha", o aluno cai numa tela "Criar nova senha" (mínimo 8 letras, mensagem de
+     sucesso, botão ENTRAR NO APP); link vencido ou já usado mostra "Esse link venceu. Peça um novo." com botão. O e-mail em si depende do SMTP do Supabase (continua com você).
+     Também precisa de uma conferência sua: no Supabase, Authentication > URL Configuration, o endereço do site deve estar em Site URL e em Redirect URLs, senão o link do
+     e-mail não volta para o app.
+  5. RELATOS DE ALUNOS (parte 1). O relato leva o nome e o e-mail do aluno para a equipe (para responder). O aviso na tela pede para não escrever senha nem dado de paciente.
+     A lista de relatos fica em Configurações, que só o administrador vê.
+  6. AVISO DE ACESSO BLOQUEADO (site). Troca "A assinatura pelo app ainda não está disponível" por "Para pedir acesso ou tirar dúvidas, fale com o suporte: <e-mail>".
+     Se o e-mail de suporte ainda não foi trocado, vale suporte@staziamed.com.br: confirme que essa caixa existe ou troque em Configurações > Contato de suporte.
+  7. EDITOR VÊ OS DOCUMENTOS DOS OUTROS (parte 2). Efeito esperado de a equipe trabalhar junta: o editor também pode revisar blocos e reprocessar etapas desses documentos.
+  8. DOCUMENTOS ANTIGOS "Aguardando revisão" SEM rascunho não mudam sozinhos (só os próximos processamentos). A Apostila de Ginecologia (CC33) continua sendo uma ação sua:
+     abrir o documento e clicar "Tentar de novo" na etapa Afirmações.
+  9. TIRAR MARCAS DE TERCEIROS recusa nome com menos de 3 letras (para não apagar palavra comum). O texto original do documento nunca é alterado.
+ 10. PUBLICAR AO ALUNO (parte 3). Cada afirmação precisa de fonte oficial vigente (nível A a D); área da unidade precisa ter "grande área" nas Aulas (Saúde Mental e Saúde Coletiva
+     ainda não têm: ficam barradas); sem e-mail nem nome do arquivo/editora/autor no texto que vai ao aluno. O texto da aula é copiado na hora de publicar: se a unidade mudar depois,
+     é preciso publicar a versão nova. NÃO fazem parte: PDF do aluno, questões da unidade, "continuar na mesma aula", aviso "Em atualização".
+ 11. ROTAS E ERROS (site, grupo D). Mensagens de erro de todas as abas passam a dizer o motivo em português (nunca texto técnico nem chave). /api/health público mostra só
+     "ok" e a hora; os detalhes foram para /api/ai/health (só administrador). A rota /api/radar/updates (4 notícias fixas inventadas) foi removida. "Trocar de plano sem pagar"
+     (upgrade-self) passou a ser só do administrador: quem usava a tela de planos do app ANTIGO deixa de conseguir (essa tela já nem abre em produção). Três rotas sem uso foram desligadas.
+
+O QUE PRECISA DE IMAGEM NOVA DO CLOUD RUN (processamento no Google)
+  Sim, esta leva precisa de imagem nova. Sem ela o site novo e o SQL novo funcionam, mas ficam valendo as regras antigas nestes pontos:
+  - "Sem rascunhos para revisar" (documento sem rascunho continua indo para "Aguardando revisão");
+  - pausa sem crédito da IA (continua falhando depois de 3 tentativas) e teto por documento;
+  - Reanálise por IA (o botão marca o pedido, mas ninguém atende) e a "Análise automática";
+  - PDF de fonte já enviado em Documentos virar trechos da fonte;
+  - conferência das fontes monitoradas pedida pela tela (o pedido fica marcado, mas ninguém atende).
+  O script de implantação do processamento agora cria o agendamento "a cada 1 minuto" por padrão (antes 10). Quem já está no ar com 1 minuto não precisa mexer em nada.
+  As telas de Materiais visuais e de Busca de fontes ainda dizem "passa a cada 10 minutos" (texto de outros grupos, não mexido).
+
+ORDEM ENTRE SQL, IMAGEM E SITE
+  Entre colar o SQL e publicar a imagem e o site, o site antigo continua funcionando. Diferenças curtas e aceitas nessa janela:
+  - o editor já passa a ver os documentos dos outros;
+  - quem ainda usa o site antigo não vê os botões novos; "Publicar" antigo (que chama app_ch_publish(uuid)) continua existindo e já cria a aula, mas a pergunta "aula parecida" fica sem a
+    confirmação da tela antiga;
+  - se o aluno tem plano pago e a transcrição está ligada, o site antigo ainda deixa o microfone aberto até o site novo entrar (a chave já existe no banco);
+  - o aluno pode perder análise aprovada (risco 1) assim que a parte 4 for colada, antes mesmo do site novo.
+  O contrário (site novo antes do SQL) deve ser EVITADO. Se acontecer, o site novo percebe que falta o SQL e fala como antes: a prévia de publicação avisa "cole os arquivos SQL", a Planos
+  mostra "Não foi possível carregar os planos agora", o Contato de suporte usa o e-mail padrão e nenhum erro técnico aparece.
+
+SE FOR PRECISO COLAR DE NOVO ALGO ANTIGO
+  Depois desta leva, NÃO cole de novo, sozinhos:
+  - COLAR-fonte-complementar-9620-9621.sql  -> volta ao texto antigo as funções que escondem o comentário em revisão (leva 3) E as duas do modo sombra (parte 4 desta leva).
+    Se colar, cole de novo a parte 1 da leva 3 e as partes 3 e 4 desta pasta (a 3 também fecha as colunas internas das aulas, que a 9620 abre de novo).
+  - as partes 1, 5 e 6 do pacote de 11/10 e o DESLIGAR-tetos-de-IA.sql continuam com os mesmos efeitos de antes (nenhum deles mexe numa função desta leva).
+  As partes da leva 3 e as outras partes e arquivos antigos podem ser coladas de novo sem desfazer nada desta leva.
+
+ORDEM GERAL (leva 4 + leva 5)
+  Se a leva 4 também vai ser publicada, siga o arquivo publicacao-staziamed-2026-10-12-ORDEM-GERAL.txt: a leva 4 vai primeiro e esta leva logo depois, com
+  UMA imagem do Cloud Run e UM site no fim. Com a leva 4 no ar, quem re-colar a 9620/9621 também precisa re-colar as partes da leva 4 (a 9620 mexe em funções que a
+  leva 4 usa); a regra completa está no arquivo de ordem geral. Provado: leva 4 -> leva 5 e leva 5 -> leva 4 dão o mesmo estado final.
+
+COISAS QUE SÃO SÓ SUAS (sem SQL; passo a passo no relatório do grupo D)
+  - Vercel > Settings > Environment Variables: conferir que existem (só o nome, nunca copie valores) SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, CRON_SECRET,
+    VERTEX_API_KEY (ou GOOGLE_CLOUD_PROJECT e GOOGLE_CLOUD_LOCATION), OPENAI_API_KEY, ANTHROPIC_API_KEY e ELEVENLABS_API_KEY. Candidatas a apagar, uma por vez, com novo deploy e teste: PAYMENT_WEBHOOK_SECRET,
+    DEFAULT_AI_MODEL, APP_URL, SUPABASE_DB_URL. Esta leva NÃO cria nenhuma variável nova.
+  - Console do Google > APIs e serviços > Credenciais: abrir cada chave de API; apagar a que não reconhece e restringir às APIs necessárias a que o site usa.
+
+LIMITES (honestos)
+  - O ensaio foi numa cópia do banco feita em PGlite (um Postgres de teste), não no Supabase de verdade. Nada nestes arquivos usa recurso novo do Postgres.
+  - O depósito de arquivos e as IAs foram ensaiados com versões de mentira. Nenhuma IA real foi chamada. O primeiro teste de verdade só com ordem sua.
+  - Ninguém abriu o site novo num navegador ou celular de verdade (só testes automáticos): falta olhar o visual da tela Planos, do menu "Mais" do celular (6 botões) e da tela "Criar nova senha".
+  - O link real do e-mail de recuperação (SMTP) não foi testado.
+  - O botão "Calcular estimativa" e a conferência de tamanho do PDF (até 300 MB) não foram medidos com um arquivo real.
+  - A detecção de "falta de crédito" olha o texto do erro do provedor: um texto novo de erro pode cair no comportamento antigo (3 tentativas e falha).
+  - O teto geral do mês só AVISA (a 80% e ao passar). O que fazer ao chegar nele é decisão sua.
+
+COISAS QUE DEPENDEM DE VOCÊ (decisões e números; nada disto foi preenchido por nós)
+  1. Minutos de microfone por dia (teste grátis / plano pago / plataforma toda) e preço da transcrição por minuto, para poder abrir o microfone aos alunos.
+  2. Preço da voz do professor (US$ por mil caracteres) e se aceita os tetos diários sugeridos (90.000 caracteres por dia e 600.000 por mês).
+  3. Valor do teto geral do mês e o que fazer ao chegar nele (só avisar, ou parar as ferramentas da equipe, ou parar tudo).
+  4. Ligar os tetos de gasto da Central (sugestão antiga: US$ 50 por mês e US$ 2,00 por chamada) e o teto por documento.
+  5. Quantos minutos de voz por dia o Elite tem a mais que o Pro; se a correção de estação com devolutiva entra no Elite.
+  6. Liberar a publicação da Central (desligar o modo sombra e ligar a publicação) e quando.
+  7. Cadastrar-se como revisor da sua área em Revisores, se quiser confirmar dose como administrador.
+  8. Escrever a descrição e os recursos de Pro e Elite em Administração > Planos (a tela de Planos do aluno mostra o que estiver escrito).
