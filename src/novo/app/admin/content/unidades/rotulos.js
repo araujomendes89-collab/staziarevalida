@@ -49,6 +49,7 @@ export const ACAO_HISTORICO = {
   "approve.medical": "Aprovação médica",
   "approve.editorial": "Aprovação editorial",
   "approval.invalidate": "Aprovações deixaram de valer",
+  "unit.format": "Formatação alterada (aprovações mantidas)",
   "review.decision": "Decisão do revisor na ficha",
   "review.sheet_import": "Ficha do revisor importada",
   publish: "Publicada ao aluno",

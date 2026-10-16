@@ -56,7 +56,8 @@ describe("Texto da unidade: botão Editar", () => {
     expect(within(sec).getByRole("button", { name: /Parágrafo/ })).toBeTruthy();
     expect(within(sec).getByRole("button", { name: /Seção/ })).toBeTruthy();
     expect(within(sec).getByRole("button", { name: /Remover/ })).toBeTruthy();
-    expect(sec.textContent).toMatch(/Salvar invalida as aprovações/);
+    expect(sec.textContent).toMatch(/invalida as aprovações/);
+    expect(sec.textContent).toMatch(/mudar só a formatação não/); // decisão do dono 16/10 (migração 013080)
     expect(within(sec).queryByRole("button", { name: "Editar" })).toBeNull();
   });
 
