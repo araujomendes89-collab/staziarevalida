@@ -4,7 +4,7 @@
  */
 import React from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { abrirBanco, type Sql } from "./helpers/publicacaoCentral";
 import { envelope } from "../shared/docRico";
 import { campoDoDoc, camposConteudo, camposSoFormatacao, comFormatacao, docDoCampo, formatacaoValida } from "../shared/docRico/campos";
@@ -93,5 +93,14 @@ describe("CampoRico (tela)", () => {
     await waitFor(() => expect(document.querySelector(".ProseMirror")).toBeTruthy(), { timeout: 15000 });
     expect(screen.queryByRole("button", { name: /Negrito/ })).toBeNull();
     expect(screen.getByRole("button", { name: /Desfazer/ })).toBeTruthy();
+  });
+
+  it("campo solto não carrega imagens, página nem histórico (a imagem não chegaria ao aluno fora da aula)", async () => {
+    render(<CampoRico label="Explicação" texto="Hidratar" rico={null} onChange={() => {}} />);
+    await waitFor(() => expect(document.querySelector(".ProseMirror")).toBeTruthy(), { timeout: 15000 });
+    expect(screen.queryByRole("button", { name: /Formatar imagem|Galeria de imagens|Histórico de versões/ })).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Inserir" }));
+    expect(screen.queryByRole("button", { name: /Imagem do computador/ })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Layout" })).toBeNull();
   });
 });
