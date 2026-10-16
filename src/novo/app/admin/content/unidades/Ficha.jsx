@@ -1,10 +1,12 @@
 // Ficha do revisor médico: decisões, pontos a conferir, notas das questões, o que ficou fora. Lida do arquivo importado
 // (para-o-revisor-medico.md); a decisão de cada item é do revisor e fica registrada com quem, quando e a observação.
 import React from "react";
+import { CampoTexto } from "../../../textoRico/CampoTexto.jsx";
+import { TextoRico } from "../../../textoRico/TextoRico.jsx";
 import { Badge, Banner, Button } from "../../../../ds";
 import { useSession } from "../../../session.jsx";
 import { lerFicha } from "../../../../../shared/aulas/fichaRevisor.js";
-import { LoadError, Loading, TextArea, useLoad } from "../../common.jsx";
+import { LoadError, Loading, useLoad } from "../../common.jsx";
 import { useAction } from "../ui.jsx";
 import { dataHora, ehObjeto } from "./rotulos.js";
 
@@ -52,12 +54,12 @@ function Decisao({ d, atual, podeDecidir, versionId, onChanged }) {
       </div>
       {atual && (
         <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
-          {ROTULO[atual.decision]} por {atual.por}, em {dataHora(atual.em)}.{atual.note ? ` Observação: ${atual.note}` : ""}
+          {ROTULO[atual.decision]} por {atual.por}, em {dataHora(atual.em)}.{atual.note ? <> Observação: <TextoRico texto={atual.note} /></> : ""}
         </span>
       )}
       {podeDecidir && (
         <>
-          <TextArea label="Observação (opcional)" value={nota} onChange={setNota} rows={2} />
+          <CampoTexto modo="linha" label="Observação (opcional)" value={nota} onChange={setNota} minRows={2} />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Button size="sm" icon="check" loading={act.busy} onClick={() => grava("de_acordo")}>
               De acordo

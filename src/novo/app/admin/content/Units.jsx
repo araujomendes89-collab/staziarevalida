@@ -3,12 +3,14 @@
 import React from "react";
 import { Badge, Banner, Button, Checkbox, EmptyState, SegmentedControl, TextField } from "../../../ds";
 import { useSession } from "../../session.jsx";
-import { ListRow, LoadError, Loading, TextArea, useLoad } from "../common.jsx";
+import { ListRow, LoadError, Loading, useLoad } from "../common.jsx";
 import { hubAvailable, hubBlobUrl } from "./api.js";
 import { AREA_LABEL, isMockModel, MATERIAL_KIND, UNIT_STATUS } from "./labels.js";
 import { openFileInTab } from "./openFile.js";
 import { PublishPanel } from "./PublishPanel.jsx";
 import { TemaDaUnidade } from "./vigilancia/TemasVigiados.jsx";
+import { CampoTexto } from "../../textoRico/CampoTexto.jsx";
+import { TextoRico } from "../../textoRico/TextoRico.jsx";
 import { ClaimCard, Label, ModelBadge, Pre, Section, shortHash, StatusBadge, useAction, when } from "./ui.jsx";
 import { CabecalhoUnidade, CaminhoAtePublicar, useVisaoGeral } from "./unidades/Topo.jsx";
 import { MateriaisUnidade } from "./unidades/Materiais.jsx";
@@ -199,7 +201,7 @@ function UnitVersion({ id, go, isAdmin, isStaff, reviewerAreas }) {
             {a.area_code && <span>· {AREA_LABEL[a.area_code] ?? a.area_code}</span>}
             <span>· {when(a.decided_at)}</span>
             <code>· {shortHash(a.content_hash)}</code>
-            {a.note && <span style={{ flexBasis: "100%", color: "var(--text-secondary)" }}>{a.note}</span>}
+            {a.note && <span style={{ flexBasis: "100%", color: "var(--text-secondary)" }}><TextoRico texto={a.note} /></span>}
           </div>
         ))}
         {data.publications.map((p, i) => (
@@ -282,7 +284,7 @@ function Decisions({ data, isAdmin, isStaff, reviewerAreas, onChanged, onPublish
   return (
     <Section title="Decisões">
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {(v.status === "awaiting_review" || v.status === "approved") && <TextArea label="Observação da aprovação (o que foi conferido)" value={note} onChange={setNote} rows={2} />}
+        {(v.status === "awaiting_review" || v.status === "approved") && <CampoTexto modo="linha" label="Observação da aprovação (o que foi conferido)" value={note} onChange={setNote} minRows={2} />}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {isStaff && v.status === "draft" && (
             <Button icon="send" loading={act.busy} onClick={() => call("app_ch_submit_for_review", { p_version_id: v.id }, "Enviada para revisão.")}>
@@ -419,7 +421,7 @@ function Editor({ version, claims, editable: podeEditar, canNewVersion = false, 
           {editable ? <TextField label="Seção" value={s.heading ?? ""} onChange={(e) => update((x) => (x[si].heading = e.target.value))} /> : <h4 style={{ margin: "0 0 6px", font: "var(--type-h4)", color: "var(--text-brand)" }}>{s.heading}</h4>}
           {(s.paragraphs ?? []).map((p, pi) => (
             <div key={pi} style={{ margin: "8px 0", paddingLeft: 10, borderLeft: `3px solid ${p.clinical ? "var(--border-brand)" : "var(--border-default)"}` }}>
-              {editable ? <TextArea value={p.text} onChange={(t) => update((x) => (x[si].paragraphs[pi].text = t))} rows={3} /> : <p style={{ margin: 0 }}>{p.text}</p>}
+              {editable ? <CampoTexto modo="linha" label={`Parágrafo ${pi + 1}`} value={p.text} onChange={(t) => update((x) => (x[si].paragraphs[pi].text = t))} minRows={3} /> : <p style={{ margin: 0 }}><TextoRico texto={p.text} /></p>}
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 4 }}>
                 {editable ? (
                   <Checkbox label="Conteúdo clínico" checked={Boolean(p.clinical)} onChange={(e) => update((x) => (x[si].paragraphs[pi].clinical = e.target.checked))} />
@@ -553,7 +555,7 @@ function MaterialPreview({ kind, content }) {
             <h4 style={{ margin: "10px 0 4px", font: "var(--type-h4)", color: "var(--text-brand)" }}>{s.heading}</h4>
             {(s.paragraphs ?? []).map((p, j) => (
               <p key={j} style={{ margin: "0 0 6px" }}>
-                {p.text}
+                <TextoRico texto={p.text} />
               </p>
             ))}
           </div>

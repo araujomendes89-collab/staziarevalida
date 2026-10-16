@@ -2,12 +2,14 @@
 // (PDF complementar, áudio Flashcast em MP3 e diretriz SUS/PCDT por link), publicação e exclusão. Os arquivos vão
 // para o depósito privado "lessons" (com o Supabase, direto do navegador por envio assinado; ver server/lessons/router.ts).
 import React from "react";
+import { TextoRico } from "../textoRico/TextoRico.jsx";
 import { Badge, Banner, Button, Card, Icon, SelectField, Switch, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
 import { lessonFileUrl, lessonsAvailable, materialTitle, removeLesson, removeLessonMaterial, sizeLabel, sweepLessonFiles, uploadErrorText, uploadLessonFile, videoPlaysInside } from "../study/lessonsApi.js";
-import { dateTimeBR, LoadError, Loading, messageOf, TextArea, useLoad } from "./common.jsx";
+import { dateTimeBR, LoadError, Loading, messageOf, useLoad } from "./common.jsx";
+import { CampoTexto } from "../textoRico/CampoTexto.jsx";
 import { LessonAssistant } from "./LessonAssistant.jsx";
 
 const EMPTY = { area: "CLINICA_MEDICA", topic: "", title: "", duration_minutes: "", instructor: "", specialty: "", video_url: "", summary: "", key_points: "", guideline_title: "", guideline_url: "", published: false, position: 0, review_note: "" };
@@ -171,7 +173,7 @@ function ReviewSection({ form, current, set }) {
       <div style={{ font: "var(--type-label)" }}>Conferência do texto</div>
       {current?.reviewed_at ? (
         <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
-          Última conferência: {current.reviewer || "pessoa da equipe"} em {dateTimeBR(current.reviewed_at)}. {current.review_note}
+          Última conferência: {current.reviewer || "pessoa da equipe"} em {dateTimeBR(current.reviewed_at)}. <TextoRico texto={current.review_note} />
         </span>
       ) : current?.published ? (
         <Banner tone="warning">Esta aula está publicada sem registro de conferência. Ao salvar com o campo abaixo preenchido, a conferência fica registrada.</Banner>
@@ -184,10 +186,11 @@ function ReviewSection({ form, current, set }) {
         </Banner>
       )}
       {form.published && (
-        <TextArea
+        <CampoTexto
+          modo="linha"
           label="O que você conferiu antes de publicar"
           value={form.review_note}
-          rows={2}
+          minRows={2}
           maxLength={1000}
           onChange={(v) => set({ review_note: v })}
           hint="Fica registrado com o seu nome e a data. Obrigatório ao publicar e ao mudar título, tema, resumo ou pontos-chave de uma aula publicada."
@@ -274,8 +277,8 @@ function LessonEditor({ lesson, topics, onSaved, onClose, isAdmin }) {
           </div>
           <TextField label="Posição" type="number" value={form.position} onChange={(e) => set({ position: e.target.value })} hint="Ordem dentro da área." />
         </div>
-        <TextArea label="Resumo & racionalidade clínica" value={form.summary} rows={6} maxLength={8000} onChange={(v) => set({ summary: v })} />
-        <TextArea label="Pontos-chave para o Revalida (um por linha)" value={form.key_points} rows={5} onChange={(v) => set({ key_points: v })} />
+        <CampoTexto modo="documento" label="Resumo & racionalidade clínica" value={form.summary} minRows={6} maxLength={8000} onChange={(v) => set({ summary: v })} />
+        <CampoTexto modo="pontos" label="Pontos-chave para o Revalida (um por linha)" value={form.key_points} minRows={5} onChange={(v) => set({ key_points: v })} />
         <MaterialsSection lesson={current} pending={pending} setPending={setPending} onChanged={(l) => (setCurrent((c) => ({ ...c, ...l })), onSaved(l))} form={form} set={set} />
         <ReviewSection form={form} current={current} set={set} />
         <Switch label="Publicada" description="Só aulas publicadas aparecem para os alunos." checked={Boolean(form.published)} onChange={(e) => set({ published: e.target.checked })} />

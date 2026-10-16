@@ -1,5 +1,6 @@
 // Histórico da unidade: cada alteração (importação, material, decisão, aprovação, publicação) com quem e quando.
 import React from "react";
+import { TextoRico } from "../../../textoRico/TextoRico.jsx";
 import { Badge } from "../../../../ds";
 import { useSession } from "../../../session.jsx";
 import { LoadError, useLoad } from "../../common.jsx";
@@ -8,7 +9,7 @@ import { ACAO_HISTORICO, dataHora } from "./rotulos.js";
 function Detalhe({ acao, d }) {
   if (!d) return null;
   if (acao.startsWith("unit.material")) return <span>{[d.title, d.reason && `motivo: ${d.reason}`].filter(Boolean).join(" · ")}</span>;
-  if (acao === "review.decision") return <span>decisão {d.n}: {d.decision === "de_acordo" ? "de acordo" : "pede mudança"}{d.note ? ` · ${d.note}` : ""}</span>;
+  if (acao === "review.decision") return <span>decisão {d.n}: {d.decision === "de_acordo" ? "de acordo" : "pede mudança"}{d.note ? <> · <TextoRico texto={d.note} /></> : ""}</span>;
   if (acao === "approval.invalidate") return <span>motivo: {d.why}</span>;
   if (acao === "unit.import") return <span>{d.result}</span>;
   return null;

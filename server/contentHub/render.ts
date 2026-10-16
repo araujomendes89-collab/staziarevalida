@@ -10,6 +10,7 @@ import os from "os";
 import path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
+import { htmlInline, textoPuro } from "../../src/shared/textoRico";
 
 const run = promisify(execFile);
 const ROOT = process.cwd();
@@ -98,7 +99,7 @@ export function referenceLine(r: any): string {
 
 export function lessonHtml(content: any, meta: RenderMeta, brand: Brand): string {
   const sections = (content.sections ?? [])
-    .map((s: any) => `<section><h2>${esc(s.heading)}</h2>${(s.paragraphs ?? []).map((p: any) => `<p>${esc(p.text)}</p>`).join("")}</section>`)
+    .map((s: any) => `<section><h2>${esc(s.heading)}</h2>${(s.paragraphs ?? []).map((p: any) => `<p>${htmlInline(p.text)}</p>`).join("")}</section>`)
     .join("");
   const refs = (content.references ?? []).map((r: any) => `<li>${esc(referenceLine(r))}</li>`).join("");
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(content.title ?? meta.title)}</title><style>${brand.fontFaces}${CSS_TOKENS}
@@ -148,7 +149,7 @@ export function cardsHtml(content: any, meta: RenderMeta, brand: Brand): string 
 export function expectedTexts(kind: "lesson" | "visual_cards", content: any): { texts: string[]; references: string[] } {
   if (kind === "lesson") {
     return {
-      texts: [content.title, ...(content.sections ?? []).flatMap((s: any) => [s.heading, ...(s.paragraphs ?? []).map((p: any) => p.text)])].filter(Boolean),
+      texts: [content.title, ...(content.sections ?? []).flatMap((s: any) => [s.heading, ...(s.paragraphs ?? []).map((p: any) => textoPuro(p.text, "linha"))])].filter(Boolean),
       references: (content.references ?? []).map(referenceLine),
     };
   }

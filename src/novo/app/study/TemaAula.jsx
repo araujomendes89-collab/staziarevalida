@@ -11,6 +11,7 @@ import { temaVars } from "./temaCores.js";
 import { ProtectedImage, noMenu, preCarregarCartao, useVersoPronto } from "./AulaImagem.jsx";
 import { blocoDe, boxOf, celula, cleanHeading, dividirFrases, minutosDeLeitura, mudanca, progressoDaAula, secaoTipo, sobretitulo } from "./aulaPadrao.js";
 import "./aula.css";
+import { TextoRico } from "../textoRico/TextoRico.jsx";
 
 export { boxOf };
 
@@ -36,13 +37,13 @@ const BOX_ICON = { peg: "triangle-alert", atencao: "circle-alert", nota: "lightb
 /** Parágrafo comum ou caixa (Pegadinha, Atenção, Tome nota). */
 function Bloco({ texto, estilo }) {
   const b = blocoDe(texto, estilo);
-  if (b.kind === "p") return <p className="al-p">{texto}</p>;
+  if (b.kind === "p") return <p className="al-p"><TextoRico texto={texto} /></p>;
   return (
     <div className={`al-box al-${b.kind}`} role="note">
       <span className="al-box-ico" aria-hidden="true"><Icon name={BOX_ICON[b.kind]} size={18} /></span>
       <div className="al-box-c">
         <div className="h">{b.title}</div>
-        <div className="t">{b.body}</div>
+        <div className="t"><TextoRico texto={b.body} /></div>
       </div>
     </div>
   );
@@ -54,15 +55,15 @@ function Mudanca({ texto }) {
     <article className="al-mud">
       <div className="al-mud-h">
         <span className="al-mud-ico" aria-hidden="true"><Icon name="history" size={16} /></span>
-        {m.titulo ? <h3>{m.titulo}</h3> : <span className="al-mud-l">Atualização</span>}
+        {m.titulo ? <h3><TextoRico texto={m.titulo} /></h3> : <span className="al-mud-l">Atualização</span>}
       </div>
       {m.antes ? (
         <div className="al-compare">
-          <div className="al-cmp al-cmp-antes"><div className="al-cmp-l">Antes</div><p>{m.antes}</p></div>
-          <div className="al-cmp al-cmp-agora"><div className="al-cmp-l">Agora</div><p>{m.agora}</p></div>
+          <div className="al-cmp al-cmp-antes"><div className="al-cmp-l">Antes</div><p><TextoRico texto={m.antes} /></p></div>
+          <div className="al-cmp al-cmp-agora"><div className="al-cmp-l">Agora</div><p><TextoRico texto={m.agora} /></p></div>
         </div>
       ) : (
-        <p className="al-p">{m.corpo}</p>
+        <p className="al-p"><TextoRico texto={m.corpo} /></p>
       )}
     </article>
   );
@@ -532,7 +533,7 @@ function Conteudo({ data, tema, go, notes, onBack, onProgresso }) {
                 <div className="al-sechead-t"><span className="al-over">Antes de começar</span><h2 className="al-sectab" id="al-resumo-h">Em resumo</h2></div>
               </div>
               {cab && !cabCurto && <p className="al-p al-lead">{cab}</p>}
-              {pontos.length > 0 && <ul className="al-pontos">{pontos.map((p, i) => <li key={i}><Icon name="circle-check" size={18} /><span>{p}</span></li>)}</ul>}
+              {pontos.length > 0 && <ul className="al-pontos">{pontos.map((p, i) => <li key={i}><Icon name="circle-check" size={18} /><span><TextoRico texto={p} /></span></li>)}</ul>}
             </section>
           )}
 
@@ -568,13 +569,13 @@ function Conteudo({ data, tema, go, notes, onBack, onProgresso }) {
                   {tipo === "caso" && paras.map((p, j) => (
                     <div className="al-caso" key={j}>
                       <span className="al-caso-ico" aria-hidden="true"><Icon name="stethoscope" size={20} /></span>
-                      <p>{p}</p>
+                      <p><TextoRico texto={p} /></p>
                     </div>
                   ))}
                   {tipo === "volta" && paras.map((p, j) => (
                     <div className="al-volta" key={j}>
                       <span className="al-caso-ico" aria-hidden="true"><Icon name="circle-check" size={20} /></span>
-                      <p>{p}</p>
+                      <p><TextoRico texto={p} /></p>
                     </div>
                   ))}
                   {tipo === "mudou" && <div className="al-muds">{paras.map((p, j) => <Mudanca key={j} texto={p} />)}</div>}
@@ -590,7 +591,7 @@ function Conteudo({ data, tema, go, notes, onBack, onProgresso }) {
                         return (
                           <label key={j} className={`al-row${notes.checks[key] ? " on" : ""}`}>
                             <input type="checkbox" checked={Boolean(notes.checks[key])} onChange={() => notes.toggle(key)} />
-                            <span>{p}</span>
+                            <span><TextoRico texto={p} /></span>
                           </label>
                         );
                       })}
