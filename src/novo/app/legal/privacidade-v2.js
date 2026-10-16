@@ -1,10 +1,11 @@
 /*
- * RASCUNHO da Política de Privacidade que acompanha o Termo 2.0 (Tutor de voz). NÃO está em vigor: aparece só quando o banco diz
- * que o Termo vigente é o 2.0 (supabase/ativar/20261003011500_termo_v2.ativar.sql). Texto para o dono e o advogado revisarem
- * (docs/voice-tutor/04-termo-voz.md). Mesma forma de privacidade.js; as seções 1, 3 e 4 mudam, as demais são iguais.
+ * Política de Privacidade que acompanha o Termo 2.0 (Tutor de voz). AINDA NÃO está em vigor: aparece só quando o banco diz que o
+ * Termo vigente é o 2.0 (supabase/ativar/20261003011500_termo_v2.ativar.sql). Decisões do dono e riscos conhecidos em
+ * docs/voice-tutor/04-termo-voz.md. Mesma forma de privacidade.js; as seções 1, 3 e 4 mudam, as demais são iguais.
+ * "atualizada": trocar pela data do dia da ativação, se for outra.
  */
 export const PRIVACIDADE_V2 = {
-  "atualizada": "RASCUNHO para revisão jurídica — acompanha o Termo 2.0 (outubro de 2026)",
+  "atualizada": "16 de outubro de 2026",
   "blocos": [
     {
       "tipo": "controlador",
@@ -59,7 +60,7 @@ export const PRIVACIDADE_V2 = {
         },
         {
           "tipo": "p",
-          "texto": "**Fornecedores dos Tutores de IA.** Anthropic (Claude) escreve as respostas a partir do texto da conversa. Google (Gemini) e OpenAI fazem a conversa por voz ao vivo e a transcrição da fala. ElevenLabs gera a voz do professor a partir do texto da resposta e não recebe a sua voz."
+          "texto": "**Fornecedores dos Tutores de IA.** Anthropic (Claude) escreve as respostas a partir do texto da conversa. Google Cloud (Vertex AI, modelos Gemini) e OpenAI fazem a conversa por voz ao vivo e a transcrição da fala. ElevenLabs gera a voz do professor a partir do texto da resposta e não recebe a sua voz."
         },
         {
           "tipo": "p",
@@ -67,15 +68,15 @@ export const PRIVACIDADE_V2 = {
         },
         {
           "tipo": "p",
-          "texto": "**Transcrição.** O texto das falas da conversa por voz pode ficar no histórico da conversa por até 30 dias e depois é apagado automaticamente. As conversas por escrito ficam no histórico enquanto a conta existir."
+          "texto": "**Transcrição.** O texto das falas da conversa por voz pode ficar no histórico da conversa por até 7 dias e depois é apagado automaticamente. As conversas por escrito ficam no histórico enquanto a conta existir."
         },
         {
           "tipo": "p",
-          "texto": "**Retenção nos fornecedores.** Cada fornecedor pode manter registros do que recebeu por um período limitado, conforme as próprias regras (por exemplo, para segurança e prevenção de abuso), e alguns processam dados fora do Brasil. Usamos os fornecedores em planos pagos de uso profissional, nos quais, segundo as regras deles, os dados não são usados para treinar os modelos."
+          "texto": "**Retenção nos fornecedores.** Cada fornecedor pode manter registros do que recebeu por um período limitado, conforme as próprias regras (por exemplo, para segurança e prevenção de abuso), e alguns processam dados fora do Brasil. A conversa por voz ao vivo com o Google usa o Google Cloud (Vertex AI), serviço profissional pago no qual, segundo as regras do Google, os dados não são usados para treinar modelos sem autorização."
         },
         {
           "tipo": "p",
-          "texto": "**Modo Durona e nível Explosiva.** Palavrões e humor adulto só aparecem quando você mesmo ativa esses modos, e podem ser desligados a qualquer momento."
+          "texto": "**Palavrões e humor adulto.** Vêm ligados por padrão (Durona e nível Explosiva) e podem ser desligados a qualquer momento nas preferências do tutor."
         }
       ]
     },

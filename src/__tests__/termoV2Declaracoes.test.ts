@@ -157,13 +157,13 @@ describe("Termo 2.0 — ativado (supabase/ativar)", () => {
     await db.exec(ATIVAR);
   });
 
-  it("vira a versão vigente, exige as declarações e encurta a retenção da transcrição da voz", async () => {
+  it("vira a versão vigente (Termo e §34), exige as declarações e encurta a retenção da transcrição da voz para 7 dias", async () => {
     expect(await termoVigente()).toEqual({ version: "2.0", requires_declarations: true });
     const tutor = (await db.query<any>(`select version from public.legal_versions where document = 'tutor_ia'`)).rows[0];
-    expect(tutor.version).toBe("1.0");
+    expect(tutor.version).toBe("2.0");
     const cfg = (await db.query<any>(`select transcript_retention_days from public.tutor_config`)).rows;
     expect(cfg.length).toBeGreaterThan(0);
-    expect(cfg.every((c: any) => c.transcript_retention_days >= 1 && c.transcript_retention_days <= 30)).toBe(true);
+    expect(cfg.every((c: any) => c.transcript_retention_days >= 1 && c.transcript_retention_days <= 7)).toBe(true);
   });
 
   it("quem tinha aceitado o 1.0 precisa aceitar de novo no próximo login, e só passa com as duas declarações", async () => {
@@ -213,8 +213,8 @@ describe("Termo 2.0 — ativado (supabase/ativar)", () => {
 
   it("o aceite dos Tutores (§34) segue sem declarações e a equipe continua dispensada", async () => {
     const { id } = await signUp({ name: "T", phone: PHONE, terms_version: "2.0", declares_adult: "true", declares_physician: "true" });
-    await rpc(id, "app_accept_terms", { p_document: "tutor_ia", p_version: "1.0", p_origin: "tutor" });
-    expect((await aceites(id)).map((a: any) => [a.document, a.version])).toEqual([["termo_uso", "2.0"], ["tutor_ia", "1.0"]]);
+    await rpc(id, "app_accept_terms", { p_document: "tutor_ia", p_version: "2.0", p_origin: "tutor" });
+    expect((await aceites(id)).map((a: any) => [a.document, a.version])).toEqual([["termo_uso", "2.0"], ["tutor_ia", "2.0"]]);
 
     const editor = await signUp({ name: "Editor" });
     await db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [editor.id]);
@@ -254,6 +254,7 @@ describe("Termo 2.0 — ativado (supabase/ativar)", () => {
     await db.exec(DESFAZER_ATIVAR);
     try {
       expect(await termoVigente()).toEqual({ version: "1.0", requires_declarations: false });
+      expect((await db.query<any>(`select version from public.legal_versions where document = 'tutor_ia'`)).rows[0].version).toBe("1.0");
       // quem aceitou o 1.0 e depois a 2.0 continua liberado; a chave nova some
       const l = await legal(antigo.id);
       expect(l).toMatchObject({ gate_required: false, termo_uso: { current: "1.0", accepted: "1.0" } });

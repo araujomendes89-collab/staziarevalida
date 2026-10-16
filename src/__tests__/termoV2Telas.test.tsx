@@ -14,6 +14,7 @@ import { AcceptanceScreen } from "../novo/app/legal/AcceptanceScreen.jsx";
 import { documentosDa, DECLARACAO_ADULTO, DECLARACAO_MEDICO } from "../novo/app/legal/documentos.js";
 import { rememberGoogleAcceptance, takeGoogleAcceptance, takeGoogleAcceptanceFull } from "../novo/app/legal/googleAcceptance.js";
 import { signUpMetadata } from "../novo/data/backend";
+import { TUTOR_CONSENT_TEXTS } from "../novo/app/tutor/TutorConsentCard.jsx";
 
 const FRASE = /Declaro que li e compreendi/;
 const legalOf = (versao: string, extra: Record<string, unknown> = {}) => ({
@@ -36,17 +37,25 @@ beforeEach(() => localStorage.clear());
 afterEach(cleanup);
 
 describe("Termo 2.0 — textos por versão", () => {
-  it("1.0 é o texto de hoje e 2.0 é o rascunho com maioridade, médico, fornecedores e retenção", () => {
+  it("1.0 é o texto de hoje e 2.0 traz maioridade, médico, fornecedores e retenção", () => {
     const v1 = documentosDa("1.0");
     const v2 = documentosDa("2.0");
     expect(v1.declaracoes).toBe(false);
     expect(v2.declaracoes).toBe(true);
     expect(v1.termo).toContain("Versão do Termo: 1.0");
     expect(v1.termo).not.toContain("QUEM PODE USAR");
-    for (const trecho of ["18 anos ou mais", "graduação em Medicina concluída", "Google (Gemini)", "OpenAI", "ElevenLabs", "Anthropic (Claude)",
-      "não grava o áudio da sua voz", "30 dias", "Durona", "Explosiva", "RASCUNHO"]) {
+    for (const trecho of ["18 anos ou mais", "graduação em Medicina concluída", "Google Cloud (Vertex AI, modelos Gemini)", "OpenAI", "ElevenLabs",
+      "Anthropic (Claude)", "não grava o áudio da sua voz", "apagado automaticamente depois de 7 dias", "LIGADOS POR PADRÃO", "Durona", "Explosiva",
+      "Versão do Termo: 2.0"]) {
       expect(v2.termo).toContain(trecho);
     }
+    // decisões do dono de 16/10: sem rascunho, sem 30 dias, sem "só quando ativa", sem plano gratuito
+    for (const fora of ["RASCUNHO", "30 dias", "somente quando", "plano gratuito", "API gratuita"]) expect(v2.termo).not.toContain(fora);
+    expect(JSON.stringify(v2.privacidade)).toContain("até 7 dias");
+    expect(JSON.stringify(v2.privacidade)).toContain("Vertex AI");
+    // o §34 do Termo 2.0 é o mesmo texto do cartão do Tutor na versão 2.0
+    expect(v2.termo).toContain(TUTOR_CONSENT_TEXTS["2.0"]);
+    expect(v1.termo).toContain(TUTOR_CONSENT_TEXTS["1.0"]);
     expect(JSON.stringify(v2.privacidade)).toContain("ElevenLabs");
     expect(JSON.stringify(v1.privacidade)).not.toContain("ElevenLabs");
     // versão desconhecida cai na de versions.js (hoje 1.0)

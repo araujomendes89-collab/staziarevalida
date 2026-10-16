@@ -6,6 +6,15 @@ import { useSession } from "../session.jsx";
 
 export const TUTOR_CONSENT_TEXT =
   "Estou ciente de que os Tutores do StaziaMed Revalida utilizam Inteligência Artificial e podem cometer erros. Entendo que alguns perfis possuem linguagem informal, humor, ironia, cobrança e, quando selecionados por mim, podem utilizar expressões mais intensas ou palavrões dentro do contexto educacional.";
+/**
+ * Texto do §34 por versão do aceite dos Tutores (a versão vem do banco, status.consent_version). A 2.0 acompanha o Termo 2.0
+ * (palavrões e humor adulto ligados por padrão, decisão do dono de 16/10) e só aparece depois de colar
+ * supabase/ativar/20261003011500_termo_v2.ativar.sql. Versão desconhecida mostra a 1.0.
+ */
+export const TUTOR_CONSENT_TEXTS = {
+  "1.0": TUTOR_CONSENT_TEXT,
+  "2.0": "Estou ciente de que os Tutores do StaziaMed Revalida utilizam Inteligência Artificial e podem cometer erros. Entendo que os tutores usam linguagem informal, humor adulto, ironia, cobrança e palavrões dentro do contexto educacional, ligados por padrão, e que posso desligar os palavrões e o humor adulto a qualquer momento nas preferências do tutor.",
+};
 
 /** onAccepted: chamado depois do aceite gravado. onOutdated: o servidor recusou por versão antiga (a tela relê o status). */
 export function TutorConsentCard({ version, onAccepted, onOutdated }) {
@@ -38,7 +47,7 @@ export function TutorConsentCard({ version, onAccepted, onOutdated }) {
   return (
     <Card padding={20} style={{ borderRadius: 24 }}>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <p style={{ margin: 0, font: "var(--type-body)", color: "var(--text-primary)" }}>{TUTOR_CONSENT_TEXT}</p>
+        <p style={{ margin: 0, font: "var(--type-body)", color: "var(--text-primary)" }}>{TUTOR_CONSENT_TEXTS[version] ?? TUTOR_CONSENT_TEXT}</p>
         {error && <Banner tone="danger">{error}</Banner>}
         <Checkbox label="Li e concordo" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
         <div>

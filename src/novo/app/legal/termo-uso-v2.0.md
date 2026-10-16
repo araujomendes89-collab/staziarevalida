@@ -110,16 +110,13 @@ Quando o próprio usuário selecionar um tutor com personalidade mais intensa, c
 
 Essa característica faz parte da experiência educacional escolhida pelo usuário.
 
-**Modo Durona e nível Explosiva**
+**Palavrões e humor adulto (Durona e nível Explosiva)**
 
-O tutor **Durona** e o seu nível mais intenso (**Explosiva**) foram feitos para um público adulto. Quando — e somente quando — o próprio usuário os ativa, o tutor pode usar **palavrões, broncas encenadas, gritos de efeito, ironia e humor adulto**, sempre como recurso de personagem e voltados ao erro ou à situação de estudo, nunca à pessoa.
+Como a plataforma é exclusiva para médicos maiores de 18 anos, os tutores vêm com **palavrões, broncas encenadas, gritos de efeito, ironia e humor adulto LIGADOS POR PADRÃO** para todos os usuários, especialmente o tutor **Durona** e o seu nível mais intenso (**Explosiva**). Esses recursos são sempre usados como recurso de personagem, voltados ao erro ou à situação de estudo, nunca à pessoa.
 
-Esses recursos:
+O usuário pode **desligar** palavrões e humor adulto **a qualquer momento**, nas preferências do tutor, e ligar de novo quando quiser.
 
-- começam **desligados**;
-- só funcionam depois de o usuário escolhê-los nas configurações do tutor;
-- podem ser desligados a qualquer momento, voltando a um tutor sem palavrões;
-- continuam sujeitos às proibições da seção 6.
+Esses recursos continuam sujeitos às proibições da seção 6.
 
 ---
 
@@ -388,7 +385,7 @@ A plataforma poderá utilizar diferentes modelos ou fornecedores tecnológicos p
 Hoje, os Tutores de IA usam os seguintes fornecedores:
 
 - **Anthropic (Claude)**: escreve as respostas do tutor a partir do texto da conversa, inclusive do texto da sua fala, quando você fala ao microfone;
-- **Google (Gemini)** e **OpenAI**: conversa por voz ao vivo e transcrição da sua fala em texto (veja a seção 24);
+- **Google Cloud (Vertex AI, modelos Gemini)** e **OpenAI**: conversa por voz ao vivo e transcrição da sua fala em texto (veja a seção 24);
 - **ElevenLabs**: transforma em voz o texto das respostas do professor.
 
 A lista pode mudar. Quando um fornecedor que recebe a sua voz for incluído ou trocado, esta seção será atualizada e, se a mudança for relevante, será pedido novo aceite.
@@ -471,13 +468,13 @@ Usar o microfone é **opcional**: todos os tutores também funcionam por escrito
 
 Quando você liga o microfone, o **áudio da sua voz** é enviado a um fornecedor de tecnologia para ser transformado em texto ou respondido na hora:
 
-- na **conversa por voz ao vivo**, o áudio vai do seu aparelho para o **Google (Gemini)** ou, como reserva, para a **OpenAI**, que devolvem a fala do professor;
+- na **conversa por voz ao vivo**, o áudio vai do seu aparelho para o **Google Cloud (Vertex AI, modelos Gemini)** ou, como reserva, para a **OpenAI**, que devolvem a fala do professor;
 - na **voz do professor**, o áudio passa pelo servidor do StaziaMed só para ser transformado em texto pela **OpenAI**; a voz do professor é gerada pela **ElevenLabs**, que recebe apenas o texto da resposta, e não a sua voz.
 
 **O que guardamos e por quanto tempo**
 
 - **O StaziaMed não grava o áudio da sua voz.** O áudio é usado na hora e descartado.
-- O **texto** das falas da conversa por voz (a transcrição) pode ficar no histórico da conversa para você rever e para o tutor lembrar do que foi dito. Ele é **apagado automaticamente depois de 30 dias**.
+- O **texto** das falas da conversa por voz (a transcrição) pode ficar no histórico da conversa para você rever e para o tutor lembrar do que foi dito. Ele é **apagado automaticamente depois de 7 dias**.
 - As conversas **por escrito** ficam no seu histórico enquanto a sua conta existir. Ao excluir a conta, elas são apagadas.
 - Os fornecedores processam o áudio e o texto para executar o pedido e podem manter registros por um período limitado, conforme as regras de cada um (por exemplo, para segurança e prevenção de abuso). Os detalhes estão na Política de Privacidade.
 - Alguns fornecedores processam dados **fora do Brasil**.
@@ -643,7 +640,7 @@ As três marcações são obrigatórias e ficam registradas com a data, a hora e
 
 Antes da primeira utilização dos Tutores de IA, poderá ser solicitado aceite específico:
 
-**“Estou ciente de que os Tutores do StaziaMed Revalida utilizam Inteligência Artificial e podem cometer erros. Entendo que alguns perfis possuem linguagem informal, humor, ironia, cobrança e, quando selecionados por mim, podem utilizar expressões mais intensas ou palavrões dentro do contexto educacional.”**
+**“Estou ciente de que os Tutores do StaziaMed Revalida utilizam Inteligência Artificial e podem cometer erros. Entendo que os tutores usam linguagem informal, humor adulto, ironia, cobrança e palavrões dentro do contexto educacional, ligados por padrão, e que posso desligar os palavrões e o humor adulto a qualquer momento nas preferências do tutor.”**
 
 ☐ **Li e concordo.**
 
@@ -657,7 +654,7 @@ Ao continuar utilizando o StaziaMed Revalida, o usuário confirma que:
 - compreendeu a finalidade educacional da plataforma;
 - entende que não existe garantia de aprovação;
 - reconhece que ferramentas de Inteligência Artificial podem cometer erros;
-- compreende que os tutores possuem diferentes personalidades e que palavrões e humor adulto só aparecem quando ele mesmo ativa o modo Durona/Explosiva;
+- compreende que os tutores possuem diferentes personalidades e que palavrões e humor adulto vêm ligados por padrão e podem ser desligados por ele a qualquer momento;
 - sabe que, ao usar o microfone, o áudio da sua voz é processado pelos fornecedores indicados na seção 24;
 - aceita as características do tutor que escolher;
 - compromete-se a não compartilhar sua conta;
@@ -678,4 +675,4 @@ CNPJ: 64.964.213/0001-16
 Endereço: Rua Visconde do Rio Branco, nº 1488, Centro, Curitiba/PR, CEP 80420-210.     
 E-mail de suporte: suporte@staziamed.com.br
 Site: www.staziamed.com.br
-Versão do Termo: 2.0 — RASCUNHO PARA REVISÃO JURÍDICA (outubro de 2026)
+Versão do Termo: 2.0 — Outubro de 2026
