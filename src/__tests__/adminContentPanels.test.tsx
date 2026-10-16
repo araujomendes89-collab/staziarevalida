@@ -30,6 +30,9 @@ vi.mock("../novo/app/editorPro/editarAula/EditorResumo.jsx", async () => {
   return { default: EditorResumo };
 });
 
+// Editor profissional (013160): os pontos-chave usam o CampoRico; aqui ele vira o textarea de antes (mesmo rótulo).
+vi.mock("../novo/app/editorPro/CampoRico.jsx", () => import("./helpers/campoRicoComoTexto"));
+
 import { AdminLessons } from "../novo/app/admin/AdminLessons.jsx";
 import { AdminUpdates } from "../novo/app/admin/AdminUpdates.jsx";
 import { AdminAudit } from "../novo/app/admin/AdminPanels.jsx";

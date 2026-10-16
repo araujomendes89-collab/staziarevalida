@@ -157,7 +157,7 @@ function UnitVersion({ id, go, isAdmin, isStaff, reviewerAreas }) {
           <CabecalhoUnidade o={visao} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))", gap: 16, alignItems: "start" }}>
             <CaminhoAtePublicar o={visao} onPublish={() => setPublishing(true)} />
-            <MateriaisUnidade versionId={id} secoes={secoes} claims={data.claims ?? []} canEdit={visao.pode?.editar === true} refresh={tick} onChanged={recarrega} />
+            <MateriaisUnidade versionId={id} secoes={secoes} claims={data.claims ?? []} canEdit={visao.pode?.editar === true} podeFormatar={isStaff && v.status !== "retired"} refresh={tick} onChanged={recarrega} />
           </div>
           <FichaRevisor versionId={id} refresh={tick} podeDecidir={visao.pode?.aprovar_medica === true} podeImportar={isStaff} onChanged={recarrega} />
         </>

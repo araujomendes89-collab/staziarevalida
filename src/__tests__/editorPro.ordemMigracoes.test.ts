@@ -23,6 +23,9 @@ const ED = {
 };
 const ORDEM_PRODUCAO = ["013020", "013030", "013080", "013040", "013060"].map((k) => ED[k as keyof typeof ED]);
 const doEditor = new Set(Object.values(ED));
+// Expansão do editor (16/10): migrações que, DE PROPÓSITO, redefinem funções das 5 (partem do corpo delas) e por isso vão coladas
+// DEPOIS delas. 013160 (Central + Aulas): app_tema_aula (013020), lesson_view e app_admin_save_lesson (013040).
+const EXPANSAO = ["20261003013160_editor_pro_central_aulas.sql"].filter((f) => fs.existsSync(path.join(MIG, f)));
 const conferir = [
   "supabase/conferir/editor-pro-ricos-aluno.sql",
   "supabase/conferir/editor-pro-imagens.sql",
@@ -113,16 +116,16 @@ describe("Editor profissional, onda 1: ordem das migrações (ed-integra)", () =
     for (const k of Object.keys(a) as (keyof typeof a)[]) expect(b[k], k).toEqual(a[k]);
   }, 300_000);
 
-  it("colar as 5 de novo (na ordem de produção) não muda nada", async () => {
+  it("colar as 5 de novo (na ordem de produção, e depois a expansão que redefine funções delas) não muda nada", async () => {
     const antes = await retrato(producao);
-    for (const f of ORDEM_PRODUCAO) await producao.exec(ler(path.join(MIG, f)));
+    for (const f of [...ORDEM_PRODUCAO, ...EXPANSAO]) await producao.exec(ler(path.join(MIG, f)));
     expect(await retrato(producao)).toEqual(antes);
     await conferirTudo(producao);
   }, 300_000);
 
   it("nenhuma migração do editor redefine função mexida depois no main (nivelamento 012300, voz 012800, gamificação 013000, reserva 013010)", () => {
     const funcoes = (f: string) => new Set([...ler(path.join(MIG, f)).matchAll(/function\s+public\.([a-z0-9_]+)\s*\(/gi)].map((m) => m[1].toLowerCase()));
-    const doMain = todas.filter((f) => f >= "20261003012300" && !doEditor.has(f)).flatMap((f) => [...funcoes(f)]);
+    const doMain = todas.filter((f) => f >= "20261003012300" && !doEditor.has(f) && !EXPANSAO.includes(f)).flatMap((f) => [...funcoes(f)]);
     for (const f of doEditor) for (const fn of funcoes(f)) expect(doMain, `${f} redefine ${fn}`).not.toContain(fn);
   });
 });

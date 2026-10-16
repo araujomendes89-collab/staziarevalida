@@ -1,5 +1,9 @@
 // "Materiais da unidade": lista (tipo, quem vê, estado), INSERIR, RETIRAR e PRÉ-VISUALIZAR. Retirar não apaga: fica no histórico.
+// Legenda e transcrição de áudio/vídeo usam o editor profissional (CampoRico): o texto continua em content.legenda/.transcricao e a
+// formatação vai em content.formatacao (migração 013160). Só formatação não derruba as aprovações (o banco decide).
 import React from "react";
+import { CampoRico } from "../../../editorPro/CampoRico.jsx";
+import { materialParaSalvar } from "../../../../../shared/aulas/camposRicos";
 import { Badge, Banner, Button, Checkbox, SelectField, TextField } from "../../../../ds";
 import { useSession } from "../../../session.jsx";
 import { LoadError, Loading, TextArea, useLoad } from "../../common.jsx";
@@ -65,8 +69,8 @@ function FormularioInserir({ versionId, secoes, claims, onClose, onDone }) {
   const [pos, setPos] = React.useState("99");
   const [url, setUrl] = React.useState("");
   const [dur, setDur] = React.useState("");
-  const [legenda, setLegenda] = React.useState("");
-  const [transcricao, setTranscricao] = React.useState("");
+  const [legenda, setLegenda] = React.useState({ texto: "", rico: null });
+  const [transcricao, setTranscricao] = React.useState({ texto: "", rico: null });
   const [cab, setCab] = React.useState("");
   const [linhas, setLinhas] = React.useState("");
   const [ids, setIds] = React.useState([]);
@@ -78,7 +82,11 @@ function FormularioInserir({ versionId, secoes, claims, onClose, onDone }) {
   };
   const enviar = async () => {
     const item = { kind: tipo, title: titulo, visibility: quem, position: Number(pos) };
-    if (midia) Object.assign(item, { url, duration_seconds: segundos(dur), caption: legenda, transcript: transcricao });
+    if (midia) {
+      const g = materialParaSalvar({ legenda: legenda.texto, transcricao: transcricao.texto }, { legenda: legenda.rico, transcricao: transcricao.rico });
+      Object.assign(item, { url, duration_seconds: segundos(dur), caption: g.textos.legenda, transcript: g.textos.transcricao });
+      if (g.formatacao) item.formatacao = g.formatacao;
+    }
     else Object.assign(item, { headers: cab.split(";").map((x) => x.trim()).filter(Boolean), rows: linhas.split("\n").map((l) => l.split(";").map((x) => x.trim())).filter((r) => r.some(Boolean)), claim_ids: ids });
     const r = await act.run(() => backend.rpc("app_ch_unit_material_insert", { p_version_id: versionId, p_item: item }), null);
     if (r) onDone(r);
@@ -105,8 +113,8 @@ function FormularioInserir({ versionId, secoes, claims, onClose, onDone }) {
           </fieldset>
           <TextField label="Link do vídeo ou áudio" placeholder="https://youtu.be/… ou https://vimeo.com/…" value={url} onChange={(e) => setUrl(e.target.value)} />
           <TextField label="Duração (m:ss ou segundos)" placeholder="2:05" value={dur} onChange={(e) => setDur(e.target.value)} />
-          <TextArea label="Legenda (opcional)" value={legenda} onChange={setLegenda} rows={2} />
-          <TextArea label="Transcrição (opcional)" value={transcricao} onChange={setTranscricao} rows={3} />
+          <CampoRico label="Legenda (opcional)" texto={legenda.texto} rico={legenda.rico} onChange={setLegenda} />
+          <CampoRico label="Transcrição (opcional)" texto={transcricao.texto} rico={transcricao.rico} onChange={setTranscricao} />
         </>
       ) : (
         <>
@@ -136,7 +144,45 @@ function FormularioInserir({ versionId, secoes, claims, onClose, onDone }) {
   );
 }
 
-function Linha({ it, secoes, canEdit, onPreview, onRetire, onRestore, busy }) {
+// Legenda e transcrição de um áudio/vídeo já na lista. Na versão em preparo muda tudo; na versão no ar só a formatação (o banco recusa
+// mudança de texto). Só formatação mantém as aprovações; texto novo num material que o aluno vê derruba as aprovações, como inserir.
+function JanelaTextos({ item, canEdit, onClose, onDone }) {
+  const { backend } = useSession();
+  const act = useAction();
+  const f = item.content?.formatacao;
+  const [legenda, setLegenda] = React.useState({ texto: item.content?.legenda ?? "", rico: f?.legenda ?? null });
+  const [transcricao, setTranscricao] = React.useState({ texto: item.content?.transcricao ?? "", rico: f?.transcricao ?? null });
+  const salvar = async () => {
+    const g = materialParaSalvar({ legenda: legenda.texto, transcricao: transcricao.texto }, { legenda: legenda.rico, transcricao: transcricao.rico });
+    const r = await act.run(() => backend.rpc("app_ch_unit_material_textos", { p_item_id: item.id, p_item: { caption: g.textos.legenda, transcript: g.textos.transcricao, formatacao: g.formatacao } }), null);
+    if (r) onDone(r.sem_mudanca ? "Nada mudou." : r.so_formatacao ? "Formatação salva. Só a aparência mudou: as aprovações continuam valendo." : `Legenda e transcrição salvas.${item.visibility === "aluno" ? " Se a versão estava aprovada, as aprovações deixaram de valer: o aluno não pode ver o que o revisor não viu." : ""}`);
+  };
+  return (
+    <Janela titulo={`Legenda e transcrição: ${item.title}`} onClose={onClose} largura={640}>
+      {!canEdit && (
+        <Banner tone="info" title="Versão no ar">
+          Aqui só a formatação muda (negrito, cor, alinhamento...): o aluno vê na hora e as aprovações continuam. Para mudar o texto, crie a versão para corrigir.
+        </Banner>
+      )}
+      <CampoRico label="Legenda" texto={legenda.texto} rico={legenda.rico} onChange={setLegenda} />
+      <CampoRico label="Transcrição" texto={transcricao.texto} rico={transcricao.rico} onChange={setTranscricao} />
+      <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
+        Mudar só a formatação não derruba as aprovações. Mudar o texto{item.visibility === "aluno" ? " de um material que o aluno vê derruba as aprovações da versão" : " fica no histórico"}.
+      </span>
+      {act.feedback}
+      <div style={{ display: "flex", gap: 8 }}>
+        <Button icon="check" loading={act.busy} onClick={salvar}>
+          Salvar
+        </Button>
+        <Button variant="secondary" onClick={onClose}>
+          Cancelar
+        </Button>
+      </div>
+    </Janela>
+  );
+}
+
+function Linha({ it, secoes, canEdit, podeFormatar, onPreview, onRetire, onRestore, onTextos, busy }) {
   const retirado = it.status === "retirado";
   const midia = it.kind === "audio" || it.kind === "video";
   return (
@@ -170,6 +216,11 @@ function Linha({ it, secoes, canEdit, onPreview, onRetire, onRestore, busy }) {
             Pré-visualizar{it.visibility === "aluno" ? " como aluno" : ""}
           </Button>
         )}
+        {midia && !retirado && (canEdit || podeFormatar) && (
+          <Button size="sm" variant="ghost" icon="pencil" disabled={busy} onClick={() => onTextos(it)}>
+            {canEdit ? "Legenda e transcrição" : "Ajustar formatação"}
+          </Button>
+        )}
         {canEdit && !retirado && it.kind !== "texto_aula" && (
           <Button size="sm" variant="ghost" icon="archive" disabled={busy} onClick={() => onRetire(it)}>
             Retirar
@@ -185,13 +236,15 @@ function Linha({ it, secoes, canEdit, onPreview, onRetire, onRestore, busy }) {
   );
 }
 
-export function MateriaisUnidade({ versionId, secoes = [], claims = [], canEdit, onChanged, refresh }) {
+export function MateriaisUnidade({ versionId, secoes = [], claims = [], canEdit, podeFormatar = false, onChanged, refresh }) {
   const { backend } = useSession();
   const { data, error, reload } = useLoad(() => backend.rpc("app_ch_unit_materials", { p_version_id: versionId }), [backend, versionId, refresh]);
   const act = useAction();
   const [insere, setInsere] = React.useState(false);
   const [previa, setPrevia] = React.useState(false);
   const [arquivo, setArquivo] = React.useState(null);
+  const [textos, setTextos] = React.useState(null);
+  const [aviso, setAviso] = React.useState(null);
   const [retirando, setRetirando] = React.useState(null);
   const [motivo, setMotivo] = React.useState("");
   if (!Array.isArray(data)) return error ? <LoadError error={error} retry={reload} /> : null;
@@ -222,9 +275,10 @@ export function MateriaisUnidade({ versionId, secoes = [], claims = [], canEdit,
         {ativos.length} ativos · {alunoVe} o aluno vê · {ativos.length - alunoVe} só da equipe. O aluno nunca baixa PDF: PDF interativo e PDF da A4 são só da equipe. Retirar não apaga: fica no histórico.
       </span>
       {act.feedback}
+      {aviso && <Banner tone="success">{aviso}</Banner>}
       <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
         {data.map((it) => (
-          <Linha key={it.id} it={it} secoes={secoes} canEdit={canEdit} busy={act.busy} onPreview={preview} onRetire={(x) => (setRetirando(x), setMotivo(""))} onRestore={(x) => act.run(() => backend.rpc("app_ch_unit_material_restore", { p_item_id: x.id }), `Devolvido à lista: ${x.title}.`).then((r) => r && depois())} />
+          <Linha key={it.id} it={it} secoes={secoes} canEdit={canEdit} podeFormatar={podeFormatar} busy={act.busy} onPreview={preview} onTextos={(x) => (setAviso(null), setTextos(x))} onRetire={(x) => (setRetirando(x), setMotivo(""))} onRestore={(x) => act.run(() => backend.rpc("app_ch_unit_material_restore", { p_item_id: x.id }), `Devolvido à lista: ${x.title}.`).then((r) => r && depois())} />
         ))}
       </ul>
       {retirando && (
@@ -246,6 +300,7 @@ export function MateriaisUnidade({ versionId, secoes = [], claims = [], canEdit,
       {insere && <FormularioInserir versionId={versionId} secoes={secoes} claims={claims} onClose={() => setInsere(false)} onDone={() => (setInsere(false), depois())} />}
       {previa && <PreviaAluno versionId={versionId} onClose={() => setPrevia(false)} />}
       {arquivo && <ArquivoDaEquipe item={arquivo} onClose={() => setArquivo(null)} />}
+      {textos && <JanelaTextos item={textos} canEdit={canEdit} onClose={() => setTextos(null)} onDone={(msg) => (setTextos(null), setAviso(msg), depois())} />}
     </section>
   );
 }
