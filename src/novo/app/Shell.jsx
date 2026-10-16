@@ -1,135 +1,643 @@
-// Estrutura do app novo (menu lateral, cabeçalho, barra de atalhos, navegação mobile).
-// Derivado de src/novo/prototype/AppShell.jsx: mesma marcação e estilos; os dados de
-// demonstração (nome, contadores) foram trocados pelos dados reais recebidos em `info`.
-import { aulasParaAluno } from "./features.js";
+// Estrutura do app novo (Novas telas, ondas 0 e 1, 15/10/2026): menu em sanfona (computador), trilho de ícones com
+// painel (tablet, 834 px), barra de abas + "Mais" (celular) e cabeçalho. Mesmos endereços, nomes e permissões de antes
+// (Administração só para equipe, Revisão médica só para revisor). Os dados vêm de `info`; nada de exemplo.
+// Modelo do menu em shell/navModel.js; estilos em shell/shell.css (só tokens do design system).
 import React from "react";
-import { Icon, Avatar, IconButton } from "../ds";
+import { createPortal } from "react-dom";
+import { Icon, Avatar } from "../ds";
 import { RI_CSS } from "../prototype/RealIcons.jsx";
 import { AppRealIcon } from "./AppIcons.jsx";
-function useMQ(q){const [m,setM]=React.useState(()=>matchMedia(q).matches);React.useEffect(()=>{const mq=matchMedia(q);const f=()=>setM(mq.matches);mq.addEventListener('change',f);return ()=>mq.removeEventListener('change',f);},[q]);return m;}
-function useMobile(){const q='(max-width: 860px)';const [m,setM]=React.useState(()=>matchMedia(q).matches);React.useEffect(()=>{const mq=matchMedia(q);const f=()=>setM(mq.matches);mq.addEventListener('change',f);return ()=>mq.removeEventListener('change',f);},[]);return m;}
-const RAILS={1:[['home','house','Visão Geral'],['trilha','route','Minha Trilha'],['questoes','file-question','Banco de Questões'],['simulados','timer','Simulados'],['flash','layers','Revisar'],['classificacao','trophy','Ranking'],['desempenho','chart-column','Dados'],['tutor','sparkles','Nexus']],2:[['home2','house','Início'],['teoria2','book-open','Teoria'],['estacoes','clipboard-list','Estações'],['dupla','users','Praticar'],['peps','list-checks','PEPs'],['paciente','message-circle-heart','Paciente IA'],['desempenho2','chart-column','Dados']]};
-const GROUP={erros:'flash',missoes:'trilha',conquistas:'perfil',classificacao:'classificacao'};
-const FULL=['sessao','estacao'];
-const GROUPS={1:[['Minha Jornada',[['home','house','Visão Geral'],['hoje','list-checks','Plano de Hoje'],['trilha','route','Minha Trilha']]],['Aprender',[['aulas','tv','Aulas'],['temas','book-open','Temas Essenciais'],['atualizacoes','newspaper','Diretrizes e Atualizações'],['mapas','network','Mapas Mentais']]],['Praticar',[['questoes','file-question','Banco de Questões'],['simulados','timer','Simulados']]],['Revisar',[['flash','layers','Flashcards'],['erros','notebook-pen','Caderno de Erros']]],['Stazia Arena',[['missoes','target','Missões'],['classificacao','trophy','Ranking'],['conquistas','award','Conquistas']]],['Minha Evolução',[['desempenho','chart-column','Desempenho'],['analise','chart-pie','Análise Inteligente'],['plano','calendar-days','Planejamento']]],['Nexus',[['tutor','sparkles','Tutor com IA']]]],
-2:[['Menu',[['home2','house','Início'],['teoria2','book-open','Teoria'],['estacoes','clipboard-list','Estações'],['dupla','users','Praticar'],['peps','list-checks','Meus PEPs']]],['Treino com IA',[['paciente','message-circle-heart','Paciente simulado']]],['Análise',[['desempenho2','chart-column','Desempenho']]]]};
-// Aulas fechadas ao aluno por enquanto (features.js): o item só aparece quando o interruptor está ligado. Lido na hora de desenhar.
-const groupsOf=n=>GROUPS[n].map(([t,items])=>[t,items.filter(([id])=>id!=='aulas'||aulasParaAluno())]);
-function Rail({route,go,phase,collapsed,setCollapsed,info,theme}){
-  const badgeOf={flash:info.flashcardsDue||null};
-  const G=groupsOf(phase);const W=collapsed?76:264;
-  const [txt,setTxt]=React.useState(!collapsed);const [hov,setHov]=React.useState(false);
-  React.useEffect(()=>{if(collapsed){setTxt(false);return;}const t=setTimeout(()=>setTxt(true),170);return ()=>clearTimeout(t);},[collapsed]);
-  const sub=['aulas','temas','atualizacoes'];const [openSub,setOpenSub]=React.useState(sub.includes(route));
-  React.useEffect(()=>{if(sub.includes(route))setOpenSub(true);},[route]);
-  const listRef=React.useRef(null);const [ind,setInd]=React.useState(null);
-  const activeKey=route; // sem submenu: Aulas, Grandes Temas e Atualizações são itens do grupo Estudar
-  React.useLayoutEffect(()=>{const el=listRef.current&&listRef.current.querySelector('[data-key="'+activeKey+'"]');if(!el){setInd(null);return;}const m=()=>{const L=listRef.current;if(!L)return;setInd({top:el.getBoundingClientRect().top-L.getBoundingClientRect().top+L.scrollTop,h:el.offsetHeight});};m();const t=setTimeout(m,340);return ()=>clearTimeout(t);},[activeKey,collapsed,openSub,txt,phase]);
-  const fade={opacity:txt?1:0,transition:'opacity 180ms ease',whiteSpace:'nowrap'};
-  const row=(key,ic,l,{badge,onClick,small,chev,open}={})=>{const on=key===activeKey;return <button key={key} data-key={key} type="button" onClick={onClick||(()=>go(key))} aria-current={on?'page':undefined} title={collapsed?l:undefined} aria-label={collapsed?l:undefined}
-    className="smr-row" style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',gap:12,width:'100%',height:small?36:40,flex:'none',padding:collapsed?0:(small?'0 16px 0 48px':'0 20px'),justifyContent:collapsed?'center':'flex-start',border:0,background:'transparent',color:on?'var(--action-on-primary)':'var(--text-secondary)',font:(on?'700':'500')+' '+(small?13.5:14)+'px var(--font-sans)',cursor:'pointer',transition:'color 250ms'}}>
-    {!small&&<span className="smr-ic"><span className="o" style={{display:'inline-flex'}}><Icon name={ic} size={19}/></span><span className="c">{AppRealIcon({name:ic})||<Icon name={ic} size={19}/>}</span></span>}
-    {!collapsed&&<span style={{...fade,flex:1,textAlign:'left',overflow:'hidden'}}>{l}</span>}
-    {chev&&!collapsed&&<Icon name="chevron-down" size={16} style={{...fade,transform:open?'rotate(180deg)':'none',transition:'transform 250ms,opacity 180ms'}}/>}
-    {badge!=null&&(collapsed?<span style={{position:'absolute',top:8,right:18,width:8,height:8,borderRadius:'50%',background:on?'#fff':'var(--danger-solid)'}}/>:<span style={{...fade,minWidth:20,height:20,padding:'0 6px',borderRadius:999,background:on?'rgba(255,255,255,.25)':'var(--danger-solid)',color:'#fff',font:'700 11px/20px var(--font-sans)',textAlign:'center'}}>{badge}</span>)}
-  </button>;};
-  const SHORT={'Stazia Arena':'Arena','Minha Jornada':'Jornada','Minha Evolução':'Evolução','Configurações':'Ajustes'};const label=t=><div style={{padding:collapsed?'14px 0 6px':'14px 20px 6px',textAlign:collapsed?'center':'left',fontWeight:700,fontSize:collapsed?8.5:10.5,fontFamily:'var(--font-sans)',lineHeight:1.2,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--text-tertiary)',whiteSpace:'nowrap',overflow:'hidden',transition:'font-size 250ms'}}>{collapsed?(SHORT[t]??t):t}</div>;
-  return <nav aria-label="Navegação principal" onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)} style={{position:'fixed',left:16,top:16,bottom:16,width:W,zIndex:20,display:'flex',flexDirection:'column',borderRadius:24,background:'color-mix(in oklab,var(--surface-card) 88%,transparent)',backdropFilter:'blur(20px) saturate(1.4)',border:'1px solid var(--border-default)',boxShadow:'var(--shadow-lg)',transition:'width 380ms cubic-bezier(.4,0,.2,1)'}}>
-    <style>{'.smr-row:hover:not([aria-current]){color:var(--text-primary)!important;background:var(--action-ghost-hover)!important}.smr-row:active .smr-ic{transform:scale(.9)}'+RI_CSS+'.smr-ic .o{opacity:0!important}.smr-ic .c{opacity:1!important;transform:none!important}.smr-row:hover .smr-ic .c{transform:scale(1.12)!important}'}</style>
-    <div style={{display:'flex',alignItems:'center',gap:8,padding:collapsed?'18px 0 10px':'18px 16px 10px 20px',justifyContent:collapsed?'center':'space-between',minHeight:64}}>
-      <button type="button" onClick={()=>go(phase===2?'home2':'home')} aria-label="StaziaMed, início" style={{border:0,background:'none',padding:0,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',minWidth:0,flex:collapsed?'0 0 auto':'1 1 auto'}}>{collapsed?<img src={theme==='dark'?'/brand/simbolo-escuro-64w.png':'/brand/simbolo-64w.png'} alt="" style={{height:30,width:'auto'}}/>:<img src={theme==='dark'?'/brand/horizontal-escuro-480w.png':'/brand/horizontal-480w.png'} alt="StaziaMed Revalida" style={{display:'block',width:'100%',height:'auto',maxWidth:196,...fade}}/>}</button>
+import { FULL, badgeKind, badgeOf, configItems, groupBadge, groupOfRoute, groupsOf, mobileTabs } from "./shell/navModel.js";
+import { MaisSheet } from "./shell/MaisSheet.jsx";
+import { inicioCelular, maisCelular } from "./shell/cascaConfig.js";
+import { useShellCounts } from "./shell/useShellCounts.js";
+import { MaisPage } from "./shell/MaisPage.jsx";
+import { useLayout, useMQ, useMobile } from "./shell/useLayout.js";
+import "./shell/shell.css";
+
+export { useMQ, useMobile, useLayout };
+
+// Ícone ilustrado do app quando existe; senão o ícone do design system
+const Ic = ({ name, size = 22 }) => <span className="smn-ic" aria-hidden="true">{AppRealIcon({ name, size }) || <Icon name={name} size={size - 4} />}</span>;
+const phaseLabel = (phase) => (phase === 1 ? "1ª fase · objetiva" : "2ª fase · prática");
+const logoSrc = (theme, kind) => (kind === "symbol" ? (theme === "dark" ? "/brand/simbolo-escuro-64w.png" : "/brand/simbolo-64w.png") : theme === "dark" ? "/brand/horizontal-escuro-480w.png" : "/brand/horizontal-480w.png");
+
+/** Selo no desenho do pacote: cinza (progresso do dia, ex. 0/2), vermelho (pendências, ex. erros a revisar) ou violeta (IA). */
+function Badge({ b }) {
+  if (!b || b.text == null) return null;
+  if (b.kind === "ai") return <span className="smn-badge smn-badge--ai">IA</span>;
+  const label = b.kind === "danger" ? `${b.text} pendentes` : `${b.text} feitas hoje`;
+  return (
+    <span className={`smn-badge smn-badge--${b.kind || "neutral"}`} aria-label={label}>
+      {b.text}
+    </span>
+  );
+}
+const itemBadge = (id, info) => {
+  const text = badgeOf(id, info);
+  return text == null ? null : { text, kind: badgeKind(id) };
+};
+
+// ---------------------------------------------------------------- computador: barra lateral em sanfona (recolhível)
+const COL_KEY = "smf-col";
+function readCollapsed(narrow) {
+  try {
+    const v = localStorage.getItem(COL_KEY);
+    if (v === "1") return true;
+    if (v === "0") return false;
+  } catch (e) {
+    /* sem armazenamento: usa o padrão */
+  }
+  return narrow; // padrão: expandido; em tela web estreita (até 1280 px) começa recolhido
+}
+
+/** Grupo da sanfona (botão + itens). No rodapé ("Configurações") os itens abrem para cima, como no pacote. */
+function SideGroup({ g, route, go, info, open, current, collapsed, onToggle, up = false }) {
+  if (g.direct) {
+    const on = route === g.direct;
+    return (
+      <button type="button" className={`smn-grp${on ? " is-current" : ""}`} aria-current={on ? "page" : undefined} aria-label={g.label} title={collapsed ? g.label : undefined} onClick={() => go(g.direct)}>
+        <Ic name={g.icon} size={26} />
+        {!collapsed && <span className="smn-lbl">{g.label}</span>}
+        {g.badgeText && (collapsed ? <span className="smn-dot smn-dot--ai" aria-hidden="true" /> : <Badge b={{ text: g.badgeText, kind: "ai" }} />)}
+      </button>
+    );
+  }
+  const isOpen = !collapsed && open;
+  const gb = groupBadge(g, info);
+  const sub = isOpen && (
+    <div className={`smn-sub${up ? " smn-sub--up" : ""}`} id={`smn-sub-${g.id}`} role="group" aria-label={g.label}>
+      {g.items.map(([id, ic, l]) => (
+        <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} onClick={() => go(id)}>
+          <Ic name={ic} size={22} />
+          <span className="smn-lbl">{l}</span>
+          <Badge b={itemBadge(id, info)} />
+        </button>
+      ))}
     </div>
-    <div style={{position:'absolute',top:30,left:'calc(100% - 14px)',display:'flex',alignItems:'center',gap:6,zIndex:2}}>
-      <button type="button" onClick={()=>setCollapsed(!collapsed)} aria-label={collapsed?'Expandir menu':'Recolher menu'} aria-expanded={!collapsed} style={{width:28,height:28,display:'inline-flex',alignItems:'center',justifyContent:'center',borderRadius:'50%',border:'1px solid var(--border-default)',background:'var(--surface-card)',boxShadow:'var(--shadow-md)',color:'var(--text-primary)',cursor:'pointer'}}><Icon name={collapsed?'chevron-right':'chevron-left'} size={14}/></button>
-      <span aria-hidden="true" style={{height:22,padding:'0 10px',borderRadius:999,background:'var(--action-primary)',color:'var(--action-on-primary)',font:'700 11px/22px var(--font-sans)',boxShadow:'var(--shadow-md)',opacity:hov?1:0,transform:hov?'translateX(0)':'translateX(-6px)',transition:'opacity 200ms,transform 200ms',pointerEvents:'none',whiteSpace:'nowrap'}}>{collapsed?'Expandir':'Recolher'}</span>
+  );
+  return (
+    <div className="smn-grpwrap">
+      {up && sub}
+      <button
+        type="button"
+        className={`smn-grp${current && !isOpen ? " is-current" : ""}${isOpen ? " is-open" : ""}`}
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? `smn-sub-${g.id}` : undefined}
+        aria-label={g.label}
+        title={collapsed ? g.label : undefined}
+        onClick={onToggle}
+      >
+        <Ic name={g.icon} size={26} />
+        {!collapsed && <span className="smn-lbl">{g.label}</span>}
+        {gb && !isOpen && (collapsed ? <span className={`smn-dot smn-dot--${gb.kind}`} aria-hidden="true" /> : <Badge b={gb} />)}
+        {!collapsed && <Icon name="chevron-right" size={16} className={`smn-chev${up ? " smn-chev--up" : ""}`} />}
+      </button>
+      {!up && sub}
     </div>
-    <button type="button" onClick={()=>go('perfil')} className="smr-row" style={{display:'flex',alignItems:'center',gap:10,margin:collapsed?'4px auto':'4px 12px',padding:collapsed?4:'8px 10px',borderRadius:16,border:'1px solid '+(collapsed?'transparent':'var(--border-subtle)'),background:collapsed?'transparent':'var(--surface-subtle)',cursor:'pointer',font:'inherit',color:'inherit',textAlign:'left',overflow:'hidden'}} aria-label={'Conta de '+info.name}>
-      <Avatar name={info.name} size={36}/>{!collapsed&&<><span style={{...fade,flex:1,minWidth:0}}><span style={{display:'block',font:'600 14px var(--font-sans)'}}>{info.name}</span><span style={{display:'flex',alignItems:'center',gap:4,font:'500 11px var(--font-sans)',color:'var(--text-tertiary)'}}><Icon name="repeat" size={11}/>{phase===1?'1ª fase · objetiva':'2ª fase · prática'}</span></span><Icon name="chevron-right" size={16} style={{...fade,color:'var(--text-tertiary)'}}/></>}
+  );
+}
+
+function Sidebar({ route, go, phase, info, theme, collapsed, setCollapsed }) {
+  const groups = groupsOf(phase);
+  const config = { id: "config", label: "Configurações", icon: "settings", items: [...configItems(info), ["perfil", "settings", "Preferências"]] };
+  const current = groupOfRoute(route, phase) || (config.items.some(([id]) => id === route) ? "config" : null);
+  const [open, setOpen] = React.useState(current);
+  React.useEffect(() => {
+    if (current) setOpen(current);
+  }, [current]);
+  const toggleLabel = collapsed ? "Expandir menu" : "Recolher menu";
+  // pacote: com o menu recolhido, tocar num grupo abre o menu e o grupo
+  const onToggle = (id) => () => {
+    if (collapsed) {
+      setCollapsed(false);
+      return setOpen(id);
+    }
+    setOpen(open === id ? null : id);
+  };
+  const phaseText = phase === 1 ? "1ª fase · Objetiva" : "2ª fase · Prática";
+
+  return (
+    <nav className={`smn-side${collapsed ? " is-collapsed" : ""}`} aria-label="Navegação principal">
+      <style>{RI_CSS}</style>
+      <button type="button" className="smn-toggle" onClick={() => setCollapsed(!collapsed)} aria-label={toggleLabel} title={toggleLabel} aria-expanded={!collapsed} aria-controls="smn-side-body">
+        <Icon name="chevron-left" size={14} className="smn-toggle-ic" />
+      </button>
+      <button type="button" className="smn-logo" onClick={() => go(phase === 2 ? "home2" : "home")} aria-label="StaziaMed, início" title={collapsed ? "StaziaMed, início" : undefined}>
+        {collapsed ? <img src={logoSrc(theme, "symbol")} alt="" style={{ height: 36, width: "auto" }} /> : <img src={logoSrc(theme)} alt="StaziaMed Revalida" />}
+      </button>
+      <div id="smn-side-body" style={{ display: "contents" }}>
+        <div className="smn-userwrap">
+          <button type="button" className="smn-user" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}, ${phaseLabel(phase)}`} title={collapsed ? info.name : undefined}>
+            <Avatar name={info.name} size={36} />
+            {!collapsed && (
+              <>
+                <span className="smn-grow">
+                  <b>{info.name}</b>
+                  <small>
+                    <i className="smn-phase-dot" aria-hidden="true" />
+                    {phaseText}
+                  </small>
+                </span>
+                <Icon name="chevrons-up-down" size={16} style={{ color: "var(--text-tertiary)" }} />
+              </>
+            )}
+          </button>
+        </div>
+        <div className="smn-list">
+          {groups.map((g) => (
+            <SideGroup key={g.id} g={g} route={route} go={go} info={info} open={open === g.id} current={current === g.id} collapsed={collapsed} onToggle={onToggle(g.id)} />
+          ))}
+        </div>
+        <div className="smn-foot">
+          <SideGroup g={config} route={route} go={go} info={info} open={open === "config"} current={current === "config"} collapsed={collapsed} onToggle={onToggle("config")} up />
+          <button type="button" className="smn-grp" aria-label="Sair" title={collapsed ? "Sair" : undefined} onClick={() => info.onSignOut && info.onSignOut()}>
+            <Ic name="log-out" size={26} />
+            {!collapsed && <span className="smn-lbl">Sair</span>}
+          </button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+// ---------------------------------------------------------------- tablet: trilho de ícones com painel
+function Rail({ route, go, phase, setPhase, phase2Locked, info, theme, setTheme }) {
+  const groups = groupsOf(phase);
+  const current = groupOfRoute(route, phase);
+  const [openId, setOpenId] = React.useState(null);
+  const [top, setTop] = React.useState(16);
+  const [more, setMore] = React.useState(false); // false | "mais" | "prefs"
+  const btnRefs = React.useRef({});
+  const panelRef = React.useRef(null);
+  React.useEffect(() => {
+    setOpenId(null);
+    setMore(false);
+  }, [route]);
+  React.useEffect(() => {
+    if (!openId) return undefined;
+    const first = panelRef.current && panelRef.current.querySelector("button");
+    if (first) first.focus();
+    const key = (e) => {
+      if (e.key === "Escape") {
+        const id = openId;
+        setOpenId(null);
+        btnRefs.current[id] && btnRefs.current[id].focus();
+      }
+    };
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  }, [openId]);
+  const toggle = (g) => {
+    if (g.direct) return go(g.direct);
+    if (openId === g.id) return setOpenId(null);
+    const el = btnRefs.current[g.id];
+    if (el) setTop(Math.max(12, Math.min(el.getBoundingClientRect().top - 8, window.innerHeight - 40 - g.items.length * 48 - 60)));
+    setOpenId(g.id);
+  };
+  const opened = groups.find((g) => g.id === openId);
+
+  return (
+    <>
+      <nav className="smn-rail" aria-label="Navegação principal">
+        <style>{RI_CSS}</style>
+        <button type="button" className="smn-logo" onClick={() => go(phase === 2 ? "home2" : "home")} aria-label="StaziaMed, início">
+          <img src={logoSrc(theme, "symbol")} alt="" />
+        </button>
+        <button type="button" className="smn-hdr-btn smn-rail-av" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`}>
+          <Avatar name={info.name} size={40} />
+        </button>
+        {groups.map((g) => {
+          const on = current === g.id;
+          const gb = groupBadge(g, info);
+          return (
+            <button
+              key={g.id}
+              ref={(el) => (btnRefs.current[g.id] = el)}
+              type="button"
+              className={`smn-rb${on ? " is-current" : ""}`}
+              aria-current={on && g.direct ? "page" : undefined}
+              aria-haspopup={g.direct ? undefined : "true"}
+              aria-expanded={g.direct ? undefined : openId === g.id}
+              aria-label={g.direct === "tutor" ? "Perguntar ao tutor" : g.label}
+              onClick={() => toggle(g)}
+            >
+              <Ic name={g.icon} size={26} />
+              <span>{g.short}</span>
+              {gb && gb.kind === "danger" && (
+                <span className="smn-rb-badge" aria-label={`${gb.text} pendentes`}>
+                  {gb.text}
+                </span>
+              )}
+            </button>
+          );
+        })}
+        <div className="smn-rail-sp" />
+        <hr className="smn-rail-hr" aria-hidden="true" />
+        <button type="button" className={`smn-rb${more === "mais" ? " is-current" : ""}`} aria-label="Mais" aria-expanded={more === "mais"} onClick={() => { setOpenId(null); setMore((m) => (m === "mais" ? false : "mais")); }}>
+          <MoreGrid />
+          <span>Mais</span>
+        </button>
+        <button type="button" className={`smn-rb${more === "prefs" || route === "perfil" ? " is-current" : ""}`} aria-label="Preferências" aria-expanded={more === "prefs"} onClick={() => { setOpenId(null); setMore((m) => (m === "prefs" ? false : "prefs")); }}>
+          {AppRealIcon({ name: "settings", size: 26 }) || <Icon name="settings" size={22} />}
+          <span>Preferências</span>
+        </button>
+      </nav>
+      {opened && (
+        <>
+          <div className="smn-more-back" style={{ background: "transparent", zIndex: 44 }} onClick={() => setOpenId(null)} aria-hidden="true" />
+          <div className="smn-fly" ref={panelRef} role="group" aria-label={opened.label} style={{ top }}>
+            <h2>{opened.label}</h2>
+            {opened.items.map(([id, ic, l]) => (
+              <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} onClick={() => go(id)}>
+                <Ic name={ic} size={22} />
+                <span className="smn-lbl">{l}</span>
+                <Badge b={itemBadge(id, info)} />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {more && <MaisPage key={more} route={route} go={go} info={info} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} themeChoice={info.themeChoice} setTheme={setTheme} variant="tablet" initialView={more} symbol={logoSrc(theme, "symbol")} onClose={() => setMore(false)} />}
+    </>
+  );
+}
+
+// Quatro quadradinhos coloridos do botão "Mais" (no desenho do pacote)
+function MoreGrid({ size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="3" width="8" height="8" rx="2.5" fill="var(--teal-400)" />
+      <rect x="13" y="3" width="8" height="8" rx="2.5" fill="var(--violet-600)" />
+      <rect x="3" y="13" width="8" height="8" rx="2.5" fill="var(--orange-500)" />
+      <rect x="13" y="13" width="8" height="8" rx="2.5" fill="var(--navy-900)" />
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------- celular: barra de abas
+// Pacote (HomeMobileCompact): Início, Questões, Tutor (botão redondo roxo no meio), Revisar (selo vermelho = questões erradas a revisar), Mais.
+// "Mais" abre a folha que sobe de baixo (MobileMais) ou a página "Mais" (HomeMais), conforme cascaConfig.js.
+// `more`/`setMore` vêm do AppShell: o "‹ Mais" da barra das subpáginas reabre a mesma folha.
+function MobileTabs({ route, go, phase, setPhase, phase2Locked, info, theme, setTheme, more, setMore }) {
+  const close = React.useCallback(() => setMore(false), [setMore]);
+  React.useEffect(() => setMore(false), [route, setMore]);
+  const tabs = mobileTabs(phase);
+  const current = groupOfRoute(route, phase);
+  const onTab = (t) => t[3] != null && t[3] === current;
+  const moreOn = phase === 1 && !tabs.some(onTab) && !tabs.some((t) => t[0] === route);
+  const sheet = maisCelular() === "folha";
+  const moreProps = { route, go, info, phase, setPhase, phase2Locked, themeChoice: info.themeChoice, setTheme, symbol: logoSrc(theme, "symbol"), onClose: close };
+  return (
+    <>
+      {more && phase === 1 && (sheet ? <MaisSheet {...moreProps} /> : <MaisPage {...moreProps} variant="mobile" />)}
+      <nav className="smn-tabs" aria-label="Navegação principal">
+        {tabs.map((t) => {
+          const [id, ic, l, , badgeFrom] = t;
+          const on = onTab(t) || route === id;
+          const n = badgeFrom ? badgeOf(badgeFrom, info) : null;
+          if (id === "tutor") {
+            return (
+              <button key={id} type="button" className={`smn-tab smn-tab--fab${on ? " is-current" : ""}`} aria-label={l} aria-current={on ? "page" : undefined} onClick={() => go(id)}>
+                <span className="smn-fab" aria-hidden="true">
+                  <Icon name="sparkles" size={26} />
+                </span>
+                <span className="smn-tab-l">{l}</span>
+              </button>
+            );
+          }
+          return (
+            <button key={id} type="button" className={`smn-tab${on ? " is-current" : ""}`} aria-label={n ? `${l}, ${n} ${n === 1 ? "questão errada" : "questões erradas"} para revisar` : l} aria-current={on ? "page" : undefined} onClick={() => go(id)}>
+              <span className="smn-tab-pill">
+                {AppRealIcon({ name: ic, size: 24 }) || <Icon name={ic} size={22} />}
+                {n ? <span className="smn-tab-badge" aria-hidden="true">{n}</span> : null}
+              </span>
+              <span className="smn-tab-l">{l}</span>
+            </button>
+          );
+        })}
+        {phase === 1 && (
+          <button type="button" className={`smn-tab${more || moreOn ? " is-current" : ""}`} aria-label="Mais" aria-haspopup="dialog" aria-expanded={more} onClick={() => setMore((m) => !m)}>
+            <span className="smn-tab-pill">
+              <MoreGrid />
+            </span>
+            <span className="smn-tab-l">Mais</span>
+          </button>
+        )}
+      </nav>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------- cabeçalho
+// phase2Locked: a 2ª fase está "em breve" para o aluno (a equipe segue com acesso): opção apagada, sem clique.
+function PhaseSwitch({ phase, setPhase, mobile, phase2Locked }) {
+  const o = [[1, "1ª Fase", "Objetiva"], [2, "2ª Fase", phase2Locked ? "Em breve" : "Prática"]];
+  return (
+    <div role="radiogroup" aria-label="Fase do Revalida" className="smn-phase" style={{ display: "inline-flex", padding: 4, gap: 4, borderRadius: 14, background: "var(--surface-sunken)", border: "1px solid var(--border-subtle)" }}>
+      {o.map(([v, l, d]) => {
+        const lock = !!phase2Locked && v === 2;
+        const stack = lock && mobile;
+        return (
+          <button
+            key={v}
+            type="button"
+            role="radio"
+            aria-checked={phase === v}
+            disabled={lock}
+            aria-disabled={lock ? "true" : undefined}
+            onClick={lock ? undefined : () => setPhase(v)}
+            style={{ display: "flex", alignItems: "center", gap: 8, height: 44, padding: "0 14px", border: 0, borderRadius: 10, cursor: lock ? "not-allowed" : "pointer", background: phase === v ? "var(--surface-card)" : "transparent", boxShadow: phase === v ? "var(--shadow-sm)" : "none", color: lock ? "var(--text-tertiary)" : phase === v ? "var(--text-primary)" : "var(--text-secondary)", font: "600 14px var(--font-sans)" }}
+          >
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: phase === v ? (v === 1 ? "var(--teal-500)" : "var(--violet-600)") : "var(--border-strong)" }} />
+            {stack ? (
+              <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.15 }}>
+                {l} <span style={{ font: "500 12px/1.2 var(--font-sans)" }}>{d}</span>
+              </span>
+            ) : (
+              <>
+                {l}
+                {!mobile && <span style={{ fontWeight: 500, color: "var(--text-tertiary)" }}>· {d}</span>}
+              </>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Pílula compacta da fase (pacote: "● 1ª Fase ⌄", cerca de 100x36): toca e abre o mesmo seletor de fase logo abaixo,
+// com as mesmas regras (para o aluno a 2ª fase continua "Em breve", apagada e sem clique). Celular e tablet (G1.8).
+function PhasePill({ phase, setPhase, phase2Locked }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return undefined;
+    const fora = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    const esc = (e) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        const b = ref.current && ref.current.querySelector("button");
+        if (b) b.focus();
+      }
+    };
+    document.addEventListener("mousedown", fora);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", fora);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  const nome = phase === 1 ? "1ª Fase" : "2ª Fase";
+  return (
+    <div className="smn-pp" ref={ref}>
+      <button type="button" className="smn-mtop-phase" aria-haspopup="true" aria-expanded={open} aria-label={`Fase do Revalida: ${nome}. Mudar fase`} onClick={() => setOpen((o) => !o)}>
+        <i className="smn-mtop-dot" style={{ background: phase === 1 ? "var(--teal-500)" : "var(--violet-600)" }} aria-hidden="true" />
+        {nome}
+        <Icon name="chevron-down" size={14} className="smn-pp-chev" />
+      </button>
+      {open && (
+        <div className="smn-pp-pop">
+          <PhaseSwitch
+            phase={phase}
+            setPhase={(v) => {
+              setOpen(false);
+              setPhase(v);
+            }}
+            mobile
+            phase2Locked={phase2Locked}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- cabeçalhos do Início e do Plano de Hoje (pacote "Novas telas", onda 2)
+// Celular: barra do alto (logo, fase, conta) e título; computador e tablet: título com a sequência e a fase à direita (Início) ou título com o botão de personalizar (Plano).
+function StreakChip({ info, go }) {
+  const n = info.streakDays || 0;
+  return (
+    <button type="button" className="smn-streak" onClick={() => go("missoes")} title="Sequência de dias de estudo">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="var(--streak)" stroke="var(--streak)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true">
+        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+      </svg>
+      <span className="smn-mono">{n}</span> {n === 1 ? "dia" : "dias"}
     </button>
-    <div ref={listRef} style={{position:'relative',flex:1,minHeight:0,overflowY:'auto',overflowX:'hidden',scrollbarWidth:'none',display:'flex',flexDirection:'column',paddingBottom:12}}>
-      {ind&&<span aria-hidden="true" style={{position:'absolute',left:0,right:0,top:ind.top,height:ind.h,background:'var(--action-primary)',boxShadow:'0 6px 18px -6px color-mix(in oklab,var(--action-primary) 70%,transparent)',transition:'top 420ms cubic-bezier(.3,1.25,.5,1),height 300ms',zIndex:0}}/>}
-      {G.map(([t,its])=><div key={t}>{label(t)}{its.map(([id,ic,l,bd,kids])=>kids?<div key={id}>{row(id,ic,l,{chev:true,open:openSub,onClick:()=>collapsed?go(kids[0][0]):setOpenSub(o=>!o)})}{openSub&&!collapsed&&<div style={{position:'relative'}}><span style={{position:'absolute',left:29,top:2,bottom:2,width:1,background:'var(--border-default)',zIndex:2}}/>{kids.map(([k,kl])=>row(k,null,kl,{small:true}))}</div>}</div>:row(id,ic,l,{badge:badgeOf[id]??null}))}</div>)}
-      <div style={{flex:1}}/>
-      <div>{label('Configurações')}{info.isStaff?row('admin','users','Administração',{badge:info.radarGraves||null}):info.isReviewer&&row('admin','stamp','Revisão médica')}{row('planos','crown','Meu Plano')}{row('perfil','settings','Preferências')}{row('sair','log-out','Sair',{onClick:info.onSignOut})}</div>
+  );
+}
+
+function MobileTopBar({ theme, go, phase, setPhase, phase2Locked, info }) {
+  return (
+    <div className="smn-mtop">
+      <button type="button" className="smn-mtop-logo" onClick={() => go(phase === 2 ? "home2" : "home")} aria-label="StaziaMed, início">
+        <img className="wm" src={theme === "dark" ? "/brand/horizontal-escuro-320w.png" : "/brand/horizontal-320w.png"} alt="StaziaMed Revalida" width="129" height="40" />
+        <img className="sym" src={logoSrc(theme, "symbol")} alt="" aria-hidden="true" width="26" height="38" />
+      </button>
+      <span style={{ flex: 1 }} />
+      <PhasePill phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} />
+      <button type="button" className="smn-hdr-btn" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`}>
+        <Avatar name={info.name} size={36} />
+      </button>
     </div>
-  </nav>;
+  );
 }
-function useNarrowRail(){const q='(max-width: 1200px)';const [m,setM]=React.useState(()=>matchMedia(q).matches);React.useEffect(()=>{const mq=matchMedia(q);const f=()=>setM(mq.matches);mq.addEventListener('change',f);return ()=>mq.removeEventListener('change',f);},[]);return m;}
-function useNarrow(){const q='(max-width: 1180px)';const [m,setM]=React.useState(()=>matchMedia(q).matches);React.useEffect(()=>{const mq=matchMedia(q);const f=()=>setM(mq.matches);mq.addEventListener('change',f);return ()=>mq.removeEventListener('change',f);},[]);return m;}
-function Dock({go,route,phase,info}){
-  const narrow=useNarrow();
-  if(FULL.includes(route))return null;
-  const it=phase===2?[['estacao','play','Treinar estação'],['dupla','users','Praticar'],['peps','list-checks','PEPs']]:[['questoes','file-question','Banco de Questões'],['flash','layers','Flashcards',info.flashcardsDue?String(info.flashcardsDue):null],['simulados','timer','Simulado']];
-  return <div role="toolbar" aria-label="Ações rápidas" style={{position:'fixed',left:0,right:0,marginLeft:'auto',marginRight:'auto',width:'max-content',maxWidth:'calc(100vw - 32px)',bottom:24,display:'flex',whiteSpace:'nowrap',alignItems:'center',gap:2,padding:6,borderRadius:999,background:'var(--navy-900)',boxShadow:'0 18px 40px -12px rgba(13,28,66,.55)',zIndex:30}}>
-    {it.map(([id,ic,l,c])=><button key={id} type="button" onClick={()=>go(id)} aria-label={l} title={l} style={{flex:'none',display:'flex',alignItems:'center',gap:8,height:44,padding:narrow?'0 13px':'0 16px',whiteSpace:'nowrap',border:0,borderRadius:999,background:'transparent',color:'#E2E9F5',font:'600 14px var(--font-sans)',cursor:'pointer'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.1)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>{AppRealIcon({name:ic,size:22})||<Icon name={ic} size={18}/>}{!narrow&&l}{c&&<span style={{font:'600 11px var(--font-mono)',background:'rgba(255,255,255,.16)',padding:'2px 7px',borderRadius:9}}>{c}</span>}</button>)}
-    <span style={{width:1,height:24,background:'rgba(255,255,255,.18)',margin:'0 4px'}}/>
-    <button type="button" onClick={()=>go(phase===2?'paciente':'tutor')} style={{flex:'none',display:'flex',alignItems:'center',gap:8,height:44,padding:'0 18px',whiteSpace:'nowrap',border:0,borderRadius:999,background:'var(--teal-400)',color:'var(--navy-950)',font:'700 14px var(--font-sans)',cursor:'pointer'}}>{AppRealIcon({name:'sparkles',size:22})}{phase===2?'Paciente simulado':'Perguntar ao tutor'}</button>
-  </div>;
+
+// Início do celular "simples" (pacote MobileMenu): barra branca com logo, sequência e conta; depois a data e a saudação.
+function SimpleTopHeader({ title, sub, theme, go, phase, info }) {
+  return (
+    <header className="smn-ph smn-ph--simples">
+      <div className="smn-stop">
+        <button type="button" className="smn-mtop-logo" onClick={() => go(phase === 2 ? "home2" : "home")} aria-label="StaziaMed, início">
+          <img className="wm" src={theme === "dark" ? "/brand/horizontal-escuro-320w.png" : "/brand/horizontal-320w.png"} alt="StaziaMed Revalida" width="97" height="30" />
+        </button>
+        <span style={{ flex: 1 }} />
+        <StreakChip info={info} go={go} />
+        <button type="button" className="smn-hdr-btn" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`}>
+          <Avatar name={info.name} size={36} />
+        </button>
+      </div>
+      <div>
+        {sub && <div className="smn-ph-date">{sub}</div>}
+        <h1 className="smn-ph-h1 smn-ph-h1--simples">{title}</h1>
+      </div>
+    </header>
+  );
 }
-// Barra de baixo do celular: os atalhos mais usados + "Mais", que abre a lista com TODAS as áreas da 1ª fase (Aulas, Simulados,
-// Flashcards, Tutor, Atualizações...). A 2ª fase não ganha "Mais" (só a equipe a vê; os atalhos dela não mudaram).
-const ON_BAR=['home','trilha','questoes','classificacao','perfil'];
-function MoreSheet({route,go,info,onClose}){
-  const ref=React.useRef(null);
-  React.useEffect(()=>{const k=e=>{if(e.key==='Escape')onClose();};document.addEventListener('keydown',k);const first=ref.current&&ref.current.querySelector('button[data-item]');if(first)first.focus();return ()=>document.removeEventListener('keydown',k);},[onClose]);
-  const pick=id=>{onClose();go(id);};
-  const badgeOf={flash:info.flashcardsDue||null,admin:info.radarGraves||null};
-  const groups=[...groupsOf(1),['Configurações',[...(info.isStaff?[['admin','users','Administração']]:info.isReviewer?[['admin','stamp','Revisão médica']]:[]),['planos','crown','Meu Plano'],['perfil','settings','Conta e ajuda']]]];
-  const item=(id,ic,l)=>{const on=route===id||GROUP[route]===id;const b=badgeOf[id];return <button key={id} type="button" data-item="1" onClick={()=>pick(id)} aria-current={on?'page':undefined} style={{display:'flex',alignItems:'center',gap:10,minHeight:48,padding:'0 12px',border:'1px solid '+(on?'var(--action-primary)':'var(--border-subtle)'),borderRadius:14,background:on?'var(--surface-subtle)':'transparent',color:on?'var(--text-primary)':'var(--text-secondary)',font:(on?'700':'500')+' 14px var(--font-sans)',cursor:'pointer',textAlign:'left'}}><Icon name={ic} size={18}/><span style={{flex:1,minWidth:0}}>{l}</span>{b!=null&&<span style={{minWidth:20,height:20,padding:'0 6px',borderRadius:999,background:'var(--danger-solid)',color:'#fff',font:'700 11px/20px var(--font-sans)',textAlign:'center'}}>{b}</span>}</button>;};
-  return <div style={{position:'fixed',inset:0,zIndex:40}}>
-    <div onClick={onClose} aria-hidden="true" style={{position:'absolute',inset:0,background:'rgba(13,28,66,.45)'}}/>
-    <div ref={ref} role="dialog" aria-modal="true" aria-label="Todas as áreas" style={{position:'absolute',left:14,right:14,bottom:'calc(96px + env(safe-area-inset-bottom))',maxHeight:'calc(100vh - 140px - env(safe-area-inset-bottom))',overflowY:'auto',borderRadius:24,background:'var(--surface-card)',border:'1px solid var(--border-default)',boxShadow:'var(--shadow-lg)',padding:'8px 14px 14px'}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 0 0'}}><strong style={{font:'700 16px var(--font-sans)'}}>Todas as áreas</strong><button type="button" onClick={onClose} aria-label="Fechar" style={{width:40,height:40,border:0,borderRadius:'50%',background:'transparent',color:'var(--text-secondary)',cursor:'pointer'}}><Icon name="x" size={20}/></button></div>
-      {groups.map(([t,its])=><div key={t}><div style={{padding:'12px 2px 6px',fontWeight:700,fontSize:10.5,fontFamily:'var(--font-sans)',letterSpacing:'.1em',textTransform:'uppercase',color:'var(--text-tertiary)'}}>{t}</div><div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:8}}>{its.map(([id,ic,l])=>item(id,ic,l))}</div></div>)}
-      <div style={{paddingTop:12}}><button type="button" data-item="1" onClick={()=>{onClose();info.onSignOut&&info.onSignOut();}} style={{display:'flex',alignItems:'center',gap:10,width:'100%',minHeight:48,padding:'0 12px',border:'1px solid var(--border-subtle)',borderRadius:14,background:'transparent',color:'var(--danger-text)',font:'500 14px var(--font-sans)',cursor:'pointer'}}><Icon name="log-out" size={18}/>Sair</button></div>
+
+function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, tablet, phase, setPhase, phase2Locked, info }) {
+  if (kind === "inicio-simples") return <SimpleTopHeader title={title} sub={sub} theme={theme} go={go} phase={phase} info={info} />;
+  if (kind === "inicio") {
+    return (
+      <header className="smn-ph">
+        {mobile && <MobileTopBar theme={theme} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />}
+        <div className="smn-ph-row">
+          <div className="smn-ph-l">
+            <h1 className="smn-ph-h1">{title}</h1>
+            <StreakChip info={info} go={go} />
+          </div>
+          {!mobile && (
+            <div className="smn-ph-r">
+              {sub && <span className="smn-ph-date">{sub}</span>}
+              {tablet ? <PhasePill phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} /> : <PhaseSwitch phase={phase} setPhase={setPhase} mobile={false} phase2Locked={phase2Locked} />}
+            </div>
+          )}
+        </div>
+        {mobile && sub && <span className="smn-ph-date smn-ph-date--m">{sub}</span>}
+      </header>
+    );
+  }
+  // plano
+  const open = () => go("hoje", { ajustar: 1 });
+  return (
+    <header className="smn-ph smn-ph--plan">
+      {mobile && <MobileTopBar theme={theme} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />}
+      {mobile && (
+        <button type="button" className="smn-ph-back" onClick={() => go("home")}>
+          <Icon name="chevron-left" size={20} />
+          Início
+        </button>
+      )}
+      <div className="smn-ph-row smn-ph-row--plan">
+        <div>
+          {!mobile && sub && <div className="smn-ph-eyebrow">{sub}</div>}
+          <h1 className="smn-ph-h1">{title}</h1>
+          {mobile && <div className="smn-ph-eyebrow smn-ph-eyebrow--m">Aprender · praticar · revisar</div>}
+        </div>
+        <button type="button" className="smn-ph-btn" onClick={open} aria-haspopup="dialog">
+          <Icon name="sliders-horizontal" size={18} />
+          {mobile ? "Ajustar" : "Personalizar plano"}
+        </button>
+      </div>
+    </header>
+  );
+}
+
+// Lugar de ações do cabeçalho (computador e tablet): a tela põe ali seus botões com <ShellActions>...</ShellActions>
+// (ex.: "Estudar agora" em Missões), sem criar outra linha acima do conteúdo. No celular não há lugar: devolve null e a tela decide.
+const ActionsSlot = React.createContext(null);
+export function ShellActions({ children }) {
+  const slot = React.useContext(ActionsSlot);
+  return slot ? createPortal(children, slot) : null;
+}
+
+// Celular, 1ª fase: telas que abrem pelo "Mais" usam a barra do pacote "‹ Mais | Título" (56 px, sem logo, fase nem tema).
+// Meu plano abre pela Conta ("‹ Conta"). As telas das abas (Início, Questões, Revisar) e Plano, Trilha e Simulados ficam com a barra do logo.
+const SUB_DO_MAIS = new Set(["desempenho", "analise", "plano", "perfil", "temas", "atualizacoes", "mapas", "aulas", "missoes", "classificacao", "conquistas", "medalhas"]);
+const SUB_VOLTA = { planos: ["perfil", "Conta"] };
+
+function SubBar({ title, back, onBack }) {
+  return (
+    <header className="smn-sbar">
+      <button type="button" className="smn-sbar-back" onClick={onBack} aria-label={`Voltar para ${back}`}>
+        <Icon name="chevron-left" size={24} />
+        {back}
+      </button>
+      <h1 className="smn-sbar-h1">{title}</h1>
+    </header>
+  );
+}
+
+// Cabeçalho das outras telas (G1.2 a G1.5 e G1.9, 16/10/2026). Computador e tablet: subtítulo e título 32/800 à esquerda; à direita
+// as ações da tela (`actions`), a sequência e a fase (computador: o seletor inteiro; tablet: a pílula compacta), como no Início.
+// Celular: barra "‹ Mais | Título" nas subpáginas do Mais; nas outras, a barra do logo (64 px) e o título 26/800.
+function Header({ title, sub, theme, setTheme, go, mobile, tablet, phase, setPhase, phase2Locked, info, kind, route, actions, openMais, setSlot }) {
+  if (kind === "inicio" || kind === "inicio-simples" || kind === "plano") return <PageHeader kind={kind} title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} tablet={tablet} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />;
+  if (mobile && phase === 1 && SUB_VOLTA[route]) {
+    const [to, label] = SUB_VOLTA[route];
+    return <SubBar title={title} back={label} onBack={() => go(to)} />;
+  }
+  if (mobile && phase === 1 && SUB_DO_MAIS.has(route)) return <SubBar title={title} back="Mais" onBack={openMais} />;
+  if (mobile) {
+    return (
+      <header className="smn-ph smn-ph--root">
+        <MobileTopBar theme={theme} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} />
+        <div className="smn-gh-l">
+          {sub && <div className="smn-gh-sub">{sub}</div>}
+          <h1 className="smn-ph-h1 smn-gh-h1">{title}</h1>
+        </div>
+      </header>
+    );
+  }
+  return (
+    <header className="smn-gh">
+      <div className="smn-gh-l">
+        {sub && <div className="smn-gh-sub">{sub}</div>}
+        <h1 className="smn-ph-h1 smn-gh-h1">{title}</h1>
+      </div>
+      <div className="smn-gh-r">
+        <span className="smn-gh-acts" ref={setSlot} />
+        {actions}
+        <StreakChip info={info} go={go} />
+        {tablet ? <PhasePill phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} /> : <PhaseSwitch phase={phase} setPhase={setPhase} mobile={false} phase2Locked={phase2Locked} />}
+      </div>
+    </header>
+  );
+}
+
+// Medidas da casca (G1.1 e G1.10, 16/10/2026): o menu do computador termina em x=280 (recolhido, x=100) e o trilho do tablet em x=100.
+// Computador: o conteúdo começa 40 px depois do menu (x=320 em 1440, como no pacote) e fica num bloco de até --content-max
+// centralizado no espaço à direita do menu (acima de ~1960 px sobra a mesma margem dos dois lados). Tablet: x=128, como no pacote.
+const PAD = { desktop: "32px 40px 64px", tablet: "32px 28px 64px", mobile: "24px 18px calc(104px + env(safe-area-inset-bottom))" };
+
+/** `actions`: botões da tela que vão à direita do título no computador e no tablet (ex.: "Estudar agora" em Missões). */
+function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phase = 1, setPhase, phase2Locked = false, info: baseInfo, headerKind: kind, actions }) {
+  const layout = useLayout();
+  const [more, setMore] = React.useState(false);
+  const [slot, setSlot] = React.useState(null);
+  const openMais = React.useCallback(() => setMore(true), []);
+  const counts = useShellCounts(route);
+  const info = { ...counts, ...baseInfo };
+  const full = FULL.includes(route);
+  const mobile = layout === "mobile";
+  const narrowWeb = useMQ("(max-width: 1280px)");
+  const [pref, setPref] = React.useState(() => readCollapsed(narrowWeb));
+  const userSet = React.useRef(false);
+  React.useEffect(() => {
+    if (!userSet.current) {
+      try {
+        if (localStorage.getItem(COL_KEY) == null) setPref(narrowWeb);
+      } catch (e) {
+        setPref(narrowWeb);
+      }
+    }
+  }, [narrowWeb]);
+  const setCollapsed = (v) => {
+    userSet.current = true;
+    setPref(v);
+    try {
+      localStorage.setItem(COL_KEY, v ? "1" : "0");
+    } catch (e) {
+      /* sem armazenamento: vale só nesta visita */
+    }
+  };
+  const collapsed = pref;
+  const headerKind = kind === "inicio" && mobile && inicioCelular() === "simples" ? "inicio-simples" : kind;
+  const marginLeft = full || mobile ? 0 : layout === "tablet" ? 100 : collapsed ? 100 : 280;
+  return (
+    <div className="smn" style={{ minHeight: "100vh", background: "var(--bg-app)" }}>
+      {!full && (
+        <a className="smn-skip" href="#conteudo">
+          Pular para o conteúdo
+        </a>
+      )}
+      {!full && layout === "desktop" && <Sidebar route={route} go={go} phase={phase} info={info} theme={theme} collapsed={collapsed} setCollapsed={setCollapsed} />}
+      {!full && layout === "tablet" && <Rail route={route} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} theme={theme} setTheme={setTheme} />}
+      <main id="conteudo" tabIndex={-1} style={{ marginLeft, transition: "margin-left var(--dur-base) var(--ease-standard)", padding: bare ? 0 : PAD[layout], outline: "none" }}>
+        {bare ? (
+          children
+        ) : (
+          <div className="smn-box">
+            <Header title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} tablet={layout === "tablet"} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} kind={headerKind} route={route} actions={actions} openMais={openMais} setSlot={setSlot} />
+            <ActionsSlot.Provider value={slot}>{children}</ActionsSlot.Provider>
+          </div>
+        )}
+      </main>
+      {!full && mobile && <MobileTabs route={route} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} theme={theme} setTheme={setTheme} more={more} setMore={setMore} />}
     </div>
-  </div>;
+  );
 }
-function MobileNav({route,go,phase,info}){
-  const [more,setMore]=React.useState(false);
-  const close=React.useCallback(()=>setMore(false),[]);
-  React.useEffect(()=>{setMore(false);},[route]);
-  if(FULL.includes(route))return null;
-  const it=phase===2?[['home2','house','Início'],['estacoes','clipboard-list','Estações'],['peps','list-checks','PEPs'],['desempenho2','chart-column','Dados']]:[['home','house','Jornada'],['trilha','route','Trilha'],['classificacao','trophy','Ranking'],['perfil','user','Perfil']];
-  const side='min(52px,14vw)';const mid='min(56px,15vw)';
-  const moreOn=phase===1&&!ON_BAR.includes(route)&&!ON_BAR.includes(GROUP[route]);
-  return <>
-  {more&&phase===1&&<MoreSheet route={route} go={go} info={info||{}} onClose={close}/>}
-  <nav aria-label="Navegação principal" style={{position:'fixed',left:14,right:14,bottom:'calc(16px + env(safe-area-inset-bottom))',height:68,borderRadius:999,background:'var(--navy-900)',display:'flex',alignItems:'center',justifyContent:'space-around',padding:'0 8px',boxShadow:'0 18px 40px -12px rgba(13,28,66,.55)',zIndex:50}}>
-    {it.map(([id,ic,l],i)=>{const on=route===id||GROUP[route]===id;return <React.Fragment key={id}>{phase===1&&i===2&&<button type="button" onClick={()=>go('questoes')} aria-label="Praticar" style={{width:mid,height:mid,border:0,borderRadius:'50%',background:'var(--teal-400)',color:'var(--navy-950)',display:'inline-flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Icon name="play" size={24}/></button>}<button type="button" onClick={()=>go(id)} aria-label={l} aria-current={on?'page':undefined} style={{width:phase===1?side:52,height:phase===1?side:52,border:0,borderRadius:'50%',background:on?'rgba(255,255,255,.1)':'transparent',color:on?'var(--teal-300)':'#93A8D3',display:'inline-flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>{AppRealIcon({name:ic,size:26})||<Icon name={ic} size={22}/>}</button></React.Fragment>;})}
-    {phase===1&&<button type="button" onClick={()=>setMore(m=>!m)} aria-label="Mais" aria-haspopup="dialog" aria-expanded={more} style={{width:side,height:side,border:0,borderRadius:'50%',background:more||moreOn?'rgba(255,255,255,.1)':'transparent',color:more||moreOn?'var(--teal-300)':'#93A8D3',display:'inline-flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Icon name="layout-grid" size={22}/></button>}
-    {phase===2&&<button type="button" onClick={()=>go('paciente')} aria-label="Paciente simulado" style={{width:56,height:56,border:0,borderRadius:'50%',background:'var(--teal-400)',color:'var(--navy-950)',display:'inline-flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Icon name="sparkles" size={24}/></button>}
-  </nav>
-  </>;
-}
-// phase2Locked: a 2ª fase está "em breve" para o aluno (a equipe segue com acesso): opção apagada, sem clique e com "Em breve" até no celular,
-// onde fica embaixo do nome (em linha o seletor passaria de 280 px e empurraria os ícones do canto para outra linha).
-function PhaseSwitch({phase,setPhase,mobile,phase2Locked}){
-  const o=[[1,'1ª Fase','Objetiva'],[2,'2ª Fase',phase2Locked?'Em breve':'Prática']];
-  return <div role="radiogroup" aria-label="Fase do Revalida" style={{display:'inline-flex',padding:4,gap:4,borderRadius:14,background:'var(--surface-sunken)',border:'1px solid var(--border-subtle)'}}>
-    {o.map(([v,l,d])=>{const lock=!!phase2Locked&&v===2;const stack=lock&&mobile;return <button key={v} type="button" role="radio" aria-checked={phase===v} disabled={lock} aria-disabled={lock?'true':undefined} onClick={lock?undefined:()=>setPhase(v)} style={{display:'flex',alignItems:'center',gap:8,height:40,padding:'0 14px',border:0,borderRadius:10,cursor:lock?'not-allowed':'pointer',background:phase===v?'var(--surface-card)':'transparent',boxShadow:phase===v?'var(--shadow-sm)':'none',color:lock?'var(--text-tertiary)':phase===v?'var(--text-primary)':'var(--text-secondary)',font:'600 14px var(--font-sans)'}}>
-      <span style={{width:8,height:8,borderRadius:'50%',background:phase===v?(v===1?'var(--teal-500)':'var(--violet-600)'):'var(--border-strong)'}}/>{stack?<span style={{display:'flex',flexDirection:'column',alignItems:'flex-start',lineHeight:1.15}}>{l}{' '}<span style={{font:'500 11px/1.2 var(--font-sans)'}}>{d}</span></span>:<>{l}{!mobile&&<span style={{fontWeight:500,color:'var(--text-tertiary)'}}>· {d}</span>}</>}</button>;})}
-  </div>;
-}
-function Header({title,sub,theme,setTheme,go,mobile,phase,setPhase,phase2Locked,info}){
-  return <header style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:16,flexWrap:'wrap'}}>
-    <div style={{minWidth:0,display:'flex',flexDirection:'column',gap:14}}>{mobile&&<button type="button" onClick={()=>go(phase===2?'home2':'home')} aria-label="StaziaMed, início" style={{display:'flex',alignItems:'center',gap:10,border:0,background:'none',padding:0,cursor:'pointer'}}><img src={theme==='dark'?'/brand/horizontal-escuro-320w.png':'/brand/horizontal-320w.png'} alt="StaziaMed Revalida" width="129" height="40" style={{height:40,width:'auto',display:'block'}}/></button>}<PhaseSwitch phase={phase} setPhase={setPhase} mobile={mobile} phase2Locked={phase2Locked}/><div>{sub&&<div style={{font:'500 13px var(--font-sans)',color:'var(--text-tertiary)'}}>{sub}</div>}<h1 style={{margin:'4px 0 0',font:'700 '+(mobile?26:32)+'px/1.15 var(--font-sans)',letterSpacing:'-0.02em'}}>{title}</h1></div></div>
-    <div style={{display:'flex',gap:8,alignItems:'center'}}>
-      {!mobile&&<button type="button" className="sm-pill" onClick={()=>go('missoes')} title="Sequência de dias de estudo"><Icon name="flame" size={16} style={{color:'var(--streak)'}}/>{info.streakDays} {info.streakDays===1?'dia':'dias'}</button>}
-      <IconButton icon={theme==='dark'?'sun':'moon'} label={theme==='dark'?'Tema claro':'Tema escuro'} variant="secondary" onClick={()=>setTheme(theme==='dark'?'light':'dark')}/>
-      {mobile&&<button type="button" onClick={()=>go('perfil')} aria-label="Conta" style={{border:0,background:'none',padding:0,cursor:'pointer'}}><Avatar name={info.name} size={40}/></button>}
-    </div>
-  </header>;
-}
-function AppShell({route,go,theme,setTheme,title,sub,children,bare,phase=1,setPhase,phase2Locked=false,info}){
-  const mobile=useMobile();const narrowRail=useNarrowRail();const [pref,setC]=React.useState(()=>localStorage.getItem('smf-col'));const collapsed=pref==null?narrowRail:pref==='1';const setCollapsed=v=>{const x=v?'1':'0';setC(x);localStorage.setItem('smf-col',x);};
-  return <div style={{minHeight:'100vh',background:'var(--bg-app)'}}>
-    {!mobile&&!FULL.includes(route)&&<Rail route={route} go={go} phase={phase} collapsed={collapsed} setCollapsed={setCollapsed} info={info} theme={theme}/>}
-    <main style={{marginLeft:mobile||FULL.includes(route)?0:(collapsed?100:288),transition:'margin-left var(--dur-slow) var(--ease-standard)',padding:bare?0:(mobile?'24px 18px 112px':'36px 48px 128px')}}>
-      {bare?children:<div style={{maxWidth:1200,margin:'0 auto',display:'flex',flexDirection:'column',gap:24}}>
-        <Header title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info}/>{children}</div>}
-    </main>
-    {mobile?<MobileNav route={route} go={go} phase={phase} info={info}/>:<Dock go={go} route={route} phase={phase} info={info}/>}
-  </div>;
-}
-export { AppShell, useMobile, useMQ };
+export { AppShell };

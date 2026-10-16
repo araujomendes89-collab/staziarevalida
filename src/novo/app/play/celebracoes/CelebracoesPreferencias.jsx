@@ -50,14 +50,15 @@ export function HistoricoCelebracoes({ itens }) {
   );
 }
 
-export function CelebracoesPreferencias() {
+/** `Cabecalho`: o título da seção da Conta (lá ele some no celular, porque a lista já mostra o nome); padrão: o do design system. */
+export function CelebracoesPreferencias({ Cabecalho = SectionHeader }) {
   const { ativo, preferencias, mudarPreferencias, recarregarPreferencias, historico } = useCelebracoesApp();
   const menosMovimento = usePedeMenosMovimento();
   // o botão de som dentro da comemoração muda o mesmo mudo: relê ao abrir esta tela
   React.useEffect(() => recarregarPreferencias(), [recarregarPreferencias]);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <SectionHeader title="Comemorações e sons" subtitle="Como o Stazi comemora seus avanços: sequência, medalhas, nível, missões, simulados e ligas." />
+      <Cabecalho title="Comemorações e sons" subtitle="Como o Stazi comemora seus avanços: sequência, medalhas, nível, missões, simulados e ligas." />
       {!ativo && <Banner tone="info">A Stazia Arena está desligada no momento, então não há comemorações. Suas escolhas ficam guardadas.</Banner>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
         <Opcao>

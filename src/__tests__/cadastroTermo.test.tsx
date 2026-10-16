@@ -1,5 +1,6 @@
 /**
  * Cadastro (src/novo/app/AuthScreens.jsx): WhatsApp, conferir senha e aceite obrigatório do Termo, também no Google.
+ * Termo vigente 2.0: o aceite só segue com as declarações de 18 anos ou mais e de médico(a) (DECLARACAO_ADULTO / DECLARACAO_MEDICO).
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,7 +10,8 @@ const backend: any = { signUp: vi.fn(), signInWithGoogle: vi.fn(), signIn: vi.fn
 vi.mock("../novo/app/session.jsx", async (orig) => ({ ...(await orig<any>()), useSession: () => ({ backend }) }));
 
 import { AuthFlow } from "../novo/app/AuthScreens.jsx";
-import { takeGoogleAcceptance } from "../novo/app/legal/googleAcceptance.js";
+import { takeGoogleAcceptance, takeGoogleAcceptanceFull } from "../novo/app/legal/googleAcceptance.js";
+import { DECLARACAO_ADULTO, DECLARACAO_MEDICO, DECLARACOES_ERRO } from "../novo/app/legal/documentos.js";
 
 const FRASE = "Declaro que li e compreendi os Termos de Aceite e Uso e a Política de Privacidade do StaziaMed Revalida e concordo com suas condições.";
 const ACEITE = "Para criar a conta, é preciso aceitar o Termo de Aceite e Uso e a Política de Privacidade.";
@@ -26,6 +28,8 @@ const fillAll = (over: Record<string, string> = {}) => {
   type("Senha", over.pw ?? "senha-segura");
   type("Conferir senha", over.pw2 ?? "senha-segura");
 };
+/** O aceite completo do Termo 2.0: a frase do §33 e as duas declarações. */
+const aceitarTudo = () => [FRASE, DECLARACAO_ADULTO, DECLARACAO_MEDICO].forEach((l) => fireEvent.click(screen.getByLabelText(l)));
 const submitBtn = () => screen.getByRole("button", { name: /^CRIAR CONTA/ });
 
 beforeEach(() => {
@@ -56,6 +60,7 @@ describe("Cadastro com Termo", () => {
     expect(screen.getByText("As senhas não são iguais.")).toBeTruthy();
     expect(screen.getByText("Informe o WhatsApp com DDD.")).toBeTruthy();
     expect(screen.getByText(ACEITE)).toBeTruthy();
+    expect(screen.getByText(DECLARACOES_ERRO)).toBeTruthy();
     expect(backend.signUp).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Conferir senha").getAttribute("aria-invalid")).toBe("true");
     expect(screen.getByLabelText("WhatsApp").getAttribute("aria-invalid")).toBe("true");
@@ -65,7 +70,7 @@ describe("Cadastro com Termo", () => {
     open();
     fireEvent.change(screen.getByLabelText("País do WhatsApp"), { target: { value: "outro" } });
     fillAll({ phone: "7911123456" });
-    fireEvent.click(screen.getByLabelText(FRASE));
+    aceitarTudo();
     fireEvent.click(submitBtn());
     expect(screen.getByLabelText("Código do país").getAttribute("aria-invalid")).toBe("true");
     expect(screen.getByText("Informe o WhatsApp com código do país.")).toBeTruthy();
@@ -75,25 +80,36 @@ describe("Cadastro com Termo", () => {
     return waitFor(() => expect(backend.signUp.mock.calls[0][3].phone).toBe("+447911123456"));
   });
 
-  it("tudo certo: signUp com WhatsApp normalizado, versão 1.0 e navegador", async () => {
+  it("sem as duas declarações (18+ e médico) a conta não é criada, mesmo com a frase do §33 marcada", () => {
     open();
     fillAll();
     fireEvent.click(screen.getByLabelText(FRASE));
+    fireEvent.click(screen.getByLabelText(DECLARACAO_MEDICO));
     fireEvent.click(submitBtn());
-    await waitFor(() => expect(backend.signUp).toHaveBeenCalledTimes(1));
-    expect(backend.signUp.mock.calls[0]).toEqual(["Ana Lima", "ana@teste.dev", "senha-segura", { phone: "+5541999998888", termsVersion: "1.0", userAgent: expect.any(String) }]);
+    expect(screen.getByText(DECLARACOES_ERRO)).toBeTruthy();
+    expect(backend.signUp).not.toHaveBeenCalled();
   });
 
-  it("Google só com a caixa marcada e guarda o aceite por 30 min", async () => {
+  it("tudo certo: signUp com WhatsApp normalizado, versão 2.0, declarações e navegador", async () => {
+    open();
+    fillAll();
+    aceitarTudo();
+    fireEvent.click(submitBtn());
+    await waitFor(() => expect(backend.signUp).toHaveBeenCalledTimes(1));
+    expect(backend.signUp.mock.calls[0]).toEqual(["Ana Lima", "ana@teste.dev", "senha-segura",
+      { phone: "+5541999998888", termsVersion: "2.0", userAgent: expect.any(String), declaresAdult: true, declaresPhysician: true }]);
+  });
+
+  it("Google só com as caixas marcadas e guarda o aceite (com as declarações) por 30 min", async () => {
     open();
     fireEvent.click(screen.getByRole("button", { name: "Criar conta com Google" }));
     expect(screen.getByText(ACEITE)).toBeTruthy();
     expect(backend.signInWithGoogle).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByLabelText(FRASE));
+    aceitarTudo();
     fireEvent.click(screen.getByRole("button", { name: "Criar conta com Google" }));
     await waitFor(() => expect(backend.signInWithGoogle).toHaveBeenCalledTimes(1));
-    expect(JSON.parse(localStorage.getItem("smn-aceite-google")!).version).toBe("1.0");
-    expect(takeGoogleAcceptance("1.0")).toBe(true);
+    expect(JSON.parse(localStorage.getItem("smn-aceite-google")!).version).toBe("2.0");
+    expect(takeGoogleAcceptanceFull("2.0")).toEqual({ adult: true, physician: true });
     expect(localStorage.getItem("smn-aceite-google")).toBeNull();
   });
 

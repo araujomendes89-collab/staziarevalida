@@ -48,6 +48,18 @@ afterEach(() => {
 });
 
 describe("session.acceptTerms", () => {
+  it("com declarações (Termo 2.0) chama app_accept_terms_declared com p_adult e p_physician", async () => {
+    await abrir(COM_TELA);
+    backend.rpc.mockResolvedValueOnce(SEM_TELA);
+    await act(async () => {
+      await session.acceptTerms({ document: "termo_uso", version: "2.0", origin: "tela_aceite", declarations: { adult: true, physician: true } });
+    });
+    expect(backend.rpc).toHaveBeenLastCalledWith("app_accept_terms_declared", {
+      p_document: "termo_uso", p_version: "2.0", p_origin: "tela_aceite", p_phone: null, p_user_agent: navigator.userAgent, p_adult: true, p_physician: true,
+    });
+    expect(session.boot).toBe(SEM_TELA);
+  });
+
   it("chama app_accept_terms com os argumentos p_* e troca os dados de abertura", async () => {
     await abrir(COM_TELA);
     expect(session.boot.legal.gate_required).toBe(true);

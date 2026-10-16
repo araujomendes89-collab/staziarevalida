@@ -335,7 +335,7 @@ describe("Banco", () => {
 
       const s = await t.db.asUser<any>(t.editorUser, "app_ai_summary");
       expect(s.functions).toHaveLength(9);
-      expect(s.functions.map((f: any) => f.key)).toEqual(["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes"]);
+      expect(s.functions.map((f: any) => f.key)).toEqual(["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes", "similaridade", "analise_mudancas"]); // 9910 e 9941 somaram as duas últimas
       expect(s.functions.find((f: any) => f.key === "busca_fontes")).toMatchObject({ configured: true, mode: "sozinha" });
 
       // tirar a configuração só desliga (a linha sai)

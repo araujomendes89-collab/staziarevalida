@@ -103,6 +103,7 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   app_question_difficulty: { classe: "as_duas", como: "historico" }, // 010500: dificuldade validada, só de questão que o aluno pode abrir e já respondeu num treino
   app_question_hint_context: { classe: "as_duas", como: "historico" }, // 010500: enunciado e alternativas para a dica do Tutor (nunca gabarito), só de questão que o aluno pode abrir
   app_admin_set_question_difficulty: { classe: "as_duas", como: "equipe" }, // 010500: só a equipe valida a dificuldade
+  app_admin_question_difficulties: { classe: "as_duas", como: "equipe" }, // 010700: lista em lote da dificuldade validada, só equipe (assert_staff), não grava nada
   staziamed_topic_weights: { classe: "so_oficiais", como: "filtra" },
   // 010400: o simulado TRI só conta questão oficial do Inep (a inédita não tem calibração oficial); cada uma confere origin no corpo
   irt_calibration_matrix: { classe: "so_oficiais", como: "filtra" }, // a matriz da calibração só traz oficiais

@@ -9,12 +9,15 @@ import type { DevDatabase } from "./devDatabase";
 const tokenOf = (req: Request) => (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "").trim() || null;
 
 /**
- * Metadados extras do cadastro que vêm no corpo (phone, terms_version, user_agent). Só texto passa; qualquer outro campo ou tipo
+ * Metadados extras do cadastro que vêm no corpo (phone, terms_version, user_agent, declares_adult, declares_physician). Só texto passa; qualquer outro campo ou tipo
  * é ignorado, e quem valida o conteúdo é o gatilho do banco (como no Supabase).
  */
 function signupMetaFromBody(body: Record<string, unknown>): Record<string, string> {
   const text = (value: unknown) => (typeof value === "string" ? value : undefined);
-  return signUpMetadata({ phone: text(body.phone), termsVersion: text(body.terms_version), userAgent: text(body.user_agent) });
+  return signUpMetadata({
+    phone: text(body.phone), termsVersion: text(body.terms_version), userAgent: text(body.user_agent),
+    declaresAdult: body.declares_adult === "true", declaresPhysician: body.declares_physician === "true",
+  });
 }
 
 function fail(res: Response, error: unknown) {

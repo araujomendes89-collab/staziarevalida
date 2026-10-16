@@ -7,3 +7,11 @@
 export function aulasParaAluno() {
   return String(import.meta.env?.VITE_AULAS_ALUNO ?? "") === "1";
 }
+
+// MEDALHAS (arte 3D do pacote "Novas telas", 15/10/2026): as 41 medalhas e 7 ligas desenhadas no pacote ficam em
+// src/novo/ds/medalhas-pacote/. LIGADA no app desde 16/10/2026: o dono confirmou que a arte das medalhas foi feita por ele
+// (direito de uso resolvido). Para voltar aos ícones Lucide do banco: VITE_MEDALHAS_ARTE_PACOTE=0 no ambiente do build.
+// Ainda não publicado: vai ao aluno só com a publicação do ramo novas-telas, com o "pode" do dono.
+export function medalhasArtePacote() {
+  return String(import.meta.env.VITE_MEDALHAS_ARTE_PACOTE ?? "") !== "0";
+}

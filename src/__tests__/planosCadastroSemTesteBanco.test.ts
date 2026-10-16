@@ -101,7 +101,8 @@ describe("PL06 — chave desligada: cadastro novo sem teste", () => {
 
   it("o aceite do termo e o WhatsApp do cadastro continuam sendo gravados", async () => {
     const versao = (await db.query<{ version: string }>(`select version from public.legal_versions where document = 'termo_uso'`)).rows[0].version;
-    const { uid } = await cadastrar({ phone: "+5511987654321", terms_version: versao });
+    // Termo 2.0: o aceite do cadastro vai com as declarações de maioridade e de médico
+    const { uid } = await cadastrar({ phone: "+5511987654321", terms_version: versao, declares_adult: "true", declares_physician: "true" });
     expect((await db.query<any>(`select phone from public.profiles where id = $1`, [uid])).rows[0].phone).toBe("+5511987654321");
     expect((await db.query<any>(`select origin from public.legal_acceptances where user_id = $1 and document = 'termo_uso'`, [uid])).rows).toEqual([{ origin: "cadastro" }]);
   });

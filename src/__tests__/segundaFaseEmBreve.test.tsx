@@ -106,13 +106,20 @@ function renderApp(path: string, boot: any) {
 }
 
 const phaseRadios = () => within(screen.getByRole("radiogroup", { name: "Fase do Revalida" })).getAllByRole("radio");
+// celular (G1.8, 16/10/2026): o topo mostra a pílula compacta da fase; tocar nela abre o mesmo seletor
+const abrirPilulaDaFase = () => {
+  const pill = screen.getByRole("button", { name: /^Fase do Revalida: 1ª Fase/ });
+  expect(screen.queryByRole("radiogroup", { name: "Fase do Revalida" })).toBeNull();
+  fireEvent.click(pill);
+  expect(pill).toHaveAttribute("aria-expanded", "true");
+};
 const textOf = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
 const AT_HOME = /^\/novo\/?$/;
 
 const originalMatchMedia = window.matchMedia;
 function setMobile(on: boolean) {
   window.matchMedia = ((query: string) => ({
-    matches: on && query.includes("860px"),
+    matches: on && (query.includes("860px") || query.includes("719px")),
     media: query,
     onchange: null,
     addListener: () => {},
@@ -174,6 +181,7 @@ describe("Seletor de fase · aluno", () => {
   it("no celular a descrição some, mas a 2ª Fase continua dizendo 'Em breve', empilhado sob o nome para o seletor não alargar", () => {
     setMobile(true);
     renderApp("/", bootOf("student"));
+    abrirPilulaDaFase();
     const [first, second] = phaseRadios();
     expect(textOf(first)).toBe("1ª Fase");
     expect(textOf(second)).toMatch(/^2ª Fase ?Em breve$/);
@@ -241,6 +249,7 @@ describe("Seletor de fase · equipe", () => {
   it("no celular a equipe continua sem descrição nas duas fases", () => {
     setMobile(true);
     renderApp("/", bootOf("editor"));
+    abrirPilulaDaFase();
     const [first, second] = phaseRadios();
     expect(textOf(first)).toBe("1ª Fase");
     expect(textOf(second)).toBe("2ª Fase");

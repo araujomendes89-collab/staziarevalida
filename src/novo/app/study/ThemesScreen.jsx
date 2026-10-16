@@ -3,10 +3,10 @@
 // Os dados vêm de app_grandes_temas (migração 9960); o treino do tema usa o filtro grande_tema do sorteio de questões.
 import React from "react";
 import { Banner, EmptyState, TextField } from "../../ds";
+import { AreaBloco, AreaFiltro, Recolhivel } from "./casca.jsx";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { LoadError, Loading, useDebounced, useLoad } from "../admin/common.jsx";
-import { temaVars } from "./temaCores.js";
 import { TemaAula } from "./TemaAula.jsx";
 import { TemaCartao } from "./TemaCartao.jsx";
 import { useInRouterContext, useSearchParams } from "react-router-dom";
@@ -82,38 +82,27 @@ export function ThemesScreen({ go }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Banner tone="info" icon="chart-column" title="Como contamos">
+      <Recolhivel titulo="Como contamos">
         {data.method} Hoje o catálogo tem {plural(data.official_total, "questão oficial", "questões oficiais")} (fora as {data.annulled} anuladas):{" "}
         {data.linked} {data.linked === 1 ? "está ligada" : "estão ligadas"} a algum dos 100 temas e {data.unlinked} ainda não {data.unlinked === 1 ? "tem" : "têm"} tema,
         porque o assunto delas fica fora dos 100 temas ou não tem uma casa clara.
-      </Banner>
-      <TextField icon="search" aria-label="Buscar" placeholder="Buscar tema, subárea ou área" value={search} onChange={(e) => setSearch(e.target.value)} />
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }} role="group" aria-label="Grande área">
-        {[{ id: "", name: "Todas", themes: data.themes.length }, ...data.areas].map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            className={`sm-chip gt-chip-area${area === a.id ? " is-selected" : ""}`}
-            style={a.id ? temaVars(`area-${a.id}`, a.id) : undefined}
-            aria-pressed={area === a.id}
-            onClick={() => setArea(a.id)}
-          >
-            {a.id && <span className="gt-dot" aria-hidden="true" />}
-            {a.name}
-          </button>
-        ))}
-      </div>
+      </Recolhivel>
+      <div className="ap-busca"><TextField icon="search" aria-label="Buscar" placeholder="Buscar tema, subárea ou área" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+      <AreaFiltro valor={area} onChange={setArea} itens={[{ id: "", label: "Todas", k: "todas" }, ...data.areas.map((a) => ({ id: a.id, label: a.name, k: a.id }))]} />
       {startError && <Banner tone="warning">{startError}</Banner>}
-      <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{plural(themes.length, "tema", "temas")}</div>
+      <div className="ap-conta">{plural(themes.length, "tema", "temas")}</div>
       {themes.length === 0 && <EmptyState icon="search" title="Nada encontrado" description="Tente outra busca ou outra área." />}
       {groups.map((g) => (
         <section key={g.id} aria-labelledby={`gt-${g.id}`} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <h2 id={`gt-${g.id}`} style={{ margin: 0, font: "var(--type-h4)", display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
-            {g.name}
-            <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", fontWeight: 400 }}>
-              {plural(g.themes, "tema", "temas")} · {plural(g.questions, "questão ligada", "questões ligadas")}
-            </span>
-          </h2>
+          <div className="ap-grupo">
+            <AreaBloco k={g.id} tamanho={40} />
+            <div className="ap-grupo-tx">
+              <h2 id={`gt-${g.id}`} className="ap-grupo-nome">
+                {g.name}
+                <span className="ap-grupo-sub">{plural(g.themes, "tema", "temas")} · {plural(g.questions, "questão ligada", "questões ligadas")}</span>
+              </h2>
+            </div>
+          </div>
           <div className="gt-grade">
             {g.items.map((t) => (
               <TemaCartao

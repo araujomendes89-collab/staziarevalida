@@ -20,6 +20,9 @@ export interface SignUpExtra {
   termsVersion?: string;
   /** Navegador da pessoa, guardado junto do aceite (até 300 caracteres). */
   userAgent?: string;
+  /** Termo 2.0 em diante: marcou "tenho 18 anos ou mais" e "sou médico(a)". Vão como "true" nos metadados; só "sim" é enviado. */
+  declaresAdult?: boolean;
+  declaresPhysician?: boolean;
 }
 
 export interface Backend {
@@ -104,6 +107,8 @@ export function signUpMetadata(extra: SignUpExtra = {}): Record<string, string> 
   if (extra.phone) meta.phone = extra.phone;
   if (extra.termsVersion) meta.terms_version = extra.termsVersion;
   if (extra.userAgent) meta.user_agent = extra.userAgent.slice(0, USER_AGENT_MAX);
+  if (extra.declaresAdult === true) meta.declares_adult = "true";
+  if (extra.declaresPhysician === true) meta.declares_physician = "true";
   return meta;
 }
 

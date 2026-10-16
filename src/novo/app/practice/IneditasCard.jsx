@@ -4,6 +4,7 @@
 import React from "react";
 import { Button, Card, Icon, ProgressBar } from "../../ds";
 import { Badge } from "../../ds";
+import { AppRealIcon } from "../AppIcons.jsx";
 
 /** Qual dos quatro estados mostrar: sem inéditas publicadas (oculto), sem acesso, plano com limite, ou todas liberadas. */
 export function ineditasState(i) {
@@ -44,7 +45,8 @@ const TEXTS = {
 };
 
 /**
- * Cartão "Questões Inéditas". variant "banco" (grande, no Banco de Questões) ou "inicio" (compacto, no Início e no Plano de Hoje).
+ * Cartão "Questões Inéditas". variant "banco" (grande, no Banco de Questões), "linha" (Banco no celular), "inicio" (compacto, no Início)
+ * ou "plano" (Plano de Hoje).
  * onOpen({ status }) abre a resolução (status "unanswered" enquanto houver pendentes, "all" depois); onPlans abre a tela de planos.
  */
 export function IneditasCard({ ineditas, onOpen, onPlans, variant = "banco", busy = false }) {
@@ -56,6 +58,64 @@ export function IneditasCard({ ineditas, onOpen, onPlans, variant = "banco", bus
   const missing = Math.max(0, Number(ineditas.total) - released);
   const locked = state === "sem_acesso";
   const compact = variant === "inicio";
+  if (variant === "plano") {
+    // Plano de Hoje (pacote Novas telas, onda 2): linha "Extra · Questões Inéditas" com o contador e um botão só
+    return (
+      <section className="ip-extra" role="region" aria-label="Questões Inéditas">
+        <span className="ih-tile ih-tile--ai" aria-hidden="true">
+          {locked ? <Icon name="lock" size={24} /> : AppRealIcon({ name: "sparkles", size: 30 })}
+        </span>
+        <span className="ip-extra-t">
+          <span className="ip-extra-k">Extra · Questões Inéditas</span>
+          <span className="ip-extra-n">{counterText(ineditas)}</span>
+          <span className="ip-extra-d">{locked ? "Abrem com plano ou teste grátis em dia." : "Escritas pela StaziaMed. Não são questões do Inep."}</span>
+        </span>
+        <span style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          {locked ? (
+            <button type="button" className="ip-btn ip-btn--ai" onClick={onPlans} disabled={!onPlans}>
+              <Icon name="lock" size={16} /> Ver planos
+            </button>
+          ) : (
+            <button type="button" className="ip-btn ip-btn--ai" onClick={() => onOpen?.({ status: pending > 0 ? "unanswered" : "all" })} disabled={!onOpen || busy}>
+              {pending > 0 || answered === 0 ? "Resolver inéditas" : "Rever inéditas"} <Icon name="arrow-right" size={16} />
+            </button>
+          )}
+          {!locked && missing > 0 && onPlans && (
+            <button type="button" className="ip-btn" onClick={onPlans}>
+              <Icon name="crown" size={16} /> Conhecer os planos
+            </button>
+          )}
+        </span>
+      </section>
+    );
+  }
+  if (variant === "linha") {
+    // Banco de Questões no celular (G5.2, escolha D7): uma linha com título, contador e botão (sem o ícone, para o título caber inteiro),
+    // para "Área" aparecer na primeira tela.
+    // Estilos em practice.css (.qb-ined).
+    return (
+      <Card variant="brand" padding="14px 14px 14px 16px" className="qb-ined" role="region" aria-label="Questões Inéditas">
+        <span className="qb-ined__t">
+          <span className="sm-overline">Questões Inéditas</span>
+          <span className="qb-ined__n">{counterText(ineditas)}</span>
+          {!locked && missing > 0 && onPlans && (
+            <button type="button" className="qb-ined__plans" onClick={onPlans}>
+              Conhecer os planos
+            </button>
+          )}
+        </span>
+        {locked ? (
+          <Button size="sm" icon="lock" onClick={onPlans} disabled={!onPlans}>
+            Ver planos
+          </Button>
+        ) : (
+          <Button size="sm" onClick={() => onOpen?.({ status: pending > 0 ? "unanswered" : "all" })} loading={busy} disabled={!onOpen}>
+            {pending > 0 || answered === 0 ? "Resolver inéditas" : "Rever inéditas"}
+          </Button>
+        )}
+      </Card>
+    );
+  }
   const primary = locked ? (
     <Button size={compact ? "sm" : "md"} icon="lock" onClick={onPlans} disabled={!onPlans}>
       Ver planos

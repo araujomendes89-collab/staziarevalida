@@ -24,7 +24,8 @@ const DEPOIS = ["20261003009590", "20261003009591", "20261003009592", "202610030
 // Este arquivo prova só a 9620 (e cola a 9620 de novo no fim): as migrações da LEVA 3 que vêm DEPOIS dela e redefinem funções suas
 // (9621 equipe; 9700-9702 Questões; 9710-9719 Aulas; 9720-9729 Podcasts; 9730-9739 Planos; 9800-9899 Leva 4 e Leva 5: Questões StaziaMed, Análise, Atualidade das fontes, Suporte, Central de Conteúdo, Publicar ao aluno, Taxonomia, Planos, Microfone; 9900-9999 Fontes vinculadas, que depende da leva 4) ficam de fora. A ordem com cada uma
 // está nos testes das próprias frentes (leva3Q*, aulas*, podcasts*, planos*).
-const todas = () => fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && !/^2026100300(9621|970\d|971\d|972\d|973\d|98\d\d|99\d\d)_/.test(f)).sort();
+// 2026-10-15: e as da faixa 010000+ (Radar de evidências, inéditas por plano, tela de questão...), que também vêm depois e dependem das 98xx/99xx
+const todas = () => fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && !/^20261003(00(9621|970\d|971\d|972\d|973\d|98\d\d|99\d\d)|01\d{4})_/.test(f)).sort();
 const ler = (f: string) => fs.readFileSync(path.join(MIGRATIONS, f), "utf8");
 
 async function novoBanco(arquivos: string[]) {

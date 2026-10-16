@@ -1,0 +1,5744 @@
+{
+ "gerado_em": "2026-10-15",
+ "ramo": "nt-icones",
+ "lucide": {
+  "pacote": "lucide-static",
+  "versao": "0.468.0",
+  "total": 1544
+ },
+ "fontes": {
+  "fase1_html": 66,
+  "parte2_html": 30,
+  "pdf_paginas": 32,
+  "nota": "O PDF de 32 páginas reproduz as mesmas telas dos HTML (conferido em miniaturas); os ícones foram extraídos do DOM renderizado + código-fonte dos 96 HTML."
+ },
+ "legenda_status": [
+  "igual",
+  "trocado",
+  "novo",
+  "sem equivalente no Lucide"
+ ],
+ "icones_linha": [
+  {
+   "id": "inline-00",
+   "tipo": "linha",
+   "nome": "chevron-left",
+   "lucide": "chevron-left",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/AnaliseMobile.html",
+    "f1/ConquistasMobile.html",
+    "f1/ContaMobile.html",
+    "f1/DesempenhoMobile.html",
+    "f1/DiretrizesMobile.html",
+    "f1/HomeMais.html",
+    "f1/HomePrefs.html",
+    "f1/MapasMobile.html",
+    "f1/MeuPlanoMobile.html",
+    "f1/MeuPlanoTablet.html",
+    "f1/MeuPlanoWeb.html",
+    "f1/MissoesMobile.html",
+    "f1/PlanejamentoMobile.html",
+    "f1/PlanejamentoTablet.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/PlanoMobile.html",
+    "f1/PlanoMobileAberto.html",
+    "f1/RankingMobile.html",
+    "f1/Sidebar.html",
+    "f1/SimuladosMobile.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html",
+    "f1/TemasMobile.html",
+    "f1/TrilhaMobile.html",
+    "p2/DuplaEstacoesMobile.html",
+    "p2/DuplaMobile.html",
+    "p2/DuplaPerfilMobile.html",
+    "p2/DuplaPerfilTablet.html",
+    "p2/DuplaPerfilWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Voltar para Mais",
+     "px": 24,
+     "telas": [
+      "f1/AnaliseMobile.html",
+      "f1/ConquistasMobile.html",
+      "f1/ContaMobile.html",
+      "f1/DesempenhoMobile.html",
+      "f1/DiretrizesMobile.html",
+      "f1/MissoesMobile.html",
+      "f1/PlanejamentoMobile.html",
+      "f1/RankingMobile.html",
+      "f1/TemasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Mais",
+     "px": 20,
+     "telas": [
+      "f1/MapasMobile.html",
+      "f1/SimuladosMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Voltar para Conta",
+     "px": 24,
+     "telas": [
+      "f1/MeuPlanoMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Voltar para a conta",
+     "px": 18,
+     "telas": [
+      "f1/MeuPlanoTablet.html",
+      "f1/MeuPlanoWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Mês anterior",
+     "px": 16,
+     "telas": [
+      "f1/PlanejamentoMobile.html",
+      "f1/PlanejamentoTablet.html",
+      "f1/PlanejamentoWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Início",
+     "px": 20,
+     "telas": [
+      "f1/PlanoMobile.html",
+      "f1/PlanoMobileAberto.html",
+      "f1/TrilhaMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Recolher menu",
+     "px": 14,
+     "telas": [
+      "f1/Sidebar.html"
+     ]
+    },
+    {
+     "rotulo": "Questão anterior",
+     "px": 20,
+     "telas": [
+      "f1/TabletQuestao.html",
+      "f1/TabletRespondida.html"
+     ]
+    },
+    {
+     "rotulo": "Voltar para Praticar",
+     "px": 24,
+     "telas": [
+      "p2/DuplaEstacoesMobile.html",
+      "p2/DuplaPerfilMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Voltar para Questões",
+     "px": 24,
+     "telas": [
+      "p2/DuplaMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Voltar para Praticar",
+     "px": 18,
+     "telas": [
+      "p2/DuplaPerfilTablet.html",
+      "p2/DuplaPerfilWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 59,
+   "svg_pacote": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex-shrink: 0;\"><path d=\"m15 18-6-6 6-6\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "chevron-left",
+    "onde": "app/Shell.jsx (voltar do Mais)"
+   },
+   "confianca": "provável",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 7
+  },
+  {
+   "id": "inline-01",
+   "tipo": "linha",
+   "nome": "info",
+   "lucide": "info",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/AnaliseMobile.html",
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/DiretrizesMobile.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/Main.html",
+    "f1/MapasMobile.html",
+    "f1/MapasTablet.html",
+    "f1/MapasWeb.html",
+    "f1/MeuPlanoMobile.html",
+    "f1/MeuPlanoTablet.html",
+    "f1/MeuPlanoWeb.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "p2/SalaConferenciaMobile.html",
+    "p2/SalaConferenciaTablet.html",
+    "p2/SalaConferenciaWeb.html",
+    "p2/SalaPapeisMobile.html",
+    "p2/SalaPapeisTablet.html",
+    "p2/SalaPapeisWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Não há previsão de aprovação aqui: não existe base",
+     "px": 16,
+     "telas": [
+      "f1/AnaliseMobile.html",
+      "f1/AnaliseTablet.html",
+      "f1/AnaliseWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Modelo de cartão — o sistema preenche temas, condu",
+     "px": 15,
+     "telas": [
+      "f1/DiretrizesMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Modelo de cartão — o sistema preenche temas, condu",
+     "px": 18,
+     "telas": [
+      "f1/DiretrizesTablet.html",
+      "f1/DiretrizesWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Não é questão oficial do Inep",
+     "px": 14,
+     "telas": [
+      "f1/Main.html",
+      "f1/Respondida.html",
+      "f1/TabletQuestao.html",
+      "f1/TabletRespondida.html"
+     ]
+    },
+    {
+     "rotulo": "Modelo — o sistema preenche os temas e os ramos.",
+     "px": 18,
+     "telas": [
+      "f1/MapasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Modelo de cartão — o sistema preenche os mapas, ár",
+     "px": 18,
+     "telas": [
+      "f1/MapasTablet.html",
+      "f1/MapasWeb.html"
+     ]
+    },
+    {
+     "rotulo": "A assinatura pelo app ainda não está disponível. A",
+     "px": 17,
+     "telas": [
+      "f1/MeuPlanoMobile.html"
+     ]
+    },
+    {
+     "rotulo": "A assinatura pelo app ainda não está disponível. A",
+     "px": 18,
+     "telas": [
+      "f1/MeuPlanoTablet.html",
+      "f1/MeuPlanoWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Como contamos os 100 temas",
+     "px": 17,
+     "telas": [
+      "f1/TemasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Modelo de cartão — o sistema preenche temas, subár",
+     "px": 15,
+     "telas": [
+      "f1/TemasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Como contamos",
+     "px": 18,
+     "telas": [
+      "f1/TemasTablet.html",
+      "f1/TemasWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Modelo de cartão — o sistema preenche temas, subár",
+     "px": 18,
+     "telas": [
+      "f1/TemasTablet.html",
+      "f1/TemasWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 56,
+   "svg_pacote": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#94a0af\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex-shrink: 0; margin-top: 1px;\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><path d=\"M12 16v-4\"></path><path d=\"M12 8h.01\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "info",
+    "onde": "app/practice/tela/QuestionSheet.jsx"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 158
+  },
+  {
+   "id": "inline-02",
+   "tipo": "linha",
+   "nome": "grade-colorida-mais",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": "proprio",
+   "telas": [
+    "f1/AnaliseMobile.html",
+    "f1/AnaliseTablet.html",
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/ConquistasMobile.html",
+    "f1/ConquistasTablet.html",
+    "f1/ContaMobile.html",
+    "f1/ContaTablet.html",
+    "f1/DesempenhoMobile.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DiretrizesMobile.html",
+    "f1/DiretrizesTablet.html",
+    "f1/HomeMais.html",
+    "f1/HomeMobileCompact.html",
+    "f1/HomePrefs.html",
+    "f1/MapasMobile.html",
+    "f1/MapasTablet.html",
+    "f1/MeuPlanoMobile.html",
+    "f1/MeuPlanoTablet.html",
+    "f1/MissoesMobile.html",
+    "f1/MissoesTablet.html",
+    "f1/MobileMais.html",
+    "f1/MobileMenu.html",
+    "f1/PlanejamentoMobile.html",
+    "f1/PlanejamentoTablet.html",
+    "f1/PlanoMobile.html",
+    "f1/PlanoMobileAberto.html",
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/RankingMobile.html",
+    "f1/RankingTablet.html",
+    "f1/SimuladosMobile.html",
+    "f1/SimuladosTablet.html",
+    "f1/TabletHome.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TrilhaMobile.html",
+    "f1/TrilhaTablet.html",
+    "p2/DuplaEstacoesMobile.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaMobile.html",
+    "p2/DuplaPerfilMobile.html",
+    "p2/DuplaPerfilTablet.html",
+    "p2/DuplaTablet.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Mais",
+     "px": 24,
+     "telas": [
+      "f1/AnaliseMobile.html",
+      "f1/AnaliseTablet.html",
+      "f1/BancoMobile.html",
+      "f1/BancoTablet.html",
+      "f1/ConquistasMobile.html",
+      "f1/ConquistasTablet.html",
+      "f1/ContaMobile.html",
+      "f1/ContaTablet.html",
+      "f1/DesempenhoMobile.html",
+      "f1/DesempenhoTablet.html",
+      "f1/DiretrizesMobile.html",
+      "f1/DiretrizesTablet.html",
+      "f1/HomeMais.html",
+      "f1/HomeMobileCompact.html",
+      "f1/HomePrefs.html",
+      "f1/MapasMobile.html",
+      "f1/MapasTablet.html",
+      "f1/MeuPlanoMobile.html",
+      "f1/MeuPlanoTablet.html",
+      "f1/MissoesMobile.html",
+      "f1/MissoesTablet.html",
+      "f1/MobileMais.html",
+      "f1/MobileMenu.html",
+      "f1/PlanejamentoMobile.html",
+      "f1/PlanejamentoTablet.html",
+      "f1/PlanoMobile.html",
+      "f1/PlanoMobileAberto.html",
+      "f1/PlanoTablet.html",
+      "f1/PlanoTabletAberto.html",
+      "f1/RankingMobile.html",
+      "f1/RankingTablet.html",
+      "f1/SimuladosMobile.html",
+      "f1/SimuladosTablet.html",
+      "f1/TabletHome.html",
+      "f1/TabletMais.html",
+      "f1/TabletPrefs.html",
+      "f1/TemasMobile.html",
+      "f1/TemasTablet.html",
+      "f1/TrilhaMobile.html",
+      "f1/TrilhaTablet.html",
+      "p2/DuplaEstacoesMobile.html",
+      "p2/DuplaEstacoesTablet.html",
+      "p2/DuplaMobile.html",
+      "p2/DuplaPerfilMobile.html",
+      "p2/DuplaPerfilTablet.html",
+      "p2/DuplaTablet.html"
+     ]
+    }
+   ],
+   "ocorrencias": 92,
+   "svg_pacote": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"8\" height=\"8\" rx=\"2.5\" fill=\"#009dfe\"></rect><rect x=\"13\" y=\"3\" width=\"8\" height=\"8\" rx=\"2.5\" fill=\"#6a47e0\"></rect><rect x=\"3\" y=\"13\" width=\"8\" height=\"8\" rx=\"2.5\" fill=\"#f26b1d\"></rect><rect x=\"13\" y=\"13\" width=\"8\" height=\"8\" rx=\"2.5\" fill=\"#052a5a\"></rect></svg>",
+   "status": "sem equivalente no Lucide",
+   "app_hoje": {
+    "nome": "layout-grid",
+    "onde": "app/Shell.jsx:403 (botão Mais da barra do celular)"
+   },
+   "confianca": "conferido",
+   "nota": "App usa layout-grid (linha, uma cor); pacote usa grade 2x2 colorida própria.",
+   "copia_em": "src/novo/ds/icons-stazia/grade-colorida-mais.svg"
+  },
+  {
+   "id": "inline-03",
+   "tipo": "linha",
+   "nome": "triangle-alert",
+   "lucide": "triangle-alert",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Área com maior risco hoje: ginecologia obstetrícia",
+     "px": 18,
+     "telas": [
+      "f1/AnaliseTablet.html",
+      "f1/AnaliseWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 4,
+   "svg_pacote": "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex-shrink: 0;\"><path d=\"m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z\"></path><path d=\"M12 9v4\"></path><path d=\"M12 17h.01\"></path></svg>",
+   "status": "novo",
+   "app_hoje": {
+    "nome": null,
+    "onde": "app/tutor/ReportScreen.jsx:76 (\"Área com maior risco hoje\") hoje sem ícone"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 26
+  },
+  {
+   "id": "inline-04",
+   "tipo": "linha",
+   "nome": "chevrons-up-down",
+   "lucide": "chevrons-up-down",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/AnaliseWeb.html",
+    "f1/BancoMobile.html",
+    "f1/BancoWeb.html",
+    "f1/ConquistasWeb.html",
+    "f1/ContaWeb.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesWeb.html",
+    "f1/Home.html",
+    "f1/HomeMobileCompact.html",
+    "f1/MapasMobile.html",
+    "f1/MapasWeb.html",
+    "f1/MeuPlanoWeb.html",
+    "f1/MissoesWeb.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/PlanoMobile.html",
+    "f1/PlanoMobileAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/RankingWeb.html",
+    "f1/Sidebar.html",
+    "f1/SimuladosMobile.html",
+    "f1/SimuladosWeb.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaMobile.html",
+    "f1/TrilhaWeb.html",
+    "p2/DuplaEstacoesWeb.html",
+    "p2/DuplaPerfilWeb.html",
+    "p2/DuplaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "JP João Paulo Mendes 1ª fase · Objetiva",
+     "px": 16,
+     "telas": [
+      "f1/AnaliseWeb.html",
+      "f1/BancoWeb.html",
+      "f1/ConquistasWeb.html",
+      "f1/ContaWeb.html",
+      "f1/DesempenhoWeb.html",
+      "f1/DiretrizesWeb.html",
+      "f1/Home.html",
+      "f1/MapasWeb.html",
+      "f1/MeuPlanoWeb.html",
+      "f1/MissoesWeb.html",
+      "f1/PlanejamentoWeb.html",
+      "f1/PlanoWeb.html",
+      "f1/PlanoWebAberto.html",
+      "f1/RankingWeb.html",
+      "f1/SimuladosWeb.html",
+      "f1/TemasWeb.html",
+      "f1/TrilhaWeb.html",
+      "p2/DuplaEstacoesWeb.html",
+      "p2/DuplaPerfilWeb.html",
+      "p2/DuplaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Trocar fase",
+     "px": 14,
+     "telas": [
+      "f1/BancoMobile.html",
+      "f1/HomeMobileCompact.html",
+      "f1/MapasMobile.html",
+      "f1/PlanoMobile.html",
+      "f1/PlanoMobileAberto.html",
+      "f1/SimuladosMobile.html",
+      "f1/TrilhaMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Conta de João Paulo Mendes, 1ª fase objetiva",
+     "px": 16,
+     "telas": [
+      "f1/Sidebar.html"
+     ]
+    }
+   ],
+   "ocorrencias": 56,
+   "svg_pacote": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#94a0af\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m7 15 5 5 5-5\"></path><path d=\"m7 9 5-5 5 5\"></path></svg>",
+   "status": "trocado",
+   "app_hoje": {
+    "nome": "repeat",
+    "onde": "app/Shell.jsx:117 (troca de fase)"
+   },
+   "confianca": "conferido",
+   "nota": "Pacote: chevrons-up-down; app: repeat.",
+   "app_usa_lucide_em_outros_lugares": 0
+  },
+  {
+   "id": "inline-05",
+   "tipo": "linha",
+   "nome": "chevron-right",
+   "lucide": "chevron-right",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/AnaliseWeb.html",
+    "f1/BancoWeb.html",
+    "f1/ConquistasWeb.html",
+    "f1/ContaMobile.html",
+    "f1/ContaWeb.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesMobile.html",
+    "f1/DiretrizesWeb.html",
+    "f1/Home.html",
+    "f1/HomeMais.html",
+    "f1/HomeMobileCompact.html",
+    "f1/HomePrefs.html",
+    "f1/Main.html",
+    "f1/MapasWeb.html",
+    "f1/MeuPlanoWeb.html",
+    "f1/MissoesWeb.html",
+    "f1/PlanejamentoMobile.html",
+    "f1/PlanejamentoTablet.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/RankingWeb.html",
+    "f1/Respondida.html",
+    "f1/Sidebar.html",
+    "f1/SimuladosWeb.html",
+    "f1/TabletHome.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaMobile.html",
+    "f1/TrilhaTablet.html",
+    "f1/TrilhaWeb.html",
+    "p2/DuplaEstacoesMobile.html",
+    "p2/DuplaEstacoesWeb.html",
+    "p2/DuplaPerfilWeb.html",
+    "p2/DuplaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Minha jornada 0/2",
+     "px": 16,
+     "telas": [
+      "f1/AnaliseWeb.html",
+      "f1/BancoWeb.html",
+      "f1/ConquistasWeb.html",
+      "f1/ContaWeb.html",
+      "f1/DesempenhoWeb.html",
+      "f1/DiretrizesWeb.html",
+      "f1/MapasWeb.html",
+      "f1/MeuPlanoWeb.html",
+      "f1/MissoesWeb.html",
+      "f1/PlanejamentoWeb.html",
+      "f1/RankingWeb.html",
+      "f1/SimuladosWeb.html",
+      "f1/TemasWeb.html",
+      "p2/DuplaEstacoesWeb.html",
+      "p2/DuplaPerfilWeb.html",
+      "p2/DuplaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Aprender",
+     "px": 16,
+     "telas": [
+      "f1/AnaliseWeb.html",
+      "f1/BancoWeb.html",
+      "f1/ConquistasWeb.html",
+      "f1/ContaWeb.html",
+      "f1/DesempenhoWeb.html",
+      "f1/DiretrizesWeb.html",
+      "f1/Home.html",
+      "f1/MapasWeb.html",
+      "f1/MeuPlanoWeb.html",
+      "f1/MissoesWeb.html",
+      "f1/PlanejamentoWeb.html",
+      "f1/PlanoWeb.html",
+      "f1/PlanoWebAberto.html",
+      "f1/RankingWeb.html",
+      "f1/Sidebar.html",
+      "f1/SimuladosWeb.html",
+      "f1/TemasWeb.html",
+      "f1/TrilhaWeb.html",
+      "p2/DuplaEstacoesWeb.html",
+      "p2/DuplaPerfilWeb.html",
+      "p2/DuplaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Praticar",
+     "px": 16,
+     "telas": [
+      "f1/AnaliseWeb.html",
+      "f1/BancoWeb.html",
+      "f1/ConquistasWeb.html",
+      "f1/ContaWeb.html",
+      "f1/DesempenhoWeb.html",
+      "f1/DiretrizesWeb.html",
+      "f1/Home.html",
+      "f1/MapasWeb.html",
+      "f1/MeuPlanoWeb.html",
+      "f1/MissoesWeb.html",
+      "f1/PlanejamentoWeb.html",
+      "f1/PlanoWeb.html",
+      "f1/PlanoWebAberto.html",
+      "f1/RankingWeb.html",
+      "f1/Sidebar.html",
+      "f1/SimuladosWeb.html",
+      "f1/TemasWeb.html",
+      "f1/TrilhaWeb.html",
+      "p2/DuplaEstacoesWeb.html",
+      "p2/DuplaPerfilWeb.html",
+      "p2/DuplaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Revisar 5",
+     "px": 16,
+     "telas": [
+      "f1/AnaliseWeb.html",
+      "f1/BancoWeb.html",
+      "f1/ConquistasWeb.html",
+      "f1/ContaWeb.html",
+      "f1/DesempenhoWeb.html",
+      "f1/DiretrizesWeb.html",
+      "f1/Home.html",
+      "f1/MapasWeb.html",
+      "f1/MeuPlanoWeb.html",
+      "f1/MissoesWeb.html",
+      "f1/PlanejamentoWeb.html",
+      "f1/PlanoWeb.html",
+      "f1/PlanoWebAberto.html",
+      "f1/RankingWeb.html",
+      "f1/SimuladosWeb.html",
+      "f1/TemasWeb.html",
+      "f1/TrilhaWeb.html",
+      "p2/DuplaEstacoesWeb.html",
+      "p2/DuplaPerfilWeb.html",
+      "p2/DuplaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Stazia Arena 0/3",
+     "px": 16,
+     "telas": [
+      "f1/AnaliseWeb.html",
+      "f1/BancoWeb.html",
+      "f1/ContaWeb.html",
+      "f1/DesempenhoWeb.html",
+      "f1/DiretrizesWeb.html",
+      "f1/Home.html",
+      "f1/MapasWeb.html",
+      "f1/MeuPlanoWeb.html",
+      "f1/PlanejamentoWeb.html",
+      "f1/PlanoWeb.html",
+      "f1/PlanoWebAberto.html",
+      "f1/SimuladosWeb.html",
+      "f1/TemasWeb.html",
+      "f1/TrilhaWeb.html",
+      "p2/DuplaEstacoesWeb.html",
+      "p2/DuplaPerfilWeb.html",
+      "p2/DuplaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Minha evolução",
+     "px": 16,
+     "telas": [
+      "f1/AnaliseWeb.html",
+      "f1/BancoWeb.html",
+      "f1/ConquistasWeb.html",
+      "f1/ContaWeb.html",
+      "f1/DesempenhoWeb.html",
+      "f1/DiretrizesWeb.html",
+      "f1/Home.html",
+      "f1/MapasWeb.html",
+      "f1/MeuPlanoWeb.html",
+      "f1/MissoesWeb.html",
+      "f1/PlanejamentoWeb.html",
+      "f1/PlanoWeb.html",
+      "f1/PlanoWebAberto.html",
+      "f1/RankingWeb.html",
+      "f1/Sidebar.html",
+      "f1/SimuladosWeb.html",
+      "f1/TemasWeb.html",
+      "f1/TrilhaWeb.html",
+      "p2/DuplaEstacoesWeb.html",
+      "p2/DuplaPerfilWeb.html",
+      "p2/DuplaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Stazia Arena",
+     "px": 16,
+     "telas": [
+      "f1/ConquistasWeb.html",
+      "f1/MissoesWeb.html",
+      "f1/RankingWeb.html",
+      "f1/Sidebar.html"
+     ]
+    },
+    {
+     "rotulo": "Meu planoEquipe · acesso completo",
+     "px": 18,
+     "telas": [
+      "f1/ContaMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Minha contaNome, e-mail, WhatsApp e aparência",
+     "px": 18,
+     "telas": [
+      "f1/ContaMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Minha Stazia ArenaNível, score, ranking e visibili",
+     "px": 18,
+     "telas": [
+      "f1/ContaMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Estudo e provaFase, prova-alvo e rotina",
+     "px": 18,
+     "telas": [
+      "f1/ContaMobile.html"
+     ]
+    },
+    {
+     "rotulo": "SegurançaSenha e sessão",
+     "px": 18,
+     "telas": [
+      "f1/ContaMobile.html"
+     ]
+    }
+   ],
+   "ocorrencias": 200,
+   "svg_pacote": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#94a0af\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex-shrink: 0; transition: transform .2s ease; transform: rotate(0deg);\"><path d=\"m9 18 6-6-6-6\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "chevron-right",
+    "onde": "app/play/TrailScreen.jsx, app/plan/PlansScreen.jsx:44"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 41
+  },
+  {
+   "id": "inline-07",
+   "tipo": "linha",
+   "nome": "play",
+   "lucide": "play",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "20 questões · Todas as áreas 1/20 · hoje, 17:19 Co",
+     "px": 12,
+     "telas": [
+      "f1/BancoMobile.html",
+      "f1/BancoTablet.html",
+      "f1/BancoWeb.html"
+     ]
+    },
+    {
+     "rotulo": "50 questões · Todas as áreas 4/50 · 13 de out., 22",
+     "px": 12,
+     "telas": [
+      "f1/BancoMobile.html",
+      "f1/BancoTablet.html",
+      "f1/BancoWeb.html"
+     ]
+    },
+    {
+     "rotulo": "10 questões · Todas as áreas 1/10 · 13 de out., 22",
+     "px": 12,
+     "telas": [
+      "f1/BancoMobile.html",
+      "f1/BancoTablet.html",
+      "f1/BancoWeb.html"
+     ]
+    },
+    {
+     "rotulo": "20 questões · Todas as áreas 1/20 · 13 de out., 22",
+     "px": 12,
+     "telas": [
+      "f1/BancoMobile.html",
+      "f1/BancoTablet.html",
+      "f1/BancoWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 15,
+   "svg_pacote": "<svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"#ffffff\" aria-hidden=\"true\" style=\"margin-left: 2px;\"><path d=\"M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z\"></path></svg>",
+   "status": "novo",
+   "app_hoje": {
+    "nome": null,
+    "onde": "Histórico de treinos (Banco) hoje sem ícone de play"
+   },
+   "confianca": "provável",
+   "nota": "Versão preenchida (fill) do play.",
+   "app_usa_lucide_em_outros_lugares": 27
+  },
+  {
+   "id": "inline-08",
+   "tipo": "linha",
+   "nome": "search",
+   "lucide": "search",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/DiretrizesMobile.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/HomeMais.html",
+    "f1/HomePrefs.html",
+    "f1/MapasMobile.html",
+    "f1/MapasTablet.html",
+    "f1/MapasWeb.html",
+    "f1/SimuladosMobile.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "p2/DuplaEstacoesMobile.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaEstacoesWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Tema ou assunto (opcional) PediatriaObstetríciaGin",
+     "px": 18,
+     "telas": [
+      "f1/BancoMobile.html",
+      "f1/BancoTablet.html",
+      "f1/BancoWeb.html",
+      "f1/SimuladosTablet.html",
+      "f1/SimuladosWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Buscar tema, conduta, fármaco…",
+     "px": 18,
+     "telas": [
+      "f1/DiretrizesMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Buscar por tema, conduta, fármaco, vacina ou órgão",
+     "px": 18,
+     "telas": [
+      "f1/DiretrizesTablet.html",
+      "f1/DiretrizesWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Buscar no app",
+     "px": 18,
+     "telas": [
+      "f1/HomeMais.html",
+      "f1/HomePrefs.html",
+      "f1/TabletMais.html",
+      "f1/TabletPrefs.html"
+     ]
+    },
+    {
+     "rotulo": "Buscar tema",
+     "px": 18,
+     "telas": [
+      "f1/MapasMobile.html",
+      "f1/MapasTablet.html",
+      "f1/MapasWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Buscar tema, subárea ou área",
+     "px": 18,
+     "telas": [
+      "f1/TemasMobile.html",
+      "f1/TemasTablet.html",
+      "f1/TemasWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Escolha uma estação para treinar em dupla. Cada um",
+     "px": 18,
+     "telas": [
+      "p2/DuplaEstacoesMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Treino em Dupla · estações oficiaisBanco de estaçõ",
+     "px": 18,
+     "telas": [
+      "p2/DuplaEstacoesTablet.html",
+      "p2/DuplaEstacoesWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 43,
+   "svg_pacote": "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#94a0af\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"position: absolute; left: 14px; top: 15px;\"><circle cx=\"11\" cy=\"11\" r=\"7\"></circle><path d=\"m20 20-3.5-3.5\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "search",
+    "onde": "app/study/UpdatesScreen.jsx, prototype/Study1.jsx"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 36
+  },
+  {
+   "id": "inline-09",
+   "tipo": "linha",
+   "nome": "chevron-down",
+   "lucide": "chevron-down",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html",
+    "f1/SimuladosMobile.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaMobile.html",
+    "f1/TrilhaTablet.html",
+    "f1/TrilhaWeb.html",
+    "p2/DuplaPerfilMobile.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Prova / ediçãoTodas as provas oficiais",
+     "px": 16,
+     "telas": [
+      "f1/BancoMobile.html",
+      "f1/BancoTablet.html",
+      "f1/BancoWeb.html",
+      "f1/SimuladosTablet.html",
+      "f1/SimuladosWeb.html"
+     ]
+    },
+    {
+     "rotulo": "StatusNão resolvidasTodasErradas",
+     "px": 16,
+     "telas": [
+      "f1/BancoMobile.html",
+      "f1/BancoTablet.html",
+      "f1/BancoWeb.html"
+     ]
+    },
+    {
+     "rotulo": "País do WhatsAppBrasil +55",
+     "px": 16,
+     "telas": [
+      "f1/ContaTablet.html",
+      "f1/ContaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Mais filtrosTema, prova e cronômetro",
+     "px": 18,
+     "telas": [
+      "f1/SimuladosMobile.html"
+     ]
+    },
+    {
+     "rotulo": "CronômetroTempo de prova (1h30)Sem cronômetro",
+     "px": 16,
+     "telas": [
+      "f1/SimuladosTablet.html",
+      "f1/SimuladosWeb.html"
+     ]
+    },
+    {
+     "rotulo": "1 / 20",
+     "px": 14,
+     "telas": [
+      "f1/TabletQuestao.html",
+      "f1/TabletRespondida.html"
+     ]
+    },
+    {
+     "rotulo": "Como contamos os 100 temas",
+     "px": 16,
+     "telas": [
+      "f1/TemasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Como contamos",
+     "px": 18,
+     "telas": [
+      "f1/TemasTablet.html",
+      "f1/TemasWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Ver as 12 etapas + simulado",
+     "px": 16,
+     "telas": [
+      "f1/TrilhaMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Como funciona a trilha",
+     "px": 18,
+     "telas": [
+      "f1/TrilhaMobile.html",
+      "f1/TrilhaTablet.html",
+      "f1/TrilhaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "ADVer meu cartão como os colegas veem",
+     "px": 16,
+     "telas": [
+      "p2/DuplaPerfilMobile.html"
+     ]
+    }
+   ],
+   "ocorrencias": 38,
+   "svg_pacote": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#687586\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"position: absolute; right: 14px; top: 50%; margin-top: -8px; pointer-events: none;\"><path d=\"m6 9 6 6 6-6\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "chevron-down",
+    "onde": "prototype/Skeleton.jsx, selects do app"
+   },
+   "confianca": "provável",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 13
+  },
+  {
+   "id": "inline-10",
+   "tipo": "linha",
+   "nome": "arrow-right",
+   "lucide": "arrow-right",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/Home.html",
+    "f1/HomeMobileCompact.html",
+    "f1/Main.html",
+    "f1/MissoesMobile.html",
+    "f1/MissoesTablet.html",
+    "f1/MissoesWeb.html",
+    "f1/MobileMais.html",
+    "f1/MobileMenu.html",
+    "f1/PlanejamentoTablet.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/PlanoMobile.html",
+    "f1/PlanoMobileAberto.html",
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/RankingTablet.html",
+    "f1/RankingWeb.html",
+    "f1/Respondida.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TabletHome.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html",
+    "f1/TrilhaMobile.html",
+    "f1/TrilhaTablet.html",
+    "f1/TrilhaWeb.html",
+    "p2/DuplaMobile.html",
+    "p2/DuplaTablet.html",
+    "p2/DuplaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Começar treino",
+     "px": 16,
+     "telas": [
+      "f1/BancoTablet.html",
+      "f1/BancoWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Abrir administração",
+     "px": 15,
+     "telas": [
+      "f1/ContaTablet.html",
+      "f1/ContaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "[ÁREA]NOVO[ano][Tema da atualização][Órgão · docum",
+     "px": 15,
+     "telas": [
+      "f1/DiretrizesTablet.html",
+      "f1/DiretrizesWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Ver o que mudou",
+     "px": 14,
+     "telas": [
+      "f1/DiretrizesTablet.html",
+      "f1/DiretrizesWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Continuar",
+     "px": 18,
+     "telas": [
+      "f1/Home.html",
+      "f1/HomeMobileCompact.html",
+      "f1/TabletHome.html"
+     ]
+    },
+    {
+     "rotulo": "Confirmar resposta",
+     "px": 18,
+     "telas": [
+      "f1/Main.html",
+      "f1/TabletQuestao.html"
+     ]
+    },
+    {
+     "rotulo": "Estudar agora",
+     "px": 18,
+     "telas": [
+      "f1/MissoesMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Estudar agora",
+     "px": 16,
+     "telas": [
+      "f1/MissoesTablet.html",
+      "f1/MissoesWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Continuar",
+     "px": 16,
+     "telas": [
+      "f1/MobileMais.html",
+      "f1/MobileMenu.html"
+     ]
+    },
+    {
+     "rotulo": "Definir data da prova",
+     "px": 16,
+     "telas": [
+      "f1/PlanejamentoTablet.html",
+      "f1/PlanejamentoWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Resolver questões",
+     "px": 16,
+     "telas": [
+      "f1/PlanoMobile.html",
+      "f1/PlanoMobileAberto.html",
+      "f1/PlanoTablet.html",
+      "f1/PlanoTabletAberto.html",
+      "f1/PlanoWeb.html",
+      "f1/PlanoWebAberto.html"
+     ]
+    },
+    {
+     "rotulo": "Revisar agora",
+     "px": 16,
+     "telas": [
+      "f1/PlanoMobile.html",
+      "f1/PlanoMobileAberto.html",
+      "f1/PlanoTablet.html",
+      "f1/PlanoTabletAberto.html",
+      "f1/PlanoWeb.html",
+      "f1/PlanoWebAberto.html"
+     ]
+    }
+   ],
+   "ocorrencias": 112,
+   "svg_pacote": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"></path><path d=\"m12 5 7 7-7 7\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "arrow-right",
+    "onde": "app/plan/PlansScreen.jsx:164, app/home/HomeScreen.jsx"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 41
+  },
+  {
+   "id": "inline-11",
+   "tipo": "linha",
+   "nome": "lock",
+   "lucide": "lock",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/ConquistasMobile.html",
+    "f1/ConquistasTablet.html",
+    "f1/ConquistasWeb.html",
+    "p2/SalaAndamentoMobile.html",
+    "p2/SalaAndamentoTablet.html",
+    "p2/SalaAndamentoWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Primeiros Passos",
+     "px": 10,
+     "telas": [
+      "f1/ConquistasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Aquecendo os Motores",
+     "px": 10,
+     "telas": [
+      "f1/ConquistasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Máquina de Questões",
+     "px": 10,
+     "telas": [
+      "f1/ConquistasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Insano",
+     "px": 10,
+     "telas": [
+      "f1/ConquistasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Mira Boa",
+     "px": 10,
+     "telas": [
+      "f1/ConquistasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Atirador de Elite",
+     "px": 10,
+     "telas": [
+      "f1/ConquistasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Quase Banca do INEP",
+     "px": 10,
+     "telas": [
+      "f1/ConquistasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "3 dias seguidos",
+     "px": 10,
+     "telas": [
+      "f1/ConquistasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "7 dias seguidos",
+     "px": 10,
+     "telas": [
+      "f1/ConquistasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "15 dias seguidos",
+     "px": 10,
+     "telas": [
+      "f1/ConquistasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "30 dias seguidos",
+     "px": 10,
+     "telas": [
+      "f1/ConquistasMobile.html"
+     ]
+    },
+    {
+     "rotulo": "60 dias seguidos",
+     "px": 10,
+     "telas": [
+      "f1/ConquistasMobile.html"
+     ]
+    }
+   ],
+   "ocorrencias": 100,
+   "svg_pacote": "<svg width=\"10\" height=\"10\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#687586\" stroke-width=\"2.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"5\" y=\"11\" width=\"14\" height=\"10\" rx=\"2\"></rect><path d=\"M8 11V7a4 4 0 0 1 8 0v4\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "lock",
+    "onde": "app/plan/PlansScreen.jsx:62, app/practice/PracticeSession.jsx (bloqueado)"
+   },
+   "confianca": "provável",
+   "nota": "Trilha: etapas bloqueadas; app usa arte própria na Trilha.",
+   "app_usa_lucide_em_outros_lugares": 17
+  },
+  {
+   "id": "inline-12",
+   "tipo": "linha",
+   "nome": "sun",
+   "lucide": "sun",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Claro",
+     "px": 16,
+     "telas": [
+      "f1/ContaTablet.html",
+      "f1/ContaWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 2,
+   "svg_pacote": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M3 12h2M19 12h2M5.6 18.4 7 17M17 7l1.4-1.4M16 12a4 4 0 1 1-8 0a4 4 0 1 1 8 0\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "sun",
+    "onde": "app/Shell.jsx (alternar tema)"
+   },
+   "confianca": "conferido",
+   "nota": "Conta > Aparência hoje só tem texto (Claro/Escuro/Do sistema), sem ícone.",
+   "app_usa_lucide_em_outros_lugares": 2
+  },
+  {
+   "id": "inline-13",
+   "tipo": "linha",
+   "nome": "moon",
+   "lucide": "moon",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Escuro",
+     "px": 16,
+     "telas": [
+      "f1/ContaTablet.html",
+      "f1/ContaWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 2,
+   "svg_pacote": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "moon",
+    "onde": "app/Shell.jsx (alternar tema)"
+   },
+   "confianca": "conferido",
+   "nota": "Conta > Aparência hoje só tem texto.",
+   "app_usa_lucide_em_outros_lugares": 2
+  },
+  {
+   "id": "inline-14",
+   "tipo": "linha",
+   "nome": "monitor",
+   "lucide": "monitor",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Do sistema",
+     "px": 16,
+     "telas": [
+      "f1/ContaTablet.html",
+      "f1/ContaWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 2,
+   "svg_pacote": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 5h18v11H3zM8 20h8M12 16v4\"></path></svg>",
+   "status": "novo",
+   "app_hoje": {
+    "nome": null,
+    "onde": "Conta > Aparência > Do sistema (hoje sem ícone)"
+   },
+   "confianca": "conferido",
+   "nota": "monitor não é usado em nenhum lugar do app.",
+   "app_usa_lucide_em_outros_lugares": 0
+  },
+  {
+   "id": "inline-19",
+   "tipo": "linha",
+   "nome": "flame",
+   "lucide": "flame",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/Home.html",
+    "f1/HomeMobileCompact.html",
+    "f1/MobileMais.html",
+    "f1/MobileMenu.html",
+    "f1/TabletHome.html",
+    "f1/TrilhaTablet.html",
+    "f1/TrilhaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "0 dias",
+     "px": 15,
+     "telas": [
+      "f1/Home.html",
+      "f1/TabletHome.html",
+      "f1/TrilhaTablet.html",
+      "f1/TrilhaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "0 dias",
+     "px": 14,
+     "telas": [
+      "f1/HomeMobileCompact.html",
+      "f1/MobileMais.html",
+      "f1/MobileMenu.html"
+     ]
+    }
+   ],
+   "ocorrencias": 14,
+   "svg_pacote": "<svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"#f26b1d\" stroke=\"#f26b1d\" stroke-width=\"1.5\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "flame",
+    "onde": "app/Shell.jsx (sequência)"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 9
+  },
+  {
+   "id": "inline-21",
+   "tipo": "linha",
+   "nome": "check",
+   "lucide": "check",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/Home.html",
+    "f1/HomeMobileCompact.html",
+    "f1/TabletHome.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Sua trilhaColoproctologia Cirurgia · etapa 1 de 60",
+     "px": 11,
+     "telas": [
+      "f1/Home.html",
+      "f1/HomeMobileCompact.html",
+      "f1/TabletHome.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"11\" height=\"11\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"></path></svg>",
+   "status": "novo",
+   "app_hoje": {
+    "nome": null,
+    "onde": "Home/Trilha \"Sua trilha\" (etapa feita)"
+   },
+   "confianca": "provável",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 60
+  },
+  {
+   "id": "inline-22",
+   "tipo": "linha",
+   "nome": "flag",
+   "lucide": "flag",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/Home.html",
+    "f1/HomeMobileCompact.html",
+    "f1/TabletHome.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Sua trilhaColoproctologia Cirurgia · etapa 1 de 60",
+     "px": 11,
+     "telas": [
+      "f1/Home.html",
+      "f1/HomeMobileCompact.html",
+      "f1/TabletHome.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"11\" height=\"11\" viewBox=\"0 0 24 24\" fill=\"#f26b1d\" aria-hidden=\"true\"><path d=\"M5 21V4h11l-2 4 2 4H7v9z\"></path></svg>",
+   "status": "novo",
+   "app_hoje": {
+    "nome": null,
+    "onde": "Home/Trilha \"Sua trilha\" (bandeira de chegada, preenchida)"
+   },
+   "confianca": "provável",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 7
+  },
+  {
+   "id": "inline-25",
+   "tipo": "linha",
+   "nome": "lock",
+   "lucide": "lock",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/LoginMobile.html",
+    "f1/LoginTablet.html",
+    "f1/LoginWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Acesso seguro · Revalida",
+     "px": 13,
+     "telas": [
+      "f1/LoginMobile.html",
+      "f1/LoginTablet.html",
+      "f1/LoginWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Senha",
+     "px": 18,
+     "telas": [
+      "f1/LoginMobile.html",
+      "f1/LoginTablet.html",
+      "f1/LoginWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 12,
+   "svg_pacote": "<svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex-shrink: 0;\"><rect x=\"3\" y=\"11\" width=\"18\" height=\"11\" rx=\"2\"></rect><path d=\"M7 11V7a5 5 0 0 1 10 0v4\"></path></svg>",
+   "status": "novo",
+   "app_hoje": {
+    "nome": null,
+    "onde": "Login: campo Senha (app usa classes lg-* sem Lucide)"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 17
+  },
+  {
+   "id": "inline-26",
+   "tipo": "linha",
+   "nome": "mail",
+   "lucide": "mail",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/LoginMobile.html",
+    "f1/LoginTablet.html",
+    "f1/LoginWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "E-mail",
+     "px": 18,
+     "telas": [
+      "f1/LoginMobile.html",
+      "f1/LoginTablet.html",
+      "f1/LoginWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#94a0af\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex-shrink: 0; position: absolute; left: 15px; top: 16px;\"><rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"></rect><path d=\"m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7\"></path></svg>",
+   "status": "novo",
+   "app_hoje": {
+    "nome": null,
+    "onde": "Login: campo E-mail"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 1
+  },
+  {
+   "id": "inline-27",
+   "tipo": "linha",
+   "nome": "eye",
+   "lucide": "eye",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/LoginMobile.html",
+    "f1/LoginTablet.html",
+    "f1/LoginWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Mostrar senha",
+     "px": 18,
+     "telas": [
+      "f1/LoginMobile.html",
+      "f1/LoginTablet.html",
+      "f1/LoginWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 3,
+   "svg_pacote": "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z\"></path><circle cx=\"12\" cy=\"12\" r=\"3\"></circle><path d=\"\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "eye",
+    "onde": "app/ds/components/forms/TextField.jsx (mostrar senha)"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 14
+  },
+  {
+   "id": "inline-30",
+   "tipo": "linha",
+   "nome": "timer",
+   "lucide": "timer",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Tempo restante do simulado 59:49",
+     "px": 18,
+     "telas": [
+      "f1/Main.html",
+      "f1/TabletQuestao.html"
+     ]
+    },
+    {
+     "rotulo": "Tempo restante do simulado 58:26",
+     "px": 18,
+     "telas": [
+      "f1/Respondida.html",
+      "f1/TabletRespondida.html"
+     ]
+    }
+   ],
+   "ocorrencias": 4,
+   "svg_pacote": "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#0a6fd8\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"position: absolute; left: 13px; top: 13px;\"><circle cx=\"12\" cy=\"13\" r=\"8\"></circle><path d=\"M12 9v4l2 2\"></path><path d=\"M10 2h4\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "timer",
+    "onde": "app/plan/PlansScreen.jsx:62; relógio da sessão usa anel + role=timer"
+   },
+   "confianca": "provável",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 18
+  },
+  {
+   "id": "inline-31",
+   "tipo": "linha",
+   "nome": "pause",
+   "lucide": "pause",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Pausar simulado",
+     "px": 16,
+     "telas": [
+      "f1/Main.html",
+      "f1/Respondida.html",
+      "f1/TabletQuestao.html",
+      "f1/TabletRespondida.html"
+     ]
+    }
+   ],
+   "ocorrencias": 12,
+   "svg_pacote": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><rect x=\"14\" y=\"4\" width=\"4\" height=\"16\" rx=\"1\"></rect><rect x=\"6\" y=\"4\" width=\"4\" height=\"16\" rx=\"1\"></rect></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "pause",
+    "onde": "app/practice/tela/QuestionHeader.jsx:95"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 5
+  },
+  {
+   "id": "inline-32",
+   "tipo": "linha",
+   "nome": "lightbulb",
+   "lucide": "lightbulb",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Travou? Peça uma dica ao Tutor",
+     "px": 18,
+     "telas": [
+      "f1/Main.html",
+      "f1/TabletQuestao.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5\"></path><path d=\"M9 18h6\"></path><path d=\"M10 22h4\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "lightbulb",
+    "onde": "app/practice/tela/TutorHint.jsx"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 6
+  },
+  {
+   "id": "inline-33",
+   "tipo": "linha",
+   "nome": "strikethrough",
+   "lucide": "strikethrough",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Riscar alternativa A",
+     "px": 18,
+     "telas": [
+      "f1/Main.html",
+      "f1/TabletQuestao.html"
+     ]
+    },
+    {
+     "rotulo": "Riscar alternativa B",
+     "px": 18,
+     "telas": [
+      "f1/Main.html",
+      "f1/TabletQuestao.html"
+     ]
+    },
+    {
+     "rotulo": "Riscar alternativa C",
+     "px": 18,
+     "telas": [
+      "f1/Main.html",
+      "f1/TabletQuestao.html"
+     ]
+    },
+    {
+     "rotulo": "Riscar alternativa D",
+     "px": 18,
+     "telas": [
+      "f1/Main.html",
+      "f1/TabletQuestao.html"
+     ]
+    }
+   ],
+   "ocorrencias": 12,
+   "svg_pacote": "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M16 4H9a3 3 0 0 0-2.83 4\"></path><path d=\"M14 12a4 4 0 0 1 0 8H6\"></path><line x1=\"4\" x2=\"20\" y1=\"12\" y2=\"12\"></line></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "strikethrough",
+    "onde": "app/practice/tela/QuestionSheet.jsx:106"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 2
+  },
+  {
+   "id": "inline-34",
+   "tipo": "linha",
+   "nome": "bookmark",
+   "lucide": "bookmark",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Marcar para revisão",
+     "px": 18,
+     "telas": [
+      "f1/Main.html",
+      "f1/Respondida.html",
+      "f1/TabletQuestao.html",
+      "f1/TabletRespondida.html"
+     ]
+    }
+   ],
+   "ocorrencias": 4,
+   "svg_pacote": "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "bookmark",
+    "onde": "app/practice/tela/QuestionSheet.jsx:127"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 4
+  },
+  {
+   "id": "inline-35",
+   "tipo": "linha",
+   "nome": "skip-forward",
+   "lucide": "skip-forward",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Pular",
+     "px": 18,
+     "telas": [
+      "f1/Main.html",
+      "f1/Respondida.html"
+     ]
+    }
+   ],
+   "ocorrencias": 4,
+   "svg_pacote": "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polygon points=\"5 4 15 12 5 20 5 4\"></polygon><line x1=\"19\" x2=\"19\" y1=\"5\" y2=\"19\"></line></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "skip-forward",
+    "onde": "app/practice/tela/QuestionSheet.jsx:138"
+   },
+   "confianca": "conferido",
+   "nota": "Só no treino (simulado não tem Pular, decisão 5).",
+   "app_usa_lucide_em_outros_lugares": 3
+  },
+  {
+   "id": "inline-36",
+   "tipo": "linha",
+   "nome": "flag",
+   "lucide": "flag",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Encontrou algum erro nesta questão?",
+     "px": 16,
+     "telas": [
+      "f1/Main.html",
+      "f1/Respondida.html",
+      "f1/TabletQuestao.html",
+      "f1/TabletRespondida.html"
+     ]
+    }
+   ],
+   "ocorrencias": 8,
+   "svg_pacote": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z\"></path><line x1=\"4\" x2=\"4\" y1=\"22\" y2=\"15\"></line></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "flag",
+    "onde": "app/practice/tela/QuestionSheet.jsx (Encontrou algum erro)"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 7
+  },
+  {
+   "id": "inline-37",
+   "tipo": "linha",
+   "nome": "mic",
+   "lucide": "mic",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/MeuPlanoMobile.html",
+    "f1/MeuPlanoTablet.html",
+    "f1/MeuPlanoWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Voz do Tutor: até 60 minutos por dia",
+     "px": 14,
+     "telas": [
+      "f1/MeuPlanoMobile.html"
+     ]
+    },
+    {
+     "rotulo": "Voz do Tutor: até 60 minutos por dia",
+     "px": 18,
+     "telas": [
+      "f1/MeuPlanoTablet.html",
+      "f1/MeuPlanoWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 12,
+   "svg_pacote": "<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#6236d6\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex-shrink: 0; vertical-align: -2px; margin-right: 4px;\"><path d=\"M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z\"></path><path d=\"M19 10v2a7 7 0 0 1-14 0v-2\"></path><path d=\"M12 19v3\"></path></svg>",
+   "status": "novo",
+   "app_hoje": {
+    "nome": null,
+    "onde": "Meu plano: \"Voz do Tutor\" (app/plan/PlansScreen.jsx:15 sem ícone)"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 9
+  },
+  {
+   "id": "inline-39",
+   "tipo": "linha",
+   "nome": "settings-2",
+   "lucide": "settings-2",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/PlanoMobile.html",
+    "f1/PlanoMobileAberto.html",
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Personalizar plano",
+     "px": 18,
+     "telas": [
+      "f1/PlanoMobile.html",
+      "f1/PlanoMobileAberto.html",
+      "f1/PlanoTablet.html",
+      "f1/PlanoTabletAberto.html",
+      "f1/PlanoWeb.html",
+      "f1/PlanoWebAberto.html"
+     ]
+    }
+   ],
+   "ocorrencias": 12,
+   "svg_pacote": "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 7h-9\"></path><path d=\"M14 17H5\"></path><circle cx=\"17\" cy=\"17\" r=\"3\"></circle><circle cx=\"7\" cy=\"7\" r=\"3\"></circle></svg>",
+   "status": "trocado",
+   "app_hoje": {
+    "nome": "sliders-horizontal",
+    "onde": "app/home/TodayPlan.jsx (Personalizar plano)"
+   },
+   "confianca": "conferido",
+   "nota": "Pacote: settings-2; app: sliders-horizontal.",
+   "app_usa_lucide_em_outros_lugares": 0
+  },
+  {
+   "id": "inline-43",
+   "tipo": "linha",
+   "nome": "circle-alert",
+   "lucide": "circle-alert",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "B Somente se a paciente autorizar o registro. Sua ",
+     "px": 20,
+     "telas": [
+      "f1/Respondida.html",
+      "f1/TabletRespondida.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><line x1=\"12\" x2=\"12\" y1=\"8\" y2=\"12\"></line><line x1=\"12\" x2=\"12.01\" y1=\"16\" y2=\"16\"></line></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "circle-alert",
+    "onde": "app/practice/tela/QuestionSheet.jsx"
+   },
+   "confianca": "provável",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 5
+  },
+  {
+   "id": "inline-44",
+   "tipo": "linha",
+   "nome": "circle-check",
+   "lucide": "circle-check",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/Main.html",
+    "f1/PlanoMobile.html",
+    "f1/PlanoMobileAberto.html",
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "C Imediata, em até 24 horas, à Secretaria Municipa",
+     "px": 20,
+     "telas": [
+      "f1/Respondida.html",
+      "f1/TabletRespondida.html"
+     ]
+    }
+   ],
+   "ocorrencias": 16,
+   "svg_pacote": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><path d=\"m9 12 2 2 4-4\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "circle-check",
+    "onde": "app/practice/Correction.jsx, app/practice/tela/QuestionSheet.jsx"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 30
+  },
+  {
+   "id": "inline-45",
+   "tipo": "linha",
+   "nome": "shield",
+   "lucide": "shield",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Área e tema Preventiva / MFC — Vigilância em saúde",
+     "px": 22,
+     "telas": [
+      "f1/Respondida.html",
+      "f1/TabletRespondida.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\"></path></svg>",
+   "status": "trocado",
+   "app_hoje": {
+    "nome": "shield-check",
+    "onde": "app/study/UpdatesScreen.jsx, app/account/AccountScreen.jsx"
+   },
+   "confianca": "provável",
+   "nota": "Pacote: shield simples (selo de Preventiva/MFC).",
+   "app_usa_lucide_em_outros_lugares": 1
+  },
+  {
+   "id": "inline-46",
+   "tipo": "linha",
+   "nome": "file-text",
+   "lucide": "file-text",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Lista Nacional de Notificação CompulsóriaMinistéri",
+     "px": 20,
+     "telas": [
+      "f1/Respondida.html",
+      "f1/TabletRespondida.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#0a6fd8\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex-shrink: 0;\"><path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\"></path><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"></path><path d=\"M16 13H8\"></path><path d=\"M16 17H8\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "file-text",
+    "onde": "app/practice/Correction.jsx"
+   },
+   "confianca": "provável",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 10
+  },
+  {
+   "id": "inline-47",
+   "tipo": "linha",
+   "nome": "book-open",
+   "lucide": "book-open",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Diretrizes de atenção à saúde mental na urgênciaMi",
+     "px": 20,
+     "telas": [
+      "f1/Respondida.html",
+      "f1/TabletRespondida.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#0a6fd8\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex-shrink: 0;\"><path d=\"M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z\"></path><path d=\"M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "book-open",
+    "onde": "app/shell/navModel.js (Temas)"
+   },
+   "confianca": "provável",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 11
+  },
+  {
+   "id": "inline-48",
+   "tipo": "linha",
+   "nome": "sparkle",
+   "lucide": "sparkle",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Discutir com o Tutor",
+     "px": 18,
+     "telas": [
+      "f1/Respondida.html",
+      "f1/TabletRespondida.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z\"></path></svg>",
+   "status": "trocado",
+   "app_hoje": {
+    "nome": "sparkles",
+    "onde": "app/tutor/TutorDrawer.jsx (\"Discutir com o Tutor\")"
+   },
+   "confianca": "conferido",
+   "nota": "Pacote: sparkle (uma estrela); app: sparkles (três).",
+   "app_usa_lucide_em_outros_lugares": 2
+  },
+  {
+   "id": "inline-49",
+   "tipo": "linha",
+   "nome": "layers",
+   "lucide": "layers",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Criar flashcard",
+     "px": 18,
+     "telas": [
+      "f1/Respondida.html",
+      "f1/TabletRespondida.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z\"></path><path d=\"m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65\"></path><path d=\"m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "layers",
+    "onde": "app/practice/Correction.jsx:135 (Criar flashcard)"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 21
+  },
+  {
+   "id": "inline-50",
+   "tipo": "linha",
+   "nome": "x",
+   "lucide": "x",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/MobileMais.html",
+    "f1/MobileMenu.html",
+    "f1/PlanoMobile.html",
+    "f1/PlanoMobileAberto.html",
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html",
+    "p2/DuplaMobile.html",
+    "p2/DuplaTablet.html",
+    "p2/DuplaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Encerrar simulado",
+     "px": 20,
+     "telas": [
+      "f1/TabletQuestao.html",
+      "f1/TabletRespondida.html"
+     ]
+    },
+    {
+     "rotulo": "Remover estação",
+     "px": 16,
+     "telas": [
+      "p2/DuplaMobile.html",
+      "p2/DuplaTablet.html",
+      "p2/DuplaWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 18,
+   "svg_pacote": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M18 6 6 18M6 6l12 12\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "x",
+    "onde": "app/practice/tela/QuestionHeader.jsx, app/study/TemaAula.jsx"
+   },
+   "confianca": "provável",
+   "nota": "Encerrar simulado: app usa square em PracticeSession.",
+   "app_usa_lucide_em_outros_lugares": 30
+  },
+  {
+   "id": "inline-51",
+   "tipo": "linha",
+   "nome": "play",
+   "lucide": "play",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/TrilhaMobile.html",
+    "f1/TrilhaTablet.html",
+    "f1/TrilhaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Pediatria Disponível · 0/10 questões · 129 no banc",
+     "px": 24,
+     "telas": [
+      "f1/TrilhaMobile.html",
+      "f1/TrilhaTablet.html",
+      "f1/TrilhaWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"#ffffff\" aria-hidden=\"true\"><path d=\"M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z\"></path></svg>",
+   "status": "novo",
+   "app_hoje": {
+    "nome": null,
+    "onde": "Trilha/Temas: botão de abrir tema (preenchido)"
+   },
+   "confianca": "provável",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 27
+  },
+  {
+   "id": "inline-52",
+   "tipo": "linha",
+   "nome": "lock",
+   "lucide": "lock",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/TrilhaMobile.html",
+    "f1/TrilhaTablet.html",
+    "f1/TrilhaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Neonatologia Bloqueada · 0/10 questões · 19 no ban",
+     "px": 20,
+     "telas": [
+      "f1/TrilhaMobile.html",
+      "f1/TrilhaTablet.html",
+      "f1/TrilhaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Cirurgia pediátrica Bloqueada · 0/4 questões · 4 n",
+     "px": 20,
+     "telas": [
+      "f1/TrilhaMobile.html",
+      "f1/TrilhaTablet.html",
+      "f1/TrilhaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Infectologia pediátrica Bloqueada · 0/4 questões ·",
+     "px": 20,
+     "telas": [
+      "f1/TrilhaMobile.html",
+      "f1/TrilhaTablet.html",
+      "f1/TrilhaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Endocrinologia pediátrica Bloqueada · 0/3 questões",
+     "px": 20,
+     "telas": [
+      "f1/TrilhaTablet.html",
+      "f1/TrilhaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Nefrologia pediátrica Bloqueada · 0/3 questões · 3",
+     "px": 20,
+     "telas": [
+      "f1/TrilhaTablet.html",
+      "f1/TrilhaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Intoxicação exógena na infância Bloqueada · 0/2 qu",
+     "px": 20,
+     "telas": [
+      "f1/TrilhaTablet.html",
+      "f1/TrilhaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Pneumologia pediátrica Bloqueada · 0/2 questões · ",
+     "px": 20,
+     "telas": [
+      "f1/TrilhaTablet.html",
+      "f1/TrilhaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Puericultura Bloqueada · 0/2 questões · 2 no banco",
+     "px": 20,
+     "telas": [
+      "f1/TrilhaTablet.html",
+      "f1/TrilhaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Aleitamento materno Bloqueada · 0/1 questões · 1 n",
+     "px": 20,
+     "telas": [
+      "f1/TrilhaTablet.html",
+      "f1/TrilhaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Asma na infância Bloqueada · 0/1 questões · 1 no b",
+     "px": 20,
+     "telas": [
+      "f1/TrilhaTablet.html",
+      "f1/TrilhaWeb.html"
+     ]
+    },
+    {
+     "rotulo": "Assistência imediata ao recém-nascido prematuro Bl",
+     "px": 20,
+     "telas": [
+      "f1/TrilhaTablet.html",
+      "f1/TrilhaWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 28,
+   "svg_pacote": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#94a0af\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"16\" height=\"11\" x=\"4\" y=\"11\" rx=\"2\"></rect><path d=\"M8 11V7a4 4 0 0 1 8 0v4\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "lock",
+    "onde": "app/plan/PlansScreen.jsx:62"
+   },
+   "confianca": "provável",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 17
+  },
+  {
+   "id": "inline-53",
+   "tipo": "linha",
+   "nome": "arrow-left",
+   "lucide": "arrow-left",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "p2/DuplaMobile.html",
+    "p2/DuplaTablet.html",
+    "p2/DuplaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Pular",
+     "px": 18,
+     "telas": [
+      "p2/DuplaMobile.html",
+      "p2/DuplaTablet.html",
+      "p2/DuplaWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex-shrink: 0;\"><path d=\"M19 12H5\"></path><path d=\"m12 19-7-7 7-7\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "arrow-left",
+    "onde": "app/practice/tela/QuestionSheet.jsx, app/tutor/ReportScreen.jsx"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 20
+  },
+  {
+   "id": "inline-54",
+   "tipo": "linha",
+   "nome": "video",
+   "lucide": "video",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "p2/SalaAndamentoMobile.html",
+    "p2/SalaAndamentoTablet.html",
+    "p2/SalaAndamentoWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Chamada",
+     "px": 16,
+     "telas": [
+      "p2/SalaAndamentoMobile.html",
+      "p2/SalaAndamentoTablet.html",
+      "p2/SalaAndamentoWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex-shrink: 0;\"><path d=\"m22 8-6 4 6 4V8Z\"></path><rect x=\"2\" y=\"6\" width=\"14\" height=\"12\" rx=\"2\"></rect></svg>",
+   "status": "novo",
+   "app_hoje": {
+    "nome": null,
+    "onde": "2ª fase (sala): Chamada; sem tela no app"
+   },
+   "confianca": "provável",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 6
+  },
+  {
+   "id": "inline-56",
+   "tipo": "linha",
+   "nome": "eye-off",
+   "lucide": "eye-off",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "p2/SalaConfigMobile.html",
+    "p2/SalaConfigTablet.html",
+    "p2/SalaConfigWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "O candidato não vê",
+     "px": 13,
+     "telas": [
+      "p2/SalaConfigMobile.html",
+      "p2/SalaConfigTablet.html",
+      "p2/SalaConfigWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex-shrink: 0;\"><path d=\"M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19\"></path><path d=\"M1 1l22 22\"></path></svg>",
+   "status": "novo",
+   "app_hoje": {
+    "nome": null,
+    "onde": "2ª fase (sala): \"O candidato não vê\"; sem tela no app"
+   },
+   "confianca": "provável",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 6
+  },
+  {
+   "id": "inline-57",
+   "tipo": "linha",
+   "nome": "dado-aleatorio",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": "proprio",
+   "telas": [
+    "p2/SalaPapeisMobile.html",
+    "p2/SalaPapeisTablet.html",
+    "p2/SalaPapeisWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Sortear",
+     "px": 16,
+     "telas": [
+      "p2/SalaPapeisMobile.html",
+      "p2/SalaPapeisTablet.html",
+      "p2/SalaPapeisWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex-shrink: 0;\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"3\"></rect><circle cx=\"8.5\" cy=\"8.5\" r=\"1.3\" fill=\"currentColor\"></circle><circle cx=\"15.5\" cy=\"15.5\" r=\"1.3\" fill=\"currentColor\"></circle><circle cx=\"12\" cy=\"12\" r=\"1.3\" fill=\"currentColor\"></circle></svg>",
+   "status": "sem equivalente no Lucide",
+   "app_hoje": {
+    "nome": null,
+    "onde": "2ª fase: Sortear; sem tela no app"
+   },
+   "confianca": "provável",
+   "nota": "Mais próximo no Lucide: dice-5 (não usado no app).",
+   "copia_em": "src/novo/ds/icons-stazia/dado-aleatorio.svg"
+  },
+  {
+   "id": "inline-59",
+   "tipo": "linha",
+   "nome": "play",
+   "lucide": "play",
+   "lucide_existe": true,
+   "desenho_pacote": "variante",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [],
+   "ocorrencias": 4,
+   "svg_pacote": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polygon points=\"7 4 20 12 7 20 7 4\"></polygon></svg>",
+   "status": "novo",
+   "app_hoje": {
+    "nome": null,
+    "onde": "Simulado/Home: play preenchido pequeno"
+   },
+   "confianca": "provável",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 27
+  },
+  {
+   "id": "inline-60",
+   "tipo": "linha",
+   "nome": "x",
+   "lucide": "x",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [],
+   "ocorrencias": 4,
+   "svg_pacote": "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M18 6 6 18\"></path><path d=\"m6 6 12 12\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "x",
+    "onde": "app/practice/tela/QuestionHeader.jsx:41"
+   },
+   "confianca": "conferido",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 30
+  },
+  {
+   "id": "inline-61",
+   "tipo": "linha",
+   "nome": "clock",
+   "lucide": "clock",
+   "lucide_existe": true,
+   "desenho_pacote": "igual",
+   "telas": [
+    "f1/Main.html",
+    "f1/Respondida.html",
+    "f1/TabletQuestao.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [],
+   "ocorrencias": 4,
+   "svg_pacote": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"flex-shrink: 0; margin-top: 1px;\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><path d=\"M12 6v6l4 2\"></path></svg>",
+   "status": "igual",
+   "app_hoje": {
+    "nome": "clock",
+    "onde": "app/practice/Correction.jsx"
+   },
+   "confianca": "provável",
+   "nota": null,
+   "app_usa_lucide_em_outros_lugares": 11
+  }
+ ],
+ "graficos_e_marcas": [
+  {
+   "id": "inline-06",
+   "tipo": "grafico",
+   "nome": "anel-progresso-42",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "20 questões · Todas as áreas 1/20 · hoje, 17:19 Co",
+     "px": 42,
+     "telas": [
+      "f1/BancoMobile.html",
+      "f1/BancoTablet.html",
+      "f1/BancoWeb.html"
+     ]
+    },
+    {
+     "rotulo": "50 questões · Todas as áreas 4/50 · 13 de out., 22",
+     "px": 42,
+     "telas": [
+      "f1/BancoMobile.html",
+      "f1/BancoTablet.html",
+      "f1/BancoWeb.html"
+     ]
+    },
+    {
+     "rotulo": "10 questões · Todas as áreas 1/10 · 13 de out., 22",
+     "px": 42,
+     "telas": [
+      "f1/BancoMobile.html",
+      "f1/BancoTablet.html",
+      "f1/BancoWeb.html"
+     ]
+    },
+    {
+     "rotulo": "20 questões · Todas as áreas 1/20 · 13 de out., 22",
+     "px": 42,
+     "telas": [
+      "f1/BancoMobile.html",
+      "f1/BancoTablet.html",
+      "f1/BancoWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 12,
+   "svg_pacote": "<svg width=\"42\" height=\"42\" viewBox=\"0 0 42 42\" aria-hidden=\"true\" style=\"position: absolute; inset: 0; transform: rotate(-90deg);\"><circle cx=\"21\" cy=\"21\" r=\"18\" fill=\"none\" stroke=\"#e3eefb\" stroke-width=\"4\"></circle><circle cx=\"21\" cy=\"21\" r=\"18\" fill=\"none\" stroke=\"#0a6fd8\" stroke-width=\"4\" stroke-linecap=\"round\" pathLength=\"100\" style=\"stroke-dasharray: 5 100;\"></circle></svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Anel de progresso (componente de gráfico, não é ícone); o app já tem ProgressRing nos tokens."
+  },
+  {
+   "id": "inline-15",
+   "tipo": "grafico",
+   "nome": "anel-progresso-92",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "f1/DesempenhoMobile.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "55%acurácia",
+     "px": 92,
+     "telas": [
+      "f1/DesempenhoMobile.html"
+     ]
+    }
+   ],
+   "ocorrencias": 2,
+   "svg_pacote": "<svg width=\"92\" height=\"92\" viewBox=\"0 0 92 92\" aria-hidden=\"true\" style=\"position: absolute; inset: 0; transform: rotate(-90deg);\"><circle cx=\"46\" cy=\"46\" r=\"40\" fill=\"none\" stroke=\"#e3eefb\" stroke-width=\"9\"></circle><circle cx=\"46\" cy=\"46\" r=\"40\" fill=\"none\" stroke=\"#0a6fd8\" stroke-width=\"9\" stroke-linecap=\"round\" pathLength=\"100\" stroke-dasharray=\"55 100\"></circle></svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Anel de progresso (componente de gráfico, não é ícone); o app já tem ProgressRing nos tokens."
+  },
+  {
+   "id": "inline-16",
+   "tipo": "grafico",
+   "nome": "grafico-linha-evolucao",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "f1/DesempenhoMobile.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Acurácia no período7d30d90d0%50%100%7 de out.11 de",
+     "px": 330,
+     "telas": [
+      "f1/DesempenhoMobile.html"
+     ]
+    }
+   ],
+   "ocorrencias": 2,
+   "svg_pacote": "<svg viewBox=\"0 0 330 170\" width=\"100%\" height=\"170\" role=\"img\" aria-label=\"Evolução da acurácia de 7 a 15 de outubro\" style=\"display: block;\"><defs><linearGradient id=\"dsArea\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#0a6fd8\" stop-opacity=\".18\"></stop><stop offset=\"1\" stop-color=\"#0a6fd8\" stop-opacity=\"0\"></stop></linearGradient></defs><line x1=\"36\" x2=\"318\" y1=\"144.0\" y2=\"144.0\" stroke=\"#eef1f5\"></line><text x=\"30\" y=\"147.0\" font-size=\"10\" fill=\"#94a0af\" text-anchor=\"end\" font-family=\"JetBrains Mono, monospace\">0%</text><line x1=\"36\" x2=\"318\" y1=\"77.0\" y2=\"77.0\" stroke=\"#eef1f5\"></line><text x=\"30\" y=\"80.0\" font-size=\"10\" fill=\"#94a0af\" text-anchor=\"end\" font-family=\"JetBrains Mono, monospace\">50%</text><line x1=\"36\" x2=\"318\" y1=\"10.0\" y2=\"10.0\" stroke=\"#eef1f5\"></line><text x=\"30\" y=\"13.0\" font-size=\"10\" fill=\"#94a0af\" text-anchor=\"end\" font-family=\"JetBrains Mono, monospace\">100%</text><path d=\"M36.0 10.0 L212.2 10.0 L247.5 110.5 L318.0 144.0 L318.0 144.0 L36.0 144.0 Z\" fill=\"url(#dsArea)\"></path><path d=\"M36.0 10.0 L212.2 10.0 L247.5 110.5 L318.0 144.0\" fill=\"none\" stroke=\"#0a6fd8\" stroke-width=\"2.5\" stroke-linejoin=\"round\"></path><circle cx=\"36.0\" cy=\"10.0\" r=\"4\" fill=\"#ffffff\" stroke=\"#0a6fd8\" stroke-width=\"2.5\"></circle><circle cx=\"212.2\" cy=\"10.0\" r=\"4\" fill=\"#ffffff\" stroke=\"#0a6fd8\" stroke-width=\"2.5\"></circle><circle cx=\"247.5\" cy=\"110.5\" r=\"4\" fill=\"#ffffff\" stroke=\"#0a6fd8\" stroke-width=\"2.5\"></circle><circle cx=\"318.0\" cy=\"144.0\" r=\"4\" fill=\"#ffffff\" stroke=\"#0a6fd8\" stroke-width=\"2.5\"></circle><text x=\"36.0\" y=\"164\" font-size=\"10.5\" fill=\"#94a0af\" text-anchor=\"start\" font-family=\"Plus Jakarta Sans, sans-serif\">7 de out.</text><text x=\"177.0\" y=\"164\" font-size=\"10.5\" fill=\"#94a0af\" text-anchor=\"middle\" font-family=\"Plus Jakarta Sans, sans-serif\">11 de out.</text><text x=\"318.0\" y=\"164\" font-size=\"10.5\" fill=\"#94a0af\" text-anchor=\"end\" font-family=\"Plus Jakarta Sans, sans-serif\">15 de out.</text></svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Gráfico de dados (não é ícone)."
+  },
+  {
+   "id": "inline-17",
+   "tipo": "grafico",
+   "nome": "grafico-linha-evolucao",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "f1/DesempenhoTablet.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Evolução da acurácia",
+     "px": 644,
+     "telas": [
+      "f1/DesempenhoTablet.html"
+     ]
+    }
+   ],
+   "ocorrencias": 2,
+   "svg_pacote": "<svg viewBox=\"0 0 620 200\" width=\"100%\" height=\"200\" role=\"img\" aria-label=\"Evolução da acurácia de 7 a 15 de outubro\" style=\"display: block;\"><defs><linearGradient id=\"dsArea\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#0a6fd8\" stop-opacity=\".18\"></stop><stop offset=\"1\" stop-color=\"#0a6fd8\" stop-opacity=\"0\"></stop></linearGradient></defs><line x1=\"36\" x2=\"608\" y1=\"174.0\" y2=\"174.0\" stroke=\"#eef1f5\"></line><text x=\"30\" y=\"177.0\" font-size=\"10\" fill=\"#94a0af\" text-anchor=\"end\" font-family=\"JetBrains Mono, monospace\">0%</text><line x1=\"36\" x2=\"608\" y1=\"92.0\" y2=\"92.0\" stroke=\"#eef1f5\"></line><text x=\"30\" y=\"95.0\" font-size=\"10\" fill=\"#94a0af\" text-anchor=\"end\" font-family=\"JetBrains Mono, monospace\">50%</text><line x1=\"36\" x2=\"608\" y1=\"10.0\" y2=\"10.0\" stroke=\"#eef1f5\"></line><text x=\"30\" y=\"13.0\" font-size=\"10\" fill=\"#94a0af\" text-anchor=\"end\" font-family=\"JetBrains Mono, monospace\">100%</text><path d=\"M36.0 10.0 L393.5 10.0 L465.0 133.0 L608.0 174.0 L608.0 174.0 L36.0 174.0 Z\" fill=\"url(#dsArea)\"></path><path d=\"M36.0 10.0 L393.5 10.0 L465.0 133.0 L608.0 174.0\" fill=\"none\" stroke=\"#0a6fd8\" stroke-width=\"2.5\" stroke-linejoin=\"round\"></path><circle cx=\"36.0\" cy=\"10.0\" r=\"4\" fill=\"#ffffff\" stroke=\"#0a6fd8\" stroke-width=\"2.5\"></circle><circle cx=\"393.5\" cy=\"10.0\" r=\"4\" fill=\"#ffffff\" stroke=\"#0a6fd8\" stroke-width=\"2.5\"></circle><circle cx=\"465.0\" cy=\"133.0\" r=\"4\" fill=\"#ffffff\" stroke=\"#0a6fd8\" stroke-width=\"2.5\"></circle><circle cx=\"608.0\" cy=\"174.0\" r=\"4\" fill=\"#ffffff\" stroke=\"#0a6fd8\" stroke-width=\"2.5\"></circle><text x=\"36.0\" y=\"194\" font-size=\"10.5\" fill=\"#94a0af\" text-anchor=\"start\" font-family=\"Plus Jakarta Sans, sans-serif\">7 de out.</text><text x=\"322.0\" y=\"194\" font-size=\"10.5\" fill=\"#94a0af\" text-anchor=\"middle\" font-family=\"Plus Jakarta Sans, sans-serif\">11 de out.</text><text x=\"608.0\" y=\"194\" font-size=\"10.5\" fill=\"#94a0af\" text-anchor=\"end\" font-family=\"Plus Jakarta Sans, sans-serif\">15 de out.</text></svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Gráfico de dados (não é ícone)."
+  },
+  {
+   "id": "inline-18",
+   "tipo": "grafico",
+   "nome": "grafico-linha-evolucao",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "f1/DesempenhoWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Evolução da acurácia",
+     "px": 491,
+     "telas": [
+      "f1/DesempenhoWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 2,
+   "svg_pacote": "<svg viewBox=\"0 0 640 200\" width=\"100%\" height=\"200\" role=\"img\" aria-label=\"Evolução da acurácia de 7 a 15 de outubro\" style=\"display: block;\"><defs><linearGradient id=\"dsArea\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#0a6fd8\" stop-opacity=\".18\"></stop><stop offset=\"1\" stop-color=\"#0a6fd8\" stop-opacity=\"0\"></stop></linearGradient></defs><line x1=\"36\" x2=\"628\" y1=\"174.0\" y2=\"174.0\" stroke=\"#eef1f5\"></line><text x=\"30\" y=\"177.0\" font-size=\"10\" fill=\"#94a0af\" text-anchor=\"end\" font-family=\"JetBrains Mono, monospace\">0%</text><line x1=\"36\" x2=\"628\" y1=\"92.0\" y2=\"92.0\" stroke=\"#eef1f5\"></line><text x=\"30\" y=\"95.0\" font-size=\"10\" fill=\"#94a0af\" text-anchor=\"end\" font-family=\"JetBrains Mono, monospace\">50%</text><line x1=\"36\" x2=\"628\" y1=\"10.0\" y2=\"10.0\" stroke=\"#eef1f5\"></line><text x=\"30\" y=\"13.0\" font-size=\"10\" fill=\"#94a0af\" text-anchor=\"end\" font-family=\"JetBrains Mono, monospace\">100%</text><path d=\"M36.0 10.0 L406.0 10.0 L480.0 133.0 L628.0 174.0 L628.0 174.0 L36.0 174.0 Z\" fill=\"url(#dsArea)\"></path><path d=\"M36.0 10.0 L406.0 10.0 L480.0 133.0 L628.0 174.0\" fill=\"none\" stroke=\"#0a6fd8\" stroke-width=\"2.5\" stroke-linejoin=\"round\"></path><circle cx=\"36.0\" cy=\"10.0\" r=\"4\" fill=\"#ffffff\" stroke=\"#0a6fd8\" stroke-width=\"2.5\"></circle><circle cx=\"406.0\" cy=\"10.0\" r=\"4\" fill=\"#ffffff\" stroke=\"#0a6fd8\" stroke-width=\"2.5\"></circle><circle cx=\"480.0\" cy=\"133.0\" r=\"4\" fill=\"#ffffff\" stroke=\"#0a6fd8\" stroke-width=\"2.5\"></circle><circle cx=\"628.0\" cy=\"174.0\" r=\"4\" fill=\"#ffffff\" stroke=\"#0a6fd8\" stroke-width=\"2.5\"></circle><text x=\"36.0\" y=\"194\" font-size=\"10.5\" fill=\"#94a0af\" text-anchor=\"start\" font-family=\"Plus Jakarta Sans, sans-serif\">7 de out.</text><text x=\"332.0\" y=\"194\" font-size=\"10.5\" fill=\"#94a0af\" text-anchor=\"middle\" font-family=\"Plus Jakarta Sans, sans-serif\">11 de out.</text><text x=\"628.0\" y=\"194\" font-size=\"10.5\" fill=\"#94a0af\" text-anchor=\"end\" font-family=\"Plus Jakarta Sans, sans-serif\">15 de out.</text></svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Gráfico de dados (não é ícone)."
+  },
+  {
+   "id": "inline-20",
+   "tipo": "grafico",
+   "nome": "anel-progresso-116",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "f1/Home.html",
+    "f1/TabletHome.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "2/20 questões",
+     "px": 116,
+     "telas": [
+      "f1/Home.html",
+      "f1/TabletHome.html"
+     ]
+    }
+   ],
+   "ocorrencias": 4,
+   "svg_pacote": "<svg width=\"116\" height=\"116\" viewBox=\"0 0 116 116\" aria-hidden=\"true\" style=\"transform: rotate(-90deg); display: block;\">\n              <circle cx=\"58\" cy=\"58\" r=\"50\" fill=\"none\" stroke=\"rgba(255,255,255,.16)\" stroke-width=\"9\"></circle>\n              <circle cx=\"58\" cy=\"58\" r=\"50\" fill=\"none\" stroke=\"#7fe3ff\" stroke-width=\"9\" stroke-linecap=\"round\" stroke-dasharray=\"314.2\" stroke-dashoffset=\"282.8\"></circle>\n            </svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Anel de progresso (componente de gráfico, não é ícone); o app já tem ProgressRing nos tokens."
+  },
+  {
+   "id": "inline-23",
+   "tipo": "grafico",
+   "nome": "anel-progresso-80",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "f1/HomeMobileCompact.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "2/20",
+     "px": 80,
+     "telas": [
+      "f1/HomeMobileCompact.html"
+     ]
+    }
+   ],
+   "ocorrencias": 2,
+   "svg_pacote": "<svg width=\"80\" height=\"80\" viewBox=\"0 0 80 80\" aria-hidden=\"true\" style=\"transform: rotate(-90deg); display: block;\">\n            <circle cx=\"40\" cy=\"40\" r=\"34\" fill=\"none\" stroke=\"rgba(255,255,255,.16)\" stroke-width=\"7\"></circle>\n            <circle cx=\"40\" cy=\"40\" r=\"34\" fill=\"none\" stroke=\"#7fe3ff\" stroke-width=\"7\" stroke-linecap=\"round\" stroke-dasharray=\"213.6\" stroke-dashoffset=\"192.2\"></circle>\n          </svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Anel de progresso (componente de gráfico, não é ícone); o app já tem ProgressRing nos tokens."
+  },
+  {
+   "id": "inline-24",
+   "tipo": "grafico",
+   "nome": "anel-progresso-34",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "f1/HomeMobileCompact.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "55% acerto",
+     "px": 34,
+     "telas": [
+      "f1/HomeMobileCompact.html"
+     ]
+    }
+   ],
+   "ocorrencias": 2,
+   "svg_pacote": "<svg width=\"34\" height=\"34\" viewBox=\"0 0 34 34\" aria-hidden=\"true\" style=\"transform: rotate(-90deg); display: block;\"><circle cx=\"17\" cy=\"17\" r=\"14\" fill=\"none\" stroke=\"#eef1f5\" stroke-width=\"4\"></circle><circle cx=\"17\" cy=\"17\" r=\"14\" fill=\"none\" stroke=\"#16803c\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-dasharray=\"88\" stroke-dashoffset=\"39.6\"></circle></svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Anel de progresso (componente de gráfico, não é ícone); o app já tem ProgressRing nos tokens."
+  },
+  {
+   "id": "inline-28",
+   "tipo": "marca",
+   "nome": "google-g",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": "proprio",
+   "telas": [
+    "f1/LoginMobile.html",
+    "f1/LoginTablet.html",
+    "f1/LoginWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Continuar com Google",
+     "px": 20,
+     "telas": [
+      "f1/LoginMobile.html",
+      "f1/LoginTablet.html",
+      "f1/LoginWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 48 48\" aria-hidden=\"true\"><path fill=\"#FFC107\" d=\"M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z\"></path><path fill=\"#FF3D00\" d=\"m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z\"></path><path fill=\"#4CAF50\" d=\"M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z\"></path><path fill=\"#1976D2\" d=\"M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z\"></path></svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Logotipo \"G\" do Google (cores oficiais da marca) no botão \"Continuar com Google\" do Login.",
+   "copia_em": "src/novo/ds/icons-stazia/google-g.svg"
+  },
+  {
+   "id": "inline-29",
+   "tipo": "grafico",
+   "nome": "anel-progresso-44",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "f1/Main.html",
+    "f1/TabletQuestao.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Tempo restante do simulado 59:49",
+     "px": 44,
+     "telas": [
+      "f1/Main.html",
+      "f1/TabletQuestao.html"
+     ]
+    }
+   ],
+   "ocorrencias": 2,
+   "svg_pacote": "<svg width=\"44\" height=\"44\" viewBox=\"0 0 44 44\" aria-hidden=\"true\" style=\"transform: rotate(-90deg); display: block;\">\n              <circle cx=\"22\" cy=\"22\" r=\"17\" fill=\"none\" stroke=\"#dce1e8\" stroke-width=\"4\"></circle>\n              <circle cx=\"22\" cy=\"22\" r=\"17\" fill=\"none\" stroke=\"#0a6fd8\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-dasharray=\"106.81\" stroke-dashoffset=\"0.33\" style=\"transition: stroke-dashoffset .32s ease, stroke .2s ease;\"></circle>\n            </svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Anel de progresso (componente de gráfico, não é ícone); o app já tem ProgressRing nos tokens."
+  },
+  {
+   "id": "inline-38",
+   "tipo": "grafico",
+   "nome": "anel-progresso-56",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "f1/MissoesMobile.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "0 de 3 missões de hojeComplete todas e ganhe +50 X",
+     "px": 56,
+     "telas": [
+      "f1/MissoesMobile.html"
+     ]
+    }
+   ],
+   "ocorrencias": 2,
+   "svg_pacote": "<svg width=\"56\" height=\"56\" viewBox=\"0 0 56 56\" aria-hidden=\"true\" style=\"position: absolute; inset: 0; transform: rotate(-90deg);\"><circle cx=\"28\" cy=\"28\" r=\"24\" fill=\"none\" stroke=\"#f8d99a\" stroke-width=\"5\"></circle><circle cx=\"28\" cy=\"28\" r=\"24\" fill=\"none\" stroke=\"#e59a0b\" stroke-width=\"5\" stroke-linecap=\"round\" pathLength=\"100\" stroke-dasharray=\"0 100\"></circle></svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Anel de progresso (componente de gráfico, não é ícone); o app já tem ProgressRing nos tokens."
+  },
+  {
+   "id": "inline-40",
+   "tipo": "grafico",
+   "nome": "anel-progresso-76",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "f1/PlanoMobile.html",
+    "f1/PlanoMobileAberto.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "0/2etapas",
+     "px": 76,
+     "telas": [
+      "f1/PlanoMobile.html",
+      "f1/PlanoMobileAberto.html"
+     ]
+    }
+   ],
+   "ocorrencias": 4,
+   "svg_pacote": "<svg width=\"76\" height=\"76\" viewBox=\"0 0 76 76\" aria-hidden=\"true\" style=\"transform: rotate(-90deg); display: block;\">\n            <circle cx=\"38.0\" cy=\"38.0\" r=\"31.0\" fill=\"none\" stroke=\"rgba(255,255,255,.16)\" stroke-width=\"8\"></circle>\n            <circle cx=\"38.0\" cy=\"38.0\" r=\"31.0\" fill=\"none\" stroke=\"#7fe3ff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-dasharray=\"194.8\" stroke-dashoffset=\"194.8\"></circle>\n          </svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Anel de progresso (componente de gráfico, não é ícone); o app já tem ProgressRing nos tokens."
+  },
+  {
+   "id": "inline-41",
+   "tipo": "grafico",
+   "nome": "anel-progresso-104",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "0/2etapas",
+     "px": 104,
+     "telas": [
+      "f1/PlanoTablet.html",
+      "f1/PlanoTabletAberto.html",
+      "f1/PlanoWeb.html",
+      "f1/PlanoWebAberto.html"
+     ]
+    }
+   ],
+   "ocorrencias": 8,
+   "svg_pacote": "<svg width=\"104\" height=\"104\" viewBox=\"0 0 104 104\" aria-hidden=\"true\" style=\"transform: rotate(-90deg); display: block;\">\n            <circle cx=\"52.0\" cy=\"52.0\" r=\"45.0\" fill=\"none\" stroke=\"rgba(255,255,255,.16)\" stroke-width=\"8\"></circle>\n            <circle cx=\"52.0\" cy=\"52.0\" r=\"45.0\" fill=\"none\" stroke=\"#7fe3ff\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-dasharray=\"282.7\" stroke-dashoffset=\"282.7\"></circle>\n          </svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Anel de progresso (componente de gráfico, não é ícone); o app já tem ProgressRing nos tokens."
+  },
+  {
+   "id": "inline-42",
+   "tipo": "grafico",
+   "nome": "anel-progresso-44",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "f1/Respondida.html",
+    "f1/TabletRespondida.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Tempo restante do simulado 58:26",
+     "px": 44,
+     "telas": [
+      "f1/Respondida.html",
+      "f1/TabletRespondida.html"
+     ]
+    }
+   ],
+   "ocorrencias": 2,
+   "svg_pacote": "<svg width=\"44\" height=\"44\" viewBox=\"0 0 44 44\" aria-hidden=\"true\" style=\"transform: rotate(-90deg); display: block;\">\n              <circle cx=\"22\" cy=\"22\" r=\"17\" fill=\"none\" stroke=\"#dce1e8\" stroke-width=\"4\"></circle>\n              <circle cx=\"22\" cy=\"22\" r=\"17\" fill=\"none\" stroke=\"#0a6fd8\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-dasharray=\"106.81\" stroke-dashoffset=\"2.79\" style=\"transition: stroke-dashoffset .32s ease, stroke .2s ease;\"></circle>\n            </svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Anel de progresso (componente de gráfico, não é ícone); o app já tem ProgressRing nos tokens."
+  },
+  {
+   "id": "inline-55",
+   "tipo": "grafico",
+   "nome": "anel-progresso-120",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "p2/SalaConectandoMobile.html",
+    "p2/SalaConectandoTablet.html",
+    "p2/SalaConectandoWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "0%",
+     "px": 120,
+     "telas": [
+      "p2/SalaConectandoMobile.html",
+      "p2/SalaConectandoTablet.html",
+      "p2/SalaConectandoWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"120\" height=\"120\" viewBox=\"0 0 120 120\" aria-hidden=\"true\" style=\"position: absolute; inset: 0; transform: rotate(-90deg);\"><circle cx=\"60\" cy=\"60\" r=\"52\" fill=\"none\" stroke=\"#e3eefb\" stroke-width=\"10\"></circle><circle cx=\"60\" cy=\"60\" r=\"52\" fill=\"none\" stroke=\"#0a6fd8\" stroke-width=\"10\" stroke-linecap=\"round\" pathLength=\"100\" stroke-dasharray=\"4 100\"></circle></svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Anel de progresso (componente de gráfico, não é ícone); o app já tem ProgressRing nos tokens."
+  },
+  {
+   "id": "inline-58",
+   "tipo": "grafico",
+   "nome": "anel-progresso-132",
+   "lucide": null,
+   "lucide_existe": false,
+   "desenho_pacote": null,
+   "telas": [
+    "p2/SalaResultadoMobile.html",
+    "p2/SalaResultadoTablet.html",
+    "p2/SalaResultadoWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "5,50/ 10,00",
+     "px": 132,
+     "telas": [
+      "p2/SalaResultadoMobile.html",
+      "p2/SalaResultadoTablet.html",
+      "p2/SalaResultadoWeb.html"
+     ]
+    }
+   ],
+   "ocorrencias": 6,
+   "svg_pacote": "<svg width=\"132\" height=\"132\" viewBox=\"0 0 132 132\" aria-hidden=\"true\" style=\"position: absolute; inset: 0; transform: rotate(-90deg);\"><circle cx=\"66\" cy=\"66\" r=\"56\" fill=\"none\" stroke=\"rgba(255,255,255,.16)\" stroke-width=\"12\"></circle><circle cx=\"66\" cy=\"66\" r=\"56\" fill=\"none\" stroke=\"#7fe3ff\" stroke-width=\"12\" stroke-linecap=\"round\" pathLength=\"100\" stroke-dasharray=\"55 100\"></circle></svg>",
+   "status": "sem equivalente no Lucide",
+   "nota": "Anel de progresso (componente de gráfico, não é ícone); o app já tem ProgressRing nos tokens."
+  }
+ ],
+ "icones_ilustrados": [
+  {
+   "id": "ilustrado-769942",
+   "tipo": "ilustrado",
+   "nome": "question",
+   "arquivo_pacote": "assets/76994254ad94cd392024ecb730f85344.svg",
+   "app_chave": "question",
+   "uso": "Praticar / Banco de Questões",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (question): 100% iguais.",
+   "telas": [
+    "f1/AnaliseMobile.html",
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/ConquistasMobile.html",
+    "f1/ConquistasTablet.html",
+    "f1/ConquistasWeb.html",
+    "f1/ContaMobile.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html",
+    "f1/DesempenhoMobile.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesMobile.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/Home.html",
+    "f1/HomeMais.html",
+    "f1/HomeMobileCompact.html",
+    "f1/HomePrefs.html",
+    "f1/MapasMobile.html",
+    "f1/MapasTablet.html",
+    "f1/MapasWeb.html",
+    "f1/MeuPlanoMobile.html",
+    "f1/MeuPlanoTablet.html",
+    "f1/MeuPlanoWeb.html",
+    "f1/MissoesMobile.html",
+    "f1/MissoesTablet.html",
+    "f1/MissoesWeb.html",
+    "f1/MobileMais.html",
+    "f1/MobileMenu.html",
+    "f1/PlanejamentoMobile.html",
+    "f1/PlanejamentoTablet.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/PlanoMobile.html",
+    "f1/PlanoMobileAberto.html",
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/RankingMobile.html",
+    "f1/RankingTablet.html",
+    "f1/RankingWeb.html",
+    "f1/Sidebar.html",
+    "f1/SimuladosMobile.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TabletHome.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaMobile.html",
+    "f1/TrilhaTablet.html",
+    "f1/TrilhaWeb.html",
+    "p2/DuplaEstacoesMobile.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaEstacoesWeb.html",
+    "p2/DuplaMobile.html",
+    "p2/DuplaPerfilMobile.html",
+    "p2/DuplaPerfilTablet.html",
+    "p2/DuplaPerfilWeb.html",
+    "p2/DuplaTablet.html",
+    "p2/DuplaWeb.html",
+    "p2/SalaPapeisMobile.html",
+    "p2/SalaPapeisTablet.html",
+    "p2/SalaPapeisWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Questões",
+     "px": 24
+    },
+    {
+     "rotulo": "Praticar",
+     "px": 26
+    },
+    {
+     "rotulo": "Questões discutidas2",
+     "px": 31
+    },
+    {
+     "rotulo": "Banco de Questões",
+     "px": 22
+    },
+    {
+     "rotulo": "Ajuda e suporte",
+     "px": 25
+    },
+    {
+     "rotulo": "Ajuda e suporte",
+     "px": 28
+    },
+    {
+     "rotulo": "Ajuda e suporte",
+     "px": 26
+    },
+    {
+     "rotulo": "Questões11resolvidas no total",
+     "px": 31
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-787559",
+   "tipo": "ilustrado",
+   "nome": "target",
+   "arquivo_pacote": "assets/7875599ab4d05101fd9547ad5c2e98ee.svg",
+   "app_chave": "target",
+   "uso": "Missões / Precisão",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (target): 100% iguais.",
+   "telas": [
+    "f1/ConquistasWeb.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/HomeMais.html",
+    "f1/HomeMobileCompact.html",
+    "f1/HomePrefs.html",
+    "f1/MissoesTablet.html",
+    "f1/MissoesWeb.html",
+    "f1/RankingWeb.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Missões 0/3",
+     "px": 22
+    },
+    {
+     "rotulo": "Acurácia55%6 de 11 respostas",
+     "px": 31
+    },
+    {
+     "rotulo": "Pontos para reforçarNenhum ponto com 3 o",
+     "px": 29
+    },
+    {
+     "rotulo": "Missões 0/3",
+     "px": 28
+    },
+    {
+     "rotulo": "Missões de hoje0/3 completas +40 XP Acer",
+     "px": 36
+    },
+    {
+     "rotulo": "Missões de hojeRenovam todo dia no seu f",
+     "px": 29
+    },
+    {
+     "rotulo": "Mantenha 75% de precisão na semana0% / 7",
+     "px": 28
+    },
+    {
+     "rotulo": "Missões 0/3",
+     "px": 44
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-084c9d",
+   "tipo": "ilustrado",
+   "nome": "book",
+   "arquivo_pacote": "assets/084c9d6caaf5e0e5e478ce9b47bba720.svg",
+   "app_chave": "book",
+   "uso": "Aprender / Temas",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (book): 100% iguais.",
+   "telas": [
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/ConquistasTablet.html",
+    "f1/ConquistasWeb.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/Home.html",
+    "f1/HomeMais.html",
+    "f1/HomePrefs.html",
+    "f1/MapasTablet.html",
+    "f1/MapasWeb.html",
+    "f1/MeuPlanoTablet.html",
+    "f1/MeuPlanoWeb.html",
+    "f1/MissoesMobile.html",
+    "f1/MissoesTablet.html",
+    "f1/MissoesWeb.html",
+    "f1/PlanejamentoTablet.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/RankingTablet.html",
+    "f1/RankingWeb.html",
+    "f1/Sidebar.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TabletHome.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaTablet.html",
+    "f1/TrilhaWeb.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaEstacoesWeb.html",
+    "p2/DuplaPerfilTablet.html",
+    "p2/DuplaPerfilWeb.html",
+    "p2/DuplaTablet.html",
+    "p2/DuplaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Aprender",
+     "px": 26
+    },
+    {
+     "rotulo": "Temas Essenciais",
+     "px": 22
+    },
+    {
+     "rotulo": "Temas Essenciais",
+     "px": 28
+    },
+    {
+     "rotulo": "Estude 2 áreas diferentes0/2+10 XP5",
+     "px": 26
+    },
+    {
+     "rotulo": "Estude 2 áreas diferentes0/2+10 XP·5",
+     "px": 28
+    },
+    {
+     "rotulo": "Estude 4 áreas diferentes3/4+30 XP·10",
+     "px": 28
+    },
+    {
+     "rotulo": "Temas Essenciais",
+     "px": 44
+    },
+    {
+     "rotulo": "Abrir aula",
+     "px": 17
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-090541",
+   "tipo": "ilustrado",
+   "nome": "cadeado-3d",
+   "arquivo_pacote": "assets/090541c7bb626d5a7dbca37f768e6c97.svg",
+   "app_chave": null,
+   "uso": "Conquistas secretas / bloqueado",
+   "status": "sem equivalente no Lucide",
+   "similaridade": null,
+   "nota": "Ilustração 3D nova (o app não tem); cópia em src/novo/ds/icons-stazia/.",
+   "telas": [
+    "f1/ContaMobile.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "SegurançaSenha e sessão",
+     "px": 25
+    },
+    {
+     "rotulo": "Segurança",
+     "px": 22
+    },
+    {
+     "rotulo": "SegurançaSenha e sessão",
+     "px": 26
+    }
+   ],
+   "copia_em": "src/novo/ds/icons-stazia/cadeado-3d.svg"
+  },
+  {
+   "id": "ilustrado-12a150",
+   "tipo": "ilustrado",
+   "nome": "logout",
+   "arquivo_pacote": "assets/12a150a94ce88bc428606d574ccb3bd9.svg",
+   "app_chave": "logout",
+   "uso": "Sair",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (logout): 100% iguais.",
+   "telas": [
+    "f1/AnaliseWeb.html",
+    "f1/BancoWeb.html",
+    "f1/ConquistasWeb.html",
+    "f1/ContaMobile.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesWeb.html",
+    "f1/Home.html",
+    "f1/MapasWeb.html",
+    "f1/MeuPlanoWeb.html",
+    "f1/MissoesWeb.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/RankingWeb.html",
+    "f1/Sidebar.html",
+    "f1/SimuladosWeb.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaWeb.html",
+    "p2/DuplaEstacoesWeb.html",
+    "p2/DuplaPerfilWeb.html",
+    "p2/DuplaWeb.html",
+    "p2/SalaEstadosMobile.html",
+    "p2/SalaEstadosTablet.html",
+    "p2/SalaEstadosWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Sair",
+     "px": 26
+    },
+    {
+     "rotulo": "Sair da conta",
+     "px": 25
+    },
+    {
+     "rotulo": "Sair da conta",
+     "px": 28
+    },
+    {
+     "rotulo": "Sair da conta",
+     "px": 26
+    },
+    {
+     "rotulo": "Treino encerrado por Colega Teste UmA sa",
+     "px": 42
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-19ef38",
+   "tipo": "ilustrado",
+   "nome": "award",
+   "arquivo_pacote": "assets/19ef38ef92bc30c80d5bb41f5a88982b.svg",
+   "app_chave": "award",
+   "uso": "Conquistas",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (award): 100% iguais.",
+   "telas": [
+    "f1/ConquistasTablet.html",
+    "f1/ConquistasWeb.html",
+    "f1/HomeMais.html",
+    "f1/HomeMobileCompact.html",
+    "f1/HomePrefs.html",
+    "f1/MissoesWeb.html",
+    "f1/RankingWeb.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "0 de 41 medalhasA raridade é só visual: ",
+     "px": 31
+    },
+    {
+     "rotulo": "Conquistas",
+     "px": 22
+    },
+    {
+     "rotulo": "Conquistas",
+     "px": 28
+    },
+    {
+     "rotulo": "Stazia ArenaRanking e conquistas Você ai",
+     "px": 20
+    },
+    {
+     "rotulo": "Conquistas",
+     "px": 44
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-3a4ddc",
+   "tipo": "ilustrado",
+   "nome": "settings",
+   "arquivo_pacote": "assets/3a4ddccaac7606a28e9c7751ef8b48ea.svg",
+   "app_chave": "settings",
+   "uso": "Preferências / engrenagem",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (settings): 100% iguais.",
+   "telas": [
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/ConquistasTablet.html",
+    "f1/ConquistasWeb.html",
+    "f1/ContaMobile.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/Home.html",
+    "f1/HomeMais.html",
+    "f1/HomePrefs.html",
+    "f1/MapasTablet.html",
+    "f1/MapasWeb.html",
+    "f1/MeuPlanoTablet.html",
+    "f1/MeuPlanoWeb.html",
+    "f1/MissoesTablet.html",
+    "f1/MissoesWeb.html",
+    "f1/PlanejamentoTablet.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/RankingTablet.html",
+    "f1/RankingWeb.html",
+    "f1/Sidebar.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TabletHome.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaTablet.html",
+    "f1/TrilhaWeb.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaEstacoesWeb.html",
+    "p2/DuplaPerfilTablet.html",
+    "p2/DuplaPerfilWeb.html",
+    "p2/DuplaTablet.html",
+    "p2/DuplaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Preferências",
+     "px": 26
+    },
+    {
+     "rotulo": "AdministraçãoVocê é administradorAbrir",
+     "px": 25
+    },
+    {
+     "rotulo": "Você é administrador.Abrir administração",
+     "px": 26
+    },
+    {
+     "rotulo": "Preferências",
+     "px": 24
+    },
+    {
+     "rotulo": "Configurações",
+     "px": 26
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-3ea874",
+   "tipo": "ilustrado",
+   "nome": "notebook",
+   "arquivo_pacote": "assets/3ea8744d3a42f21b7134d4194c635a6f.svg",
+   "app_chave": "notebook",
+   "uso": "Caderno de Erros",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (notebook): 100% iguais.",
+   "telas": [
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/Home.html",
+    "f1/HomeMobileCompact.html",
+    "f1/MissoesMobile.html",
+    "f1/MissoesTablet.html",
+    "f1/MissoesWeb.html",
+    "f1/PlanoMobile.html",
+    "f1/PlanoMobileAberto.html",
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/TabletHome.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Por que você erra5 erro(s) em 11 respost",
+     "px": 29
+    },
+    {
+     "rotulo": "Rever 5 questões erradasRevisar · 10 min",
+     "px": 30
+    },
+    {
+     "rotulo": "Rever 5 questões erradas0/5 · 10 min Com",
+     "px": 26
+    },
+    {
+     "rotulo": "5 Revisar",
+     "px": 28
+    },
+    {
+     "rotulo": "Revise 4 questões erradas0/4+15 XP5",
+     "px": 26
+    },
+    {
+     "rotulo": "Revise 4 questões erradas0/4+15 XP·5",
+     "px": 28
+    },
+    {
+     "rotulo": "Revise 30 erros0/30+40 XP·15",
+     "px": 28
+    },
+    {
+     "rotulo": "2 Revisar · 10 min Rever 5 questões erra",
+     "px": 32
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-5f6b1b",
+   "tipo": "ilustrado",
+   "nome": "route",
+   "arquivo_pacote": "assets/5f6b1bd1c9a9918659bc219f216231aa.svg",
+   "app_chave": "route",
+   "uso": "Minha Trilha",
+   "status": "trocado",
+   "similaridade": 0,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (route): 0% iguais. Desenho diferente do que o app usa hoje; o do pacote vem como arquivo próprio para a onda que aplicar (não copiado: ver arquivo_pacote).",
+   "telas": [
+    "f1/Home.html",
+    "f1/HomeMais.html",
+    "f1/HomeMobileCompact.html",
+    "f1/HomePrefs.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/Sidebar.html",
+    "f1/TabletHome.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TrilhaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Minha Trilha",
+     "px": 22
+    },
+    {
+     "rotulo": "Sua trilhaColoproctologia Cirurgia · eta",
+     "px": 30
+    },
+    {
+     "rotulo": "Minha Trilha",
+     "px": 28
+    },
+    {
+     "rotulo": "Sua trilhaColoproctologia Cirurgia · eta",
+     "px": 28
+    },
+    {
+     "rotulo": "Minha Trilha",
+     "px": 44
+    }
+   ],
+   "copia_em": "src/novo/ds/icons-stazia/route-pacote.svg"
+  },
+  {
+   "id": "ilustrado-6d9149",
+   "tipo": "ilustrado",
+   "nome": "documento-privacidade-3d",
+   "arquivo_pacote": "assets/6d914983adf5100b67c8ddb7003532b1.svg",
+   "app_chave": null,
+   "uso": "Privacidade e dados",
+   "status": "sem equivalente no Lucide",
+   "similaridade": null,
+   "nota": "Ilustração 3D nova (o app não tem); cópia em src/novo/ds/icons-stazia/.",
+   "telas": [
+    "f1/ContaMobile.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Privacidade e dadosExportação e exclusão",
+     "px": 25
+    },
+    {
+     "rotulo": "Privacidade e dados",
+     "px": 22
+    },
+    {
+     "rotulo": "Privacidade e dadosExportação e exclusão",
+     "px": 26
+    }
+   ],
+   "copia_em": "src/novo/ds/icons-stazia/documento-privacidade-3d.svg"
+  },
+  {
+   "id": "ilustrado-6f77b9",
+   "tipo": "ilustrado",
+   "nome": "escudo-mais-3d",
+   "arquivo_pacote": "assets/6f77b95f59abbeb652ba8bcf5843f57b.svg",
+   "app_chave": null,
+   "uso": "Área Preventiva / MFC",
+   "status": "sem equivalente no Lucide",
+   "similaridade": null,
+   "nota": "Ilustração 3D nova (o app não tem); cópia em src/novo/ds/icons-stazia/.",
+   "telas": [
+    "f1/AnaliseMobile.html",
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesMobile.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/SimuladosMobile.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Preventiva / MFC50% em 2Sem dados",
+     "px": 26
+    },
+    {
+     "rotulo": "Preventiva / MFC 208 q.",
+     "px": 32
+    },
+    {
+     "rotulo": "Preventiva / MFC50% · 2q",
+     "px": 26
+    },
+    {
+     "rotulo": "Preventiva",
+     "px": 30
+    },
+    {
+     "rotulo": "Preventiva / MFC",
+     "px": 24
+    },
+    {
+     "rotulo": "Preventiva 210",
+     "px": 30
+    },
+    {
+     "rotulo": "Preventiva / MFC 210 q.",
+     "px": 32
+    },
+    {
+     "rotulo": "Saúde Coletiva",
+     "px": 30
+    }
+   ],
+   "copia_em": "src/novo/ds/icons-stazia/escudo-mais-3d.svg"
+  },
+  {
+   "id": "ilustrado-71b3b5",
+   "tipo": "ilustrado",
+   "nome": "simbolo-feminino-coracao-3d",
+   "arquivo_pacote": "assets/71b3b57d6fa2e4eb213fbf88ab8827f8.svg",
+   "app_chave": null,
+   "uso": "Área Ginecologia e Obstetrícia",
+   "status": "sem equivalente no Lucide",
+   "similaridade": null,
+   "nota": "Ilustração 3D nova (o app não tem); cópia em src/novo/ds/icons-stazia/.",
+   "telas": [
+    "f1/AnaliseMobile.html",
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesMobile.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/MapasMobile.html",
+    "f1/SimuladosMobile.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaMobile.html",
+    "p2/DuplaEstacoesMobile.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaEstacoesWeb.html",
+    "p2/DuplaMobile.html",
+    "p2/DuplaTablet.html",
+    "p2/DuplaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Gineco & Obstetrícia60% em 5Intermediári",
+     "px": 26
+    },
+    {
+     "rotulo": "Gineco & Obstetrícia 238 q.",
+     "px": 32
+    },
+    {
+     "rotulo": "Gineco & Obstetrícia60% · 5q",
+     "px": 26
+    },
+    {
+     "rotulo": "GO",
+     "px": 30
+    },
+    {
+     "rotulo": "Gineco & Obstetrícia",
+     "px": 24
+    },
+    {
+     "rotulo": "[Título do tema] [n] ramos",
+     "px": 34
+    },
+    {
+     "rotulo": "GO 243",
+     "px": 30
+    },
+    {
+     "rotulo": "Gineco & Obstetrícia 243 q.",
+     "px": 32
+    }
+   ],
+   "copia_em": "src/novo/ds/icons-stazia/simbolo-feminino-coracao-3d.svg"
+  },
+  {
+   "id": "ilustrado-74762c",
+   "tipo": "ilustrado",
+   "nome": "house",
+   "arquivo_pacote": "assets/74762ca693c0a0122580391fccfd429f.svg",
+   "app_chave": "house",
+   "uso": "Minha jornada / Visão Geral",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (house): 100% iguais.",
+   "telas": [
+    "f1/AnaliseMobile.html",
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/ConquistasMobile.html",
+    "f1/ConquistasTablet.html",
+    "f1/ConquistasWeb.html",
+    "f1/ContaMobile.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html",
+    "f1/DesempenhoMobile.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesMobile.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/Home.html",
+    "f1/HomeMais.html",
+    "f1/HomeMobileCompact.html",
+    "f1/HomePrefs.html",
+    "f1/MapasMobile.html",
+    "f1/MapasTablet.html",
+    "f1/MapasWeb.html",
+    "f1/MeuPlanoMobile.html",
+    "f1/MeuPlanoTablet.html",
+    "f1/MeuPlanoWeb.html",
+    "f1/MissoesMobile.html",
+    "f1/MissoesTablet.html",
+    "f1/MissoesWeb.html",
+    "f1/MobileMais.html",
+    "f1/MobileMenu.html",
+    "f1/PlanejamentoMobile.html",
+    "f1/PlanejamentoTablet.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/PlanoMobile.html",
+    "f1/PlanoMobileAberto.html",
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/RankingMobile.html",
+    "f1/RankingTablet.html",
+    "f1/RankingWeb.html",
+    "f1/Sidebar.html",
+    "f1/SimuladosMobile.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TabletHome.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaMobile.html",
+    "f1/TrilhaTablet.html",
+    "f1/TrilhaWeb.html",
+    "p2/DuplaEstacoesMobile.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaEstacoesWeb.html",
+    "p2/DuplaMobile.html",
+    "p2/DuplaPerfilMobile.html",
+    "p2/DuplaPerfilTablet.html",
+    "p2/DuplaPerfilWeb.html",
+    "p2/DuplaTablet.html",
+    "p2/DuplaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Início",
+     "px": 24
+    },
+    {
+     "rotulo": "Início",
+     "px": 26
+    },
+    {
+     "rotulo": "Minha jornada 0/2",
+     "px": 26
+    },
+    {
+     "rotulo": "Minha jornada",
+     "px": 26
+    },
+    {
+     "rotulo": "Visão Geral",
+     "px": 22
+    },
+    {
+     "rotulo": "Início",
+     "px": 25
+    },
+    {
+     "rotulo": "Minha jornada",
+     "px": 28
+    },
+    {
+     "rotulo": "MFC",
+     "px": 30
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-8ba5e3",
+   "tipo": "ilustrado",
+   "nome": "bisturi-3d",
+   "arquivo_pacote": "assets/8ba5e3cf1c7485393022bf83a864622f.svg",
+   "app_chave": null,
+   "uso": "Área Cirurgia",
+   "status": "sem equivalente no Lucide",
+   "similaridade": null,
+   "nota": "Ilustração 3D nova (o app não tem); cópia em src/novo/ds/icons-stazia/.",
+   "telas": [
+    "f1/AnaliseMobile.html",
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesMobile.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/MapasMobile.html",
+    "f1/SimuladosMobile.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaMobile.html",
+    "p2/DuplaEstacoesMobile.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaEstacoesWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Cirurgia67% em 3Sem dados",
+     "px": 26
+    },
+    {
+     "rotulo": "Cirurgia 169 q.",
+     "px": 32
+    },
+    {
+     "rotulo": "Cirurgia67% · 3q",
+     "px": 26
+    },
+    {
+     "rotulo": "Cirurgia",
+     "px": 30
+    },
+    {
+     "rotulo": "Cirurgia",
+     "px": 24
+    },
+    {
+     "rotulo": "[Título do tema] [n] ramos",
+     "px": 34
+    },
+    {
+     "rotulo": "Cirurgia 172",
+     "px": 30
+    },
+    {
+     "rotulo": "Cirurgia 172 q.",
+     "px": 32
+    }
+   ],
+   "copia_em": "src/novo/ds/icons-stazia/bisturi-3d.svg"
+  },
+  {
+   "id": "ilustrado-8c7059",
+   "tipo": "ilustrado",
+   "nome": "trophy",
+   "arquivo_pacote": "assets/8c7059de2084b759b93f2a7cd808eaf5.svg",
+   "app_chave": "trophy",
+   "uso": "Stazia Arena / Ranking",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (trophy): 100% iguais.",
+   "telas": [
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/ConquistasTablet.html",
+    "f1/ConquistasWeb.html",
+    "f1/ContaMobile.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/Home.html",
+    "f1/HomeMais.html",
+    "f1/HomeMobileCompact.html",
+    "f1/HomePrefs.html",
+    "f1/MapasTablet.html",
+    "f1/MapasWeb.html",
+    "f1/MeuPlanoTablet.html",
+    "f1/MeuPlanoWeb.html",
+    "f1/MissoesMobile.html",
+    "f1/MissoesTablet.html",
+    "f1/MissoesWeb.html",
+    "f1/PlanejamentoTablet.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/RankingMobile.html",
+    "f1/RankingTablet.html",
+    "f1/RankingWeb.html",
+    "f1/Sidebar.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TabletHome.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaMobile.html",
+    "f1/TrilhaTablet.html",
+    "f1/TrilhaWeb.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaEstacoesWeb.html",
+    "p2/DuplaMobile.html",
+    "p2/DuplaPerfilTablet.html",
+    "p2/DuplaPerfilWeb.html",
+    "p2/DuplaTablet.html",
+    "p2/DuplaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Arena",
+     "px": 26
+    },
+    {
+     "rotulo": "Stazia Arena 0/3",
+     "px": 26
+    },
+    {
+     "rotulo": "Stazia Arena",
+     "px": 26
+    },
+    {
+     "rotulo": "Ranking",
+     "px": 22
+    },
+    {
+     "rotulo": "Minha Stazia ArenaNível, score, ranking ",
+     "px": 25
+    },
+    {
+     "rotulo": "Minha Stazia Arena",
+     "px": 22
+    },
+    {
+     "rotulo": "Minha Stazia ArenaNível, score, ranking ",
+     "px": 26
+    },
+    {
+     "rotulo": "Ranking",
+     "px": 28
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-9136fe",
+   "tipo": "ilustrado",
+   "nome": "clipboard",
+   "arquivo_pacote": "assets/9136fe24cc4226893a4d59458e329dcf.svg",
+   "app_chave": "clipboard",
+   "uso": "Estações / lista",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (clipboard): 100% iguais.",
+   "telas": [
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "p2/DuplaWeb.html",
+    "p2/SalaAndamentoWeb.html",
+    "p2/SalaConfigMobile.html",
+    "p2/SalaConfigTablet.html",
+    "p2/SalaConfigWeb.html",
+    "p2/SalaPapeisMobile.html",
+    "p2/SalaPapeisTablet.html",
+    "p2/SalaPapeisWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Simulados2média 0%",
+     "px": 31
+    },
+    {
+     "rotulo": "Banco de estações10 estações do INEP 202",
+     "px": 29
+    },
+    {
+     "rotulo": "Impresso 1 · Relato do caso clínicoOcult",
+     "px": 26
+    },
+    {
+     "rotulo": "Impresso 2 · Imagem do esfregaço de sang",
+     "px": 26
+    },
+    {
+     "rotulo": "Impresso 1 · Relato do caso clínico",
+     "px": 24
+    },
+    {
+     "rotulo": "Impresso 2 · Imagem do esfregaço de sang",
+     "px": 24
+    },
+    {
+     "rotulo": "Ator/AvaliadorVocêInterpreta o paciente,",
+     "px": 30
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-97853c",
+   "tipo": "ilustrado",
+   "nome": "hoje",
+   "arquivo_pacote": "assets/97853c26ddc6ae8444046bd199fef0e5.svg",
+   "app_chave": "hoje",
+   "uso": "Plano de Hoje",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (hoje): 100% iguais.",
+   "telas": [
+    "f1/Home.html",
+    "f1/HomeMais.html",
+    "f1/HomePrefs.html",
+    "f1/MeuPlanoMobile.html",
+    "f1/MeuPlanoTablet.html",
+    "f1/MeuPlanoWeb.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/Sidebar.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TrilhaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Plano de Hoje 0/2",
+     "px": 22
+    },
+    {
+     "rotulo": "Plano de Hoje 0/2",
+     "px": 28
+    },
+    {
+     "rotulo": "Teste grátisA equipe ainda vai descrever",
+     "px": 27
+    },
+    {
+     "rotulo": "Teste grátisA equipe ainda vai descrever",
+     "px": 31
+    },
+    {
+     "rotulo": "Plano de Hoje 0/2",
+     "px": 44
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-c2bada",
+   "tipo": "ilustrado",
+   "nome": "coroa-3d",
+   "arquivo_pacote": "assets/c2bada8661bc03acb17302174afae146.svg",
+   "app_chave": null,
+   "uso": "Plano Pro / Ver os planos",
+   "status": "sem equivalente no Lucide",
+   "similaridade": null,
+   "nota": "Ilustração 3D nova (o app não tem); cópia em src/novo/ds/icons-stazia/.",
+   "telas": [
+    "f1/ContaMobile.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html",
+    "f1/MeuPlanoMobile.html",
+    "f1/MeuPlanoTablet.html",
+    "f1/MeuPlanoWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Meu planoEquipe · acesso completo",
+     "px": 25
+    },
+    {
+     "rotulo": "Ver os planos",
+     "px": 22
+    },
+    {
+     "rotulo": "Sua situaçãoEquipe · acesso completoAces",
+     "px": 36
+    },
+    {
+     "rotulo": "EliteVoz do Tutor: até 60 minutos por di",
+     "px": 27
+    },
+    {
+     "rotulo": "Sua situação",
+     "px": 40
+    },
+    {
+     "rotulo": "EliteVoz do Tutor: até 60 minutos por di",
+     "px": 31
+    }
+   ],
+   "copia_em": "src/novo/ds/icons-stazia/coroa-3d.svg"
+  },
+  {
+   "id": "ilustrado-c4df75",
+   "tipo": "ilustrado",
+   "nome": "calendar",
+   "arquivo_pacote": "assets/c4df75e4d2a93e7f3cb9f6b7fdf38f75.svg",
+   "app_chave": "calendar",
+   "uso": "Planejamento",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (calendar): 100% iguais.",
+   "telas": [
+    "f1/AnaliseWeb.html",
+    "f1/ContaMobile.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html",
+    "f1/DesempenhoWeb.html",
+    "f1/HomeMais.html",
+    "f1/HomePrefs.html",
+    "f1/MissoesTablet.html",
+    "f1/MissoesWeb.html",
+    "f1/PlanejamentoMobile.html",
+    "f1/PlanejamentoTablet.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Planejamento",
+     "px": 22
+    },
+    {
+     "rotulo": "Estudo e provaFase, prova-alvo e rotina",
+     "px": 25
+    },
+    {
+     "rotulo": "Estudo e prova",
+     "px": 22
+    },
+    {
+     "rotulo": "Estudo e provaFase, prova-alvo e rotina",
+     "px": 26
+    },
+    {
+     "rotulo": "Planejamento",
+     "px": 28
+    },
+    {
+     "rotulo": "Missões da semana12/10/2026 a 18/10/2026",
+     "px": 29
+    },
+    {
+     "rotulo": "Até a provaData não definida",
+     "px": 40
+    },
+    {
+     "rotulo": "Até a prova",
+     "px": 34
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-c50e7b",
+   "tipo": "ilustrado",
+   "nome": "chama-sequencia-3d",
+   "arquivo_pacote": "assets/c50e7bdeecc105ce7aac9d38de15ccfd.svg",
+   "app_chave": null,
+   "uso": "Sequência de dias",
+   "status": "sem equivalente no Lucide",
+   "similaridade": null,
+   "nota": "Ilustração 3D nova (o app não tem); cópia em src/novo/ds/icons-stazia/.",
+   "telas": [],
+   "lugares": [],
+   "copia_em": "src/novo/ds/icons-stazia/chama-sequencia-3d.svg"
+  },
+  {
+   "id": "ilustrado-c7359e",
+   "tipo": "ilustrado",
+   "nome": "sparkles",
+   "arquivo_pacote": "assets/c7359ebd1f72d9b317af431bd48314b4.svg",
+   "app_chave": "sparkles",
+   "uso": "Tutor com IA",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (sparkles): 100% iguais.",
+   "telas": [
+    "f1/AnaliseMobile.html",
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/ConquistasMobile.html",
+    "f1/ConquistasTablet.html",
+    "f1/ConquistasWeb.html",
+    "f1/ContaMobile.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html",
+    "f1/DesempenhoMobile.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesMobile.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/Home.html",
+    "f1/HomeMais.html",
+    "f1/HomeMobileCompact.html",
+    "f1/HomePrefs.html",
+    "f1/MapasMobile.html",
+    "f1/MapasTablet.html",
+    "f1/MapasWeb.html",
+    "f1/MeuPlanoMobile.html",
+    "f1/MeuPlanoTablet.html",
+    "f1/MeuPlanoWeb.html",
+    "f1/MissoesMobile.html",
+    "f1/MissoesTablet.html",
+    "f1/MissoesWeb.html",
+    "f1/MobileMais.html",
+    "f1/MobileMenu.html",
+    "f1/PlanejamentoMobile.html",
+    "f1/PlanejamentoTablet.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/PlanoMobile.html",
+    "f1/PlanoMobileAberto.html",
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/RankingMobile.html",
+    "f1/RankingTablet.html",
+    "f1/RankingWeb.html",
+    "f1/Sidebar.html",
+    "f1/SimuladosMobile.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TabletHome.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaMobile.html",
+    "f1/TrilhaTablet.html",
+    "f1/TrilhaWeb.html",
+    "p2/DuplaEstacoesMobile.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaEstacoesWeb.html",
+    "p2/DuplaMobile.html",
+    "p2/DuplaPerfilMobile.html",
+    "p2/DuplaPerfilTablet.html",
+    "p2/DuplaPerfilWeb.html",
+    "p2/DuplaTablet.html",
+    "p2/DuplaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "O que o Tutor percebeuÁrea com maior ris",
+     "px": 34
+    },
+    {
+     "rotulo": "Tutor",
+     "px": 28
+    },
+    {
+     "rotulo": "Tutor",
+     "px": 26
+    },
+    {
+     "rotulo": "Feita pelo Tutor",
+     "px": 18
+    },
+    {
+     "rotulo": "Sessões15",
+     "px": 31
+    },
+    {
+     "rotulo": "Com o Tutor",
+     "px": 22
+    },
+    {
+     "rotulo": "Tutor com IA IA",
+     "px": 26
+    },
+    {
+     "rotulo": "Me teste nos pontos fracos",
+     "px": 20
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-cab441",
+   "tipo": "ilustrado",
+   "nome": "chart-pie",
+   "arquivo_pacote": "assets/cab441cd0e1bfc95d69006515cea6940.svg",
+   "app_chave": "chart-pie",
+   "uso": "Análise Inteligente",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (chart-pie): 100% iguais.",
+   "telas": [
+    "f1/AnaliseWeb.html",
+    "f1/DesempenhoWeb.html",
+    "f1/HomeMais.html",
+    "f1/HomePrefs.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Análise Inteligente",
+     "px": 22
+    },
+    {
+     "rotulo": "Análise Inteligente",
+     "px": 28
+    },
+    {
+     "rotulo": "Análise Inteligente",
+     "px": 44
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-ccd29c",
+   "tipo": "ilustrado",
+   "nome": "layers",
+   "arquivo_pacote": "assets/ccd29c4d99a55ff157166f0a4ee42797.svg",
+   "app_chave": "layers",
+   "uso": "Revisar / Flashcards",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (layers): 100% iguais.",
+   "telas": [
+    "f1/AnaliseMobile.html",
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/ConquistasMobile.html",
+    "f1/ConquistasTablet.html",
+    "f1/ConquistasWeb.html",
+    "f1/ContaMobile.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html",
+    "f1/DesempenhoMobile.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesMobile.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/Home.html",
+    "f1/HomeMais.html",
+    "f1/HomeMobileCompact.html",
+    "f1/HomePrefs.html",
+    "f1/MapasMobile.html",
+    "f1/MapasTablet.html",
+    "f1/MapasWeb.html",
+    "f1/MeuPlanoMobile.html",
+    "f1/MeuPlanoTablet.html",
+    "f1/MeuPlanoWeb.html",
+    "f1/MissoesMobile.html",
+    "f1/MissoesTablet.html",
+    "f1/MissoesWeb.html",
+    "f1/MobileMais.html",
+    "f1/MobileMenu.html",
+    "f1/PlanejamentoMobile.html",
+    "f1/PlanejamentoTablet.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/PlanoMobile.html",
+    "f1/PlanoMobileAberto.html",
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/RankingMobile.html",
+    "f1/RankingTablet.html",
+    "f1/RankingWeb.html",
+    "f1/Sidebar.html",
+    "f1/SimuladosMobile.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TabletHome.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaMobile.html",
+    "f1/TrilhaTablet.html",
+    "f1/TrilhaWeb.html",
+    "p2/DuplaEstacoesMobile.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaEstacoesWeb.html",
+    "p2/DuplaMobile.html",
+    "p2/DuplaPerfilMobile.html",
+    "p2/DuplaPerfilTablet.html",
+    "p2/DuplaPerfilWeb.html",
+    "p2/DuplaTablet.html",
+    "p2/DuplaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Revisar",
+     "px": 24
+    },
+    {
+     "rotulo": "Revisar",
+     "px": 26
+    },
+    {
+     "rotulo": "Revisões",
+     "px": 23
+    },
+    {
+     "rotulo": "Revisar 5",
+     "px": 26
+    },
+    {
+     "rotulo": "5 Revisar",
+     "px": 24
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-cd9195",
+   "tipo": "ilustrado",
+   "nome": "network",
+   "arquivo_pacote": "assets/cd9195c1eab1a6f44e18210af13f1903.svg",
+   "app_chave": "network",
+   "uso": "Mapas Mentais",
+   "status": "trocado",
+   "similaridade": 0,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (network): 0% iguais. Desenho diferente do que o app usa hoje; o do pacote vem como arquivo próprio para a onda que aplicar (não copiado: ver arquivo_pacote).",
+   "telas": [
+    "f1/DiretrizesWeb.html",
+    "f1/HomeMais.html",
+    "f1/HomePrefs.html",
+    "f1/MapasTablet.html",
+    "f1/MapasWeb.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TemasWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Mapas Mentais",
+     "px": 22
+    },
+    {
+     "rotulo": "Mapas Mentais",
+     "px": 28
+    },
+    {
+     "rotulo": "[CLÍNICA MÉDICA] [Título do tema] [Subtí",
+     "px": 28
+    },
+    {
+     "rotulo": "[CIRURGIA] [Título do tema] [Subtítulo: ",
+     "px": 28
+    },
+    {
+     "rotulo": "[GINECOLOGIA E OBSTETRÍCIA] [Título do t",
+     "px": 28
+    },
+    {
+     "rotulo": "[PEDIATRIA] [Título do tema] [Subtítulo:",
+     "px": 28
+    },
+    {
+     "rotulo": "[SAÚDE MENTAL] [Título do tema] [Subtítu",
+     "px": 28
+    },
+    {
+     "rotulo": "Mapas Mentais",
+     "px": 44
+    }
+   ],
+   "copia_em": "src/novo/ds/icons-stazia/network-pacote.svg"
+  },
+  {
+   "id": "ilustrado-d00d22",
+   "tipo": "ilustrado",
+   "nome": "timer",
+   "arquivo_pacote": "assets/d00d226f8d923cd833b5cfd14107f3bb.svg",
+   "app_chave": "timer",
+   "uso": "Simulados",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (timer): 100% iguais.",
+   "telas": [
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/BancoWeb.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/HomeMais.html",
+    "f1/HomePrefs.html",
+    "f1/MissoesTablet.html",
+    "f1/MissoesWeb.html",
+    "f1/SimuladosWeb.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "p2/DuplaEstacoesWeb.html",
+    "p2/DuplaPerfilWeb.html",
+    "p2/DuplaWeb.html",
+    "p2/SalaConfigMobile.html",
+    "p2/SalaConfigTablet.html",
+    "p2/SalaConfigWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "De estudo13 min9 por voz",
+     "px": 31
+    },
+    {
+     "rotulo": "Simulados",
+     "px": 22
+    },
+    {
+     "rotulo": "Tempo por questão00:06",
+     "px": 31
+    },
+    {
+     "rotulo": "Simulados",
+     "px": 28
+    },
+    {
+     "rotulo": "Complete 1 simulado0/1+50 XP·20",
+     "px": 28
+    },
+    {
+     "rotulo": "Simulados",
+     "px": 44
+    },
+    {
+     "rotulo": "10:00Tempo oficial: 10 min",
+     "px": 44
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-e53838",
+   "tipo": "ilustrado",
+   "nome": "chart",
+   "arquivo_pacote": "assets/e538387d6e32d0010e589fc8bcfc9e3c.svg",
+   "app_chave": "chart",
+   "uso": "Minha evolução / Desempenho",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (chart): 100% iguais.",
+   "telas": [
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/ConquistasTablet.html",
+    "f1/ConquistasWeb.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/Home.html",
+    "f1/HomeMais.html",
+    "f1/HomePrefs.html",
+    "f1/MapasTablet.html",
+    "f1/MapasWeb.html",
+    "f1/MeuPlanoTablet.html",
+    "f1/MeuPlanoWeb.html",
+    "f1/MissoesTablet.html",
+    "f1/MissoesWeb.html",
+    "f1/PlanejamentoTablet.html",
+    "f1/PlanejamentoWeb.html",
+    "f1/PlanoTablet.html",
+    "f1/PlanoTabletAberto.html",
+    "f1/PlanoWeb.html",
+    "f1/PlanoWebAberto.html",
+    "f1/RankingTablet.html",
+    "f1/RankingWeb.html",
+    "f1/Sidebar.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TabletHome.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaTablet.html",
+    "f1/TrilhaWeb.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaEstacoesWeb.html",
+    "p2/DuplaPerfilTablet.html",
+    "p2/DuplaPerfilWeb.html",
+    "p2/DuplaTablet.html",
+    "p2/DuplaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Evolução",
+     "px": 26
+    },
+    {
+     "rotulo": "Minha evolução",
+     "px": 26
+    },
+    {
+     "rotulo": "Desempenho",
+     "px": 22
+    },
+    {
+     "rotulo": "Desempenho",
+     "px": 28
+    },
+    {
+     "rotulo": "Desempenho",
+     "px": 44
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-e65a7a",
+   "tipo": "ilustrado",
+   "nome": "users",
+   "arquivo_pacote": "assets/e65a7a62f94d53c4a6981e6a232e1f09.svg",
+   "app_chave": "users",
+   "uso": "Dupla / Estudo em dupla",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (users): 100% iguais.",
+   "telas": [
+    "f1/ContaMobile.html",
+    "f1/ContaTablet.html",
+    "f1/ContaWeb.html",
+    "p2/DuplaMobile.html",
+    "p2/DuplaTablet.html",
+    "p2/DuplaWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Minha contaNome, e-mail, WhatsApp e apar",
+     "px": 25
+    },
+    {
+     "rotulo": "Minha conta",
+     "px": 22
+    },
+    {
+     "rotulo": "Minha contaNome, e-mail, WhatsApp e apar",
+     "px": 26
+    },
+    {
+     "rotulo": "Meu perfil de estudo",
+     "px": 24
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-e807cd",
+   "tipo": "ilustrado",
+   "nome": "estetoscopio-3d",
+   "arquivo_pacote": "assets/e807cdfe8b316a6af9a683c8539f4fd7.svg",
+   "app_chave": null,
+   "uso": "Área Clínica Médica",
+   "status": "sem equivalente no Lucide",
+   "similaridade": null,
+   "nota": "Ilustração 3D nova (o app não tem); cópia em src/novo/ds/icons-stazia/.",
+   "telas": [
+    "f1/AnaliseMobile.html",
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesMobile.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/MapasMobile.html",
+    "f1/SimuladosMobile.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaMobile.html",
+    "p2/DuplaEstacoesMobile.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaEstacoesWeb.html",
+    "p2/SalaAndamentoMobile.html",
+    "p2/SalaAndamentoTablet.html",
+    "p2/SalaAndamentoWeb.html",
+    "p2/SalaConfigMobile.html",
+    "p2/SalaConfigTablet.html",
+    "p2/SalaConfigWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Clínica Médica0% em 1Sem dados",
+     "px": 26
+    },
+    {
+     "rotulo": "Clínica Médica 377 q.",
+     "px": 32
+    },
+    {
+     "rotulo": "Clínica Médica0% · 1q",
+     "px": 26
+    },
+    {
+     "rotulo": "Clínica",
+     "px": 30
+    },
+    {
+     "rotulo": "Clínica Médica",
+     "px": 24
+    },
+    {
+     "rotulo": "[Título do tema] [n] ramos",
+     "px": 34
+    },
+    {
+     "rotulo": "Clínica 378",
+     "px": 30
+    },
+    {
+     "rotulo": "Clínica Médica 378 q.",
+     "px": 32
+    }
+   ],
+   "copia_em": "src/novo/ds/icons-stazia/estetoscopio-3d.svg"
+  },
+  {
+   "id": "ilustrado-ef639e",
+   "tipo": "ilustrado",
+   "nome": "blocos-areas-3d",
+   "arquivo_pacote": "assets/ef639e823b406566450a915a3eb57896.svg",
+   "app_chave": null,
+   "uso": "Áreas (todas)",
+   "status": "sem equivalente no Lucide",
+   "similaridade": null,
+   "nota": "Ilustração 3D nova (o app não tem); cópia em src/novo/ds/icons-stazia/.",
+   "telas": [
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/DiretrizesMobile.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/MapasMobile.html",
+    "f1/SimuladosMobile.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "p2/DuplaEstacoesMobile.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaEstacoesWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Todas 1205 q.",
+     "px": 32
+    },
+    {
+     "rotulo": "Todas",
+     "px": 30
+    },
+    {
+     "rotulo": "Todas",
+     "px": 24
+    },
+    {
+     "rotulo": "Todas 1216",
+     "px": 30
+    },
+    {
+     "rotulo": "Todas 1216 q.",
+     "px": 32
+    },
+    {
+     "rotulo": "Todas10",
+     "px": 30
+    },
+    {
+     "rotulo": "Todas10",
+     "px": 22
+    }
+   ],
+   "copia_em": "src/novo/ds/icons-stazia/blocos-areas-3d.svg"
+  },
+  {
+   "id": "ilustrado-f10824",
+   "tipo": "ilustrado",
+   "nome": "mamadeira-3d",
+   "arquivo_pacote": "assets/f10824d2812ad42bf89d98f4a4119c57.svg",
+   "app_chave": null,
+   "uso": "Área Pediatria",
+   "status": "sem equivalente no Lucide",
+   "similaridade": null,
+   "nota": "Ilustração 3D nova (o app não tem); cópia em src/novo/ds/icons-stazia/.",
+   "telas": [
+    "f1/AnaliseMobile.html",
+    "f1/AnaliseTablet.html",
+    "f1/AnaliseWeb.html",
+    "f1/BancoMobile.html",
+    "f1/BancoTablet.html",
+    "f1/BancoWeb.html",
+    "f1/DesempenhoTablet.html",
+    "f1/DesempenhoWeb.html",
+    "f1/DiretrizesMobile.html",
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/MapasMobile.html",
+    "f1/SimuladosMobile.html",
+    "f1/SimuladosTablet.html",
+    "f1/SimuladosWeb.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html",
+    "f1/TrilhaMobile.html",
+    "p2/DuplaEstacoesMobile.html",
+    "p2/DuplaEstacoesTablet.html",
+    "p2/DuplaEstacoesWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Pediatriasem respostas",
+     "px": 23
+    },
+    {
+     "rotulo": "Pediatriasem respostas",
+     "px": 26
+    },
+    {
+     "rotulo": "Pediatria 213 q.",
+     "px": 32
+    },
+    {
+     "rotulo": "Pediatria",
+     "px": 30
+    },
+    {
+     "rotulo": "Pediatria",
+     "px": 24
+    },
+    {
+     "rotulo": "[Título do tema] [n] ramos",
+     "px": 34
+    },
+    {
+     "rotulo": "Pediatria 213",
+     "px": 30
+    },
+    {
+     "rotulo": "Pediatria0/12",
+     "px": 30
+    }
+   ],
+   "copia_em": "src/novo/ds/icons-stazia/mamadeira-3d.svg"
+  },
+  {
+   "id": "ilustrado-f24822",
+   "tipo": "ilustrado",
+   "nome": "newspaper",
+   "arquivo_pacote": "assets/f248223347d2eb4ef9f750fc71a4951f.svg",
+   "app_chave": "newspaper",
+   "uso": "Diretrizes e Atualizações",
+   "status": "igual",
+   "similaridade": 1,
+   "nota": "Formas do desenho comparadas com o ícone ilustrado do app (newspaper): 100% iguais.",
+   "telas": [
+    "f1/DiretrizesTablet.html",
+    "f1/DiretrizesWeb.html",
+    "f1/HomeMais.html",
+    "f1/HomePrefs.html",
+    "f1/MapasWeb.html",
+    "f1/TabletMais.html",
+    "f1/TabletPrefs.html",
+    "f1/TemasWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "O que mudou nas condutasAntes x agora, o",
+     "px": 31
+    },
+    {
+     "rotulo": "Diretrizes e Atualizações",
+     "px": 22
+    },
+    {
+     "rotulo": "Diretrizes e Atualizações",
+     "px": 28
+    },
+    {
+     "rotulo": "Diretrizes e Atualizações",
+     "px": 44
+    }
+   ]
+  },
+  {
+   "id": "ilustrado-fe45fe",
+   "tipo": "ilustrado",
+   "nome": "moeda-stazia-3d",
+   "arquivo_pacote": "assets/fe45fe000f3808f8b3d318489d34c9bf.svg",
+   "app_chave": null,
+   "uso": "Stazia Coins / XP",
+   "status": "sem equivalente no Lucide",
+   "similaridade": null,
+   "nota": "Ilustração 3D nova (o app não tem); cópia em src/novo/ds/icons-stazia/.",
+   "telas": [
+    "f1/ConquistasMobile.html",
+    "f1/ConquistasTablet.html",
+    "f1/ConquistasWeb.html",
+    "f1/Medalhas.html",
+    "f1/MissoesMobile.html",
+    "f1/MissoesTablet.html",
+    "f1/MissoesWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "+10 XP5",
+     "px": 14
+    },
+    {
+     "rotulo": "+10 XP·5",
+     "px": 14
+    },
+    {
+     "rotulo": "+30 XP·15",
+     "px": 14
+    },
+    {
+     "rotulo": "+100 XP·50",
+     "px": 14
+    },
+    {
+     "rotulo": "+300 XP·150",
+     "px": 14
+    },
+    {
+     "rotulo": "+80 XP·40",
+     "px": 14
+    },
+    {
+     "rotulo": "+200 XP·100",
+     "px": 14
+    },
+    {
+     "rotulo": "+25 XP·10",
+     "px": 14
+    }
+   ],
+   "copia_em": "src/novo/ds/icons-stazia/moeda-stazia-3d.svg"
+  },
+  {
+   "id": "ilustrado-ad076a",
+   "tipo": "ilustrado",
+   "nome": "cerebro-3d",
+   "arquivo_pacote": "assets/ad076a8bf1e51366dbb352de778cb718.svg",
+   "app_chave": null,
+   "uso": "Saúde mental (Mapas)",
+   "status": "sem equivalente no Lucide",
+   "similaridade": null,
+   "nota": "Ilustração 3D nova (o app não tem); cópia em src/novo/ds/icons-stazia/.",
+   "telas": [
+    "f1/MapasMobile.html",
+    "f1/TemasMobile.html",
+    "f1/TemasTablet.html",
+    "f1/TemasWeb.html"
+   ],
+   "lugares": [
+    {
+     "rotulo": "Saúde mental",
+     "px": 30
+    },
+    {
+     "rotulo": "[Título do tema] [n] ramos",
+     "px": 34
+    },
+    {
+     "rotulo": "Saúde Mental",
+     "px": 30
+    },
+    {
+     "rotulo": "Saúde Mental",
+     "px": 24
+    }
+   ],
+   "copia_em": "src/novo/ds/icons-stazia/cerebro-3d.svg"
+  }
+ ],
+ "medalhas_e_ligas": [
+  {
+   "arquivo_pacote": "assets/09e507aca941079d93ed23b8c1263b34.svg",
+   "tipo": "liga",
+   "nome": "Bronze",
+   "grupo": "Ligas da semana",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/5383551f7372a815ee512fae28e89ad1.svg",
+   "tipo": "liga",
+   "nome": "Prata",
+   "grupo": "Ligas da semana",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/8710ccc81e47e3ab8a0f31a244d61474.svg",
+   "tipo": "liga",
+   "nome": "Ouro",
+   "grupo": "Ligas da semana",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/dc77700f281cf187093cda79644bbe3d.svg",
+   "tipo": "liga",
+   "nome": "Platina",
+   "grupo": "Ligas da semana",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/b3a06a6ec46c38970c3965cddbe114ea.svg",
+   "tipo": "liga",
+   "nome": "Diamante",
+   "grupo": "Ligas da semana",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/b574d057633a9c25b46fc846e9f3098c.svg",
+   "tipo": "liga",
+   "nome": "Elite",
+   "grupo": "Ligas da semana",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/5cd171b24baa59bb624580c9ae0acc24.svg",
+   "tipo": "liga",
+   "nome": "Revalida Master",
+   "grupo": "Ligas da semana",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/94c1b8ab62a85e8c0328f1e06698c192.svg",
+   "tipo": "medalha",
+   "nome": "Primeiros Passos",
+   "grupo": "Estudo",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/8d2652e7bc117f575b5f580cf9ec8672.svg",
+   "tipo": "medalha",
+   "nome": "Aquecendo os Motores",
+   "grupo": "Estudo",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/20ec53cf21754afed42dab8ef5a85fbe.svg",
+   "tipo": "medalha",
+   "nome": "Máquina de Questões",
+   "grupo": "Estudo",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/f3a43bbcce6538edd9c87ac987397d80.svg",
+   "tipo": "medalha",
+   "nome": "Insano",
+   "grupo": "Estudo",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/ec2a505fdcf71c9080ce9b000bc84cc2.svg",
+   "tipo": "medalha",
+   "nome": "Mira Boa",
+   "grupo": "Precisão",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/fefed62367991817c3d2976d0995ff11.svg",
+   "tipo": "medalha",
+   "nome": "Atirador de Elite",
+   "grupo": "Precisão",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/f98c1b3f0c59427ee15e7e662a8ba324.svg",
+   "tipo": "medalha",
+   "nome": "Quase Banca do INEP",
+   "grupo": "Precisão",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/1777c45c0d43cb00a672e5d20f99ce92.svg",
+   "tipo": "medalha",
+   "nome": "3 dias seguidos",
+   "grupo": "Sequência",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/7fffbfcbef113a68f6903dd8ab82c282.svg",
+   "tipo": "medalha",
+   "nome": "7 dias seguidos",
+   "grupo": "Sequência",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/0972deecb9a72c3a770777454ae3f6e4.svg",
+   "tipo": "medalha",
+   "nome": "15 dias seguidos",
+   "grupo": "Sequência",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/aada686c7b2ecb2fd462ac9e5126e69c.svg",
+   "tipo": "medalha",
+   "nome": "30 dias seguidos",
+   "grupo": "Sequência",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/c8bdd581d91f43ab251c0c10b56502c8.svg",
+   "tipo": "medalha",
+   "nome": "60 dias seguidos",
+   "grupo": "Sequência",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/a4b340ac5d97f07b1db57f02accf82c2.svg",
+   "tipo": "medalha",
+   "nome": "100 dias seguidos",
+   "grupo": "Sequência",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/d2cb7915d4ad6736b7aa97565922b2f2.svg",
+   "tipo": "medalha",
+   "nome": "Um ano inteiro",
+   "grupo": "Sequência",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/ca8c797bd90187933d1e23949388d57c.svg",
+   "tipo": "medalha",
+   "nome": "Interno em Cirurgia",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/2b0ffe84066b16d9a04bbefc6916eba9.svg",
+   "tipo": "medalha",
+   "nome": "Interno em Gineco & Obstetrícia",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/ab2fe53d15124ad452ecd658d14cf9ac.svg",
+   "tipo": "medalha",
+   "nome": "Interno em Preventiva / MFC",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/a105b5390047c5a0b1f9ec4532751ef9.svg",
+   "tipo": "medalha",
+   "nome": "Interno em Clínica Médica",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/dc66a81c73633b9ba8cd7b2d236c02db.svg",
+   "tipo": "medalha",
+   "nome": "Interno em Pediatria",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/52772f8224b737dca240b0eac22d9c76.svg",
+   "tipo": "medalha",
+   "nome": "Residente em Cirurgia",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/57195e9ed692cf162fcaadd2b249283c.svg",
+   "tipo": "medalha",
+   "nome": "Residente em Gineco & Obstetrícia",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/77e1477ef623cf49ec2b913f6f574679.svg",
+   "tipo": "medalha",
+   "nome": "Residente em Preventiva / MFC",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/2ce577cf7ff846b6985985adbedb9cba.svg",
+   "tipo": "medalha",
+   "nome": "Residente em Clínica Médica",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/6674661eedfb20a859dc1083d63e52d4.svg",
+   "tipo": "medalha",
+   "nome": "Residente em Pediatria",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/1a4ce6e31a045562dfb8e3bc86d51b23.svg",
+   "tipo": "medalha",
+   "nome": "Especialista em Cirurgia",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/b64071e0fa4143bb6a9cff9a6929e2d1.svg",
+   "tipo": "medalha",
+   "nome": "Especialista em Gineco & Obstetrícia",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/221e0b831b77e5ee151dcdf4e1376fd0.svg",
+   "tipo": "medalha",
+   "nome": "Especialista em Preventiva / MFC",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/3242946b7faac886c27001e90e54cef6.svg",
+   "tipo": "medalha",
+   "nome": "Especialista em Clínica Médica",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/1b58a483a06c4d22498cb748c0ae7b3d.svg",
+   "tipo": "medalha",
+   "nome": "Especialista em Pediatria",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/9b11ba126bde8b0ecc84f376289ee236.svg",
+   "tipo": "medalha",
+   "nome": "Mestre em Cirurgia",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/0cfb782ced70ce89b6cba89d6b895886.svg",
+   "tipo": "medalha",
+   "nome": "Mestre em Gineco & Obstetrícia",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/a30667a7fbf618b9bce329389d84ec13.svg",
+   "tipo": "medalha",
+   "nome": "Mestre em Preventiva / MFC",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/1ca62ae50f8912beace80924325de0ad.svg",
+   "tipo": "medalha",
+   "nome": "Mestre em Clínica Médica",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/59f7bef94fb3b1995b71e1b64b33bcaf.svg",
+   "tipo": "medalha",
+   "nome": "Mestre em Pediatria",
+   "grupo": "Áreas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/43ed9bac8ab1b3d06587a1f13eb939b5.svg",
+   "tipo": "medalha",
+   "nome": "Virada de Jogo",
+   "grupo": "Evolução",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/0a4066cecf35c3a6a1f48fdb6a3745f0.svg",
+   "tipo": "medalha",
+   "nome": "Aprendeu Mesmo",
+   "grupo": "Evolução",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/3b778008596bf840742281bd752b1d09.svg",
+   "tipo": "medalha",
+   "nome": "Top 10 semanal",
+   "grupo": "Especiais",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/6a4919ad61560a2ebb148fdce804f8e6.svg",
+   "tipo": "medalha",
+   "nome": "Conquista secreta",
+   "grupo": "Secretas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/e4a030ecaf31e551eecb721b9a857a74.svg",
+   "tipo": "medalha",
+   "nome": "Conquista secreta",
+   "grupo": "Secretas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/d487f43b27a4dfd2d8742bcfe7843429.svg",
+   "tipo": "medalha",
+   "nome": "Conquista secreta",
+   "grupo": "Secretas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  },
+  {
+   "arquivo_pacote": "assets/90b1bc2fb466b5b1ed8eae5d11c5cf2f.svg",
+   "tipo": "medalha",
+   "nome": "Conquista secreta",
+   "grupo": "Secretas",
+   "status": "depende da onda 7 (rodada do diretor de arte + direito de uso, decisão 7)"
+  }
+ ],
+ "logos_png": [
+  {
+   "arquivo_pacote": "assets/21dbb425921c788ac122f2b8e229161f.png",
+   "uso": "Logotipo StaziaMed no menu (480x156)"
+  },
+  {
+   "arquivo_pacote": "assets/f2cc5f75a4ac34cdad3e6efadbeb2201.png",
+   "uso": "Logotipo StaziaMed no Login e no Mais (326x480)"
+  }
+ ],
+ "copiados": [
+  {
+   "arquivo": "cadeado-3d.svg",
+   "nome": "cadeado-3d",
+   "origem": "assets/090541c7bb626d5a7dbca37f768e6c97.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Conquistas secretas / bloqueado"
+  },
+  {
+   "arquivo": "route-pacote.svg",
+   "nome": "route",
+   "origem": "assets/5f6b1bd1c9a9918659bc219f216231aa.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Minha Trilha"
+  },
+  {
+   "arquivo": "documento-privacidade-3d.svg",
+   "nome": "documento-privacidade-3d",
+   "origem": "assets/6d914983adf5100b67c8ddb7003532b1.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Privacidade e dados"
+  },
+  {
+   "arquivo": "escudo-mais-3d.svg",
+   "nome": "escudo-mais-3d",
+   "origem": "assets/6f77b95f59abbeb652ba8bcf5843f57b.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Área Preventiva / MFC"
+  },
+  {
+   "arquivo": "simbolo-feminino-coracao-3d.svg",
+   "nome": "simbolo-feminino-coracao-3d",
+   "origem": "assets/71b3b57d6fa2e4eb213fbf88ab8827f8.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Área Ginecologia e Obstetrícia"
+  },
+  {
+   "arquivo": "bisturi-3d.svg",
+   "nome": "bisturi-3d",
+   "origem": "assets/8ba5e3cf1c7485393022bf83a864622f.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Área Cirurgia"
+  },
+  {
+   "arquivo": "coroa-3d.svg",
+   "nome": "coroa-3d",
+   "origem": "assets/c2bada8661bc03acb17302174afae146.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Plano Pro / Ver os planos"
+  },
+  {
+   "arquivo": "chama-sequencia-3d.svg",
+   "nome": "chama-sequencia-3d",
+   "origem": "assets/c50e7bdeecc105ce7aac9d38de15ccfd.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Sequência de dias"
+  },
+  {
+   "arquivo": "network-pacote.svg",
+   "nome": "network",
+   "origem": "assets/cd9195c1eab1a6f44e18210af13f1903.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Mapas Mentais"
+  },
+  {
+   "arquivo": "estetoscopio-3d.svg",
+   "nome": "estetoscopio-3d",
+   "origem": "assets/e807cdfe8b316a6af9a683c8539f4fd7.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Área Clínica Médica"
+  },
+  {
+   "arquivo": "blocos-areas-3d.svg",
+   "nome": "blocos-areas-3d",
+   "origem": "assets/ef639e823b406566450a915a3eb57896.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Áreas (todas)"
+  },
+  {
+   "arquivo": "mamadeira-3d.svg",
+   "nome": "mamadeira-3d",
+   "origem": "assets/f10824d2812ad42bf89d98f4a4119c57.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Área Pediatria"
+  },
+  {
+   "arquivo": "moeda-stazia-3d.svg",
+   "nome": "moeda-stazia-3d",
+   "origem": "assets/fe45fe000f3808f8b3d318489d34c9bf.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Stazia Coins / XP"
+  },
+  {
+   "arquivo": "cerebro-3d.svg",
+   "nome": "cerebro-3d",
+   "origem": "assets/ad076a8bf1e51366dbb352de778cb718.svg",
+   "tipo": "ilustrado-3d",
+   "cores": "multicolor (gradientes); currentColor não se aplica a ilustração 3D",
+   "tela_uso": "Saúde mental (Mapas)"
+  },
+  {
+   "arquivo": "grade-colorida-mais.svg",
+   "nome": "grade-colorida-mais",
+   "origem": "inline inline-02",
+   "tipo": "linha-24px",
+   "cores": "4 cores fixas (azul, violeta, verde, laranja) por ser ícone colorido",
+   "tela_uso": "Botão Mais da barra do celular"
+  },
+  {
+   "arquivo": "dado-aleatorio.svg",
+   "nome": "dado-aleatorio",
+   "origem": "inline inline-57",
+   "tipo": "linha-24px",
+   "cores": "currentColor",
+   "tela_uso": "2ª fase: Sortear"
+  },
+  {
+   "arquivo": "google-g.svg",
+   "nome": "google-g",
+   "origem": "inline login",
+   "tipo": "marca",
+   "cores": "cores oficiais da marca Google (não usar currentColor)",
+   "tela_uso": "Login: Continuar com Google"
+  }
+ ]
+}
