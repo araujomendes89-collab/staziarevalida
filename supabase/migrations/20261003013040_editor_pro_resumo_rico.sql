@@ -1,7 +1,7 @@
 -- 013040 — Editor profissional, módulo M13 "Editar aula": formatação nova do resumo da aula feita à mão (lessons.summary_rico).
 -- ADITIVA: 1 coluna, 1 regra de forma, 1 função de gatilho com 2 gatilhos, e redefine 2 funções (lesson_view, a partir da …009620;
 -- app_admin_save_lesson, a partir da …009580). Pode ser colada de novo sem estragar nada. NÃO APLICADA em produção.
--- Cole DEPOIS da …013020. Para desfazer: supabase/desfazer/20261003013040_editor_pro_resumo_rico.desfazer.sql;
+-- Cole DEPOIS da …013080 (usa public.ch_rico_conteudo e public.ch_texto_conteudo; sem elas, toda mudança de formatação pede conferência). Para desfazer: supabase/desfazer/20261003013040_editor_pro_resumo_rico.desfazer.sql;
 -- para conferir: supabase/conferir/editor-pro-resumo-rico.sql.
 --
 -- Regras (as mesmas dos parágrafos da Central, PLANO.md §2.3):
@@ -11,7 +11,10 @@
 --   * mudou o `summary` por qualquer caminho sem mandar rico novo → o rico velho é apagado aqui (nunca fica rico desatualizado guardado);
 --   * aula da Central (origin = 'central'): a formatação do resumo também não muda pela tela Aulas (igual ao texto);
 --   * o aluno só recebe o rico quando o texto do resumo chegou a ele inteiro (sem a retirada de fonte complementar); senão não recebe;
---   * aula antiga sem rico: o que o aluno e a equipe recebem continua exatamente igual (a chave nem aparece).
+--   * aula antiga sem rico: o que o aluno e a equipe recebem continua exatamente igual (a chave nem aparece);
+--   * só formatação (decisão do dono 16/10, mesma regra da 013080): `summary` idêntico e o CONTEÚDO do rico novo igual ao do anterior
+--     (sem rico = o conteúdo do texto, ch_texto_conteudo) → aula publicada salva SEM nova conferência e a conferência registrada não
+--     muda; fica no Registro da Administração quem e quando ("lesson.format"). Qualquer outra mudança segue pedindo conferência.
 
 -- ---------------------------------------------------------------- 1. coluna e forma
 alter table public.lessons add column if not exists summary_rico jsonb;
@@ -53,6 +56,17 @@ drop trigger if exists lessons_guard_complementar_rico on public.lessons;
 create trigger lessons_guard_complementar_rico before insert or update of summary_rico on public.lessons
   for each row execute function public.ch_guard_complementar_save('summary_rico');
 
+-- Conteúdo do resumo para a regra "só formatação": o do rico (013080) ou, sem rico, o do texto (só os links).
+create or replace function public.lessons_resumo_conteudo(p_rico jsonb, p_summary text) returns jsonb
+  language plpgsql stable set search_path = ''
+as $$
+begin
+  if p_rico is null then return public.ch_texto_conteudo(p_summary); end if;
+  return public.ch_rico_conteudo(p_rico);
+end
+$$;
+revoke execute on function public.lessons_resumo_conteudo(jsonb, text) from public, anon, authenticated;
+
 -- ---------------------------------------------------------------- 3. leitura (aluno e equipe)
 -- lesson_view (corpo da …009620) + o rico, só quando o resumo chegou inteiro a quem lê (a retirada de fonte complementar não mexeu nele).
 create or replace function public.lesson_view(l public.lessons) returns jsonb
@@ -79,6 +93,8 @@ declare
   v_confere boolean := v_note <> '';
   v_ai jsonb;
   v_rico jsonb;   -- resumo com formatação nova (envelope sdoc); só objeto entra, o resto vira nulo
+  v_summary text;   -- o resumo como vai ficar
+  v_so_formato boolean := false;   -- mudou só a formatação do resumo (o conteúdo é o mesmo): não pede nova conferência
 begin
   perform public.assert_staff();
   if nullif(btrim(coalesce(a ->> 'title', '')), '') is null then raise exception 'Informe o título da aula.' using errcode = '22023'; end if;
@@ -97,6 +113,11 @@ begin
     select * into v_old from public.lessons where id = (a ->> 'id')::uuid for update;
     if not found then raise exception 'Aula não encontrada.' using errcode = 'P0002'; end if;
   end if;
+  v_summary := case when a ? 'summary' then nullif(btrim(coalesce(a ->> 'summary', '')), '') else v_old.summary end;
+  if v_old.id is not null and a ? 'summary_rico' and v_rico is distinct from v_old.summary_rico and v_summary is not distinct from v_old.summary then
+    v_so_formato := to_regprocedure('public.ch_rico_conteudo(jsonb)') is not null
+      and public.lessons_resumo_conteudo(v_rico, v_summary) = public.lessons_resumo_conteudo(v_old.summary_rico, v_old.summary);
+  end if;
   -- vai ficar publicada? Então precisa de conferência registrada quando acabou de ser publicada ou quando o texto do aluno mudou.
   v_publica := coalesce((a ->> 'published')::boolean, coalesce(v_old.published, false));
   if v_publica then
@@ -104,7 +125,7 @@ begin
       or btrim(a ->> 'title') is distinct from v_old.title
       or btrim(a ->> 'topic') is distinct from v_old.topic
       or (a ? 'summary' and nullif(btrim(coalesce(a ->> 'summary', '')), '') is distinct from v_old.summary)
-      or (a ? 'summary_rico' and v_rico is distinct from v_old.summary_rico)   -- mudou só a formatação do resumo: o aluno vê diferente
+      or (a ? 'summary_rico' and v_rico is distinct from v_old.summary_rico and not v_so_formato)   -- formatação do resumo: só pede se mexeu no conteúdo
       or (a ? 'key_points' and coalesce(v_points, '{}') is distinct from v_old.key_points);
     if v_exige and char_length(v_note) < 10 then
       raise exception 'Antes de publicar, registre o que foi conferido no texto da aula (pelo menos 10 caracteres).' using errcode = '22023';
@@ -152,6 +173,9 @@ begin
       ai_notes = coalesce(v_ai, r.ai_notes);
   end if;
   perform public.admin_log('lesson.save', v_id::text, a - 'summary' - 'summary_rico');
+  if v_so_formato then
+    perform public.admin_log('lesson.format', v_id::text, jsonb_build_object('title', btrim(a ->> 'title'), 'published', v_publica));
+  end if;
   if v_confere then
     perform public.admin_log('lesson.review', v_id::text, jsonb_build_object('title', btrim(a ->> 'title'), 'note', v_note));
   end if;

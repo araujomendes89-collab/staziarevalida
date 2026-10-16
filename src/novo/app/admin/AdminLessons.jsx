@@ -195,7 +195,7 @@ function ReviewSection({ form, current, set }) {
           minRows={2}
           maxLength={1000}
           onChange={(v) => set({ review_note: v })}
-          hint="Fica registrado com o seu nome e a data. Obrigatório ao publicar e ao mudar título, tema, resumo ou pontos-chave de uma aula publicada."
+          hint="Fica registrado com o seu nome e a data. Obrigatório ao publicar e ao mudar título, tema, resumo ou pontos-chave de uma aula publicada. Mudar só a formatação do resumo (negrito, cor, alinhamento...) não precisa."
         />
       )}
     </div>

@@ -21,8 +21,17 @@ import {
   docDoResumo,
   resumoRicoValido,
   resumoParaGuardar,
+  resumoSoFormatacao,
 } from "../shared/docRico/modulos/editarAula";
-import { canonico } from "../shared/textoRico";
+import { canonico, ler, escrever } from "../shared/textoRico";
+
+// o texto do resumo editado guarda só texto + links (013080): negrito, itálico e sublinhado ficam no rico
+const semFormato = (t: string) => {
+  const d: any = ler(t, "documento");
+  const tira = (n: any) => { if (n.marks) { n.marks = n.marks.filter((m: any) => m.type === "link"); if (!n.marks.length) delete n.marks; } (n.content ?? []).forEach(tira); };
+  d.content.forEach(tira);
+  return escrever(d, "documento");
+};
 import { sanear } from "../shared/docRico";
 import EditorResumo from "../novo/app/editorPro/editarAula/EditorResumo.jsx";
 import ResumoRico from "../novo/app/editorPro/editarAula/ResumoRico.jsx";
@@ -72,7 +81,14 @@ describe("Editor Profissional - Editar Aula (M13)", () => {
       const json = editor.getJSON();
       const resultado = resumoParaGuardar(json);
 
-      expect(resultado).toEqual({ summary: T, summary_rico: null });
+      if (semFormato(T) === T) {
+        expect(resultado).toEqual({ summary: T, summary_rico: null });
+      } else {
+        // tinha negrito/itálico/sublinhado: o texto perde as marcas, o rico guarda; o conteúdo é o mesmo (só formatação)
+        expect(resultado.summary).toBe(semFormato(T));
+        expect(resumoRicoValido(resultado.summary, resultado.summary_rico)).not.toBeNull();
+        expect(resumoSoFormatacao({ summary: T, summary_rico: null }, { summary: resultado.summary, summary_rico: resultado.summary_rico })).toBe(false); // o texto mudou
+      }
       editor.destroy();
     }
   });

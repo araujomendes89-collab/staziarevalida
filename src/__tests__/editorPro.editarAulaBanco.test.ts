@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import type { PGlite } from "@electric-sql/pglite";
 import { abrirBanco, ADMIN, ALUNO, EDITOR, type Rpc, type Sql } from "./helpers/publicacaoCentral";
+import { resumoSoFormatacao } from "../shared/docRico/modulos/editarAula";
 
 let db: PGlite;
 let sql: Sql;
@@ -88,7 +89,7 @@ describe("Editor Profissional - Banco de Dados (M13 - summary_rico)", () => {
     expect(rAluno.summary).toBe(summaryValido);
   });
 
-  it("3. mudar só a formatação de aula publicada sem review_note falha; com review_note passa", async () => {
+  it("3. mudança no rico que conta como conteúdo (atributo fora da lista de formatação) em aula publicada: sem review_note falha; com review_note passa", async () => {
     const envelopeAlterado = {
       f: "sdoc",
       v: 1,
@@ -302,6 +303,50 @@ describe("Editor Profissional - Banco de Dados (M13 - summary_rico)", () => {
     expect(JSON.stringify(aluno)).not.toContain("Sangue nos Olhos");
     const equipe = (await rpc(EDITOR, "app_admin_lessons")).lessons.find((l: any) => l.id === id);
     expect(equipe.summary_rico).toEqual(ricoCita);
+  });
+
+  describe("só formatação × conteúdo do resumo (banco e tela dão a mesma resposta; regra da 013080)", () => {
+    const L = "Febre e [guia](https://www.gov.br/saude) hoje";
+    const txt = (t: string, marks?: any[]) => ({ type: "text", text: t, ...(marks ? { marks } : {}) });
+    const link = { type: "link", attrs: { href: "https://www.gov.br/saude" } };
+    const env = (content: any[]) => ({ f: "sdoc", v: 1, doc: { type: "doc", content } });
+    const par = (inline: any[], attrs?: any) => env([{ type: "paragraph", ...(attrs ? { attrs } : {}), content: inline }]);
+    const negrito = par([txt("Febre", [{ type: "bold" }]), txt(" e "), txt("guia", [link]), txt(" hoje")]);
+    const corEAlinhado = par([txt("Febre", [{ type: "bold" }, { type: "textStyle", attrs: { color: "#ff0000" } }]), txt(" e "), txt("guia", [link]), txt(" hoje")], { textAlign: "center" });
+    const titulo4 = (marks?: any[]) => env([{ type: "heading", attrs: { level: 4 }, content: [txt("Febre e ", marks), txt("guia", [link]), txt(" hoje")] }]);
+    type R = { summary: string; summary_rico: any };
+    const casos: [string, R, R, boolean][] = [
+      ["nada mudou", { summary: L, summary_rico: null }, { summary: L, summary_rico: null }, true],
+      ["negrito no rico, mesmo texto e mesmo link", { summary: L, summary_rico: null }, { summary: L, summary_rico: negrito }, true],
+      ["cor e alinhamento a mais", { summary: L, summary_rico: negrito }, { summary: L, summary_rico: corEAlinhado }, true],
+      ["tirou toda a formatação", { summary: L, summary_rico: corEAlinhado }, { summary: L, summary_rico: null }, true],
+      ["título nível 4 que já existia ganhou cor", { summary: L, summary_rico: titulo4() }, { summary: L, summary_rico: titulo4([{ type: "textStyle", attrs: { color: "#0000ff" } }]) }, true],
+      ["texto mudou", { summary: L, summary_rico: null }, { summary: "Febre alta e [guia](https://www.gov.br/saude) hoje", summary_rico: null }, false],
+      ["texto mudou junto com a formatação", { summary: L, summary_rico: negrito }, { summary: "Febre alta", summary_rico: par([txt("Febre alta", [{ type: "bold" }])]) }, false],
+      ["virou título (nível é conteúdo)", { summary: L, summary_rico: null }, { summary: L, summary_rico: titulo4() }, false],
+      ["destino do link mudou só no rico", { summary: L, summary_rico: null }, { summary: L, summary_rico: par([txt("Febre e "), txt("guia", [{ type: "link", attrs: { href: "https://outro.gov.br" } }]), txt(" hoje")]) }, false],
+      ["tachado (é conteúdo)", { summary: L, summary_rico: null }, { summary: L, summary_rico: par([txt("Febre e "), txt("guia", [link, { type: "strike" }]), txt(" hoje")]) }, false],
+    ];
+    const base = (r: R, extra: Record<string, unknown> = {}) => ({ area: "PEDIATRIA", topic: "Febre", title: "Aula M13 formatação", key_points: ["Ponto"], published: true, ...r, ...extra });
+    for (const [nome, antes, depois, esperado] of casos) {
+      it(`${esperado ? "só formatação" : "conteúdo"}: ${nome}`, async () => {
+        expect(resumoSoFormatacao(antes, depois)).toBe(esperado); // a tela
+        const criada = await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: base(antes, { review_note: "Conferido o texto antes da formatação." }) });
+        const [rev0] = await sql("select reviewed_by, reviewed_at, review_note from public.lesson_reviews where lesson_id = $1", [criada.id]);
+        const salvar = rpc(EDITOR, "app_admin_save_lesson", { p_lesson: base(depois, { id: criada.id }) }); // sem "O que você conferiu"
+        if (!esperado) {
+          await expect(salvar).rejects.toThrow(/registre o que foi conferido/);
+          return;
+        }
+        const salva = await salvar;
+        expect(salva.summary_rico ?? null).toEqual(depois.summary_rico);
+        const [rev1] = await sql("select reviewed_by, reviewed_at, review_note from public.lesson_reviews where lesson_id = $1", [criada.id]);
+        expect(rev1).toEqual(rev0); // a conferência registrada não muda
+        const logs = await sql("select actor_id, details from public.admin_audit_log where action = 'lesson.format' and target = $1", [criada.id]);
+        expect(logs).toHaveLength(JSON.stringify(antes.summary_rico) === JSON.stringify(depois.summary_rico) ? 0 : 1);
+        if (logs.length) expect(logs[0].actor_id).toBe(EDITOR);
+      });
+    }
   });
 
   it("7. desfazer e refazer: conferir OK -> desfazer -> conferir FALTA -> refazer duas vezes -> conferir OK", async () => {

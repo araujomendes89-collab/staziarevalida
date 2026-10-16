@@ -6,6 +6,7 @@
 drop trigger if exists lessons_guard_complementar_rico on public.lessons;
 drop trigger if exists lessons_summary_rico_guard_trg on public.lessons;
 drop function if exists public.lessons_summary_rico_guard();
+drop function if exists public.lessons_resumo_conteudo(jsonb, text);
 
 -- ---------------------------------------------------------------- lesson_view (corpo da …009620)
 create or replace function public.lesson_view(l public.lessons) returns jsonb

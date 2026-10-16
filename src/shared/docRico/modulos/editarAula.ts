@@ -1,11 +1,12 @@
 // Módulo M13 "Editar aula" (tabela lessons): o resumo continua em `summary` (texto com marcas, modo "documento") e a formatação nova
-// fica em `summary_rico` (envelope sdoc v1). Mesma regra dos parágrafos da Central: o rico só vale se a PROJEÇÃO dele em texto for
+// fica em `summary_rico` (envelope sdoc v1). Negrito/itálico/sublinhado de um resumo editado também ficam só no rico. Mesma regra dos parágrafos da Central: o rico só vale se a PROJEÇÃO dele em texto for
 // exatamente igual ao `summary` guardado. Resumo sem nada que o texto não represente não ganha rico (aula antiga continua idêntica).
 // Este arquivo não registra nada no formato (não entra em ../modulos.ts): só funções de conversão usadas pelo editor, pelo aluno e testes.
-import { sanear, defNo, envelope, ehEnvelope, textoDoBloco, type Bloco, type DocRico, type Envelope } from "../index";
+import { sanear, defNo, envelope, ehEnvelope, textoDoBloco, conteudoDoRico, conteudoDoTexto, type Bloco, type DocRico, type Envelope } from "../index";
 import { ler, escrever, type Doc, type Marca, type NoBloco, type NoInline, type NoParagrafo } from "../../textoRico";
 
-const MARCAS_NUCLEO = new Set(["bold", "italic", "underline", "link"]);
+// Projeção nova da fundação (013080): o texto guarda só texto + links; negrito, itálico e sublinhado ficam no rico (são formatação).
+const MARCAS_NUCLEO = new Set(["link"]);
 
 /** Texto (linha) → nós inline, quebrando "\n" em quebra de linha. */
 function inlinesDeTexto(t: string): NoInline[] {
@@ -19,7 +20,7 @@ function inlinesDeTexto(t: string): NoInline[] {
   return out;
 }
 
-/** Conteúdo inline do documento rico → inline do texto com marcas (só negrito, itálico, sublinhado e link). */
+/** Conteúdo inline do documento rico → inline do texto com marcas (só o link; o resto é formatação e fica no rico). */
 function inlines(nos: Bloco[] | undefined): NoInline[] {
   const out: NoInline[] = [];
   for (const n of nos ?? []) {
@@ -145,7 +146,7 @@ const paragrafoVazio = (b: Bloco) => b.type === "paragraph" && !(b.content ?? []
 
 /**
  * O que gravar a partir do documento do editor: `summary` = projeção; `summary_rico` = envelope SÓ quando o documento tem algo que o
- * texto com marcas não representa (cor, fonte, alinhamento, título 3, tabela mesclada, imagem...). Parágrafos vazios não são guardados.
+ * texto com marcas não representa (negrito, itálico, sublinhado, cor, fonte, alinhamento, título 4, imagem...). Parágrafos vazios não são guardados.
  */
 export function resumoParaGuardar(doc: DocRico): { summary: string; summary_rico: Envelope | null } {
   const s = sanear(doc, { semRef: true });
@@ -153,4 +154,17 @@ export function resumoParaGuardar(doc: DocRico): { summary: string; summary_rico
   const summary = textoDoResumo(limpo);
   if (!summary.trim()) return { summary: "", summary_rico: null };
   return { summary, summary_rico: igual(limpo, docDoResumo(summary)) ? null : envelope(limpo) };
+}
+
+type Resumo = { summary?: string | null; summary_rico?: unknown };
+const conteudoDoResumo = (r: Resumo) => (r.summary_rico == null ? conteudoDoTexto(r.summary ?? "") : conteudoDoRico(r.summary_rico));
+
+/**
+ * Espelho da regra do banco (013040 + 013080): mudou só a formatação do resumo quando o `summary` é idêntico e o conteúdo do rico
+ * (ou do texto, quando não há rico) é o mesmo. Quem decide é o banco; aqui serve para a tela avisar.
+ */
+export function resumoSoFormatacao(antes: Resumo, depois: Resumo): boolean {
+  const s = (x?: string | null) => (x ?? "").trim() || null;
+  if (s(antes.summary) !== s(depois.summary)) return false;
+  return igual(conteudoDoResumo(antes), conteudoDoResumo(depois));
 }
