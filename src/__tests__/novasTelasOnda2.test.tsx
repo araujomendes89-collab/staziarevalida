@@ -12,6 +12,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 const backend: any = { rpc: vi.fn() };
 const updateProfile = vi.fn(async () => {});
 const bootRef: any = { role: "student", profile: { name: "João Paulo Mendes", daily_minutes: 60, exam_date: null }, play: { enabled: true } };
+const playRef: any = { on: true };
 vi.mock("../novo/app/session.jsx", () => ({
   useSession: () => ({ backend, refresh: async () => {}, updateProfile, boot: bootRef, user: { id: "u1" } }),
   useOptionalSession: () => ({ backend, boot: bootRef }),
@@ -23,13 +24,14 @@ const SUMMARY = {
   names: { score: "Stazia Score" },
   streak: { today: { questions: 3, min_questions: 10, min_minutes: 20 }, today_done: false },
   missions: { done: 1, total: 3, items: [{ slug: "m1", title: "Acerte 15 questões", progress: 3, target: 15, done: false, xp: 20 }] },
-  weekly_rank: null,
+  weekly_rank: { rank: 12, total: 340 },
+  league: { name: "Bronze", position: 12 },
   recent_achievements: [],
   flags: { leaderboard: true },
 };
 vi.mock("../novo/app/play/PlayDashboard.jsx", () => ({
   PlayError: () => null,
-  usePlayHome: () => ({ summary: { data: SUMMARY, error: null, reload: () => {} }, busy: false, startNode: vi.fn(), error: null }),
+  usePlayHome: () => ({ summary: { data: playRef.on ? playRef.data ?? SUMMARY : { enabled: false }, error: null, reload: () => {} }, busy: false, startNode: vi.fn(), error: null }),
 }));
 vi.mock("../novo/app/admin/radar/useRadarAvisos.js", () => ({ useRadarAvisos: () => [] }));
 
@@ -67,6 +69,9 @@ const rpcs = (over: Record<string, any> = {}) =>
   });
 
 beforeEach(() => {
+  playRef.on = true;
+  playRef.data = null;
+  bootRef.play = { enabled: true };
   backend.rpc.mockReset();
   updateProfile.mockClear();
 });
@@ -93,6 +98,12 @@ describe("Início (Visão Geral)", () => {
     expect(await screen.findByText("Coloproctologia")).toBeTruthy();
     expect(screen.getByText("Cirurgia geral e trauma")).toBeTruthy();
     expect(screen.getByText("Ver os 2 temas prioritários")).toBeTruthy();
+    // proposta de 15/10: missões e ranking na faixa, Questões Inéditas como terceiro cartão, sem conquistas recentes
+    expect(kpis.textContent).toContain("1/3missões");
+    expect(kpis.textContent).toContain("12ºLiga Bronze");
+    const ined = screen.getByRole("region", { name: "Questões Inéditas" });
+    expect(ined.textContent).toContain("74 liberadas");
+    expect(screen.queryByText(/Conquistas recentes/)).toBeNull();
     // regra do projeto: nada de código, fonte ou gabarito nesta tela
     expect(document.body.textContent).not.toMatch(/GR-\d|gabarito/i);
   });
@@ -116,6 +127,51 @@ describe("Início (Visão Geral)", () => {
     render(<MemoryRouter><HomeScreen go={vi.fn()} mobile={false} /></MemoryRouter>);
     expect(await screen.findByText("Próximo passo")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "20 questões de Pediatria" })).toBeTruthy();
+  });
+});
+
+describe("Início: proposta de 15/10 (missões, ranking e Questões Inéditas)", () => {
+  it("missões e ranking levam às telas da Arena; Resolver abre o Banco filtrado nas inéditas", async () => {
+    rpcs();
+    const go = vi.fn();
+    render(<MemoryRouter><HomeScreen go={go} mobile={false} /></MemoryRouter>);
+    await screen.findByText("Continue de onde parou");
+    fireEvent.click(screen.getByRole("button", { name: /missões de hoje/ }));
+    expect(go).toHaveBeenCalledWith("missoes");
+    fireEvent.click(screen.getByRole("button", { name: /Liga Bronze · 12º/ }));
+    expect(go).toHaveBeenCalledWith("classificacao");
+    fireEvent.click(within(screen.getByRole("region", { name: "Questões Inéditas" })).getByRole("button", { name: /Resolver/ }));
+    expect(go).toHaveBeenCalledWith("questoes", { prova: "staziamed", status: "unanswered" });
+  });
+
+  it("fora do ranking mostra 'Entre na liga'; teste grátis mostra '20 de 74 no teste grátis'; sem acesso leva aos planos", async () => {
+    playRef.data = { ...SUMMARY, league: null, weekly_rank: null };
+    rpcs({ app_home: { ...HOME, trial: { days_left: 5 } }, app_my_ineditas: { total: 74, released: 20, answered: 3, limit: 20, limited: true, locked: false } });
+    const go = vi.fn();
+    render(<MemoryRouter><HomeScreen go={go} mobile={false} /></MemoryRouter>);
+    await screen.findByText("Continue de onde parou");
+    expect(screen.getByRole("button", { name: /Entre na liga/ })).toBeTruthy();
+    expect(screen.getByText("20 de 74 no teste grátis")).toBeTruthy();
+    cleanup();
+    rpcs({ app_my_ineditas: { total: 74, released: 0, answered: 0, limit: 0, limited: true, locked: true } });
+    render(<MemoryRouter><HomeScreen go={go} mobile={false} /></MemoryRouter>);
+    await screen.findByText("Continue de onde parou");
+    fireEvent.click(within(screen.getByRole("region", { name: "Questões Inéditas" })).getByRole("button", { name: /Ver planos/ }));
+    expect(go).toHaveBeenCalledWith("planos");
+  });
+
+  it("com a Stazia Arena desligada não há missões, ranking, score nem trilha; as inéditas continuam", async () => {
+    playRef.on = false;
+    bootRef.play = { enabled: false };
+    rpcs();
+    render(<MemoryRouter><HomeScreen go={vi.fn()} mobile={false} /></MemoryRouter>);
+    await screen.findByText("Continue de onde parou");
+    const kpis = screen.getByRole("region", { name: "Seu desempenho" });
+    expect(kpis.textContent).not.toMatch(/missões|Liga|Entre na liga|Stazia Score/);
+    expect(kpis.textContent).toContain("para revisar");
+    expect(screen.queryByText("Coloproctologia")).toBeNull();
+    expect(backend.rpc).not.toHaveBeenCalledWith("app_trail", expect.anything());
+    expect(screen.getByRole("region", { name: "Questões Inéditas" })).toBeTruthy();
   });
 });
 

@@ -165,6 +165,50 @@ function TrailCard({ trail, onStart, busy, go }) {
   );
 }
 
+/**
+ * Questões Inéditas como terceiro cartão do Início (proposta de 15/10/2026). Mesmos dados e estados do cartão de sempre (app_my_ineditas):
+ * todas liberadas, parte liberada (teste grátis ou plano com limite) ou sem acesso. "Resolver" abre o Banco já filtrado nas inéditas.
+ */
+export function ineditasHomeText(i, trial) {
+  const st = ineditasState(i);
+  if (st === "todas") return `${i.total} liberadas`;
+  if (st === "limitado") return `${i.released} de ${i.total} ${trial ? "no teste grátis" : "no seu plano"}`;
+  if (st === "sem_acesso") return `${i.total} no banco · abrem com plano ou teste grátis em dia`;
+  return null;
+}
+function IneditasHomeCard({ ineditas, trial, go, compact }) {
+  const st = ineditasState(ineditas);
+  if (st === "oculto") return null;
+  const released = Number(ineditas.released) || 0;
+  const answered = Math.min(Number(ineditas.answered) || 0, released);
+  const pending = released - answered;
+  const locked = st === "sem_acesso";
+  const run = () => (locked ? go("planos") : go("questoes", { prova: "staziamed", status: pending > 0 ? "unanswered" : "all" }));
+  return (
+    <div className={`ih-lcard ih-ined${compact ? " ih-ined--m" : ""}`} style={{ cursor: "default" }} role="region" aria-label="Questões Inéditas">
+      <span className="ih-lcard-h">
+        <span className="ih-lcard-ic ih-tile--ai">{locked ? <Icon name="lock" size={22} /> : AppRealIcon({ name: "sparkles", size: 30 })}</span>
+        <span className="ih-lcard-t">
+          <small style={{ color: "var(--ai-text)" }}>Escritas pela StaziaMed</small>
+          <b>Questões Inéditas</b>
+        </span>
+      </span>
+      <span className="ih-ined-n">{ineditasHomeText(ineditas, trial)}</span>
+      <button type="button" className="ip-btn ip-btn--ai ih-ined-btn" onClick={run}>
+        {locked ? (
+          <>
+            <Icon name="lock" size={16} /> Ver planos
+          </>
+        ) : (
+          <>
+            {pending > 0 || answered === 0 ? "Resolver" : "Rever"} <Icon name="arrow-right" size={16} />
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
+
 function PriorityCard({ topics, go, compact }) {
   if (!topics.length) return null;
   const top = topics[0];
@@ -214,10 +258,10 @@ function PriorityCard({ topics, go, compact }) {
   );
 }
 
-function HomeActive({ go, home, plan, startTask, busy, play, startNode }) {
+function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas, arenaOn }) {
   const compact = useLayout() === "mobile";
   const { backend } = useSession();
-  const trail = usePlayLoad(() => backend.rpc("app_trail", { p_area: null }), [backend]);
+  const trail = usePlayLoad(() => (arenaOn ? backend.rpc("app_trail", { p_area: null }) : Promise.resolve({ enabled: false })), [backend, arenaOn]);
   const [explain, setExplain] = React.useState(false);
   const [slide, setSlide] = React.useState(0);
   const open = home.open_session;
@@ -305,6 +349,13 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode }) {
   );
 
   const accuracy = percent(home.correct, home.attempts);
+  // Missões e ranking na faixa de números: só com a Stazia Arena ligada (mesmo interruptor das telas da Arena: boot.play.enabled)
+  const missionsKpi = arenaOn && sum?.missions?.total > 0 ? sum.missions : null;
+  const rankOn = arenaOn && sum && (sum.flags?.leaderboard !== false || sum.flags?.leagues !== false);
+  const league = sum?.flags?.leagues !== false ? sum?.league : null;
+  const weekly = sum?.flags?.leaderboard !== false ? sum?.weekly_rank : null;
+  const rankKpi = !rankOn ? null : league ? { n: `${league.position}º`, l: `Liga ${league.name}` } : weekly ? { n: `${weekly.rank}º`, l: "no ranking semanal" } : { n: null, l: "Entre na liga" };
+  const rankLabel = rankKpi ? (rankKpi.n ? `${rankKpi.l} · ${rankKpi.n}` : rankKpi.l) : "";
   const activeDays = home.week.days_active;
   const rowOf = (task) => {
     const doneRow = task.done;
@@ -358,59 +409,15 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode }) {
       {play.error && <Banner tone="danger">{play.error}</Banner>}
     </>
   );
-  const trailEl = <TrailCard trail={trail} onStart={startNode} busy={play.busy} go={go} />;
+  // a trilha faz parte da Stazia Arena (TrailScreen): com a Arena desligada o cartão não aparece
+  const trailEl = arenaOn ? <TrailCard trail={trail} onStart={startNode} busy={play.busy} go={go} /> : null;
   const priorityEl = <PriorityCard topics={home.priority_topics} go={go} compact={compact} />;
 
   // ---- celular: faixa de 4 números, "Para você" em carrossel e tema prioritário
   if (compact) {
-    const missions = sum?.missions;
-    const xpTotal = (missions?.items ?? []).reduce((acc, m) => acc + (Number(m.xp) || 0), 0);
-    const rank = sum?.weekly_rank;
-    const medal = sum?.recent_achievements?.[0];
-    const trailOn = !(trail.error || trail.data?.enabled === false);
+    const trailOn = arenaOn && !(trail.error || trail.data?.enabled === false);
     const cards = trailOn ? [trailEl] : [];
-    if (sum && missions?.total > 0) {
-      cards.push(
-        <button key="mis" type="button" className="ih-lcard ih-mis ih-press" onClick={() => go("missoes")} aria-label={`Missões de hoje: ${missions.done} de ${missions.total} completas`}>
-          <span className="ih-lcard-h">
-            {AppRealIcon({ name: "target", size: 36 })}
-            <span className="ih-lcard-t">
-              <small style={{ color: "var(--warning-text)" }}>Missões de hoje</small>
-              <b><Mono>{missions.done}/{missions.total}</Mono> completas</b>
-            </span>
-            {xpTotal > 0 && <span className="ih-xp">+{xpTotal} XP</span>}
-          </span>
-          <span className="ih-mis-l">
-            {missions.items.slice(0, 3).map((m) => (
-              <span key={m.slug}>
-                <b>{m.title}</b>
-                <em>{m.done ? "feita" : `${m.progress}/${m.target}`}</em>
-              </span>
-            ))}
-          </span>
-        </button>
-      );
-    }
-    if (sum && sum.flags?.leaderboard !== false) {
-      cards.push(
-        <button key="arena" type="button" className="ih-lcard ih-are ih-press" onClick={() => go("classificacao")} aria-label="Stazia Arena: ranking e conquistas">
-          <span className="ih-lcard-h">
-            {AppRealIcon({ name: "trophy", size: 36 })}
-            <span className="ih-lcard-t">
-              <small style={{ color: "var(--area-preventiva-text)" }}>Stazia Arena</small>
-              <b>Ranking e conquistas</b>
-            </span>
-          </span>
-          <span className="ih-are-l">
-            <span>{rank ? `Você está em #${rank.rank} de ${Number(rank.total).toLocaleString("pt-BR")} no ranking semanal.` : "Você ainda não aparece no ranking semanal."}</span>
-            <span>
-              {AppRealIcon({ name: "award", size: 20 })}
-              {medal ? medal.name : "A primeira medalha vem com 10 questões."}
-            </span>
-          </span>
-        </button>
-      );
-    }
+    if (ineditasState(ineditas) !== "oculto") cards.push(<IneditasHomeCard key="ined" ineditas={ineditas} trial={home.trial} go={go} compact />);
     const onScroll = (e) => {
       const el = e.currentTarget;
       const w = el.firstElementChild ? el.firstElementChild.getBoundingClientRect().width + 12 : 1;
@@ -448,6 +455,20 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode }) {
               {activeDays} {activeDays === 1 ? "dia ativo" : "dias ativos"}
             </small>
           </button>
+          {missionsKpi && (
+            <button type="button" className="ih-mk ih-press" onClick={() => go("missoes")} aria-label={`${missionsKpi.done} de ${missionsKpi.total} missões de hoje`}>
+              <span className="ih-mk-ic">{AppRealIcon({ name: "target", size: 26 })}</span>
+              <b style={{ lineHeight: "22px" }}>{missionsKpi.done}/{missionsKpi.total}</b>
+              <small>missões</small>
+            </button>
+          )}
+          {rankKpi && (
+            <button type="button" className="ih-mk ih-press" onClick={() => go("classificacao")} aria-label={`${rankLabel}. Abrir o Ranking`}>
+              <span className="ih-mk-ic">{AppRealIcon({ name: "trophy", size: 26 })}</span>
+              {rankKpi.n && <b style={{ lineHeight: "22px" }}>{rankKpi.n}</b>}
+              <small>{rankKpi.n ? rankKpi.l : <strong style={{ color: "var(--action-primary)" }}>{rankKpi.l}</strong>}</small>
+            </button>
+          )}
         </section>
         {cards.length > 0 && (
         <section aria-label="Para você" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -497,10 +518,23 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode }) {
           <b>{home.week.attempts}</b>
           <span>itens na semana</span>
         </div>
+        {missionsKpi && (
+          <button type="button" className="ih-kpi" onClick={() => go("missoes")} aria-label={`${missionsKpi.done} de ${missionsKpi.total} missões de hoje. Abrir Missões`}>
+            <b>{missionsKpi.done}/{missionsKpi.total}</b>
+            <span>missões</span>
+          </button>
+        )}
+        {rankKpi && (
+          <button type="button" className="ih-kpi" onClick={() => go("classificacao")} aria-label={`${rankLabel}. Abrir o Ranking`}>
+            {rankKpi.n && <b>{rankKpi.n}</b>}
+            <span className={rankKpi.n ? undefined : "ih-kpi-cta"}>{rankKpi.l}</span>
+          </button>
+        )}
       </section>
       <div className="ih-cards">
         {trailEl}
         {priorityEl}
+        <IneditasHomeCard ineditas={ineditas} trial={home.trial} go={go} />
       </div>
       {explain && sum && <ScoreExplainer summary={sum} onClose={() => setExplain(false)} />}
     </div>
@@ -572,7 +606,7 @@ export function HomeScreen({ go, mobile }) {
       {home.attempts < DIAGNOSTIC_SIZE ? (
         <HomeNew go={go} mobile={mobile} home={home} profile={boot.profile} startDiagnostic={startDiagnostic} busy={busy} extra={ineditasCard} />
       ) : (
-        <HomeActive go={go} home={home} plan={plan} startTask={startTask} busy={busy} play={play} startNode={play.startNode} />
+        <HomeActive go={go} home={home} plan={plan} startTask={startTask} busy={busy} play={play} startNode={play.startNode} ineditas={data.ineditas} arenaOn={boot.play?.enabled !== false} />
       )}
     </>
   );

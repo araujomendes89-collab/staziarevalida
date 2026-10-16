@@ -1,5 +1,6 @@
 // PRÉVIA do Início e do Plano de Hoje (onda 2). Dados de TESTE, sem banco. Parâmetros:
-//   ?rota=home|hoje  &tema=escuro  &fase=1|2  &papel=aluno|equipe|revisor  &abrir=1 (Personalizar plano aberto)  &vazio=1  &semplay=1  &tudofeito=1
+//   ?rota=home|hoje  &tema=escuro  &fase=1|2  &papel=aluno|equipe|revisor  &abrir=1 (Personalizar plano aberto)  &vazio=1  &tudofeito=1
+//   &arena=0 (Stazia Arena desligada)  &semliga=1 (fora do ranking)  &teste=1 (teste grátis: 20 de 74 inéditas)
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
