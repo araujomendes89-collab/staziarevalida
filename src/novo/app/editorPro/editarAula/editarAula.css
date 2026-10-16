@@ -1,0 +1,10 @@
+/* Módulo M13: o editor completo dentro do formulário Editar aula (altura limitada; a folha rola por dentro). */
+.ea-resumo__caixa {
+  height: min(70vh, 620px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.ea-resumo__caixa .ep-folha {
+  min-height: 360px;
+}

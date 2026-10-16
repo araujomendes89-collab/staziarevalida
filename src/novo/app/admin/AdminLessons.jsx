@@ -11,10 +11,12 @@ import { lessonFileUrl, lessonsAvailable, materialTitle, removeLesson, removeLes
 import { dateTimeBR, LoadError, Loading, messageOf, useLoad } from "./common.jsx";
 import { CampoTexto } from "../textoRico/CampoTexto.jsx";
 import { LessonAssistant } from "./LessonAssistant.jsx";
+import EditorResumo from "../editorPro/editarAula/EditorResumo.jsx";
+import { resumoRicoValido } from "../../../shared/docRico/modulos/editarAula";
 
-const EMPTY = { area: "CLINICA_MEDICA", topic: "", title: "", duration_minutes: "", instructor: "", specialty: "", video_url: "", summary: "", key_points: "", guideline_title: "", guideline_url: "", published: false, position: 0, review_note: "" };
+const EMPTY = { area: "CLINICA_MEDICA", topic: "", title: "", duration_minutes: "", instructor: "", specialty: "", video_url: "", summary: "", summary_rico: null, key_points: "", guideline_title: "", guideline_url: "", published: false, position: 0, review_note: "" };
 // Quem conferiu, quando e os avisos guardados da IA vêm da aula, mas não entram no formulário: a conferência é sempre nova (A01).
-const toForm = ({ ai_notes, reviewer, reviewed_at, ...l }) => ({ ...EMPTY, ...l, review_note: "", duration_minutes: l.duration_minutes ?? "", key_points: (l.key_points ?? []).join("\n"), instructor: l.instructor ?? "", specialty: l.specialty ?? "", video_url: l.video_url ?? "", summary: l.summary ?? "", guideline_title: l.guideline_title ?? "", guideline_url: l.guideline_url ?? "" });
+const toForm = ({ ai_notes, reviewer, reviewed_at, ...l }) => ({ ...EMPTY, ...l, review_note: "", duration_minutes: l.duration_minutes ?? "", key_points: (l.key_points ?? []).join("\n"), instructor: l.instructor ?? "", specialty: l.specialty ?? "", video_url: l.video_url ?? "", summary: l.summary ?? "", summary_rico: l.summary_rico ?? null, guideline_title: l.guideline_title ?? "", guideline_url: l.guideline_url ?? "" });
 
 // Os três materiais da aula, como no app anterior: PDF complementar, áudio Flashcast e a diretriz SUS/PCDT (link).
 const FILE_SLOTS = [
@@ -193,7 +195,7 @@ function ReviewSection({ form, current, set }) {
           minRows={2}
           maxLength={1000}
           onChange={(v) => set({ review_note: v })}
-          hint="Fica registrado com o seu nome e a data. Obrigatório ao publicar e ao mudar título, tema, resumo ou pontos-chave de uma aula publicada."
+          hint="Fica registrado com o seu nome e a data. Obrigatório ao publicar e ao mudar título, tema, resumo ou pontos-chave de uma aula publicada. Mudar só a formatação do resumo (negrito, cor, alinhamento...) não precisa."
         />
       )}
     </div>
@@ -212,7 +214,7 @@ function LessonEditor({ lesson, topics, onSaved, onClose, isAdmin }) {
     setState({ saving: true, error: null, done: false });
     try {
       const saved = await backend.rpc("app_admin_save_lesson", {
-        p_lesson: { ...form, id: current?.id, duration_minutes: form.duration_minutes === "" ? null : Number(form.duration_minutes), position: Number(form.position) || 0, key_points: form.key_points.split("\n") },
+        p_lesson: { ...form, summary_rico: resumoRicoValido(form.summary, form.summary_rico), id: current?.id, duration_minutes: form.duration_minutes === "" ? null : Number(form.duration_minutes), position: Number(form.position) || 0, key_points: form.key_points.split("\n") },
       });
       // materiais escolhidos na criação: sobem agora que a aula existe
       let latest = saved;
@@ -277,7 +279,7 @@ function LessonEditor({ lesson, topics, onSaved, onClose, isAdmin }) {
           </div>
           <TextField label="Posição" type="number" value={form.position} onChange={(e) => set({ position: e.target.value })} hint="Ordem dentro da área." />
         </div>
-        <CampoTexto modo="documento" label="Resumo & racionalidade clínica" value={form.summary} minRows={6} maxLength={8000} onChange={(v) => set({ summary: v })} />
+        <EditorResumo summary={form.summary} rico={form.summary_rico} maxLength={8000} aoMudar={({ summary, summary_rico }) => set({ summary, summary_rico })} />
         <CampoTexto modo="pontos" label="Pontos-chave para o Revalida (um por linha)" value={form.key_points} minRows={5} onChange={(v) => set({ key_points: v })} />
         <MaterialsSection lesson={current} pending={pending} setPending={setPending} onChanged={(l) => (setCurrent((c) => ({ ...c, ...l })), onSaved(l))} form={form} set={set} />
         <ReviewSection form={form} current={current} set={set} />

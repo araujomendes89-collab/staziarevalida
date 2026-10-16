@@ -18,6 +18,17 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 const backend: any = { rpc: vi.fn(), accessToken: async () => "t" };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot: { role: "admin", profile: { name: "Adm" } }, user: { id: "a" } }) }));
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
+// M13 (editor profissional no resumo): nos testes de tela o editor vira um <textarea> com o texto do resumo (sem formatação nova).
+vi.mock("../novo/app/editorPro/editarAula/EditorResumo.jsx", async () => {
+  const React = await import("react");
+  function EditorResumo({ summary, aoMudar, rotulo = "Resumo & racionalidade clínica" }: any) {
+    const id = React.useId();
+    return React.createElement("div", { className: "sm-field" },
+      React.createElement("label", { className: "sm-field__label", htmlFor: id }, rotulo),
+      React.createElement("textarea", { id, value: summary ?? "", onChange: (e: any) => aoMudar?.({ summary: e.target.value, summary_rico: null }) }));
+  }
+  return { default: EditorResumo };
+});
 
 import { AdminLessons } from "../novo/app/admin/AdminLessons.jsx";
 import { AdminUpdates } from "../novo/app/admin/AdminUpdates.jsx";
