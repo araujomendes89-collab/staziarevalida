@@ -52,18 +52,17 @@
 .ih-pill--done{background:var(--success-bg);color:var(--success-text);gap:4px}
 
 /* ---- faixa de números ---- */
-.ih-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));background:var(--surface-card);border:1px solid var(--border-default);border-radius:22px;overflow:hidden}
-.ih-kpi{padding:18px 22px;display:flex;align-items:baseline;gap:10px;border:0;background:transparent;color:var(--text-secondary);text-align:left;font:500 13px var(--font-sans);cursor:default;box-shadow:-1px 0 0 var(--border-subtle);min-height:44px}
-.ih-kpi:first-child{box-shadow:none}
+.ih-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));background:var(--surface-card);border:1px solid var(--border-default);border-radius:22px;overflow:hidden}
+.ih-kpi{padding:18px 22px;display:flex;align-items:baseline;gap:10px;border:0;background:transparent;color:var(--text-secondary);text-align:left;font:500 13px var(--font-sans);cursor:default;box-shadow:-1px 0 0 var(--border-subtle),0 -1px 0 var(--border-subtle);min-height:44px}
 button.ih-kpi{cursor:pointer}
 button.ih-kpi:hover{background:var(--action-ghost-hover)}
-.ih-kpi b{font:600 24px var(--font-mono);color:var(--text-primary)}
+.ih-kpi b{font:600 24px var(--font-mono);color:var(--text-primary);white-space:nowrap}
 .ih-kpi--rev,.ih-kpi--rev b{color:var(--danger-text)}
 .ih-kpi--rev span{font-weight:700}
 .ih-kpi--ok b{color:var(--success-text)}
 
 /* ---- trilha e tema prioritário ---- */
-.ih-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px}
+.ih-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
 .ih-lcard{padding:20px;border-radius:24px;background:var(--surface-card);border:1px solid var(--border-default);display:flex;flex-direction:column;gap:16px;text-align:left;color:var(--text-primary);cursor:pointer;min-width:0;font-family:var(--font-sans)}
 .ih-lcard:hover{border-color:var(--border-strong)}
 .ih-lcard-h{display:flex;align-items:center;gap:12px}
@@ -115,7 +114,9 @@ button.ih-kpi:hover{background:var(--action-ghost-hover)}
 .ih-mmeter i b{display:block;height:100%;background:var(--action-primary)}
 .ih-mmeter span{font:500 12px var(--font-mono);color:var(--text-tertiary)}
 .ih-mrow .ih-pill{min-height:32px;padding:0 12px;font-size:12.5px}
-.ih-mkpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.ih-mkpis{display:flex;gap:8px;overflow-x:auto;margin:0 -18px;padding:6px 18px 4px;scroll-padding-left:18px;scroll-snap-type:x proximity;scrollbar-width:none}
+.ih-mkpis::-webkit-scrollbar{display:none}
+.ih-mkpis>.ih-mk{flex:1 0 80px;scroll-snap-align:start}
 .ih-mk{padding:12px 6px 10px;min-height:92px;border-radius:18px;background:var(--surface-card);border:1px solid var(--border-default);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--text-primary);font:500 12px var(--font-sans);text-align:center;cursor:default}
 button.ih-mk{cursor:pointer}
 .ih-mk b{font:600 18px/30px var(--font-mono)}
@@ -251,3 +252,12 @@ button.ih-mk{cursor:pointer}
   .ipd-unk{display:flex}
   .ipd-act{flex-wrap:nowrap}.ipd-act button{flex:1}
 }
+
+/* ---- Início: Questões Inéditas como terceiro cartão; missões e ranking na faixa (proposta de 15/10/2026) ---- */
+.ih-ined{gap:12px}
+.ih-ined-n{font:700 15px/1.35 var(--font-sans);color:var(--text-primary)}
+.ih-ined-btn{align-self:flex-start;min-height:44px}
+.ih-ined--m .ih-ined-btn{align-self:stretch;justify-content:center}
+.ih-kpi-cta{align-self:center;font-weight:800;color:var(--action-primary)}
+.ih-mk .ih-mk-ic+b{margin-top:-2px}
+@media (min-width:720px) and (max-width:1180px){.ih-kpis:has(> :nth-child(5)){grid-template-columns:repeat(3,minmax(0,1fr))}}
