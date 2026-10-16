@@ -16,6 +16,7 @@ import { AdminUpdates } from "./AdminUpdates.jsx";
 import { AdminPodcasts } from "./AdminPodcasts.jsx";
 import { AdminAI } from "./ai/AdminAI.jsx";
 import { AdminDupla } from "./AdminDupla.jsx";
+import { AdminDuplaChatReports, AdminDuplaChatSettings } from "./AdminDuplaChat.jsx";
 import { OfficialVoicesPanel } from "./OfficialVoicesPanel.jsx";
 import { VoiceReactionsPanel } from "./VoiceReactionsPanel.jsx";
 import { RadarFila } from "./radar/RadarFila.jsx";
@@ -35,6 +36,7 @@ const TABS = [
   { value: "radar", label: "Fila do Radar", icon: "radar", admin: true },
   { value: "ias", label: "Central de IAs", icon: "bot" },
   { value: "play", label: "Stazia Arena", icon: "trophy" },
+  { value: "denuncias", label: "Denúncias do chat", icon: "flag", staff: true },
   { value: "config", label: "Configurações", icon: "settings" },
   { value: "vozes", label: "Vozes do Nexus", icon: "volume-2", admin: true },
   { value: "registro", label: "Registro", icon: "history" },
@@ -54,7 +56,7 @@ export function AdminScreen() {
 
   return (
     <>
-      {/* 14 abas não cabem numa linha: a barra quebra linha para todas aparecerem */}
+      {/* 16 abas não cabem numa linha: a barra quebra linha para todas aparecerem */}
       <Tabs wrap label="Administração" value={tab} onChange={(aba) => setParams({ aba }, { replace: true })} tabs={tabs.map(({ value, label, icon }) => ({ value, label, icon, ...(value === "radar" && radar.graves > 0 ? { count: radar.graves } : {}) }))} />
       {tab === "geral" && <AdminOverview isAdmin={isAdmin} />}
       {tab === "usuarios" && <AdminUsers />}
@@ -72,6 +74,7 @@ export function AdminScreen() {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <AdminSettings />
           <AdminDupla />
+          <AdminDuplaChatSettings />
           <AdminSupportContact />
           <AdminReports />
           <AdminTutor />
@@ -83,6 +86,7 @@ export function AdminScreen() {
           <VoiceReactionsPanel />
         </>
       )}
+      {tab === "denuncias" && <AdminDuplaChatReports />}
       {tab === "registro" && <AdminAudit />}
     </>
   );

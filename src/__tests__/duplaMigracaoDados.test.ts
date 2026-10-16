@@ -207,13 +207,13 @@ describe("Migração 9750 sobre o estado de produção", () => {
     expect(Object.keys(depoisDa1a.tabelas).filter((t) => !(t in antes.tabelas)).sort()).toEqual(["checklist_room_marks", "study_matches", "study_profiles", "study_swipes"]);
   });
 
-  it("depois de todas as do Treino, a exportação antiga continua inteira (com declarations) e ganha só as quatro chaves do Treino", () => {
+  it("depois de todas as do Treino, a exportação antiga continua inteira (com declarations) e ganha só as chaves do Treino (4 + a do chat)", () => {
     expect(exportAntes).toHaveProperty("declarations");
     expect(exportDepois).toBeTruthy();
     const { exported_at: _a, ...velho } = exportAntes;
     const { exported_at: _b, ...novo } = exportFinal;
     for (const k of Object.keys(velho)) expect(novo[k], k).toEqual(velho[k]);
-    expect(Object.keys(novo).filter((k) => !(k in velho)).sort()).toEqual(["checklist_rooms", "study_matches", "study_profile", "study_swipes"]);
+    expect(Object.keys(novo).filter((k) => !(k in velho)).sort()).toEqual(["checklist_rooms", "study_chat", "study_matches", "study_profile", "study_swipes"]);
   });
 
   it("salas, convites e avaliações antigos não se perdem: a sala fecha (sem sinal), o convite fica, as avaliações ganham rodadas 1 e 2", async () => {
@@ -227,14 +227,19 @@ describe("Migração 9750 sobre o estado de produção", () => {
   it("uma sala criada DEPOIS da 1ª colagem não é fechada pela 2ª colagem; a chave do módulo e as mudanças do dono ficam", async () => {
     const viva = await makeRoom(d.db, { members: [U.diego, U.eva], phase: "running", candidate: U.diego, evaluator: U.eva });
     await setDupla(d.db, { aberto: true, planos: ["trial"] });
+    // A lista de chaves da 9750 não tem 'treino_dupla_chat' (013370, chat): colada de novo depois dela, a 9750 seria recusada
+    // pela linha do chat. Por isso a linha sai antes e a 013370 é colada em seguida (devolve a lista e a linha, como antes).
+    await d.sql(`delete from public.app_settings where key = 'treino_dupla_chat'`);
     await d.db.exec(SQL);
+    await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013370_treino_dupla_chat.sql"), "utf8"));
     expect(await d.sql(`select phase, closed_reason from public.checklist_rooms where id = $1`, [viva])).toEqual([{ phase: "running", closed_reason: null }]);
     expect(await d.sql(`select value from public.app_settings where key = 'treino_dupla'`)).toEqual([{ value: { aberto: true, planos: ["trial"] } }]);
     await setDupla(d.db, { aberto: false, planos: ["pro", "elite"] });
   });
 
   it("app_settings: a lista de chaves é a união das que existem + treino_dupla; a linha nasce desligada; outras chaves seguem recusadas", async () => {
-    expect(await d.sql(`select key from public.app_settings order by key`)).toEqual([{ key: "announcement" }, { key: "simulado_ineditas_pct" }, { key: "treino_dupla" }, { key: "trial_days" }]);
+    // (A 013370, do chat, entra na união com 'treino_dupla_chat'.)
+    expect(await d.sql(`select key from public.app_settings order by key`)).toEqual([{ key: "announcement" }, { key: "simulado_ineditas_pct" }, { key: "treino_dupla" }, { key: "treino_dupla_chat" }, { key: "trial_days" }]);
     expect((await d.sql<{ value: unknown }>(`select value from public.app_settings where key = 'trial_days'`))[0].value).toBe(7);
     await expect(d.sql(`insert into public.app_settings (key, value) values ('outra', '1')`)).rejects.toThrow(/check constraint/);
     // O painel antigo continua salvando só as duas chaves que conhece.

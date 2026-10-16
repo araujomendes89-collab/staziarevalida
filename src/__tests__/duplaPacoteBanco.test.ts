@@ -160,8 +160,8 @@ describe("Migração 012900: o candidato não recebe o tema da estação", () =>
       );
     const antes = await defs();
     await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8"));
-    // As do Treino que vêm depois refazem funções desta (a 013350 refaz dupla_room_state e app_dupla_room_content): colar de
-    // novo na ordem.
+    // As do Treino que vêm depois refazem funções desta (a 013350 refaz dupla_room_state e app_dupla_room_content; a 013370, do
+    // chat, refaz a exportação dos dados): coladas de novo na ordem, o banco volta igual.
     for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.includes("treino_dupla") && f > MIGRACAO).sort()) {
       await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
     }

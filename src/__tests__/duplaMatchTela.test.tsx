@@ -256,8 +256,9 @@ describe("Praticar com baralho", () => {
     expect(within(dialog).getByText("Deu match!")).toBeTruthy();
     expect(within(dialog).getByText("Você e Carla querem treinar a 2ª fase. Combinem a primeira sessão.")).toBeTruthy();
     expect(sound.playMatchSound).toHaveBeenCalledTimes(1);
-    // nada de agendar, mensagem ou convite rápido
-    for (const banned of ["Agendar sessão", "Enviar mensagem", "Convite rápido"]) expect(document.body.textContent).not.toContain(banned);
+    // nada de agendar ou convite rápido; "Enviar mensagem" abre o chat (Etapa C, duplaChatTela.test.tsx)
+    for (const banned of ["Agendar sessão", "Convite rápido"]) expect(document.body.textContent).not.toContain(banned);
+    expect(within(dialog).getByRole("button", { name: "Enviar mensagem" })).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: "Abrir sala agora" }));
     expect(go).toHaveBeenCalledWith("dupla-sala", { sala: "sala-1" });
 
@@ -500,7 +501,7 @@ describe("Praticar com baralho", () => {
     expect(within(dialog).getByRole("button", { name: "Ativar som" })).toBeTruthy();
   });
 
-  it("nada do que ficou fora: Convite rápido, Agendar sessão, Enviar mensagem, busca automática, lista de colegas", async () => {
+  it("nada do que ficou fora: Convite rápido, Agendar sessão, busca automática, lista de colegas (e 'Enviar mensagem' só no 'Deu match!')", async () => {
     await openPractice();
     await screen.findByText("5 colegas online");
     const text = document.body.textContent ?? "";
