@@ -14,6 +14,7 @@ import { DocumentModal } from "./legal/DocumentModal.jsx";
 import { COUNTRIES, normalizePhone, phoneError } from "./legal/phone.js";
 import { TERMO_VERSAO } from "./legal/versions.js";
 import { rememberGoogleAcceptance } from "./legal/googleAcceptance.js";
+import { DECLARACAO_ADULTO, DECLARACAO_MEDICO, DECLARACOES_ERRO, documentosDa } from "./legal/documentos.js";
 import { clearAuthLinkFromUrl, initialAuthLink } from "./auth/authLink.js";
 import { useSupportEmail } from "./support/supportContact.jsx";
 import "./auth/login.css";
@@ -120,7 +121,9 @@ const COUNTRY_CODES = new Set(COUNTRIES.filter((c) => c.code !== "outro").map((c
 const ACCEPT_ERROR = "Para criar a conta, é preciso aceitar o Termo de Aceite e Uso e a Política de Privacidade.";
 const ACCEPT_TEXT = "Declaro que li e compreendi os Termos de Aceite e Uso e a Política de Privacidade do StaziaMed Revalida e concordo com suas condições.";
 // ids dos campos, na ordem da tela, para levar o foco ao primeiro com erro
-const FIELD_IDS = { name: "secure-name", email: "secure-email", code: "secure-phone-code", phone: "secure-phone-number", pw: "secure-pw", pw2: "secure-pw2", accept: "secure-accept" };
+const FIELD_IDS = { name: "secure-name", email: "secure-email", code: "secure-phone-code", phone: "secure-phone-number", pw: "secure-pw", pw2: "secure-pw2", accept: "secure-accept", decl: "secure-adulto" };
+// Termo 2.0 em diante: as declarações de maioridade e de formação em Medicina entram no cadastro (a versão de versions.js decide).
+const PEDE_DECLARACOES = documentosDa(TERMO_VERSAO).declaracoes;
 
 function Signup({ go }) {
   const { backend } = useSession();
@@ -130,11 +133,13 @@ function Signup({ go }) {
   const [loading, setLoading] = React.useState(false);
   const [phone, setPhone] = React.useState({ code: "+55", number: "" });
   const [accepted, setAccepted] = React.useState(false);
+  const [adult, setAdult] = React.useState(false);
+  const [physician, setPhysician] = React.useState(false);
   const [doc, setDoc] = React.useState(null);
   const closeDoc = React.useCallback(() => setDoc(null), []);
 
   const focusFirst = (next) => {
-    const first = ["name", "email", "code", "phone", "pw", "pw2", "accept"].find((k) => next[k]);
+    const first = ["name", "email", "code", "phone", "pw", "pw2", "accept", "decl"].find((k) => next[k]);
     if (first) document.getElementById(FIELD_IDS[first])?.focus();
   };
 
@@ -156,6 +161,7 @@ function Signup({ go }) {
     if (password.length < PASSWORD_MIN_LENGTH) next.pw = `Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`;
     else if (password !== field("pw2")) next.pw2 = "As senhas não são iguais.";
     if (!accepted) next.accept = ACCEPT_ERROR;
+    if (PEDE_DECLARACOES && !(adult && physician)) next.decl = DECLARACOES_ERRO;
     setErrors(next);
     setError(null);
     if (Object.keys(next).length) {
@@ -170,6 +176,7 @@ function Signup({ go }) {
         phone: normalizePhone(phone.code, phone.number),
         termsVersion: TERMO_VERSAO,
         userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
+        ...(PEDE_DECLARACOES ? { declaresAdult: adult, declaresPhysician: physician } : {}),
       });
       if (result.needsEmailConfirmation) setConfirmEmail(true);
     } catch (err) {
@@ -179,15 +186,15 @@ function Signup({ go }) {
   };
   const google = async () => {
     setError(null);
-    if (!accepted) {
-      const next = { accept: ACCEPT_ERROR };
+    if (!accepted || (PEDE_DECLARACOES && !(adult && physician))) {
+      const next = { ...(!accepted ? { accept: ACCEPT_ERROR } : {}), ...(PEDE_DECLARACOES && !(adult && physician) ? { decl: DECLARACOES_ERRO } : {}) };
       setErrors(next);
       focusFirst(next);
       return;
     }
     setErrors({});
     try {
-      rememberGoogleAcceptance(TERMO_VERSAO);
+      rememberGoogleAcceptance(TERMO_VERSAO, PEDE_DECLARACOES ? { adult, physician } : undefined);
       await backend.signInWithGoogle();
     } catch (err) {
       setError(messageFor(err));
@@ -227,6 +234,21 @@ function Signup({ go }) {
           </label>
           {errors.accept ? <span id="secure-accept-error" className="lg-field-error">{errors.accept}</span> : null}
         </div>
+        {PEDE_DECLARACOES && (
+          <div className="lg-field" role="group" aria-label="Declarações">
+            <label className="lg-accept">
+              <input id="secure-adulto" aria-label={DECLARACAO_ADULTO} type="checkbox" className="lg-check" checked={adult}
+                onChange={(e) => setAdult(e.target.checked)} aria-invalid={errors.decl && !adult ? "true" : "false"} />
+              <span>{DECLARACAO_ADULTO}</span>
+            </label>
+            <label className="lg-accept">
+              <input id="secure-medico" aria-label={DECLARACAO_MEDICO} type="checkbox" className="lg-check" checked={physician}
+                onChange={(e) => setPhysician(e.target.checked)} aria-invalid={errors.decl && !physician ? "true" : "false"} />
+              <span>{DECLARACAO_MEDICO}</span>
+            </label>
+            {errors.decl ? <span className="lg-field-error" role="alert">{errors.decl}</span> : null}
+          </div>
+        )}
         <button type="submit" className="lg-btn lg-btn-primary" disabled={loading}>{loading ? <><span className="lg-spin" />CRIANDO CONTA…</> : "CRIAR CONTA"}</button>
         <div className="lg-or" aria-hidden="true"><span /><span>ou cadastre-se com</span><span /></div>
         <button type="button" className="lg-btn lg-btn-ghost" onClick={google} disabled={loading}><img src="/novo-assets/google.svg" alt="" width="18" height="18" />Criar conta com Google</button>

@@ -92,15 +92,20 @@ export function SessionProvider({ children }) {
        * Registra o aceite de um documento (document: "termo_uso" ou "tutor_ia"; origin: "google", "tela_aceite" ou "tutor") e
        * troca os dados de abertura pelos atualizados. `phone` (formato internacional) só vai quando a tela pediu o WhatsApp.
        * Se o servidor recusar (ex.: versão desatualizada), o erro sobe para a tela e os dados de abertura não mudam.
+       * `declarations` ({ adult, physician }) só vai quando a versão vigente pede (Termo 2.0, boot.legal.declarations_required):
+       * aí a chamada é app_accept_terms_declared, que grava as declarações junto do aceite.
        */
-      async acceptTerms({ document, version, origin, phone }) {
-        const boot = await backend.rpc("app_accept_terms", {
+      async acceptTerms({ document, version, origin, phone, declarations }) {
+        const args = {
           p_document: document,
           p_version: version,
           p_origin: origin,
           p_phone: phone ?? null,
           p_user_agent: navigator.userAgent.slice(0, 300),
-        });
+        };
+        const boot = declarations
+          ? await backend.rpc("app_accept_terms_declared", { ...args, p_adult: declarations.adult === true, p_physician: declarations.physician === true })
+          : await backend.rpc("app_accept_terms", args);
         setState((s) => ({ ...s, boot }));
       },
       async signOut() {
