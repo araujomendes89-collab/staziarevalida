@@ -1,0 +1,2979 @@
+{
+ "versao": 2,
+ "comentario": "Catalogo de celebracoes do Stazi v2 (publico adulto: medicos e residentes). Fonte unica: validada por validarCatalogo e lida por CelebracaoStazi. Frases em pt-BR, <=90 caracteres, humor seco, sem culpa nem pressao.",
+ "eventos": [
+  {
+   "id": "primeiro-dia",
+   "rotulo": "Primeiro dia de estudo",
+   "categoria": "sequencia",
+   "gatilho": {
+    "tipo": "STREAK_INCREMENTED",
+    "condicao": "current_streak passou de 0 para 1 (primeiro dia qualificado)",
+    "fonte": "user_gamification_stats.current_streak (antes e depois) + gamification_events.STREAK_INCREMENTED"
+   },
+   "intensidade": "media",
+   "cenario": "madrugada",
+   "reacao": {
+    "coreografia": "cumprimento",
+    "poses": {
+     "inicio": "base",
+     "climax": "acenando",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "casual",
+     "fone"
+    ]
+   },
+   "efeito": {
+    "tipo": "poeira",
+    "densidade": 0.6
+   },
+   "som": [
+    {
+     "cue": "veo-sequencia-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.6,
+     "variantes": [
+      "veo-sequencia-2",
+      "sequencia-3"
+     ]
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "n",
+    "unidade": "dia"
+   },
+   "titulo": "Primeiro dia concluído",
+   "frases": [
+    "Dia 1 feito. Toda residência começa no primeiro plantão.",
+    "Começou. O resto é constância e café.",
+    "Primeiro dia no prontuário. Amanhã a gente evolui.",
+    "Sequência aberta. Agora é não dar alta cedo demais.",
+    "Dia 1: caso inicial resolvido.",
+    "Você começou, e isso já separa quem quer de quem fala.",
+    "Primeiro dia concluído. Quadro estável, prognóstico bom.",
+    "Hoje você abriu a sequência. Bora cuidar dela."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": true,
+   "prioridade": 70,
+   "detalhe": "Sequência: {n} dia",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Começou, doutor!",
+    "durona": "Primeiro dia. Agora repete.",
+    "durona_forte": "Dia um. Amanhã aparece."
+   }
+  },
+  {
+   "id": "dia-2",
+   "rotulo": "2º dia de sequência",
+   "categoria": "sequencia",
+   "gatilho": {
+    "tipo": "STREAK_INCREMENTED",
+    "condicao": "current_streak == 2",
+    "fonte": "user_gamification_stats.current_streak (antes e depois) + gamification_events.STREAK_INCREMENTED"
+   },
+   "intensidade": "micro",
+   "cenario": "madrugada",
+   "reacao": {
+    "coreografia": "toque",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "casual",
+     "fone",
+     "varsity"
+    ]
+   },
+   "efeito": {
+    "tipo": "poeira",
+    "densidade": 0.25
+   },
+   "som": [
+    {
+     "cue": "veo-sequencia-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.4
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "n",
+    "unidade": "dias"
+   },
+   "titulo": "{n}º dia seguido",
+   "frases": [
+    "Dois dias seguidos. Já dá para chamar de rotina.",
+    "Dia 2. A constância começa a aparecer no exame.",
+    "Segundo dia concluído. Sem intercorrências.",
+    "Mais um dia no placar. Discreto e eficiente.",
+    "Dois dias. Sem drama, só consistência.",
+    "Sequência em {n} dias. Quadro estável.",
+    "Dia 2 feito. Seu eu de amanhã agradece."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": true,
+   "prioridade": 40,
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Dois dias, doutor!",
+    "durona": "Dois dias. Já é rotina.",
+    "durona_forte": "Dois dias. Não foi sorte."
+   }
+  },
+  {
+   "id": "dia-3",
+   "rotulo": "3º dia de sequência",
+   "categoria": "sequencia",
+   "gatilho": {
+    "tipo": "STREAK_INCREMENTED",
+    "condicao": "current_streak == 3",
+    "fonte": "user_gamification_stats.current_streak (antes e depois) + gamification_events.STREAK_INCREMENTED"
+   },
+   "intensidade": "micro",
+   "cenario": "madrugada",
+   "reacao": {
+    "coreografia": "toque",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "casual",
+     "fone",
+     "varsity"
+    ]
+   },
+   "efeito": {
+    "tipo": "poeira",
+    "densidade": 0.25
+   },
+   "som": [
+    {
+     "cue": "veo-sequencia-1",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.4
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "n",
+    "unidade": "dias"
+   },
+   "titulo": "{n}º dia seguido",
+   "frases": [
+    "Três dias seguidos. Isso já é tendência.",
+    "Dia 3. Hábito em formação, evolução favorável.",
+    "Terceiro dia concluído. Nem precisou de café extra.",
+    "{n} dias na sequência. Começou a ficar sério.",
+    "Três dias: o suficiente para incomodar a procrastinação.",
+    "Dia {n} no prontuário. Segue o plano.",
+    "Três dias firmes. A rotina assinou o ponto."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": true,
+   "prioridade": 40,
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Três seguidos!",
+    "durona": "Três dias. É tendência.",
+    "durona_forte": "Três dias. Segue assim."
+   }
+  },
+  {
+   "id": "streak-dia-comum",
+   "rotulo": "Dia comum de sequência",
+   "categoria": "sequencia",
+   "gatilho": {
+    "tipo": "STREAK_INCREMENTED",
+    "condicao": "current_streak aumentou e NÃO é marco (4-6, 8-13, 15-29...)",
+    "fonte": "user_gamification_stats.current_streak (antes e depois) + gamification_events.STREAK_INCREMENTED"
+   },
+   "intensidade": "micro",
+   "cenario": "madrugada",
+   "reacao": {
+    "coreografia": "toque",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "casual",
+     "fone",
+     "varsity",
+     "esports"
+    ]
+   },
+   "efeito": {
+    "tipo": "poeira",
+    "densidade": 0.25
+   },
+   "som": [
+    {
+     "cue": "veo-sequencia-1",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.35
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "n",
+    "unidade": "dias"
+   },
+   "titulo": "Dia {n}",
+   "frases": [
+    "Dia {n} concluído. Seguimos.",
+    "{n} dias de sequência. Constância é o melhor diagnóstico.",
+    "Mais um dia no placar: {n}.",
+    "Sequência em {n} dias. Sem alarde, sem folga.",
+    "Feito por hoje. O plantão da dedicação não folga.",
+    "Dia {n}. Discreto, consistente, eficaz.",
+    "Você apareceu de novo. Isso vale mais que talento."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": true,
+   "prioridade": 30,
+   "voz": {
+    "momento": "climax",
+    "delta": 600,
+    "ocasional": true,
+    "stazi": "Constância é isso.",
+    "durona": "Mais um dia. Constância.",
+    "durona_forte": "Mais um dia. Segue."
+   }
+  },
+  {
+   "id": "streak-7",
+   "rotulo": "7 dias de sequência",
+   "categoria": "sequencia",
+   "gatilho": {
+    "tipo": "STREAK_INCREMENTED",
+    "condicao": "current_streak == 7",
+    "fonte": "user_gamification_stats.current_streak (antes e depois) + gamification_events.STREAK_INCREMENTED"
+   },
+   "intensidade": "grande",
+   "cenario": "estudio-escuro",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "bone",
+     "varsity",
+     "esports"
+    ]
+   },
+   "efeito": {
+    "tipo": "faiscas",
+    "densidade": 0.7
+   },
+   "som": [
+    {
+     "cue": "sequencia-3",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.7
+    }
+   ],
+   "numero": {
+    "modo": "rolar",
+    "variavel": "n",
+    "unidade": "dias"
+   },
+   "titulo": "{n} dias de sequência",
+   "frases": [
+    "Uma semana. Sete dias de plantão sem faltar.",
+    "7 dias seguidos. Já dá pra chamar de hábito sem medo.",
+    "{n} dias de sequência. O café agradece, o cérebro também.",
+    "Sete dias. Isso é consistência, não sorte.",
+    "Semana fechada. Seu hábito saiu da UTI.",
+    "{n} dias seguidos. Quadro estável e melhorando.",
+    "Uma semana inteira de estudo. Pode se orgulhar, sem exagerar."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": true,
+   "prioridade": 85,
+   "detalhe": "Maior sequência: {recorde} dias",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Constância é isso.",
+    "durona": "Sete dias. Já é começo.",
+    "durona_forte": "Sete dias. Sem relaxar."
+   }
+  },
+  {
+   "id": "streak-14",
+   "rotulo": "14 dias de sequência",
+   "categoria": "sequencia",
+   "gatilho": {
+    "tipo": "STREAK_INCREMENTED",
+    "condicao": "current_streak == 14",
+    "fonte": "user_gamification_stats.current_streak (antes e depois) + gamification_events.STREAK_INCREMENTED"
+   },
+   "intensidade": "grande",
+   "cenario": "estudio-escuro",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "bomber",
+     "esports",
+     "fone"
+    ]
+   },
+   "efeito": {
+    "tipo": "faiscas",
+    "densidade": 0.8
+   },
+   "som": [
+    {
+     "cue": "veo-sequencia-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.75,
+     "variantes": [
+      "veo-sequencia-2",
+      "sequencia-3"
+     ]
+    }
+   ],
+   "numero": {
+    "modo": "rolar",
+    "variavel": "n",
+    "unidade": "dias"
+   },
+   "titulo": "{n} dias de sequência",
+   "frases": [
+    "Duas semanas. Constância que já merece prontuário próprio.",
+    "14 dias. Disciplina que não pede aplauso, mas aceita.",
+    "{n} dias de sequência. A rotina já é sua.",
+    "Quatorze dias seguidos. Nem o plantão te derrubou.",
+    "Duas semanas de estudo. Alta do ceticismo.",
+    "{n} dias firmes. O Revalida está começando a ficar nervoso.",
+    "Catorze dias. Seu hábito já tem convênio."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": true,
+   "prioridade": 85,
+   "detalhe": "Maior sequência: {recorde} dias",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Duas semanas, hein!",
+    "durona": "Duas semanas. Constância.",
+    "durona_forte": "Catorze. Continua, doutor."
+   }
+  },
+  {
+   "id": "streak-30",
+   "rotulo": "30 dias de sequência",
+   "categoria": "sequencia",
+   "gatilho": {
+    "tipo": "STREAK_INCREMENTED",
+    "condicao": "current_streak == 30",
+    "fonte": "user_gamification_stats.current_streak (antes e depois) + gamification_events.STREAK_INCREMENTED"
+   },
+   "intensidade": "grande",
+   "cenario": "noite-urbana",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "bone",
+     "bomber",
+     "social"
+    ]
+   },
+   "efeito": {
+    "tipo": "onda",
+    "densidade": 0.8
+   },
+   "som": [
+    {
+     "cue": "veo-conquista-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.85,
+     "variantes": [
+      "veo-conquista-2",
+      "conquista-op2"
+     ]
+    },
+    {
+     "cue": "hee-hee-3",
+     "momento": "climax",
+     "delta": 2050,
+     "gain": 0.8
+    }
+   ],
+   "numero": {
+    "modo": "rolar",
+    "variavel": "n",
+    "unidade": "dias"
+   },
+   "titulo": "{n} dias de sequência",
+   "frases": [
+    "30 dias. Constância é o melhor diagnóstico.",
+    "Um mês de estudo. Chefão derrotado, sem muito barulho.",
+    "{n} dias de sequência. Isso é compromisso, não sorte.",
+    "Trinta dias seguidos. Até o seu despertador respeita você.",
+    "Um mês inteiro. Quem diria? Eu diria.",
+    "{n} dias. A dedicação não pediu licença médica.",
+    "30 dias sem faltar. O plantão da constância não folga."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": true,
+   "prioridade": 85,
+   "detalhe": "Maior sequência: {recorde} dias",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Trinta dias. Respeito.",
+    "durona": "Constância. Raro de ver.",
+    "durona_forte": "Trinta dias. Surpreendente."
+   }
+  },
+  {
+   "id": "streak-60",
+   "rotulo": "60 dias de sequência",
+   "categoria": "sequencia",
+   "gatilho": {
+    "tipo": "STREAK_INCREMENTED",
+    "condicao": "current_streak == 60",
+    "fonte": "user_gamification_stats.current_streak (antes e depois) + gamification_events.STREAK_INCREMENTED"
+   },
+   "intensidade": "grande",
+   "cenario": "noite-urbana",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "social",
+     "bomber",
+     "doutor"
+    ]
+   },
+   "efeito": {
+    "tipo": "onda",
+    "densidade": 0.9
+   },
+   "som": [
+    {
+     "cue": "veo-conquista-1",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.9
+    }
+   ],
+   "numero": {
+    "modo": "rolar",
+    "variavel": "n",
+    "unidade": "dias"
+   },
+   "titulo": "{n} dias de sequência",
+   "frases": [
+    "60 dias. Dois meses de disciplina de residente.",
+    "Sessenta dias seguidos. Isso é raro e bem-vindo.",
+    "{n} dias de sequência. Seu hábito agora tem CRM.",
+    "Dois meses sem faltar. Respeito é a palavra.",
+    "60 dias: o suficiente para virar identidade.",
+    "{n} dias. Cada um deles contou, inclusive os cansados.",
+    "Dois meses de estudo. O Revalida já sabe seu nome."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": true,
+   "prioridade": 85,
+   "detalhe": "Maior sequência: {recorde} dias",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Dois meses, doutor!",
+    "durona": "Sessenta. Quem diria.",
+    "durona_forte": "Sessenta. Não vacila agora."
+   }
+  },
+  {
+   "id": "streak-100",
+   "rotulo": "100 dias de sequência",
+   "categoria": "sequencia",
+   "gatilho": {
+    "tipo": "STREAK_INCREMENTED",
+    "condicao": "current_streak == 100",
+    "fonte": "user_gamification_stats.current_streak (antes e depois) + gamification_events.STREAK_INCREMENTED"
+   },
+   "intensidade": "epica",
+   "cenario": "skyline",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "trofeu"
+    },
+    "figurinos": [
+     "social",
+     "bone",
+     "bomber"
+    ]
+   },
+   "efeito": {
+    "tipo": "brasas",
+    "densidade": 1.0
+   },
+   "som": [
+    {
+     "cue": "veo-lendaria-1",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.9
+    }
+   ],
+   "numero": {
+    "modo": "rolar",
+    "variavel": "n",
+    "unidade": "dias"
+   },
+   "titulo": "{n} dias de sequência",
+   "frases": [
+    "100 dias. Isso é constância de gente grande.",
+    "Cem dias seguidos. Pode contar para a família.",
+    "{n} dias de sequência. Lenda de plantão.",
+    "Cem dias de estudo. Poucos chegam, você está aqui.",
+    "100 dias sem faltar. O Revalida que se prepare.",
+    "{n} dias. Disciplina que não cabe em um fôlego só.",
+    "Cem dias. Hora de um café com orgulho."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": true,
+   "prioridade": 95,
+   "detalhe": "Maior sequência: {recorde} dias",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Cem dias. Lendário.",
+    "durona": "Cem dias. Eu me rendo.",
+    "durona_forte": "Cem. Tá, essa eu aplaudo."
+   }
+  },
+  {
+   "id": "streak-365",
+   "rotulo": "365 dias de sequência",
+   "categoria": "sequencia",
+   "gatilho": {
+    "tipo": "STREAK_INCREMENTED",
+    "condicao": "current_streak == 365",
+    "fonte": "user_gamification_stats.current_streak (antes e depois) + gamification_events.STREAK_INCREMENTED"
+   },
+   "intensidade": "epica",
+   "cenario": "skyline",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "trofeu"
+    },
+    "figurinos": [
+     "social",
+     "doutor"
+    ]
+   },
+   "efeito": {
+    "tipo": "brasas",
+    "densidade": 1.0
+   },
+   "som": [
+    {
+     "cue": "veo-lendaria-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 1.0
+    }
+   ],
+   "numero": {
+    "modo": "rolar",
+    "variavel": "n",
+    "unidade": "dias"
+   },
+   "titulo": "{n} dias de sequência",
+   "frases": [
+    "Um ano inteiro de estudo. Respeito absoluto.",
+    "365 dias seguidos. Isso é um doutorado em constância.",
+    "{n} dias de sequência. Um ano sem faltar.",
+    "Um ano. Você transformou estudo em estilo de vida.",
+    "365 dias. Até o calendário tirou o chapéu.",
+    "{n} dias firmes. Obrigado por estudar comigo.",
+    "Um ano de constância. Isso muda o jogo."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": true,
+   "prioridade": 95,
+   "detalhe": "Maior sequência: {recorde} dias",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Um ano! Sem discussão.",
+    "durona": "Um ano. Sem discussão.",
+    "durona_forte": "Um ano. Respeito. Raro."
+   }
+  },
+  {
+   "id": "novo-recorde",
+   "rotulo": "Novo recorde de sequência",
+   "categoria": "sequencia",
+   "gatilho": {
+    "tipo": "STREAK_INCREMENTED",
+    "condicao": "current_streak > longest_streak anterior (e o recorde anterior era >= 3)",
+    "fonte": "user_gamification_stats.current_streak (antes e depois) + gamification_events.STREAK_INCREMENTED"
+   },
+   "intensidade": "media",
+   "cenario": "aurora",
+   "reacao": {
+    "coreografia": "espanto",
+    "poses": {
+     "inicio": "surpreso",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "bomber",
+     "esports",
+     "bone"
+    ]
+   },
+   "efeito": {
+    "tipo": "onda",
+    "densidade": 0.7
+   },
+   "som": [
+    {
+     "cue": "veo-nivel-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.8
+    }
+   ],
+   "numero": {
+    "modo": "rolar",
+    "variavel": "n",
+    "unidade": "dias"
+   },
+   "titulo": "Novo recorde",
+   "frases": [
+    "Novo recorde: {n} dias. Você acaba de se superar.",
+    "Recorde pessoal batido. Sem pressa, mas sem freio.",
+    "{n} dias: sua maior sequência até hoje.",
+    "Bateu o próprio recorde. Concorrente difícil, esse aí.",
+    "Sua melhor marca agora é {n} dias. Estatisticamente relevante.",
+    "Recorde quebrado. O velho você mandou lembranças.",
+    "{n} dias seguidos, recorde novo. Constância com resultado."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": true,
+   "prioridade": 88,
+   "detalhe": "Recorde anterior: {recorde} dias",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Bateu o recorde!",
+    "durona": "Recorde. Vai com calma.",
+    "durona_forte": "Recorde. Agora mantém."
+   }
+  },
+  {
+   "id": "meta-diaria",
+   "rotulo": "Meta diária cumprida",
+   "categoria": "estudo",
+   "gatilho": {
+    "tipo": "DAILY_GOAL_COMPLETED",
+    "condicao": "plano de hoje concluído (evento DAILY_GOAL_COMPLETED)",
+    "fonte": "gamification_events.DAILY_GOAL_COMPLETED"
+   },
+   "intensidade": "pequena",
+   "cenario": "estudio-escuro",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "plantao",
+     "casual",
+     "fone"
+    ]
+   },
+   "efeito": {
+    "tipo": "faiscas",
+    "densidade": 0.4
+   },
+   "som": [
+    {
+     "cue": "veo-missao-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.6,
+     "variantes": [
+      "veo-missao-2",
+      "missao-op3"
+     ]
+    },
+    {
+     "cue": "coins-grande",
+     "momento": "frase",
+     "delta": 0,
+     "gain": 0.35,
+     "variantes": [
+      "coins-grande",
+      "veo-moeda-1"
+     ]
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "n",
+    "unidade": ""
+   },
+   "titulo": "Meta de hoje cumprida",
+   "frases": [
+    "Meta do dia concluída. Plantão encerrado, pode descansar.",
+    "Hoje está pago. Amanhã tem mais.",
+    "Tudo feito por hoje. Alta merecida.",
+    "Meta batida. Sem milagre, só rotina.",
+    "Dia fechado com chave de ouro (e um café).",
+    "Plano de hoje completo. Isso é organização de residente.",
+    "Meta cumprida. Pode desligar sem culpa.",
+    "Bateu a meta. Agora o sono é parte do tratamento."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 60,
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Meta batida, doutor!",
+    "durona": "Meta batida. O mínimo.",
+    "durona_forte": "Meta. Amanhã de novo."
+   }
+  },
+  {
+   "id": "flashcards-dia",
+   "rotulo": "Flashcards revisados do dia",
+   "categoria": "estudo",
+   "gatilho": {
+    "tipo": "calculado",
+    "condicao": "todos os flashcards vencidos de hoje foram revisados",
+    "fonte": "tela Flashcards (fila de revisão do dia zerada)"
+   },
+   "intensidade": "pequena",
+   "cenario": "estudio-escuro",
+   "reacao": {
+    "coreografia": "toque",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "livro"
+    },
+    "figurinos": [
+     "doutor",
+     "plantao",
+     "casual"
+    ]
+   },
+   "efeito": {
+    "tipo": "faiscas",
+    "densidade": 0.35
+   },
+   "som": [
+    {
+     "cue": "coins-grande",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.45
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "total",
+    "unidade": "cartões"
+   },
+   "titulo": "Revisão do dia feita",
+   "frases": [
+    "Revisão em dia. A memória agradece.",
+    "Todos os cartões de hoje revisados. Boa.",
+    "Fila zerada. Repetir é como a gente fixa.",
+    "{total} cartões revisados hoje. Que dedicação.",
+    "Flashcards em dia. Cérebro com acompanhamento.",
+    "Revisar um pouco todo dia faz toda a diferença.",
+    "Cartões revisados. Estudo inteligente, sem melodrama."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 45,
+   "voz": {
+    "momento": "climax",
+    "delta": 450,
+    "ocasional": true,
+    "stazi": "Cai na conta!",
+    "durona": "Revisão feita. Milagre.",
+    "durona_forte": "Revisou. Quem diria."
+   }
+  },
+  {
+   "id": "aula-concluida",
+   "rotulo": "Aula concluída",
+   "categoria": "estudo",
+   "gatilho": {
+    "tipo": "LESSON_COMPLETED",
+    "condicao": "aula assistida até o fim (evento LESSON_COMPLETED)",
+    "fonte": "gamification_events.LESSON_COMPLETED"
+   },
+   "intensidade": "media",
+   "cenario": "hospital-noite",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "livro"
+    },
+    "figurinos": [
+     "doutor",
+     "plantao"
+    ]
+   },
+   "efeito": {
+    "tipo": "faiscas",
+    "densidade": 0.45
+   },
+   "som": [
+    {
+     "cue": "veo-missao-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.55
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "xp",
+    "unidade": "XP"
+   },
+   "titulo": "Aula concluída",
+   "frases": [
+    "Aula concluída. Mais um tema para o seu repertório.",
+    "Terminou a aula. Isso é construir base sólida.",
+    "Aula feita. Bora fixar com algumas questões?",
+    "Mais uma aula na bagagem. Sem enrolar.",
+    "Aprender dá trabalho, e você fez. Parabéns.",
+    "Aula finalizada. Conteúdo novo, cabeça mais cheia.",
+    "Você chegou ao fim da aula. Foco de residente.",
+    "Um tema a mais dominado. Seguimos."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 62,
+   "detalhe": "+{xp} XP pela aula",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Aula na conta!",
+    "durona": "Aula feita. Bora fixar.",
+    "durona_forte": "Assistiu. Agora pratica."
+   }
+  },
+  {
+   "id": "plano-finalizado",
+   "rotulo": "Plano de estudos finalizado",
+   "categoria": "estudo",
+   "gatilho": {
+    "tipo": "calculado",
+    "condicao": "todas as etapas do plano de estudos foram concluídas",
+    "fonte": "tela Planejamento (study_plans / etapas)"
+   },
+   "intensidade": "grande",
+   "cenario": "estudio-escuro",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "trofeu"
+    },
+    "figurinos": [
+     "social",
+     "doutor"
+    ]
+   },
+   "efeito": {
+    "tipo": "onda",
+    "densidade": 0.8
+   },
+   "som": [
+    {
+     "cue": "veo-nivel-1",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.9
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "n",
+    "unidade": ""
+   },
+   "titulo": "Plano de estudos finalizado",
+   "frases": [
+    "Plano finalizado. Foi um caminho e tanto.",
+    "Você cumpriu o plano inteiro. Isso é disciplina.",
+    "Todas as etapas concluídas. Parabéns, sem ironia.",
+    "Plano completo. Organização e garra, na proporção certa.",
+    "Chegou ao fim do plano. Alta do planejamento.",
+    "Meta do plano batida. Respire e aproveite.",
+    "Plano cumprido do começo ao fim. Poucos fazem."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": false,
+   "prioridade": 82,
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Plano na mão!",
+    "durona": "Plano cumprido. Surpreendente.",
+    "durona_forte": "Plano feito. Próximo."
+   }
+  },
+  {
+   "id": "questao-correta",
+   "rotulo": "Questão correta",
+   "categoria": "pratica",
+   "gatilho": {
+    "tipo": "QUESTION_CORRECT",
+    "condicao": "resposta correta (evento QUESTION_CORRECT)",
+    "fonte": "gamification_events.QUESTION_CORRECT ou retorno da resposta"
+   },
+   "intensidade": "micro",
+   "cenario": "arena-esports",
+   "reacao": {
+    "coreografia": "toque",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "casual",
+     "esports",
+     "fone",
+     "varsity"
+    ]
+   },
+   "efeito": {
+    "tipo": "nenhum",
+    "densidade": 0
+   },
+   "som": [
+    {
+     "cue": "veo-xp-1",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.35,
+     "variantes": [
+      "veo-xp-1",
+      "veo-xp-2",
+      "veo-xp-3"
+     ]
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "n",
+    "unidade": ""
+   },
+   "titulo": "Acertou",
+   "frases": [
+    "Acertou. Seguimos.",
+    "Boa. Raciocínio clínico em dia.",
+    "Certeiro.",
+    "Essa você sabia. Anota aí.",
+    "Direto ao diagnóstico.",
+    "Sem hesitar. Gostei.",
+    "Mais uma no bolso.",
+    "Na mosca."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 20,
+   "voz": {
+    "momento": "climax",
+    "delta": 450,
+    "ocasional": true,
+    "stazi": "Tá pago!",
+    "durona": "Acertou. Seguimos.",
+    "durona_forte": "Certo. Era o mínimo."
+   }
+  },
+  {
+   "id": "serie-acertos-5",
+   "rotulo": "Série de 5 acertos",
+   "categoria": "pratica",
+   "gatilho": {
+    "tipo": "calculado",
+    "condicao": "5 respostas corretas consecutivas na sessão",
+    "fonte": "contador de acertos seguidos no cliente (usePracticeSession)"
+   },
+   "intensidade": "pequena",
+   "cenario": "arena-esports",
+   "reacao": {
+    "coreografia": "toque",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "esports",
+     "fone",
+     "bone"
+    ]
+   },
+   "efeito": {
+    "tipo": "faiscas",
+    "densidade": 0.4
+   },
+   "som": [
+    {
+     "cue": "veo-xp-3",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.45,
+     "variantes": [
+      "veo-xp-3",
+      "coins-cascata"
+     ]
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "n",
+    "unidade": "seguidas"
+   },
+   "titulo": "5 acertos seguidos",
+   "frases": [
+    "5 acertos seguidos. O ritmo pegou.",
+    "Cinco em sequência. Quadro estável.",
+    "{n} acertos seguidos. Foco ligado.",
+    "Cinco certeiras. Continue assim.",
+    "Série de {n}. Está no embalo.",
+    "5 seguidas. Estudar assim dá resultado.",
+    "Cinco na linha, sem erro de conduta."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 56,
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Cinco seguidas!",
+    "durona": "Cinco seguidas. Ritmo pegou.",
+    "durona_forte": "Cinco. Não relaxa."
+   }
+  },
+  {
+   "id": "serie-acertos-10",
+   "rotulo": "Série de 10 acertos",
+   "categoria": "pratica",
+   "gatilho": {
+    "tipo": "calculado",
+    "condicao": "10 respostas corretas consecutivas na sessão",
+    "fonte": "contador de acertos seguidos no cliente (usePracticeSession)"
+   },
+   "intensidade": "media",
+   "cenario": "arena-esports",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "bone",
+     "bomber",
+     "esports"
+    ]
+   },
+   "efeito": {
+    "tipo": "faiscas",
+    "densidade": 0.4
+   },
+   "som": [
+    {
+     "cue": "veo-missao-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.6
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "n",
+    "unidade": "seguidas"
+   },
+   "titulo": "10 acertos seguidos",
+   "frases": [
+    "10 acertos seguidos. Esse é o tipo de série que assusta banca.",
+    "Dez seguidas. Está voando baixo, na medida.",
+    "{n} acertos em sequência. Impressionante.",
+    "Dez certeiras. Isso é domínio, não sorte.",
+    "Série de {n}. Dá gosto de ver.",
+    "10 seguidas. Seu estudo está firme.",
+    "Dez na linha, sem errar. Parabéns."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 57,
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Dez seguidas, doutor!",
+    "durona": "Dez seguidas. Assustador.",
+    "durona_forte": "Dez. Agora vinte."
+   }
+  },
+  {
+   "id": "serie-acertos-20",
+   "rotulo": "Série de 20 acertos",
+   "categoria": "pratica",
+   "gatilho": {
+    "tipo": "calculado",
+    "condicao": "20 respostas corretas consecutivas na sessão",
+    "fonte": "contador de acertos seguidos no cliente (usePracticeSession)"
+   },
+   "intensidade": "grande",
+   "cenario": "arena-esports",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "trofeu"
+    },
+    "figurinos": [
+     "bomber",
+     "social",
+     "bone"
+    ]
+   },
+   "efeito": {
+    "tipo": "onda",
+    "densidade": 0.7
+   },
+   "som": [
+    {
+     "cue": "veo-conquista-1",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.75
+    },
+    {
+     "cue": "hee-hee-2",
+     "momento": "climax",
+     "delta": 1440,
+     "gain": 0.7
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "n",
+    "unidade": "seguidas"
+   },
+   "titulo": "20 acertos seguidos",
+   "frases": [
+    "20 acertos seguidos. Nível especialista.",
+    "Vinte seguidas. Eu vou ficar sem adjetivos.",
+    "{n} acertos em sequência. Que performance.",
+    "Vinte certeiras. Tema dominado, hein?",
+    "Série de {n}. Pode comemorar, mas sem sorrir muito.",
+    "20 seguidas. Isso é treino de plantão pesado.",
+    "Vinte acertos sem errar. Fantástico."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 59,
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Vinte seguidas, doutor!",
+    "durona": "Vinte seguidas. Impressionou.",
+    "durona_forte": "Vinte. Não se ache."
+   }
+  },
+  {
+   "id": "erro-encorajador",
+   "rotulo": "Erro (recuo tático)",
+   "categoria": "erro",
+   "gatilho": {
+    "tipo": "QUESTION_WRONG",
+    "condicao": "resposta incorreta fora de prova/simulado (no máximo uma vez a cada 3 min)",
+    "fonte": "retorno da resposta na tela Banco de Questões (modo estudo)"
+   },
+   "intensidade": "micro",
+   "cenario": "nevoa",
+   "reacao": {
+    "coreografia": "encorajar",
+    "poses": {
+     "inicio": "triste",
+     "climax": "polegar",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "casual",
+     "plantao"
+    ]
+   },
+   "efeito": {
+    "tipo": "nenhum",
+    "densidade": 0
+   },
+   "som": [
+    {
+     "cue": "veo-erro-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.45,
+     "variantes": [
+      "veo-erro-2",
+      "veo-erro-1"
+     ]
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "n",
+    "unidade": ""
+   },
+   "titulo": "Recuo tático",
+   "frases": [
+    "Errou? Faz parte. Revisa e volta mais afiado.",
+    "Recuo tático. Lê a explicação e ataca de novo.",
+    "Essa escapou. O erro de hoje é o acerto de amanhã.",
+    "Sem drama: errar na prática é melhor que errar na prova.",
+    "Diagnóstico diferencial errado. Acontece nas melhores famílias.",
+    "Tudo bem. A explicação está ali, aproveita.",
+    "Erro registrado, aprendizado em andamento.",
+    "Respira, revisa, segue. Você sabe fazer isso."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 10,
+   "voz": {
+    "momento": "climax",
+    "delta": 700,
+    "ocasional": true,
+    "stazi": "Recuo tático, continua.",
+    "durona": "Errou? Faz parte. Revisa.",
+    "durona_forte": "De novo? Abre o livro."
+   }
+  },
+  {
+   "id": "missao-cumprida",
+   "rotulo": "Missão cumprida",
+   "categoria": "pratica",
+   "gatilho": {
+    "tipo": "MISSION_COMPLETED",
+    "condicao": "missão concluída (MISSION_COMPLETED ou DAILY_MISSIONS_COMPLETED)",
+    "fonte": "gamification_events.MISSION_COMPLETED"
+   },
+   "intensidade": "media",
+   "cenario": "arena-esports",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "esports",
+     "varsity",
+     "plantao"
+    ]
+   },
+   "efeito": {
+    "tipo": "faiscas",
+    "densidade": 0.5
+   },
+   "som": [
+    {
+     "cue": "veo-missao-1",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.65
+    },
+    {
+     "cue": "hee-hee-2",
+     "momento": "climax",
+     "delta": 1650,
+     "gain": 0.85
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "xp",
+    "unidade": "XP"
+   },
+   "titulo": "Missão cumprida",
+   "frases": [
+    "Missão cumprida. Sem alarde, com resultado.",
+    "Mais uma missão no prontuário.",
+    "Missão concluída. O Stazi aprova.",
+    "Uma missão a menos, um passo a mais.",
+    "Concluída. Dá para sentir o progresso.",
+    "Missão feita. Isso é execução.",
+    "Cumpriu o combinado. Raro e valioso."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 64,
+   "detalhe": "+{xp} XP",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Missão dada, missão cumprida.",
+    "durona": "Missão cumprida. Raro.",
+    "durona_forte": "Cumpriu. Não se acostume."
+   }
+  },
+  {
+   "id": "desafio-acertado",
+   "rotulo": "Acertou um desafio",
+   "categoria": "pratica",
+   "gatilho": {
+    "tipo": "MISSION_COMPLETED",
+    "condicao": "desafio da Arena/missão acertado (o dono escolheu o \"hee hee\" para este evento)",
+    "fonte": "gamification_events.MISSION_COMPLETED (metadata.desafio) ou retorno do desafio"
+   },
+   "intensidade": "pequena",
+   "cenario": "arena-esports",
+   "reacao": {
+    "coreografia": "toque",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "bone",
+     "fone",
+     "esports"
+    ]
+   },
+   "efeito": {
+    "tipo": "faiscas",
+    "densidade": 0.4
+   },
+   "som": [
+    {
+     "cue": "hee-hee",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 1.0
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "n",
+    "unidade": ""
+   },
+   "titulo": "Desafio acertado",
+   "frases": [
+    "Acertou o desafio. Hee hee.",
+    "Desafio vencido. Estava fácil, né?",
+    "Essa foi esperta. Desafio no bolso.",
+    "Hee hee. O desafio caiu na sua mão.",
+    "Desafio cumprido com estilo.",
+    "Mandou ver no desafio. Parabéns.",
+    "Desafio na conta. Quer outro?"
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 63,
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Tá pago!",
+    "durona": "Finalmente, né?",
+    "durona_forte": "Demorou, mas foi."
+   }
+  },
+  {
+   "id": "conquista-desbloqueada",
+   "rotulo": "Conquista desbloqueada",
+   "categoria": "progresso",
+   "gatilho": {
+    "tipo": "ACHIEVEMENT_UNLOCKED",
+    "condicao": "nova medalha desbloqueada",
+    "fonte": "gamification_events.ACHIEVEMENT_UNLOCKED + user_achievements"
+   },
+   "intensidade": "media",
+   "cenario": "hospital-noite",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "trofeu"
+    },
+    "figurinos": [
+     "social",
+     "bone",
+     "doutor"
+    ]
+   },
+   "efeito": {
+    "tipo": "onda",
+    "densidade": 0.6
+   },
+   "som": [
+    {
+     "cue": "veo-conquista-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.85
+    },
+    {
+     "cue": "hee-hee",
+     "momento": "climax",
+     "delta": 2050,
+     "gain": 0.85
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "xp",
+    "unidade": "XP"
+   },
+   "titulo": "Nova conquista",
+   "frases": [
+    "Conquista desbloqueada. É toda sua.",
+    "Mais uma medalha na estante.",
+    "Você merece essa conquista. Parabéns.",
+    "Nova medalha. O esforço aparece.",
+    "Conquista nova. Sem sorte, só trabalho.",
+    "Você desbloqueou uma conquista. Elegante.",
+    "Medalha conquistada. Ninguém tira de você."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": false,
+   "prioridade": 75,
+   "detalhe": "+{xp} XP",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Chegou chegando!",
+    "durona": "Tá bom, essa eu aplaudo.",
+    "durona_forte": "Conquista. Não se empolgue."
+   }
+  },
+  {
+   "id": "novo-nivel",
+   "rotulo": "Novo nível",
+   "categoria": "progresso",
+   "gatilho": {
+    "tipo": "LEVEL_UP",
+    "condicao": "level_up (current_level mudou)",
+    "fonte": "gamification_events.LEVEL_UP + user_gamification_stats.current_level"
+   },
+   "intensidade": "grande",
+   "cenario": "horizonte",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "bomber",
+     "social",
+     "esports"
+    ]
+   },
+   "efeito": {
+    "tipo": "onda",
+    "densidade": 0.8
+   },
+   "som": [
+    {
+     "cue": "veo-nivel-1",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.85
+    },
+    {
+     "cue": "hee-hee-3",
+     "momento": "climax",
+     "delta": 2050,
+     "gain": 0.8
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "xp",
+    "unidade": "XP"
+   },
+   "titulo": "Novo nível",
+   "frases": [
+    "Subiu de nível. O esforço apareceu no laudo.",
+    "Nível novo. Dá para sentir a evolução.",
+    "Você evoluiu. Sem milagre, com método.",
+    "Mais um degrau subido. Continue.",
+    "Novo nível alcançado. Promoção merecida.",
+    "Nível novo, mesma constância.",
+    "Você chegou mais longe. Anota aí."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": false,
+   "prioridade": 80,
+   "detalhe": "Agora você é {nivel}",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Subiu, doutor!",
+    "durona": "Subiu. Não se acostume.",
+    "durona_forte": "Subiu. Agora segura."
+   }
+  },
+  {
+   "id": "xp-ganho",
+   "rotulo": "XP ganho",
+   "categoria": "progresso",
+   "gatilho": {
+    "tipo": "xp_awarded",
+    "condicao": "qualquer evento com xp_awarded > 0 (use só se não houver outra celebração no mesmo ato)",
+    "fonte": "gamification_events.xp_awarded"
+   },
+   "intensidade": "micro",
+   "cenario": "horizonte",
+   "reacao": {
+    "coreografia": "toque",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "casual",
+     "esports",
+     "fone",
+     "varsity"
+    ]
+   },
+   "efeito": {
+    "tipo": "nenhum",
+    "densidade": 0
+   },
+   "som": [
+    {
+     "cue": "veo-xp-3",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.35,
+     "variantes": [
+      "veo-xp-3",
+      "veo-xp-2",
+      "veo-xp-1"
+     ]
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "xp",
+    "unidade": "XP"
+   },
+   "titulo": "+{xp} XP",
+   "frases": [
+    "+{xp} XP no prontuário.",
+    "Mais {xp} de experiência.",
+    "XP subindo. Continue.",
+    "{xp} XP a mais. Cada ponto conta.",
+    "Ganhou {xp} XP. Bom trabalho.",
+    "Mais experiência na conta."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 15,
+   "voz": {
+    "momento": "climax",
+    "delta": 450,
+    "ocasional": true,
+    "stazi": "Mais um pra conta.",
+    "durona": "Mais um pra conta.",
+    "durona_forte": "XP. Aproveita."
+   }
+  },
+  {
+   "id": "ranking-subiu",
+   "rotulo": "Subida no ranking",
+   "categoria": "social",
+   "gatilho": {
+    "tipo": "calculado",
+    "condicao": "posição na liga/ranking melhorou E o banco confirmou (nunca celebrar posição provisória nem antes do fechamento da semana)",
+    "fonte": "user_gamification_stats (posição) / RPC do ranking da Stazia Arena"
+   },
+   "intensidade": "media",
+   "cenario": "palco",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "trofeu"
+    },
+    "figurinos": [
+     "esports",
+     "bomber",
+     "social"
+    ]
+   },
+   "efeito": {
+    "tipo": "onda",
+    "densidade": 0.6
+   },
+   "som": [
+    {
+     "cue": "veo-nivel-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.8
+    },
+    {
+     "cue": "hee-hee-2",
+     "momento": "climax",
+     "delta": 2050,
+     "gain": 0.7
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "posicao",
+    "unidade": "º lugar"
+   },
+   "titulo": "Você subiu no ranking",
+   "frases": [
+    "Você subiu para o {posicao}º lugar. Sensacional.",
+    "Subiu no ranking. O esforço está aparecendo.",
+    "Agora você é o {posicao}º. Concorrência notificada.",
+    "Mais uma posição conquistada. Bora subir mais?",
+    "{posicao}º no ranking. Dá para comemorar com moderação.",
+    "Subiu no pódio da Arena. Respeito.",
+    "Ranking atualizado: você avançou. Parabéns."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": false,
+   "prioridade": 72,
+   "detalhe": "Sua posição agora: {posicao}º",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Subiu no ranking!",
+    "durona": "Subiu no ranking. Segura.",
+    "durona_forte": "Subiu. Agora aguenta."
+   }
+  },
+  {
+   "id": "simulado-alto",
+   "rotulo": "Simulado finalizado (resultado alto)",
+   "categoria": "progresso",
+   "gatilho": {
+    "tipo": "SIMULATION_COMPLETED",
+    "condicao": "simulado concluído com pct >= 70",
+    "fonte": "gamification_events.SIMULATION_COMPLETED + resultado do simulado (percentual de acerto)"
+   },
+   "intensidade": "media",
+   "cenario": "mesa-prova",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "doutor",
+     "social"
+    ]
+   },
+   "efeito": {
+    "tipo": "faiscas",
+    "densidade": 0.4
+   },
+   "som": [
+    {
+     "cue": "veo-missao-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.65
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "pct",
+    "unidade": "%"
+   },
+   "titulo": "Simulado finalizado",
+   "frases": [
+    "Simulado concluído com {pct}% de acerto. Excelente.",
+    "{pct}% no simulado. Seu estudo está funcionando.",
+    "Ótimo resultado: {pct}%. Agora revisa o que faltou.",
+    "{pct}% de aproveitamento. Isso é banca-friendly.",
+    "Simulado feito, {pct}% de acerto. Parabéns.",
+    "Resultado forte: {pct}%. Siga no ritmo.",
+    "{pct}% de acerto. Vale conferir os erros para ficar impecável."
+   ],
+   "bloqueado_em": [
+    "prova"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 70,
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Mandou bem, doutor!",
+    "durona": "Bom resultado. Não relaxa.",
+    "durona_forte": "Bom. Prova é outra coisa."
+   }
+  },
+  {
+   "id": "simulado-medio",
+   "rotulo": "Simulado finalizado (resultado médio)",
+   "categoria": "progresso",
+   "gatilho": {
+    "tipo": "SIMULATION_COMPLETED",
+    "condicao": "simulado concluído com 40 <= pct < 70",
+    "fonte": "gamification_events.SIMULATION_COMPLETED + resultado do simulado (percentual de acerto)"
+   },
+   "intensidade": "media",
+   "cenario": "mesa-prova",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "doutor",
+     "casual",
+     "plantao"
+    ]
+   },
+   "efeito": {
+    "tipo": "nenhum",
+    "densidade": 0
+   },
+   "som": [
+    {
+     "cue": "coins-cascata",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.45
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "pct",
+    "unidade": "%"
+   },
+   "titulo": "Simulado finalizado",
+   "frases": [
+    "Simulado concluído: {pct}%. Há onde crescer, e você sabe onde.",
+    "{pct}% de acerto. Os erros mostram onde focar.",
+    "Terminou o simulado. Agora é revisar com calma.",
+    "Resultado de {pct}%. Cada simulado é um treino.",
+    "Você fez o simulado até o fim. Isso conta.",
+    "{pct}% hoje. O próximo pode ser melhor.",
+    "Simulado feito. Bora olhar o que dá para ajustar?"
+   ],
+   "bloqueado_em": [
+    "prova"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 70,
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Dá pra subir.",
+    "durona": "Dá pra melhorar.",
+    "durona_forte": "Mediano. Revisa os erros."
+   }
+  },
+  {
+   "id": "simulado-baixo",
+   "rotulo": "Simulado finalizado (resultado baixo)",
+   "categoria": "progresso",
+   "gatilho": {
+    "tipo": "SIMULATION_COMPLETED",
+    "condicao": "simulado concluído com pct < 40",
+    "fonte": "gamification_events.SIMULATION_COMPLETED + resultado do simulado (percentual de acerto)"
+   },
+   "intensidade": "media",
+   "cenario": "mesa-prova",
+   "reacao": {
+    "coreografia": "encorajar",
+    "poses": {
+     "inicio": "triste",
+     "climax": "polegar",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "casual",
+     "plantao"
+    ]
+   },
+   "efeito": {
+    "tipo": "nenhum",
+    "densidade": 0
+   },
+   "som": [
+    {
+     "cue": "veo-erro-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.4
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "pct",
+    "unidade": "%"
+   },
+   "titulo": "Simulado finalizado",
+   "frases": [
+    "Simulado feito: {pct}%. Concluir já foi um passo.",
+    "Hoje foi {pct}%. Vamos olhar onde dá para melhorar.",
+    "Resultado é ponto de partida, não sentença.",
+    "Respira. Com revisão, o próximo simulado melhora.",
+    "Você terminou, e isso não é pouco. Bora revisar.",
+    "{pct}% hoje. Cada simulado ensina algo.",
+    "Sem pressão: use esse resultado para planejar."
+   ],
+   "bloqueado_em": [
+    "prova"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 70,
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Recuo tático, continua.",
+    "durona": "Revisa e volta.",
+    "durona_forte": "Doeu? Revisa e volta."
+   }
+  },
+  {
+   "id": "volta-apos-pausa",
+   "rotulo": "Volta depois de dias sem estudar",
+   "categoria": "retorno",
+   "gatilho": {
+    "tipo": "calculado",
+    "condicao": "primeira atividade qualificada depois de >= 3 dias sem estudar (last_qualified_date)",
+    "fonte": "user_gamification_stats.last_qualified_date (antes e depois)"
+   },
+   "intensidade": "media",
+   "cenario": "ambar",
+   "reacao": {
+    "coreografia": "despertar",
+    "poses": {
+     "inicio": "dormindo",
+     "climax": "acenando",
+     "final": "acenando"
+    },
+    "figurinos": [
+     "casual",
+     "fone",
+     "plantao"
+    ]
+   },
+   "efeito": {
+    "tipo": "poeira",
+    "densidade": 0.5
+   },
+   "som": [
+    {
+     "cue": "veo-sequencia-1",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.4
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "dias",
+    "unidade": ""
+   },
+   "titulo": "Bem-vindo de volta",
+   "frases": [
+    "Bem-vindo de volta. O plantão estava te esperando.",
+    "Voltou. Isso é o que importa.",
+    "Pausa faz parte do tratamento. Vamos retomar.",
+    "Que bom te ver de novo. Sem cobrança.",
+    "Retomar também é disciplina. Respeito.",
+    "Oi de novo. A gente recomeça do ponto em que parou.",
+    "Faz {dias} dias, e tudo bem. Bora retomar."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 66,
+   "detalhe": "Hoje é um bom dia para recomeçar",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Bem-vindo de volta!",
+    "durona": "Voltou. Sem drama.",
+    "durona_forte": "Voltou. Agora fica."
+   }
+  },
+  {
+   "id": "congelamento-usado",
+   "rotulo": "Congelamento de sequência usado",
+   "categoria": "retorno",
+   "gatilho": {
+    "tipo": "STREAK_FREEZE_USED",
+    "condicao": "um congelamento protegeu a sequência (STREAK_FREEZE_USED)",
+    "fonte": "gamification_events.STREAK_FREEZE_USED + user_gamification_stats.streak_freezes"
+   },
+   "intensidade": "pequena",
+   "cenario": "ambar",
+   "reacao": {
+    "coreografia": "toque",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "casual",
+     "plantao"
+    ]
+   },
+   "efeito": {
+    "tipo": "poeira",
+    "densidade": 0.3
+   },
+   "som": [
+    {
+     "cue": "coins-cascata",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.5,
+     "variantes": [
+      "coins-cascata",
+      "coins-grande"
+     ]
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "n",
+    "unidade": "dias"
+   },
+   "titulo": "Sequência protegida",
+   "frases": [
+    "Seu congelamento protegeu a sequência. Seguro de saúde ativado.",
+    "Sequência salva. O congelamento entrou em ação.",
+    "Tudo certo: sua sequência de {n} dias está segura.",
+    "Um congelamento cuidou de você hoje.",
+    "Sua sequência continua firme. Respira e segue.",
+    "Descanso é permitido. Sua sequência está preservada."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": true,
+   "prioridade": 58,
+   "detalhe": "Congelamentos restantes: {restantes}",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Salvou pelo gelo!",
+    "durona": "Congelamento usado. Cuidado.",
+    "durona_forte": "Foi salvo pelo gelo."
+   }
+  },
+  {
+   "id": "dica-disponivel",
+   "rotulo": "Dica disponível",
+   "categoria": "dica",
+   "gatilho": {
+    "tipo": "calculado",
+    "condicao": "nova dica/explicação disponível para a questão atual",
+    "fonte": "tela Banco de Questões (explicação da questão)"
+   },
+   "intensidade": "pequena",
+   "cenario": "ideia",
+   "reacao": {
+    "coreografia": "pensar",
+    "poses": {
+     "inicio": "pensativo",
+     "climax": "pensativo",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "doutor",
+     "casual"
+    ]
+   },
+   "efeito": {
+    "tipo": "poeira",
+    "densidade": 0.3
+   },
+   "som": [
+    {
+     "cue": "veo-xp-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.35,
+     "variantes": [
+      "veo-xp-2",
+      "veo-xp-3",
+      "veo-xp-1"
+     ]
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "n",
+    "unidade": ""
+   },
+   "titulo": "Dica do Stazi",
+   "frases": [
+    "Tenho uma dica. Quer ver?",
+    "Pensando aqui… acho que posso ajudar.",
+    "Uma pista pode destravar essa questão.",
+    "Hmm. Que tal olhar a explicação?",
+    "Dica disponível. Consulta rápida, sem custo.",
+    "Pedir ajuda também faz parte do estudo."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 25,
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Tenho uma dica.",
+    "durona": "Dica na mesa. Aproveita.",
+    "durona_forte": "Dica. Usa direito."
+   }
+  },
+  {
+   "id": "liga-promocao-prata",
+   "rotulo": "Promoção de liga: Prata",
+   "categoria": "social",
+   "gatilho": {
+    "tipo": "LEAGUE_PROMOTED",
+    "condicao": "subiu para a liga Prata (fechamento semanal processado)",
+    "fonte": "league_memberships / fechamento semanal (liga nova confirmada pelo banco)"
+   },
+   "intensidade": "grande",
+   "cenario": "liga",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "trofeu"
+    },
+    "figurinos": [
+     "bomber",
+     "bone",
+     "esports",
+     "social"
+    ]
+   },
+   "efeito": {
+    "tipo": "onda",
+    "densidade": 0.6699999999999999
+   },
+   "som": [
+    {
+     "cue": "veo-liga-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.6
+    },
+    {
+     "cue": "hee-hee-2",
+     "momento": "climax",
+     "delta": 2550,
+     "gain": 0.8
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "liga",
+    "unidade": ""
+   },
+   "titulo": "Você subiu para a Liga {liga}",
+   "frases": [
+    "Você subiu para a Liga {liga}. Chefão derrotado.",
+    "Liga {liga} conquistada. Foi uma batalha e tanto.",
+    "Promovido. A Liga {liga} agora é sua.",
+    "Vitória na arena. Bem-vindo à Liga {liga}.",
+    "Subiu de liga. Hora de erguer o troféu com classe.",
+    "A Liga {liga} te espera. Você merece.",
+    "Fim de fase: Liga {liga}. Respeito."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": false,
+   "prioridade": 91,
+   "detalhe": "Seu esforço colocou você em um novo patamar.",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Subiu de liga, doutor!",
+    "durona": "Subiu de liga. Merecido.",
+    "durona_forte": "Liga nova. Não escorrega."
+   }
+  },
+  {
+   "id": "liga-promocao-ouro",
+   "rotulo": "Promoção de liga: Ouro",
+   "categoria": "social",
+   "gatilho": {
+    "tipo": "LEAGUE_PROMOTED",
+    "condicao": "subiu para a liga Ouro (fechamento semanal processado)",
+    "fonte": "league_memberships / fechamento semanal (liga nova confirmada pelo banco)"
+   },
+   "intensidade": "grande",
+   "cenario": "liga",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "trofeu"
+    },
+    "figurinos": [
+     "bomber",
+     "bone",
+     "esports",
+     "social"
+    ]
+   },
+   "efeito": {
+    "tipo": "onda",
+    "densidade": 0.74
+   },
+   "som": [
+    {
+     "cue": "veo-liga-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.7
+    },
+    {
+     "cue": "hee-hee-3",
+     "momento": "climax",
+     "delta": 2550,
+     "gain": 0.8
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "liga",
+    "unidade": ""
+   },
+   "titulo": "Você subiu para a Liga {liga}",
+   "frases": [
+    "Você subiu para a Liga {liga}. Chefão derrotado.",
+    "Liga {liga} conquistada. Foi uma batalha e tanto.",
+    "Promovido. A Liga {liga} agora é sua.",
+    "Vitória na arena. Bem-vindo à Liga {liga}.",
+    "Subiu de liga. Hora de erguer o troféu com classe.",
+    "A Liga {liga} te espera. Você merece.",
+    "Fim de fase: Liga {liga}. Respeito."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": false,
+   "prioridade": 92,
+   "detalhe": "Seu esforço colocou você em um novo patamar.",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Subiu de liga, doutor!",
+    "durona": "Subiu de liga. Merecido.",
+    "durona_forte": "Liga nova. Não escorrega."
+   }
+  },
+  {
+   "id": "liga-promocao-platina",
+   "rotulo": "Promoção de liga: Platina",
+   "categoria": "social",
+   "gatilho": {
+    "tipo": "LEAGUE_PROMOTED",
+    "condicao": "subiu para a liga Platina (fechamento semanal processado)",
+    "fonte": "league_memberships / fechamento semanal (liga nova confirmada pelo banco)"
+   },
+   "intensidade": "grande",
+   "cenario": "liga",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "trofeu"
+    },
+    "figurinos": [
+     "bomber",
+     "bone",
+     "esports",
+     "social"
+    ]
+   },
+   "efeito": {
+    "tipo": "onda",
+    "densidade": 0.81
+   },
+   "som": [
+    {
+     "cue": "veo-liga-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.8
+    },
+    {
+     "cue": "hee-hee-2",
+     "momento": "climax",
+     "delta": 2550,
+     "gain": 0.8
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "liga",
+    "unidade": ""
+   },
+   "titulo": "Você subiu para a Liga {liga}",
+   "frases": [
+    "Você subiu para a Liga {liga}. Chefão derrotado.",
+    "Liga {liga} conquistada. Foi uma batalha e tanto.",
+    "Promovido. A Liga {liga} agora é sua.",
+    "Vitória na arena. Bem-vindo à Liga {liga}.",
+    "Subiu de liga. Hora de erguer o troféu com classe.",
+    "A Liga {liga} te espera. Você merece.",
+    "Fim de fase: Liga {liga}. Respeito."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": false,
+   "prioridade": 93,
+   "detalhe": "Seu esforço colocou você em um novo patamar.",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Subiu de liga, doutor!",
+    "durona": "Subiu de liga. Merecido.",
+    "durona_forte": "Liga nova. Não escorrega."
+   }
+  },
+  {
+   "id": "liga-promocao-diamante",
+   "rotulo": "Promoção de liga: Diamante",
+   "categoria": "social",
+   "gatilho": {
+    "tipo": "LEAGUE_PROMOTED",
+    "condicao": "subiu para a liga Diamante (fechamento semanal processado)",
+    "fonte": "league_memberships / fechamento semanal (liga nova confirmada pelo banco)"
+   },
+   "intensidade": "epica",
+   "cenario": "liga",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "trofeu"
+    },
+    "figurinos": [
+     "bomber",
+     "bone",
+     "esports",
+     "social"
+    ]
+   },
+   "efeito": {
+    "tipo": "brasas",
+    "densidade": 0.88
+   },
+   "som": [
+    {
+     "cue": "veo-liga-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.9
+    },
+    {
+     "cue": "hee-hee-3",
+     "momento": "climax",
+     "delta": 2550,
+     "gain": 0.85
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "liga",
+    "unidade": ""
+   },
+   "titulo": "Você subiu para a Liga {liga}",
+   "frases": [
+    "Você subiu para a Liga {liga}. Chefão derrotado.",
+    "Liga {liga} conquistada. Foi uma batalha e tanto.",
+    "Promovido. A Liga {liga} agora é sua.",
+    "Vitória na arena. Bem-vindo à Liga {liga}.",
+    "Subiu de liga. Hora de erguer o troféu com classe.",
+    "A Liga {liga} te espera. Você merece.",
+    "Fim de fase: Liga {liga}. Respeito."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": false,
+   "prioridade": 94,
+   "detalhe": "Seu esforço colocou você em um novo patamar.",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Chegou à elite!",
+    "durona": "Elite. Sem discussão.",
+    "durona_forte": "Elite. Não se acostume."
+   }
+  },
+  {
+   "id": "liga-promocao-elite",
+   "rotulo": "Promoção de liga: Elite",
+   "categoria": "social",
+   "gatilho": {
+    "tipo": "LEAGUE_PROMOTED",
+    "condicao": "subiu para a liga Elite (fechamento semanal processado)",
+    "fonte": "league_memberships / fechamento semanal (liga nova confirmada pelo banco)"
+   },
+   "intensidade": "epica",
+   "cenario": "liga",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "trofeu"
+    },
+    "figurinos": [
+     "bomber",
+     "bone",
+     "esports",
+     "social"
+    ]
+   },
+   "efeito": {
+    "tipo": "brasas",
+    "densidade": 0.95
+   },
+   "som": [
+    {
+     "cue": "veo-liga-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 1.0
+    },
+    {
+     "cue": "hee-hee",
+     "momento": "climax",
+     "delta": 2550,
+     "gain": 0.9
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "liga",
+    "unidade": ""
+   },
+   "titulo": "Você subiu para a Liga {liga}",
+   "frases": [
+    "Você subiu para a Liga {liga}. Chefão derrotado.",
+    "Liga {liga} conquistada. Foi uma batalha e tanto.",
+    "Promovido. A Liga {liga} agora é sua.",
+    "Vitória na arena. Bem-vindo à Liga {liga}.",
+    "Subiu de liga. Hora de erguer o troféu com classe.",
+    "A Liga {liga} te espera. Você merece.",
+    "Fim de fase: Liga {liga}. Respeito."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": false,
+   "prioridade": 95,
+   "detalhe": "Seu esforço colocou você em um novo patamar.",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Chegou à elite!",
+    "durona": "Elite. Sem discussão.",
+    "durona_forte": "Elite. Não se acostume."
+   }
+  },
+  {
+   "id": "liga-promocao-master",
+   "rotulo": "Promoção de liga: Revalida Master",
+   "categoria": "social",
+   "gatilho": {
+    "tipo": "LEAGUE_PROMOTED",
+    "condicao": "subiu para a liga Revalida Master (fechamento semanal processado)",
+    "fonte": "league_memberships / fechamento semanal (liga nova confirmada pelo banco)"
+   },
+   "intensidade": "epica",
+   "cenario": "liga",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "trofeu"
+    },
+    "figurinos": [
+     "bomber",
+     "bone",
+     "esports",
+     "social"
+    ]
+   },
+   "efeito": {
+    "tipo": "brasas",
+    "densidade": 1.0
+   },
+   "som": [
+    {
+     "cue": "veo-liga-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 1.0
+    },
+    {
+     "cue": "hee-hee",
+     "momento": "climax",
+     "delta": 2550,
+     "gain": 0.9
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "liga",
+    "unidade": ""
+   },
+   "titulo": "Você subiu para a Liga {liga}",
+   "frases": [
+    "Você subiu para a Liga {liga}. Chefão derrotado.",
+    "Liga {liga} conquistada. Foi uma batalha e tanto.",
+    "Promovido. A Liga {liga} agora é sua.",
+    "Vitória na arena. Bem-vindo à Liga {liga}.",
+    "Subiu de liga. Hora de erguer o troféu com classe.",
+    "A Liga {liga} te espera. Você merece.",
+    "Fim de fase: Liga {liga}. Respeito."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": false,
+   "prioridade": 96,
+   "detalhe": "Seu esforço colocou você em um novo patamar.",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Chegou à elite!",
+    "durona": "Elite. Sem discussão.",
+    "durona_forte": "Elite. Não se acostume."
+   }
+  },
+  {
+   "id": "liga-permanencia",
+   "rotulo": "Permanência na liga",
+   "categoria": "social",
+   "gatilho": {
+    "tipo": "LEAGUE_STAYED",
+    "condicao": "ficou na mesma liga no fechamento semanal",
+    "fonte": "league_memberships / fechamento semanal"
+   },
+   "intensidade": "pequena",
+   "cenario": "arena-esports",
+   "reacao": {
+    "coreografia": "toque",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "esports",
+     "varsity",
+     "fone"
+    ]
+   },
+   "efeito": {
+    "tipo": "faiscas",
+    "densidade": 0.35
+   },
+   "som": [
+    {
+     "cue": "veo-missao-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.5
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "liga",
+    "unidade": ""
+   },
+   "titulo": "Você segue na Liga {liga}",
+   "frases": [
+    "Você segue firme na Liga {liga}. Posição defendida.",
+    "Ficou na Liga {liga}: base sólida.",
+    "Permanência confirmada. Semana que vem tem mais.",
+    "Firme como tambor: você continua na Liga {liga}.",
+    "Segue na Liga {liga} com a cabeça erguida.",
+    "Posição mantida. Bora subir na próxima?"
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 57,
+   "detalhe": "Boa constância na semana.",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Segurou a posição.",
+    "durona": "Ficou. Podia subir.",
+    "durona_forte": "Ficou onde está. Bora."
+   }
+  },
+  {
+   "id": "liga-rebaixamento",
+   "rotulo": "Rebaixamento de liga (recuo tático)",
+   "categoria": "social",
+   "gatilho": {
+    "tipo": "LEAGUE_DEMOTED",
+    "condicao": "desceu de liga no fechamento semanal",
+    "fonte": "league_memberships / fechamento semanal"
+   },
+   "intensidade": "media",
+   "cenario": "nevoa",
+   "reacao": {
+    "coreografia": "encorajar",
+    "poses": {
+     "inicio": "triste",
+     "climax": "polegar",
+     "final": "polegar"
+    },
+    "figurinos": [
+     "casual",
+     "plantao"
+    ]
+   },
+   "efeito": {
+    "tipo": "nenhum",
+    "densidade": 0
+   },
+   "som": [
+    {
+     "cue": "veo-erro-2",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.45
+    }
+   ],
+   "numero": {
+    "modo": "nenhum",
+    "variavel": "liga",
+    "unidade": ""
+   },
+   "titulo": "Recuo tático",
+   "frases": [
+    "Recuo tático: reagrupa na Liga {liga} e volta mais forte.",
+    "Descer um degrau faz parte do jogo. Bora de novo.",
+    "Na Liga {liga}, você pega embalo para subir.",
+    "Até os melhores recuam para replanejar.",
+    "Semana nova, plano novo. Eu sigo com você.",
+    "Sem drama: a Liga {liga} é um novo ponto de partida.",
+    "Um passo atrás para dar dois à frente."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": false,
+   "requer_show_streak": false,
+   "prioridade": 56,
+   "detalhe": "A próxima semana começa agora.",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Recuo tático, continua.",
+    "durona": "Recuo tático. Continua.",
+    "durona_forte": "Desceu. Abre o livro."
+   }
+  },
+  {
+   "id": "liga-primeiro-lugar",
+   "rotulo": "Primeiro lugar do grupo",
+   "categoria": "social",
+   "gatilho": {
+    "tipo": "LEAGUE_FIRST",
+    "condicao": "terminou em 1o lugar no grupo semanal (confirmado no fechamento)",
+    "fonte": "league_memberships / fechamento semanal"
+   },
+   "intensidade": "epica",
+   "cenario": "palco",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "trofeu"
+    },
+    "figurinos": [
+     "bone",
+     "social",
+     "bomber"
+    ]
+   },
+   "efeito": {
+    "tipo": "brasas",
+    "densidade": 1.0
+   },
+   "som": [
+    {
+     "cue": "veo-lendaria-1",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 1.0
+    },
+    {
+     "cue": "hee-hee",
+     "momento": "climax",
+     "delta": 2550,
+     "gain": 0.9
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "posicao",
+    "unidade": "º lugar"
+   },
+   "titulo": "Primeiro lugar",
+   "frases": [
+    "Primeiro lugar. Você derrotou o chefão da semana.",
+    "Campeão do grupo. Isso é performance.",
+    "1º lugar na Liga {liga}. Que semana.",
+    "Topo do pódio. Ergue esse troféu.",
+    "Ninguém passou você. Dominante.",
+    "Primeiro lugar, sem discussão.",
+    "Chefão da semana derrotado. Pode guardar o troféu."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": false,
+   "prioridade": 98,
+   "detalhe": "O troféu da semana é seu.",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "Lendário. Sem discussão.",
+    "durona": "Primeiro lugar. Sem discussão.",
+    "durona_forte": "Primeiro. E não foi fácil."
+   }
+  },
+  {
+   "id": "liga-podio",
+   "rotulo": "Entrada no pódio",
+   "categoria": "social",
+   "gatilho": {
+    "tipo": "LEAGUE_PODIUM",
+    "condicao": "terminou entre os 3 primeiros do grupo (confirmado no fechamento)",
+    "fonte": "league_memberships / fechamento semanal"
+   },
+   "intensidade": "media",
+   "cenario": "palco",
+   "reacao": {
+    "coreografia": "impacto",
+    "poses": {
+     "inicio": "base",
+     "climax": "orgulhosa",
+     "final": "trofeu"
+    },
+    "figurinos": [
+     "esports",
+     "bomber",
+     "social"
+    ]
+   },
+   "efeito": {
+    "tipo": "onda",
+    "densidade": 0.7
+   },
+   "som": [
+    {
+     "cue": "veo-liga-1",
+     "momento": "climax",
+     "delta": 0,
+     "gain": 0.6
+    },
+    {
+     "cue": "hee-hee-3",
+     "momento": "climax",
+     "delta": 2550,
+     "gain": 0.6
+    }
+   ],
+   "numero": {
+    "modo": "fixo",
+    "variavel": "posicao",
+    "unidade": "º lugar"
+   },
+   "titulo": "Você está no pódio",
+   "frases": [
+    "{posicao}º lugar. Você entrou no pódio.",
+    "No pódio da Liga {liga}. Mérito puro.",
+    "Pódio garantido: {posicao}º lugar. Hee hee.",
+    "Entrou no top 3. Sobe aí e acena.",
+    "Pódio na conta. Semana de respeito.",
+    "{posicao}º lugar no grupo. Medalha merecida.",
+    "Top 3 da semana. Humildade opcional."
+   ],
+   "bloqueado_em": [
+    "prova",
+    "simulado"
+   ],
+   "compartilhavel": true,
+   "requer_show_streak": false,
+   "prioridade": 86,
+   "detalhe": "Top 3 da semana.",
+   "voz": {
+    "momento": "frase",
+    "delta": 0,
+    "ocasional": false,
+    "stazi": "No pódio, doutor!",
+    "durona": "Pódio. Nada mal.",
+    "durona_forte": "Pódio. Mantém o ritmo."
+   }
+  }
+ ]
+}

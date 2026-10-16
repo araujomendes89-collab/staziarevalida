@@ -14,6 +14,7 @@ import { SupportMail, useSupportEmail } from "../support/supportContact.jsx";
 import { useMobile } from "../Shell.jsx";
 import { Panel, RichIcon, Tile, useBreakpoint } from "../evolucao/ui.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
+import { CelebracoesPreferencias } from "../play/celebracoes/CelebracoesPreferencias.jsx";
 import { COUNTRIES, normalizePhone, phoneError, splitPhone } from "../legal/phone.js";
 import "./account.css";
 
@@ -21,6 +22,7 @@ import "./account.css";
 const SECTIONS = [
   { id: "conta", label: "Minha conta", sub: "Nome, e-mail, WhatsApp e aparência", icon: "users", tone: "blue" },
   { id: "play", label: "Minha Stazia Arena", sub: "Nível, score, ranking e visibilidade", icon: "trophy", tone: "orange" },
+  { id: "comemoracoes", label: "Comemorações e sons", sub: "Sons, voz da Durona e animações", icon: "sparkles", tone: "violet" },
   { id: "estudo", label: "Estudo e prova", sub: "Fase, prova-alvo e rotina", icon: "calendar", tone: "blue" },
   { id: "seg", label: "Segurança", sub: "Senha e sessão", icon: "lock", tone: "blue" },
   { id: "priv", label: "Privacidade e dados", sub: "Exportação e exclusão (LGPD)", icon: "privacy", tone: "green" },
@@ -540,6 +542,7 @@ export function AccountScreen({ go }) {
     <>
       {id === "conta" && <AccountSection email={user?.email} />}
       {id === "play" && <PlayProfileSection go={go} />}
+      {id === "comemoracoes" && <CelebracoesPreferencias Cabecalho={SectionHeader} />}
       {id === "estudo" && <StudySection />}
       {id === "seg" && <SecuritySection />}
       {id === "priv" && <PrivacySection />}

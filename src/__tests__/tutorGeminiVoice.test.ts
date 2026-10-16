@@ -228,3 +228,62 @@ describe("Abrir a voz pela rota", () => {
     await rpc(ADMIN, "app_admin_tutor_save_config", { voice_provider: "auto", voice_name: "" }, "Voltando ao automático no teste.");
   });
 });
+
+describe("Gemini pelo VERTEX (ponte no Cloud Run, decisão do dono de 16/10/2026)", () => {
+  const SEGREDO = "v".repeat(48);
+  const VERTEX: GeminiVoiceConfig = { ready: true, model: "gemini-3.8-live", key: null, pending: null, via: "vertex", ponte: { url: "wss://ponte.teste/ponte", segredo: SEGREDO } };
+
+  it("a abertura devolve a ponte e um bilhete selado (instruções, voz e ferramentas só o servidor lê); nada de chave do Google", async () => {
+    const { abrirBilhete, NoncesUsados } = await import("../../server/vozPonte/bilhete");
+    deps.gemini = VERTEX;
+    google.length = 0;
+    try {
+      const session = (await rpc(ALUNA, "app_tutor_start", "livre", null, null)).id;
+      const r = await post("/voice/start", { session_id: session });
+      expect(r.status).toBe(200);
+      expect(r.body).toMatchObject({ provider: "gemini", model: "gemini-3.8-live", voice: "Kore" });
+      expect(r.body.gemini_token).toBeUndefined();
+      expect(r.body.gemini_ponte.url).toBe("wss://ponte.teste/ponte");
+      expect(google).toHaveLength(0); // nenhuma chave temporária da API direta
+      expect(JSON.stringify(r.body)).not.toMatch(/Durona|get_question_context/);
+      const a = abrirBilhete(r.body.gemini_ponte.bilhete, SEGREDO, new NoncesUsados());
+      expect(a.ok).toBe(true);
+      if (!a.ok) return;
+      expect(a.conteudo).toMatchObject({ vc: r.body.voice_call_id, u: ALUNA, modelo: "gemini-3.8-live", voz: "Kore" });
+      expect(a.conteudo.ferramentas.map((f) => f.name)).toEqual(REALTIME_TOOLS.map((t) => t.name));
+      expect(a.conteudo.instrucoes).toMatch(/português/i);
+      expect(a.conteudo.instrucoes).toMatch(/QUEM VOCÊ É NESTA CONVERSA: Durona/);
+      expect(a.conteudo.maxSegundos).toBeGreaterThan(0);
+      expect(await sql(`select provider, status from public.tutor_voice_calls where id = $1`, [r.body.voice_call_id])).toEqual([{ provider: "gemini", status: "active" }]);
+      await end(r.body.voice_call_id);
+    } finally {
+      deps.gemini = GEMINI;
+    }
+  });
+
+  it("relatório de uso da ponte: só com a assinatura certa entra no livro-caixa", async () => {
+    const { assinarRelatorio } = await import("../../server/vozPonte/bilhete");
+    const antes = { url: process.env.VOZ_PONTE_URL, seg: process.env.VOZ_PONTE_SEGREDO };
+    process.env.VOZ_PONTE_URL = "wss://ponte.teste/ponte";
+    process.env.VOZ_PONTE_SEGREDO = SEGREDO;
+    deps.gemini = VERTEX;
+    try {
+      const session = (await rpc(ALUNA, "app_tutor_start", "livre", null, null)).id;
+      const r = await post("/voice/start", { session_id: session });
+      const corpo = JSON.stringify({ vc: r.body.voice_call_id, u: ALUNA, modelo: "gemini-3.8-live", duracao_s: 61, turnos: 3, uso: { textoEntrada: 9000, audioEntrada: 300, textoSaida: 200, audioSaida: 900, total: 10400 }, custo_usd: 0.0195, motivo: "aluno encerrou", t: Date.now() });
+      const enviar = (assinatura: string) => fetch(`${base}/voice/ponte-uso`, { method: "POST", headers: { "Content-Type": "application/json", "X-Stazia-Ponte-Assinatura": assinatura }, body: corpo });
+      expect((await enviar("0".repeat(64))).status).toBe(401);
+      expect((await enviar(assinarRelatorio(corpo, SEGREDO))).status).toBe(200);
+      await end(r.body.voice_call_id);
+      // pelo Vertex o custo é o dos tokens relatados pela ponte (o encerramento não lança custo por tempo)
+      const linhas = await sql(`select provider, input_text_tokens, output_audio_tokens, estimated_cost_usd::float as custo, meta ->> 'via' as via from public.ai_usage_ledger where user_id = $1 and meta ->> 'voice_call' = $2 and feature = 'tutor_voice_gemini'`, [ALUNA, r.body.voice_call_id]);
+      expect(linhas).toEqual([{ provider: "google-vertex", input_text_tokens: 9000, output_audio_tokens: 900, custo: 0.0195, via: "vertex-ponte" }]);
+    } finally {
+      deps.gemini = GEMINI;
+      process.env.VOZ_PONTE_URL = antes.url ?? "";
+      process.env.VOZ_PONTE_SEGREDO = antes.seg ?? "";
+      if (!antes.url) delete process.env.VOZ_PONTE_URL;
+      if (!antes.seg) delete process.env.VOZ_PONTE_SEGREDO;
+    }
+  });
+});

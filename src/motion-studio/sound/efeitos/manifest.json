@@ -1,0 +1,552 @@
+{
+ "xp-3": {
+  "descricao": "pop + agogô",
+  "dur_s": 0.28,
+  "pico_db": -9.8,
+  "rms_db": -26.0,
+  "kb": 2.7,
+  "fontes": [
+   "commons__Agogo",
+   "oga__plup"
+  ],
+  "tchan": false,
+  "origem": "montagem local (corte, ganho, fades, troca de altura por reamostragem e mistura) de sons GRAVADOS de bancos livres; nenhum som gerado por IA nem musica",
+  "creditos": [
+   {
+    "chave": "commons__Agogo",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Agogo.ogg",
+    "autor": "Freddythehat at English Wikipedia",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Agogo.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/e/e7/Agogo.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "oga__plup",
+    "fonte": "OpenGameArt.org",
+    "titulo": "plup.mp3",
+    "autor": "ezduzziteh",
+    "licenca": "CC0 1.0",
+    "url": "https://opengameart.org/content/silly-sound-effects",
+    "arquivo": "https://opengameart.org/sites/default/files/plup.mp3"
+   }
+  ],
+  "aprovado_pelo_dono": true
+ },
+ "sequencia-3": {
+  "descricao": "campainha dupla subindo + estalo + tchan",
+  "dur_s": 1.22,
+  "pico_db": -8.0,
+  "rms_db": -22.0,
+  "kb": 10.0,
+  "fontes": [
+   "commons__Finger_clicks",
+   "commons__Pedal_tone_demonstration",
+   "commons__Tuba-range-C-low",
+   "kenney__impactBell_heavy_003",
+   "oga__rotating_bicycle_bell-1"
+  ],
+  "tchan": true,
+  "origem": "montagem local (corte, ganho, fades, troca de altura por reamostragem e mistura) de sons GRAVADOS de bancos livres; nenhum som gerado por IA nem musica",
+  "creditos": [
+   {
+    "chave": "commons__Finger_clicks",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Finger clicks.ogg",
+    "autor": "cori",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Finger_clicks.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Finger_clicks.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Pedal_tone_demonstration",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Pedal tone demonstration.ogg",
+    "autor": "Ovinus Real",
+    "licenca": "CC0",
+    "url": "https://commons.wikimedia.org/wiki/File:Pedal_tone_demonstration.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/f/f1/Pedal_tone_demonstration.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Tuba-range-C-low",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Tuba-range-C-low.ogg",
+    "autor": "No machine-readable author provided. AntoineVE~commonswiki assumed (based on copyright claims).",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Tuba-range-C-low.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/3/30/Tuba-range-C-low.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "kenney__impactBell_heavy_003",
+    "fonte": "Kenney.nl",
+    "titulo": "Impact Sounds (impactBell_heavy_003.ogg)",
+    "autor": "Kenney Vleugels (Kenney.nl)",
+    "licenca": "CC0 1.0",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "arquivo": "impactBell_heavy_003.ogg"
+   },
+   {
+    "chave": "oga__rotating_bicycle_bell-1",
+    "fonte": "OpenGameArt.org",
+    "titulo": "rotating_bicycle_bell-1.ogg",
+    "autor": "OGA (bicycle-sounds)",
+    "licenca": "CC0 1.0",
+    "url": "https://opengameart.org/content/bicycle-sounds",
+    "arquivo": "https://opengameart.org/sites/default/files/rotating_bicycle_bell-1.ogg"
+   }
+  ],
+  "aprovado_pelo_dono": true
+ },
+ "missao-op3": {
+  "descricao": "buzina fon-fon + tchan",
+  "dur_s": 1.0,
+  "pico_db": -6.9,
+  "rms_db": -20.0,
+  "kb": 8.4,
+  "fontes": [
+   "commons__Finger_clicks",
+   "commons__Pedal_tone_demonstration",
+   "commons__Tuba-range-C-low",
+   "kenney__impactBell_heavy_003",
+   "oga__bicycle-horn-1"
+  ],
+  "tchan": true,
+  "origem": "montagem local (corte, ganho, fades, troca de altura por reamostragem e mistura) de sons GRAVADOS de bancos livres; nenhum som gerado por IA nem musica",
+  "creditos": [
+   {
+    "chave": "commons__Finger_clicks",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Finger clicks.ogg",
+    "autor": "cori",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Finger_clicks.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Finger_clicks.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Pedal_tone_demonstration",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Pedal tone demonstration.ogg",
+    "autor": "Ovinus Real",
+    "licenca": "CC0",
+    "url": "https://commons.wikimedia.org/wiki/File:Pedal_tone_demonstration.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/f/f1/Pedal_tone_demonstration.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Tuba-range-C-low",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Tuba-range-C-low.ogg",
+    "autor": "No machine-readable author provided. AntoineVE~commonswiki assumed (based on copyright claims).",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Tuba-range-C-low.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/3/30/Tuba-range-C-low.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "kenney__impactBell_heavy_003",
+    "fonte": "Kenney.nl",
+    "titulo": "Impact Sounds (impactBell_heavy_003.ogg)",
+    "autor": "Kenney Vleugels (Kenney.nl)",
+    "licenca": "CC0 1.0",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "arquivo": "impactBell_heavy_003.ogg"
+   },
+   {
+    "chave": "oga__bicycle-horn-1",
+    "fonte": "OpenGameArt.org",
+    "titulo": "bicycle-horn-1.wav",
+    "autor": "OGA (bicycle-horn)",
+    "licenca": "CC0 1.0",
+    "url": "https://opengameart.org/content/bicycle-horn",
+    "arquivo": "https://opengameart.org/sites/default/files/bicycle-horn-1.wav"
+   }
+  ],
+  "aprovado_pelo_dono": true
+ },
+ "conquista-op2": {
+  "descricao": "rufar curto + tchan + ka-ching",
+  "dur_s": 1.4,
+  "pico_db": -3.0,
+  "rms_db": -19.6,
+  "kb": 11.5,
+  "fontes": [
+   "commons__Cash_register",
+   "commons__Drum_Roll_Intro",
+   "commons__Finger_clicks",
+   "commons__Pedal_tone_demonstration",
+   "commons__Tuba-range-C-low",
+   "kenney__impactBell_heavy_003"
+  ],
+  "tchan": true,
+  "origem": "montagem local (corte, ganho, fades, troca de altura por reamostragem e mistura) de sons GRAVADOS de bancos livres; nenhum som gerado por IA nem musica",
+  "creditos": [
+   {
+    "chave": "commons__Cash_register",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Cash register.ogg",
+    "autor": "Me",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Cash_register.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/7/70/Cash_register.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Drum_Roll_Intro",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Drum Roll Intro.ogg",
+    "autor": "Iwan Sounds and DIY",
+    "licenca": "CC0",
+    "url": "https://commons.wikimedia.org/wiki/File:Drum_Roll_Intro.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/c/c4/Drum_Roll_Intro.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Finger_clicks",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Finger clicks.ogg",
+    "autor": "cori",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Finger_clicks.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Finger_clicks.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Pedal_tone_demonstration",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Pedal tone demonstration.ogg",
+    "autor": "Ovinus Real",
+    "licenca": "CC0",
+    "url": "https://commons.wikimedia.org/wiki/File:Pedal_tone_demonstration.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/f/f1/Pedal_tone_demonstration.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Tuba-range-C-low",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Tuba-range-C-low.ogg",
+    "autor": "No machine-readable author provided. AntoineVE~commonswiki assumed (based on copyright claims).",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Tuba-range-C-low.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/3/30/Tuba-range-C-low.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "kenney__impactBell_heavy_003",
+    "fonte": "Kenney.nl",
+    "titulo": "Impact Sounds (impactBell_heavy_003.ogg)",
+    "autor": "Kenney Vleugels (Kenney.nl)",
+    "licenca": "CC0 1.0",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "arquivo": "impactBell_heavy_003.ogg"
+   }
+  ],
+  "aprovado_pelo_dono": true
+ },
+ "nivel-op3": {
+  "descricao": "power-up curto + tchan",
+  "dur_s": 1.05,
+  "pico_db": -3.0,
+  "rms_db": -20.1,
+  "kb": 8.8,
+  "fontes": [
+   "commons__Finger_clicks",
+   "commons__Pedal_tone_demonstration",
+   "commons__Tuba-range-C-low",
+   "kenney__impactBell_heavy_003",
+   "kenney__powerUp12"
+  ],
+  "tchan": true,
+  "origem": "montagem local (corte, ganho, fades, troca de altura por reamostragem e mistura) de sons GRAVADOS de bancos livres; nenhum som gerado por IA nem musica",
+  "creditos": [
+   {
+    "chave": "commons__Finger_clicks",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Finger clicks.ogg",
+    "autor": "cori",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Finger_clicks.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Finger_clicks.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Pedal_tone_demonstration",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Pedal tone demonstration.ogg",
+    "autor": "Ovinus Real",
+    "licenca": "CC0",
+    "url": "https://commons.wikimedia.org/wiki/File:Pedal_tone_demonstration.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/f/f1/Pedal_tone_demonstration.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Tuba-range-C-low",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Tuba-range-C-low.ogg",
+    "autor": "No machine-readable author provided. AntoineVE~commonswiki assumed (based on copyright claims).",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Tuba-range-C-low.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/3/30/Tuba-range-C-low.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "kenney__impactBell_heavy_003",
+    "fonte": "Kenney.nl",
+    "titulo": "Impact Sounds (impactBell_heavy_003.ogg)",
+    "autor": "Kenney Vleugels (Kenney.nl)",
+    "licenca": "CC0 1.0",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "arquivo": "impactBell_heavy_003.ogg"
+   },
+   {
+    "chave": "kenney__powerUp12",
+    "fonte": "Kenney.nl",
+    "titulo": "Digital Audio (powerUp12.ogg)",
+    "autor": "Kenney Vleugels (Kenney.nl)",
+    "licenca": "CC0 1.0",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "arquivo": "powerUp12.ogg"
+   }
+  ],
+  "aprovado_pelo_dono": true
+ },
+ "liga-op3": {
+  "descricao": "apito subindo + tchan grande + palmas e hurra",
+  "dur_s": 2.05,
+  "pico_db": -3.0,
+  "rms_db": -19.1,
+  "kb": 16.6,
+  "fontes": [
+   "commons__Clapping_hurray_cropped_",
+   "commons__Finger_clicks",
+   "commons__Pedal_tone_demonstration",
+   "commons__Tuba-range-C-low",
+   "kenney__impactBell_heavy_003",
+   "oga__steam_whistle"
+  ],
+  "tchan": true,
+  "origem": "montagem local (corte, ganho, fades, troca de altura por reamostragem e mistura) de sons GRAVADOS de bancos livres; nenhum som gerado por IA nem musica",
+  "creditos": [
+   {
+    "chave": "commons__Clapping_hurray_cropped_",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Clapping hurray (cropped).oga",
+    "autor": "Starlite",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Clapping_hurray_(cropped).oga",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Clapping_hurray_%28cropped%29.oga?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Finger_clicks",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Finger clicks.ogg",
+    "autor": "cori",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Finger_clicks.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Finger_clicks.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Pedal_tone_demonstration",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Pedal tone demonstration.ogg",
+    "autor": "Ovinus Real",
+    "licenca": "CC0",
+    "url": "https://commons.wikimedia.org/wiki/File:Pedal_tone_demonstration.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/f/f1/Pedal_tone_demonstration.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Tuba-range-C-low",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Tuba-range-C-low.ogg",
+    "autor": "No machine-readable author provided. AntoineVE~commonswiki assumed (based on copyright claims).",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Tuba-range-C-low.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/3/30/Tuba-range-C-low.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "kenney__impactBell_heavy_003",
+    "fonte": "Kenney.nl",
+    "titulo": "Impact Sounds (impactBell_heavy_003.ogg)",
+    "autor": "Kenney Vleugels (Kenney.nl)",
+    "licenca": "CC0 1.0",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "arquivo": "impactBell_heavy_003.ogg"
+   },
+   {
+    "chave": "oga__steam_whistle",
+    "fonte": "OpenGameArt.org",
+    "titulo": "steam_whistle.wav",
+    "autor": "OGA (steam-whistle)",
+    "licenca": "CC0 1.0",
+    "url": "https://opengameart.org/content/steam-whistle",
+    "arquivo": "https://opengameart.org/sites/default/files/steam_whistle.wav"
+   }
+  ],
+  "aprovado_pelo_dono": true
+ },
+ "lendaria": {
+  "descricao": "rufar + tchan grande + ka-ching + aplausos + buzina de festa",
+  "dur_s": 2.4,
+  "pico_db": -3.0,
+  "rms_db": -19.3,
+  "kb": 19.2,
+  "fontes": [
+   "commons__Applause_ii",
+   "commons__Cash_register",
+   "commons__Drum_Roll_Intro",
+   "commons__Finger_clicks",
+   "commons__Luftr_ssel",
+   "commons__Pedal_tone_demonstration",
+   "commons__Tuba-range-C-low",
+   "kenney__impactBell_heavy_003"
+  ],
+  "tchan": true,
+  "origem": "montagem local (corte, ganho, fades, troca de altura por reamostragem e mistura) de sons GRAVADOS de bancos livres; nenhum som gerado por IA nem musica",
+  "creditos": [
+   {
+    "chave": "commons__Applause_ii",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Applause ii.ogg",
+    "autor": "thore",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Applause_ii.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/0/09/Applause_ii.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Cash_register",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Cash register.ogg",
+    "autor": "Me",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Cash_register.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/7/70/Cash_register.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Drum_Roll_Intro",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Drum Roll Intro.ogg",
+    "autor": "Iwan Sounds and DIY",
+    "licenca": "CC0",
+    "url": "https://commons.wikimedia.org/wiki/File:Drum_Roll_Intro.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/c/c4/Drum_Roll_Intro.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Finger_clicks",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Finger clicks.ogg",
+    "autor": "cori",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Finger_clicks.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Finger_clicks.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Luftr_ssel",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Luftrüssel.ogg",
+    "autor": "Flo Sorg",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Luftr%C3%BCssel.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/e/e0/Luftr%C3%BCssel.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Pedal_tone_demonstration",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Pedal tone demonstration.ogg",
+    "autor": "Ovinus Real",
+    "licenca": "CC0",
+    "url": "https://commons.wikimedia.org/wiki/File:Pedal_tone_demonstration.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/f/f1/Pedal_tone_demonstration.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "commons__Tuba-range-C-low",
+    "fonte": "Wikimedia Commons",
+    "titulo": "File:Tuba-range-C-low.ogg",
+    "autor": "No machine-readable author provided. AntoineVE~commonswiki assumed (based on copyright claims).",
+    "licenca": "Public domain",
+    "url": "https://commons.wikimedia.org/wiki/File:Tuba-range-C-low.ogg",
+    "arquivo": "https://upload.wikimedia.org/wikipedia/commons/3/30/Tuba-range-C-low.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+   },
+   {
+    "chave": "kenney__impactBell_heavy_003",
+    "fonte": "Kenney.nl",
+    "titulo": "Impact Sounds (impactBell_heavy_003.ogg)",
+    "autor": "Kenney Vleugels (Kenney.nl)",
+    "licenca": "CC0 1.0",
+    "url": "https://kenney.nl/assets/impact-sounds",
+    "arquivo": "impactBell_heavy_003.ogg"
+   }
+  ],
+  "aprovado_pelo_dono": true
+ },
+ "recuo-3": {
+  "descricao": "apito de êmbolo descendo + boing grave",
+  "dur_s": 0.85,
+  "pico_db": -15.2,
+  "rms_db": -25.0,
+  "kb": 7.2,
+  "fontes": [
+   "oga__sound_effects/boing",
+   "oga__steam_whistle"
+  ],
+  "tchan": false,
+  "origem": "montagem local (corte, ganho, fades, troca de altura por reamostragem e mistura) de sons GRAVADOS de bancos livres; nenhum som gerado por IA nem musica",
+  "creditos": [
+   {
+    "chave": "oga__sound_effects/boing",
+    "fonte": "OpenGameArt.org",
+    "titulo": "18 random video game sound effects (boing.wav)",
+    "autor": "bart",
+    "licenca": "CC0 1.0",
+    "url": "https://opengameart.org/content/18-random-video-game-sound-effects",
+    "arquivo": "sound_effects.zip/boing.wav"
+   },
+   {
+    "chave": "oga__steam_whistle",
+    "fonte": "OpenGameArt.org",
+    "titulo": "steam_whistle.wav",
+    "autor": "OGA (steam-whistle)",
+    "licenca": "CC0 1.0",
+    "url": "https://opengameart.org/content/steam-whistle",
+    "arquivo": "https://opengameart.org/sites/default/files/steam_whistle.wav"
+   }
+  ],
+  "aprovado_pelo_dono": true
+ },
+ "coins-grande": {
+  "descricao": "cascata de 5 moedas modeladas + hee-hee-2 aos 0,38 s (ESCOLHIDA pelo dono: som principal do Stazia Coins)",
+  "dur_s": 1.45,
+  "pico_db": -3.0,
+  "kb": 11.9,
+  "fontes": [
+   "proprio"
+  ],
+  "tchan": false,
+  "escolhida_pelo_dono": true,
+  "origem": "mantido da rodada anterior: moedas por sintese modal (modelagem fisica, nao e gravacao) + hee hee do dono",
+  "creditos": [
+   {
+    "chave": "proprio",
+    "fonte": "StaziaMed (montagem propria) + hee hee do dono",
+    "titulo": "coins-grande",
+    "autor": "StaziaMed",
+    "licenca": "proprio; hee hee: direitos confirmados pelo dono em 15/10/2026",
+    "url": "",
+    "arquivo": "coins-grande.mp3"
+   }
+  ],
+  "aprovado_pelo_dono": true
+ },
+ "coins-cascata": {
+  "descricao": "mesma cascata de moedas do coins-grande, curta (0,95 s) e sem o hee hee: variacao secundaria para ganhos repetidos e micro-eventos",
+  "dur_s": 0.95,
+  "pico_db": -4.3,
+  "kb": 8.0,
+  "fontes": [
+   "proprio"
+  ],
+  "tchan": false,
+  "escolhida_pelo_dono": false,
+  "origem": "mantido da rodada anterior: moedas por sintese modal (modelagem fisica, nao e gravacao) + hee hee do dono",
+  "creditos": [
+   {
+    "chave": "proprio",
+    "fonte": "StaziaMed (montagem propria) + hee hee do dono",
+    "titulo": "coins-cascata",
+    "autor": "StaziaMed",
+    "licenca": "proprio; hee hee: direitos confirmados pelo dono em 15/10/2026",
+    "url": "",
+    "arquivo": "coins-cascata.mp3"
+   }
+  ],
+  "aprovado_pelo_dono": true
+ }
+}

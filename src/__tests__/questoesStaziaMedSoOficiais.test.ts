@@ -70,6 +70,7 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   ch_raw_practice_correction_view: { classe: "as_duas", como: "historico" },
   practice_result: { classe: "as_duas", como: "historico" },
   app_get_session: { classe: "as_duas", como: "historico" },
+  app_finish_session: { classe: "as_duas", como: "historico" }, // 012200: ao finalizar só grava a resposta de questão que a leitura da tabela ainda mostra ao aluno (inédita fora do plano é pulada)
   app_recent_sessions: { classe: "as_duas", como: "historico" },
   app_error_notebook: { classe: "as_duas", como: "historico" },
   my_error_notebook_of: { classe: "as_duas", como: "historico" },
@@ -326,6 +327,8 @@ describe("Migração", () => {
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003010300_ineditas_por_plano.sql", import.meta.url)), "utf8"));
     // a 010500 (tela de questão no modelo) redefine a correção do aluno por cima: colar a 9801 de novo pede colar a 010500 depois
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003010500_tela_questao_modelo.sql", import.meta.url)), "utf8"));
+    // a 012200 (inéditas misturadas nos simulados) redefine practice_result por cima da 9801: colar a 9801 de novo pede colar a 012200 depois
+    await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003012200_simulado_ineditas_misturadas.sql", import.meta.url)), "utf8"));
     expect(await snap()).toEqual(before);
   });
 });

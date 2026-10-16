@@ -632,7 +632,7 @@ export function AdminSettings() {
   const [form, setForm] = React.useState(null);
   const [state, setState] = React.useState({ saving: false, error: null, done: false });
   React.useEffect(() => {
-    if (data) setForm({ trial_days: String(data.trial_days), ...data.announcement });
+    if (data) setForm({ trial_days: String(data.trial_days), simulado_ineditas_pct: String(data.simulado_ineditas_pct ?? 10), ...data.announcement });
   }, [data]);
   if (error) return <LoadError error={error} retry={reload} />;
   if (!form) return <Loading />;
@@ -643,7 +643,7 @@ export function AdminSettings() {
     try {
       setData(
         await backend.rpc("app_admin_save_settings", {
-          p_settings: { trial_days: form.trial_days.trim(), announcement: { active: form.active, tone: form.tone, title: form.title, text: form.text } },
+          p_settings: { trial_days: form.trial_days.trim(), simulado_ineditas_pct: String(form.simulado_ineditas_pct).trim(), announcement: { active: form.active, tone: form.tone, title: form.title, text: form.text } },
         })
       );
       setState({ saving: false, error: null, done: true });
@@ -659,6 +659,14 @@ export function AdminSettings() {
           <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Cadastro</h3>
           <div style={{ maxWidth: 260 }}>
             <TextField label="Dias de teste grátis" value={form.trial_days} inputMode="numeric" maxLength={2} onChange={(e) => set({ trial_days: e.target.value })} hint="Vale para os próximos cadastros (0 a 90)." />
+          </div>
+        </div>
+      </Card>
+      <Card>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Simulados</h3>
+          <div style={{ maxWidth: 260 }}>
+            <TextField label="Questões Inéditas nos simulados (%)" value={form.simulado_ineditas_pct} inputMode="numeric" maxLength={2} onChange={(e) => set({ simulado_ineditas_pct: e.target.value })} hint="No máximo esta parte do simulado comum (Rápido, Geral, Por área, Por tema) vem de Questões Inéditas liberadas no plano do aluno. De 0 a 50; 0 desliga. O simulado TRI é sempre só de questões oficiais." />
           </div>
         </div>
       </Card>

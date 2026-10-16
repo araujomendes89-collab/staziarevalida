@@ -62,20 +62,35 @@ export function liveConfig(env: NodeJS.ProcessEnv = process.env): LiveConfig {
 }
 
 /**
- * Voz nativa do Gemini (Live API, áudio nativo): conversa ao vivo com pronúncia de quem nasceu falando português. O navegador
- * conecta direto no Google com uma chave temporária que o servidor cria (uma por ligação, com as instruções travadas aqui).
+ * Voz nativa do Gemini (Live API, áudio nativo): conversa ao vivo com pronúncia de quem nasceu falando português.
+ *
+ * DOIS CAMINHOS (decisão do dono, 16/10/2026: "use o Vertex"):
+ *  - "vertex" (preferido): Gemini Live no Vertex AI (Google Cloud, projeto staziamed-revalida-prod, us-central1) pela PONTE no
+ *    Cloud Run (server/vozPonte). O servidor sela um bilhete com instruções, voz e ferramentas (VOZ_PONTE_SEGREDO) e o navegador
+ *    conecta na ponte (VOZ_PONTE_URL); nenhuma credencial do Google vai ao navegador e não há retomada de sessão no Google.
+ *  - "aistudio" (antigo, só se a ponte não estiver configurada): chave temporária da API direta do Gemini (GEMINI_API_KEY).
  */
 export interface GeminiVoiceConfig {
   ready: boolean;
   model: string;
   key: string | null;
   pending: string | null;
+  via?: "vertex" | "aistudio";
+  ponte?: { url: string; segredo: string } | null;
+}
+export function vertexPonteConfig(env: NodeJS.ProcessEnv = process.env): { url: string; segredo: string } | null {
+  const url = (env.VOZ_PONTE_URL ?? "").trim();
+  const segredo = (env.VOZ_PONTE_SEGREDO ?? "").trim();
+  return /^wss:\/\/[^\s]+$/.test(url) && segredo.length >= 32 ? { url, segredo } : null;
 }
 export function geminiVoiceConfig(env: NodeJS.ProcessEnv = process.env): GeminiVoiceConfig {
   const model = (env.GEMINI_LIVE_MODEL ?? "").trim() || "gemini-3.8-live";
+  const lock = liveVoiceLockPending(env);
+  const ponte = vertexPonteConfig(env);
+  if (ponte) return { ready: !lock, model, key: null, pending: lock, via: "vertex", ponte: lock ? null : ponte };
   const key = realKey(env.GEMINI_API_KEY) ?? realKey(env.GOOGLE_GEMINI_API_KEY);
-  const pending = liveVoiceLockPending(env) ?? (!key ? "GEMINI_API_KEY ausente no servidor." : null);
-  return { ready: !pending, model, key: pending ? null : key, pending };
+  const pending = lock ?? (!key ? "GEMINI_API_KEY ausente no servidor." : null);
+  return { ready: !pending, model, key: pending ? null : key, pending, via: "aistudio", ponte: null };
 }
 
 /** Escolha do ambiente (OPENAI_VOICE_PROVIDER), usada quando o painel está em "automático". */

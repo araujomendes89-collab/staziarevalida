@@ -40,6 +40,7 @@ import { LeaderboardScreen } from "./play/LeaderboardScreen.jsx";
 import { MissionsScreen } from "./play/MissionsScreen.jsx";
 import { AchievementsScreen } from "./play/AchievementsScreen.jsx";
 import { Nivelamento, deveMostrarNivelamento } from "./nivelamento/Nivelamento.jsx";
+import { CelebracoesProvider } from "./play/celebracoes/CelebracoesProvider.jsx";
 
 // [título, subtítulo] de cada rota (o início é montado com nome e data reais).
 const TITLES = {
@@ -297,13 +298,16 @@ function Root() {
   if (session.boot?.legal?.gate_required) return <AcceptanceScreen />;
   if (deveMostrarNivelamento(session.boot)) return <Nivelamento modo="primeira" go={() => {}} />;
 
+  // Comemorações do Stazi acima de todas as rotas (inclusive o treino/simulado, que fica fora do menu)
   return (
-    <Routes>
-      {/* /novo/login: sem sessão, qualquer endereço mostra o login; com sessão, volta para o início */}
-      <Route path="/login" element={<Navigate to="/" replace />} />
-      <Route path="/:route?" element={<Screen />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <CelebracoesProvider rota={pathname}>
+      <Routes>
+        {/* /novo/login: sem sessão, qualquer endereço mostra o login; com sessão, volta para o início */}
+        <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/:route?" element={<Screen />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </CelebracoesProvider>
   );
 }
 

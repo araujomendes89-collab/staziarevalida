@@ -1,0 +1,21 @@
+{
+  "comentario": "Fonte unica dos instantes de som (ms desde o inicio da animacao). Lida pelo componente (soundEngine) e por scripts/mix-cues.py da skill. Sons sintetizados por scripts/synth-sounds.py.",
+  "sampleRate": 44100,
+  "static": [
+    { "cue": "whoosh-morph", "at": 330, "gain": 0.55 },
+    { "cue": "pop", "at": 790, "gain": 0.7 },
+    { "cue": "whoosh-in", "at": 1190, "gain": 0.5 },
+    { "cue": "riser", "at": 1630, "gain": 0.45 },
+    { "cue": "boom", "at": 1990, "gain": 0.9 },
+    { "cue": "tap", "at": 2660, "gain": 0.5 },
+    { "cue": "sparkle-burst", "at": 2010, "gain": 0.45 },
+    { "cue": "roll", "at": 3290, "gain": 0.45 },
+    { "cue": "ding", "at": 3330, "gain": 0.6 },
+    { "cue": "marker-pop", "at": 5420, "gain": 0.6 },
+    { "cue": "check", "at": 5790, "gain": 0.55 },
+    { "cue": "button-in", "at": 6000, "gain": 0.35 },
+    { "cue": "tap", "at": 6150, "gain": 0.3 }
+  ],
+  "weekTicks": { "start": 5000, "step": 55, "gain": 0.5, "cues": ["tick-1", "tick-2", "tick-3", "tick-4", "tick-5", "tick-6", "tick-7"] },
+  "uiTap": { "cue": "tap", "gain": 0.4 }
+}

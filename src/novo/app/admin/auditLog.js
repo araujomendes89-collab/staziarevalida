@@ -385,6 +385,7 @@ const SUMMARY = {
   "settings.save": (d) =>
     join([
       d.trial_days != null && `Dias de teste grátis: ${d.trial_days}`,
+      d.simulado_ineditas_pct != null && `Questões Inéditas nos simulados: até ${d.simulado_ineditas_pct}%`,
       d.announcement && `Aviso no Início ${d.announcement.active ? "ligado" : "desligado"}${d.announcement.title ? `: ${d.announcement.title}` : ""}`,
     ]),
   "support.contact": (d) => d.email && `E-mail de suporte: ${d.email}`,

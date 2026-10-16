@@ -55,7 +55,7 @@ describe("CF07: configurações internas só para a equipe", () => {
 
   it("a equipe (editor e administrador) continua lendo", async () => {
     for (const uid of [ADMIN, EDITOR]) {
-      expect((await as<{ key: string }>(uid, `select key from public.app_settings`)).map((r) => r.key).sort()).toEqual(["announcement", "trial_days"]);
+      expect((await as<{ key: string }>(uid, `select key from public.app_settings`)).map((r) => r.key).sort()).toEqual(["announcement", "simulado_ineditas_pct", "trial_days"]);
       expect(await as(uid, `select id from public.tutor_config`)).toHaveLength(1);
     }
   });
