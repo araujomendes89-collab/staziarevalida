@@ -16,11 +16,16 @@ export const LIGAS_PREVIA = LIGAS;
 const estado = {
   showStreak: true,
   liga: null,
+  semana: null,
   resumo: { level: { slug: "explorador", name: "Explorador", description: "Você está explorando as grandes áreas." }, streak: { current: 7, longest: 21 } },
 };
 /** Próximo fechamento de liga que o "banco" devolve (temporada já fechada). */
 export function definirLiga(h) {
   estado.liga = h;
+}
+/** Temporada ABERTA que o "banco" devolve (começo da semana): { starts_on, league } ou null. */
+export function definirSemana(s) {
+  estado.semana = s;
 }
 export function definirMaiorSequencia(n) {
   estado.resumo = { ...estado.resumo, streak: { ...estado.resumo.streak, longest: n } };
@@ -35,7 +40,14 @@ const backend = {
     await espera(150);
     if (fn === "app_gamification_preferences") return { show_streak: estado.showStreak };
     if (fn === "app_gamification_summary") return estado.resumo;
-    if (fn === "app_league_current") return { enabled: true, joined: true, leagues: LIGAS, history: estado.liga ? [estado.liga] : [] };
+    if (fn === "app_league_current")
+      return {
+        enabled: true,
+        joined: true,
+        leagues: LIGAS,
+        ...(estado.semana ? { season: { starts_on: estado.semana.starts_on }, league: LIGAS.find((l) => l.slug === estado.semana.league) } : {}),
+        history: estado.liga ? [estado.liga] : [],
+      };
     throw new Error(`Prévia: a função ${fn} não existe aqui.`);
   },
 };

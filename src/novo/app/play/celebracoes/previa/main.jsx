@@ -7,7 +7,10 @@ import { Button, Card, Switch } from "../../../../ds";
 import { CelebracoesProvider, diaLocal, useCelebracoesApp, useSegurarCelebracoes } from "../CelebracoesProvider.jsx";
 import { CelebracoesPreferencias } from "../CelebracoesPreferencias.jsx";
 import { eventoDaAula, eventoDoSimulado, eventoDosFlashcards, eventosDaResposta, serieDeAcertos } from "../eventos.js";
-import { definirLiga, definirMaiorSequencia, definirMostrarSequencia } from "../../../session.jsx";
+import { definirLiga, definirMaiorSequencia, definirMostrarSequencia, definirSemana } from "../../../session.jsx";
+import { lyriaSoundUrls } from "../../../../../motion-studio/sound";
+import manifestVeo from "../../../../../motion-studio/sound/veo/manifest.json";
+import { CATALOGO } from "../../../../../motion-studio/celebracoes/catalogo";
 
 const MEDALHAS = [
   { name: "Primeiros Passos", description: "10 questões respondidas.", xp: 10, coins: 5 },
@@ -37,6 +40,41 @@ const B = ({ children, onClick, variant = "secondary" }) => (
   </Button>
 );
 
+/** Sons aprovados pelo dono em 16/10 (rodada 7 e ligas), um por um, sem a comemoração: lidos do registro (sound/veo/manifest.json), por evento. */
+const SONS_NOVOS = Object.entries(manifestVeo)
+  .filter(([, v]) => v.rodada === 7 || v.rodada === "ligas")
+  .reduce((acc, [cue, v]) => {
+    for (const id of v.eventos_app) (acc[id] ??= { id, titulo: CATALOGO.eventos.find((e) => e.id === id)?.rotulo ?? id, sons: [] }).sons.push(cue);
+    return acc;
+  }, {});
+function SonsAprovados() {
+  const tocar = (cue) => {
+    const a = new Audio(lyriaSoundUrls[cue]);
+    a.volume = 0.6;
+    void a.play().catch(() => {});
+  };
+  return (
+    <Grupo titulo="6. Sons novos aprovados (ouvir um por um)" nota="Cada linha é um evento do app; com mais de um som, o app sorteia um a cada vez e nunca repete o último. Aqui toca só o som, sem a comemoração.">
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
+        {Object.values(SONS_NOVOS).map((g) => (
+          <div key={g.id} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            <span style={{ font: "var(--type-body-sm)", minWidth: 220 }}>
+              <strong>{g.titulo}</strong>
+              <br />
+              <span style={{ color: "var(--text-secondary)" }}>{g.id}</span>
+            </span>
+            {g.sons.map((c) => (
+              <B key={c} onClick={() => tocar(c)}>
+                ▶ {c.replace(/^veo-/, "")}
+              </B>
+            ))}
+          </div>
+        ))}
+      </div>
+    </Grupo>
+  );
+}
+
 function Previa() {
   const cel = useCelebracoesApp();
   const [primeiraVez, setPrimeiraVez] = React.useState(true);
@@ -64,7 +102,14 @@ function Previa() {
   };
   const liga = (h) => {
     antes();
+    definirSemana(null);
     definirLiga({ starts_on: semanaPassada(), weekly_xp: 840, ...h });
+    void cel.verificarLiga({ forcar: true });
+  };
+  const comecoDaSemana = () => {
+    antes();
+    definirLiga(null);
+    definirSemana({ starts_on: diaLocal(), league: "ouro" });
     void cel.verificarLiga({ forcar: true });
   };
   const comecar = (tipo) => {
@@ -186,7 +231,10 @@ function Previa() {
         <B onClick={() => liga({ league: "ouro", position: 2, outcome: "stayed" })}>Pódio (2º)</B>
         <B onClick={() => liga({ league: "ouro", position: 12, outcome: "stayed" })}>Permaneceu</B>
         <B onClick={() => liga({ league: "ouro", position: 27, outcome: "relegated" })}>Rebaixado</B>
+        <B onClick={comecoDaSemana}>Começo da semana (a batalha começou)</B>
       </Grupo>
+
+      <SonsAprovados />
 
       <Card padding={20} style={{ borderRadius: 20 }}>
         <CelebracoesPreferencias />
