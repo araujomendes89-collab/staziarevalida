@@ -193,9 +193,10 @@ const DEF = {
 };
 
 /** Ícone ilustrado: o do protótipo quando existe; senão, os desenhados aqui; senão, nada (quem chama usa o ícone de linha). */
-export function AppRealIcon({ name, size = 28 }) {
-  // desenhos novos do pacote "Novas telas" (onda 2) têm prioridade sobre os antigos
-  const N = NOVAS_TELAS_ICONS[name];
+export function AppRealIcon({ name, size = 28, classico = false }) {
+  // desenhos novos do pacote "Novas telas" (onda 2) têm prioridade sobre os antigos; `classico` pede o desenho anterior (o modelo do
+  // início do diagnóstico, 16/10, usa o alvo e a trilha antigos)
+  const N = classico ? null : NOVAS_TELAS_ICONS[name];
   if (N) {
     return (
       <svg className={`ri ri-${N.an}`} width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" style={{ flexShrink: 0, filter: "drop-shadow(0 2px 2px rgba(13,28,66,.18))", overflow: "visible" }}>

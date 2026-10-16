@@ -165,10 +165,12 @@ export function Alternatives({ options, stateOf, chosen = null, struck = [], rev
 export function QuestionFooter({ marked, onMark, onPrev = null, prevDisabled = false, onSkip = null, skipDisabled = false, hint = "", primary }) {
   return (
     <div className="tq-foot" role="toolbar" aria-label="Ferramentas da questão">
-      <button type="button" className="tq-ghost" onClick={onMark} aria-pressed={marked}>
-        <Icon name="bookmark" size={18} />
-        {marked ? "Marcada para revisão" : "Marcar para revisão"}
-      </button>
+      {onMark && (
+        <button type="button" className="tq-ghost" onClick={onMark} aria-pressed={marked}>
+          <Icon name="bookmark" size={18} />
+          {marked ? "Marcada para revisão" : "Marcar para revisão"}
+        </button>
+      )}
       {onPrev && (
         <button type="button" className="tq-ghost" onClick={onPrev} disabled={prevDisabled}>
           <Icon name="arrow-left" size={18} />

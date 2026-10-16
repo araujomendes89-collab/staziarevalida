@@ -13,6 +13,7 @@
 import { PROFESSOR_CHANGED, TutorError, consentError, tutorTurn, type TurnResult, type TutorDeps } from "./engine";
 import { voiceCall } from "./realtime";
 import { phraseText } from "./speech";
+import { rateHit } from "./limits";
 
 export interface DelegateInput {
   /** Falas transcritas desde a última resposta (o aplicativo junta os pedaços que o GPT-Live manda). */
@@ -103,6 +104,8 @@ export async function delegateVoice(deps: TutorDeps, userId: string, voiceCallId
   const v = await voiceCall(deps, userId, voiceCallId);
   if (v.status !== "active") throw new TutorError("A conversa por voz foi encerrada.", 409);
   if (v.provider !== "live") throw new TutorError("Esta conversa por voz não usa delegação.", 409);
+  // Fase 0 (L2): cada delegação conta no limite de frequência do aluno (no banco); o turno com IA ainda passa pela chave geral
+  await rateHit(deps, userId, "voice_delegate");
   const said = studentTurnText(input);
   const base = { thinking: [] as string[], tone: null, avatar: null, gate: null, question_state: null };
   if (!said) {

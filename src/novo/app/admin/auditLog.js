@@ -83,6 +83,7 @@ export const ACTION_LABEL = {
   "tutor.personality": "Professor ligado ou desligado",
   "tutor.voice.approve": "Voz do professor aprovada",
   "tutor.voice.revoke": "Aprovação da voz do professor retirada",
+  "tutor.voice_reactions": "Reações de voz do Tutor configuradas",
   // Stazia Arena (gamificação)
   "gamification.rule": "Regra da Stazia Arena alterada",
   "gamification.achievement": "Medalha salva",
@@ -148,6 +149,8 @@ export const ACTION_LABEL = {
   "draft_question.approved": "Questão inédita aprovada",
   "draft_question.needs_changes": "Questão inédita devolvida para ajustes",
   "draft_question.rejected": "Questão inédita recusada",
+  "draft_question.reserve": "Questão inédita guardada na reserva (repetida)",
+  "draft_question.unreserve": "Questão inédita voltou da reserva para a fila",
   "staziamed.request": "Questões inéditas pedidas",
   "staziamed.check": "Conferência de Questões inéditas pedida",
   "staziamed.source": "Busca de fonte oficial para uma Questão StaziaMed pedida",

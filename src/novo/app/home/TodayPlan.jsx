@@ -157,6 +157,10 @@ export function TodayPlan({ go }) {
   if (!plan) return error ? <Banner tone="danger">{error}</Banner> : <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Carregando…</p>;
 
   const start = async (task) => {
+    const niv = boot.nivelamento;
+    if (task.ref?.reason === "diagnostic" && niv?.aplicavel && (niv.situacao === "novo" || niv.situacao === "adiado" || niv.situacao === "bloco1")) {
+      return go("nivelamento");
+    }
     setBusy(true);
     setError(null);
     try {

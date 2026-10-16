@@ -14,7 +14,8 @@
  * schedule_review e wait_for_user.
  */
 import { avatarOf, engineFor, normalize, stateLayer, step, type Happening, type PersonaEngine, type TutorState } from "./emotion";
-import { searchSources, sourceQuery, termsOrFail, TutorError, type TutorDeps } from "./engine";
+import { searchSources, sourceQuery, termsOrFail, textLimitMessage, trialOverMessage, TutorError, type Entitlement, type TutorDeps } from "./engine";
+import { assertAiAllowed, rateHit } from "./limits";
 import { tutorSettings } from "./settings";
 import { profanityLevel, type PersonalityParams, type ProfanityLevel } from "./personality";
 import { evaluateReasoning } from "./evaluation";
@@ -117,6 +118,8 @@ export async function runTutorTool(t: ToolCtx, name: string, args: Record<string
   if (!TOOL_NAMES.has(name)) return { error: "Ferramenta desconhecida." };
   const svc = <T>(fn: string, a: Record<string, unknown>) => t.deps.db.service<T>(fn, { p_user: t.userId, ...a });
   try {
+    // Fase 0 (L4): com a IA desligada no painel ou no ambiente, nenhuma ferramenta roda (a voz recebe o aviso e para de usar)
+    await assertAiAllowed(t.deps);
     switch (name) {
       case "get_question_context": {
         const q = await svc<Record<string, unknown> | null>("ch_worker_tutor_tool_question", { p_session_id: t.sessionId, p_reveal: args.reveal === true });
@@ -149,9 +152,24 @@ export async function runTutorTool(t: ToolCtx, name: string, args: Record<string
       case "evaluate_student_reasoning": {
         const q = await svc<Record<string, unknown> & { state?: string; last_answer?: { is_correct: boolean } | null } | null>("ch_worker_tutor_tool_question", { p_session_id: t.sessionId, p_reveal: false });
         if (q && q.state === "open") return { error: "A questão ainda está aberta: peça a resposta (submit_answer) antes de avaliar." };
+        // Fase 0 (L2): a avaliação chama a IA de texto. Tem limite próprio (minuto e dia, no banco) e gasta 1 interação da cota de
+        // mensagens do aluno, reservada antes (devolvida se a IA falhar), como o turno de texto.
+        await rateHit(t.deps, t.userId, "voice_eval");
+        const reserved = await svc<{ ok: boolean; reason?: string; reservation?: number; entitlement?: Entitlement }>("ch_worker_tutor_text_reserve", { p_session_id: t.sessionId });
+        if (!reserved.ok) {
+          if (reserved.reason === "trial_expired") return { error: trialOverMessage(reserved.entitlement) };
+          if (reserved.reason === "disabled") return { error: "O Tutor ainda não está ligado." };
+          return { error: reserved.entitlement ? textLimitMessage(reserved.entitlement) : "Você chegou ao limite de interações de hoje. Amanhã tem mais." };
+        }
         const topic = str(args.answer, 200);
-        const passages = q ? [] : (await searchSources(t.deps, sourceQuery(topic))).map((p) => ({ label: p.source, text: p.text }));
-        const ev = await evaluateReasoning(t.deps, { question: q, correct: q ? (q.last_answer?.is_correct ?? null) : null, answer: topic, reasoning: str(args.reasoning, 1500), topicPassages: passages });
+        let ev: Awaited<ReturnType<typeof evaluateReasoning>>;
+        try {
+          const passages = q ? [] : (await searchSources(t.deps, sourceQuery(topic))).map((p) => ({ label: p.source, text: p.text }));
+          ev = await evaluateReasoning(t.deps, { question: q, correct: q ? (q.last_answer?.is_correct ?? null) : null, answer: topic, reasoning: str(args.reasoning, 1500), topicPassages: passages });
+        } catch (error) {
+          await svc("ch_worker_tutor_text_release", { p_reservation: reserved.reservation }).catch(() => undefined); // erro da IA não gasta a cota
+          throw error;
+        }
         await svc("ch_worker_tutor_ledger", { p_session_id: t.sessionId, p_entry: { feature: "tutor_eval", provider: ev.usage.provider, model: ev.usage.model, input_text_tokens: ev.usage.input_tokens, output_text_tokens: ev.usage.output_tokens, estimated_cost_usd: ev.usage.cost_usd } });
         let times = 0;
         if (ev.error_type !== "none" && ev.correct === false) {
