@@ -12,6 +12,7 @@
 -- - Não aplica a distribuição de dificuldade ao plano (só calcula e guarda).
 --
 -- Como desfazer: supabase/desfazer/20261003012300_nivelamento_diagnostico.desfazer.sql
+-- Como conferir (só lê, responde OK/FALTA): supabase/conferir/nivelamento-diagnostico.sql
 -- =============================================================================
 
 create table if not exists public.nivelamento_config (
@@ -889,6 +890,10 @@ grant execute on function public.app_admin_nivelamento_cobertura to authenticate
 
 -- =============================================================================
 -- Atualização de app_today
+-- Base: o corpo publicado (20261003000800_home_api.sql), o MESMO que está em produção (conferido em 16/10/2026 com
+-- pg_get_functiondef; nenhuma migração depois da 000800 redefine app_today). A única mudança é o bloco do nivelamento
+-- (v_niv): com diagnóstico feito, a tarefa de praticar vai para a área de maior prioridade e a tarefa antiga
+-- "Diagnóstico inicial: 10 questões" (reason 'diagnostic'), se ainda não feita, sai do plano de hoje.
 -- =============================================================================
 create or replace function public.app_today(p_rebuild boolean default false) returns jsonb
   language plpgsql set search_path = ''
@@ -908,7 +913,8 @@ begin
   if v_uid is null then
     return null;
   end if;
-  
+
+  -- Nivelamento: com o diagnóstico feito (15 ou 30), a área de maior prioridade PR_a define a tarefa de praticar.
   v_niv := public.app_nivelamento_prioridades();
 
   if coalesce(p_rebuild, false) then
@@ -962,6 +968,8 @@ begin
     end if;
   end if;
 
+  -- Revisão: enquanto não for concluída, a meta acompanha o caderno de erros
+  -- (o que já foi revisto hoje + o que ainda está pendente, até 10 por dia).
   select count(*)::int into v_wrong from public.my_error_notebook e where e.status = 'para_revisar';
 
   update public.plan_tasks t
@@ -975,6 +983,7 @@ begin
     ) n
     where t.id = n.id and n.target > 0;
 
+  -- Os erros foram superados por outro caminho: não sobra nada para rever.
   delete from public.plan_tasks t
     where t.user_id = v_uid and t.day = v_day and t.kind = 'revisar' and t.done_at is null
       and v_wrong = 0 and public.plan_task_progress(t) = 0;
@@ -988,6 +997,7 @@ begin
             jsonb_build_object('count', v_wrong, 'reason', 'errors'), v_wrong * 2);
   end if;
 
+  -- Cumpriu a meta do dia: conclui sozinho (a não ser que o aluno tenha desmarcado à mão).
   update public.plan_tasks t
     set done_at = now()
     where t.user_id = v_uid and t.day = v_day and t.done_at is null and not (t.ref ? 'manual')

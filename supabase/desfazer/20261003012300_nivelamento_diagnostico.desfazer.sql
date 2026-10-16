@@ -1,24 +1,11 @@
-drop function if exists public.app_admin_nivelamento_cobertura;
-drop function if exists public.app_nivelamento_correcao;
-drop function if exists public.app_nivelamento_adiar;
-drop function if exists public.app_nivelamento_finalizar;
-drop function if exists public.app_nivelamento_responder;
-drop function if exists public.app_nivelamento_continuar;
-drop function if exists public.app_nivelamento_iniciar;
-drop function if exists public.app_nivelamento_sessao;
-drop function if exists public.app_nivelamento_prioridades;
-drop function if exists public.app_nivelamento_estado;
-drop function if exists public.nivelamento_estado_de;
-drop function if exists public.nivelamento_sortear_bloco;
-drop function if exists public.nivelamento_candidatas;
-drop function if exists public.nivelamento_questao_view;
-drop function if exists public.nivelamento_calcular;
-drop function if exists public.nivelamento_distribuicao;
-drop function if exists public.nivelamento_classificar;
-drop function if exists public.nivelamento_area_nome;
-drop function if exists public.nivelamento_area_ordem;
+-- DESFAZER da 20261003012300_nivelamento_diagnostico.sql (pode rodar mais de uma vez).
+-- 1) Devolve app_today ao corpo da 20261003000800_home_api.sql, que é o mesmo de produção antes do nivelamento
+--    (conferido em 16/10/2026 com pg_get_functiondef). Vem PRIMEIRO para o Plano de hoje nunca chamar uma função já apagada.
+-- 2) Apaga as funções do nivelamento.
+-- 3) Os dados (diagnósticos, itens e proficiência dos alunos) FICAM guardados. Para apagar também, tire o "-- " das 4
+--    últimas linhas (não tem volta).
+-- As tarefas de hoje já criadas com reason 'nivelamento' continuam no plano até o fim do dia (são tarefas comuns de praticar).
 
--- Recria app_today como era antes
 create or replace function public.app_today(p_rebuild boolean default false) returns jsonb
   language plpgsql set search_path = ''
 as $$
@@ -130,8 +117,28 @@ begin
 end
 $$;
 
--- APAGAR TAMBÉM OS DADOS
--- drop table if exists public.nivelamento_proficiencia cascade;
--- drop table if exists public.nivelamento_itens cascade;
--- drop table if exists public.nivelamento_diagnosticos cascade;
--- drop table if exists public.nivelamento_config cascade;
+drop function if exists public.app_admin_nivelamento_cobertura();
+drop function if exists public.app_nivelamento_correcao();
+drop function if exists public.app_nivelamento_adiar();
+drop function if exists public.app_nivelamento_finalizar();
+drop function if exists public.app_nivelamento_responder(integer, text);
+drop function if exists public.app_nivelamento_continuar();
+drop function if exists public.app_nivelamento_iniciar();
+drop function if exists public.app_nivelamento_sessao();
+drop function if exists public.app_nivelamento_prioridades();
+drop function if exists public.app_nivelamento_estado();
+drop function if exists public.nivelamento_estado_de(uuid);
+drop function if exists public.nivelamento_sortear_bloco(uuid, uuid, smallint);
+drop function if exists public.nivelamento_candidatas(uuid, public.med_area);
+drop function if exists public.nivelamento_questao_view(text);
+drop function if exists public.nivelamento_calcular(jsonb);
+drop function if exists public.nivelamento_distribuicao(numeric);
+drop function if exists public.nivelamento_classificar(numeric);
+drop function if exists public.nivelamento_area_nome(public.med_area);
+drop function if exists public.nivelamento_area_ordem(public.med_area);
+
+-- APAGAR TAMBÉM OS DADOS (não tem volta)
+-- drop table if exists public.nivelamento_proficiencia;
+-- drop table if exists public.nivelamento_itens;
+-- drop table if exists public.nivelamento_diagnosticos;
+-- drop table if exists public.nivelamento_config;
