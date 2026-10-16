@@ -110,7 +110,7 @@ describe("Tempo escolhido pelo aluno (montagem do simulado)", () => {
   it("o histórico mostra o simulado pausado e quanto falta", async () => {
     renderBuilder();
     expect(await screen.findByText("Pausado")).toBeTruthy();
-    expect(screen.getByText(/4\/30 respondidas · faltam 35:00/)).toBeTruthy();
+    expect(screen.getByText(/4\/30 · .*faltam 35:00/)).toBeTruthy();
   });
 
   it("horas e minutos e ritmo por questão", () => {

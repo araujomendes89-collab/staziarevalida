@@ -3,7 +3,7 @@
 // Os interruptores de lembrete e de alertas do protótipo saíram: o produto ainda não envia
 // notificações.
 import React from "react";
-import { Avatar, Badge, Banner, Button, Card, Icon, SectionHeader, SegmentedControl, SelectField, TextField } from "../../ds";
+import { Badge, Banner, Button, Icon, SegmentedControl, SelectField, TextField } from "../../ds";
 import { isStaffRole } from "../admin/AdminScreen.jsx";
 import { isPhase2Locked } from "../admin/common.jsx";
 import { PASSWORD_MIN_LENGTH } from "../../data";
@@ -12,22 +12,39 @@ import { planStatusLabel as planBadge, planSummary, usePlanLock } from "../plan/
 import { ReportProblem } from "../support/ReportProblem.jsx";
 import { SupportMail, useSupportEmail } from "../support/supportContact.jsx";
 import { useMobile } from "../Shell.jsx";
+import { Panel, RichIcon, Tile, useBreakpoint } from "../evolucao/ui.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
 import { COUNTRIES, normalizePhone, phoneError, splitPhone } from "../legal/phone.js";
 import "./account.css";
 
+// icon = ícone ilustrado do pacote (RichIcon); tone = cor do azulejo. "Ajuda e suporte" fica fora do bloco "Sua conta" (vem depois, junto de "Sair da conta").
 const SECTIONS = [
-  { id: "conta", label: "Minha conta", sub: "Nome, e-mail, WhatsApp e aparência", icon: "user" },
-  { id: "play", label: "Minha Stazia Arena", sub: "Nível, score, ranking e visibilidade", icon: "trophy" },
-  { id: "estudo", label: "Estudo e prova", sub: "Fase, prova-alvo e rotina", icon: "graduation-cap" },
-  { id: "seg", label: "Segurança", sub: "Senha e sessão", icon: "shield-check" },
-  { id: "priv", label: "Privacidade e dados", sub: "Exportação e exclusão (LGPD)", icon: "file-lock" },
-  { id: "ajuda", label: "Ajuda e suporte", sub: "Fale com a equipe ou relate um problema", icon: "life-buoy" },
+  { id: "conta", label: "Minha conta", sub: "Nome, e-mail, WhatsApp e aparência", icon: "users", tone: "blue" },
+  { id: "play", label: "Minha Stazia Arena", sub: "Nível, score, ranking e visibilidade", icon: "trophy", tone: "orange" },
+  { id: "estudo", label: "Estudo e prova", sub: "Fase, prova-alvo e rotina", icon: "calendar", tone: "blue" },
+  { id: "seg", label: "Segurança", sub: "Senha e sessão", icon: "lock", tone: "blue" },
+  { id: "priv", label: "Privacidade e dados", sub: "Exportação e exclusão (LGPD)", icon: "privacy", tone: "green" },
+  { id: "ajuda", label: "Ajuda e suporte", sub: "Fale com a equipe ou relate um problema", icon: "question", tone: "blue" },
 ];
+// No celular a seção abre dentro da lista, que já mostra o nome dela: o título interno some (o texto de apoio fica).
+const InlineContext = React.createContext(false);
+function SectionHeader({ title, subtitle }) {
+  const inline = React.useContext(InlineContext);
+  if (inline) return subtitle ? <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{subtitle}</p> : null;
+  // mesma marcação do SectionHeader do design system, com o título em 800 como no pacote (estilo em account.css)
+  return (
+    <div className="ac-sh">
+      <h2 className="ac-sh__t">{title}</h2>
+      {subtitle && <p className="ac-sh__s">{subtitle}</p>}
+    </div>
+  );
+}
+const MAIN_SECTIONS = SECTIONS.filter((s) => s.id !== "ajuda");
+const HELP = SECTIONS.find((s) => s.id === "ajuda");
 const THEMES = [
-  { value: "light", label: "Claro" },
-  { value: "dark", label: "Escuro" },
-  { value: "system", label: "Do sistema" },
+  { value: "light", label: "Claro", icon: "sun" },
+  { value: "dark", label: "Escuro", icon: "moon" },
+  { value: "system", label: "Do sistema", icon: "monitor" },
 ];
 const MINUTES = [
   { value: "", label: "Não definido" },
@@ -53,7 +70,7 @@ function SaveBar({ saving, status, onCancel, dirty }) {
         {status === "saved" && "Alterações salvas."}
         {status === "error" && "Não foi possível salvar. Confira os campos e tente de novo."}
       </span>
-      <Button variant="ghost" onClick={onCancel} disabled={!dirty || saving}>
+      <Button variant="ghost" className="ac-cancel" onClick={onCancel} disabled={!dirty || saving}>
         Cancelar
       </Button>
       <Button type="submit" loading={saving} disabled={!dirty}>
@@ -103,7 +120,7 @@ function PhoneInputs({ code, number, onChange, error, codeError, id }) {
   const [other, setOther] = React.useState(() => !COUNTRY_CODES.has(code));
   const selectValue = !other && COUNTRY_CODES.has(code) ? code : "outro";
   return (
-    <div style={{ display: "grid", gridTemplateColumns: other ? "minmax(150px,1fr) 110px minmax(0,2fr)" : "minmax(150px,1fr) minmax(0,2fr)", gap: 12, alignItems: "start" }}>
+    <div style={{ display: "grid", gridTemplateColumns: other ? "minmax(150px,1fr) 110px minmax(0,2fr)" : "minmax(0,1fr) minmax(0,1fr)", gap: 12, alignItems: "start" }}>
       <SelectField
         id={`${id}-country`}
         label="País do WhatsApp"
@@ -169,7 +186,9 @@ function AccountSection({ email }) {
         <div className="sm-field__label" style={{ marginBottom: 10 }}>
           Aparência
         </div>
-        <SegmentedControl label="Aparência" value={boot.profile.theme} onChange={(theme) => updateProfile({ theme }).catch(() => {})} options={THEMES} />
+        <div className="ac-theme">
+          <SegmentedControl label="Aparência" value={boot.profile.theme} onChange={(theme) => updateProfile({ theme }).catch(() => {})} options={THEMES} />
+        </div>
       </div>
       <SaveBar saving={form.saving} status={form.status} dirty={form.dirty || phoneDirty} onCancel={() => (form.reset(), setPhone(savedPhone), setPhoneKey((k) => k + 1), setShowPhoneError(false))} />
     </form>
@@ -416,9 +435,12 @@ function HelpSection({ email }) {
 /** "Seu plano": a data de fim como está na assinatura do aluno (sem número inventado). O nome do plano já aparece no selo de cima. */
 function PlanCard({ summary, email }) {
   return (
-    <Card>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Seu plano</h3>
+    <Panel className="ac-plan">
+      <Tile tone="orange" size={44} radius={13}>
+        <RichIcon name="crown" size={29} />
+      </Tile>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+        <h3 style={{ margin: 0, font: "800 16px var(--font-sans)" }}>Seu plano</h3>
         <div style={{ font: "var(--type-label)" }}>
           <span>{summary.lead}</span>
           {summary.date && (
@@ -433,7 +455,7 @@ function PlanCard({ summary, email }) {
           Dúvidas sobre o seu plano? Fale com o suporte: <SupportMail email={email} />
         </div>
       </div>
-    </Card>
+    </Panel>
   );
 }
 
@@ -498,8 +520,10 @@ export function AccountScreen({ go }) {
       alive = false;
     };
   }, [backend, isElite, eliteKey, tick]);
-  const mobile = useMobile();
-  const [section, setSection] = React.useState("conta");
+  const bp = useBreakpoint();
+  // no celular a lista abre com as seções fechadas (D9); no computador e no tablet a primeira seção já aparece
+  const [section, setSection] = React.useState(() => (bp === "narrow" ? "" : "conta"));
+  const active = section || "conta";
   const profile = boot.profile;
   const plan = planBadge(boot.subscription, boot.role, Boolean(boot.reviewer_areas?.length));
   const supportEmail = useSupportEmail();
@@ -507,79 +531,189 @@ export function AccountScreen({ go }) {
   const lock = usePlanLock(); // teste grátis terminado ou sem plano pago: o que fica nos planos pagos (PL02); o banco decide
   const phase2Locked = isPhase2Locked(boot.role); // 2ª fase "em breve" para o aluno: o selo mostra a 1ª mesmo se a 2ª estiver gravada
   const goal = profile.target_edition ? `Meta: ${profile.exam_type === "ENAMED" ? "ENAMED" : "Revalida INEP"} ${profile.target_edition}` : null;
+  const staff = isStaffRole(boot.role);
+  const staffTitle = boot.role === "admin" ? "Você é administrador" : "Você é editor";
+  const fullAccess = staff || Boolean(boot.reviewer_areas?.length);
+  const initials = (profile.name || user?.email || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 
-  return (
+  const content = (id) => (
     <>
-      <Card>
-        <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-          <Avatar name={profile.name || user?.email || ""} size={64} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ margin: 0, font: "var(--type-h3)" }}>{profile.name || "Sua conta"}</h2>
-            <div style={{ color: "var(--text-secondary)", font: "var(--type-body-sm)", overflowWrap: "anywhere" }}>{user?.email}</div>
-            <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-              {plan && (
-                <Badge tone="pro" size="sm">
-                  {plan}
-                </Badge>
-              )}
-              {goal && <Badge size="sm">{goal}</Badge>}
-              <Badge size="sm">{profile.phase === 2 && !phase2Locked ? "2ª fase" : "1ª fase"}</Badge>
-            </div>
-          </div>
-          <Button size="sm" variant="secondary" icon="crown" onClick={() => go("planos")}>
-            Ver os planos
-          </Button>
-        </div>
-      </Card>
-      {summary && <PlanCard summary={summary} email={supportEmail} />}
+      {id === "conta" && <AccountSection email={user?.email} />}
+      {id === "play" && <PlayProfileSection go={go} />}
+      {id === "estudo" && <StudySection />}
+      {id === "seg" && <SecuritySection />}
+      {id === "priv" && <PrivacySection />}
+      {id === "ajuda" && <HelpSection email={supportEmail} />}
+    </>
+  );
+  const planBadgeNode = plan && (
+    <Badge tone={fullAccess ? "success" : "pro"} size="sm">
+      {plan}
+    </Badge>
+  );
+  const badges = (
+    <div className="ac-badges">
+      {planBadgeNode}
+      {goal && <Badge size="sm">{goal}</Badge>}
+      <Badge tone="info" size="sm">{profile.phase === 2 && !phase2Locked ? "2ª fase" : "1ª fase"}</Badge>
+    </div>
+  );
+  // no celular o cartão "Seu plano" sai (D9): a linha "Meu plano" logo abaixo já leva à tela do plano
+  const notices = (
+    <>
+      {summary && bp !== "narrow" && <PlanCard summary={summary} email={supportEmail} />}
       {lock && (
         <Banner tone="warning" icon="lock" title={lock.title} action={<Button size="sm" variant="secondary" onClick={() => go("planos")}>Ver planos</Button>}>
           {lock.text}
         </Banner>
       )}
       <EliteBenefits benefits={benefits} />
-      {isStaffRole(boot.role) && (
-        <Banner
-          tone="brand"
-          icon="shield-check"
-          title={boot.role === "admin" ? "Você é administrador" : "Você é editor"}
-          action={
-            <Button size="sm" iconRight="arrow-right" onClick={() => go("admin")}>
-              Abrir administração
-            </Button>
-          }
-        >
-          Acesso completo ao app, sem período de teste.{" "}
-          {boot.role === "admin" ? "Na administração: usuários, planos, conteúdo e configurações." : "Na administração: questões, aulas, atualizações, estações e Central de Conteúdo."}
-        </Banner>
+    </>
+  );
+
+  if (bp === "narrow") {
+    return (
+      <div className="ev ev-stack ac ac--narrow">
+        <div className="ac-me">
+          <span className="ac-avatar ac-avatar--sm" aria-hidden="true">{initials}</span>
+          <div className="ac-me__txt">
+            <h2 className="ac-name">{profile.name || "Sua conta"}</h2>
+            <div className="ac-mail">{user?.email}</div>
+            {badges}
+          </div>
+        </div>
+        {notices}
+        <h2 className="ac-grp">Plano e acesso</h2>
+        <Panel className="ac-list">
+          <button type="button" className="ac-row" onClick={() => go("planos")}>
+            <Tile tone="orange" size={38} radius={11}><RichIcon name="crown" size={26} /></Tile>
+            <span className="ac-row__t"><b>Meu plano</b><small>{plan ?? "Ver o que cada plano inclui"}</small></span>
+            <Icon name="chevron-right" size={18} className="ac-chev" />
+          </button>
+          {staff && (
+            <button type="button" className="ac-row" onClick={() => go("admin")}>
+              <Tile tone="blue" size={38} radius={11}><RichIcon name="settings" size={26} /></Tile>
+              <span className="ac-row__t"><b>Administração</b><small>{staffTitle}</small></span>
+              <span className="ac-open">Abrir</span>
+            </button>
+          )}
+        </Panel>
+        <h2 className="ac-grp">Sua conta</h2>
+        <Panel className="ac-list">
+          {MAIN_SECTIONS.map((s) => {
+            const open = section === s.id;
+            return (
+              <div key={s.id} className="ac-acc">
+                <button type="button" className="ac-row" aria-expanded={open} aria-controls={`ac-sec-${s.id}`} onClick={() => setSection(open ? "" : s.id)}>
+                  <Tile tone={s.tone} size={38} radius={11}><RichIcon name={s.icon} size={26} /></Tile>
+                  <span className="ac-row__t"><b>{s.label}</b><small>{s.sub}</small></span>
+                  <Icon name="chevron-right" size={18} className={`ac-chev${open ? " is-open" : ""}`} />
+                </button>
+                {open && (
+                  <div id={`ac-sec-${s.id}`} className="ac-inline">
+                    <InlineContext.Provider value>{content(s.id)}</InlineContext.Provider>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </Panel>
+        <Panel className="ac-list">
+          <div className="ac-acc">
+            <button type="button" className="ac-row" aria-expanded={section === "ajuda"} aria-controls="ac-sec-ajuda" onClick={() => setSection(section === "ajuda" ? "" : "ajuda")}>
+              <Tile tone="blue" size={38} radius={11}><RichIcon name={HELP.icon} size={26} /></Tile>
+              <span className="ac-row__t"><b>{HELP.label}</b></span>
+              <Icon name="chevron-right" size={18} className={`ac-chev${section === "ajuda" ? " is-open" : ""}`} />
+            </button>
+            {section === "ajuda" && (
+              <div id="ac-sec-ajuda" className="ac-inline">
+                <InlineContext.Provider value>{content("ajuda")}</InlineContext.Provider>
+              </div>
+            )}
+          </div>
+          <button type="button" className="ac-row ac-row--out" onClick={() => signOut()}>
+            <Tile tone="slate" size={38} radius={11}><RichIcon name="logout" size={26} /></Tile>
+            <span className="ac-row__t"><b>Sair da conta</b></span>
+          </button>
+        </Panel>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ev ev-stack ac">
+      <Panel className="ac-me ac-me--card" aria-label="Perfil">
+        <span className="ac-avatar" aria-hidden="true">{initials}</span>
+        <div className="ac-me__txt">
+          <h2 className="ac-name">{profile.name || "Sua conta"}</h2>
+          <div className="ac-mail">{user?.email}</div>
+          {badges}
+        </div>
+        <button type="button" className="ac-ghost" onClick={() => go("planos")}>
+          <RichIcon name="crown" size={22} />
+          Ver os planos
+        </button>
+      </Panel>
+      {notices}
+      {staff && (
+        <div className="ac-admin" role="region" aria-label={staffTitle}>
+          <Tile tone="blue" size={40} radius={12}><RichIcon name="settings" size={28} /></Tile>
+          <span className="ac-admin__t">
+            <span className="ac-admin__h"><b>{staffTitle}</b>.</span>
+            <small>
+              Acesso completo ao app, sem período de teste.{" "}
+              {boot.role === "admin" ? "Na administração: usuários, planos, conteúdo e configurações." : "Na administração: questões, aulas, atualizações, estações e Central de Conteúdo."}
+            </small>
+          </span>
+          <button type="button" className="ac-admin__btn" onClick={() => go("admin")}>
+            Abrir administração
+            <Icon name="arrow-right" size={15} />
+          </button>
+        </div>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: mobile ? "minmax(0,1fr)" : "260px minmax(0,1fr)", gap: 24, alignItems: "start" }}>
-        <Card padding={8}>
-          <nav aria-label="Seções da conta" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {SECTIONS.map((s) => (
-              <button key={s.id} type="button" className="sm-nav__item" aria-current={section === s.id ? "page" : undefined} onClick={() => setSection(s.id)} style={{ height: "auto", padding: "10px 12px", alignItems: "flex-start" }}>
-                <Icon name={s.icon} size={18} />
-                <span style={{ display: "flex", flexDirection: "column", gap: 2, textAlign: "left" }}>
-                  <span>{s.label}</span>
-                  <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{s.sub}</span>
-                </span>
+      <div className={`ac-cols${bp === "mid" ? " ac-cols--mid" : ""}`}>
+        {bp === "wide" ? (
+          <Panel as="nav" className="ac-nav" aria-label="Seções da conta">
+            {MAIN_SECTIONS.map((s) => (
+              <button key={s.id} type="button" className="ac-nav__item" aria-current={active === s.id ? "page" : undefined} onClick={() => setSection(s.id)}>
+                <Tile tone={s.tone} size={40} radius={12}><RichIcon name={s.icon} size={26} /></Tile>
+                <span className="ac-row__t"><b>{s.label}</b><small>{s.sub}</small></span>
               </button>
             ))}
-            <button type="button" className="sm-nav__item" style={{ color: "var(--danger-text)" }} onClick={() => signOut()}>
-              <Icon name="log-out" size={18} />
+            <div className="ac-nav__sep" />
+            <button type="button" className="ac-nav__link" aria-current={section === "ajuda" ? "page" : undefined} onClick={() => setSection("ajuda")}>
+              <RichIcon name={HELP.icon} size={26} />
+              <span>{HELP.label}</span>
+            </button>
+            <button type="button" className="ac-nav__link ac-nav__link--out" onClick={() => signOut()}>
+              <RichIcon name="logout" size={26} />
+              <span>Sair da conta</span>
+            </button>
+          </Panel>
+        ) : (
+          <nav aria-label="Seções da conta" className="ac-chips">
+            {MAIN_SECTIONS.map((s) => (
+              <button key={s.id} type="button" className="ac-chip" aria-current={active === s.id ? "page" : undefined} onClick={() => setSection(s.id)}>
+                <RichIcon name={s.icon} size={22} />
+                {s.label}
+              </button>
+            ))}
+          </nav>
+        )}
+        <Panel className="ac-panel">{content(active)}</Panel>
+        {bp === "mid" && (
+          <div className="ac-foot2">
+            <button type="button" className="ac-ghost" aria-current={section === "ajuda" ? "page" : undefined} onClick={() => setSection("ajuda")}>
+              <RichIcon name={HELP.icon} size={22} />
+              {HELP.label}
+            </button>
+            <button type="button" className="ac-ghost ac-ghost--out" onClick={() => signOut()}>
+              <RichIcon name="logout" size={22} />
               Sair da conta
             </button>
-          </nav>
-        </Card>
-        <Card padding={mobile ? 20 : 28}>
-          {section === "conta" && <AccountSection email={user?.email} />}
-          {section === "play" && <PlayProfileSection go={go} />}
-          {section === "estudo" && <StudySection />}
-          {section === "seg" && <SecuritySection />}
-          {section === "priv" && <PrivacySection />}
-          {section === "ajuda" && <HelpSection email={supportEmail} />}
-        </Card>
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }

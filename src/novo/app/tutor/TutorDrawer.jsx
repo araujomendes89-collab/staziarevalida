@@ -37,6 +37,14 @@ export function TutorButton({ request, label = "Discutir com o Tutor", size = "s
         {label}
       </button>
     );
+  // variant "roxo": botão largo roxo das telas novas (Desempenho: "Me teste nos pontos fracos"; estilo em review/desempenho.css)
+  if (variant === "roxo")
+    return (
+      <button type="button" className="ev-ia" onClick={() => open(request)}>
+        <Icon name="sparkles" size={20} />
+        {label}
+      </button>
+    );
   return (
     <Button size={size} variant={variant} icon={icon} className={className} onClick={() => open(request)}>
       {label}

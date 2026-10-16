@@ -148,13 +148,13 @@ describe("Aceite dos Tutores — permissões e formato", () => {
     expect(antes).toMatchObject({
       enabled: true, available: true, requires_pro: true, voice_enabled: true, reviews_due: 0, daily_limit: 40, used_today: 0,
       preferences: { personality_id: "acolhedor", profanity: "off", chosen: false },
-      consent_required: true, consent_version: "1.0",
+      consent_required: true, consent_version: "2.0",
     });
     expect(antes.entitlement).toMatchObject({ mode: "trial", can_use: true });
     expect(antes.personalities.length).toBeGreaterThan(0);
     await aceitarTermos(dev.db, aluno);
     const depois = await status(aluno);
-    expect(depois).toMatchObject({ consent_required: false, consent_version: "1.0" });
+    expect(depois).toMatchObject({ consent_required: false, consent_version: "2.0" });
     expect({ ...depois, consent_required: true }).toEqual(antes);
     // sem login o status continua pedindo o login
     expect((await recusa(rpc(null, "app_tutor_status"))).message).toBe(SEM_LOGIN);
@@ -178,7 +178,7 @@ describe("Aceite dos Tutores — aluno sem o aceite", () => {
 
     await perderAceiteTutor(aluno);
 
-    expect(await status(aluno)).toMatchObject({ consent_required: true, consent_version: "1.0" });
+    expect(await status(aluno)).toMatchObject({ consent_required: true, consent_version: "2.0" });
     expect(await sessoes(aluno)).toEqual([]); // as conversas existem, mas a lista vem vazia
     expect(await rpc(aluno, "app_tutor_sessions")).toEqual([]);
     expect(await recusa(rpc(aluno, "app_tutor_start", "livre", null, null))).toEqual(pendente);
@@ -197,7 +197,7 @@ describe("Aceite dos Tutores — aluno sem o aceite", () => {
     expect(await recusa(db.service("ch_worker_tutor_next_as", { p_user: aluno, p_session_id: respondida.id }))).toMatchObject(pendente);
 
     // com o aceite de volta as mesmas chamadas passam: a recusa era só o aceite
-    await rpc(aluno, "app_accept_terms", "tutor_ia", "1.0", "tutor");
+    await rpc(aluno, "app_accept_terms", "tutor_ia", "2.0", "tutor");
     expect((await sessoes(aluno)).length).toBe(3);
     expect((await rpc(aluno, "app_tutor_session", aberta.id)).id).toBe(aberta.id);
     expect(await rpc(aluno, "app_tutor_answer", aberta.id, certa[aberta.question.id], 4)).toMatchObject({ is_correct: true });
@@ -206,7 +206,7 @@ describe("Aceite dos Tutores — aluno sem o aceite", () => {
 
     // aluna que nunca aceitou nada: também sem conversa nova
     const nova = await novoAluno();
-    expect(await status(nova)).toMatchObject({ consent_required: true, consent_version: "1.0" });
+    expect(await status(nova)).toMatchObject({ consent_required: true, consent_version: "2.0" });
     expect(await sessoes(nova)).toEqual([]);
     expect(await recusa(rpc(nova, "app_tutor_start", "livre", null, null))).toEqual(pendente);
     expect(await recusa(rpc(nova, "app_tutor_start", "questao", null, null))).toEqual(pendente);
@@ -230,27 +230,28 @@ describe("Aceite dos Tutores — aluno sem o aceite", () => {
     expect(await recusa(rpc(aluna, "app_tutor_start", "modo-que-nao-existe", null, null))).toEqual(pendente);
     expect(await recusa(rpc(aluna, "app_tutor_start", "questao", null, "Q-QUE-NAO-EXISTE"))).toEqual(pendente);
     // com o aceite, as regras de antes voltam a valer (aqui, o teste grátis terminado)
-    await rpc(aluna, "app_accept_terms", "tutor_ia", "1.0", "tutor");
+    await rpc(aluna, "app_accept_terms", "tutor_ia", "2.0", "tutor");
     await expect(rpc(aluna, "app_tutor_start", "livre", null, null)).rejects.toThrow(/teste grátis do Tutor terminou/);
     await expect(rpc(aluna, "app_tutor_start", "modo-que-nao-existe", null, null)).rejects.toThrow(/teste grátis do Tutor terminou/);
   });
 
-  it("depois do app_accept_terms('tutor_ia','1.0','tutor') o Tutor abre", async () => {
+  it("depois do app_accept_terms('tutor_ia','2.0','tutor') o Tutor abre", async () => {
     const aluna = await novoAluno();
     expect(await recusa(rpc(aluna, "app_tutor_start", "livre", null, null))).toEqual(pendente);
     // aceitar só o Termo (tela de aceite) não libera o Tutor: são dois aceites
-    await rpc(aluna, "app_accept_terms", "termo_uso", "1.0", "tela_aceite", "+5541999998888");
+    // Termo 2.0 vigente: o aceite do termo vai com as declarações de maioridade e de médico
+    await rpc(aluna, "app_accept_terms_declared", "termo_uso", "2.0", true, true, "tela_aceite", "+5541999998888");
     expect(await status(aluna)).toMatchObject({ consent_required: true });
     expect(await recusa(rpc(aluna, "app_tutor_start", "livre", null, null))).toEqual(pendente);
     // aceitar uma versão velha também não
     expect((await recusa(rpc(aluna, "app_accept_terms", "tutor_ia", "0.9", "tutor"))).message).toBe("Versão desatualizada do termo.");
     expect(await status(aluna)).toMatchObject({ consent_required: true });
 
-    const boot = await rpc(aluna, "app_accept_terms", "tutor_ia", "1.0", "tutor");
-    expect(boot.legal.tutor_ia).toMatchObject({ current: "1.0", accepted: "1.0" });
-    expect(await status(aluna)).toMatchObject({ consent_required: false, consent_version: "1.0" });
+    const boot = await rpc(aluna, "app_accept_terms", "tutor_ia", "2.0", "tutor");
+    expect(boot.legal.tutor_ia).toMatchObject({ current: "2.0", accepted: "2.0" });
+    expect(await status(aluna)).toMatchObject({ consent_required: false, consent_version: "2.0" });
     const prova = (await sql(`select origin, version from public.legal_acceptances where user_id = $1 and document = 'tutor_ia'`, [aluna]))[0];
-    expect(prova).toEqual({ origin: "tutor", version: "1.0" });
+    expect(prova).toEqual({ origin: "tutor", version: "2.0" });
 
     // conversa solta
     const livre = await rpc(aluna, "app_tutor_start", "livre", null, null);
@@ -267,7 +268,7 @@ describe("Aceite dos Tutores — aluno sem o aceite", () => {
     expect((await sessoes(aluna)).length).toBe(2);
     // a conversa de outro aluno continua não sendo dela (a regra de antes)
     const outro = await novoAluno();
-    await rpc(outro, "app_accept_terms", "tutor_ia", "1.0", "tutor");
+    await rpc(outro, "app_accept_terms", "tutor_ia", "2.0", "tutor");
     expect((await recusa(rpc(outro, "app_tutor_session", livre.id))).message).toBe("Conversa não encontrada.");
   });
 
@@ -293,7 +294,7 @@ describe("Aceite dos Tutores — equipe, revisor médico e mudança de papel", (
     const revisor = await novoAluno();
     await sql(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'PEDIATRIA')`, [revisor]);
     for (const uid of [ADMIN, editor, revisor]) {
-      expect(await status(uid)).toMatchObject({ consent_required: false, consent_version: "1.0" });
+      expect(await status(uid)).toMatchObject({ consent_required: false, consent_version: "2.0" });
       expect(await contar(`select count(*) n from public.legal_acceptances where user_id = $1`, [uid])).toBe(0); // sem aceite nenhum
       const livre = await rpc(uid, "app_tutor_start", "livre", null, null);
       expect((await rpc(uid, "app_tutor_session", livre.id)).id).toBe(livre.id);
@@ -326,7 +327,7 @@ describe("Aceite dos Tutores — equipe, revisor médico e mudança de papel", (
     expect(await status(pessoa)).toMatchObject({ consent_required: true });
     expect(await recusa(rpc(pessoa, "app_tutor_start", "livre", null, null))).toEqual(pendente);
     // aceitou: abre e a conversa antiga volta à lista
-    await rpc(pessoa, "app_accept_terms", "tutor_ia", "1.0", "tutor");
+    await rpc(pessoa, "app_accept_terms", "tutor_ia", "2.0", "tutor");
     expect((await sessoes(pessoa)).map((s: any) => s.id)).toEqual([conversa.id]);
   });
 });
@@ -336,34 +337,34 @@ describe("Aceite dos Tutores — versão nova", () => {
     const aluna = await novoAluno();
     await aceitarTermos(dev.db, aluna);
     const conversa = await rpc(aluna, "app_tutor_start", "livre", null, null);
-    const so11 = await novoAluno(); // vai aceitar só a 1.1
+    const so11 = await novoAluno(); // vai aceitar só a 2.1
     try {
-      await sql(`update public.legal_versions set version = '1.1' where document = 'tutor_ia'`);
-      expect(await status(aluna)).toMatchObject({ consent_required: true, consent_version: "1.1" });
+      await sql(`update public.legal_versions set version = '2.1' where document = 'tutor_ia'`);
+      expect(await status(aluna)).toMatchObject({ consent_required: true, consent_version: "2.1" });
       expect(await sessoes(aluna)).toEqual([]);
       expect(await recusa(rpc(aluna, "app_tutor_session", conversa.id))).toEqual(pendente);
       expect(await recusa(rpc(aluna, "app_tutor_start", "livre", null, null))).toEqual(pendente);
-      expect((await recusa(rpc(aluna, "app_accept_terms", "tutor_ia", "1.0", "tutor"))).message).toBe("Versão desatualizada do termo.");
+      expect((await recusa(rpc(aluna, "app_accept_terms", "tutor_ia", "2.0", "tutor"))).message).toBe("Versão desatualizada do termo.");
       expect(await recusa(rpc(aluna, "app_tutor_start", "livre", null, null))).toEqual(pendente);
       // o Termo não mudou: só o cartão do Tutor volta
-      expect((await rpc(aluna, "app_bootstrap")).legal).toMatchObject({ termo_uso: { current: "1.0", accepted: "1.0" }, tutor_ia: { current: "1.1", accepted: "1.0" } });
-      await rpc(aluna, "app_accept_terms", "tutor_ia", "1.1", "tutor");
-      expect(await status(aluna)).toMatchObject({ consent_required: false, consent_version: "1.1" });
+      expect((await rpc(aluna, "app_bootstrap")).legal).toMatchObject({ termo_uso: { current: "2.0", accepted: "2.0" }, tutor_ia: { current: "2.1", accepted: "2.0" } });
+      await rpc(aluna, "app_accept_terms", "tutor_ia", "2.1", "tutor");
+      expect(await status(aluna)).toMatchObject({ consent_required: false, consent_version: "2.1" });
       expect((await sessoes(aluna)).map((s: any) => s.id)).toEqual([conversa.id]);
       expect((await rpc(aluna, "app_tutor_start", "livre", null, null)).status).toBe("active");
 
-      await rpc(so11, "app_accept_terms", "tutor_ia", "1.1", "tutor");
+      await rpc(so11, "app_accept_terms", "tutor_ia", "2.1", "tutor");
       expect(await status(so11)).toMatchObject({ consent_required: false });
 
-      // a troca é desfeita (1.1 voltou a 1.0): quem aceitou as duas continua liberada; quem só tem a 1.1 precisa da 1.0
-      await sql(`update public.legal_versions set version = '1.0' where document = 'tutor_ia'`);
-      expect(await status(aluna)).toMatchObject({ consent_required: false, consent_version: "1.0" });
+      // a troca é desfeita (2.1 voltou a 2.0): quem aceitou as duas continua liberada; quem só tem a 2.1 precisa da 2.0
+      await sql(`update public.legal_versions set version = '2.0' where document = 'tutor_ia'`);
+      expect(await status(aluna)).toMatchObject({ consent_required: false, consent_version: "2.0" });
       expect((await rpc(aluna, "app_tutor_start", "livre", null, null)).status).toBe("active");
-      expect(await status(so11)).toMatchObject({ consent_required: true, consent_version: "1.0" });
-      await rpc(so11, "app_accept_terms", "tutor_ia", "1.0", "tutor");
+      expect(await status(so11)).toMatchObject({ consent_required: true, consent_version: "2.0" });
+      await rpc(so11, "app_accept_terms", "tutor_ia", "2.0", "tutor");
       expect(await status(so11)).toMatchObject({ consent_required: false });
     } finally {
-      await sql(`update public.legal_versions set version = '1.0' where document = 'tutor_ia'`);
+      await sql(`update public.legal_versions set version = '2.0' where document = 'tutor_ia'`);
     }
   });
 });
@@ -406,7 +407,7 @@ describe("Aceite dos Tutores — o que o servidor recebe", () => {
     expect(await db.service("ch_worker_tutor_context", { p_user: aluno, p_session_id: "00000000-0000-4000-8000-00000000ffff" })).toBeNull();
 
     // aceitou: volta a false
-    await rpc(aluno, "app_accept_terms", "tutor_ia", "1.0", "tutor");
+    await rpc(aluno, "app_accept_terms", "tutor_ia", "2.0", "tutor");
     expect((await contexto()).consent_pending).toBe(false);
     expect(await voz("message")).toMatchObject({ found: true, consent_pending: false });
 
@@ -527,7 +528,7 @@ describe("Aceite dos Tutores — rotas do servidor (/api/tutor)", () => {
     await perderAceiteTutor(aluno);
     expect((await pedir(token, "/turn", { session_id: sid, action: "message", text: "oi" })).status).toBe(403);
 
-    await rpc(aluno, "app_accept_terms", "tutor_ia", "1.0", "tutor");
+    await rpc(aluno, "app_accept_terms", "tutor_ia", "2.0", "tutor");
     // a voz do professor fala com alunos: vozes aprovadas e "só equipe" desligado
     await aprovarVozes(sql);
     await sql(`update public.tutor_config set tts_team_only = false`);
@@ -560,7 +561,7 @@ describe("Aceite dos Tutores — rotas do servidor (/api/tutor)", () => {
       expect({ status: r.status, corpo: r.corpo }, rota).toEqual({ status: 403, corpo: RECUSA });
     }
     // com o aceite valem as regras de plano de antes, sem o código (já não é pendência de aceite)
-    await rpc(aluno, "app_accept_terms", "tutor_ia", "1.0", "tutor");
+    await rpc(aluno, "app_accept_terms", "tutor_ia", "2.0", "tutor");
     for (const [rota, corpo, aviso] of [
       ["/turn", pedidos[0][1], /teste grátis do Tutor terminou/],
       ["/voice/start", pedidos[1][1], /teste grátis do Tutor terminou/],
@@ -591,7 +592,7 @@ describe("Aceite dos Tutores — rotas do servidor (/api/tutor)", () => {
     // nem a letra dita virou resposta, nem a dica foi contada, nem entrou fala nova
     expect(await uso(aluno, sid)).toEqual(antes);
 
-    await rpc(aluno, "app_accept_terms", "tutor_ia", "1.0", "tutor");
+    await rpc(aluno, "app_accept_terms", "tutor_ia", "2.0", "tutor");
     const volta = await delegar("oi, tudo bem?");
     expect(volta).toMatchObject({ status: 200, corpo: { intent: "message", say: [expect.stringMatching(/começaria/)] } });
   });

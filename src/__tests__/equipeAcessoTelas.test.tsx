@@ -35,10 +35,14 @@ import { AccountScreen } from "../novo/app/account/AccountScreen.jsx";
 import { HomeScreen } from "../novo/app/home/HomeScreen.jsx";
 import { TutorQuota } from "../novo/app/tutor/TutorQuota.jsx";
 
+// fim do teste grátis relativo a hoje (a data fixa 13/10/2026 envelheceu: virou "Teste grátis · encerrado"); meio-dia de Brasília (15h UTC) evita virar o dia
+const FIM_DO_TESTE = new Date(Date.now() + 5 * 86_400_000);
+FIM_DO_TESTE.setUTCHours(15, 0, 0, 0);
+const FIM_BR = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(FIM_DO_TESTE);
 const boot = (role: string) => ({
   role,
   profile: { name: "Pessoa", phase: 1, exam_type: "REVALIDA", target_edition: null, daily_minutes: null, exam_date: null, theme: "light" },
-  subscription: { plan: "trial", status: "trialing", trial_ends_at: "2026-10-13T12:00:00Z", current_period_end: null },
+  subscription: { plan: "trial", status: "trialing", trial_ends_at: FIM_DO_TESTE.toISOString(), current_period_end: null },
   has_pro: role !== "student",
 });
 
@@ -60,7 +64,7 @@ describe("Conta", () => {
   it("aluno: continua vendo até quando vai o teste grátis", () => {
     session.boot = boot("student");
     render(<AccountScreen go={vi.fn()} />);
-    expect(screen.getByText("Teste grátis até 13/10/2026")).toBeTruthy();
+    expect(screen.getByText(`Teste grátis até ${FIM_BR}`)).toBeTruthy();
     expect(screen.queryByText("Equipe · acesso completo")).toBeNull();
   });
 });

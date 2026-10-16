@@ -128,8 +128,11 @@ describe("PL02 — simulados completos", () => {
   });
 
   it("visitante não começa nada (entrar na conta)", async () => {
-    await expect(simulado(null)).rejects.toThrow("Entre na sua conta para treinar.");
-    await expect(treino(null)).rejects.toThrow("Entre na sua conta para treinar.");
+    // 010800: app_start_session deixou de ser executável pelo visitante (anon), como o app_start_simulado_tri: a recusa vem antes,
+    // pela permissão. Continua valendo a regra: o visitante não começa nada.
+    const recusado = /Entre na sua conta para treinar\.|permission denied for function app_start_session/;
+    await expect(simulado(null)).rejects.toThrow(recusado);
+    await expect(treino(null)).rejects.toThrow(recusado);
   });
 
   it("não dá para furar a trava criando a sessão de simulado direto na tabela (a API do banco deixa o aluno inserir a própria sessão)", async () => {

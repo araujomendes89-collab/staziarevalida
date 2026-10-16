@@ -9,6 +9,7 @@ import { AuthFlow, NewPasswordScreen } from "./AuthScreens.jsx";
 import { LegalPage } from "./legal/LegalPage.jsx";
 import { AcceptanceScreen } from "./legal/AcceptanceScreen.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
+import { forgetShellCounts } from "./shell/useShellCounts.js";
 import { rememberScreen } from "./support/lastScreen.js";
 import { NexusScreen } from "./tutor/nexus/NexusScreen.jsx";
 import { ReportScreen } from "./tutor/ReportScreen.jsx";
@@ -45,7 +46,7 @@ const TITLES = {
   temas: ["Temas Essenciais", "Aprender · os 100 temas prioritários, com as questões oficiais de cada um"],
   atualizacoes: ["Diretrizes e Atualizações", "Aprender · o que mudou nas condutas e onde conferir"],
   mapas: ["Mapas Mentais", "Aprender · resumos visuais por tema, da revisão rápida ao aprofundado"],
-  hoje: ["Plano de Hoje", "Aprender · praticar · revisar"],
+  hoje: ["Plano de Hoje", "Ciclo diário · aprender, praticar, revisar"],
   questoes: ["Banco de Questões", "Monte seu treino"],
   simulados: ["Simulados", "Condições de prova"],
   flash: ["Flashcards", "Revisão espaçada"],
@@ -58,8 +59,8 @@ const TITLES = {
   classificacao: ["Ranking", "Stazia Arena · ranking e liga da semana"],
   missoes: ["Missões", "Stazia Arena · metas de hoje e da semana"],
   conquistas: ["Conquistas", "Stazia Arena · medalhas e recompensas"],
-  perfil: ["Conta", "Dados, segurança e privacidade"],
-  planos: ["Meu Plano", "Conta · o que cada plano inclui"],
+  perfil: ["Minha conta", "Dados, segurança e privacidade"],
+  planos: ["Meu plano", "Conta · o que cada plano inclui"],
   teoria2: ["Teoria para a prática", "Esqueletos, documentos médicos e protocolos aplicados às estações"],
   estacoes: ["Banco de estações", "Estações nas 5 grandes áreas"],
   dupla: ["Praticar", "Treine em dupla com outro aluno"],
@@ -94,7 +95,7 @@ function resolveTheme(theme) {
 }
 
 function Screen() {
-  const { boot, updateProfile, signOut } = useSession();
+  const { boot, updateProfile, signOut, backend } = useSession();
   const params = useParams();
   const navigate = useNavigate();
   const mobile = useMobile();
@@ -141,6 +142,8 @@ function Screen() {
   const setTheme = (next) => updateProfile({ theme: next }).catch(() => {});
 
   // o Tutor abre em qualquer tela de estudo, com o contexto que a tela já conhece
+  // (ao sair da sessão os selos do menu, como o do Caderno de Erros, são perguntados de novo ao banco)
+  if (route === "sessao") forgetShellCounts(backend);
   if (route === "sessao") return <TutorDockProvider go={go}><PracticeSession go={go} /></TutorDockProvider>;
   // a tela de uma estação abre sem a moldura: o aviso de "em reconstrução" entra aqui, antes dela
   if (route === "estacao")
@@ -217,6 +220,7 @@ function Screen() {
       phase2Locked={phase2Locked}
       title={title}
       sub={sub}
+      headerKind={route === "home" ? "inicio" : route === "hoje" ? "plano" : undefined}
       info={{
         name: profile.name || "Sua conta",
         streakDays: boot.play?.enabled ? boot.play.streak : boot.streak_days,
@@ -225,6 +229,7 @@ function Screen() {
         isStaff: isStaffRole(boot.role),
         isReviewer: Boolean(boot.reviewer_areas?.length),
         radarGraves: radar.graves,
+        themeChoice: profile.theme || "light",
       }}
     >
       {!CONNECTED.has(route) && <ReconstructionNotice />}

@@ -217,7 +217,10 @@ describe("Fila e funções de serviço", () => {
     const before = await snapshot();
     expect(before.events).toBeGreaterThan(0);
     // colar a 9800 de novo exige colar depois a 9810 e o fechamento 9830 (ordem do pacote: colar da parte dela até a última)
-    const resto = ["20261003009810_analise_ia_pedidos.sql", "20261003009830_fechamento_leva4.sql"].map((f) => fs.readFileSync(fileURLToPath(new URL(`../../supabase/migrations/${f}`, import.meta.url)), "utf8"));
+    // e as que vieram depois e mexem no mesmo lugar (a 010900 fecha de novo draft_approval_blockers para o app): a 9910 (etapa similarity) e a 9941 (source_change_analysis) refazem a restrição de
+    // etapas de ch_jobs (união, em ordem); a 9990 (portão de atualidade) embrulha draft_approval_blockers por cima da versão da 9800
+    const resto = ["20261003009810_analise_ia_pedidos.sql", "20261003009830_fechamento_leva4.sql", "20261003009910_similaridade_clinica.sql", "20261003009941_vigilancia_painel.sql",
+      "20261003009990_portao_atualidade.sql", "20261003010900_fecha_draft_approval_blockers.sql"].map((f) => fs.readFileSync(fileURLToPath(new URL(`../../supabase/migrations/${f}`, import.meta.url)), "utf8"));
     for (let volta = 0; volta < 2; volta++) {
       await env.dev.db.exec(text);
       for (const sql of resto) await env.dev.db.exec(sql);

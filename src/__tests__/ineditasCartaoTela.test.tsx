@@ -174,7 +174,7 @@ describe("Início e Plano de Hoje", () => {
     const go = vi.fn();
     render(<MemoryRouter><TodayPlan go={go} /></MemoryRouter>);
     expect(await screen.findByText("Todas as 74 liberadas")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Resolver Questões Inéditas" }));
+    fireEvent.click(screen.getByRole("button", { name: /Resolver inéditas/ })); // desenho do Plano de Hoje (Novas telas, onda 2)
     expect(go).toHaveBeenCalledWith("questoes", { prova: "staziamed", status: "unanswered" });
   });
 });

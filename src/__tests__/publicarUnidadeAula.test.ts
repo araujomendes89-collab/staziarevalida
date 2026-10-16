@@ -111,8 +111,12 @@ describe("Travas novas no banco", () => {
     await sql(`update public.ch_sources set valid_until = current_date - 1 where id = $1`, [vencida.fonte]);
     expect((await problemas(vencida.versao)).join(" | ")).toMatch(/sem fonte oficial vigente/);
     await sql(`insert into public.ch_taxonomy_nodes (version_id, parent_id, level, name) select n.version_id, n.id, 'theme', 'Tema de teste em saúde mental' from public.ch_taxonomy_nodes n where n.name = 'Urgências em saúde mental'`);
+    // 9997 (15/10/2026): Saúde Mental e Saúde Coletiva passaram a publicar dentro de Medicina de Família e Comunidade (ponte até o enum
+    // de 7 áreas). A trava continua para qualquer área sem correspondente (ch_student_area devolve null).
     const mental = await montarUnidade(sql, rpc, { titulo: "Saúde mental sem aula", tema: "Tema de teste em saúde mental", semAprovar: true });
-    expect((await problemas(mental.versao)).join(" | ")).toMatch(/A área da unidade \(SAUDE_MENTAL\) não tem grande área correspondente nas Aulas do aluno\./);
+    expect((await problemas(mental.versao)).join(" | ")).not.toMatch(/não tem grande área correspondente/);
+    expect((await sql(`select public.ch_student_area('SAUDE_MENTAL')::text a, public.ch_student_area('SAUDE_COLETIVA')::text b, public.ch_student_area('AREA_INEXISTENTE')::text c`))[0])
+      .toEqual({ a: "MEDICINA_FAMILIA_COMUNIDADE", b: "MEDICINA_FAMILIA_COMUNIDADE", c: null });
   });
 
   it("e-mail ou perfil @ de terceiros no texto, nos pontos-chave ou nos cartões trava a publicação", async () => {

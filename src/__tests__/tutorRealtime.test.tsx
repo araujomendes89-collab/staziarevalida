@@ -254,6 +254,8 @@ describe("Tutor fora da tela do Tutor, resolução, encerramento e relatório", 
     expect(screen.getByText(/comando pede a conduta/)).toBeTruthy();
     expect(screen.getByText("(5 casos)")).toBeTruthy();
     expect(screen.getByText("Prioridade da conduta: estabilizar antes de investigar · 3×")).toBeTruthy();
-    expect(screen.getByText(/4 sessões · 52 min de estudo \(10 por voz\) · 9 questões discutidas/)).toBeTruthy();
+    // Novas telas (onda 5): a linha "4 sessões · 52 min de estudo (10 por voz) · 9 questões discutidas" virou 3 azulejos em "Meu relatório"
+    const relatorio = screen.getByRole("region", { name: "Meu relatório" });
+    expect([...relatorio.querySelectorAll(".an-stat")].map((e) => e.textContent)).toEqual(["Sessões4", "De estudo52 min10 por voz", "Questões discutidas9"]);
   });
 });

@@ -3,9 +3,8 @@ import React, { useEffect } from "react";
 import "../auth/login.css";
 import "./legal.css";
 import { LegalText, Inline } from "./LegalText.jsx";
-import { PRIVACIDADE } from "./privacidade.js";
 import { TERMO_VERSAO } from "./versions.js";
-import termoFonte from "./termo-uso-v1.0.md?raw";
+import { documentosDa } from "./documentos.js";
 
 function Secao({ bloco }) {
   return (
@@ -28,7 +27,9 @@ function Secao({ bloco }) {
   );
 }
 
-export function Privacidade() {
+/** versao: a do Termo que a Política acompanha (padrão: a de versions.js). */
+export function Privacidade({ versao = TERMO_VERSAO } = {}) {
+  const PRIVACIDADE = documentosDa(versao).privacidade;
   return (
     <>
       <header className="lgl-head">
@@ -70,7 +71,7 @@ export function LegalPage({ doc }) {
           {doc === "termos" ? (
             <>
               <p className="lgl-meta">Versão {TERMO_VERSAO}</p>
-              <div data-testid="legal-texto"><LegalText source={termoFonte} /></div>
+              <div data-testid="legal-texto"><LegalText source={documentosDa(TERMO_VERSAO).termo} /></div>
             </>
           ) : (
             <Privacidade />

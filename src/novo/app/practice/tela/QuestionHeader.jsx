@@ -18,9 +18,28 @@ export function timerLevel(left, total) {
   return "ok";
 }
 
+// Pausar/continuar do pacote: formas cheias (o Lucide só tem o contorno).
+function PauseGlyph() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="14" y="4" width="4" height="16" rx="1" />
+      <rect x="6" y="4" width="4" height="16" rx="1" />
+    </svg>
+  );
+}
+function PlayGlyph() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="7 4 20 12 7 20 7 4" />
+    </svg>
+  );
+}
+
 export function BrandLogo() {
   return (
     <>
+      <img className="tq-logo tq-logo--sym tq-logo--light" src="/brand/simbolo-96w.png" alt="" aria-hidden="true" />
+      <img className="tq-logo tq-logo--sym tq-logo--dark" src="/brand/simbolo-escuro-96w.png" alt="" aria-hidden="true" />
       <img className="tq-logo tq-logo--light" src="/brand/horizontal-480w.png" alt="StaziaMed Revalida" />
       <img className="tq-logo tq-logo--dark" src="/brand/horizontal-escuro-480w.png" alt="" aria-hidden="true" />
     </>
@@ -93,13 +112,15 @@ export function QuestionHeader({ label, index, total, segments, progress = 0, ti
             </div>
             {pause && (
               <button type="button" className="tq-round" onClick={pause.onToggle} disabled={pause.disabled} aria-label={pause.paused ? "Continuar o simulado" : "Pausar o simulado"} title={pause.paused ? "Continuar o simulado" : "Pausar o simulado"}>
-                <Icon name={pause.paused ? "play" : "pause"} size={16} />
+                {pause.paused ? <PlayGlyph /> : <PauseGlyph />}
               </button>
             )}
           </div>
           {onEnd && (
-            <button type="button" className="tq-ghost" onClick={onEnd} disabled={endDisabled} aria-label="Encerrar o simulado">
-              Encerrar
+            <button type="button" className="tq-ghost tq-end" onClick={onEnd} disabled={endDisabled} aria-label="Encerrar o simulado" title="Encerrar o simulado">
+              {/* no celular fica só o ícone (o nome continua no aria-label); no tablet e no computador, só a palavra */}
+              <Icon name="circle-stop" size={20} className="tq-end__ico" />
+              <span className="tq-end__t">Encerrar</span>
             </button>
           )}
         </div>

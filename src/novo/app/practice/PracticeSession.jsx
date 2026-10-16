@@ -84,10 +84,16 @@ function Centered({ children }) {
 function Runner({ session, go, onFinished }) {
   const { backend } = useSession();
   const mobile = useMQ("(max-width: 1023px)");
+  const phone = useMQ("(max-width: 719px)"); // no celular o simulado usa barra contínua; no tablet, um traço por questão (pacote)
+  // tablet (721 a 1180 px), depois de responder: a explicação sai do cartão e vai para a coluna da direita, como no pacote
+  // (TabletRespondida). Só muda o lugar: continua aparecendo só depois de responder, e nunca no simulado.
+  const sideExplanation = useMQ("(min-width: 721px) and (max-width: 1180px)");
   const sim = session.kind === "simulado";
 
   const [questions, setQuestions] = React.useState(session.questions);
   const [index, setIndex] = React.useState(() => {
+    // open_index: só a prévia manda (para abrir já na questão respondida); o banco não tem esse campo
+    if (Number.isInteger(session.open_index) && session.open_index >= 0 && session.open_index < session.questions.length) return session.open_index;
     const firstOpen = session.questions.findIndex((q) => q.selected == null);
     return firstOpen === -1 ? session.questions.length - 1 : firstOpen;
   });
@@ -293,7 +299,7 @@ function Runner({ session, go, onFinished }) {
 
   // Progresso: um traço por questão (até 30) com a cor do resultado no treino; acima disso, barra contínua.
   const segments =
-    total <= SEGMENT_LIMIT && !(mobile && sim)
+    total <= SEGMENT_LIMIT && !(phone && sim)
       ? questions.map((q, k) => {
           if (k === index) return revealed ? (isAnnulled(question.correction) ? "done" : question.correction.is_correct ? "right" : "wrong") : "current";
           if (q.selected == null) return "open";
@@ -440,7 +446,7 @@ function Runner({ session, go, onFinished }) {
                   strikeDisabled={() => busy}
                 />
               }
-              answer={revealed ? <CorrectionBody selected={question.selected} correction={question.correction} question={question} data={correctionData} /> : null}
+              answer={revealed && !sideExplanation ? <CorrectionBody selected={question.selected} correction={question.correction} question={question} data={correctionData} /> : null}
               footer={
                 <QuestionFooter
                   marked={!!question.bookmarked}
@@ -457,6 +463,12 @@ function Runner({ session, go, onFinished }) {
             />
             {revealed && (
               <aside className="tq-side" aria-label="Contexto da questão" aria-live="polite">
+                {sideExplanation && (
+                  <section className="tq-panel tq-panel--expl" aria-label="Explicação">
+                    <span className="tq-over tq-over--accent">Explicação</span>
+                    <CorrectionBody selected={question.selected} correction={question.correction} question={question} data={correctionData} />
+                  </section>
+                )}
                 <CorrectionSide selected={question.selected} correction={question.correction} question={question} data={correctionData} go={go} inSession showDifficulty={!sim}>
                   {question.play && <XPToast play={question.play} />}
                 </CorrectionSide>

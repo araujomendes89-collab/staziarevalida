@@ -23,10 +23,11 @@ describe("menu", () => {
         <div />
       </AppShell>
     );
-    const chaves = Array.from(container.querySelectorAll("nav [data-key]")).map((n) => n.getAttribute("data-key"));
-    const i = chaves.indexOf("atualizacoes");
+    fireEvent.click(screen.getByRole("button", { name: /^Aprender/ })); // sanfona
+    const nomes = Array.from(container.querySelectorAll("nav .smn-sub .smn-item")).map((n) => (n.textContent ?? "").trim());
+    const i = nomes.indexOf("Diretrizes e Atualizações");
     expect(i).toBeGreaterThan(-1);
-    expect(chaves[i + 1]).toBe("mapas");
+    expect(nomes[i + 1]).toBe("Mapas Mentais");
     expect(screen.getAllByText("Mapas Mentais").length).toBeGreaterThan(0);
   });
 });
@@ -72,7 +73,7 @@ describe("pôster realista (imagem) como visual principal", () => {
     const imgs = Array.from(document.querySelectorAll(".mm-lcard img"));
     for (const i of imgs) { expect(i.className).toBe("mm-lcard-ico"); expect(i.getAttribute("alt")).toBe(""); expect(i.getAttribute("loading")).toBe("lazy"); }
     expect(imgs.length).toBe(MAPAS.filter((m: any) => m.icone?.webp).length);
-    expect(screen.getAllByText(/ramos · revisão rápida e aprofundado/).length).toBe(MAPAS.length);
+    expect(document.querySelectorAll(".mm-lcard-pe .mm-lcard-r").length).toBe(MAPAS.length); // rodapé novo: "n ramos" + Revisão rápida + Aprofundado
     // todos os cartões são iguais: o título completo fica acessível por title e aria-label
     const cartoes = Array.from(document.querySelectorAll("button.mm-lcard"));
     expect(cartoes.length).toBe(MAPAS.length);

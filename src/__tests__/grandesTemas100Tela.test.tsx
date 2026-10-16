@@ -60,7 +60,7 @@ describe("Grandes Temas: 100 Grandes Temas Prioritários", () => {
   it("o banner 'Como contamos' diz que é seleção pedagógica (não ranking do Inep), o que é contado, as anuladas e quantas ficam sem tema", async () => {
     render(<ThemesScreen go={go} />);
     const banner = await screen.findByText("Como contamos");
-    const texto = banner.parentElement!.textContent!;
+    const texto = banner.closest("section")!.textContent!; // aviso recolhível (onda 4): o texto fica na página, só oculto até abrir
     expect(texto).toMatch(/seleção pedagógica do StaziaMed/);
     expect(texto).toMatch(/não um ranking oficial do Inep/);
     expect(texto).toMatch(/questões oficiais catalogadas \(Revalida e ENAMED\) ligadas a ele/);

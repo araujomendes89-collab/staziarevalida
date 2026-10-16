@@ -109,27 +109,13 @@
 @media (prefers-reduced-motion:no-preference){.mm-mais svg{transition:transform .2s}}
 
 /* tela Mapas Mentais */
-.mm-tela{display:flex;flex-direction:column;gap:16px;max-width:1240px;margin:0 auto;width:100%}
+/* a lista segue a largura da casca (G1) e alinha com o título; o pôster aberto fica até 1240 px, alinhado à esquerda com o título */
+.mm-tela{display:flex;flex-direction:column;gap:16px;width:100%;min-width:0}
+.mm-tela:has(>.mm-topo){max-width:1240px}
 .mm-intro{margin:0;color:var(--text-secondary);font:400 14.5px/1.5 var(--font-sans);max-width:60ch}
 .mm-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .mm-topo-area{font:700 11px var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary)}
 .mm-filtros{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
-.mm-busca{flex:1 1 240px;max-width:340px}
-.mm-areas{display:flex;flex-wrap:wrap;gap:8px}
-.mm-areas button{border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-secondary);font:600 13px var(--font-sans);padding:8px 14px;border-radius:999px;cursor:pointer;min-height:38px}
-.mm-areas button[aria-pressed="true"]{background:var(--action-primary);border-color:var(--action-primary);color:var(--action-on-primary)}
-.mm-grade{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
-.mm-lcard{--gt-p:#087A63;--gt-c:#E5F7F1;--gt-b:#90E7CD;--cp:var(--gt-p);position:relative;overflow:hidden;width:100%;text-align:left;display:flex;flex-direction:column;gap:6px;padding:18px 18px 16px 24px;border-radius:20px;cursor:pointer;
-  border:1.5px solid color-mix(in oklab,var(--cp) 30%,transparent);background:color-mix(in oklab,var(--cp) 7%,var(--surface-card));color:var(--text-primary);font-family:var(--font-sans);min-height:150px;
-  box-shadow:0 8px 20px -14px color-mix(in oklab,var(--cp) 60%,transparent);transition:transform .15s,box-shadow .15s}
-:root[data-theme="dark"] .mm-lcard{--cp:var(--gt-b)}
-.mm-lcard:hover{transform:translateY(-2px);box-shadow:0 14px 26px -14px color-mix(in oklab,var(--cp) 70%,transparent)}
-.mm-lcard-fita{position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--cp)}
-.mm-lcard-area{font:700 10.5px var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary)}
-.mm-lcard-t{font:800 18px/1.2 var(--font-sans);color:var(--gt-e,var(--text-primary))}
-:root[data-theme="dark"] .mm-lcard-t{color:var(--text-primary)}
-.mm-lcard-s{font:400 13.5px/1.4 var(--font-sans);color:var(--text-secondary)}
-.mm-lcard-r{margin-top:auto;font:600 12px var(--font-sans);color:var(--cp)}
 
 /* botão para o cartão do tema */
 .mm-botao{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:0 14px;border-radius:999px;border:1.5px solid var(--border-strong,var(--border-default));background:var(--surface-card);color:var(--text-primary);font:700 13px var(--font-sans);cursor:pointer}
@@ -259,13 +245,50 @@
 .mm-tc-voltar{background:#fff!important;color:#0B2A63!important;border-color:#fff!important}
 
 /* ícone 3D decorativo no canto do cartão da lista (por fora do texto; some se faltar) */
-.mm-lcard-ico{position:absolute;top:12px;right:12px;width:56px;height:56px;object-fit:contain;pointer-events:none;filter:drop-shadow(0 6px 8px rgba(10,30,70,.22))}
-.mm-lcard-t{padding-right:64px}
 
 /* cartões da lista: todos com a mesma altura e largura (título e subtítulo em até 2 linhas) */
-.mm-grade{grid-auto-rows:180px}
-.mm-grade>li{min-width:0;height:100%}
-.mm-lcard{height:100%;min-height:0;box-sizing:border-box}
-.mm-lcard-t{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;min-height:2.4em;max-height:2.4em}
-.mm-lcard-s{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;max-height:2.8em}
-.mm-lcard-r{margin-top:auto}
+
+
+/* lista de Mapas Mentais (casca nova, onda 4): cartão branco com bloco do ícone 3D, área, título, subtítulo e, no rodapé, ramos + dois jeitos de abrir */
+/* coluna SEM quebra: com "wrap", a fileira de áreas do celular (rolagem própria) alargava a página (496 px numa tela de 390) */
+.mm-filtros{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:12px;min-width:0}
+.mm-filtros>.ap-areas{min-width:0}
+.mm-busca{width:100%;max-width:480px}
+.mm-busca .sm-input{height:48px;border-radius:14px}
+.mm-grade{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:16px}
+.mm-item{--gt-p:#087A63;--gt-c:#E5F7F1;--gt-b:#90E7CD;--gt-e:#005141;--cp:var(--gt-p);min-width:0;display:flex;flex-direction:column;border-radius:22px;background:var(--surface-card);
+  border:1px solid var(--border-default);box-shadow:0 1px 2px rgba(13,28,66,.04);transition:box-shadow .15s,border-color .15s}
+:root[data-theme="dark"] .mm-item{--cp:var(--gt-b)}
+.mm-item:hover{border-color:color-mix(in oklab,var(--cp) 40%,var(--border-default));box-shadow:0 14px 26px -18px color-mix(in oklab,var(--cp) 70%,transparent)}
+.mm-lcard{display:flex;align-items:flex-start;gap:14px;width:100%;flex:1;padding:18px 18px 12px;border:0;border-radius:22px 22px 0 0;background:transparent;text-align:left;cursor:pointer;color:var(--text-primary);font-family:var(--font-sans);min-width:0}
+.mm-lcard:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.mm-lcard-tile{position:relative;display:grid;place-items:center;flex:none;width:46px;height:46px;border-radius:14px;background:linear-gradient(160deg,var(--ap-de),var(--ap-ate));box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+:root[data-theme="dark"] .mm-lcard-tile{background:linear-gradient(160deg,color-mix(in srgb,var(--ap-ate) 26%,var(--surface-card)),color-mix(in srgb,var(--ap-ate) 12%,var(--surface-card)));box-shadow:none}
+.mm-lcard-ico{width:36px;height:36px;object-fit:contain;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(10,30,70,.22))}
+.mm-lcard-corpo{display:flex;flex-direction:column;gap:3px;min-width:0}
+.mm-lcard-area{font:700 11.5px/1.3 var(--font-sans);letter-spacing:.07em;text-transform:uppercase;color:var(--gt-e,var(--text-secondary))}
+:root[data-theme="dark"] .mm-lcard-area{color:var(--gt-b)}
+.mm-lcard-t{font:800 17px/1.25 var(--font-sans);color:var(--text-primary);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+.mm-lcard-s{font:400 13px/1.4 var(--font-sans);color:var(--text-secondary);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+.mm-lcard-pe{display:flex;align-items:center;gap:8px 6px;flex-wrap:wrap;margin:0 18px;padding:12px 0 16px;border-top:1px solid var(--border-subtle)}
+.mm-lcard-r{flex:none;margin-right:auto;font:500 12.5px var(--font-sans);color:var(--text-tertiary);white-space:nowrap}
+.mm-lcard-r--celular{display:none}
+.mm-acao{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-primary);font:700 13px var(--font-sans);cursor:pointer;white-space:nowrap}
+.mm-acao--rapida{border-color:transparent;background:var(--surface-brand-soft);color:var(--text-link)}
+.mm-acao:hover:not(:disabled){border-color:var(--border-strong)}
+.mm-acao:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.mm-acao:disabled{opacity:.45;cursor:not-allowed}
+.mm-modo-celular{display:none}
+@media (max-width:719px){
+  .mm-modo-celular{display:block}
+  .mm-grade{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .mm-item{border-radius:20px}
+  .mm-lcard{flex-direction:column;align-items:center;text-align:center;gap:8px;padding:14px 8px 4px;border-radius:20px}
+  .mm-lcard-tile{width:52px;height:52px;border-radius:16px}
+  .mm-lcard-ico{width:42px;height:42px}
+  .mm-lcard-corpo{align-items:center}
+  .mm-lcard-area,.mm-lcard-s,.mm-lcard-pe{display:none}
+  .mm-lcard-t{font:800 12.5px/1.25 var(--font-sans);text-align:center;min-height:2.5em;-webkit-line-clamp:3}
+  .mm-lcard-r--celular{display:block;margin:0;padding:0 6px 12px;text-align:center}
+}
+@media (prefers-reduced-motion:reduce){.mm-item{transition:none}}
