@@ -303,8 +303,9 @@ describe("7. Aluno: ch_worker_doc_imagem_aluno", () => {
   
   it("Editar aula (lessons.summary_rico, migração 013040 do M13): aula publicada que usa a imagem entrega; despublicada recusa", async () => {
     await sql(`alter table public.lessons add column if not exists summary_rico jsonb`);
+    // com a 013040 o resumo rico só fica guardado junto de um resumo em texto (sem texto, a guarda apaga o rico)
     const rico = { f: "sdoc", v: 1, doc: { type: "doc", content: [{ type: "figura", attrs: { asset: imgNaoPub } }] } };
-    const [{ id }] = await sql(`insert into public.lessons (area, topic, title, published, summary_rico) values ((select enum_range(null::public.med_area))[1], 'Teste', 'Aula de teste M11a', true, $1::jsonb) returning id`, [JSON.stringify(rico)]);
+    const [{ id }] = await sql(`insert into public.lessons (area, topic, title, published, summary, summary_rico) values ((select enum_range(null::public.med_area))[1], 'Teste', 'Aula de teste M11a', true, 'Resumo com figura', $1::jsonb) returning id`, [JSON.stringify(rico)]);
     try {
       const r = await sql(`select public.ch_worker_doc_imagem_aluno($1) r`, [imgNaoPub]);
       expect(r[0].r.caminho).toMatch(/^ff\//);

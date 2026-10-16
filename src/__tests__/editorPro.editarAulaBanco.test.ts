@@ -325,7 +325,9 @@ describe("Editor Profissional - Banco de Dados (M13 - summary_rico)", () => {
       ["texto mudou junto com a formatação", { summary: L, summary_rico: negrito }, { summary: "Febre alta", summary_rico: par([txt("Febre alta", [{ type: "bold" }])]) }, false],
       ["virou título (nível é conteúdo)", { summary: L, summary_rico: null }, { summary: L, summary_rico: titulo4() }, false],
       ["destino do link mudou só no rico", { summary: L, summary_rico: null }, { summary: L, summary_rico: par([txt("Febre e "), txt("guia", [{ type: "link", attrs: { href: "https://outro.gov.br" } }]), txt(" hoje")]) }, false],
-      ["tachado (é conteúdo)", { summary: L, summary_rico: null }, { summary: L, summary_rico: par([txt("Febre e "), txt("guia", [link, { type: "strike" }]), txt(" hoje")]) }, false],
+      // decisão do dono 16/10 ~16h50 (editor-word b831a235): tachado, sobrescrito e subscrito são só formatação
+      ["tachado (só formatação)", { summary: L, summary_rico: null }, { summary: L, summary_rico: par([txt("Febre e "), txt("guia", [link, { type: "strike" }]), txt(" hoje")]) }, true],
+      ["sobrescrito (só formatação)", { summary: L, summary_rico: null }, { summary: L, summary_rico: par([txt("Febre", [{ type: "superscript" }]), txt(" e "), txt("guia", [link]), txt(" hoje")]) }, true],
     ];
     const base = (r: R, extra: Record<string, unknown> = {}) => ({ area: "PEDIATRIA", topic: "Febre", title: "Aula M13 formatação", key_points: ["Ponto"], published: true, ...r, ...extra });
     for (const [nome, antes, depois, esperado] of casos) {

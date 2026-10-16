@@ -108,6 +108,8 @@ export const ACTION_LABEL = {
   "unit.material.insert": "Material inserido na unidade",
   "unit.material.retire": "Material retirado da unidade",
   "unit.material.restore": "Material devolvido à lista da unidade",
+  "unit.format": "Formatação da unidade alterada (aprovações mantidas)",
+  "unit.editor_assumido": "Edição da unidade assumida no editor completo",
   "review.sheet_import": "Ficha do revisor médico importada",
   "review.decision": "Decisão do revisor registrada na ficha",
   "publish.distribute": "Conteúdo publicado na aula e nos flashcards dos alunos",
