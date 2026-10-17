@@ -7,6 +7,7 @@ import { dateTimeBR, LoadError, Loading, messageOf, PLAN_LABEL, ROLE_LABEL, SUB_
 import { auditActor, auditLabel, auditSummary } from "./auditLog.js";
 import { PlanosPorFase } from "./planos/DireitosPorFase.jsx";
 import { CarteiraIA } from "./planos/CarteiraIA.jsx";
+import { DevolucoesRecentes } from "./planos/PagamentosAluno.jsx";
 
 // ---------------------------------------------------------------- visão geral
 /** O que espera conferência, por aba (chaves de pending_review em app_admin_overview). */
@@ -305,6 +306,7 @@ export function AdminPlans() {
       ))}
       <PlanosPorFase />
       <CarteiraIA />
+      <DevolucoesRecentes />
     </div>
   );
 }

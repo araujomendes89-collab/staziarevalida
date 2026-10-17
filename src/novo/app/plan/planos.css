@@ -136,14 +136,16 @@
 .as-bloco { display: flex; flex-direction: column; gap: 10px; }
 .as-h { margin: 0; font: 700 16px var(--font-sans); color: var(--text-primary); }
 .as-hist { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border-default); border-radius: 14px; overflow: hidden; }
-.as-hist__l { display: grid; grid-template-columns: 92px 1fr auto auto 120px; gap: 10px; align-items: center; padding: 10px 14px; font: 400 14px var(--font-sans); color: var(--text-primary); background: var(--surface-card); }
+.as-hist__l { display: grid; grid-template-columns: 92px 1fr auto auto 150px; gap: 10px; align-items: center; padding: 10px 14px; font: 400 14px var(--font-sans); color: var(--text-primary); background: var(--surface-card); }
 .as-hist__l + .as-hist__l { border-top: 1px solid var(--border-subtle, var(--border-default)); }
 .as-hist__d { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .as-hist__o { display: flex; flex-direction: column; min-width: 0; }
 .as-hist__o small { color: var(--text-tertiary); }
 .as-hist__v { font-weight: 700; font-variant-numeric: tabular-nums; }
 .as-hist__r { display: inline-flex; align-items: center; gap: 4px; font: 600 13px var(--font-sans); color: var(--text-link); justify-self: end; }
-@media (max-width: 639px) { .as-hist__l { grid-template-columns: 1fr auto; } .as-hist__d { grid-column: 1 / -1; font-size: 12px; } .as-hist__r { grid-column: 1 / -1; justify-self: start; } }
+.as-hist__links { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; justify-self: end; }
+.as-hist__nc { font: 400 12px var(--font-sans); color: var(--text-tertiary); }
+@media (max-width: 639px) { .as-hist__l { grid-template-columns: 1fr auto; } .as-hist__d { grid-column: 1 / -1; font-size: 12px; } .as-hist__r { justify-self: start; } .as-hist__links { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; gap: 4px 16px; justify-self: start; } }
 .as-avisos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .as-avisos li { display: flex; flex-direction: column; padding: 10px 12px; border-radius: 12px; background: var(--surface-sunken); }
 .as-avisos b { font: 600 14px var(--font-sans); color: var(--text-primary); }

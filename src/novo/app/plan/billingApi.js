@@ -51,3 +51,6 @@ export const brl = (cents) => (cents == null ? "" : `R$ ${(cents / 100).toFixed(
 
 /** Data no formato do Brasil (ex.: 17/11/2026). */
 export const dateBR = (iso) => (iso ? new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "");
+
+/** Administração (013850, só administrador): devolver um pagamento com motivo e a escolha do acesso ("manter" ou "encerrar"). */
+export const adminRefund = (backend, body) => call(backend, "/admin/devolver", body);
