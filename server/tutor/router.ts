@@ -3,6 +3,7 @@
  * resposta e grava. Leituras (conversas, preferências, relatório) vão direto pelas funções app_tutor_* com o RLS valendo.
  */
 import express, { type NextFunction, type Request, type Response } from "express";
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { Identity } from "../contentHub/infra";
 import { TUTOR_CONSENT_PENDING, TutorError, consentError, resolveTutorProvider, tutorTurn, type TutorDeps } from "./engine";
 import { speechProviderFor, tutorSpeech } from "./speech";
@@ -33,6 +34,16 @@ const failTutor = (res: Response, error: TutorError) => {
   return res.status(error.status).json({ error: error.message, ...(extra.code ? { code: extra.code } : {}), ...(extra.entitlement ? { entitlement: extra.entitlement } : {}) });
 };
 
+/**
+ * O segredo da tarefa agendada confere em tempo constante (auditoria de segurança de 17/10: o `!==` responde mais rápido quanto
+ * antes a diferença aparece). Compara os resumos SHA-256, que têm sempre o mesmo tamanho.
+ */
+export function segredoDoCronConfere(authorization: string | undefined, secret: string | undefined): boolean {
+  if (!secret || typeof authorization !== "string") return false;
+  const resumo = (t: string) => createHash("sha256").update(t, "utf8").digest();
+  return timingSafeEqual(resumo(authorization), resumo(`Bearer ${secret}`));
+}
+
 export function createTutorRouter(deps: TutorDeps | null, pending: string | null = null) {
   const router = express.Router();
 
@@ -41,8 +52,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
    * varre é o intervalo de startVoiceSweeper; na Vercel, além desta tarefa, toda rota de voz varre antes de responder.
    */
   router.get("/voice/sweep", async (req, res) => {
-    const secret = process.env.CRON_SECRET;
-    if (!deps || !secret || req.headers.authorization !== `Bearer ${secret}`) return fail(res, 401, "Não autorizado.");
+    if (!deps || !segredoDoCronConfere(req.headers.authorization, process.env.CRON_SECRET)) return fail(res, 401, "Não autorizado.");
     try {
       // a tarefa diária também aplica a retenção das transcrições da voz (painel)
       res.json({ expired: await sweepVoice(deps), purged_transcripts: await purgeVoiceTranscripts(deps).catch(() => 0) });
@@ -64,12 +74,14 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       if (!uuid.test(String(b.vc ?? "")) || !uuid.test(String(b.u ?? "")) || Math.abs(Date.now() - Number(b.t ?? 0)) > 10 * 60_000) return fail(res, 400, "Relatório inválido.");
       const v = await voiceCall(deps, String(b.u), String(b.vc));
       const n = (x: unknown) => (Number.isFinite(Number(x)) ? Math.max(0, Math.round(Number(x))) : 0);
-      await deps.db.service("ch_worker_tutor_ledger", { p_user: b.u, p_session_id: v.session_id, p_entry: {
+      // o mesmo relatório assinado chegando de novo (dentro dos 10 min de validade) não conta o custo outra vez (auditoria de 17/10)
+      const relatorio = createHash("sha256").update(corpo, "utf8").digest("hex").slice(0, 40);
+      const gravou = await deps.db.service<boolean>("ch_worker_tutor_ponte_uso", { p_user: b.u, p_session_id: v.session_id, p_hash: relatorio, p_entry: {
         feature: "tutor_voice_gemini", provider: "google-vertex", model: String(b.modelo ?? "").slice(0, 60),
         input_text_tokens: n(b.uso?.textoEntrada), input_audio_tokens: n(b.uso?.audioEntrada), output_text_tokens: n(b.uso?.textoSaida), output_audio_tokens: n(b.uso?.audioSaida),
-        duration_seconds: n(b.duracao_s), estimated_cost_usd: Math.max(0, Number(b.custo_usd) || 0), meta: { voice_call: b.vc, via: "vertex-ponte", por: "tokens" },
+        duration_seconds: n(b.duracao_s), estimated_cost_usd: Math.max(0, Number(b.custo_usd) || 0), meta: { voice_call: b.vc, via: "vertex-ponte", por: "tokens", relatorio },
       } });
-      res.json({ ok: true });
+      res.json(gravou ? { ok: true } : { ok: true, repetido: true });
     } catch (error) {
       fail(res, 500, shown(error));
     }
