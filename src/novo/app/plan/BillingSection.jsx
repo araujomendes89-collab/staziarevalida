@@ -431,7 +431,7 @@ function PlanoVitrine({ p, vendas, onEscolher }) {
           Assinar o {p.nome} {ciclo}
         </Button>
       ) : (
-        <p className="bl-fina">{p.a_venda ? "As vendas abrem em breve." : "Ainda não está à venda. Avisaremos quando abrir."}</p>
+        <p className="bl-fina">{p.a_venda ? "As vendas abrem em breve." : "Em breve: abre junto com a 2ª fase."}</p>
       )}
     </div>
   );

@@ -37,11 +37,17 @@ export function AvisosPopup({ go, ativo = true }) {
     document.addEventListener("visibilitychange", voltou);
     return () => document.removeEventListener("visibilitychange", voltou);
   }, [ativo]);
+  // Esc fecha por agora (sem marcar como visto): volta na próxima vez que o app abrir
+  const [adiado, setAdiado] = React.useState(false);
   React.useEffect(() => {
-    if (avisos.length) botao.current?.focus();
-  }, [avisos.length]);
+    if (!avisos.length || adiado) return undefined;
+    botao.current?.focus();
+    const esc = (e) => e.key === "Escape" && setAdiado(true);
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [avisos.length, adiado]);
 
-  if (!avisos.length) return null;
+  if (!avisos.length || adiado) return null;
   const a = avisos[0];
   const [icone, tom] = ARTE[a.tipo] ?? ARTE.renovacao;
   const visto = async (abrir) => {

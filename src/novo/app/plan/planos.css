@@ -140,3 +140,10 @@
 .as-avisos li { display: flex; flex-direction: column; padding: 10px 12px; border-radius: 12px; background: var(--surface-sunken); }
 .as-avisos b { font: 600 14px var(--font-sans); color: var(--text-primary); }
 .as-avisos small { color: var(--text-tertiary); }
+
+.bl > .sm-badge, .as > .sm-badge { align-self: flex-start; }
+@media (max-width: 639px) {
+  .bl-extra { flex-wrap: wrap; }
+  .bl-extra > span { flex: 1 1 100%; }
+  .as-hist__l .sm-badge { justify-self: start; }
+}
