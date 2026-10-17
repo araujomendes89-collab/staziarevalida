@@ -18,11 +18,12 @@ export function rotuloBolinha(n) {
   return v > 9 ? "9+" : String(v);
 }
 
-/** Nome acessível do sino: "Notificações, 3 não lidas". */
-export function rotuloSino(n) {
+/** Nome acessível do sino: "Notificações, 3 não lidas" (com urgentes: "Notificações, 3 não lidas, 1 urgente"). */
+export function rotuloSino(n, urgentes = 0) {
   const v = Number(n) || 0;
+  const u = Number(urgentes) || 0;
   if (v <= 0) return "Notificações, nenhuma não lida";
-  return `Notificações, ${v} ${v === 1 ? "não lida" : "não lidas"}`;
+  return `Notificações, ${v} ${v === 1 ? "não lida" : "não lidas"}${u > 0 ? `, ${u} ${u === 1 ? "urgente" : "urgentes"}` : ""}`;
 }
 
 const DIA = 86400e3;

@@ -3,6 +3,7 @@
 .ntf-sino:hover{background:var(--action-ghost-hover);border-color:var(--border-strong)}
 .ntf-sino:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .ntf-sino.is-aberto{background:var(--surface-brand-soft);border-color:color-mix(in oklab,var(--border-brand) 45%,transparent);color:var(--text-brand)}
+.ntf-sino.is-urgente{color:var(--danger-text);border-color:var(--danger-border);background:var(--danger-bg)}
 .ntf-bolinha{position:absolute;top:-3px;right:-4px;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:999px;background:var(--danger-solid);color:#fff;font:800 11.5px/20px var(--font-sans);text-align:center;font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px var(--bg-app)}
 /* barra do logo do celular e "‹ Mais | Título": um pouco menor, para caber ao lado da fase e da conta */
 .smn-mtop .ntf-sino,.smn-stop .ntf-sino{width:40px;height:40px;border-color:transparent;background:transparent}
@@ -29,6 +30,8 @@
 
 .ntf-item{display:flex;gap:12px;padding:14px 12px;border-radius:16px}
 .ntf-item.is-nova{background:color-mix(in oklab,var(--surface-brand-soft) 70%,transparent)}
+.ntf-item.is-urgente{background:var(--danger-bg);box-shadow:inset 3px 0 0 var(--danger-solid)}
+.ntf-urgente{align-self:flex-start;padding:2px 8px;border-radius:999px;background:var(--danger-solid);color:#fff;font:800 11px/16px var(--font-sans);letter-spacing:.02em}
 .ntf-corpo{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .ntf-linha{display:flex;align-items:flex-start;gap:8px}
 .ntf-linha h3{flex:1;margin:0;font:700 14.5px/1.35 var(--font-sans);color:var(--text-primary);text-wrap:pretty}

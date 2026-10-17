@@ -25,8 +25,8 @@ export function Sino() {
       <button
         ref={botao}
         type="button"
-        className={`ntf-sino${aberto ? " is-aberto" : ""}`}
-        aria-label={rotuloSino(ctx.naoLidas)}
+        className={`ntf-sino${aberto ? " is-aberto" : ""}${ctx.urgentes > 0 ? " is-urgente" : ""}`}
+        aria-label={rotuloSino(ctx.naoLidas, ctx.urgentes)}
         aria-haspopup="dialog"
         aria-expanded={aberto}
         title="Notificações"
@@ -120,7 +120,7 @@ export function PainelNotificacoes({ ancora, onFechar }) {
         <h2 id="ntf-titulo" tabIndex={-1}>
           Notificações
         </h2>
-        {ctx.naoLidas > 0 && (
+        {ctx.itens.some((i) => !i.lida && !i.urgente) && (
           <button type="button" className="ntf-todas" onClick={() => ctx.marcarLidas()}>
             <Icon name="check-check" size={16} />
             Marcar todas como lidas
@@ -203,9 +203,10 @@ function ListaNotificacoes({ ctx, onAbrir }) {
 export function NotificacaoItem({ n, onAbrir, onLida, agora }) {
   const [icone, tom] = arteDoTipo(n.tipo);
   return (
-    <article className={`ntf-item${n.lida ? "" : " is-nova"}`} aria-label={`${n.lida ? "" : "Não lida: "}${n.titulo}`}>
+    <article className={`ntf-item${n.lida ? "" : " is-nova"}${n.urgente ? " is-urgente" : ""}`} aria-label={`${n.urgente ? "Urgente: " : n.lida ? "" : "Não lida: "}${n.titulo}`}>
       <IconTile name={icone} tone={tom} size={40} />
       <div className="ntf-corpo">
+        {n.urgente && <span className="ntf-urgente">Urgente · resolva para sair daqui</span>}
         <div className="ntf-linha">
           <h3>{n.titulo}</h3>
           {!n.lida && <span className="ntf-ponto" aria-hidden="true" />}
@@ -216,7 +217,7 @@ export function NotificacaoItem({ n, onAbrir, onLida, agora }) {
             {tempoRelativo(n.em, agora)}
           </time>
           <span className="ntf-acoes">
-            {!n.lida && onLida && (n.acao ? null : (
+            {!n.lida && !n.urgente && onLida && (n.acao ? null : (
               <button type="button" className="ntf-marcar" onClick={onLida}>
                 Marcar como lida
               </button>

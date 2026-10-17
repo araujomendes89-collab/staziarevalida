@@ -16,6 +16,12 @@
 --
 -- O pop-up de cobrança (app_meus_avisos) passa a mostrar SÓ os avisos de cobrança (comunicado e contrato ficam só na Central).
 --
+-- AVISOS URGENTES (decisão do dono 17/10): pagamento que falhou, acesso pausado e vencimento do Pix (ou do aceite para renovar) de
+-- hoje/amanhã continuam valendo ATÉ o aluno resolver (pagamento confirmado / contrato aceito) ou o aviso perder a validade. Enquanto
+-- isso: aparecem no pop-up a cada abertura do app (mesmo depois do "Entendi"), contam como não lidos e vêm em destaque no sino, e
+-- "Marcar todas como lidas" não os cala. Os não urgentes (7 e 3 dias antes, acesso liberado, comunicado, contrato) seguem a regra
+-- comum. O cartão que renova sozinho amanhã não é urgente (o aluno não precisa fazer nada).
+--
 -- ADITIVA e pode ser colada de novo: colunas "if not exists", regras de valores recriadas, tabela "if not exists", funções
 -- "create or replace". Depende da 013760 (avisos_aluno), da 013740 (app_legal_state) e da 013640 (aluno_fases, para o público dos
 -- comunicados). Desfazer: supabase/desfazer/20261003013830_central_notificacoes.desfazer.sql. Conferir: supabase/conferir/central-notificacoes.sql.
@@ -123,6 +129,49 @@ begin
 end
 $$;
 
+-- Aviso de cobrança já resolvido? Pagamento que falhou / acesso pausado: um pagamento do plano confirmado depois do aviso.
+-- Renovação (qualquer nível): a renovação daquele vencimento já paga (ou o período já passou desse dia); a do aceite: contrato aceito.
+create or replace function public.aviso_resolvido(p_user uuid, p_tipo text, p_chave text, p_criado timestamptz) returns boolean
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare v_dia date;
+begin
+  if p_tipo in ('pagamento_falhou', 'acesso_bloqueado') then
+    return exists (select 1 from public.billing_cobrancas x where x.user_id = p_user and x.tipo = 'plano'
+                     and x.status in ('paga', 'devolvida_parcial') and coalesce(x.pago_em, x.criado_em) >= p_criado);
+  end if;
+  if p_tipo <> 'renovacao' or p_chave !~ '^renovacao(-aceite)?:[0-9]{4}-[0-9]{2}-[0-9]{2}:[0-9]+$' then return false; end if;
+  v_dia := split_part(p_chave, ':', 2)::date;
+  if p_chave like 'renovacao-aceite:%' then return public.billing_termo_vigente_ok(p_user); end if;
+  return exists (select 1 from public.billing_pedidos p where p.user_id = p_user and p.motivo = 'renovacao' and p.status = 'pago'
+                   and public.avisos_dia(p.renova_ate) = v_dia)
+      or exists (select 1 from public.billing_contratos c where c.user_id = p_user and public.avisos_dia(c.periodo_fim) > v_dia);
+end
+$$;
+
+-- Aviso urgente ainda sem solução? Pagamento que falhou / acesso pausado: até ser resolvido, por no máximo 30 dias. Vencimento de
+-- hoje/amanhã (nível 1) do Pix ou do aceite para renovar: até ser resolvido, a renovação ser cancelada ou o dia passar (aí o aviso de
+-- acesso pausado assume). Cartão que renova sozinho não é urgente.
+create or replace function public.aviso_urgente_ativo(p_user uuid, p_tipo text, p_chave text, p_criado timestamptz) returns boolean
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  c public.billing_contratos;
+  v_dia date;
+begin
+  if p_tipo in ('pagamento_falhou', 'acesso_bloqueado') then
+    return p_criado > now() - interval '30 days' and not public.aviso_resolvido(p_user, p_tipo, p_chave, p_criado);
+  end if;
+  if p_tipo <> 'renovacao' or p_chave !~ '^renovacao(-aceite)?:[0-9]{4}-[0-9]{2}-[0-9]{2}:1$' then return false; end if;
+  v_dia := split_part(p_chave, ':', 2)::date;
+  if v_dia < public.avisos_dia(now()) then return false; end if;
+  select * into c from public.billing_contratos where user_id = p_user;
+  if c.user_id is null or not c.renova then return false; end if;
+  if p_chave like 'renovacao:%' and c.metodo <> 'pix' then return false; end if;
+  return not public.aviso_resolvido(p_user, p_tipo, p_chave, p_criado);
+end
+$$;
+
 -- ---------------------------------------------------------------- o aluno: a Central
 -- Lista do mais novo para o mais antigo (até p_limite, no máximo 100) e o total de não lidas. Equipe e revisores: lista vazia.
 create or replace function public.app_minhas_notificacoes(p_limite integer default 30) returns jsonb
@@ -135,19 +184,29 @@ begin
     return jsonb_build_object('itens', '[]'::jsonb, 'nao_lidas', 0, 'aluno', false);
   end if;
   perform public.notificacao_contrato_sincronizar(v_user);
+  -- aviso de cobrança já resolvido (pago, aceito) ou pagamento que falhou / acesso pausado vencido: fica lido sozinho
+  update public.avisos_aluno a set visto_em = now()
+  where a.user_id = v_user and a.visto_em is null and a.tipo in ('renovacao', 'pagamento_falhou', 'acesso_bloqueado')
+    and (public.aviso_resolvido(a.user_id, a.tipo, a.chave, a.criado_em)
+         or (a.tipo <> 'renovacao' and not public.aviso_urgente_ativo(a.user_id, a.tipo, a.chave, a.criado_em)));
   return jsonb_build_object(
     'aluno', true,
-    'nao_lidas', (select count(*) from public.avisos_aluno a where a.user_id = v_user and a.visto_em is null),
+    'nao_lidas', (select count(*) from public.avisos_aluno a where a.user_id = v_user
+                    and (a.visto_em is null or public.aviso_urgente_ativo(a.user_id, a.tipo, a.chave, a.criado_em))),
     'itens', coalesce((select jsonb_agg(jsonb_build_object(
                          'id', a.id, 'tipo', a.tipo, 'titulo', a.titulo, 'texto', a.texto, 'rota', a.rota, 'link', a.link,
-                         'acao', public.notificacao_acao(a.tipo, a.rota, a.titulo), 'em', a.criado_em, 'lida', a.visto_em is not null)
-                       order by a.criado_em desc, a.id desc)
-                     from (select * from public.avisos_aluno where user_id = v_user order by criado_em desc, id desc
+                         'acao', public.notificacao_acao(a.tipo, a.rota, a.titulo), 'em', a.criado_em,
+                         'urgente', a.urgente, 'lida', a.visto_em is not null and not a.urgente)
+                       order by a.urgente desc, a.criado_em desc, a.id desc)
+                     from (select x.*, public.aviso_urgente_ativo(x.user_id, x.tipo, x.chave, x.criado_em) as urgente
+                           from public.avisos_aluno x where x.user_id = v_user
+                           order by public.aviso_urgente_ativo(x.user_id, x.tipo, x.chave, x.criado_em) desc, x.criado_em desc, x.id desc
                            limit least(100, greatest(1, coalesce(p_limite, 30)))) a), '[]'::jsonb));
 end
 $$;
 
--- Marca como lidas as próprias (p_ids nulo = todas). Devolve quantas mudaram. Nunca toca nas de outro aluno.
+-- Marca como lidas as próprias (p_ids nulo = todas). Devolve quantas mudaram. Nunca toca nas de outro aluno nem nos avisos urgentes
+-- ainda sem solução (esses só saem quando o aluno resolve).
 create or replace function public.app_notificacoes_lidas(p_ids bigint[] default null) returns integer
   language plpgsql security definer set search_path = ''
 as $$
@@ -155,13 +214,15 @@ declare v_user constant uuid := (select auth.uid()); n integer;
 begin
   if v_user is null then raise exception 'Entre na sua conta.' using errcode = '28000'; end if;
   update public.avisos_aluno set visto_em = now()
-  where user_id = v_user and visto_em is null and (p_ids is null or id = any (p_ids));
+  where user_id = v_user and visto_em is null and (p_ids is null or id = any (p_ids))
+    and not public.aviso_urgente_ativo(user_id, tipo, chave, criado_em);
   get diagnostics n = row_count;
   return n;
 end
 $$;
 
--- O pop-up continua só com os avisos de cobrança (urgentes). Igual à da 013760, com o filtro de tipo.
+-- O pop-up continua só com os avisos de cobrança. Igual à da 013760, com o filtro de tipo e a regra dos urgentes: o urgente sem solução
+-- volta a cada abertura (mesmo visto); pagamento que falhou / acesso pausado já resolvido não aparece mais.
 create or replace function public.app_meus_avisos() returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
@@ -169,10 +230,15 @@ declare v_user constant uuid := (select auth.uid());
 begin
   if v_user is null then raise exception 'Entre na sua conta.' using errcode = '28000'; end if;
   return jsonb_build_object(
-    'novos', coalesce((select jsonb_agg(jsonb_build_object('id', a.id, 'tipo', a.tipo, 'titulo', a.titulo, 'texto', a.texto, 'rota', a.rota, 'em', a.criado_em)
-                                        order by a.criado_em desc)
-                       from public.avisos_aluno a where a.user_id = v_user and a.visto_em is null and a.criado_em > now() - interval '30 days'
-                         and a.tipo in ('renovacao', 'pagamento_falhou', 'acesso_bloqueado', 'acesso_liberado')), '[]'::jsonb),
+    'novos', coalesce((select jsonb_agg(jsonb_build_object('id', a.id, 'tipo', a.tipo, 'titulo', a.titulo, 'texto', a.texto, 'rota', a.rota, 'em', a.criado_em,
+                                                           'urgente', a.urgente)
+                                        order by a.urgente desc, a.criado_em desc)
+                       from (select x.*, public.aviso_urgente_ativo(x.user_id, x.tipo, x.chave, x.criado_em) as urgente
+                             from public.avisos_aluno x where x.user_id = v_user
+                               and x.tipo in ('renovacao', 'pagamento_falhou', 'acesso_bloqueado', 'acesso_liberado')) a
+                       where a.urgente or (a.visto_em is null and a.criado_em > now() - interval '30 days'
+                                           and a.tipo not in ('pagamento_falhou', 'acesso_bloqueado')
+                                           and not public.aviso_resolvido(a.user_id, a.tipo, a.chave, a.criado_em))), '[]'::jsonb),
     'recentes', coalesce((select jsonb_agg(jsonb_build_object('id', a.id, 'tipo', a.tipo, 'titulo', a.titulo, 'texto', a.texto, 'em', a.criado_em,
                                                               'visto', a.visto_em is not null, 'email', a.email_status = 'enviado') order by a.criado_em desc)
                           from (select * from public.avisos_aluno where user_id = v_user
@@ -273,6 +339,8 @@ revoke execute on function public.notificacao_acao(text, text, text) from public
 revoke execute on function public.comunicado_alunos(text, text) from public, anon, authenticated;
 revoke execute on function public.notificacao_contrato_sincronizar(uuid) from public, anon, authenticated;
 revoke execute on function public.comunicado_validar(text, text) from public, anon, authenticated;
+revoke execute on function public.aviso_urgente_ativo(uuid, text, text, timestamptz) from public, anon, authenticated;
+revoke execute on function public.aviso_resolvido(uuid, text, text, timestamptz) from public, anon, authenticated;
 revoke execute on function public.app_minhas_notificacoes(integer) from public, anon;
 grant execute on function public.app_minhas_notificacoes(integer) to authenticated;
 revoke execute on function public.app_notificacoes_lidas(bigint[]) from public, anon;

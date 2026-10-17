@@ -2,6 +2,9 @@
 // pop-up de cobrança (que avisa quando marca um aviso como visto). Só para aluno (ativo = false para equipe e revisores: nada é
 // pedido ao banco e o sino não aparece).
 //
+// Avisos URGENTES de cobrança (pagamento falhou, acesso pausado, vencimento de hoje/amanhã): o banco manda urgente = true enquanto o
+// aluno não resolve; contam como não lidos e "marcar como lida" não os cala (nem aqui, nem no banco).
+//
 // Atualização: ao abrir o app, ao voltar para a aba (no máximo uma vez a cada 20 s) e ao abrir o painel. Sem conexão em tempo real e
 // sem consulta repetida no relógio.
 import React from "react";
@@ -47,15 +50,16 @@ export function NotificacoesProvider({ ativo, children }) {
     return () => document.removeEventListener("visibilitychange", voltou);
   }, [ativo, recarregar]);
 
-  /** Marca como lidas (ids) ou todas (sem ids). Já some da contagem na hora; se o banco recusar, a lista é pedida de novo. */
+  /** Marca como lidas (ids) ou todas (sem ids), menos as urgentes. Já some da contagem na hora; se o banco recusar, pede de novo. */
   const marcarLidas = React.useCallback(
     async (ids) => {
       if (!ativo || !backend) return;
       const alvo = ids ? new Set(ids) : null;
+      const marca = (i) => !i.lida && !i.urgente && (!alvo || alvo.has(i.id));
       setEstado((s) => {
-        const itens = s.itens.map((i) => (!i.lida && (!alvo || alvo.has(i.id)) ? { ...i, lida: true } : i));
-        const mudou = s.itens.filter((i) => !i.lida && (!alvo || alvo.has(i.id))).length;
-        return { ...s, itens, naoLidas: alvo ? Math.max(0, s.naoLidas - mudou) : 0 };
+        const mudou = s.itens.filter(marca).length;
+        const itens = s.itens.map((i) => (marca(i) ? { ...i, lida: true } : i));
+        return { ...s, itens, naoLidas: alvo ? Math.max(0, s.naoLidas - mudou) : s.itens.filter((i) => i.urgente).length };
       });
       try {
         await backend.rpc("app_notificacoes_lidas", { p_ids: ids ? [...ids] : null });
@@ -66,7 +70,10 @@ export function NotificacoesProvider({ ativo, children }) {
     [ativo, backend, recarregar]
   );
 
-  const valor = React.useMemo(() => (ativo ? { ...estado, recarregar, marcarLidas } : null), [ativo, estado, recarregar, marcarLidas]);
+  const valor = React.useMemo(
+    () => (ativo ? { ...estado, urgentes: estado.itens.filter((i) => i.urgente).length, recarregar, marcarLidas } : null),
+    [ativo, estado, recarregar, marcarLidas]
+  );
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }
 

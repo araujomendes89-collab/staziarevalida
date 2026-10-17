@@ -5,6 +5,8 @@
  *   - o pop-up continua só com os avisos de cobrança (comunicado e contrato ficam só na Central);
  *   - segurança: o aluno não lê a do outro, não cria, não altera, não apaga, não marca a do outro; sem duplicata (chave única);
  *   - contrato novo no prazo da cláusula 6.5-A: uma notificação por versão, lida sozinha depois do aceite;
+ *   - avisos URGENTES (pagamento falhou, acesso pausado, Pix/aceite que vence hoje ou amanhã): voltam ao pop-up mesmo depois de vistos,
+ *     contam como não lidos, vêm primeiro e "marcar todas como lidas" não os cala, até o pagamento/aceite ou o aviso perder a validade;
  *   - comunicados da equipe: só administrador; prévia com o número de alunos; público por plano/fase; equipe não recebe;
  *     link só do app ou https; o mesmo envio não sai duas vezes; registro de quem enviou;
  *   - a migração pode ser colada duas vezes, desfeita e colada de novo (conferência OK/FALTA).
@@ -81,7 +83,8 @@ describe("fonte única: avisos de cobrança na Central", () => {
     expect(r.nao_lidas).toBe(2);
     expect(r.itens.map((i: any) => i.tipo)).toEqual(["acesso_bloqueado", "renovacao"]); // mais novo primeiro
     expect(r.itens.map((i: any) => i.acao)).toEqual(["Pagar agora", "Pagar agora"]);
-    expect(r.itens[0]).toMatchObject({ lida: false, rota: "planos", link: null });
+    expect(r.itens[0]).toMatchObject({ lida: false, rota: "planos", link: null, urgente: true }); // acesso pausado: urgente
+    expect(r.itens[1].urgente).toBe(false); // 7 dias antes: comum
   });
 
   it("sem duplicata: a mesma chave não cria outra notificação", async () => {
@@ -98,12 +101,14 @@ describe("fonte única: avisos de cobrança na Central", () => {
     expect(r.itens.find((i: any) => i.id === renov.id).lida).toBe(true);
   });
 
-  it("marcar como lida na Central tira do pop-up", async () => {
+  it("marcar como lida na Central tira do pop-up (aviso comum)", async () => {
+    await criarAviso(ANA, "acesso_liberado", "liberado:asaas:pay_ana", "Pagamento confirmado");
     const r = await rpc(ANA, "app_minhas_notificacoes");
-    const bloq = r.itens.find((i: any) => i.tipo === "acesso_bloqueado");
-    expect(await rpc(ANA, "app_notificacoes_lidas", { p_ids: [bloq.id] })).toBe(1);
-    expect((await rpc(ANA, "app_meus_avisos")).novos).toEqual([]);
-    expect((await rpc(ANA, "app_minhas_notificacoes")).nao_lidas).toBe(0);
+    const lib = r.itens.find((i: any) => i.tipo === "acesso_liberado");
+    expect((await rpc(ANA, "app_meus_avisos")).novos.some((a: any) => a.id === lib.id)).toBe(true);
+    expect(await rpc(ANA, "app_notificacoes_lidas", { p_ids: [lib.id] })).toBe(1);
+    expect((await rpc(ANA, "app_meus_avisos")).novos.some((a: any) => a.id === lib.id)).toBe(false);
+    expect((await rpc(ANA, "app_minhas_notificacoes")).nao_lidas).toBe(1); // só o acesso pausado (urgente) segue
   });
 
   it("textos dos botões por tipo", async () => {
@@ -160,7 +165,7 @@ describe("pop-up só com os avisos de cobrança", () => {
     expect(pop.novos.every((a: any) => a.tipo !== "comunicado")).toBe(true);
     expect(pop.recentes.every((a: any) => a.tipo !== "comunicado")).toBe(true);
     const central = await rpc(BRUNO, "app_minhas_notificacoes");
-    expect(central.itens[0]).toMatchObject({ tipo: "comunicado", titulo: "Simulado nacional no sábado", rota: "nenhuma", acao: null, lida: false });
+    expect(central.itens.find((i: any) => i.tipo === "comunicado")).toMatchObject({ tipo: "comunicado", titulo: "Simulado nacional no sábado", rota: "nenhuma", acao: null, lida: false });
   });
 });
 
@@ -221,10 +226,73 @@ describe("comunicados da equipe", () => {
     expect(ok.link).toBe("https://www.gov.br/inep/revalida");
   });
 
-  it("marcar todas como lidas", async () => {
+  it("marcar todas como lidas (o urgente de Bruno, pagamento que falhou, continua)", async () => {
     expect((await rpc(BRUNO, "app_minhas_notificacoes")).nao_lidas).toBeGreaterThan(1);
     expect(await rpc(BRUNO, "app_notificacoes_lidas", { p_ids: null })).toBeGreaterThan(1);
-    expect((await rpc(BRUNO, "app_minhas_notificacoes")).nao_lidas).toBe(0);
+    const r = await rpc(BRUNO, "app_minhas_notificacoes");
+    expect(r.nao_lidas).toBe(1);
+    expect(r.itens[0]).toMatchObject({ tipo: "pagamento_falhou", urgente: true, lida: false });
+  });
+});
+
+describe("avisos urgentes de cobrança (decisão do dono 17/10)", () => {
+  const dia = (d: number) => new Date(Date.now() - 3 * 3600e3 + d * 86400e3).toISOString().slice(0, 10);
+  const fimDoDia = (d: number) => `${dia(d)}T23:59:59-03:00`;
+  const doPopup = async (u: string) => (await rpc(u, "app_meus_avisos")).novos;
+  const urgente = async (u: string, chave: string) => {
+    const a = await q1(`select id from public.avisos_aluno where user_id = $1 and chave = $2`, [u, chave]);
+    return (await rpc(u, "app_minhas_notificacoes")).itens.find((i: any) => i.id === a.id);
+  };
+
+  it("pagamento que falhou: volta ao pop-up depois do Entendi e não sai com marcar como lida, até o pagamento", async () => {
+    const id = (await q1(`select id from public.avisos_aluno where user_id = $1 and chave = 'falhou:x1'`, [BRUNO])).id;
+    expect(await rpc(BRUNO, "app_avisos_vistos", { p_ids: [id] })).toBe(1); // "Entendi" no pop-up
+    expect((await doPopup(BRUNO)).find((a: any) => a.id === id)).toMatchObject({ urgente: true }); // volta na próxima abertura
+    expect(await rpc(BRUNO, "app_notificacoes_lidas", { p_ids: [id] })).toBe(0);
+    expect(await urgente(BRUNO, "falhou:x1")).toMatchObject({ urgente: true, lida: false });
+    // pagou: o aviso fica resolvido e lido sozinho, e sai do pop-up
+    await q(`insert into public.billing_cobrancas (provider, provider_payment_id, user_id, tipo, codigo, ciclo, metodo, valor_centavos, status, pago_em)
+             values ('asaas', 'pay_bruno_ok', $1, 'plano', 'pro', 'mensal', 'pix', 9990, 'paga', now())`, [BRUNO]);
+    expect(await urgente(BRUNO, "falhou:x1")).toMatchObject({ urgente: false, lida: true });
+    expect((await doPopup(BRUNO)).some((a: any) => a.id === id)).toBe(false);
+  });
+
+  it("acesso pausado perde a validade em 30 dias", async () => {
+    await criarAviso(BRUNO, "acesso_bloqueado", "bloqueado:velho", "Seu acesso pago foi pausado");
+    await q(`update public.avisos_aluno set criado_em = now() - interval '31 days' where user_id = $1 and chave = 'bloqueado:velho'`, [BRUNO]);
+    expect(await urgente(BRUNO, "bloqueado:velho")).toMatchObject({ urgente: false, lida: true });
+  });
+
+  it("Pix que vence amanhã é urgente; 3 dias antes não; cartão não; renovação paga ou dia passado resolve", async () => {
+    await q(`insert into public.billing_contratos (user_id, plano, ciclo, metodo, valor_centavos, renova, provider, contratado_em, periodo_inicio, periodo_fim)
+             values ($1, 'elite', 'mensal', 'pix', 19990, true, 'asaas', now() - interval '29 days', now() - interval '29 days', $2)
+             on conflict (user_id) do update set metodo = 'pix', renova = true, periodo_fim = excluded.periodo_fim`, [CARLA, fimDoDia(1)]);
+    await criarAviso(CARLA, "renovacao", `renovacao:${dia(1)}:3`, "Seu ELITE vence em 3 dias");
+    await criarAviso(CARLA, "renovacao", `renovacao:${dia(1)}:1`, "Seu ELITE vence amanhã");
+    expect((await urgente(CARLA, `renovacao:${dia(1)}:3`)).urgente).toBe(false);
+    expect((await urgente(CARLA, `renovacao:${dia(1)}:1`)).urgente).toBe(true);
+    expect((await rpc(CARLA, "app_minhas_notificacoes")).itens[0].titulo).toBe("Seu ELITE vence amanhã"); // urgente primeiro
+    await rpc(CARLA, "app_notificacoes_lidas", { p_ids: null });
+    expect((await doPopup(CARLA)).map((a: any) => a.titulo)).toEqual(["Seu ELITE vence amanhã"]);
+    // cartão renova sozinho: não é urgente
+    await q(`update public.billing_contratos set metodo = 'cartao' where user_id = $1`, [CARLA]);
+    expect((await urgente(CARLA, `renovacao:${dia(1)}:1`)).urgente).toBe(false);
+    await q(`update public.billing_contratos set metodo = 'pix' where user_id = $1`, [CARLA]);
+    // renovação paga: resolvido
+    await q(`insert into public.billing_pedidos (user_id, tipo, codigo, ciclo, metodo, motivo, nome, valor_centavos, status, idem_chave, expira_em, renova_ate)
+             values ($1, 'plano', 'elite', 'mensal', 'pix', 'renovacao', 'ELITE mensal', 19990, 'pago', 'idem-renov-carla', now() + interval '1 hour', $2)`, [CARLA, fimDoDia(1)]);
+    expect(await urgente(CARLA, `renovacao:${dia(1)}:1`)).toMatchObject({ urgente: false, lida: true }); // pago: lido sozinho
+    expect(await urgente(CARLA, `renovacao:${dia(1)}:3`)).toMatchObject({ urgente: false, lida: true });
+    expect(await doPopup(CARLA)).toEqual([]);
+    // dia que já passou: perde a validade (o aviso de acesso pausado assume)
+    await criarAviso(CARLA, "renovacao", `renovacao:${dia(-1)}:1`, "Seu ELITE vence hoje");
+    expect((await urgente(CARLA, `renovacao:${dia(-1)}:1`)).urgente).toBe(false);
+  });
+
+  it("aceite para renovar amanhã: urgente até aceitar o contrato vigente", async () => {
+    await criarAviso(CARLA, "renovacao", `renovacao-aceite:${dia(1)}:1`, "Para renovar o seu ELITE, aceite o contrato novo", "aceite");
+    // Carla já aceitou a versão vigente (beforeAll): não é urgente
+    expect((await urgente(CARLA, `renovacao-aceite:${dia(1)}:1`)).urgente).toBe(false);
   });
 });
 

@@ -6,7 +6,7 @@
  *
  * Contas (senha Senha-forte-123), criadas na primeira subida:
  *   aluno-notificacoes@previa.dev  Ana Souza  · PRO ativo; contrato novo para aceitar (prazo da cláusula 6.5-A); 5 notificações
- *   aluno-muitas@previa.dev        Carla Mendes · 12 não lidas (o sino mostra 9+)
+ *   aluno-muitas@previa.dev        Carla Mendes · aviso URGENTE (cartão não passou) + 12 não lidas (o sino mostra 9+)
  *   aluno-vazio@previa.dev         Bruno Lima · nenhuma notificação (estado vazio)
  *   admin-previa@previa.dev        Administração > Comunicados
  */
@@ -72,7 +72,8 @@ async function semear(dev: DevDatabase) {
   });
   await dev.db.query(`update public.avisos_aluno set criado_em = now() - interval '2 hours' where user_id = $1 and tipo = 'comunicado' and comunicado_id is not null`, [ana.id]);
 
-  // Carla: 12 não lidas (o sino mostra 9+)
+  // Carla: aviso URGENTE (a renovação no cartão não passou; fica até pagar) e 12 comunicados não lidos (o sino mostra 9+)
+  await aviso(dev, carla.id, { tipo: "acesso_bloqueado", chave: "previa:carla:bloqueado", titulo: "A renovação no cartão não passou", texto: "Não conseguimos cobrar a renovação do seu ELITE (R$ 199,90) no cartão, e o acesso pago foi pausado hoje. Pague a mesma cobrança por Pix em Meu plano e ele volta na hora. Seus dados estão guardados.", horas: 3 });
   for (let i = 0; i < 12; i++) {
     await aviso(dev, carla.id, {
       tipo: "comunicado",
@@ -97,7 +98,8 @@ async function main() {
   app.use("/api/dev-db", createDevDbRouter(() => getDevDatabase(DIR)));
   // só na prévia: as notificações do último dia de uma conta voltam a "não lidas" (para repetir as capturas)
   app.post("/previa/nao-lidas", async (req, res) => {
-    await dev.db.query(`update public.avisos_aluno set visto_em = null where user_id = (select id from auth.users where email = $1) and tipo <> 'contrato_novo' and criado_em > now() - interval '1 day'`, [String(req.body?.email ?? "")]);
+    const tudo = req.body?.tudo === true;
+    await dev.db.query(`update public.avisos_aluno set visto_em = null where user_id = (select id from auth.users where email = $1) and tipo <> 'contrato_novo' and ($2 or criado_em > now() - interval '1 day')`, [String(req.body?.email ?? ""), tudo]);
     res.json({ ok: true });
   });
   app.get("/previa", (_req, res) => {
@@ -107,7 +109,7 @@ async function main() {
       <p><a href="/novo">Abrir o app</a> · senha de todas: <code>${SENHA}</code></p>
       <ul>
         <li><b>aluno-notificacoes@previa.dev</b> (Ana): 3 não lidas, contrato novo para aceitar, PRO ativo</li>
-        <li><b>aluno-muitas@previa.dev</b> (Carla): 12 não lidas (o sino mostra 9+)</li>
+        <li><b>aluno-muitas@previa.dev</b> (Carla): aviso urgente (renovação no cartão não passou) e 12 comunicados (o sino mostra 9+)</li>
         <li><b>aluno-vazio@previa.dev</b> (Bruno): nenhuma notificação</li>
         <li><b>admin-previa@previa.dev</b>: Administração &gt; Comunicados (o sino não aparece para a equipe)</li>
       </ul>`);

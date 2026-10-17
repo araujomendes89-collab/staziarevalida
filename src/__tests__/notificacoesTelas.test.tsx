@@ -3,7 +3,8 @@
  * Central de Notificações do aluno nas telas (migração 013830): sino com bolinha (até "9+") e nome acessível, painel com a lista do
  * mais novo para o mais antigo, botão de ação que marca como lida e leva ao lugar certo, "Marcar todas como lidas", estado vazio,
  * carregamento, painel de baixo para cima no celular, atualização ao voltar para a aba (sem repetir a cada segundo), equipe sem
- * sino, pop-up de cobrança avisando a Central, e a tela de Comunicados da Administração (prévia antes de enviar).
+ * sino, pop-up de cobrança avisando a Central, avisos urgentes (não saem com "marcar como lida"; "Entendi" vale só nesta abertura)
+ * e a tela de Comunicados da Administração (prévia antes de enviar).
  */
 import React from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
@@ -215,6 +216,54 @@ describe("sino", () => {
     fireEvent.click(screen.getByRole("button", { name: "Entendi" }));
     await waitFor(() => expect(backend.rpc.mock.calls.filter((c: any[]) => c[0] === "app_minhas_notificacoes").length).toBe(antes + 1));
     expect(backend.rpc).toHaveBeenCalledWith("app_avisos_vistos", { p_ids: [9] });
+  });
+});
+
+describe("avisos urgentes de cobrança (decisão do dono 17/10)", () => {
+  const URG = { id: 7, tipo: "pagamento_falhou", titulo: "A renovação no cartão não passou", texto: "Pague por Pix em Meu plano.", rota: "planos", link: null, acao: "Pagar agora", em: new Date(agora - 3600e3).toISOString(), lida: false, urgente: true };
+
+  it("sino em destaque, urgente primeiro com selo, sem 'marcar como lida'; 'marcar todas' não cala o urgente", async () => {
+    responder([URG, ...ITENS], 3);
+    montar();
+    const sino = await screen.findByRole("button", { name: "Notificações, 3 não lidas, 1 urgente" });
+    expect(sino.className).toContain("is-urgente");
+    fireEvent.click(sino);
+    const painel = await screen.findByRole("dialog", { name: "Notificações" });
+    const primeiro = within(painel).getAllByRole("article")[0];
+    expect(primeiro.className).toContain("is-urgente");
+    expect(within(primeiro).getByText(/Urgente/)).toBeTruthy();
+    expect(within(primeiro).queryByRole("button", { name: "Marcar como lida" })).toBeNull();
+    fireEvent.click(within(painel).getByRole("button", { name: /Marcar todas como lidas/ }));
+    expect(backend.rpc).toHaveBeenCalledWith("app_notificacoes_lidas", { p_ids: null });
+    await waitFor(() => expect(screen.getByTestId("sino-bolinha").textContent).toBe("1"));
+    expect(screen.getByRole("button", { name: "Notificações, 1 não lida, 1 urgente" })).toBeTruthy();
+    expect(within(painel).getAllByRole("article")[0].className).toContain("is-nova"); // segue não lido
+    expect(within(painel).queryByRole("button", { name: /Marcar todas como lidas/ })).toBeNull(); // só sobrou o urgente
+  });
+
+  it("pop-up: 'Entendi' no urgente esconde só até a próxima abertura do app (voltar para a aba não traz de volta)", async () => {
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_meus_avisos") return { novos: [{ id: 77, tipo: "acesso_bloqueado", titulo: "Seu acesso pago foi pausado", texto: "Pague em Meu plano.", rota: "planos", urgente: true }], recentes: [] };
+      return 1;
+    });
+    const ver = () =>
+      render(
+        <MemoryRouter>
+          <AvisosPopup go={vi.fn()} />
+        </MemoryRouter>
+      );
+    ver();
+    await screen.findByTestId("avisos-popup");
+    fireEvent.click(screen.getByRole("button", { name: "Entendi" }));
+    await waitFor(() => expect(screen.queryByTestId("avisos-popup")).toBeNull());
+    act(() => void document.dispatchEvent(new Event("visibilitychange")));
+    await act(async () => {});
+    expect(screen.queryByTestId("avisos-popup")).toBeNull();
+    cleanup();
+    ver(); // outra tela da mesma abertura
+    await act(async () => {});
+    expect(screen.queryByTestId("avisos-popup")).toBeNull();
+    expect(backend.rpc).toHaveBeenCalledWith("app_avisos_vistos", { p_ids: [77] });
   });
 });
 

@@ -10,6 +10,8 @@ drop function if exists public.app_minhas_notificacoes(integer);
 drop function if exists public.notificacao_contrato_sincronizar(uuid);
 drop function if exists public.comunicado_alunos(text, text);
 drop function if exists public.notificacao_acao(text, text, text);
+drop function if exists public.aviso_urgente_ativo(uuid, text, text, timestamptz);
+drop function if exists public.aviso_resolvido(uuid, text, text, timestamptz);
 
 delete from public.avisos_aluno where tipo in ('contrato_novo', 'comunicado') or email_status = 'so_tela' or rota in ('link', 'nenhuma');
 alter table public.avisos_aluno drop constraint if exists avisos_aluno_tipo_check;

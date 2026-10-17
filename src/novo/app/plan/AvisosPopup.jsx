@@ -14,6 +14,9 @@ const ARTE = {
   acesso_bloqueado: ["lock", "warning"],
   acesso_liberado: ["circle-check", "success"],
 };
+// Avisos URGENTES (013830): "Entendi" esconde só até a próxima abertura do app (recarregar a página); enquanto o aluno não resolve,
+// o banco devolve o aviso de novo. Fica na memória desta aba (voltar para a aba não traz de volta).
+const adiadosNestaAbertura = new Set();
 const BOTAO = { planos: "Abrir Meu plano", perfil: "Abrir Minha conta", aceite: "Ler e aceitar o contrato" };
 
 export function AvisosPopup({ go, ativo = true }) {
@@ -28,7 +31,7 @@ export function AvisosPopup({ go, ativo = true }) {
     let vivo = true;
     Promise.resolve()
       .then(() => backend.rpc("app_meus_avisos"))
-      .then((r) => vivo && setAvisos(Array.isArray(r?.novos) ? r.novos : []))
+      .then((r) => vivo && setAvisos(Array.isArray(r?.novos) ? r.novos.filter((a) => !adiadosNestaAbertura.has(a.id)) : []))
       .catch(() => vivo && setAvisos([]));
     return () => {
       vivo = false;
@@ -54,6 +57,7 @@ export function AvisosPopup({ go, ativo = true }) {
   const a = avisos[0];
   const [icone, tom] = ARTE[a.tipo] ?? ARTE.renovacao;
   const visto = async (abrir) => {
+    if (a.urgente) adiadosNestaAbertura.add(a.id);
     setAvisos((lista) => lista.slice(1));
     try {
       await backend.rpc("app_avisos_vistos", { p_ids: [a.id] });

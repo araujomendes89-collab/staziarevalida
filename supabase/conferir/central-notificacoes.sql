@@ -18,10 +18,10 @@ with falta (ordem, item) as (
    where to_regclass('public.comunicados_equipe') is not null and has_table_privilege('authenticated', 'public.comunicados_equipe', 'select')
   union all select 8, 'função ' || f from unnest(array['app_minhas_notificacoes(integer)', 'app_notificacoes_lidas(bigint[])', 'app_meus_avisos()',
       'app_admin_comunicado_previa(text,text)', 'app_admin_comunicado_enviar(text,text,text,text,text,text)', 'app_admin_comunicados(integer)',
-      'notificacao_acao(text,text,text)', 'comunicado_alunos(text,text)', 'notificacao_contrato_sincronizar(uuid)', 'comunicado_validar(text,text)']) f
+      'notificacao_acao(text,text,text)', 'comunicado_alunos(text,text)', 'notificacao_contrato_sincronizar(uuid)', 'comunicado_validar(text,text)', 'aviso_urgente_ativo(uuid,text,text,timestamptz)', 'aviso_resolvido(uuid,text,text,timestamptz)']) f
    where to_regprocedure('public.' || f) is null
   union all select 9, 'aluno ou visitante executa função interna ' || p.oid::regprocedure::text from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and p.proname in ('notificacao_acao', 'comunicado_alunos', 'notificacao_contrato_sincronizar', 'comunicado_validar')
+   where p.pronamespace = 'public'::regnamespace and p.proname in ('notificacao_acao', 'comunicado_alunos', 'notificacao_contrato_sincronizar', 'comunicado_validar', 'aviso_urgente_ativo', 'aviso_resolvido')
      and (has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('anon', p.oid, 'execute'))
   union all select 10, 'visitante executa ' || p.oid::regprocedure::text from pg_proc p
    where p.pronamespace = 'public'::regnamespace and p.proname in ('app_minhas_notificacoes', 'app_notificacoes_lidas', 'app_admin_comunicado_previa',

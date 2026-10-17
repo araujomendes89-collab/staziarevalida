@@ -73,15 +73,21 @@ for (const [tam, vp, tema] of VARIANTES) {
     await foto(page, "sino-outra-tela", tam === "celular" ? "Sino na barra “‹ Mais | Título” (Desempenho)" : "Sino no cabeçalho das outras telas (Banco de Questões)");
     await ctx.close();
   }
-  // 2) Carla: 12 não lidas → 9+
+  // 2) Carla: aviso URGENTE no pop-up e no topo do painel; 12 não lidas → 9+; "Marcar todas como lidas" não cala o urgente
   {
+    await post("/previa/nao-lidas", { email: "aluno-muitas@previa.dev", tudo: true });
     const { ctx, page } = await ctxDe(carla);
     await page.goto(`${BASE}/novo/`);
-    await page.getByTestId("sino-bolinha").waitFor({ timeout: 90000 });
-    await foto(page, "sino-9-mais", "Mais de 9 não lidas: a bolinha mostra 9+");
+    await page.getByTestId("avisos-popup").waitFor({ timeout: 90000 });
+    await foto(page, "popup-urgente", "Aviso urgente (a renovação no cartão não passou): volta a cada abertura do app até o aluno pagar");
+    await page.getByRole("button", { name: "Entendi" }).click();
+    await page.getByTestId("sino-bolinha").waitFor({ timeout: 30000 });
+    await foto(page, "sino-9-mais", "Sino em destaque (vermelho) com aviso urgente; mais de 9 não lidas: a bolinha mostra 9+");
     await page.getByTestId("sino").click();
     await page.getByTestId("painel-notificacoes").waitFor();
-    await foto(page, "painel-muitas", "Painel com muitas notificações (rola dentro do painel)");
+    await foto(page, "painel-muitas", "Painel: o urgente vem primeiro, com o selo “Urgente”; os outros rolam dentro do painel");
+    await page.getByRole("button", { name: /Marcar todas como lidas/ }).click();
+    await foto(page, "painel-urgente-fica", "Depois de “Marcar todas como lidas”: o urgente continua não lido (bolinha 1) até o pagamento");
     await ctx.close();
   }
   // 3) Bruno: estado vazio
