@@ -5,6 +5,7 @@
  * e o app pode abrir a si mesmo em quadro (prévia do aluno na Administração).
  */
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import config from "../../vercel.json";
 
 type Header = { key: string; value: string };
@@ -37,5 +38,16 @@ describe("cabeçalhos de segurança do vercel.json", () => {
 
   it("a política de conteúdo não restringe scripts (para não quebrar login do Google, voz e pagamentos)", () => {
     expect(get("Content-Security-Policy")).not.toMatch(/script-src|default-src|connect-src/);
+  });
+
+  it("um bloco de cabeçalhos só no vercel.json (a junção com a página inicial não pode apagar estes) e a página inicial em / vem depois, mais estrita", () => {
+    const texto = readFileSync("vercel.json", "utf8");
+    const chavesRepetidas: string[] = [];
+    const nivel1 = (texto.match(/^  "[a-zA-Z$]+":/gm) ?? []).map((k) => k.trim());
+    for (const k of nivel1) if (nivel1.filter((x) => x === k).length > 1 && !chavesRepetidas.includes(k)) chavesRepetidas.push(k);
+    expect(chavesRepetidas).toEqual([]);
+    const fontes = rules.map((r) => r.source);
+    expect(fontes[0]).toBe("/(.*)");
+    if (fontes.includes("/")) expect(fontes.indexOf("/")).toBeGreaterThan(fontes.indexOf("/(.*)"));
   });
 });
