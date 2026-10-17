@@ -5,6 +5,7 @@ import { Banner, Button, Card, Checkbox, StatTile, Switch } from "../../ds";
 import { formatDecimal } from "../../ds/format.js";
 import { useSession } from "../session.jsx";
 import { LoadError, Loading, messageOf, PLAN_LABEL, useLoad } from "./common.jsx";
+import { AdminCreditos } from "./AdminCreditos.jsx";
 
 const PLANS = ["trial", "pro", "elite"];
 const DEFAULT = { aberto: false, planos: ["pro", "elite"] };
@@ -72,6 +73,7 @@ export function AdminDupla() {
   };
 
   return (
+    <>
     <form onSubmit={save} noValidate>
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -96,5 +98,9 @@ export function AdminDupla() {
         <DuplaUsage />
       </div>
     </form>
+    <div style={{ marginTop: 16 }}>
+      <AdminCreditos />
+    </div>
+    </>
   );
 }
