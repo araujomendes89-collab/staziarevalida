@@ -416,7 +416,13 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const mood = { label: before.mood, text: stateLayer(ctx.personality.id, before, engine, profanity), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado", strong: li >= 3 };
     // a ficha diz o grito e o palavrão que valem na conversa (teto do painel, do professor e do aluno; aluno mal: nenhum)
     const limites = { palavrao: contido ? ("off" as const) : personaMax, gritos: !contido };
-    const system = composeSystem({ mode: ctx.session.mode, browserVoice: Boolean(action.voice), persona: personalityLayer(ctx.personality, eff, profanity, 3, null, mood, { seed: sessionId, limites }), personaId: ctx.personality.id });
+    const persona = personalityLayer(ctx.personality, eff, profanity, 3, null, mood, { seed: sessionId, limites });
+    const system = composeSystem({ mode: ctx.session.mode, browserVoice: Boolean(action.voice), persona, personaId: ctx.personality.id });
+    // cache de prompt (Anthropic, revisão de 17/10): o núcleo + modo + leitura é igual para todo aluno; até o fim da ficha, igual na
+    // conversa inteira. O estado (humor) e o que vem depois mudam a cada fala e ficam fora do cache.
+    const iPersona = system.indexOf(persona);
+    const iEstado = iPersona >= 0 ? system.indexOf(mood.text, iPersona) : -1;
+    const systemCacheable = [iPersona > 0 ? system.slice(0, iPersona) : "", iEstado > 0 ? system.slice(0, iEstado) : ""].filter(Boolean);
 
     const mem = ctx.memory;
     const studentCtx = {
@@ -493,7 +499,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       const input = attempt === 0 ? baseInput : `${baseInput}\n<correcao_obrigatoria>\nSua resposta anterior foi barrada. Refaça sem estes problemas:\n${violations.map((x) => `- ${x.detail}`).join("\n")}${comoCorrigir}\n</correcao_obrigatoria>`;
       let r;
       try {
-        r = await provider.generate<TutorOutput>({ promptId: "tutor", promptVersion: TUTOR_VERSION, system, input, schema: TUTOR_SCHEMA, schemaName: "staziamed_tutor", maxOutputTokens: 2000, effort: EFFORT });
+        r = await provider.generate<TutorOutput>({ promptId: "tutor", promptVersion: TUTOR_VERSION, system, systemCacheable, input, schema: TUTOR_SCHEMA, schemaName: "staziamed_tutor", maxOutputTokens: 2000, effort: EFFORT });
       } catch (error) {
         // resposta fora do formato: conta como barrada e ganha uma nova tentativa (nunca é "consertada")
         if (error instanceof AiInvalidOutput) {

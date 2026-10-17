@@ -163,3 +163,19 @@ describe("abertura e passagem sem fórmula e sem passado inventado", () => {
     expect(openingViolations("A gente vai sair daqui sem errar besteira por pressa hoje, PORRA. Escolhe logo o assunto.", [ouvida]).map((x) => x.code)).toContain("repeat");
   });
 });
+
+describe("cache de prompt da Anthropic no turno do Tutor (custo por fala)", () => {
+  it("o system vai em blocos com o cache marcado no fim de cada começo estável; o uso soma o que veio do cache e pesa o preço", async () => {
+    const { anthropicSystem, anthropicInput } = await import("../../server/contentHub/ai/provider");
+    const sys = "NUCLEO.\n\nFICHA.\n\nESTADO agora.";
+    expect(anthropicSystem(sys)).toBe(sys);
+    expect(anthropicSystem(sys, ["NAO CONFERE"])).toBe(sys);
+    expect(anthropicSystem(sys, ["NUCLEO.\n\n", "NUCLEO.\n\nFICHA.\n\n"])).toEqual([
+      { type: "text", text: "NUCLEO.\n\n", cache_control: { type: "ephemeral" } },
+      { type: "text", text: "FICHA.\n\n", cache_control: { type: "ephemeral" } },
+      { type: "text", text: "ESTADO agora." },
+    ]);
+    expect(anthropicInput({ input_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 4000 })).toEqual({ total: 4100, paraPreco: 500 });
+    expect(anthropicInput({ input_tokens: 100, cache_creation_input_tokens: 4000 })).toEqual({ total: 4100, paraPreco: 5100 });
+  });
+});

@@ -61,6 +61,41 @@ export interface StructuredRequest {
    * correrem juntas.
    */
   signal?: AbortSignal;
+  /**
+   * Começos ESTÁVEIS de `system` (cada um é um prefixo exato dele, do menor para o maior), para o cache de prompt da Anthropic
+   * (revisão do Tutor de 17/10/2026: a ficha do personagem e o núcleo vão em toda fala e eram cobrados inteiros a cada chamada).
+   * A Anthropic marca o fim de cada um com cache_control (até 3); os outros provedores ignoram. Prefixo que não confere é ignorado.
+   */
+  systemCacheable?: string[];
+}
+
+/**
+ * O `system` da Anthropic em blocos, com o cache marcado no fim de cada começo estável (systemCacheable). Sem começo válido, o
+ * texto inteiro como sempre.
+ */
+export function anthropicSystem(system: string, cacheable?: string[]): string | { type: "text"; text: string; cache_control?: { type: "ephemeral" } }[] {
+  const cortes = [...new Set((cacheable ?? []).filter((p) => p.length > 0 && system.startsWith(p)).map((p) => p.length))].sort((a, b) => a - b).slice(0, 3);
+  if (!cortes.length) return system;
+  const blocos: { type: "text"; text: string; cache_control?: { type: "ephemeral" } }[] = [];
+  let de = 0;
+  for (const ate of cortes) {
+    if (ate > de) blocos.push({ type: "text", text: system.slice(de, ate), cache_control: { type: "ephemeral" } });
+    de = ate;
+  }
+  if (de < system.length) blocos.push({ type: "text", text: system.slice(de) });
+  return blocos;
+}
+
+/**
+ * Tokens de entrada da Anthropic com o cache: o que foi lido do cache custa ~0,1× e o que foi gravado ~1,25×. Para o registro e os
+ * tetos, a entrada é o total (sem cache + gravado + lido) e o custo usa os pesos.
+ */
+export function anthropicInput(usage: { input_tokens?: number | null; cache_creation_input_tokens?: number | null; cache_read_input_tokens?: number | null } | null | undefined) {
+  const base = usage?.input_tokens ?? null;
+  if (base == null) return { total: null, paraPreco: null };
+  const gravado = usage?.cache_creation_input_tokens ?? 0;
+  const lido = usage?.cache_read_input_tokens ?? 0;
+  return { total: base + gravado + lido, paraPreco: Math.round(base + 1.25 * gravado + 0.1 * lido) };
 }
 
 /** Limite próprio dos provedores que usam fetch (OpenAI, Ollama): 180 s. */
@@ -352,7 +387,7 @@ export class AnthropicProvider implements AiProvider {
       {
         model: this.model,
         max_tokens: anthropicMaxTokens(req.maxOutputTokens),
-        system: req.system,
+        system: anthropicSystem(req.system, req.systemCacheable),
         output_config: anthropicOutputConfig(this.model, req.effort, req.schema),
         messages: [{ role: "user", content: req.input }],
       },
@@ -360,7 +395,9 @@ export class AnthropicProvider implements AiProvider {
       req.signal ? { signal: req.signal } : undefined,
     );
     const usage = res.usage as any;
-    const spent: AiUsage = { inputTokens: usage?.input_tokens ?? null, outputTokens: usage?.output_tokens ?? null };
+    // com o cache de prompt, a entrada inteira é a soma (sem cache + gravado + lido); o preço pesa cada parte
+    const entrada = anthropicInput(usage);
+    const spent: AiUsage = { inputTokens: entrada.total, outputTokens: usage?.output_tokens ?? null };
     // a recusa também é cobrada: os tokens vão junto, para o registro e os tetos
     if (res.stop_reason === "refusal") {
       // a categoria (em inglês, da API) fica só no log do servidor; quem lê o erro na tela vê uma frase fixa em português
@@ -376,7 +413,7 @@ export class AnthropicProvider implements AiProvider {
       throw new AiInvalidOutput("Resposta não é JSON.", block?.text, { usage: spent, reason: "formato" });
     }
     const output = checked<T>(req.schema, raw, spent);
-    return { output, provider: this.name, model: res.model ?? this.model, inputTokens: usage?.input_tokens ?? null, outputTokens: usage?.output_tokens ?? null, latencyMs: Date.now() - t0, costUsd: price(usage?.input_tokens ?? null, usage?.output_tokens ?? null) };
+    return { output, provider: this.name, model: res.model ?? this.model, inputTokens: entrada.total, outputTokens: usage?.output_tokens ?? null, latencyMs: Date.now() - t0, costUsd: price(entrada.paraPreco, usage?.output_tokens ?? null) };
   }
 
   /**
