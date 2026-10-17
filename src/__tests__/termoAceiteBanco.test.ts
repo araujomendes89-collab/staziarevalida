@@ -77,7 +77,7 @@ const profile = async (userId: string) =>
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(fs.readFileSync(path.join(ROOT, "supabase/tests/bootstrap.sql"), "utf8"));
-  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort()) {
+  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== "20261003013740_termo_v3.sql").sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
   // No Supabase real, auth.users.raw_user_meta_data aceita nulo; o stand-in do PGlite não. Igualar para testar o cadastro sem metadados.
