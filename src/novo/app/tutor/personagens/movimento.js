@@ -51,7 +51,8 @@ export function escolherPose({ estado = "idle", emocao = "neutral", intensidade 
   if (reduzido) {
     if (estado === "error") return "encorajando";
     if (temEmocao) return poseEmocao;
-    return { listening: "ouvindo", interrupted: "ouvindo", thinking: "pensando", reconnecting: "pensando", ended: "acenando" }[estado] ?? "base";
+    // falando sem emoção: a pose de falar (a boca simples abre e fecha com a frase, sem tremer)
+    return { listening: "ouvindo", interrupted: "ouvindo", thinking: "pensando", reconnecting: "pensando", ended: "acenando", speaking: "falando" }[estado] ?? "base";
   }
   if (estado === "error") return "encorajando";
   if (estado === "ended") return "acenando";
@@ -207,27 +208,90 @@ export const suavizar = (amostras) => {
   return soma / peso;
 };
 
-export const BOCA_LIMIAR_ABRE = 0.15;
-export const BOCA_LIMIAR_FECHA = 0.08;
+// ---- voz → boca e corpo (17/10/2026: a boca fica sincronizada com as sílabas e o corpo para de tremer) ----
+// Antes: um só envelope (ataque 45 ms, queda 150 ms) movia a boca E o corpo; o nível saturava (a boca ficava quase sempre aberta,
+// só variando a transparência) e chegava ~85 ms atrasado; o corpo pulava a cada sílaba (batida de 4,8 Hz) e isso lia como tremor.
+// Agora são dois seguidores: um rápido para a boca (fecha entre as sílabas) e um lento para o corpo (só a frase, sem sílaba).
 /**
- * Seguidor do volume da voz (envelope), função pura do histórico: `amostras` = [{ t, v }] do mais velho ao mais novo (v de 0 a 1).
- * - envelope: ataque rápido (~45 ms) e queda lenta (~150 ms): a boca abre logo na sílaba e não treme nas pausas curtas;
- * - histerese (gatilho de Schmitt): abre acima de BOCA_LIMIAR_ABRE e só fecha abaixo de BOCA_LIMIAR_FECHA, sem tremer no limiar.
- * Devolve { env, boca }: `env` (0..1) move o corpo; `boca` (0..1) é a abertura da sobreposição da boca.
+ * Boca em 3 aberturas (0 fechada, 0,5 meia, 1 aberta). Limiares com histerese sobre o envelope rápido RELATIVO ao pico recente da
+ * voz (cada voz e cada volume abrem a boca por inteiro na sílaba forte e a fecham no vale entre as sílabas).
+ * Ajustado nas vozes gravadas do Stazi e da Stazia: ~8 trocas de abertura por segundo de conversa (~3 sílabas fechando por segundo).
  */
-export function seguidorVoz(amostras, { ataqueMs = 45, quedaMs = 150 } = {}) {
+export const BOCA_LIMIAR_ABRE = 0.45; // fechada → meia
+export const BOCA_LIMIAR_FECHA = 0.3; // meia → fechada
+export const BOCA_LIMIAR_ABERTA = 0.8; // meia → aberta
+export const BOCA_LIMIAR_MEIA = 0.66; // aberta → meia
+export const BOCA_SEGURA_MS = 55; // cada abertura dura pelo menos isso (sem piscar de boca)
+export const BOCA_ATAQUE_MS = 15;
+export const BOCA_QUEDA_MS = 30;
+const PICO_PISO = 0.35; // abaixo disto não é fala (ruído baixo não abre a boca)
+const PICO_QUEDA_MS = 1200; // o pico recente esquece devagar (frase a frase)
+export const BOCA_TRANSICAO_MS = 30; // a boca desliza até a abertura nova (sem degrau)
+export const CORPO_ATAQUE_MS = 140;
+export const CORPO_QUEDA_MS = 420;
+
+/**
+ * Seguidor da voz, função pura do histórico: `amostras` = [{ t, v }] do mais velho ao mais novo (v = nível da voz de 0 a 1).
+ * Devolve { env, rapido, nivel, boca }:
+ * - `env` (0..1): envelope LENTO (ataque ~140 ms, queda ~420 ms) que move o corpo e a aura: acompanha a frase, não a sílaba;
+ * - `rapido`: envelope da boca (ataque ~15 ms, queda ~30 ms): sobe na sílaba e cai entre as sílabas (comparado ao pico recente);
+ * - `nivel` (0, 0,5 ou 1): abertura escolhida com histerese e permanência mínima, subindo ou descendo um degrau de cada vez;
+ * - `boca` (0..1): a abertura que aparece, deslizando até `nivel` (~30 ms), sem salto.
+ * `ataqueMs`/`quedaMs` mudam só o envelope lento (o microfone usa um pouco mais lento).
+ */
+export function seguidorVoz(amostras, { ataqueMs = CORPO_ATAQUE_MS, quedaMs = CORPO_QUEDA_MS } = {}) {
   let env = 0;
-  let aberta = false;
+  let rapido = 0;
+  let pico = PICO_PISO;
+  let degrau = 0; // 0, 1, 2
+  let desdeTroca = 1e9;
+  let boca = 0;
   let antes = amostras?.[0]?.t ?? 0;
-  for (const { t, v } of amostras ?? []) {
+  for (const { t, v: bruto } of amostras ?? []) {
+    const v = clamp(bruto || 0);
     const dt = Math.max(1, Math.min(80, t - antes));
     antes = t;
-    const tau = v > env ? ataqueMs : quedaMs;
-    env += (v - env) * (1 - Math.exp(-dt / tau));
-    if (!aberta && env > BOCA_LIMIAR_ABRE) aberta = true;
-    else if (aberta && env < BOCA_LIMIAR_FECHA) aberta = false;
+    env += (v - env) * (1 - Math.exp(-dt / (v > env ? ataqueMs : quedaMs)));
+    rapido += (v - rapido) * (1 - Math.exp(-dt / (v > rapido ? BOCA_ATAQUE_MS : BOCA_QUEDA_MS)));
+    pico = Math.max(rapido, pico + (PICO_PISO - pico) * (1 - Math.exp(-dt / PICO_QUEDA_MS)));
+    const u = rapido / Math.max(pico, PICO_PISO);
+    desdeTroca += dt;
+    let quer = degrau;
+    if (degrau === 0 && u > BOCA_LIMIAR_ABRE) quer = 1;
+    else if (degrau === 1 && u > BOCA_LIMIAR_ABERTA) quer = 2;
+    else if (degrau === 1 && u < BOCA_LIMIAR_FECHA) quer = 0;
+    else if (degrau === 2 && u < BOCA_LIMIAR_MEIA) quer = 1;
+    // subir de meia para aberta pode ser logo (a sílaba forte não espera); o resto respeita a permanência mínima
+    const segura = degrau === 1 && quer === 2 ? BOCA_SEGURA_MS * 0.6 : BOCA_SEGURA_MS;
+    if (quer !== degrau && desdeTroca >= segura) {
+      degrau = quer;
+      desdeTroca = 0;
+    }
+    boca += (degrau / 2 - boca) * (1 - Math.exp(-dt / BOCA_TRANSICAO_MS));
   }
-  return { env, boca: aberta ? smoothstep(0.04, 0.8, env) : 0 };
+  return { env, rapido, nivel: degrau / 2, boca: boca < 0.01 ? 0 : boca };
+}
+
+/**
+ * Como desenhar a abertura da boca com o recorte de boca ABERTA (sem imagem nova): escala vertical presa logo abaixo do focinho
+ * (a meia boca é a aberta "achatada") e opacidade só para entrar/sair do fechado.
+ */
+export function aparenciaBoca(boca) {
+  const b = clamp(boca);
+  return { opacidade: smoothstep(0, 0.22, b), escala: 0.42 + 0.58 * b };
+}
+
+/**
+ * Geometria da boca dentro do recorte (px do arquivo), tirada do manifesto: `corte` = altura do focinho dentro do recorte (o que
+ * fica acima, como as sobrancelhas, NÃO mexe com a boca: senão a testa pula a cada sílaba); a elipse (centro no focinho) apaga a
+ * borda do recorte (gola, queixo) para a boca meio aberta não deixar emenda. Vale para qualquer recorte novo do manifesto.
+ */
+export function geometriaBoca(sprite) {
+  const b = sprite?.boca;
+  if (!b) return null;
+  const corte = clamp((sprite.ny ?? b.y) - b.y, 0, b.h * 0.9);
+  const h = b.h - corte;
+  return { corte, h, cx: clamp((sprite.nx ?? b.x + b.w / 2) - b.x, 0, b.w), rx: 0.4 * b.w, ry: 0.8 * h };
 }
 
 /** Jeito de se mexer por emoção (a intensidade 0..1 dosa o quanto vale): quentes contidas e tensas, alegres com mais balanço. */
@@ -247,13 +311,16 @@ export const PERFIL = {
 /**
  * O quadro: transformações do corpo (pivô nos pés), boca, olhos, aura e efeitos.
  * Entradas: t (ms), tEstado, tPose (ms desde a troca de pose), antecipa (0..1, tomada de impulso antes da troca), estado, emocao,
- * intensidade (0..1: controla a AMPLITUDE de tudo, não só a pose), entrada (microfone 0..1), saida (voz 0..1, já suavizada), pose, reduzido.
+ * intensidade (0..1: controla a AMPLITUDE de tudo, não só a pose), entrada (microfone 0..1), saida (voz 0..1: o envelope LENTO do
+ * seguidorVoz, move corpo e aura), boca (0..1: a abertura do seguidorVoz; sem ela, sai da saida), pose, reduzido.
  */
 export function quadro({ t = 0, tEstado = 1e9, tPose = 1e9, antecipa = 0, estado = "idle", emocao = "neutral", intensidade = 0.3, entrada = 0, saida = 0, boca: bocaEntrada = null, pose = "base", semente = 1, reduzido = false }) {
   const cor = COR_EMOCAO[emocao] ?? COR_EMOCAO.neutral;
   const efeito = efeitoDo(estado, emocao, intensidade);
   if (reduzido) {
-    return { x: 0, y: 0, rot: 0, sx: 1, sy: 1, boca: 0, olhos: estado === "paused" ? 1 : 0, troca: 1, aura: 0.35 + intensidade * 0.3, cor, efeito, nivelEfeito: 0.6, t: 0 };
+    // boca simples: abre (meia) enquanto a frase soa e fecha nas pausas, sem acompanhar sílaba e sem escala; o resto fica parado
+    const bocaR = estado === "speaking" && POSES_COM_BOCA.has(pose) && bocaEntrada != null && saida > 0.25 ? 0.5 : 0;
+    return { x: 0, y: 0, rot: 0, sx: 1, sy: 1, boca: bocaR, olhos: estado === "paused" ? 1 : 0, troca: 1, aura: 0.35 + intensidade * 0.3, cor, efeito, nivelEfeito: 0.6, t: 0 };
   }
   const falando = estado === "speaking";
   const ouvindo = estado === "listening" || estado === "interrupted";
@@ -294,15 +361,16 @@ export function quadro({ t = 0, tEstado = 1e9, tPose = 1e9, antecipa = 0, estado
     rot += -2.2 * r * amp;
   }
   if (falando) {
-    const batida = saida * (0.6 + 0.4 * Math.abs(Math.sin(2 * Math.PI * (2.4 + 0.5 * n(13, 0.4)) * (t / 1000))));
-    // quente: sem tremor; acentos secos e raros da cabeça (para baixo) no ritmo da voz; alegre: balança e quica no ritmo
+    // o corpo segue a FRASE (saida = envelope lento, ~140/420 ms), nunca a sílaba: nada de batida rápida (era 4,8 Hz, lia como
+    // tremor). Um aceno lento da cabeça (ruído de 0,5 Hz) dá vida; quente: acentos secos e raros para baixo; alegre: balança mais.
+    const fala = saida * (0.55 + 0.45 * n(13, 0.5));
     const acento = smoothstep(0.35, 0.8, n(21, 0.7)) * saida;
-    y -= (6 * (1 - 0.55 * tensao) * batida + 3.5 * perfil.alegria * batida) * amp;
-    y += 4 * tensao * acento * amp;
-    sy += 0.022 * batida * amp * (1 - 0.4 * tensao);
-    sx -= 0.01 * batida * amp;
-    rot += (1.3 - 0.8 * tensao) * saida * n(14, 1.1) * 1.6 * amp * balanco + 2.2 * perfil.alegria * saida * n(15, 0.8) * amp + 1.6 * tensao * acento * amp;
-    if (!POSES_COM_BOCA.has(pose)) sy += 0.012 * smoothstep(0.1, 0.4, saida) * amp;
+    y -= (3.2 * (1 - 0.55 * tensao) * fala + 2 * perfil.alegria * fala) * amp * (0.6 + 0.8 * inten); // aceno maior com a emoção forte
+    y += 3 * tensao * acento * amp;
+    sy += 0.012 * fala * amp * (1 - 0.4 * tensao);
+    sx -= 0.005 * fala * amp;
+    rot += (1.1 - 0.7 * tensao) * saida * n(14, 0.45) * 1.4 * amp * balanco + 1.8 * perfil.alegria * saida * n(15, 0.5) * amp + 1.4 * tensao * acento * amp;
+    if (!POSES_COM_BOCA.has(pose)) sy += 0.01 * smoothstep(0.1, 0.4, saida) * amp;
   }
   if (perfil.alegria > 0 && !falando) {
     // saltinhos intermitentes (a amplitude oscila devagar, nada de metrônomo)

@@ -4,7 +4,7 @@
 // voz (lip flap pelo nível da voz do professor), inclinação ao ouvir (nível do microfone), tremor curto de raiva, aura por emoção.
 import React from "react";
 import { usePersonagemAnimacao } from "./usePersonagemAnimacao.js";
-import { opacidadesTroca } from "./movimento.js";
+import { opacidadesTroca, aparenciaBoca, geometriaBoca } from "./movimento.js";
 import { spritePose, urlsDoPersonagem, ALTURA_EM_PE } from "./sprites.js";
 import { rotuloPersonagem, personagemValido } from "./personagens.js";
 import "./personagem.css";
@@ -38,7 +38,26 @@ function Camada({ id, chave, papel, refs, escondida = false }) {
     >
       <img className="tp__img" src={s.url} alt="" draggable={false} decoding="async" />
       {s.olhos && <img ref={(el) => (refs.current[`${papel}-olhos`] = el)} className="tp__extra" src={s.olhos.url} alt="" draggable={false} style={{ ...pos(s.olhos), opacity: 0 }} />}
-      {s.boca && <img ref={(el) => (refs.current[`${papel}-boca`] = el)} className="tp__extra" src={s.boca.url} alt="" draggable={false} style={{ ...pos(s.boca), opacity: 0 }} />}
+      {s.boca && <Boca s={s} refs={refs} papel={papel} />}
+    </div>
+  );
+}
+
+/**
+ * Boca que acompanha a voz (17/10/2026): só a parte do recorte ABAIXO do focinho (as sobrancelhas do recorte não pulam a cada
+ * sílaba), com a borda apagada por uma elipse e escala vertical presa no focinho: fechada, meia e aberta, sem mexer o corpo.
+ */
+function Boca({ s, refs, papel }) {
+  const g = geometriaBoca(s);
+  const u = (n) => `calc(${n.toFixed(1)} * var(--tp-u))`;
+  const mascara = `radial-gradient(ellipse ${u(g.rx)} ${u(g.ry)} at ${u(g.cx)} 0px, #000 65%, transparent 100%)`;
+  return (
+    <div
+      ref={(el) => (refs.current[`${papel}-boca`] = el)}
+      className="tp__boca"
+      style={{ position: "absolute", left: u(s.boca.x), top: u(s.boca.y + g.corte), width: u(s.boca.w), height: u(g.h), overflow: "hidden", opacity: 0, transformOrigin: "50% 0", willChange: "transform, opacity", maskImage: mascara, WebkitMaskImage: mascara }}
+    >
+      <img className="tp__extra" src={s.boca.url} alt="" draggable={false} style={{ left: 0, top: u(-g.corte), width: u(s.boca.w), height: u(s.boca.h) }} />
     </div>
   );
 }
@@ -141,7 +160,12 @@ export function PersonagemTutor2D({ personagem = "stazi", conversationState = "i
       R.anterior.style.opacity = String(opacidadesTroca(q.troca).anterior);
       R.anterior.style.transform = `translate(${(dx * q.troca * u).toFixed(2)}px, ${(dy * q.troca * u).toFixed(2)}px)`;
     }
-    if (R["atual-boca"]) R["atual-boca"].style.opacity = q.boca.toFixed(3);
+    if (R["atual-boca"]) {
+      const b = aparenciaBoca(q.boca);
+      R["atual-boca"].style.opacity = b.opacidade.toFixed(3);
+      R["atual-boca"].style.transform = `scaleY(${b.escala.toFixed(3)})`;
+    }
+    el.dataset.boca = q.boca.toFixed(2);
     if (R["atual-olhos"]) R["atual-olhos"].style.opacity = q.olhos.toFixed(3);
     for (const nome of EFEITOS) {
       const g = R[`fx-${nome}`];

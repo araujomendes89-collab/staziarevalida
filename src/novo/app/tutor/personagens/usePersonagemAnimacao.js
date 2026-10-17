@@ -5,11 +5,16 @@
 // quando valem o estado e a emoção, vem do roteiro; ao vivo ele vem das marcas deste gancho).
 import React from "react";
 import { useAudioLevel } from "../voice/useAudioLevel.js";
+import { nivelDoFluxo } from "../voice/audioPlayer.js";
 import { useMovimentoReduzido } from "./useMovimentoReduzido.js";
 import { dinamicaPose, quadro, seguidorVoz } from "./movimento.js";
 
 const agora = () => (typeof performance !== "undefined" && performance.now ? performance.now() : 0);
-const JANELA_VOZ_MS = 600; // histórico do nível da voz que alimenta o seguidor (ataque rápido, queda lenta, histerese da boca)
+const JANELA_VOZ_MS = 1500; // histórico do nível da voz que alimenta o seguidor (envelope lento do corpo e boca de 3 aberturas)
+// Sincronia (17/10/2026): com o tocador do app, o nível vem da trilha do próprio tocador no instante que SAI do alto-falante
+// (nivelDoFluxo), lido este tanto à frente para compensar a subida da boca (envelope + deslizar ~45 ms): a boca abre junto com
+// o som. Sem o tocador do app (outro MediaStream), cai no analisador de antes.
+export const ADIANTO_BOCA_S = 0.045;
 
 /**
  * props da esfera (conversationState, emotion, emotionIntensity, inputStream, outputStream, onFrame) +
@@ -22,10 +27,11 @@ export function usePersonagemAnimacao({ conversationState = "idle", emotion = "n
   const reduzido = reduzidoProp ?? prefere;
   const controlado = time != null;
   const t0 = React.useRef(null);
+  const nivelVoz = React.useMemo(() => nivelDoFluxo(outputStream), [outputStream]);
   const marcas = React.useRef({ estado: null, tEstado0: -1e9, estadoAnt: null, emocao: null, tEmocao0: -1e9, emocaoAnt: null, pose: null, anterior: null, tPose0: -1e9, antecipa: 0, hist: { entrada: [], saida: [] } });
   const [poses, setPoses] = React.useState(() => ({ atual: dinamicaPose({ t: 0, estado: conversationState, emocao: emotion, intensidade: emotionIntensity, desde: desde ?? undefined, reduzido }).pose, anterior: null }));
   const vivo = React.useRef({});
-  Object.assign(vivo.current, { conversationState, emotion, emotionIntensity, onFrame, time, niveis, desde, semente, reduzido, pintar });
+  Object.assign(vivo.current, { nivelVoz, conversationState, emotion, emotionIntensity, onFrame, time, niveis, desde, semente, reduzido, pintar });
   // relógio controlado + "desde" (roteiro): a pose sai do próprio render, sem memória (quadros fora de ordem dão o mesmo resultado)
   const fixo = controlado && desde ? dinamicaPose({ t: time, estado: conversationState, emocao: emotion, intensidade: emotionIntensity, desde, reduzido }) : null;
 
@@ -66,7 +72,7 @@ export function usePersonagemAnimacao({ conversationState = "idle", emotion = "n
     let boca;
     if (v.niveis != null) {
       const f = typeof v.niveis === "function" ? v.niveis : () => v.niveis;
-      const hist = (campo) => Array.from({ length: 26 }, (_, i) => { const ms = t - (25 - i) * 24; return { t: ms, v: f(Math.max(0, ms))[campo] ?? 0 }; });
+      const hist = (campo) => Array.from({ length: 64 }, (_, i) => { const ms = t - (63 - i) * 24; return { t: ms, v: f(Math.max(0, ms))[campo] ?? 0 }; });
       entrada = seguidorVoz(hist("input"), { ataqueMs: 70, quedaMs: 220 }).env;
       ({ env: saida, boca } = seguidorVoz(hist("output")));
     } else {
@@ -76,25 +82,26 @@ export function usePersonagemAnimacao({ conversationState = "idle", emotion = "n
         while (lista.length > 1 && t - lista[0].t > JANELA_VOZ_MS) lista.shift();
       };
       empurra(h.entrada, l?.input ?? 0);
-      empurra(h.saida, l?.output ?? 0);
+      empurra(h.saida, v.nivelVoz ? v.nivelVoz(agora(), ADIANTO_BOCA_S) : l?.output ?? 0);
       entrada = seguidorVoz(h.entrada, { ataqueMs: 70, quedaMs: 220 }).env;
       ({ env: saida, boca } = seguidorVoz(h.saida));
     }
     const q = quadro({ t, tEstado: t - m.tEstado0, tPose: din.tPose, antecipa: din.antecipa, estado: v.conversationState, emocao: v.emotion, intensidade: v.emotionIntensity, entrada, saida, boca, pose: din.pose, semente: v.semente, reduzido: v.reduzido });
     v.pintar?.(q, m);
-    v.onFrame?.({ input: l?.input ?? entrada, output: l?.output ?? saida });
+    v.onFrame?.({ input: l?.input ?? entrada, output: v.nivelVoz ? saida : l?.output ?? saida });
   }, [relogio]);
 
-  // ao vivo: o nível do áudio chama o tick a cada quadro (rAF); controlado ou reduzido: sem rAF
-  useAudioLevel({ input: inputStream, output: outputStream, enabled: !controlado && !reduzido, onFrame: tick });
+  // ao vivo (também no movimento reduzido, para a boca simples abrir e fechar com a frase): o nível do áudio chama o tick a cada
+  // quadro (rAF); controlado: sem rAF. A voz do tocador do app não precisa de analisador (vem da trilha do tocador).
+  useAudioLevel({ input: inputStream, output: nivelVoz ? null : outputStream, enabled: !controlado, onFrame: tick });
 
   React.useEffect(() => {
-    if (controlado || reduzido) tick({ input: 0, output: 0 });
+    if (controlado) tick({ input: 0, output: 0 });
   }, [controlado, reduzido, time, conversationState, emotion, emotionIntensity, niveis, tick]);
 
   // depois que a nova pose entrou no DOM, pinta de novo (as camadas novas recebem opacidade/transformação)
   React.useEffect(() => {
-    if (controlado || reduzido) tick({ input: 0, output: 0 }); // ao vivo, o próximo rAF já pinta
+    if (controlado) tick({ input: 0, output: 0 }); // ao vivo, o próximo rAF já pinta
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poses]);
 

@@ -11,6 +11,31 @@ const FOLGA_S = 0.03;
 // depois de a fila de som acabar e passar este tempo sem pedaço novo (fala acabou de verdade). Nunca no meio da fala.
 const ESPERA_RESERVA_MS = 100;
 
+// Nível da voz para a boca do personagem (17/10/2026): em vez de medir o som depois de tocado (analisador, com atraso e janela
+// curta), o tocador anota o volume de cada 10 ms no instante exato em que vai sair no alto-falante. Quem anima pergunta "qual o
+// nível do som que está saindo agora?" pelo MediaStream de sempre (nivelDoFluxo(stream)), sem prop nova.
+const BLOCO_S = 0.01;
+const GANHO_NIVEL = 1 / 0.32; // RMS da fala do Gemini: mediana ~0,2 e 90% abaixo de ~0,35 → 0..1
+const NIVEL_POR_FLUXO = new WeakMap();
+
+/** Função (msDoRelogio = performance.now(), adiantoS = 0) → nível 0..1 do som que sai do alto-falante naquele instante; ou null. */
+export function nivelDoFluxo(stream) {
+  return stream ? NIVEL_POR_FLUXO.get(stream) ?? null : null;
+}
+
+/** RMS por blocos de 10 ms (Float32Array). */
+export function rmsPorBloco(data, rate) {
+  const n = Math.max(1, Math.round(rate * BLOCO_S));
+  const out = new Float32Array(Math.ceil(data.length / n));
+  for (let b = 0; b < out.length; b++) {
+    let s = 0;
+    const fim = Math.min(data.length, (b + 1) * n);
+    for (let i = b * n; i < fim; i++) s += data[i] * data[i];
+    out[b] = Math.sqrt(s / Math.max(1, fim - b * n));
+  }
+  return out;
+}
+
 /** base64 de PCM 16 bits → Float32. */
 export function base64ToFloat32(b64) {
   const bin = atob(b64);
@@ -36,6 +61,8 @@ export class AudioPlayer {
     // a esfera lê o nível de áudio de um MediaStream (o mesmo caminho da voz ao vivo)
     this.dest = typeof ctx.createMediaStreamDestination === "function" ? ctx.createMediaStreamDestination() : null;
     if (this.dest) this.gain.connect(this.dest);
+    this.trilha = []; // [{ ini (s do contexto), v: RMS por bloco de 10 ms }] do que já está agendado
+    if (this.dest?.stream) NIVEL_POR_FLUXO.set(this.dest.stream, (ms, adiantoS = 0) => this.nivelEm(this.tempoOuvido(ms) + adiantoS));
     this.next = 0;
     this.sources = new Set();
     this.waiting = new Set(); // promessas de playEncoded que o stop() resolve com false
@@ -61,6 +88,34 @@ export class AudioPlayer {
   _pararRelogio() {
     if (this.esvaziar) clearTimeout(this.esvaziar);
     this.esvaziar = null;
+  }
+  /** Instante do contexto (s) que está saindo no alto-falante no momento `ms` (performance.now), com a latência de saída. */
+  tempoOuvido(ms = typeof performance !== "undefined" ? performance.now() : 0) {
+    const c = this.ctx;
+    const ts = typeof c.getOutputTimestamp === "function" ? c.getOutputTimestamp() : null;
+    if (ts && ts.contextTime > 0 && ts.performanceTime > 0) return ts.contextTime + (ms - ts.performanceTime) / 1000;
+    return c.currentTime - (c.outputLatency || c.baseLatency || 0);
+  }
+  /** Nível 0..1 do som agendado no instante `t` (s do contexto): RMS de ~30 ms em volta (3 blocos), 0 no silêncio. */
+  nivelEm(t) {
+    let soma = 0;
+    for (const k of [-1, 0, 1]) {
+      const x = t + k * BLOCO_S;
+      for (let i = this.trilha.length - 1; i >= 0; i--) {
+        const p = this.trilha[i];
+        const b = Math.floor((x - p.ini) / BLOCO_S);
+        if (b >= 0 && b < p.v.length) {
+          soma += p.v[b] * p.v[b];
+          break;
+        }
+      }
+    }
+    return Math.min(1, Math.sqrt(soma / 3) * GANHO_NIVEL);
+  }
+  _anotar(data, rate, ini) {
+    const agora = this.ctx.currentTime;
+    this.trilha = this.trilha.filter((p) => p.ini + p.v.length * BLOCO_S > agora - 1);
+    this.trilha.push({ ini, v: rmsPorBloco(data, rate) });
   }
   get stream() {
     return this.dest?.stream ?? null;
@@ -135,6 +190,7 @@ export class AudioPlayer {
     const at = Math.max(this.ctx.currentTime + FOLGA_S + extra, this.next);
     src.start(at);
     this.next = at + buf.duration;
+    this._anotar(data, rate, at);
     this._track(src);
   }
   /** Um áudio inteiro já codificado (mp3 da voz do professor). Resolve true quando termina e false quando o stop() corta. */
@@ -151,6 +207,7 @@ export class AudioPlayer {
       };
       this.waiting.add(done);
       this.sources.add(src);
+      this._anotar(buf.getChannelData(0), buf.sampleRate, this.ctx.currentTime);
       src.onended = () => {
         this.sources.delete(src);
         done(true);
@@ -173,6 +230,7 @@ export class AudioPlayer {
     }
     this.sources.clear();
     this.next = 0;
+    this.trilha = []; // a boca fecha junto com a voz cortada
     for (const done of [...this.waiting]) done(false);
   }
   setVolume(v) {

@@ -58,7 +58,8 @@ for (const [personagem, personalidade] of casos) {
     if (e && estados.at(-1) !== e) { estados.push(e); console.log(`[${personagem}/${personalidade} ${((Date.now() - t0) / 1000).toFixed(1)} s] ${e}`); }
     const d = await page.locator(".palco .tp").evaluate((el) => ({
       id: el.dataset.personagem, estado: el.dataset.state, pose: el.dataset.pose,
-      boca: [...el.querySelectorAll(".tp__pose--atual .tp__extra")].map((x) => Number(x.style.opacity || 0)),
+      boca: [...el.querySelectorAll(".tp__pose--atual .tp__boca, .tp__pose--atual .tp__extra")].map((x) => Number(x.style.opacity || 0)),
+      abertura: Number(el.dataset.boca ?? NaN),
     })).catch(() => null);
     if (d) {
       poses.add(d.pose); estadosDesenho.add(d.estado);

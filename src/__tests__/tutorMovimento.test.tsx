@@ -1,7 +1,10 @@
 // Movimento natural dos personagens do Tutor: função pura do tempo, com semente. Testa troca de pose, vida contínua (respiração,
 // balanço, piscar irregular), boca (ataque rápido, queda lenta, histerese), amplitude por intensidade e emoção, e movimento reduzido.
 import { describe, expect, it } from "vitest";
-import { quadro, piscada, seguidorVoz, dinamicaPose, TROCA_MS, PERMANENCIA_MS, BOCA_LIMIAR_ABRE, BOCA_LIMIAR_FECHA, opacidadesTroca } from "../novo/app/tutor/personagens/movimento.js";
+import { quadro, piscada, seguidorVoz, dinamicaPose, TROCA_MS, PERMANENCIA_MS, BOCA_SEGURA_MS, opacidadesTroca, aparenciaBoca, geometriaBoca } from "../novo/app/tutor/personagens/movimento.js";
+import { ADIANTO_BOCA_S } from "../novo/app/tutor/personagens/usePersonagemAnimacao.js";
+import { spritePose } from "../novo/app/tutor/personagens/sprites.js";
+import { AudioPlayer, nivelDoFluxo, rmsPorBloco } from "../novo/app/tutor/voice/audioPlayer.js";
 
 const base = { t: 5000, tEstado: 4000, tPose: 4000, estado: "idle", emocao: "neutral", intensidade: 0.5, pose: "base" };
 const serie = (n: number, passo: number, f: (t: number) => number) => Array.from({ length: n }, (_, i) => f(i * passo));
@@ -73,31 +76,184 @@ describe("vida contínua", () => {
   });
 });
 
-describe("boca acompanha o volume da voz", () => {
-  const sil = (ms: number) => Math.max(0, Math.sin((2 * Math.PI * 4.3 * ms) / 1000) * 0.5 + 0.5);
-  const hist = (f: (ms: number) => number, fim: number) => Array.from({ length: 26 }, (_, i) => { const t = fim - (25 - i) * 24; return { t, v: f(Math.max(0, t)) }; });
-  it("ataque rápido, queda lenta", () => {
-    const sobe = seguidorVoz(Array.from({ length: 4 }, (_, i) => ({ t: i * 16, v: 1 })));
-    expect(sobe.env).toBeGreaterThan(0.5); // 64 ms e já passou da metade
-    const desce = seguidorVoz([...Array.from({ length: 30 }, (_, i) => ({ t: i * 16, v: 1 })), ...Array.from({ length: 4 }, (_, i) => ({ t: 480 + i * 16, v: 0 }))]);
-    expect(desce.env).toBeGreaterThan(0.5); // 64 ms depois do silêncio ainda está aberta
+// Voz falsa com sílabas de durações irregulares (90 a 260 ms), vales curtos entre elas e pausas de frase: parecida com a do Gemini.
+const silabas = (() => {
+  const lista: { ini: number; fim: number; amp: number }[] = [];
+  let t = 300;
+  let k = 0;
+  while (t < 12000) {
+    const dur = 90 + ((k * 73) % 170);
+    lista.push({ ini: t, fim: t + dur, amp: 0.55 + ((k * 37) % 45) / 100 });
+    t += dur + 45 + ((k * 29) % 50) + (k % 9 === 8 ? 450 : 0); // vale entre sílabas; a cada 9, pausa de frase
+    k++;
+  }
+  return lista;
+})();
+const voz = (ms: number) => {
+  for (const s of silabas) if (ms >= s.ini && ms < s.fim) return s.amp * Math.sin((Math.PI * (ms - s.ini)) / (s.fim - s.ini)) ** 0.5;
+  return 0;
+};
+// como ao vivo: a cada quadro de 16 ms, o histórico de 1,5 s do nível (lido ADIANTO_BOCA_S à frente) passa pelo seguidor
+const aoVivo = (f: (ms: number) => number, ate: number, adianto = ADIANTO_BOCA_S * 1000) => {
+  const hist: { t: number; v: number }[] = [];
+  const out: { t: number; boca: number; nivel: number; env: number }[] = [];
+  for (let t = 0; t <= ate; t += 16) {
+    hist.push({ t, v: f(t + adianto) });
+    while (hist.length > 1 && t - hist[0].t > 1500) hist.shift();
+    const r = seguidorVoz(hist);
+    out.push({ t, boca: r.boca, nivel: r.nivel, env: r.env });
+  }
+  return out;
+};
+const pearson = (a: number[], b: number[]) => {
+  const ma = a.reduce((x, y) => x + y, 0) / a.length;
+  const mb = b.reduce((x, y) => x + y, 0) / b.length;
+  let s = 0, sa = 0, sb = 0;
+  for (let i = 0; i < a.length; i++) { s += (a[i] - ma) * (b[i] - mb); sa += (a[i] - ma) ** 2; sb += (b[i] - mb) ** 2; }
+  return s / Math.sqrt(sa * sb || 1);
+};
+
+describe("boca acompanha a voz (sílabas, 3 aberturas, sem tremer)", () => {
+  const serieVoz = aoVivo(voz, 12000);
+  it("abre logo na sílaba e fecha no silêncio", () => {
+    const sobe = aoVivo((ms) => (ms >= 500 ? 0.8 : 0), 700, 0);
+    const abriu = sobe.find((x) => x.nivel > 0)!;
+    expect(abriu.t - 500).toBeLessThanOrEqual(40);
+    const desce = aoVivo((ms) => (ms < 500 ? 0.8 : 0), 900, 0);
+    expect(desce.at(-1)!.boca).toBe(0);
   });
-  it("histerese: no limiar não tremula", () => {
-    // nível oscilando entre os dois limiares: fica no mesmo estado, sem abrir e fechar
-    const zona = (BOCA_LIMIAR_ABRE + BOCA_LIMIAR_FECHA) / 2;
-    const meio = Array.from({ length: 60 }, (_, i) => ({ t: i * 16, v: zona + (i % 2 ? 0.02 : -0.02) }));
-    expect(seguidorVoz(meio).boca).toBe(0); // nunca abriu (ficou abaixo do limiar de abrir)
-    const aberta = [...Array.from({ length: 20 }, (_, i) => ({ t: i * 16, v: 0.6 })), ...Array.from({ length: 40 }, (_, i) => ({ t: 320 + i * 16, v: zona + (i % 2 ? 0.02 : -0.02) }))];
-    expect(seguidorVoz(aberta).boca).toBeGreaterThan(0); // já aberta, continua aberta
+  it("três aberturas (fechada, meia, aberta) e a boca passa pela meia, sem pular de fechada para aberta", () => {
+    const niveis = new Set(serieVoz.map((x) => x.nivel));
+    expect([...niveis].sort()).toEqual([0, 0.5, 1]);
+    for (let i = 1; i < serieVoz.length; i++) expect(Math.abs(serieVoz[i].nivel - serieVoz[i - 1].nivel)).toBeLessThanOrEqual(0.5);
   });
-  it("com fala silábica a boca não treme: variação por quadro pequena e fecha nas pausas longas", () => {
-    const fala = (ms: number) => (ms % 1800 < 1300 ? sil(ms) * 0.9 : 0);
-    const bocas = serie(450, 16, (ms) => seguidorVoz(hist(fala, ms)).boca);
-    let saltos = 0;
-    for (let i = 1; i < bocas.length; i++) if (Math.abs(bocas[i] - bocas[i - 1]) > 0.35) saltos++;
-    expect(saltos).toBeLessThanOrEqual(3); // só nos começos de frase
-    expect(Math.max(...bocas)).toBeGreaterThan(0.6);
-    expect(Math.min(...bocas)).toBe(0);
+  it("sem piscar de boca: cada abertura dura o mínimo, no máximo 7 fechamentos por segundo, sem salto entre quadros", () => {
+    const trocas: number[] = [];
+    let ini = 0;
+    for (let i = 1; i < serieVoz.length; i++) {
+      if (serieVoz[i].nivel !== serieVoz[i - 1].nivel) {
+        if (trocas.length) expect(serieVoz[i].t - ini).toBeGreaterThanOrEqual(BOCA_SEGURA_MS * 0.6 - 16);
+        trocas.push(serieVoz[i].t);
+        ini = serieVoz[i].t;
+      }
+      expect(Math.abs(serieVoz[i].boca - serieVoz[i - 1].boca)).toBeLessThan(0.35);
+    }
+    // cada sílaba dá até 4 trocas (fechada → meia → aberta → meia → fechada): no máximo 7 fechamentos em qualquer segundo
+    const sobe = trocas.map((t) => { const i = serieVoz.findIndex((x) => x.t === t); return serieVoz[i].nivel > serieVoz[i - 1].nivel; });
+    const descidas = trocas.filter((_, k) => k > 0 && !sobe[k] && sobe[k - 1]); // começo de cada fechamento (depois de abrir)
+    for (let i = 0; i < descidas.length; i++) expect(descidas.filter((t) => t >= descidas[i] && t < descidas[i] + 1000).length).toBeLessThanOrEqual(7);
+  });
+  it("acompanha as sílabas: fecha (ou quase) em pelo menos 70% dos vales entre elas", () => {
+    let fechou = 0;
+    let vales = 0;
+    for (let k = 0; k + 1 < silabas.length && silabas[k + 1].ini < 11500; k++) {
+      vales++;
+      const v = serieVoz.filter((x) => x.t >= silabas[k].fim - 30 && x.t <= silabas[k + 1].ini + 30);
+      if (v.some((x) => x.nivel < 1)) fechou++;
+    }
+    expect(fechou / vales).toBeGreaterThan(0.7);
+  });
+  it("histerese: um tremido pequeno no nível não abre e fecha a boca", () => {
+    const tremido = aoVivo((ms) => 0.6 + (Math.floor(ms / 16) % 2 ? 0.04 : -0.04), 3000, 0).filter((x) => x.t > 500);
+    expect(new Set(tremido.map((x) => x.nivel)).size).toBe(1);
+  });
+  it("sincronia: a boca acompanha o som com atraso de no máximo 60 ms (lendo o nível ADIANTO_BOCA_S à frente)", () => {
+    const A = serieVoz.map((x) => x.boca);
+    let melhor = { lag: 0, r: -2 };
+    for (let lag = -200; lag <= 300; lag += 4) {
+      const r = pearson(A, serieVoz.map((x) => voz(x.t - lag)));
+      if (r > melhor.r) melhor = { lag, r };
+    }
+    expect(Math.abs(melhor.lag)).toBeLessThanOrEqual(60);
+    expect(melhor.r).toBeGreaterThan(0.75);
+  });
+  it("o envelope do corpo é lento: não segue a sílaba", () => {
+    const env = serieVoz.map((x) => x.env);
+    let maior = 0;
+    for (let i = 1; i < env.length; i++) maior = Math.max(maior, Math.abs(env[i] - env[i - 1]));
+    expect(maior).toBeLessThan(0.12);
+  });
+});
+
+describe("corpo parado na sílaba (o tremor do falando)", () => {
+  const serieVoz = aoVivo(voz, 8000);
+  const quadros = serieVoz.map((x) => quadro({ ...base, t: x.t, estado: "speaking", pose: "falando", intensidade: 0.75, saida: x.env, boca: x.boca }));
+  const rapido = (v: number[]) => {
+    const res = v.map((x, i) => { const a = v.slice(Math.max(0, i - 9), i + 10); return x - a.reduce((p, q) => p + q, 0) / a.length; });
+    return Math.sqrt(res.reduce((p, q) => p + q * q, 0) / res.length);
+  };
+  it("altura, giro e escala do corpo sem componente rápida (antes: batida de 4,8 Hz por sílaba)", () => {
+    expect(rapido(quadros.map((q) => q.y))).toBeLessThan(0.25);
+    expect(rapido(quadros.map((q) => q.rot))).toBeLessThan(0.05);
+    expect(rapido(quadros.map((q) => q.sy))).toBeLessThan(0.001);
+    for (let i = 1; i < quadros.length; i++) expect(Math.abs(quadros[i].y - quadros[i - 1].y)).toBeLessThan(0.5);
+  });
+  it("a boca do quadro é a do seguidor (o corpo não muda com ela)", () => {
+    const a = quadro({ ...base, estado: "speaking", pose: "falando", saida: 0.5, boca: 0 });
+    const b = quadro({ ...base, estado: "speaking", pose: "falando", saida: 0.5, boca: 1 });
+    expect(b.boca).toBe(1);
+    expect([a.x, a.y, a.rot, a.sx, a.sy]).toEqual([b.x, b.y, b.rot, b.sx, b.sy]);
+  });
+});
+
+describe("desenho da boca (sem imagem nova, sem desencaixe)", () => {
+  it("fechada some, meia é a aberta achatada presa no focinho, aberta é o recorte inteiro", () => {
+    expect(aparenciaBoca(0).opacidade).toBe(0);
+    expect(aparenciaBoca(0.5).opacidade).toBe(1);
+    expect(aparenciaBoca(0.5).escala).toBeGreaterThan(0.6);
+    expect(aparenciaBoca(0.5).escala).toBeLessThan(0.8);
+    expect(aparenciaBoca(1)).toEqual({ opacidade: 1, escala: 1 });
+    for (let b = 0.05; b <= 1; b += 0.05) expect(aparenciaBoca(b).escala).toBeGreaterThan(aparenciaBoca(b - 0.05).escala);
+  });
+  it("a boca começa no focinho (sobrancelhas do recorte não pulam) em todos os recortes do manifesto", () => {
+    for (const id of ["stazi", "stazia"]) {
+      for (const pose of ["falando", "falandoFirme"]) {
+        const s = spritePose(id, pose)!;
+        const g = geometriaBoca(s)!;
+        expect(g.corte, `${id} ${pose}`).toBeCloseTo(s.ny - s.boca!.y, 5);
+        expect(g.corte).toBeGreaterThan(0);
+        expect(g.h).toBeGreaterThan(s.boca!.h * 0.3);
+        expect(g.cx).toBeGreaterThan(0);
+        expect(g.cx).toBeLessThan(s.boca!.w);
+      }
+    }
+  });
+});
+
+describe("tocador: nível do som que sai do alto-falante", () => {
+  class No { connect() {} disconnect() {} }
+  const ctxFalso = () => ({
+    state: "running", currentTime: 0, outputLatency: 0.03, destination: new No(),
+    createGain: () => Object.assign(new No(), { gain: { value: 1 } }),
+    createMediaStreamDestination: () => Object.assign(new No(), { stream: { id: "voz" } }),
+    createBuffer: (_c: number, n: number, rate: number) => { const d = new Float32Array(n); return { duration: n / rate, sampleRate: rate, getChannelData: () => d }; },
+    createBufferSource: () => Object.assign(new No(), { start() {}, stop() {}, onended: null }),
+  });
+  const b64 = (x: Float32Array) => { const u = new Uint8Array(x.length * 2); x.forEach((v, i) => { const s = Math.round(v * 32767) & 0xffff; u[2 * i] = s & 255; u[2 * i + 1] = s >> 8; }); return btoa(String.fromCharCode(...u)); };
+  it("anota o volume no instante em que cada pedaço vai tocar e zera na interrupção", () => {
+    const ctx: any = ctxFalso();
+    const p = new AudioPlayer(ctx, 1, null, { semitons: 0 });
+    const nivel = nivelDoFluxo(p.stream)!;
+    expect(nivel).toBeTypeOf("function");
+    const tom = new Float32Array(4800).map((_, i) => 0.2 * Math.sin(i / 3)); // 200 ms
+    const silencio = new Float32Array(4800);
+    p.play(b64(silencio));
+    p.play(b64(tom));
+    // começa em 0,03 s (folga): silêncio até 0,23 s, tom de 0,23 a 0,43 s
+    expect(p.nivelEm(0.13)).toBe(0);
+    expect(p.nivelEm(0.33)).toBeGreaterThan(0.35);
+    expect(p.nivelEm(0.6)).toBe(0);
+    // tempo que sai do alto-falante = relógio do contexto menos a latência de saída
+    ctx.currentTime = 0.36;
+    expect(p.tempoOuvido()).toBeCloseTo(0.33, 5);
+    expect(nivel(0)).toBeGreaterThan(0.35);
+    p.stop();
+    expect(p.nivelEm(0.33)).toBe(0);
+  });
+  it("RMS por blocos de 10 ms", () => {
+    const r = rmsPorBloco(new Float32Array(480).fill(0.5), 24000);
+    expect(r.length).toBe(2);
+    expect(r[0]).toBeCloseTo(0.5, 5);
   });
 });
 
