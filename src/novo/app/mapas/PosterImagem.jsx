@@ -7,10 +7,10 @@ import { MapaIcon } from "./icones.jsx";
 
 export function PosterImagem({ mapa, onErro }) {
   const [cheia, setCheia] = React.useState(false);
-  const [zoom, setZoom] = React.useState(1);
+  const [zoom, setZoom] = React.useState(0.5); // abre em 50%: o mapa inteiro cabe na tela (pedido do dono, 17/10)
   const url = mapa.poster.webp;
   const descId = React.useId();
-  const fechar = React.useCallback(() => { setCheia(false); setZoom(1); }, []);
+  const fechar = React.useCallback(() => { setCheia(false); setZoom(0.5); }, []);
   React.useEffect(() => {
     if (!cheia) return undefined;
     const k = (e) => { if (e.key === "Escape") fechar(); };
@@ -32,7 +32,7 @@ export function PosterImagem({ mapa, onErro }) {
         <div className="mm-tela-cheia" role="dialog" aria-modal="true" aria-label={`Mapa mental ampliado: ${mapa.titulo}`}>
           <div className="mm-tc-barra">
             <button type="button" className="mm-tc-voltar" onClick={fechar} aria-label="Voltar">← Voltar</button>
-            <button type="button" onClick={() => setZoom((z) => Math.max(1, +(z - 0.5).toFixed(1)))} aria-label="Diminuir">−</button>
+            <button type="button" onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.5).toFixed(1)))} aria-label="Diminuir">−</button>
             <span aria-live="polite">{Math.round(zoom * 100)}%</span>
             <button type="button" onClick={() => setZoom((z) => Math.min(4, +(z + 0.5).toFixed(1)))} aria-label="Aumentar">+</button>
             <a href={url} download={`mapa-mental-${mapa.slug}.webp`}>Baixar</a>

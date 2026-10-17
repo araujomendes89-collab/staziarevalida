@@ -55,8 +55,11 @@ describe("pôster realista (imagem) como visual principal", () => {
     render(<MapaMental mapa={piloto()} />);
     fireEvent.click(screen.getByRole("button", { name: /Ampliar o mapa mental/ }));
     const dlg = screen.getByRole("dialog");
+    expect(within(dlg).getByText("50%")).toBeTruthy(); // abre em 50%: o mapa inteiro na tela
+    fireEvent.click(within(dlg).getByRole("button", { name: "Diminuir" }));
+    expect(within(dlg).getByText("50%")).toBeTruthy(); // não diminui abaixo de 50%
     fireEvent.click(within(dlg).getByRole("button", { name: "Aumentar" }));
-    expect(within(dlg).getByText("150%")).toBeTruthy();
+    expect(within(dlg).getByText("100%")).toBeTruthy();
     fireEvent.click(within(dlg).getByRole("button", { name: "Voltar" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Ampliar o mapa mental/ }));
