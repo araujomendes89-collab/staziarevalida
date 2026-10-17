@@ -9,6 +9,7 @@ import { Badge, Card, Icon, PrintImage, PrintItem } from "../../../ds";
 import { formatDecimal } from "../../../ds/format.js";
 import { isTaskNote, splitBlocks, splitTasks } from "../content.js";
 import { Scene } from "./parts.jsx";
+import { relatoNaFolha, tarefasAjustadas } from "../../../../shared/dupla/tarefasRelato";
 
 const overline = { font: "var(--type-overline)", letterSpacing: "var(--tracking-overline)", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 10 };
 
@@ -41,9 +42,12 @@ export function PressingMedia({ pressing, actions, canHide = false }) {
   return <div style={{ whiteSpace: "pre-wrap", color: "var(--text-primary)" }}>{pressing.content}</div>;
 }
 
-/** Texto da folha: cenário, "Nos N minutos de duração, execute:" e as tarefas numeradas. */
-function SheetText({ station }) {
-  const tasks = splitTasks(station.doctor_tasks);
+/**
+ * Texto da folha: cenário, "Nos N minutos de duração, execute:" e as tarefas numeradas. Com o relato na folha, as tarefas citam
+ * "o relato do caso clínico (na sua folha, acima)" em vez de "impresso 1" (decisão do dono de 17/10; o texto guardado não muda).
+ */
+function SheetText({ station, withReport }) {
+  const tasks = splitTasks(tarefasAjustadas(station.doctor_tasks, withReport));
   const minutes = (station.duration_ms ?? 0) / 60000;
   let n = 0;
   return (
@@ -82,16 +86,20 @@ function SheetText({ station }) {
 export function CandidateSheet({ station, content, actions }) {
   const sheet = useImageUrl("candidate_sheet", Boolean(station.candidate_sheet?.has_image), actions);
   const initial = (content.pressings || []).filter((p) => p.initially_visible);
+  const withReport = relatoNaFolha(content.pressings);
   return (
     <div className="dupla-cand__col">
       {sheet.url ? (
         <div className="dupla-sheet">
           <Card padding={8}>
-            <PrintImage src={sheet.url} alt="Instruções para o participante e relato do caso clínico" baseWidth={1100} label="Ampliar imagem da estação" />
+            <PrintImage
+              src={sheet.url}
+              alt={withReport ? "Instruções para o participante e relato do caso clínico" : "Instruções para o participante"}
+              baseWidth={1100} label="Ampliar imagem da estação" />
           </Card>
         </div>
       ) : sheet.done ? (
-        <SheetText station={station} />
+        <SheetText station={station} withReport={withReport} />
       ) : (
         <div aria-busy="true" style={{ minHeight: 120 }} />
       )}

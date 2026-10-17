@@ -78,7 +78,7 @@ describe("Migração 013390: folha do candidato em imagem", () => {
     d.sql(`select p.id, p.initially_visible as inicial, p.screen_number as tela
              from public.checklist_station_contents k, public.dupla_pressings_tela(k.content) p where k.station_id = $1 order by p.n`, [id]);
   const gravar = (id: string, hash: string, sha = SHA) =>
-    d.sql(`select public.ch_worker_dupla_folha_gravar(null, $1, $2, $3, $4, 1604, 2400, 1000, 'folha-1.0') as r`, [id, hash, caminho(sha), sha]);
+    d.sql(`select public.ch_worker_dupla_folha_gravar(null, $1, $2, $3, $4, 1604, 2400, 1000, 'folha-1.1') as r`, [id, hash, caminho(sha), sha]);
   const fonte = async (id: string) => (await d.sql(`select public.ch_worker_dupla_folha_fonte($1) as r`, [id]))[0].r;
 
   it("regra do relato: o impresso 1 (e os seguidos) com nome de relato/instruções fica inicial; os outros seguem 1, 2, 3", async () => {
@@ -148,7 +148,7 @@ describe("Migração 013390: folha do candidato em imagem", () => {
     await expect(d.sql(`select public.ch_worker_dupla_folha_gravar(null, $1, $2, 'dupla/folhas/outro.png', $3, 1, 1, 1, 'x')`, [RELATO.id, hash, SHA])).rejects.toThrow(/inválido/);
     await expect(d.sql(`select public.ch_worker_dupla_folha_gravar($1, $2, $3, $4, $5, 1, 1, 1, 'x')`, [U.ana, RELATO.id, hash, caminho(SHA), SHA])).rejects.toThrow(/só a equipe/);
     const [{ r }] = await gravar(RELATO.id, hash);
-    expect(r).toMatchObject({ estado: "pronta", imagem_valendo: true, tem_imagem: true, modelo: "folha-1.0" });
+    expect(r).toMatchObject({ estado: "pronta", imagem_valendo: true, tem_imagem: true, modelo: "folha-1.1" });
     const [{ content }] = await d.sql(`select content from public.checklist_station_contents where station_id = $1`, [RELATO.id]);
     expect(content.pressing_assets).toEqual({ candidate_sheet: { folha: SHA } });
     // o resto do conteúdo não mudou
@@ -188,6 +188,28 @@ describe("Migração 013390: folha do candidato em imagem", () => {
     expect(r).toMatchObject({ estado: "falhou", erro: "Chromium caiu." });
     const s = await d.rpc(U.admin, "app_admin_dupla_folha_pedir", { p_station_id: DUPLO.id });
     expect(s).toMatchObject({ estado: "pedida", erro: null });
+  });
+
+  it("estação SEM relato (decisão do dono de 17/10): o botão e o comando geram; folha só com as instruções; a sala entrega a imagem", async () => {
+    // sem relato no impresso 1: nada vai para a folha além das instruções, e não há bloqueio
+    const f = await fonte(STATION.id);
+    expect(f.fonte.impressos).toEqual([]);
+    expect(f.fonte.bloqueio).toBeNull();
+    // botão (Administração › Estações › Gerar folha): o pedido é aceito
+    const s = await d.rpc(U.admin, "app_admin_dupla_folha_pedir", { p_station_id: STATION.id });
+    expect(s).toMatchObject({ estado: "pedida", com_relato: false, bloqueio: null });
+    // comando (dupla:folhas): a estação entra na fila, pedida ou não
+    const fila = (await d.sql(`select public.ch_worker_dupla_folhas_a_gerar(false, 50) as r`))[0].r;
+    expect(fila).toContain(STATION.id);
+    // gravada: pronta, sem relato, e a sala do candidato mostra a imagem; os impressos seguem 1, 2 e liberáveis
+    const [{ r }] = await gravar(STATION.id, f.hash, SHA2);
+    expect(r).toMatchObject({ estado: "pronta", com_relato: false, tem_imagem: true });
+    const sala = await makeRoom(d.db, { members: [U.ana, U.bruno], phase: "running", candidate: U.ana, evaluator: U.bruno, station: STATION.id });
+    const cand = await d.rpc(U.ana, "app_dupla_room_content", { p_room_id: sala });
+    expect(cand.station.candidate_sheet).toEqual({ has_image: true });
+    expect(cand.pressing_count).toBe(2);
+    expect(cand.pressings.filter((p: any) => p.initially_visible)).toEqual([]);
+    expect(await d.rpc(U.ana, "app_dupla_print_path", { p_room_id: sala, p_pressing_id: "candidate_sheet" })).toBe(caminho(SHA2));
   });
 
   it("permissões: tabela fechada; ch_worker_* só o servidor; dupla_folha_* só dentro das funções", async () => {

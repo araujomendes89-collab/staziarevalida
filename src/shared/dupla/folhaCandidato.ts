@@ -15,10 +15,16 @@
  *     parágrafo); linhas que já começam com "•", "-" ou "*" viram marcadores (o sinal sai).
  * Os títulos fixos ("INSTRUÇÕES PARA O(A) PARTICIPANTE", "CENÁRIO DE ATUAÇÃO", "Nos próximos N minutos, deverão ser realizadas
  * as seguintes tarefas:") são os do modelo aprovado. Marca: logotipo StaziaMed Revalida, sem outros logos (decisão D2).
+ * Tarefas: com o relato na folha, "ler o impresso 1 (relato…)" e "orientação do impresso 1" passam a citar o relato
+ * (tarefasRelato.ts, decisão do dono de 17/10); o texto oficial guardado não muda.
  */
+import { relatoNaFolha, tarefasAjustadas } from "./tarefasRelato";
 
-/** Versão do modelo: mudou o desenho, a Administração mostra que a folha foi feita com um modelo anterior. */
-export const FOLHA_MODELO = "folha-1.0";
+/**
+ * Versão do modelo: mudou o desenho, a Administração mostra que a folha foi feita com um modelo anterior.
+ * folha-1.1 (17/10): com o relato na folha, as tarefas citam "o relato do caso clínico (na sua folha, acima)" e não "impresso 1".
+ */
+export const FOLHA_MODELO = "folha-1.1";
 /** Largura da folha em px de CSS; a imagem sai com o dobro (FOLHA_ESCALA), perto dos 1605 px do modelo. */
 export const FOLHA_LARGURA = 802;
 export const FOLHA_ESCALA = 2;
@@ -139,6 +145,11 @@ export function blocosDoRelato(v: string): BlocoRelato[] {
   return out;
 }
 
+/** As tarefas como saem na folha: com o relato entre os impressos da folha, o "impresso 1" vira "relato do caso". */
+export function tarefasDaFolha(fonte: Pick<FolhaFonte, "tarefas" | "impressos">): string {
+  return tarefasAjustadas(fonte.tarefas, relatoNaFolha(fonte.impressos, true));
+}
+
 /** "10" ou "7,5" (minutos da estação). */
 export function minutosDe(duracaoMs: number): string {
   const m = (Number(duracaoMs) || 0) / 60000;
@@ -150,7 +161,7 @@ const comQuebras = (v: string) => linhas(v).map(escapeHtml).join("<br>");
 /** Folha do candidato em HTML (documento completo, uma página da largura FOLHA_LARGURA, altura do conteúdo). */
 export function folhaHtml(fonte: FolhaFonte, opcoes: FolhaOpcoes): string {
   const numero = typeof fonte.numero === "number" && Number.isFinite(fonte.numero) ? ` ${fonte.numero}` : "";
-  const tarefas = tarefasDe(fonte.tarefas);
+  const tarefas = tarefasDe(tarefasDaFolha(fonte));
   const cenario = paragrafos(fonte.cenario);
   const impressos = Array.isArray(fonte.impressos) ? fonte.impressos : [];
 
@@ -232,7 +243,7 @@ ${htmlImpressos}
 export function textosEsperados(fonte: FolhaFonte): string[] {
   const out: string[] = [];
   for (const p of paragrafos(fonte.cenario)) out.push(...linhas(p));
-  for (const t of tarefasDe(fonte.tarefas)) out.push(t.texto);
+  for (const t of tarefasDe(tarefasDaFolha(fonte))) out.push(t.texto);
   for (const imp of fonte.impressos ?? []) {
     for (const b of blocosDoRelato(imp.texto)) {
       if (b.tipo === "lista") out.push(...b.itens);

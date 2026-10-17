@@ -9,6 +9,7 @@ import "./sala.css";
 import { Accordion, Avatar, Badge, Button, Icon, PepTable, PrintImage, PrintItem, ScrollPane, Textarea, Timer } from "../../../ds";
 import { areaVars, sourceLabel } from "../labels.js";
 import { maxScoreOf, splitActorScript, splitBlocks, splitTasks, toPepItems } from "../content.js";
+import { relatoNaFolha, tarefasAjustadas } from "../../../../shared/dupla/tarefasRelato";
 import { ActorScript, Scene, roleLabel, stationTitle } from "./parts.jsx";
 import { CandidatePrints, CandidateSheet, PressingMedia, useImageUrl } from "./CandidateSheet.jsx";
 import { EvaluatorFooter } from "./EvaluatorFooter.jsx";
@@ -141,12 +142,12 @@ export function initialLabel(pressing, count = 1) {
 }
 const hasSummary = (v) => (typeof v === "string" ? v.trim().length > 0 : Array.isArray(v) && v.length > 0);
 
-function SheetImageForEvaluator({ actions }) {
+function SheetImageForEvaluator({ actions, withReport }) {
   const img = useImageUrl("candidate_sheet", true, actions);
   if (!img.url) return null;
   return (
     <div style={{ marginTop: 12 }}>
-      <PrintImage src={img.url} alt="Folha do candidato: instruções e relato do caso clínico" />
+      <PrintImage src={img.url} alt={withReport ? "Folha do candidato: instruções e relato do caso clínico" : "Folha do candidato: instruções"} />
     </div>
   );
 }
@@ -156,7 +157,9 @@ function EvaluatorView({ room, content, marks, actions, started }) {
   const notesId = notesKey(room.id, room.round);
   const [notes, setNotes] = React.useState(() => readDraft(notesId, ""));
   React.useEffect(() => setNotes(readDraft(notesId, "")), [notesId]);
-  const tasks = splitTasks(st.doctor_tasks);
+  // com o relato na folha, as tarefas citam o relato e não "impresso 1" (como o candidato lê; decisão do dono de 17/10)
+  const withReport = relatoNaFolha(content.pressings);
+  const tasks = splitTasks(tarefasAjustadas(st.doctor_tasks, withReport));
   const released = room.released_pressings || [];
   const items = toPepItems(content.checklist_items);
   const initial = (content.pressings || []).filter((p) => p.initially_visible);
@@ -176,7 +179,7 @@ function EvaluatorView({ room, content, marks, actions, started }) {
             <Accordion icon="clipboard-list" title="Cenário e tarefas" defaultOpen={!started}>
               <Scene blocks={splitBlocks(st.doctor_scene)} />
               {tasks.length > 0 && <ul style={{ paddingLeft: 18, margin: "10px 0 0" }}>{tasks.map((t, i) => <li key={i}>{t}</li>)}</ul>}
-              {st.candidate_sheet?.has_image && <SheetImageForEvaluator actions={actions} />}
+              {st.candidate_sheet?.has_image && <SheetImageForEvaluator actions={actions} withReport={withReport} />}
             </Accordion>
             <Accordion icon="drama" title="Orientações do Ator/Atriz" defaultOpen>
               <ActorScript
