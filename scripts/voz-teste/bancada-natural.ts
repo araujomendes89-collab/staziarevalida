@@ -164,8 +164,8 @@ let tutorTurn: typeof import("../../server/tutor/engine").tutorTurn;
 let naturalOpening: typeof import("../../server/tutor/opening").naturalOpening;
 /** --abertura-fixa: mede como antes (sem a troca pela IA). */
 const ABERTURA_FIXA = flag("abertura-fixa");
-/** Quanto a bancada espera a abertura (padrão: o mesmo da tela que espera no app, OPENING_WAIT_MS = 2 s). */
-const ESPERA_ABERTURA_MS = Number(arg("espera-abertura-ms", "2000"));
+/** Quanto a bancada espera a abertura (padrão: o mesmo da tela que espera no app, OPENING_WAIT_MS = 3 s). */
+const ESPERA_ABERTURA_MS = Number(arg("espera-abertura-ms", "3000"));
 const ADMIN = "00000000-0000-4000-8000-00000000bada";
 
 const rpc = async <T = any>(uid: string, fn: string, ...params: unknown[]): Promise<T> =>

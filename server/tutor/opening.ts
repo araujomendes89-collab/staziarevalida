@@ -35,7 +35,12 @@ export const OPENING_TIMEOUT_MS = 6000; // bancada de 17/10: com 4,5 s, 9 de ~40
  * Revisão de 17/10: a espera de 6 s deixava a voz calada depois de "próxima". A passagem já sai pronta (preparada logo depois da
  * resposta), então quase nunca espera; a abertura espera no máximo isto e, depois, fica a reserva.
  */
-export const OPENING_WAIT_MS = 2000;
+export const OPENING_WAIT_MS = (() => {
+  // medição de 17/10 (gemini-3.8-flash, ficha curta): a abertura sai em ~2,2 s (p50) e ~2,7 s (máx.) sem nada em paralelo; com 2 s
+  // quase todas ficavam na reserva. 3 s pega a maioria; TUTOR_ABERTURA_ESPERA_MS (1000 a 6000) ajusta sem publicar código.
+  const n = Number.parseInt((process.env.TUTOR_ABERTURA_ESPERA_MS ?? "").trim(), 10);
+  return Number.isFinite(n) && n >= 1000 && n <= 6000 ? n : 3000;
+})();
 /** Tempo da passagem preparada (roda junto com a reação à resposta, ninguém espera por ela). */
 export const PREP_TIMEOUT_MS = 6000;
 const MAX_CHARS = 280;
