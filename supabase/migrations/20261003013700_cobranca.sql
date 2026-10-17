@@ -657,7 +657,9 @@ as $$
   join public.billing_clientes k on k.user_id = c.user_id and k.provider = c.provider
   where c.metodo = 'pix' and c.renova
     and c.periodo_fim > now() - interval '1 day'
-    and c.periodo_fim <= now() + make_interval(days => (select b.renovacao_pix_dias from public.billing_config b))
+    -- conta em DIAS de Brasília (o período acaba às 23:59 do vencimento; comparar horas daria um dia a menos)
+    and (c.periodo_fim at time zone 'America/Sao_Paulo')::date - (now() at time zone 'America/Sao_Paulo')::date
+        <= (select b.renovacao_pix_dias from public.billing_config b)
     and not exists (select 1 from public.billing_pedidos p where p.user_id = c.user_id and p.motivo = 'renovacao'
                     and p.renova_ate = c.periodo_fim and p.status in ('aberto', 'pago'))
 $$;

@@ -392,7 +392,8 @@ describe("Pix do plano: renovação 7 dias antes, pagamento atrasado", () => {
     // 8 dias antes: ainda não
     await dev.db.query(`update public.billing_contratos set periodo_fim = now() + interval '8 days' where user_id = $1`, [PIXREN]);
     expect((await billing.runScheduled()).renovacoes).toBe(0);
-    await dev.db.query(`update public.billing_contratos set periodo_fim = now() + interval '6 days' where user_id = $1`, [PIXREN]);
+    // exatamente 7 dias antes (o período acaba às 23:59 de Brasília do dia do vencimento): já sai
+    await dev.db.query(`update public.billing_contratos set periodo_fim = (((now() at time zone 'America/Sao_Paulo')::date + 7) + time '23:59:59') at time zone 'America/Sao_Paulo' where user_id = $1`, [PIXREN]);
     expect((await billing.runScheduled()).renovacoes).toBe(1);
     expect((await billing.runScheduled()).renovacoes).toBe(0);
     const ren = await q1(`select valor_centavos, metodo, motivo, status, vencimento from public.billing_pedidos where user_id = $1 and motivo = 'renovacao'`, [PIXREN]);
