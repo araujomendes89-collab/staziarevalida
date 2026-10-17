@@ -34,14 +34,28 @@
   transition: background 600ms ease;
 }
 .tp__chao {
+  /* sombra de contato: um nucleo escuro e curto bem sob os pes + uma penumbra larga e macia (oclusao do chao). So gradientes
+     estaticos; por quadro muda so o transform (encolhe quando o personagem sobe). */
   position: absolute;
   left: 50%;
-  top: calc(788 * var(--tp-u));
-  width: calc(300 * var(--tp-u));
-  height: calc(34 * var(--tp-u));
+  top: calc(774 * var(--tp-u));
+  width: calc(400 * var(--tp-u));
+  height: calc(56 * var(--tp-u));
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.45), transparent);
+  background: radial-gradient(closest-side, rgba(2, 4, 18, 0.5) 0%, rgba(2, 4, 18, 0.32) 45%, rgba(2, 4, 18, 0.12) 75%, transparent 100%);
   transform: translateX(-50%) scaleX(var(--tp-sombra));
+  opacity: calc(0.55 + 0.45 * var(--tp-sombra));
+}
+.tp__chao::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 62%;
+  height: 40%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 8, 0.62), rgba(0, 0, 8, 0.28) 60%, transparent);
+  transform: translate(-50%, -38%);
 }
 .tp__corpo {
   position: absolute;
@@ -51,6 +65,8 @@
 }
 .tp__pose {
   position: absolute;
+  /* camada propria: a luz de contorno (filtro) e rasterizada uma vez por pose; a boca e a piscada mudam so a opacidade */
+  will-change: transform, opacity;
 }
 .tp__img,
 .tp__extra {
@@ -62,6 +78,13 @@
   inset: 0;
   width: 100%;
   height: 100%;
+  /* integracao a cena: contraluz azul fino na silhueta (luz que vem do fundo do Tutor) e uma sombra ambiente curta para baixo.
+     So o contorno; as cores do personagem nao mudam. */
+  filter: drop-shadow(0 calc(-1.5 * var(--tp-u)) calc(2.5 * var(--tp-u)) rgba(130, 175, 255, 0.4)) drop-shadow(0 0 calc(9 * var(--tp-u)) rgba(70, 120, 255, 0.2))
+    drop-shadow(0 calc(10 * var(--tp-u)) calc(14 * var(--tp-u)) rgba(0, 2, 14, 0.38));
+}
+.tp__extra {
+  will-change: opacity;
 }
 .tp__efeitos {
   position: absolute;
@@ -101,10 +124,13 @@
 .tp.is-error .tp__corpo {
   filter: saturate(0.6);
 }
-/* movimento reduzido: pose estática da emoção, sem efeitos que se movem */
-.tp.is-reduced .tp__efeitos,
-.tp.is-reduced .tp__chao {
+/* movimento reduzido: pose estática da emoção, sem efeitos que se movem (a sombra de contato fica, parada) */
+.tp.is-reduced .tp__efeitos {
   display: none;
+}
+.tp.is-reduced .tp__chao {
+  transform: translateX(-50%);
+  opacity: 1;
 }
 
 /* onde a esfera ficava */
