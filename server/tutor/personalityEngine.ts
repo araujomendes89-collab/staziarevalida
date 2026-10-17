@@ -25,7 +25,7 @@
  * mesmo padrão N3, mesmo travamento por 18+ e médico, mesmas reações marcadas pelo dono. A Tranquila (Stazia) é o Tranquilo no feminino.
  */
 import { NO_REPEAT_RULE, PERSONALITY_LIMITS, type ProfanityLevel } from "./personality";
-import { fichaDe, fichaTexto } from "./fichas";
+import { fichaDe, fichaTexto, type LimitesDaConversa } from "./fichas";
 import { characterOf } from "./emotion";
 import { lerRegistro, sinaisDoRegistro } from "./leituraDoAluno";
 import {
@@ -639,13 +639,14 @@ export function personaStateLayer(d: PersonaDirective): string {
  * Tranquila), entra a FICHA DO PERSONAGEM (fichas.ts) no lugar do resumo do perfil e as falas de tom passam a ser as `examples`
  * dadas (sorteadas por conversa em quem chama, ou nenhuma); sem ficha, fica o resumo e as falas de referência do perfil.
  */
-export function personaFixedLayer(d: PersonaDirective, opts: { personalityId?: string | null; examples?: string[] | null } = {}): string {
+export function personaFixedLayer(d: PersonaDirective, opts: { personalityId?: string | null; examples?: string[] | null; limites?: LimitesDaConversa | null } = {}): string {
   const p = d.params;
   const ficha = opts.personalityId ? fichaDe(opts.personalityId) : null;
   const examples = ficha ? (opts.examples ?? []) : (opts.examples ?? PROFILES[d.profileKey].examples);
   return [
     ficha ? `QUEM VOCÊ É NESTA CONVERSA: ${d.profileName}.` : `QUEM VOCÊ É NESTA CONVERSA: ${d.profileName}. ${PROFILES[d.profileKey].style}`,
-    ficha ? fichaTexto(ficha) : "",
+    // grito e palavrão da ficha pelo limite já resolvido (18+, painel, escolha do aluno); sem ele, a ficha manda seguir o ESTADO
+    ficha ? fichaTexto(ficha, opts.limites ?? null) : "",
     `Seu jeito (parâmetros fixos do perfil): formalidade ${level(p.formality)}; sarcasmo ${level(p.sarcasm)}; impaciência ${level(p.impatience)}; intensidade ${level(p.intensity)}; ` +
       `provocação ${level(p.provocation)}; perguntar antes de explicar ${level(d.pedagogy.socratic)}; tamanho das falas ${p.length <= 30 ? "curto (1 a 3 frases)" : p.length <= 60 ? "médio" : "pode se estender quando pedirem"}.`,
     "Contraste: não fique no mesmo humor o tempo todo; reconheça raciocínio bom do seu jeito. O seu estado muda durante a conversa: vale sempre o ESTADO AGORA mais recente.",
@@ -657,7 +658,7 @@ export function personaFixedLayer(d: PersonaDirective, opts: { personalityId?: s
 }
 
 /** Camada de personalidade do turno (só ESTILO): a parte fixa e a do estado. Nunca recebe gabarito, explicação ou fonte. */
-export function personaPromptLayer(d: PersonaDirective, opts: { personalityId?: string | null; examples?: string[] | null } = {}): string {
+export function personaPromptLayer(d: PersonaDirective, opts: { personalityId?: string | null; examples?: string[] | null; limites?: LimitesDaConversa | null } = {}): string {
   return [personaFixedLayer(d, opts), personaStateLayer(d)].join("\n");
 }
 

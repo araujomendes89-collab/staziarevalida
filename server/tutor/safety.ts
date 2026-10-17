@@ -175,6 +175,47 @@ const FORBIDDEN = ["burro", "burra", "idiota", "imbecil", "estupido", "estupida"
 const DIRECTED =
   /(?:voce|vc|tu)\s+(?:e|es|esta|parece|foi|continua)\s+(?:um\s+|uma\s+|muito\s+|bem\s+|tao\s+)?(?:retardad[oa]|incompetente|inutil|lixo|vagabund[oa]|louc[oa]|maluc[oa]|gord[oa]|fei[oa]|doente\s+mental|fracassad[oa]|preguicos[oa]|lerd[oa]|tapad[oa]|jumento|anta|besta|mula|lento\s+demais)(?![a-z])|(?<![a-z])seu\s+(?:lixo|inutil|incompetente|vagabundo|retardado|fracassado|corno|preguicoso|lerdo|tapado|jumento|anta|besta|mula)(?![a-z])|(?<![a-z])sua\s+(?:inutil|incompetente|vagabunda|retardada|fracassada|preguicosa|lerda|tapada|anta|besta|mula)(?![a-z])/;
 
+/**
+ * APELIDO PARA O ALUNO (bancada de 17/10/2026: com o aluno brincalhão, Durão e Durona chamaram de «palhaço», «engraçadinho»,
+ * «valentão»; nada barrava). A regra do dono: a bronca e a zoeira vão para a resposta e para a situação, nunca para a pessoa,
+ * nem de brincadeira nem de carinho.
+ *   - APELIDO_SEMPRE: palavras sem uso clínico nem outro sentido numa aula: barradas em qualquer ponto da fala;
+ *   - APELIDO_DIRIGIDO: palavras com outro uso ("mala direta", "curativo folgado", "um moleque de 12 anos" é paciente de exemplo):
+ *     barradas só quando chamam o aluno (vocativo «, palhaço!», «Folgado, …», «X você», «você é X», «seu/sua X», «que X!»).
+ */
+const APELIDO_SEMPRE = [
+  "palhaco", "palhaca", "engracadinho", "engracadinha", "sabichao", "sabichona", "sabidinho", "sabidinha", "mane", "valentao", "valentona",
+  "espertinho", "espertinha", "espertalhao", "espertalhona", "folgadinho", "folgadinha", "ze ruela", "ze mane", "boco",
+];
+const APELIDO_DIRIGIDO = [
+  "mala", "desgracado", "desgracada", "moleque", "moleca", "folgado", "folgada", "abusado", "abusada", "safado", "safada", "malandro", "malandra",
+  "pilantra", "marrento", "marrenta", "metido", "metida", "bobao", "bobona", "bobinho", "bobinha", "fanfarrao", "fanfarrona",
+  "atrevido", "atrevida", "cara de pau", "sem vergonha", "sem-vergonha", "vagabundo", "vagabunda", "preguicoso", "preguicosa",
+];
+const ESC = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+");
+const NICK = `(?:${[...APELIDO_SEMPRE, ...APELIDO_DIRIGIDO].map(ESC).join("|")})`;
+const APELIDO_VOCATIVO = new RegExp(
+  [
+    // «, palhaço!», «Engraçadinho, …», «… marra toda, palhaço?»: o apelido sozinho entre pontuação (ou no começo/fim da fala)
+    `(?:^|[,!?.;:…—–(-]\\s*)(?:(?:seu|sua|meu|minha|o|a|oh)\\s+)?${NICK}(?![a-z])\\s*(?=[,!?.;:…)]|$)`,
+    // «Que folgado!», «Mas que abusado, hein»
+    `(?<![a-z])que\\s+${NICK}(?![a-z])\\s*(?=[,!?.…]|$)`,
+    // «Engraçadinho você, né?», «folgado tu»
+    `(?<![a-z])${NICK}\\s+(?:voce|vc|ce|tu)(?![a-z])`,
+    // «você é um folgado», «tu tá muito abusado», «cê é engraçadinho»
+    `(?<![a-z])(?:voce|vc|ce|tu)\\s+(?:e|eh|es|ta|tah|esta|tava|estava|continua|parece|virou|ficou|se acha)\\s+(?:um\\s+|uma\\s+|muito\\s+|bem\\s+|mo\\s+|tao\\s+|meio\\s+|o\\s+|a\\s+)*${NICK}(?![a-z])`,
+    // «seu folgado», «sua abusada»
+    `(?<![a-z])(?:seu|sua)\\s+${NICK}(?![a-z])`,
+  ].join("|"),
+);
+
+/** Apelido dirigido ao aluno numa fala já sem acento e em minúsculas (null quando não há). */
+export function apelidoDirigido(folded: string): string | null {
+  for (const w of APELIDO_SEMPRE) if (new RegExp(`(?<![a-z])${ESC(w)}(?![a-z])`).test(folded)) return w;
+  const m = folded.match(APELIDO_VOCATIVO);
+  return m ? m[0].replace(/^[\s,!?.;:…—–(-]+/, "").trim() : null;
+}
+
 const hasWord = (text: string, word: string) => new RegExp(`(?<![a-z])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z])`).test(text);
 
 /**
@@ -188,6 +229,8 @@ export function languageViolations(text: string, level: ProfanityLevel): Violati
   for (const w of PROFANITY_HEAVY) if (hasWord(folded, w)) v.push({ code: "personal_attack", detail: `Xingamento pesado demais, mesmo com palavrão liberado: "${w}".` });
   const directed = folded.match(DIRECTED);
   if (directed) v.push({ code: "personal_attack", detail: `Ataque dirigido ao aluno: "${directed[0]}".` });
+  const apelido = directed ? null : apelidoDirigido(folded);
+  if (apelido) v.push({ code: "personal_attack", detail: `Apelido para o aluno: "${apelido}". Nada de apelido, nem de brincadeira nem de carinho: zoe a situação ou a resposta, sem dar nome a ele.` });
   if (level !== "moderate") for (const w of PROFANITY_MODERATE) if (hasWord(folded, w)) v.push({ code: "profanity", detail: `Palavrão acima do nível liberado: "${w}".` });
   if (level === "off") for (const w of PROFANITY_MILD) if (hasWord(folded, w)) v.push({ code: "profanity", detail: `Palavrão com palavrões desligados: "${w}".` });
   return v;

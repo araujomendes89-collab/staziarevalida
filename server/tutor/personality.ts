@@ -5,7 +5,7 @@
  * professores. Esta camada só decide o JEITO de falar (tom, humor, cobrança, tamanho). Ela é montada depois do conteúdo e
  * nunca toca em fato médico, gabarito ou segurança.
  */
-import { fichaDe, fichaTexto } from "./fichas";
+import { fichaDe, fichaTexto, type LimitesDaConversa } from "./fichas";
 
 export interface PersonalityParams {
   humor: number;
@@ -192,7 +192,7 @@ export const NO_REPEAT_RULE =
 export function personalityLayer(
   p: Personality, eff: PersonalityParams, profanity: ProfanityLevel, intensity: number, extra: string | null = null,
   mood: { text: string; swearing: string; label: string; strong?: boolean } | null = null,
-  opts: { seed?: string | null } = {},
+  opts: { seed?: string | null; limites?: LimitesDaConversa | null } = {},
 ): string {
   // falas de referência com palavrão só quando o estado pede (a Durona calma não xinga)
   const strong = profanity === "moderate" && (p.examples_strong?.length ?? 0) > 0 && (!mood || Boolean(mood.strong));
@@ -202,7 +202,7 @@ export function personalityLayer(
   const ficha = fichaDe(p.id);
   return [
     `QUEM VOCÊ É NESTA CONVERSA: ${p.name}${mood ? "" : ` (intensidade ${level} de 5)`}.`,
-    ficha ? fichaTexto(ficha) : p.style_notes,
+    ficha ? fichaTexto(ficha, opts.limites ?? { palavrao: profanity, gritos: true }) : p.style_notes,
     `Seu jeito: ${traits(eff).join("; ")}.`,
     mood ? mood.text : "",
     `${mood ? "" : `${INTENSITY_NOTE[level]} `}Você é esse personagem do começo ao fim: não saia dele, não peça desculpa pelo jeito e não explique que é brincadeira. O aluno escolheu este professor porque quer exatamente esse tratamento.`,

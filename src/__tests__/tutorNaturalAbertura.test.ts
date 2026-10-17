@@ -67,12 +67,23 @@ describe("fichas do personagem (sem frases prontas)", () => {
     for (const id of ["acolhedor", "tranquila"] as const) expect(fichaTexto(FICHAS[id])).toMatch(/Sem palavrão e sem grito|Não usa palavrão e não grita/);
   });
 
-  it("Durão = Durona no masculino; os dois começam no nível 3 com gritos e palavrões e obedecem quando o aluno baixa ou desliga", () => {
+  it("Durão = Durona no masculino; grito e palavrão da ficha seguem o limite que vale na conversa (18+, painel, escolha do aluno)", () => {
     expect(FICHAS.durao.reacoes).toEqual(FICHAS.durona.reacoes);
     expect(FICHAS.durao.jeito).toBe(FICHAS.durona.jeito);
     expect(FICHAS.durao.quem).toMatch(/preceptor brasileiro escrachado.*sarcástico, engraçado e muito expressivo/);
     expect(FICHAS.durona.quem).toMatch(/preceptora brasileira escrachada.*sarcástica, engraçada e muito expressiva/);
-    expect(FICHAS.durona.jeito).toMatch(/começa no nível 3, com gritos e palavrões; se o aluno baixou o nível ou desligou grito ou palavrão, você obedece/);
+    // revisão de 17/10: a ficha não manda mais "começar no nível 3 com gritos e palavrões" para todo mundo
+    for (const id of ["durao", "durona"] as const) {
+      expect(fichaTexto(FICHAS[id])).not.toMatch(/nível 3|\{LIMITES\}/);
+      expect(fichaTexto(FICHAS[id])).toMatch(/Grito e palavrão só no nível que vale nesta conversa/);
+      const solto = fichaTexto(FICHAS[id], { palavrao: "moderate", gritos: true });
+      expect(solto).toMatch(/grito e palavrão estão liberados, na dose que o ESTADO pede/);
+      // sem 18+ (N2 sem palavrão pesado) ou palavrão e grito desligados: a ficha não manda gritar nem xingar
+      const limpo = fichaTexto(FICHAS[id], { palavrao: "off", gritos: false });
+      expect(limpo).toMatch(/sem grito \(nada de frase em maiúscula\); sem palavrão nenhum/);
+      expect(limpo).not.toMatch(/liberad|MAIÚSCULA curtinha|nível 3/);
+      expect(fichaTexto(FICHAS[id], { palavrao: "mild", gritos: true })).toMatch(/só palavrão leve/);
+    }
     // a bronca vai para a resposta, nunca para a pessoa; no erro repetido sobe a cobrança, não o insulto
     expect(FICHAS.durona.valores).toMatch(/a bronca é para a resposta/);
     expect(FICHAS.durona.reacoes.erro_repetido).toMatch(/COBRANÇA aumenta, não os insultos/);

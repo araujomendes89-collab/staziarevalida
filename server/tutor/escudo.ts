@@ -36,7 +36,8 @@ export function ngramasFixos(): Set<string> {
       BASE_TUTOR_PROMPT, MEDICAL_GROUNDING_RULES, FALA_SEM_FILTRO, TUTOR_REALTIME, TUTOR_LIVE, TUTOR_VOICE, ...Object.values(TUTOR_MODES), PERSONALITY_LIMITS,
       blocoSigilo(), blocoLeitura(null, true), blocoLeitura(null, false),
       ...ids.flatMap((id) => [blocoSigilo(id), blocoLeitura(id, true), blocoLeitura(id, false)]),
-      ...ids.map((id) => fichaDe(id)).filter((f) => f != null).map((f) => fichaTexto(f!)),
+      // a frase de grito e palavrão muda com o limite da conversa: entram as três formas
+      ...ids.map((id) => fichaDe(id)).filter((f) => f != null).flatMap((f) => [null, { palavrao: "moderate" as const, gritos: true }, { palavrao: "off" as const, gritos: false }].map((l) => fichaTexto(f!, l))),
     ]);
     for (const g of livresDeAula()) fixos.delete(g);
   }

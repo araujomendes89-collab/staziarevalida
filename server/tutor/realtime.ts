@@ -36,7 +36,7 @@ import { nomeSeguro } from "./sigilo";
 import { realKey } from "./speech";
 import { REALTIME_TOOLS } from "./tools";
 import { selarBilhete } from "../vozPonte/bilhete";
-import { planPersonaVoz } from "./voiceReactions";
+import { planPersonaVoz, resolvePersona } from "./voiceReactions";
 import { personaFixedLayer, personaStateLayer, voiceActingLayer } from "./personalityEngine";
 import { humorParaBilhete } from "./humorVoz";
 import { AI_OFF, assertAiAllowed, rateHit } from "./limits";
@@ -404,7 +404,8 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
           const k = toneExamples();
           const examples = k > 0 ? sampleExamples(strong ? ctx.personality.examples_strong! : (ctx.personality.examples ?? []), k, sessionId) : [];
           const estado = personaStateLayer(v.directive);
-          personaVoz = [personaFixedLayer(v.directive, { personalityId: ctx.personality.id, examples }), estado, acting].filter(Boolean).join("\n");
+          const limites = { palavrao: v.resolved.profanityCap, gritos: v.resolved.shoutsAllowed };
+          personaVoz = [personaFixedLayer(v.directive, { personalityId: ctx.personality.id, examples, limites }), estado, acting].filter(Boolean).join("\n");
           humor = humorParaBilhete({ ...v, estado });
         } catch (error) {
           deps.log?.(`[tutor] voz: Personality Engine indisponível, usando a persona de sempre: ${(error as Error).message.slice(0, 120)}`);
@@ -603,6 +604,12 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
     const RANK = { off: 0, mild: 1, moderate: 2 } as const;
     // Durona "sem filtro cosmético": o teto do professor vale direto (os limites contra ataque pessoal continuam)
     profanity = settings.durona_level === "sem_filtro" && familyOf(ctx.personality.id) === "durona" ? max : RANK[byState] < RANK[max] ? byState : max;
+    // voz pela ponte (Vertex): as instruções seguem o perfil resolvido (Explosiva, 18+ do Termo, escolha do aluno); a conferência
+    // depois da fala não aceita mais palavrão do que esse teto (sem 18+ a Durona fica no N2, e o N2 tem teto próprio)
+    if (String(v.call_id ?? "").startsWith("vertex-")) {
+      const cap = await resolvePersona(deps, userId, ctx.personality.id).then((r) => r.resolved.profanityCap).catch(() => null);
+      if (cap && RANK[cap] < RANK[profanity]) profanity = cap;
+    }
   }
   // sem a lista de fontes que o aluno não pode ver a fala não é conferida: recusa (503) e NÃO grava a fala no histórico
   const supportTerms = await termsOrFail(deps);
@@ -640,7 +647,9 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
       "CORREÇÃO OBRIGATÓRIA, diga já, em uma frase curta e natural, sem citar sistema:",
       leak ? "você adiantou a resposta da questão aberta; peça desculpa e devolva a pergunta ao aluno." : "",
       facts ? "você disse um valor, documento ou conduta que não veio das ferramentas; diga que não tem isso confirmado na base e retire." : "",
-      serious.some((x) => x.code === "personal_attack" || x.code === "profanity") ? "você passou do tom permitido; retome no limite (a bronca é para a resposta, nunca para a pessoa)." : "",
+      serious.some((x) => x.code === "personal_attack" && x.detail.startsWith("Apelido"))
+        ? "você chamou o aluno por um apelido; não repita, não peça desculpa longa e siga sem dar nome a ele (a graça é sobre a situação ou a resposta, nunca sobre a pessoa)."
+        : serious.some((x) => x.code === "personal_attack" || x.code === "profanity") ? "você passou do tom permitido; retome no limite (a bronca é para a resposta, nunca para a pessoa)." : "",
       serious.some((x) => x.code === "challenges_official_answer") ? "o gabarito oficial não está errado; corrija isso." : "",
       sigilo.correcao ?? "",
       serious.some((x) => x.code === "cites_support_material") ? "você citou o nome de um material de apoio (apostila ou livro); o aluno não vê essa fonte: nunca cite nome, autor, arquivo ou página desse material, diga o conteúdo com as suas palavras." : "",

@@ -404,7 +404,9 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     // a conferência aceita um degrau acima do pedido (a reação à gravidade real do erro pode subir o tom)
     const checkLevel = contido ? (RANK[personaMax] > 0 ? "mild" : "off") : RANK[profanityForIntensity(Math.min(5, li + 1))] < RANK[personaMax] ? profanityForIntensity(Math.min(5, li + 1)) : personaMax;
     const mood = { label: before.mood, text: stateLayer(ctx.personality.id, before, engine, profanity), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado", strong: li >= 3 };
-    const system = composeSystem({ mode: ctx.session.mode, browserVoice: Boolean(action.voice), persona: personalityLayer(ctx.personality, eff, profanity, 3, null, mood, { seed: sessionId }), personaId: ctx.personality.id });
+    // a ficha diz o grito e o palavrão que valem na conversa (teto do painel, do professor e do aluno; aluno mal: nenhum)
+    const limites = { palavrao: contido ? ("off" as const) : personaMax, gritos: !contido };
+    const system = composeSystem({ mode: ctx.session.mode, browserVoice: Boolean(action.voice), persona: personalityLayer(ctx.personality, eff, profanity, 3, null, mood, { seed: sessionId, limites }), personaId: ctx.personality.id });
 
     const mem = ctx.memory;
     const studentCtx = {

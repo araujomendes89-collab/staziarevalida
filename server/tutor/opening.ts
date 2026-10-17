@@ -217,7 +217,7 @@ export async function naturalOpening(deps: TutorDeps, userId: string, sessionId:
     const profanity = RANK[byIntensity] < RANK[personaMax] ? byIntensity : personaMax;
     const checkLevel = RANK[profanityForIntensity(Math.min(5, li + 1))] < RANK[personaMax] ? profanityForIntensity(Math.min(5, li + 1)) : personaMax;
     const mood = { label: state.mood, text: stateLayer(ctx.personality.id, state, engine, profanity), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado", strong: li >= 3 };
-    const persona = personalityLayer(ctx.personality, effectiveParams(ctx.personality.params, 3, prefs), profanity, 3, null, mood, { seed: sessionId });
+    const persona = personalityLayer(ctx.personality, effectiveParams(ctx.personality.params, 3, prefs), profanity, 3, null, mood, { seed: sessionId, limites: { palavrao: personaMax, gritos: true } });
     const kind = st.message.kind;
     const system = openingSystem(persona, kind, ctx.personality.id);
     const baseInput = openingInput(st, ctx);
