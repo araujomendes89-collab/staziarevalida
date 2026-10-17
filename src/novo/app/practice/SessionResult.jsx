@@ -7,6 +7,7 @@ import { PreliminarySeal, isAnnulled } from "./Correction.jsx";
 import { areaLabel, areaOf, formatClock, formatWhen, percent } from "./format.js";
 import { QuestionReview } from "./tela/QuestionReview.jsx";
 import { TriResult } from "./TriResult.jsx";
+import { MiniTutor, contextoDaRevisao } from "../tutor/mini";
 
 // Anulada pela banca: fora de certas, erradas e em branco (não conta como acerto nem erro).
 const stateOf = (question) =>
@@ -184,6 +185,8 @@ export function SessionResult({ session, go, timeUp = false }) {
           </div>
         </Card>
       </main>
+      {/* mini tutor: a questão aberta na revisão (simulado já entregue: explica tudo) */}
+      <MiniTutor contexto={contextoDaRevisao(session.questions.find((q) => q.id === openId), { simulado: sim })} go={go} />
     </div>
   );
 }

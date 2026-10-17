@@ -22,6 +22,7 @@ import { QuestionHeader, timerLevel } from "./tela/QuestionHeader.jsx";
 import { TutorHint, useHintAvailable } from "./tela/TutorHint.jsx";
 import { Alternatives, QuestionFooter, QuestionSheet, ReportQuestion } from "./tela/QuestionSheet.jsx";
 import "./tela/tela-questao.css";
+import { MiniTutor, contextoDaQuestao } from "../tutor/mini";
 
 // Até aqui, um traço por questão na barra do topo; acima disso, uma barra contínua.
 const SEGMENT_LIMIT = 30;
@@ -495,6 +496,8 @@ function Runner({ session, go, onFinished }) {
           </>
         )}
       </main>
+      {/* mini tutor: a questão aberta (antes de responder só pistas; simulado em andamento fica travado até a entrega) */}
+      <MiniTutor contexto={contextoDaQuestao(question, { simulado: sim, respondida: revealed })} evitar=".tq-alts, .tq-foot" go={go} />
     </div>
   );
 }
