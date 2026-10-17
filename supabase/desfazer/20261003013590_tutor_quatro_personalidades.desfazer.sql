@@ -1,4 +1,5 @@
 -- Desfaz supabase/migrations/20261003013590_tutor_quatro_personalidades.sql (dois personagens, quatro personalidades).
+-- Se a …13610 (personagem no perfil) já entrou, desfaça ela ANTES desta (o gatilho dela lê a coluna character que esta apaga).
 -- Volta ao desenho de antes: Tranquilo, Durona e Direto ligados. O Durão e a Tranquila ficam DESLIGADOS (não são apagados: se algum
 -- aluno já conversou com eles, as conversas continuam apontando para eles e abrem só para leitura).
 -- NÃO desfaz: as preferências de quem estava no Direto e passaram para o Tranquilo (guarde a lista antes, se precisar), nem a marca
