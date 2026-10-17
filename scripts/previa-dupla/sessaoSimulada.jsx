@@ -2,6 +2,7 @@
 // TUDO é DADO DE TESTE: colegas fictícios, notas fictícias. As 10 estações do INEP 2020 vêm do pacote de design (só locais).
 import React from "react";
 import ESTACOES from "./estacoes-inep2020-teste.json";
+import { criarSolo } from "./soloSimulado.js";
 
 const NOW = () => new Date().toISOString();
 const EM = (ms) => new Date(Date.now() + ms).toISOString();
@@ -348,10 +349,14 @@ const respostasAdm = {
     return resumoDe(p_station_id);
   },
 };
+// Treino sozinho (2ª fase): app_fase2_* simuladas (soloSimulado.js); a "IA" é um roteiro de teste, não avalia nada.
+const solo = criarSolo({ dados, NOW, EM });
 const respostas = {
   ...respostasChat,
   ...respostasAdm,
   ...respostasHistorico,
+  ...solo.respostas,
+  app_fase2_peps: () => [...solo.respostas.app_fase2_peps(), ...respostasHistorico.app_fase2_peps()],
   app_dupla_access: () => ({ aberto: true, permitido: true, equipe: true, planos: ["pro", "elite"] }),
   app_dupla_profile: () => ({ profile: perfil, defaults: perfil ? null : { public_name: "Aluno de Teste", exam: "2026/2" }, stats: { done: 3, avg: 7.8 } }),
   app_dupla_save_profile: ({ p_profile }) => {
