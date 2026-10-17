@@ -52,6 +52,7 @@ import { createAdminAssistantRouter } from "./server/adminAssistant/router";
 import { mockAdminAssist } from "./server/adminAssistant/mock";
 import { createPodcastsRouter, podcastsStorage } from "./server/podcasts/router";
 import { getChecklistCatalog } from "./server/checklistBank/catalog";
+import { podeMontarBancoDev } from "./server/seguranca/protecoes";
 
 dotenv.config();
 
@@ -80,6 +81,7 @@ function getGenAI(): GoogleGenAI | null {
  */
 export async function createApp(opts: { serverless?: boolean } = {}) {
   const app = express();
+  app.disable("x-powered-by"); // não anuncia "Express" nas respostas (auditoria de segurança 17/10)
   if (opts.serverless) process.env.CONTENT_HUB_WORKER = "0";
   app.use(express.json({ limit: "50mb" }));
   // site da Vercel (corta o pedido em 300 s): cada pedido ganha a hora-limite logo depois de lido o corpo, e todas as chamadas
@@ -133,7 +135,7 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   app.use("/api/admin-assistant", createAdminAssistantRouter(hub.deps ? { db: hub.deps.db, embedder: hub.deps.embedder ?? null, log: (m: string) => console.log(m), mockRespond: hub.deps.db.mode === "dev" ? mockAdminAssist : undefined } : null, hub.pending));
   // Podcasts (Ana e Bruno) a partir dos materiais: fontes, roteiro com IA, revisão humana, áudio e publicação
   app.use("/api/podcasts", createPodcastsRouter(hub.deps ? { db: hub.deps.db, storage: podcastsStorage(hub.deps.db.mode), lessons: lessonsStorage(hub.deps.db.mode), log: (m: string) => console.log(m) } : null, hub.pending));
-  if (process.env.NODE_ENV !== "production") {
+  if (podeMontarBancoDev()) {
     // Banco de desenvolvimento no servidor: app do aluno, painel e processamento usam o mesmo.
     app.use("/api/dev-db", createDevDbRouter(() => getDevDatabase()));
     getDevDatabase().then(
