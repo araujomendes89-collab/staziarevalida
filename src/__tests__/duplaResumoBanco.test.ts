@@ -6,6 +6,8 @@
  *  - na sala, o "summary" vai só ao avaliador e só aprovado; o candidato nunca recebe (texto bruto);
  *  - o "summary" do conteúdo da estação (o da Montagem) não vai mais para a sala;
  *  - a tabela fica fora do alcance de aluno e visitante.
+ *  - 013400 (decisão do dono de 17/10): aprovar pede a nota do que foi conferido (10 caracteres ou mais), guardada com quem
+ *    aprovou e quando; texto novo ou volta a rascunho apaga a nota junto com o registro da aprovação.
  * TODO o texto de resumo daqui é EXEMPLO DE TESTE (não é conteúdo médico).
  */
 import fs from "node:fs";
@@ -19,6 +21,7 @@ const REV_CM = U.gil; // revisor médico de Clínica Médica (papel de aluno)
 const REV_PED = U.fabio; // revisor médico de Pediatria (papel de aluno)
 const EXEMPLO = "ZZEXEMPLO de teste: resumo fictício para conferir o caminho, não é conteúdo médico.";
 const EXEMPLO2 = "ZZEXEMPLO de teste, versão 2: texto fictício.";
+const NOTA = "Conferido com a fonte de teste (exemplo).";
 
 // Estação de TESTE com um "summary" no conteúdo (como a Montagem grava): ele não pode mais aparecer na sala.
 const ESTACAO = { ...STATION, id: "teste-dupla-resumo", name: "ZZNOME estação do resumo", summary: [{ topic: "ZZMONTAGEM", summary: "Texto da Montagem" }] };
@@ -49,7 +52,8 @@ describe("Migração 013380 (parte 2): resumo sobre o tema com revisão médica"
   });
 
   const salvar = (uid: string | null, body: string | null) => d.rpc<any>(uid, "app_admin_save_station_summary", { p_station_id: ESTACAO.id, p_body: body });
-  const revisar = (uid: string | null, status: string) => d.rpc<any>(uid, "app_admin_review_station_summary", { p_station_id: ESTACAO.id, p_status: status });
+  const revisar = (uid: string | null, status: string, nota: string | null = status === "approved" ? NOTA : null) =>
+    d.rpc<any>(uid, "app_admin_review_station_summary", { p_station_id: ESTACAO.id, p_status: status, ...(nota === null ? {} : { p_note: nota }) });
   const doAvaliador = async () => (await d.rpc<any>(U.bruno, "app_dupla_room_content", { p_room_id: sala })).station.summary;
   const doCandidato = () => d.rpc<any>(U.ana, "app_dupla_room_content", { p_room_id: sala });
   const linha = async () => (await d.sql<any>(`select * from public.checklist_station_summaries where station_id = $1`, [ESTACAO.id]))[0];
@@ -115,6 +119,25 @@ describe("Migração 013380 (parte 2): resumo sobre o tema com revisão médica"
     await expect(revisar(U.admin, "approved")).rejects.toThrow("Esta estação ainda não tem resumo.");
   });
 
+  it("aprovar pede a nota do que foi conferido (10+ caracteres), guardada com quem e quando; texto novo e rascunho apagam a nota", async () => {
+    await salvar(EDITORA, EXEMPLO);
+    await expect(revisar(REV_CM, "approved", "")).rejects.toThrow("Registre o que foi conferido no resumo (pelo menos 10 caracteres).");
+    await expect(d.rpc(REV_CM, "app_admin_review_station_summary", { p_station_id: ESTACAO.id, p_status: "approved" })).rejects.toThrow(/pelo menos 10 caracteres/);
+    await expect(revisar(REV_CM, "approved", "  curta    ")).rejects.toThrow(/pelo menos 10 caracteres/);
+    await expect(revisar(REV_CM, "approved", "x".repeat(2001))).rejects.toThrow("A nota tem no máximo 2.000 caracteres.");
+    expect((await linha()).status).toBe("draft");
+    const ok = await revisar(REV_CM, "approved", `  ${NOTA}  `);
+    expect(ok).toMatchObject({ status: "approved", approved_by: "Revisor de Teste", approval_note: NOTA });
+    expect(await linha()).toMatchObject({ approved_by: REV_CM, approval_note: NOTA });
+    const log = await d.sql<any>(`select details from public.admin_audit_log where target = $1 and action = 'station.summary.review' order by id desc limit 1`, [ESTACAO.id]);
+    expect(log[0].details).toMatchObject({ to: "approved", note: NOTA });
+    // texto novo: a nota sai junto com a aprovação
+    expect(await salvar(EDITORA, EXEMPLO2)).toMatchObject({ status: "draft", approval_note: null });
+    // voltar a rascunho também apaga a nota (sem pedir nota)
+    await revisar(U.admin, "approved", "Conferido pelo administrador.");
+    expect(await revisar(EDITORA, "draft")).toMatchObject({ status: "draft", approval_note: null, approved_by: null });
+  });
+
   it("lista da aba traz a situação do resumo; o registro fica no Registro de ações", async () => {
     const situacao = async () => (await d.rpc<any[]>(U.admin, "app_admin_stations")).find((s) => s.id === ESTACAO.id).summary_status;
     expect(await situacao()).toBeNull();
@@ -134,7 +157,7 @@ describe("Migração 013380 (parte 2): resumo sobre o tema com revisão médica"
     await expect(d.asUser(U.ana, `update public.checklist_station_summaries set status = 'approved'`)).rejects.toThrow(/permission denied/);
   });
 
-  it("colar a 013380 de novo dá o mesmo banco; funções com search_path vazio e fechadas ao visitante", async () => {
+  it("colar a 013380 (e as seguintes) de novo dá o mesmo banco; funções com search_path vazio e fechadas ao visitante", async () => {
     await salvar(EDITORA, EXEMPLO);
     await revisar(REV_CM, "approved");
     const defs = () =>
@@ -143,11 +166,14 @@ describe("Migração 013380 (parte 2): resumo sobre o tema com revisão médica"
            from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' order by 1`
       );
     const antes = await defs();
-    await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8"));
+    // a 013400 refaz funções da 013380 (nota ao aprovar): cola-se a 013380 e as seguintes, na ordem
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.endsWith(".sql") && x >= MIGRACAO).sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect(await defs()).toEqual(antes);
     expect(await linha()).toMatchObject({ body: EXEMPLO, status: "approved" }); // o dado continua
     const acl = Object.fromEntries(antes.map((f) => [f.id, f.acl]));
-    for (const f of ["app_admin_station_summary(text)", "app_admin_save_station_summary(text,text)", "app_admin_review_station_summary(text,text)"]) {
+    for (const f of ["app_admin_station_summary(text)", "app_admin_save_station_summary(text,text)", "app_admin_review_station_summary(text,text,text)"]) {
       expect(acl[f], f).toBe(acl["app_admin_stations()"]);
     }
     const f = await d.sql(`select proname, prosecdef, proconfig from pg_proc where proname = any ($1) order by 1`, [

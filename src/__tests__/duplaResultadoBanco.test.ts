@@ -10,7 +10,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { addSession, addStation, makeRoom, MIGRATIONS_DIR, openDuplaDb, setDupla, setPlan, STATION, U, type DuplaDb, type Phase } from "./helpers/duplaDb";
 
 const MIGRACAO = "20261003013360_treino_dupla_resultado.sql";
-const AJUSTES = "20261003013380_treino_dupla_ajustes_1610.sql";
 const FASE = "Esta ação não vale nesta fase da sala.";
 const MOTIVO = "Escreva o motivo (até 500 caracteres).";
 const UMA_VEZ = "A revisão só vale depois do pedido, uma vez.";
@@ -326,9 +325,11 @@ describe("Migração 013360 (+013380): resultado, revisão da nota, treinar outr
            from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' order by 1`
       );
     const antes = await defs();
-    // a 013380 apaga o app_dupla_swap que a 013360 cria: as duas, na ordem, voltam ao mesmo banco
-    await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8"));
-    await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, AJUSTES), "utf8"));
+    // a 013380 apaga o app_dupla_swap que a 013360 cria, e a 013400 refaz o app_dupla_result: a 013360 e as seguintes, na
+    // ordem, voltam ao mesmo banco
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.endsWith(".sql") && x >= MIGRACAO).sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect(await defs()).toEqual(antes);
     const acl = Object.fromEntries(antes.map((f) => [f.id, f.acl]));
     for (const f of ["app_dupla_request_review(uuid,integer,text)", "app_dupla_redo_review(uuid,integer)", "app_dupla_next_station(uuid)", "app_dupla_room_done_stations(uuid)"]) {
