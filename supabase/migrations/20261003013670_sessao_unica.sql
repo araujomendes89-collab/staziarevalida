@@ -201,8 +201,8 @@ begin
   update public.app_sessao_vigente
      set sessao = v_hash, aparelho = v_device, criada_em = now(), visto_em = now()
    where user_id = v_uid;
-  -- guarda só o que serve: derrubadas de mais de 400 dias saem (o login do Supabase não dura tanto sem uso)
-  delete from public.app_sessao_derrubada d where d.user_id = v_uid and d.derrubada_em < now() - interval '400 days';
+  -- guarda só o que serve: derrubadas de mais de 90 dias saem (se um login tão antigo voltar, vale como uma entrada nova: continua um por vez)
+  delete from public.app_sessao_derrubada d where d.user_id = v_uid and d.derrubada_em < now() - interval '90 days';
   return jsonb_build_object('vigente', true, 'regra', true, 'derrubou', true);
 end
 $$;
