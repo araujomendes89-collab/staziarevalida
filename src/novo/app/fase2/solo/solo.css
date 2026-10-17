@@ -100,6 +100,9 @@
 .f2-solo-item__pts { font: 500 var(--text-sm) var(--font-mono); color: var(--text-primary); white-space: nowrap; margin-left: auto; }
 .f2-solo-total { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-5); font: 600 var(--text-sm) var(--font-sans); color: var(--text-primary); }
 .f2-solo-evidence { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
+.f2-solo-evidence .sm-acc { box-shadow: none; border-color: var(--border-subtle); }
+.f2-solo-evidence .sm-acc__head { min-height: 40px; font: var(--type-label); }
+.f2-solo-evidence .sm-acc__body { padding-top: 0; }
 .f2-solo-quote { margin: 0; padding: var(--space-2) var(--space-3); border-left: 3px solid var(--border-brand); background: var(--surface-sunken); color: var(--text-primary); font: var(--type-body-sm); white-space: pre-wrap; overflow-wrap: anywhere; }
 .f2-solo-reason-text { margin: 0; font: var(--type-body-sm); color: var(--text-primary); line-height: 1.55; white-space: pre-wrap; }
 .f2-solo-points + .f2-solo-points { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border-subtle); }
