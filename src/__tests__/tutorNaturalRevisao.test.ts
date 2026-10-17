@@ -135,3 +135,31 @@ describe("o jeito de passar a vez não vira bordão («Agora me diz: …?» no f
     for (const v of ["agora me diz", "me conta", "mandou bem", "fecha com chave de ouro", "o que você faz"]) expect(NO_REPEAT_RULE).toContain(`«${v}»`);
   });
 });
+
+describe("abertura e passagem sem fórmula e sem passado inventado", () => {
+  it("1ª conversa sem dado do aluno: o contexto marca isso, o jeito «comece pelo aluno» não sai e «de novo» é barrado", async () => {
+    const { openingInput, openingViolations, anguloDe } = await import("../../server/tutor/opening");
+    const st: any = { message: { id: 9, content: "Reserva.", kind: "abertura" }, session: { mode: "livre", topic: "Tuberculose", title: null, context_type: null, context_label: null, area: null, question_state: "none", personality_id: "acolhedor", session_mood: "neutral", discuss_letter: null, previous_correct: null }, recent: [], previous_session: null, local_hour: 15 };
+    const ctx: any = { config: { max_profanity: "off" }, session: { settings: {}, emotion: null }, personality: { id: "acolhedor" }, memory: null, student: { first_name: null, days_to_exam: null }, question: null };
+    for (let i = 0; i < 40; i++) {
+      const input = openingInput({ ...st, message: { ...st.message, id: i } }, ctx);
+      expect(input).toMatch(/"primeira_conversa":true/);
+      expect(input).toMatch(/"sem_historico":true/);
+      expect(input).not.toMatch(/comece pelo aluno/);
+      expect(input).not.toMatch(/neutro/);
+    }
+    expect(anguloDe("x", "abertura", { semDadosDoAluno: true })).not.toMatch(/comece pelo aluno/);
+    const v = openingViolations("Tuberculose de novo na sua mira, e tem detalhe aí que sempre tenta te derrubar.", [], [], "Tuberculose", { semHistorico: true });
+    expect(v.map((x) => x.code)).toContain("passado_inventado");
+    expect(openingViolations("Tuberculose na sua mira: qual sinal você caça primeiro?", [], [], "Tuberculose", { semHistorico: true })).toEqual([]);
+  });
+
+  it("humor anunciado, rótulo «neutro», fórmulas e a mesma estrutura de uma fala já ouvida são barrados", async () => {
+    const { openingViolations } = await import("../../server/tutor/opening");
+    expect(openingViolations("Tô num dia bem neutro, então escolhe o tema.", []).map((x) => x.code)).toContain("humor_anunciado");
+    expect(openingViolations("Tô de bom humor hoje: escolhe o tema.", []).map((x) => x.code)).toContain("humor_anunciado");
+    expect(openingViolations("Hoje a meta é sair daqui sem errar besteira.", []).map((x) => x.code)).toContain("formula");
+    const ouvida = "Hoje a gente vai sair daqui sem errar besteira por afobação, porra. Escolhe logo o assunto que a gente vai encarar.";
+    expect(openingViolations("A gente vai sair daqui sem errar besteira por pressa hoje, PORRA. Escolhe logo o assunto.", [ouvida]).map((x) => x.code)).toContain("repeat");
+  });
+});

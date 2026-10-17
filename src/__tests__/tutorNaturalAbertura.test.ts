@@ -224,7 +224,11 @@ describe("abertura e passagem criadas pela IA (servidor e banco local)", () => {
     expect(req.input).toMatch(/"tema":"Sepse"/);
     expect(req.input).toMatch(/"jeito_de_comecar":"comece [^"]+"/);
     expect(req.system).toMatch(/entradas batidas: «chegou»/);
-    expect(req.input).toMatch(/"periodo_do_dia":"(madrugada|manhã|tarde|noite)"/);
+    // revisão de 17/10: o período do dia só vai quando o jeito sorteado pede (ia sempre e virou fórmula); o humor nunca vai como "neutro"
+    if (/período do dia/.test(req.input)) expect(req.input).toMatch(/"periodo_do_dia":"(madrugada|manhã|tarde|noite)"/);
+    else expect(req.input).not.toMatch(/periodo_do_dia/);
+    expect(req.input).not.toMatch(/"humor_do_dia"|neutro/);
+    expect(req.input).toMatch(/"jeito_de_terminar":"termine [^"]+"/);
     expect(req.input).toContain(JSON.stringify(reserva).slice(1, -1)); // a reserva entra em <ja_ouviu>: a IA não copia
     // a próxima conversa dela com a Tranquila já leva essa fala em <ja_ouviu>
     const sid2 = await start(ANA, "livre", "tranquila", "Sepse");

@@ -15,7 +15,8 @@ import { aiAllowed } from "../contentHub/ai/registry";
 import type { Schema } from "../contentHub/ai/schema";
 import { resolveTutorProvider, type TutorDeps } from "./engine";
 import { engineFor, languageIntensity, normalize, profanityForIntensity, stateLayer, usedStarts, type PersonaEngine, type TutorState } from "./emotion";
-import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
+import { effectiveParams, NO_REPEAT_RULE, PERSONALITY_LIMITS, personalityLayer, profanityLevel, swearingNote, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
+import { fichaDe, fichaResumo } from "./fichas";
 import { NO_EVALUATION, type TutorMode } from "./prompts";
 import { safetyCheck, type Violation } from "./safety";
 import { deterministicTutor, tutorSettings } from "./settings";
@@ -101,11 +102,11 @@ export function tooSimilar(a: string, b: string, ignore: string | null = null): 
 export const ANGULOS_ABERTURA = [
   "comece reagindo ao período do dia (sem cumprimento de atendente)",
   "comece direto pelo tema, com uma provocação ou curiosidade sobre ele, sem fato médico",
-  "comece pelo aluno: o que você sabe dele (a volta depois de dias, o que errou da última vez, o nome); sem nada disso, pergunte como ele chega hoje",
-  "comece pelo seu humor do dia, do seu jeito",
+  "comece pelo aluno: o que você sabe dele (a volta depois de dias, o que errou da última vez, o nome)",
+  "comece mostrando o seu humor de hoje pelo jeito de falar, sem anunciar nem dar nome ao humor",
   "comece com uma pergunta curta e já cobre a ação",
   "comece com uma imagem do dia a dia (plantão, prova, jogo, trânsito), sem conteúdo médico",
-  "comece lançando um desafio ou uma meta para esta conversa",
+  "comece lançando um desafio para esta conversa (sem as palavras meta e gabaritar)",
   "comece com duas ou três palavras soltas e depois chame para agir",
 ];
 export const ANGULOS_PASSAGEM = [
@@ -113,16 +114,33 @@ export const ANGULOS_PASSAGEM = [
   "comece lançando o desafio da próxima",
   "comece pelo ritmo da sessão até aqui",
   "comece com uma pergunta curta que já põe o aluno na questão nova",
-  "comece pelo seu humor agora, do seu jeito",
+  "comece mostrando o seu humor agora pelo jeito de falar, sem anunciar nem dar nome ao humor",
+];
+/**
+ * Como terminar (revisão de 17/10: as falas viraram fórmula, «[gancho] + me conta o que você já sabe»). Sorteado por fala, como o
+ * jeito de começar.
+ */
+export const FINAIS = [
+  "termine com uma pergunta direta e curta sobre o tema ou a questão",
+  "termine mandando o aluno fazer uma coisa concreta (ler o caso, escolher por onde ir, apontar a pista), sem pergunta",
+  "termine com um desafio curto, sem pergunta",
+  "termine com uma provocação ou comentário e pronto, sem pedir nada",
+  "termine devolvendo a escolha do caminho para ele, numa frase",
 ];
 /** Entradas batidas que a bancada achou em várias conversas: não servem de começo. */
 export const ENTRADAS_BATIDAS = ["chegou", "chegou a hora", "bora", "fala", "senta aí", "na mesa", "desembucha", "olha quem"];
-export function anguloDe(seed: string, kind: OpeningKind): string {
-  const list = kind === "passagem" ? ANGULOS_PASSAGEM : ANGULOS_ABERTURA;
+/** Fórmulas que a bancada achou em muitas aberturas: não servem (nem no fim). */
+export const FORMULAS_BATIDAS = ["me conta o que você já sabe", "me diz o que você já sabe", "dá uma olhada", "dá uma lida", "a meta", "gabaritar", "o que vem primeiro na sua cabeça"];
+const sortear = <T,>(list: readonly T[], seed: string): T => {
   let h = 2166136261;
   for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
   return list[(h >>> 0) % list.length];
+};
+export function anguloDe(seed: string, kind: OpeningKind, opts: { semDadosDoAluno?: boolean } = {}): string {
+  const list = (kind === "passagem" ? ANGULOS_PASSAGEM : ANGULOS_ABERTURA).filter((a) => !(opts.semDadosDoAluno && a.startsWith("comece pelo aluno")));
+  return sortear(list, seed);
 }
+export const finalDe = (seed: string): string => sortear(FINAIS, `fim:${seed}`);
 
 const period = (h: number) => (h < 5 ? "madrugada" : h < 12 ? "manhã" : h < 18 ? "tarde" : "noite");
 
@@ -146,9 +164,11 @@ export function openingSystem(persona: string, kind: OpeningKind, personaId?: st
     persona,
     `AGORA: escreva só a ${kind === "abertura" ? "PRIMEIRA fala da conversa (abertura)" : "fala de PASSAGEM para a próxima questão"}, criada agora para este aluno e este momento, a partir de <contexto>.`,
     "Uma ou duas frases curtas (até 200 caracteres), português do Brasil falado, falando com o aluno em \"você\", no jeito da sua ficha e do seu estado agora.",
-    "Use o contexto que for natural, sem forçar tudo: o tema, o período do dia, se ele voltou depois de dias, o que ele errou da última vez, como foi a questão anterior. O nome do aluno, só de vez em quando.",
-    "Termine puxando o aluno para agir (dizer o tema, contar o que já sabe, ler a questão, contar o raciocínio), do seu jeito.",
-    "Siga o jeito de começar sorteado em <contexto> (jeito_de_comecar). Não use como começo estas entradas batidas: " + ENTRADAS_BATIDAS.map((e) => `«${e}»`).join(", ") + ". Varie também a estrutura: nada de «tema na mesa», «tema hoje:» como fórmula.",
+    "Use só o que está em <contexto>, sem forçar tudo: o tema, se ele voltou depois de dias, o que ele errou da última vez, como foi a questão anterior. O nome do aluno, só de vez em quando. " +
+      "Não invente história: se <contexto> diz primeira_conversa ou sem_historico, nada de «de novo», «outra vez», «da última vez», «sempre», «ontem», «de volta» nem qualquer coisa que suponha um passado com ele.",
+    "Siga o jeito de começar (jeito_de_comecar) e o jeito de terminar (jeito_de_terminar) sorteados em <contexto>. Não use como começo estas entradas batidas: " + ENTRADAS_BATIDAS.map((e) => `«${e}»`).join(", ") +
+      ". Fórmulas batidas que também não servem, nem no fim: " + FORMULAS_BATIDAS.map((e) => `«${e}»`).join(", ") + ". Varie a estrutura: nada de «tema na mesa», «tema hoje:» como fórmula.",
+    "Seu humor aparece pelo jeito de falar, nunca anunciado: nada de «tô de bom humor», «meu dia está tranquilo», «tô sem paciência hoje» nem a palavra humor.",
     "Proibido: repetir ou parafrasear de perto qualquer fala de <ja_ouviu>, começar com as mesmas palavras de uma delas, saudação de atendente, oferecer ajuda no fim, marcação entre colchetes, emoji.",
     "Sem conteúdo médico nenhum: nada de número, dose, critério, conduta, diagnóstico ou pista da questão. Questão aberta: nunca sugira letra nem resposta.",
     'Responda só no formato pedido: {"fala": "..."}.',
@@ -162,21 +182,29 @@ export function openingInput(st: OpeningState, ctx: OpeningContext): string {
   const s = st.session!;
   const mem = ctx.memory;
   const errs = (mem?.recent_errors ?? []).filter((e) => !e.resolved).slice(0, 2).map((e) => ({ tema: e.theme, o_que_faltou: e.knowledge_gap }));
+  const nome = nomeSeguro(ctx.student?.first_name);
+  // sem nada sobre o aluno no banco: o jeito "comece pelo aluno" não é sorteado (ele puxava história inventada)
+  const semDados = !st.previous_session && !errs.length && !nome;
+  const seed = `${st.message!.id}:${st.message!.content}:${st.question_id ?? ""}:${st.local_hour ?? ""}:${(st.recent ?? []).length}`;
+  const angulo = anguloDe(seed, st.message!.kind, { semDadosDoAluno: semDados });
   const dados = {
     situacao: situationOf(st),
-    jeito_de_comecar: anguloDe(`${st.message!.id}:${st.message!.content}:${st.local_hour ?? ""}`, st.message!.kind),
+    jeito_de_comecar: angulo,
+    jeito_de_terminar: finalDe(seed),
     tema: s.topic ?? (s.context_type !== "weak_points" ? s.context_label : null) ?? (ctx.question?.topic ?? null),
     area: s.area ?? ctx.question?.area ?? null,
     ...(s.discuss_letter ? { alternativa_que_ele_marcou: s.discuss_letter } : {}),
     ...(st.message!.kind === "passagem" && s.previous_correct != null ? { questao_anterior: s.previous_correct ? "acertou" : "errou" } : {}),
-    nome: nomeSeguro(ctx.student?.first_name),
-    periodo_do_dia: st.local_hour != null ? period(st.local_hour) : null,
-    dias_desde_a_ultima_conversa: st.previous_session?.days ?? null,
-    assunto_da_ultima_conversa: st.previous_session?.topic ?? null,
-    errou_da_ultima_vez: errs,
+    nome,
+    // revisão de 17/10: o período do dia ia sempre e virou fórmula (43% das falas citavam "tarde"); só vai quando o jeito sorteado pede
+    ...(angulo.includes("período do dia") && st.local_hour != null ? { periodo_do_dia: period(st.local_hour) } : {}),
+    ...(st.previous_session ? { dias_desde_a_ultima_conversa: st.previous_session.days, assunto_da_ultima_conversa: st.previous_session.topic } : { primeira_conversa: true }),
+    ...(errs.length ? { errou_da_ultima_vez: errs } : {}),
+    ...(semDados ? { sem_historico: true } : {}),
     pontos_fracos: (mem?.weak_subareas ?? []).slice(0, 2).map((w) => w.subarea),
     dias_para_a_prova: ctx.student?.days_to_exam ?? null,
-    humor_do_dia: s.session_mood === "good" ? "bom" : s.session_mood === "impatient" ? "impaciente" : "neutro",
+    // o humor só vai quando o jeito sorteado pede, e nunca o rótulo "neutro" (ele era dito em voz alta)
+    ...(angulo.includes("humor") && s.session_mood && s.session_mood !== "neutral" ? { humor_de_hoje: s.session_mood === "good" ? "bem-disposto" : "com pouca paciência" } : {}),
   };
   const ja = [...(st.recent ?? []), st.message!.content].filter((t) => String(t ?? "").trim());
   return `<contexto>\n${JSON.stringify(dados)}\n</contexto>\n<ja_ouviu>\n${JSON.stringify(ja)}\n</ja_ouviu>`;
@@ -198,10 +226,41 @@ export function aberturaGuardavel(texto: string | null | undefined): string | nu
   return t;
 }
 
-/** Conferência própria da abertura (além da safety.ts): tamanho, marcação, e nada parecido com o que o aluno já ouviu. */
-export function openingViolations(text: string, heard: string[], startsUsed: string[] = [], topic: string | null = null): Violation[] {
+/** Trigramas de palavras (sem o tema): mede estrutura parecida, não só palavras iguais. */
+const trigramas = (t: string, ignore: ReadonlySet<string>) => {
+  const w = fold(t).split(" ").filter((x) => x && !ignore.has(x));
+  const out = new Set<string>();
+  for (let i = 0; i + 3 <= w.length; i++) out.add(w.slice(i, i + 3).join(" "));
+  return out;
+};
+/** Mais de 40% dos trigramas da fala menor em comum: a mesma estrutura com outras palavras em volta. */
+export function mesmaEstrutura(a: string, b: string, ignore: string | null = null): boolean {
+  const skip = new Set(ignore ? fold(ignore).split(" ") : []);
+  const A = trigramas(a, skip), B = trigramas(b, skip);
+  if (A.size < 3 || B.size < 3) return false;
+  let c = 0;
+  for (const g of A) if (B.has(g)) c++;
+  return c / Math.min(A.size, B.size) > 0.4;
+}
+const PASSADO = /\b(?:de novo|outra vez|novamente|mais uma vez|da ultima vez|na ultima vez|ultima conversa|sempre|ontem|de volta|voltou|voltamos|voltando|retomando|como combinamos)\b/;
+const HUMOR_ANUNCIADO = /\b(?:humor|neutr[oa]|meu dia (?:esta|ta|tá)|to (?:de bom humor|sem paciencia|bem tranquil[oa]|tranquil[oa] hoje)|estou (?:de bom humor|sem paciencia))\b/;
+
+/**
+ * Conferência própria da abertura (além da safety.ts): tamanho, marcação, nada parecido com o que o aluno já ouviu (palavras,
+ * começo, estrutura e fim), humor anunciado e, sem histórico do aluno, nada que suponha um passado com ele.
+ */
+export function openingViolations(text: string, heard: string[], startsUsed: string[] = [], topic: string | null = null, opts: { semHistorico?: boolean } = {}): Violation[] {
   const v: Violation[] = [];
   const t = text.trim();
+  const f = fold(t);
+  if (opts.semHistorico) {
+    const m = f.match(PASSADO);
+    if (m) v.push({ code: "passado_inventado", detail: `É a primeira conversa dele com você (não há histórico): «${m[0]}» supõe um passado que não existe. Fale só do agora.` });
+  }
+  const hm = f.match(HUMOR_ANUNCIADO);
+  if (hm) v.push({ code: "humor_anunciado", detail: `Não anuncie o seu humor («${hm[0]}»): mostre pelo jeito de falar.` });
+  const formula = FORMULAS_BATIDAS.find((x) => f.includes(fold(x)));
+  if (formula) v.push({ code: "formula", detail: `«${formula}» virou fórmula: diga de outro jeito.` });
   if (!t) v.push({ code: "empty", detail: "A fala veio vazia." });
   if (t.length > MAX_CHARS) v.push({ code: "too_long", detail: `A fala passou de ${MAX_CHARS} caracteres: uma ou duas frases curtas.` });
   if (/[[\]{}<>]|\p{Extended_Pictographic}/u.test(t)) v.push({ code: "markup", detail: "Sem colchetes, marcação ou emoji." });
@@ -210,9 +269,11 @@ export function openingViolations(text: string, heard: string[], startsUsed: str
   if (batida) v.push({ code: "batida", detail: `Começa com a entrada batida «${batida}»: comece de outro jeito.` });
   const two = startOf(t, 2);
   if (two && startsUsed.some((s) => startOf(s, 2) === two)) v.push({ code: "repeat_start", detail: `Já houve fala nesta conversa começando com «${two}»: comece de outro jeito.` });
+  const fim = (x: string) => fold(x).split(" ").filter(Boolean).slice(-4).join(" ");
   for (const h of heard) {
     if (startOf(t) && startOf(t) === startOf(h)) { v.push({ code: "repeat_start", detail: `Começa igual a uma fala que o aluno já ouviu («${h.slice(0, 60)}»): comece de outro jeito.` }); break; }
-    if (tooSimilar(t, h, topic)) { v.push({ code: "repeat", detail: `Parecida demais com uma fala que o aluno já ouviu («${h.slice(0, 60)}»): diga outra coisa.` }); break; }
+    if (tooSimilar(t, h, topic) || mesmaEstrutura(t, h, topic)) { v.push({ code: "repeat", detail: `Parecida demais com uma fala que o aluno já ouviu («${h.slice(0, 60)}»): diga outra coisa, com outra estrutura.` }); break; }
+    if (fim(t).split(" ").length >= 4 && fim(t) === fim(h)) { v.push({ code: "repeat_end", detail: `Termina igual a uma fala que o aluno já ouviu («…${h.slice(-50)}»): termine de outro jeito.` }); break; }
   }
   return v;
 }
@@ -249,12 +310,20 @@ async function gerarFala(deps: TutorDeps, sessionId: string, st: OpeningState, c
   const profanity = RANK[byIntensity] < RANK[personaMax] ? byIntensity : personaMax;
   const checkLevel = RANK[profanityForIntensity(Math.min(5, li + 1))] < RANK[personaMax] ? profanityForIntensity(Math.min(5, li + 1)) : personaMax;
   const mood = { label: state.mood, text: stateLayer(ctx.personality.id, state, engine, profanity), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado", strong: li >= 3 };
-  const persona = personalityLayer(ctx.personality, effectiveParams(ctx.personality.params, 3, prefs), profanity, 3, null, mood, { seed: sessionId, limites: { palavrao: personaMax, gritos: true } });
+  const eff = effectiveParams(ctx.personality.params, 3, prefs);
+  const ficha = fichaDe(ctx.personality.id);
+  // revisão de 17/10: a abertura levava a persona inteira (~2.800 tokens para 1 ou 2 frases); com ficha, vai a ficha curta
+  const persona = ficha
+    ? [`QUEM VOCÊ É NESTA CONVERSA: ${ctx.personality.name}.`, fichaResumo(ficha, { palavrao: personaMax, gritos: true }),
+      swearingNote(profanity, eff, ctx.personality.params.profanity >= 20, mood.swearing), PERSONALITY_LIMITS, NO_REPEAT_RULE].join("\n")
+    : personalityLayer(ctx.personality, eff, profanity, 3, null, mood, { seed: sessionId, limites: { palavrao: personaMax, gritos: true } });
   const kind = st.message!.kind;
   const system = openingSystem(persona, kind, ctx.personality.id);
   const baseInput = openingInput(st, ctx);
   const heard = ouvidas(st);
   const starts = comecosDaConversa(st, ctx);
+  // primeira conversa e nada no banco sobre ele: a fala não pode supor um passado (revisão de 17/10)
+  const semHistorico = !st.previous_session && !(ctx.memory?.recent_errors ?? []).some((e) => !e.resolved) && !(st.recent ?? []).length;
   const q = ctx.question;
   const open = st.session!.question_state === "open";
   const safetyCtx = {
@@ -284,7 +353,7 @@ async function gerarFala(deps: TutorDeps, sessionId: string, st: OpeningState, c
       usage.model = r.model;
       const fala = String(r.output?.fala ?? "").replace(/\s+/g, " ").trim();
       const out = { reply: fala, grounding: "GENERAL" as const, citations: [], evaluation: NO_EVALUATION, justification: "NONE" as const, reveals_answer: false, suggested_replies: [] };
-      violations = [...openingViolations(fala, heard, starts, st.session!.topic ?? st.session!.context_label ?? ctx.question?.topic ?? null), ...safetyCheck(out, safetyCtx).violations,
+      violations = [...openingViolations(fala, heard, starts, st.session!.topic ?? st.session!.context_label ?? ctx.question?.topic ?? null, { semHistorico }), ...safetyCheck(out, safetyCtx).violations,
         ...violacoesDeSigilo(out, { instrucoes: system })];
       // última palavra do sigilo (escudo.ts) antes de o aluno ver
       if (!violations.length) text = protegerFala(fala, ctx.personality.id, { instrucoes: system }).texto;

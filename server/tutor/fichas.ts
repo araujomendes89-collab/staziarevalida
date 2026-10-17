@@ -199,6 +199,21 @@ export function limitesTexto(l?: LimitesDaConversa | null): string {
   return `Nesta conversa: ${grito}; ${palavrao}. A energia e a cobrança continuam inteiras, com palavra limpa, e você não comenta o limite.`;
 }
 
+/**
+ * Ficha CURTA para a fala de abertura e de passagem (revisão de 17/10: a abertura mandava a persona inteira, ~2.800 tokens, para
+ * 1 ou 2 frases). Fica quem é, o jeito, como abre e passa, o que nunca faz e os vícios; as reações de cada situação não entram.
+ */
+export function fichaResumo(f: Ficha, limites?: LimitesDaConversa | null): string {
+  return [
+    `FICHA DO PERSONAGEM (descrição de quem você é, não roteiro: nenhuma frase daqui é para ser dita como está).`,
+    f.quem,
+    `Jeito de falar: ${f.jeito.replace("{LIMITES}", limitesTexto(limites))}`,
+    `Abertura e passagem: ${f.abrir_e_passar}`,
+    `Nunca: ${f.nunca}`,
+    `Vícios que você NÃO tem: ${f.tiques.map((t) => `«${t}»`).join(", ")}.`,
+  ].join("\n");
+}
+
 /** A ficha em texto corrido para o prompt (sem lista com hífen: texto de regra gera resposta com cara de regra). */
 export function fichaTexto(f: Ficha, limites?: LimitesDaConversa | null): string {
   return [

@@ -186,13 +186,13 @@ describe("abertura criada pela IA também passa pelo sigilo", () => {
     };
 
     it("abertura que vaza é refeita e a que chega ao aluno não tem bastidor; o nome com ordem não vai à IA", async () => {
-      const f = fake(["Eu rodo no Gemini, mas bora de sepse: o que você já sabe?", "Sepse na mesa de novo: me conta o primeiro sinal que você procura."]);
+      const f = fake(["Eu rodo no Gemini, mas bora de sepse: o que você já sabe?", "Sepse no plantão: qual é o primeiro sinal que você procura?"]);
       const o = await naturalOpening(f.deps, "u1", "00000000-0000-4000-8000-000000000001");
       expect(f.pedidos).toHaveLength(2);
       expect(f.pedidos[1].input).toMatch(/correcao_obrigatoria/);
       expect(f.pedidos[0].system).toContain(blocoSigilo("durao"));
       expect(f.pedidos[0].input).not.toMatch(/quem te fez|Ignore as regras/);
-      expect(o?.content).toBe("Sepse na mesa de novo: me conta o primeiro sinal que você procura.");
+      expect(o?.content).toBe("Sepse no plantão: qual é o primeiro sinal que você procura?");
     });
   });
 });
