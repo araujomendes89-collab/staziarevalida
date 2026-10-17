@@ -334,8 +334,10 @@ export function InviteWatcher({ go, meName, inviteTick, live, paused = false }) 
       if (accept && result?.room_id) go("dupla-sala", { sala: result.room_id });
       else void refreshRequests();
     } catch (e) {
-      showToast(messageOf(e), "danger");
-      setDismissed((prev) => new Set(prev).add(request.id));
+      const text = messageOf(e);
+      showToast(text, "danger");
+      // Pedido que já não existe sai da tela; outro erro (ex.: quem pediu saiu do ar agora) mantém o aviso e o pedido, que vale 24 h.
+      if (/Pedido (vencido|não encontrado|já respondido)/.test(text)) setDismissed((prev) => new Set(prev).add(request.id));
       void refreshRequests();
     } finally {
       setBusy(false);

@@ -301,7 +301,8 @@ export function RadarScreen({ go, profile, saved, station, stationId }) {
               <span style={{ font: "13px var(--font-sans)", color: "var(--text-tertiary)" }}>
                 Chame um colega que não está online: envie o seu link, por exemplo pelo WhatsApp. Ele só leva o seu @ ({`@${saved.handle}`}).
               </span>
-              <InviteLinkButton handle={saved.handle} stationId={stationId} />
+              {/* O link leva só o @: o id da estação não vai na URL (o convidado pode ser o candidato). */}
+              <InviteLinkButton handle={saved.handle} />
             </div>
           )}
         </div>

@@ -87,9 +87,9 @@ alter table public.study_handle_log enable row level security;
 
 alter table public.study_profiles add column if not exists handle text;
 
--- Palavra proibida do chat (as mesmas de treino_dupla_chat.palavras): palavra inteira, sem acento, com números no lugar de
+-- Palavra proibida do chat (as mesmas de treino_dupla_chat.palavras): palavra inteira (no @, as de 6 letras ou mais também coladas), sem acento, com números no lugar de
 -- letras, ponto/sublinhado/espaço entre as letras e plural com "s". Sem a chave do chat, nada é proibido (não derruba o perfil).
-create or replace function public.dupla_has_banned_word(p_text text) returns boolean
+create or replace function public.dupla_has_banned_word(p_text text, p_substring boolean default false) returns boolean
   language plpgsql stable security definer set search_path = ''
 as $$
 declare
@@ -106,6 +106,11 @@ begin
   for p in select jsonb_array_elements_text(s -> 'palavras') loop
     pat := regexp_replace(translate(public.dupla_chat_normalize(p), '013457@$', 'oieastas'), '[^a-z0-9]', '', 'g');
     continue when pat = '';
+    -- Nome de usuário (p_substring): as palavras de 6 letras ou mais também valem coladas em outras ("meuidiota"); as curtas só
+    -- como palavra inteira, para não barrar termos como "computador".
+    if p_substring and char_length(pat) >= 6 and regexp_replace(w, '[^a-z0-9]', '', 'g') like '%' || pat || '%' then
+      return true;
+    end if;
     pat := '(^|[^a-z0-9])' || array_to_string(regexp_split_to_array(pat, ''), '[^a-z0-9]*') || 's?($|[^a-z0-9])';
     if w ~ pat then
       return true;
@@ -113,6 +118,14 @@ begin
   end loop;
   return false;
 end
+$$;
+
+-- Nome público que se passa pela equipe: contém "stazia" ou tem como palavra inteira admin, suporte, moderador, staff… Interna.
+create or replace function public.dupla_name_reserved(p_name text) returns boolean
+  language sql immutable security definer set search_path = ''
+as $$
+  select public.dupla_chat_normalize(coalesce(p_name, '')) ~ 'stazia'
+      or public.dupla_chat_normalize(coalesce(p_name, '')) ~ '(^|[^a-z0-9])(admin|administrador|administradora|suporte|support|staff|moderador|moderadora|moderacao)($|[^a-z0-9])'
 $$;
 
 -- "@Ana.Silva " -> "ana.silva" (sem o @ do começo, sem espaços nas pontas, minúsculas).
@@ -134,10 +147,14 @@ begin
     return 'formato';
   end if;
   s := replace(replace(v, '.', ''), '_', '');
-  if s like '%stazia%' or s ~ '^(admin|administrador|administracao|suporte|support|equipe|revisor|revisora|moderador|moderadora|moderacao|oficial|sistema|staff|atendimento|ajuda|contato|inep|root|null|undefined|todos|everyone)[0-9]*$' then
+  -- Reservados: nada com "stazia"; nomes da equipe e de órgãos no começo (admin.app, suporte_x, equipe.med, inep.oficial…); e palavras
+  -- genéricas sozinhas ou só com números (todos, root, null…).
+  if s like '%stazia%'
+     or s ~ '^(admin|suporte|support|staff|moderador|moderadora|moderacao|oficial|equipe|revisor|revisora|atendimento|inep)'
+     or s ~ '^(sistema|ajuda|contato|root|null|undefined|todos|everyone)[0-9]*$' then
     return 'reservado';
   end if;
-  if public.dupla_has_banned_word(v) then
+  if public.dupla_has_banned_word(v, true) then
     return 'palavra';
   end if;
   if exists (select 1 from public.study_profiles x where lower(x.handle) = v and x.user_id is distinct from p_uid) then
@@ -279,6 +296,8 @@ declare
   v_code text;
   v_next timestamptz;
 begin
+  -- Trava por pessoa (a regra dos 15 dias) e por @ (dois alunos pegando o mesmo).
+  perform pg_advisory_xact_lock(hashtextextended('dupla-handle-user:' || v_uid::text, 0));
   perform pg_advisory_xact_lock(hashtextextended('dupla-handle:' || v, 0));
   select handle into v_old from public.study_profiles where user_id = v_uid;
   if not found then
@@ -592,6 +611,8 @@ begin
     raise exception 'Escolha inválida.' using errcode = '22023';
   end if;
   perform pg_advisory_xact_lock(hashtextextended('dupla-convite:' || v_uid::text, 0));
+  -- Quem recebe também é travado: dois convites de pessoas diferentes para a mesma não passam juntos.
+  perform pg_advisory_xact_lock(hashtextextended('dupla-recebe:' || p_to::text, 0));
   perform pg_advisory_xact_lock(hashtextextended('dupla-par:' || least(v_uid, p_to)::text || ':' || greatest(v_uid, p_to)::text, 0));
   perform public.dupla_sweep();
 
@@ -687,6 +708,10 @@ begin
   insert into public.study_invites (from_user, to_user, room_id, kind) values (v_uid, p_to, v_room, 'direto')
   returning expires_at into v_exp;
   update public.study_profiles set last_seen_at = now() where user_id = v_uid;
+  -- Pedido de treino por link pendente entre os dois: o convite já resolveu (não fica órfão para aparecer amanhã).
+  if to_regclass('public.study_train_requests') is not null then
+    execute 'update public.study_train_requests set status = ''canceled'', answered_at = now() where status = ''pending'' and least(from_user, to_user) = least($1, $2) and greatest(from_user, to_user) = greatest($1, $2)' using v_uid, p_to;
+  end if;
 
   return jsonb_build_object('room_id', v_room, 'expires_at', v_exp,
                             'partner', jsonb_build_object('user_id', p_to, 'public_name', other.public_name));
@@ -777,7 +802,8 @@ revoke execute on function public.app_admin_save_dupla_radar(jsonb) from public,
 revoke execute on function public.app_dupla_handle_check(text) from public, anon;
 revoke execute on function public.app_dupla_set_handle(text) from public, anon;
 revoke execute on function public.app_admin_dupla_handle_log(integer) from public, anon;
-revoke execute on function public.dupla_has_banned_word(text) from public, anon, authenticated;
+revoke execute on function public.dupla_has_banned_word(text, boolean) from public, anon, authenticated;
+revoke execute on function public.dupla_name_reserved(text) from public, anon, authenticated;
 revoke execute on function public.dupla_handle_clean(text) from public, anon, authenticated;
 revoke execute on function public.dupla_handle_problem(text, uuid) from public, anon, authenticated;
 revoke execute on function public.dupla_handle_message(text) from public, anon, authenticated;

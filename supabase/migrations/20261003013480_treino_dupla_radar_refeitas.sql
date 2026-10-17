@@ -200,6 +200,10 @@ begin
   returning id into v_room;
   update public.study_matches set room_id = v_room where id = v_match;
   insert into public.study_invites (from_user, to_user, room_id) values (v_uid, p_to, v_room);
+  -- Pedido de treino por link pendente entre os dois: o match já resolveu.
+  if to_regclass('public.study_train_requests') is not null then
+    execute 'update public.study_train_requests set status = ''canceled'', answered_at = now() where status = ''pending'' and least(from_user, to_user) = least($1, $2) and greatest(from_user, to_user) = greatest($1, $2)' using v_uid, p_to;
+  end if;
 
   return jsonb_build_object('matched', true, 'room_id', v_room,
                             'partner', jsonb_build_object('user_id', p_to, 'public_name', other.public_name));
@@ -330,6 +334,9 @@ begin
   if public.dupla_has_banned_word(v_name) then
     raise exception 'Esse nome contém uma palavra não permitida. Escolha outro.' using errcode = '22023';
   end if;
+  if public.dupla_name_reserved(v_name) then
+    raise exception 'Esse nome não está disponível. Escolha outro.' using errcode = '22023';
+  end if;
 
   v_bio := case when p_profile ? 'bio' then btrim(coalesce(p_profile ->> 'bio', '')) else coalesce(cur.bio, '') end;
   if char_length(v_bio) > 160 then
@@ -386,8 +393,10 @@ begin
   v_show_school := case when p_profile ? 'show_school' then (p_profile ->> 'show_school')::boolean else coalesce(cur.show_school, true) end;
   v_show_stats := case when p_profile ? 'show_stats' then (p_profile ->> 'show_stats')::boolean else coalesce(cur.show_stats, true) end;
   -- @: só muda se veio no pedido; novo perfil sem @ ganha um sorteado pelo gatilho. Trava o @ para dois pedidos juntos não o levarem.
-  v_handle := case when p_profile ? 'handle' then public.dupla_handle_clean(p_profile ->> 'handle') else cur.handle end;
+  -- @ vazio ou nulo no pedido vale como "não mexer" (perfil novo: o gatilho sorteia um).
+  v_handle := case when nullif(btrim(coalesce(p_profile ->> 'handle', '')), '') is not null then public.dupla_handle_clean(p_profile ->> 'handle') else cur.handle end;
   if v_handle is not null and v_handle is distinct from cur.handle then
+    perform pg_advisory_xact_lock(hashtextextended('dupla-handle-user:' || v_uid::text, 0));
     perform pg_advisory_xact_lock(hashtextextended('dupla-handle:' || v_handle, 0));
     v_hcode := public.dupla_handle_problem(v_handle, v_uid);
     if v_hcode is not null then
@@ -400,16 +409,20 @@ begin
   end if;
   v_direct := case when p_profile ? 'allow_direct_invites' then (p_profile ->> 'allow_direct_invites')::boolean else coalesce(cur.allow_direct_invites, true) end;
 
-  insert into public.study_profiles (user_id, public_name, school, city, goal, exam, bio, areas, role_pref, pace, days, shifts,
-                                     radar_visible, show_school, show_stats, allow_direct_invites, handle)
-  values (v_uid, v_name, v_school, v_city, v_goal, v_exam, v_bio, v_areas, v_role, v_pace, v_days, v_shifts,
-          v_radar, v_show_school, v_show_stats, v_direct, v_handle)
-  on conflict (user_id) do update set
-    public_name = excluded.public_name, school = excluded.school, city = excluded.city, goal = excluded.goal,
-    exam = excluded.exam, bio = excluded.bio, areas = excluded.areas, role_pref = excluded.role_pref, pace = excluded.pace,
-    days = excluded.days, shifts = excluded.shifts, radar_visible = excluded.radar_visible,
-    show_school = excluded.show_school, show_stats = excluded.show_stats,
-    allow_direct_invites = excluded.allow_direct_invites, handle = coalesce(excluded.handle, public.study_profiles.handle);
+  begin
+    insert into public.study_profiles (user_id, public_name, school, city, goal, exam, bio, areas, role_pref, pace, days, shifts,
+                                       radar_visible, show_school, show_stats, allow_direct_invites, handle)
+    values (v_uid, v_name, v_school, v_city, v_goal, v_exam, v_bio, v_areas, v_role, v_pace, v_days, v_shifts,
+            v_radar, v_show_school, v_show_stats, v_direct, v_handle)
+    on conflict (user_id) do update set
+      public_name = excluded.public_name, school = excluded.school, city = excluded.city, goal = excluded.goal,
+      exam = excluded.exam, bio = excluded.bio, areas = excluded.areas, role_pref = excluded.role_pref, pace = excluded.pace,
+      days = excluded.days, shifts = excluded.shifts, radar_visible = excluded.radar_visible,
+      show_school = excluded.show_school, show_stats = excluded.show_stats,
+      allow_direct_invites = excluded.allow_direct_invites, handle = coalesce(excluded.handle, public.study_profiles.handle);
+  exception when unique_violation then
+    raise exception 'Esse @ já está em uso.' using errcode = '23505';
+  end;
   if cur.handle is not null and v_handle is distinct from cur.handle then
     insert into public.study_handle_log (user_id, old_handle, new_handle) values (v_uid, cur.handle, v_handle);
   end if;

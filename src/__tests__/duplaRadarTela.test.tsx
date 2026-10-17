@@ -411,14 +411,14 @@ describe("Radar · erros", () => {
 });
 
 describe("Radar · link de convite", () => {
-  const LINK = () => `${window.location.origin}/novo/convite/eu.teste?estacao=est-teste-3`;
+  const LINK = () => `${window.location.origin}/novo/convite/eu.teste`;
 
-  it("copia o link do @ com a estação e mostra 'Link copiado'", async () => {
+  it("copia o link só com o @ (sem o id da estação) e mostra 'Link copiado'", async () => {
     await openRadar({ station: STATION, stationId: "est-teste-3" });
     fireEvent.click(screen.getByRole("button", { name: "Copiar link de convite" }));
     expect(await screen.findByRole("button", { name: "Link copiado" })).toBeTruthy();
     expect(clipboardWrite).toHaveBeenCalledWith(LINK());
-    expect(LINK()).toMatch(/^https?:\/\/.+\/novo\/convite\/eu\.teste\?estacao=est-teste-3$/);
+    expect(LINK()).toMatch(/^https?:\/\/.+\/novo\/convite\/eu\.teste$/);
     expect(screen.queryByLabelText("Link de convite")).toBeNull();
   });
 

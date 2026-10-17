@@ -497,12 +497,22 @@ describe("InviteWatcher · convite direto, 'Deu match!' e pedido de treino", () 
       expect(rpcCalls("app_dupla_answer_request")).toHaveLength(0);
     });
 
-    it("erro do servidor vira aviso e o pedido sai da tela", async () => {
+    it("erro do servidor vira aviso e o aviso do pedido continua (o pedido vale 24 h); pedido que já não existe sai da tela", async () => {
       requestsNow = [request("r6", "Colega Teste Pedido")];
-      answerRequestError = new Error("Este pedido já foi respondido.");
+      answerRequestError = new Error("Colega Teste Pedido não pode receber convites agora.");
       mountWatcher();
       fireEvent.click(await screen.findByRole("button", { name: "Aceitar" }));
-      expect(await screen.findByText("Este pedido já foi respondido.")).toBeTruthy();
+      expect(await screen.findByText("Colega Teste Pedido não pode receber convites agora.")).toBeTruthy();
+      expect(go).not.toHaveBeenCalled();
+      expect(screen.queryByRole("dialog")).not.toBeNull(); // quem pediu saiu do ar agora: dá para tentar de novo
+    });
+
+    it("pedido vencido ou já respondido: aviso e a janela sai", async () => {
+      requestsNow = [request("r6b", "Colega Teste Pedido")];
+      answerRequestError = new Error("Pedido já respondido.");
+      mountWatcher();
+      fireEvent.click(await screen.findByRole("button", { name: "Aceitar" }));
+      expect(await screen.findByText("Pedido já respondido.")).toBeTruthy();
       expect(go).not.toHaveBeenCalled();
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     });

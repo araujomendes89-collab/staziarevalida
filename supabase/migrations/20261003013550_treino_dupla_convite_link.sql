@@ -318,7 +318,9 @@ begin
     return jsonb_build_object('room_id', null);
   end if;
 
-  v_res := public.dupla_invite_core(v_uid, r.from_user, r.station_id, true);
+  -- Estação que deixou de estar aprovada durante as 24 h: segue sem estação (escolhem na sala), em vez de travar o aceite.
+  v_res := public.dupla_invite_core(v_uid, r.from_user,
+             case when r.station_id is not null and public.dupla_station_public(r.station_id) is not null then r.station_id end, true);
   update public.study_train_requests
      set status = 'accepted', answered_at = now(), room_id = (v_res ->> 'room_id')::uuid where id = r.id;
   return v_res;

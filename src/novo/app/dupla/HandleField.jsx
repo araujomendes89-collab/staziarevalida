@@ -36,7 +36,7 @@ export function HandleField({ saved, value, onChange, hasProfile }) {
   React.useEffect(() => {
     let alive = true;
     setInfo(null);
-    if (!hasProfile || same || !v) return undefined;
+    if (same || !v) return undefined;
     const timer = setTimeout(() => {
       Promise.resolve(backend.rpc("app_dupla_handle_check", { p_handle: v }))
         .then((r) => alive && setInfo(r ?? null))
@@ -46,7 +46,7 @@ export function HandleField({ saved, value, onChange, hasProfile }) {
       alive = false;
       clearTimeout(timer);
     };
-  }, [backend, hasProfile, v, same]);
+  }, [backend, v, same]);
 
   const locked = Boolean(wait) && hasProfile;
   const status = same ? null : info;

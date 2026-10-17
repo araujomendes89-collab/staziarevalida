@@ -54,6 +54,12 @@ describe("Nome de usuário com @", () => {
     const r = await d.rpc(U.fabio, "app_dupla_save_profile", { p_profile: { public_name: "Fábio Reis" } });
     expect(r.profile.handle).toMatch(/^revalida\.[a-z0-9]{4}$/);
     expect(await d.sql(`select 1 from public.study_handle_log`)).toEqual([]); // o sorteado não conta como troca
+    // @ vazio ou nulo no pedido de um perfil novo não barra: vale como "não mexer" e o servidor sorteia
+    await d.sql(`delete from public.study_profiles where user_id = $1`, [U.gil]);
+    const g = await d.rpc(U.gil, "app_dupla_save_profile", { p_profile: { public_name: "Gil Nunes", handle: "" } });
+    expect(g.profile.handle).toMatch(/^revalida\./);
+    const g2 = await d.rpc(U.gil, "app_dupla_save_profile", { p_profile: { handle: null, bio: "x" } });
+    expect(g2.profile.handle).toBe(g.profile.handle);
   });
 
   it("a geração tenta de novo quando o @ já existe ou cai em palavra proibida", async () => {
@@ -107,24 +113,29 @@ describe("Nome de usuário com @", () => {
   });
 
   it("reservados e parecidos", async () => {
-    for (const h of ["admin", "Admin", "admin123", "ad.min", "suporte", "equipe", "revisor", "moderador", "staziamed", "stazia", "stazia_fan", "st.azia", "oficial", "sistema", "staff", "atendimento"]) {
+    for (const h of ["admin", "Admin", "admin123", "ad.min", "suporte", "equipe", "revisor", "moderador", "staziamed", "stazia", "stazia_fan", "st.azia", "oficial", "sistema", "staff", "atendimento", "admin_joao", "suporte.app", "admin.revalida", "equipe.medica", "inep.oficial", "moderacao.dupla"]) {
       await expect(trocar(U.ana, h), h).rejects.toThrow(/Esse @ não está disponível\./);
     }
-    expect(await checar(U.ana, "admin_joao")).toMatchObject({ ok: true });
+    expect(await checar(U.ana, "meu.admin")).toMatchObject({ ok: true }); // só vale no começo
+    expect(await checar(U.ana, "todos.nos")).toMatchObject({ ok: true }); // as palavras genéricas só barram sozinhas
+    for (const h of ["todos", "todos2", "root", "null"]) expect(await checar(U.ana, h), h).toMatchObject({ ok: false, code: "reservado" });
     expect(await checar(U.ana, "equipamento")).toMatchObject({ ok: true });
   });
 
   it("palavra proibida do chat (acento, número no lugar de letra, pontos entre as letras); termo clínico passa", async () => {
-    for (const h of ["idiota", "bobo.idiota", "i.d.i.o.t.a", "1d10ta", "idiotas", "meu_idiota"]) {
+    for (const h of ["idiota", "bobo.idiota", "i.d.i.o.t.a", "1d10ta", "idiotas", "meu_idiota", "meuidiota", "meucaralho", "babacao"]) {
       await expect(trocar(U.ana, h), h).rejects.toThrow(/Esse @ contém uma palavra não permitida\./);
     }
-    expect(await checar(U.ana, "computador")).toMatchObject({ ok: true }); // contém 'puta' no meio, não é a palavra inteira
+    expect(await checar(U.ana, "computador")).toMatchObject({ ok: true }); // contém 'puta' no meio; as de 4 a 5 letras só valem como palavra inteira
     expect(await checar(U.ana, "amputacao")).toMatchObject({ ok: true });
   });
 
   it("o mesmo filtro vale para o nome ('Nome ou apelido')", async () => {
     await expect(d.rpc(U.ana, "app_dupla_save_profile", { p_profile: { public_name: "Ana Idiota" } })).rejects.toThrow(/Esse nome contém uma palavra não permitida\./);
     await expect(d.rpc(U.ana, "app_dupla_save_profile", { p_profile: { public_name: "p0rr4 Silva" } })).rejects.toThrow(/Esse nome contém uma palavra não permitida\./);
+    for (const n of ["Suporte StaziaMed", "Equipe Stazia", "Admin Ana", "Moderador da Dupla"]) {
+      await expect(d.rpc(U.ana, "app_dupla_save_profile", { p_profile: { public_name: n } }), n).rejects.toThrow(/Esse nome não está disponível\. Escolha outro\./);
+    }
     expect((await d.rpc(U.ana, "app_dupla_save_profile", { p_profile: { public_name: "Ana, a Cirurgiã" } })).profile.public_name).toBe("Ana, a Cirurgiã");
     expect((await d.sql(`select public_name from public.study_profiles where user_id = $1`, [U.ana]))[0].public_name).toBe("Ana, a Cirurgiã");
   });
@@ -190,6 +201,12 @@ describe("Nome de usuário com @", () => {
       d.rpc(U.diego, "app_dupla_save_profile", { p_profile: { handle: "OUTRA.disputa" } }),
     ]);
     expect([c.status, e.status].sort()).toEqual(["fulfilled", "rejected"]);
+  });
+
+  it("corrida da mesma pessoa: dois @ diferentes ao mesmo tempo, só uma troca (regra dos 15 dias)", async () => {
+    const [a, b] = await Promise.allSettled([trocar(U.ana, "ana.um.x"), trocar(U.ana, "ana.dois.x")]);
+    expect([a.status, b.status].sort()).toEqual(["fulfilled", "rejected"]);
+    expect(await d.sql(`select 1 from public.study_handle_log where user_id = $1`, [U.ana])).toHaveLength(1);
   });
 
   it("sem perfil não troca; visitante e sem acesso não chamam", async () => {
@@ -353,6 +370,35 @@ describe("Convite por link e pedido de treino de 24 h", () => {
     expect([a.status, b.status].sort()).toEqual(["fulfilled", "rejected"]);
   });
 
+  it("pedido pendente fica cancelado quando os dois se resolvem por convite direto ou por match", async () => {
+    await seen(d.db, U.bruno, 3600, "fora");
+    const r = await pedir(U.ana, "bruno.link");
+    await seen(d.db, U.bruno);
+    await d.rpc(U.ana, "app_dupla_invite", { p_to: U.bruno });
+    expect((await d.sql<any>(`select status from public.study_train_requests where id = $1`, [r.request_id]))[0].status).toBe("canceled");
+    expect((await pedidos(U.bruno)).requests).toEqual([]);
+    await d.sql(`delete from public.checklist_rooms`);
+    await seen(d.db, U.bruno, 3600, "fora");
+    const r2 = await pedir(U.ana, "bruno.link");
+    await seen(d.db, U.bruno);
+    await d.rpc(U.bruno, "app_dupla_swipe", { p_to: U.ana, p_direction: "right" });
+    expect((await d.rpc(U.ana, "app_dupla_swipe", { p_to: U.bruno, p_direction: "right" })).matched).toBe(true);
+    expect((await d.sql<any>(`select status from public.study_train_requests where id = $1`, [r2.request_id]))[0].status).toBe("canceled");
+  });
+
+  it("aceitar pedido cuja estação deixou de ser aprovada: segue sem estação", async () => {
+    await seen(d.db, U.bruno, 3600, "fora");
+    const r = await pedir(U.ana, "bruno.link", STATION.id);
+    await seen(d.db, U.bruno);
+    await d.sql(`update public.checklist_stations set medical_review = 'pending' where id = $1`, [STATION.id]);
+    try {
+      const ok = await responder(U.bruno, r.request_id, true);
+      expect((await d.sql<any>(`select station_id from public.checklist_rooms where id = $1`, [ok.room_id]))[0].station_id).toBeNull();
+    } finally {
+      await d.sql(`update public.checklist_stations set medical_review = 'approved' where id = $1`, [STATION.id]);
+    }
+  });
+
   it("o pedido vence em 24 h: some da caixa, não responde e permite um novo", async () => {
     await seen(d.db, U.bruno, 3600, "fora");
     const r = await pedir(U.ana, "bruno.link");
@@ -507,7 +553,7 @@ describe("Convite por link e pedido de treino de 24 h", () => {
     for (const f of ["app_dupla_link_lookup(text,text)", "app_dupla_link_request(text,text)", "app_dupla_requests()", "app_dupla_answer_request(uuid,boolean)", "app_dupla_set_handle(text)", "app_dupla_handle_check(text)"]) {
       expect(acl[f], f).toBe(acl["app_dupla_room(uuid,integer)"]);
     }
-    for (const f of ["dupla_requests_sweep()", "dupla_can_receive_now(uuid)", "dupla_station_public(text)", "dupla_invite_core(uuid,uuid,text,boolean)", "dupla_handle_generate()", "dupla_handle_problem(text,uuid)", "dupla_has_banned_word(text)"]) {
+    for (const f of ["dupla_requests_sweep()", "dupla_can_receive_now(uuid)", "dupla_station_public(text)", "dupla_invite_core(uuid,uuid,text,boolean)", "dupla_handle_generate()", "dupla_handle_problem(text,uuid)", "dupla_has_banned_word(text,boolean)", "dupla_name_reserved(text)", "dupla_credit_ok(uuid)"]) {
       expect(acl[f], f).not.toContain("authenticated");
       expect(acl[f], f).not.toContain("anon");
     }
