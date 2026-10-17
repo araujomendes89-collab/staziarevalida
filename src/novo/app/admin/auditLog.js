@@ -34,6 +34,9 @@ export const ACTION_LABEL = {
   "plan.save": "Plano editado",
   "plan.benefits": "Benefícios do Elite alterados",
   "plan.ineditas_limits": "Limite de Questões Inéditas por plano alterado", // 010300
+  "direitos.save": "Planos por fase, franquias e amostras salvos", // 013640
+  "direitos.modo": "Cadeados: modo sombra ou ligado alterado", // 013640
+  "direitos.segunda_fase": "Segunda fase aberta ou fechada aos alunos (regra nova)", // 013640
   "settings.save": "Configurações salvas",
   "settings.sessao_unica": "Sessão única (uma conta, um aparelho por vez) alterada",
   "support.contact": "Contato de suporte alterado",
