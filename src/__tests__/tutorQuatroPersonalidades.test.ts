@@ -11,7 +11,7 @@ import fs from "fs";
 import path from "path";
 import { PGlite } from "@electric-sql/pglite";
 import { aceitarTermos } from "./helpers/aceites";
-import { resolveProfile, DEFAULT_EXPLOSIVA, PROFILES } from "../../server/tutor/personalityEngine";
+import { resolveProfile, DEFAULT_EXPLOSIVA, PROFILES, STAZI_ACTING, voiceActingLayer } from "../../server/tutor/personalityEngine";
 import { engineFor, familyOf } from "../../server/tutor/emotion";
 import { officialVoiceForPersonality } from "../../server/tutor/officialVoices";
 
@@ -68,14 +68,21 @@ describe("quatro personalidades em dois personagens (migração 013590)", () => 
     expect(t.acolhedor.style_notes).toMatch(/Age como se explicar desse trabalho demais/);
   });
 
-  it("uma voz por personagem: os dois do Stazi com voz masculina (cedar / Charon), os dois da Stazia com voz feminina (marin / Kore)", async () => {
+  it("uma voz por personagem: os dois do Stazi com voz masculina (cedar / Zubenelgenubi), os dois da Stazia com voz feminina (marin / Kore)", async () => {
     const t = await byId();
-    for (const p of ["durao", "acolhedor"]) expect(t[p].voice).toMatchObject({ realtime: "cedar", openai: "cedar", gemini: "Charon" });
+    for (const p of ["durao", "acolhedor"]) expect(t[p].voice).toMatchObject({ realtime: "cedar", openai: "cedar", gemini: "Zubenelgenubi" });
     for (const p of ["durona", "tranquila"]) expect(t[p].voice).toMatchObject({ realtime: "marin", openai: "marin", gemini: "Kore" });
     // e o servidor leva a fala para a voz oficial do personagem
     expect(["durao", "acolhedor"].map(officialVoiceForPersonality)).toEqual(["stazi", "stazi"]);
     expect(["durona", "tranquila"].map(officialVoiceForPersonality)).toEqual(["stazia", "stazia"]);
     expect(officialVoiceForPersonality("direto")).toBeNull();
+    // atuação de desenho animado só no Stazi (as duas personalidades dele); a Stazia não ganha a camada
+    expect(voiceActingLayer("durao")).toBe(STAZI_ACTING);
+    expect(voiceActingLayer("acolhedor")).toBe(STAZI_ACTING);
+    expect(voiceActingLayer("durona")).toBe("");
+    expect(voiceActingLayer("tranquila")).toBe("");
+    expect(STAZI_ACTING).toMatch(/dublador brasileiro de animação/);
+    expect(STAZI_ACTING).toMatch(/nunca com a pessoa/);
   });
 
   it("Durão herda da Durona os parâmetros, o motor e as falas; é masculino; a Tranquila é texto novo, calmo e sem palavrão", async () => {

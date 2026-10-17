@@ -306,3 +306,11 @@ describe("componentes", () => {
     vi.doUnmock("../novo/app/tutor/personagens/PersonagemTutor.jsx");
   });
 });
+
+describe("voz ao vivo de cada personagem (manifest)", () => {
+  it("Stazi: Gemini Zubenelgenubi, reserva cedar, +3 semitons; Stazia: Kore, reserva marin, sem afinação", async () => {
+    const { PERSONAGENS } = await import("../novo/app/tutor/personagens/personagens.js");
+    expect(PERSONAGENS.stazi.voz).toEqual({ gemini: "Zubenelgenubi", openai: "cedar", semitons: 3 });
+    expect(PERSONAGENS.stazia.voz).toEqual({ gemini: "Kore", openai: "marin", semitons: 0 });
+  });
+});

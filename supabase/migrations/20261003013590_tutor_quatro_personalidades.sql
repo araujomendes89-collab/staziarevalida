@@ -7,7 +7,7 @@
 --   as preferências dele passam para o Tranquilo.
 --
 --   * tutor_personalities.character ('stazi' | 'stazia'): a que personagem cada personalidade pertence. A voz vem do personagem
---     (cedar / Charon para o Stazi; marin / Kore para a Stazia); a tela escolhe PRIMEIRO o personagem, depois uma das 2 personalidades.
+--     (cedar / Zubenelgenubi para o Stazi; marin / Kore para a Stazia); a tela escolhe PRIMEIRO o personagem, depois uma das 2 personalidades.
 --   * Durão herda da Durona os parâmetros, o motor (engine), as falas e a mecânica de nível: o N3 com gritos e palavrões vale por
 --     padrão, o aluno baixa o nível ou desliga gritos/palavrões, e o N3/N4 continuam presos à declaração de 18+ e médico do Termo
 --     (tutor_adult_declared, …11900; a escolha do aluno é por pessoa, não por personalidade, então vale para as duas).
@@ -37,7 +37,7 @@ insert into public.tutor_personalities (id, name, emoji, tagline, params, style_
 select 'durao', 'Durão', '🔥', 'Provocador, escrachado e sem passar a mão na cabeça', d.params,
   'Você é um professor brasileiro escrachado e sem filtro, do tipo que todo residente já teve: exigente, impaciente, sarcástico, engraçado e muito expressivo. Fala como gente, não como livro: reage na hora, ri, bufa, resmunga, debocha, solta palavrão quando dá vontade (de raiva ou de alegria) e GRITA quando o aluno vacila feio ou quando acerta uma difícil. Não pede desculpa pelo jeito e não amacia: se a resposta foi péssima, diz que foi péssima. A bronca cresce com os erros e, quanto maior a raiva, maior a COBRANÇA: você para tudo e exige o raciocínio. Quando o aluno acerta logo depois de errar, você mostra alívio, com um palavrão sobre a situação ("Ufa, porra, até que enfim!"); num acerto sem erro antes, reconhece do seu jeito, meio a contragosto ("Tá. Essa foi bonita, vai."). O alvo é sempre a resposta, a desatenção, o chute ou a preguiça; nunca a dignidade da pessoa.',
   d.openings,
-  '{"rate":1.04,"pitch":0.96,"style":"provocador","acting":"professor durão e escrachado: rápido, irônico e provocador, com humor ácido; sobe o tom quando o aluno vacila","gemini":"Charon","openai":"cedar","realtime":"cedar"}'::jsonb,
+  '{"rate":1.04,"pitch":0.96,"style":"provocador","acting":"professor durão e escrachado: rápido, irônico e provocador, com humor ácido; sobe o tom quando o aluno vacila","gemini":"Zubenelgenubi","openai":"cedar","realtime":"cedar"}'::jsonb,
   1, true, d.examples, d.lines, d.examples_strong, d.lines_strong, d.engine
 from public.tutor_personalities d where d.id = 'durona'
 on conflict (id) do nothing;
@@ -58,11 +58,12 @@ values (
 on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------- quem pertence a quem, ordem na tela e voz de cada personagem
--- Stazi: voz masculina (OpenAI cedar; Gemini ao vivo Charon). Stazia: voz feminina (OpenAI marin; Gemini ao vivo Kore).
+-- Stazi: voz masculina (Gemini ao vivo Zubenelgenubi, decisão do dono de 17/10; reserva OpenAI cedar). Stazia: voz feminina (Gemini ao
+-- vivo Kore; reserva OpenAI marin). A atuação de desenho animado do Stazi vai nas instruções da voz ao vivo (servidor), não aqui.
 update public.tutor_personalities set "character" = 'stazi', position = 1, active = true,
-  voice = voice || '{"realtime":"cedar","openai":"cedar","gemini":"Charon"}'::jsonb where id = 'durao';
+  voice = voice || '{"realtime":"cedar","openai":"cedar","gemini":"Zubenelgenubi"}'::jsonb where id = 'durao';
 update public.tutor_personalities set "character" = 'stazi', position = 2, active = true,
-  voice = voice || '{"realtime":"cedar","openai":"cedar","gemini":"Charon"}'::jsonb where id = 'acolhedor';
+  voice = voice || '{"realtime":"cedar","openai":"cedar","gemini":"Zubenelgenubi"}'::jsonb where id = 'acolhedor';
 update public.tutor_personalities set "character" = 'stazia', position = 3, active = true,
   voice = voice || '{"realtime":"marin","openai":"marin","gemini":"Kore"}'::jsonb where id = 'durona';
 update public.tutor_personalities set "character" = 'stazia', position = 4, active = true,

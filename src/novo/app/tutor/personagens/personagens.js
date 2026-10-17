@@ -6,8 +6,10 @@
 // fica guardada no aparelho (localStorage); a personalidade é a do perfil do Tutor (tutor_preferences).
 
 export const PERSONAGENS = {
-  stazi: { id: "stazi", nome: "Stazi", papel: "seu professor", genero: "o", descricao: "Lontra de moletom azul" },
-  stazia: { id: "stazia", nome: "Stazia", papel: "sua professora", genero: "a", descricao: "Lontra de moletom rosa e laço" },
+  // `voz`: a voz ao vivo do personagem (decisão do dono, 17/10/2026). gemini = voz do Gemini Live; openai = reserva; semitons = quanto
+  // o navegador afina a voz (o Stazi sobe +3, efeito de desenho; a Stazia fica como está). O servidor usa as mesmas vozes (tutor_personalities.voice).
+  stazi: { id: "stazi", nome: "Stazi", papel: "seu professor", genero: "o", descricao: "Lontra de moletom azul", voz: { gemini: "Zubenelgenubi", openai: "cedar", semitons: 3 } },
+  stazia: { id: "stazia", nome: "Stazia", papel: "sua professora", genero: "a", descricao: "Lontra de moletom rosa e laço", voz: { gemini: "Kore", openai: "marin", semitons: 0 } },
 };
 export const PERSONAGEM_IDS = ["stazi", "stazia"];
 

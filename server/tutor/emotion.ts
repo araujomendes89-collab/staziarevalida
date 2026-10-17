@@ -48,6 +48,10 @@ export interface PersonaEngine {
  */
 export const familyOf = (personaId: string): string => (personaId === "durao" ? "durona" : personaId === "tranquila" ? "acolhedor" : personaId);
 
+/** A que personagem cada personalidade pertence (espelho da coluna tutor_personalities.character). O Direto saiu: sem personagem. */
+export const characterOf = (personaId: string): "stazi" | "stazia" | null =>
+  personaId === "durao" || personaId === "acolhedor" || personaId === "preguicoso" ? "stazi" : personaId === "durona" || personaId === "tranquila" ? "stazia" : null;
+
 export const PERSONA_ENGINE: Record<string, PersonaEngine> = {
   acolhedor: { frustration_multiplier: 0.45, sarcasm_max: 40, aggression_max: 15, patience_base: 70, warmth_base: 60, language_max: 1, language_base: 1 },
   preguicoso: { frustration_multiplier: 0.45, sarcasm_max: 40, aggression_max: 15, patience_base: 70, warmth_base: 60, language_max: 1, language_base: 1 },

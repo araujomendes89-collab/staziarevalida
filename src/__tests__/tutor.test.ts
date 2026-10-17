@@ -998,7 +998,7 @@ describe("Banco e motor (IA simulada)", () => {
         expect(r.headers.get("x-tutor-voice-cache")).toBe("miss");
         expect(Buffer.from(await r.arrayBuffer()).subarray(0, 4).toString("latin1")).toBe("RIFF");
         // a voz e a atuação são as do professor da conversa (o Durão de S1, no Stazi: voz masculina)
-        expect(speech.calls.at(-1)).toMatchObject({ text: opening.content, voice: { openai: "cedar", gemini: "Charon", acting: expect.stringMatching(/durão/) } });
+        expect(speech.calls.at(-1)).toMatchObject({ text: opening.content, voice: { openai: "cedar", gemini: "Zubenelgenubi", acting: expect.stringMatching(/durão/) } });
         const after = await today(S1);
         expect(after.voice_chars - before.voice_chars).toBe(opening.content.length);
         expect(after.requests).toBe(before.requests); // voz não conta como mensagem

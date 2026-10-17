@@ -25,6 +25,7 @@
  * mesmo padrão N3, mesmo travamento por 18+ e médico, mesmas reações marcadas pelo dono. A Tranquila (Stazia) é o Tranquilo no feminino.
  */
 import { PERSONALITY_LIMITS, type ProfanityLevel } from "./personality";
+import { characterOf } from "./emotion";
 import {
   REACTIONS, reactionInfo, TAGGED_PROVIDERS,
   type ProfileLevel, type PublicPersonality, type ReactionId, type ReactionRule, type VoiceProviderId,
@@ -229,6 +230,20 @@ export function publicPersonality(id: string): PublicPersonality {
  */
 const isDurao = (id: string) => id === "durao";
 const isTranquila = (id: string) => id === "tranquila";
+
+/**
+ * Direção de atuação da VOZ AO VIVO do Stazi (decisão do dono, 17/10/2026): personagem de desenho animado, dublador brasileiro de
+ * animação. Soma-se às instruções de sistema das duas personalidades dele (Durão e Tranquilo) e NÃO tira nenhuma regra: o limite
+ * de respeito, o palavrão e o conteúdo médico seguem os de sempre. A Stazia não ganha esta camada.
+ */
+export const STAZI_ACTING =
+  "ATUAÇÃO DA VOZ (só o jeito de falar, nenhuma regra muda): você é o Stazi, um personagem de desenho animado, falado como um dublador brasileiro de animação: " +
+  "voz caricata, sorridente, expressiva, com entonação exagerada e divertida, ritmo vivo e variação grande de altura. Mesmo nas explicações sérias, mantenha o brilho no som. " +
+  "Se você estiver no Durão, faça a bronca como um desenho: indignação exagerada e cômica, brava com a RESPOSTA e nunca com a pessoa; " +
+  "se estiver no Tranquilo, o exagero é gentil e bem-humorado, sem pressa.";
+
+/** Camada de atuação da voz ao vivo do personagem da personalidade (vazia quando o personagem não tem uma). */
+export const voiceActingLayer = (personalityId: string): string => (characterOf(personalityId) === "stazi" ? STAZI_ACTING : "");
 
 /** Perfil desta conversa, com os travamentos do servidor (painel, maioridade do Termo, gritos e palavrões do aluno). */
 export function resolveProfile(input: ProfileInput): ResolvedProfile {

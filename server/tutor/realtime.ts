@@ -34,7 +34,7 @@ import { realKey } from "./speech";
 import { REALTIME_TOOLS } from "./tools";
 import { selarBilhete } from "../vozPonte/bilhete";
 import { planPersonaTurn } from "./voiceReactions";
-import { personaPromptLayer } from "./personalityEngine";
+import { personaPromptLayer, voiceActingLayer } from "./personalityEngine";
 import { AI_OFF, assertAiAllowed, rateHit } from "./limits";
 import { aiAllowed } from "../contentHub/ai/registry";
 import { estimateCost, voiceTimeCost } from "./costs";
@@ -239,7 +239,8 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
   // na voz o estado muda pelas ferramentas ou pelo servidor (o "tom" volta junto); o teto de palavrão da sessão é o do professor
   const profanity = profanityLevel(ctx.personality.params, ctx.session.settings.profanity ?? "off", ctx.config.max_profanity);
   const mood = { label: state.mood, text: stateLayer(ctx.personality.id, state, engine, profanity), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado (ela muda ao longo da conversa: siga o tom que o sistema devolver)", strong: li >= 3 };
-  const persona = personalityLayer(ctx.personality, effectiveParams(ctx.personality.params, 3, ctx.session.settings), profanity, 3, null, mood);
+  const acting = voiceActingLayer(ctx.personality.id);
+  const persona = [personalityLayer(ctx.personality, effectiveParams(ctx.personality.params, 3, ctx.session.settings), profanity, 3, null, mood), acting].filter(Boolean).join("\n");
   // continuidade em algumas aberturas, não em todas (sem sorteio no modo determinístico)
   const continuity = deterministicTutor() ? true : createHash("sha256").update(`${sessionId}:abertura`).digest()[0] % 2 === 0;
   const voice = voiceFor(settings, ctx.personality);
@@ -322,7 +323,7 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
         // não tiver as funções do motor, fica a camada de sempre
         let personaVoz = persona;
         try {
-          personaVoz = personaPromptLayer(await planPersonaTurn(deps, { userId, personality: ctx.personality.id, provider: "gemini_live", memory: null }));
+          personaVoz = [personaPromptLayer(await planPersonaTurn(deps, { userId, personality: ctx.personality.id, provider: "gemini_live", memory: null })), acting].filter(Boolean).join("\n");
         } catch (error) {
           deps.log?.(`[tutor] voz: Personality Engine indisponível, usando a persona de sempre: ${(error as Error).message.slice(0, 120)}`);
         }
