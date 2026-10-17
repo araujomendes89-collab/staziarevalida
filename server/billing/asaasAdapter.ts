@@ -21,6 +21,7 @@
  *     devolução parcial de cartão só a partir do dia seguinte ao pagamento.
  */
 import crypto from "crypto";
+import { OBSERVACAO_PADRAO } from "./nota";
 import {
   BillingSignatureError,
   ProviderError,
@@ -49,6 +50,8 @@ export interface AsaasNfseConfig {
   serviceCode?: string;
   serviceName?: string;
   nbsCode?: string;
+  /** Observação impressa na nota (padrão: OBSERVACAO_PADRAO). */
+  observations?: string;
   iss?: number;
   retainIss?: boolean;
 }
@@ -154,7 +157,7 @@ export function createAsaasProvider(env: NodeJS.ProcessEnv = process.env, fetchI
       webhookToken,
       returnUrls: env.ASAAS_RETURN_URL === "1",
       nfse: (serviceId || serviceCode) && serviceName
-        ? { serviceId, serviceCode, serviceName, nbsCode, iss: Number(env.ASAAS_NFSE_ISS || 0), retainIss: env.ASAAS_NFSE_RETAIN_ISS === "1" }
+        ? { serviceId, serviceCode, serviceName, nbsCode, observations: env.ASAAS_NFSE_OBS?.trim() || undefined, iss: Number(env.ASAAS_NFSE_ISS || 0), retainIss: env.ASAAS_NFSE_RETAIN_ISS === "1" }
         : undefined,
       fetchImpl,
     },
@@ -326,7 +329,7 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
       await call("POST", "/invoices", {
         payment: charge.id,
         serviceDescription: description.slice(0, 250),
-        observations: description.slice(0, 250),
+        observations: (nfse.observations || OBSERVACAO_PADRAO).slice(0, 250),
         value: reais(charge.amountCents),
         deductions: 0,
         effectiveDate: charge.paidAt ? charge.paidAt.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),

@@ -7,6 +7,7 @@
  * (o banco recusa valor diferente do pedido) e só então libera o plano ou o extra.
  */
 import type { ContentDb, Identity } from "../contentHub/infra";
+import { descricaoDaNota } from "./nota";
 import { brtDate, cleanDocument, endOfBrtDay, periodEndFor } from "./period";
 import { ProviderError, type PaymentProvider, type ProviderCharge, type ProviderNotice } from "./provider";
 
@@ -508,7 +509,7 @@ export function createBilling(deps: BillingDeps) {
         await svc("ch_worker_billing_recibo_salvar", { p_provider: p.name, p_payment: charge.id, p_url: charge.receiptUrl }).catch((e) => log(`[billing] recibo não salvo (${charge.id}): ${(e as Error).message}`));
       }
       if (!r?.repetido && p.afterPaid) {
-        await p.afterPaid(charge, tipo === "plano" ? `Acesso à plataforma StaziaMed Revalida - plano ${codigo.toUpperCase()} ${ciclo}` : `StaziaMed Revalida - pacote extra de IA (${codigo})`)
+        await p.afterPaid(charge, descricaoDaNota({ tipo, codigo, ciclo, nome: pedido?.nome }))
           .catch((e) => log(`[billing] nota fiscal não pedida (${charge.id}): ${(e as Error).message}`));
       }
     } else if (charge.status === "failed" || charge.status === "overdue" || (attemptFailed && charge.status === "pending")) {

@@ -10,6 +10,7 @@ import fs from "fs";
 import path from "path";
 import { asaasProvider, asaasStatus, createAsaasProvider, toProviderCharge, webhookTokenMatches } from "../../server/billing/asaasAdapter";
 import { BillingSignatureError, ProviderError } from "../../server/billing/provider";
+import { descricaoDaNota } from "../../server/billing/nota";
 
 const FIX = path.join(__dirname, "fixtures/asaas-sandbox");
 const fx = (name: string) => JSON.parse(fs.readFileSync(path.join(FIX, `${name}.json`), "utf8"));
@@ -189,12 +190,19 @@ describe("chamadas à API", () => {
     await p.afterPaid!({ ...pago, id: "pay_novo" }, "Acesso à plataforma StaziaMed Revalida - plano PRO trimestral");
     const posts = calls.filter((c) => c.method === "POST");
     expect(posts).toHaveLength(1);
-    expect(posts[0].body).toMatchObject({ payment: "pay_novo", municipalServiceCode: "080201", value: 24.9, effectiveDate: "2026-10-17", taxes: { iss: 2.01, nbsCode: "122051900", pis: 0, cofins: 0 } });
+    expect(posts[0].body).toMatchObject({ payment: "pay_novo", municipalServiceCode: "080201", value: 24.9, effectiveDate: "2026-10-17", taxes: { iss: 2.01, nbsCode: "122051900", pis: 0, cofins: 0, retainIss: false } });
+    expect(posts[0].body.observations).toContain("Simples Nacional (Anexo III)");
     expect(posts[0].body.municipalServiceId).toBeUndefined();
     // sem configuração: nenhuma nota pedida por aqui
     const { f: f2, calls: c2 } = fakeFetch([]);
     await createAsaasProvider({ ASAAS_API_KEY: KEY, ASAAS_WEBHOOK_TOKEN: TOKEN }, f2)!.afterPaid!(pago, "x");
     expect(c2).toHaveLength(0);
+  });
+
+  it("texto da nota (decisão do dono: curso preparatório para o Revalida)", () => {
+    expect(descricaoDaNota({ tipo: "plano", codigo: "pro", ciclo: "trimestral" })).toBe("Assinatura de plataforma de preparação para o Revalida – plano PRO (trimestral)");
+    expect(descricaoDaNota({ tipo: "plano", codigo: "pro", ciclo: "mensal" })).toBe("Assinatura de plataforma de preparação para o Revalida – plano PRO (mensal)");
+    expect(descricaoDaNota({ tipo: "extra", codigo: "boost", ciclo: "avulso", nome: "IA Boost" })).toBe("Pacote extra de IA (IA Boost) – plataforma de preparação para o Revalida");
   });
 
   it("cancelar cobrança só se ainda não paga", async () => {
