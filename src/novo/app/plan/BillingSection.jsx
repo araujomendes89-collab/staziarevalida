@@ -19,7 +19,7 @@ const CICLO = { mensal: "Mensal", trimestral: "Trimestral" };
 const METODOS = [
   { id: "pix", cap: "pix", title: "Pix", icon: "qr-code", note: "Paga na hora pelo app do banco. Na renovação, um Pix novo chega 7 dias antes do vencimento." },
   { id: "cartao", cap: "card", title: "Cartão de crédito", icon: "credit-card", note: "À vista, sem parcelas. Renova sozinho no dia do vencimento." },
-  { id: "debito", cap: "debit", title: "Cartão de débito", icon: "credit-card", note: "À vista. Na renovação, você paga de novo (Pix, crédito ou débito)." },
+  { id: "debito", cap: "debit", title: "Cartão de débito", icon: "credit-card", note: "À vista. Não renova sozinho: na renovação chega um Pix 7 dias antes." },
 ];
 /** Formas de pagamento desta compra: débito só fora do plano mensal (que renova sozinho no crédito). */
 export const metodosDaCompra = (overview, alvo) =>
@@ -67,7 +67,7 @@ export function Resumo({ alvo, metodo, cpf }) {
       metodo === "pix"
         ? `Sem débito automático: um Pix novo chega 7 dias antes de ${proxima}.`
         : metodo === "debito"
-          ? `Não renova sozinho: antes de ${proxima} avisamos para você pagar de novo.`
+          ? `Não renova sozinho no débito: um Pix da renovação chega 7 dias antes de ${proxima} (você pode trocar para cartão de crédito em Minha conta).`
           : `Renova sozinho no cartão em ${proxima}${meses === 3 ? " (a cada 3 meses)" : " (todo mês)"}.`,
     ]);
   }
