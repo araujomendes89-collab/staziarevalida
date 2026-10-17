@@ -17,6 +17,9 @@ import { TutorQuota } from "../TutorQuota.jsx";
 export const NEXUS_POLICY_NOTICE =
   "Interações com recursos de IA e voz podem ser processadas para responder, sintetizar áudio e adaptar a experiência. Fornecedores de IA recebem somente o necessário para executar a solicitação.";
 
+/** Quanto a escolha fica parada antes de a entrada pedir a abertura preparada (toques seguidos não pedem nada). */
+export const PREPARE_DELAY_MS = 600;
+
 /** Modos na ordem da entrada (ids do banco). */
 export const NEXUS_MODES = ["livre", "questao", "erros", "perguntas"];
 
@@ -37,7 +40,8 @@ const DURAS = new Set(Object.values(PERSONALIDADES).filter((p) => p.duro).map((p
 
 // `onPersonagem(id)`: grava o personagem no perfil (app_tutor_set_character) e devolve as preferências; sem ele, fica só no aparelho.
 // `conta`: o id da conta logada; o toque que o perfil ainda não confirmou fica guardado só para ela (sem conta, nada fica pendente).
-export function NexusLobby({ status, nexus, request = null, busy = false, error = null, onStart, onHistory, onListen, onClose = null, duronaSettings = null, onPersonagem = null, conta = null }) {
+// `onPrepare(personalityId, mode)`: a entrada avisa a escolha atual (depois de um instante parada) para o servidor já preparar a abertura.
+export function NexusLobby({ status, nexus, request = null, busy = false, error = null, onStart, onHistory, onListen, onClose = null, duronaSettings = null, onPersonagem = null, conta = null, onPrepare = null }) {
   const professors = status.personalities ?? [];
   // o perfil pode trocar a personalidade preferida quando o aluno troca de personagem (vai para a calma do personagem novo)
   const [prefPerfil, setPrefPerfil] = React.useState(null);
@@ -85,6 +89,16 @@ export function NexusLobby({ status, nexus, request = null, busy = false, error 
     salvarNoPerfil(id);
   };
   const chosen = professors.find((p) => p.id === choice);
+  // abertura preparada (17/10): a escolha que ficou parada por um instante vai para o servidor preparar a abertura dela (toques
+  // seguidos não pedem nada; o servidor ainda limita por aluno e não prepara duas vezes a mesma escolha)
+  const modoAtual = request?.mode ?? mode;
+  const prepareRef = React.useRef(onPrepare);
+  prepareRef.current = onPrepare;
+  React.useEffect(() => {
+    if (!chosen || busy || !prepareRef.current) return undefined;
+    const t = setTimeout(() => prepareRef.current?.(chosen.id, modoAtual), PREPARE_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [chosen?.id, modoAtual, busy]); // eslint-disable-line react-hooks/exhaustive-deps
   const line = voiceLine(nexus, choice);
   const quem = PERSONAGENS[personagem];
   // uma voz por personagem: o "Ouvir" toca a voz do Stazi ou da Stazia (a amostra vale para as duas personalidades dele)

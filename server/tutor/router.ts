@@ -3,6 +3,7 @@
  * resposta e grava. Leituras (conversas, preferências, relatório) vão direto pelas funções app_tutor_* com o RLS valendo.
  */
 import express, { type NextFunction, type Request, type Response } from "express";
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { Identity } from "../contentHub/infra";
 import { TUTOR_CONSENT_PENDING, TutorError, consentError, resolveTutorProvider, tutorTurn, type TutorDeps } from "./engine";
 import { speechProviderFor, tutorSpeech } from "./speech";
@@ -10,12 +11,11 @@ import { endVoice, guardarAberturaDaPonte, purgeVoiceTranscripts, recordVoiceMet
 import { runTutorTool, TOOL_NAMES } from "./tools";
 import { limparRetornoFerramenta } from "./sigilo";
 import { delegateVoice, sayVoice, type Letter } from "./delegate";
-import { naturalOpening, OPENING_TIMEOUT_MS, OPENING_WAIT_MS } from "./opening";
+import { naturalOpening, OPENING_TIMEOUT_MS, OPENING_WAIT_MS, prepararAbertura } from "./opening";
 import { tutorSettings } from "./settings";
 import { questionHint, questionHintEnabled } from "./questionHint";
 import { geminiVoiceConfig, planProviders, vertexPonteConfig } from "./voiceProviders";
 import { relatorioConfere } from "../vozPonte/bilhete";
-import { cronAutorizado } from "../seguranca/protecoes";
 import { planPersonaTurn } from "./voiceReactions";
 import { personaStateLayer } from "./personalityEngine";
 import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
@@ -35,6 +35,16 @@ const failTutor = (res: Response, error: TutorError) => {
   return res.status(error.status).json({ error: error.message, ...(extra.code ? { code: extra.code } : {}), ...(extra.entitlement ? { entitlement: extra.entitlement } : {}) });
 };
 
+/**
+ * O segredo da tarefa agendada confere em tempo constante (auditoria de segurança de 17/10: o `!==` responde mais rápido quanto
+ * antes a diferença aparece). Compara os resumos SHA-256, que têm sempre o mesmo tamanho.
+ */
+export function segredoDoCronConfere(authorization: string | undefined, secret: string | undefined): boolean {
+  if (!secret || typeof authorization !== "string") return false;
+  const resumo = (t: string) => createHash("sha256").update(t, "utf8").digest();
+  return timingSafeEqual(resumo(authorization), resumo(`Bearer ${secret}`));
+}
+
 export function createTutorRouter(deps: TutorDeps | null, pending: string | null = null) {
   const router = express.Router();
 
@@ -43,8 +53,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
    * varre é o intervalo de startVoiceSweeper; na Vercel, além desta tarefa, toda rota de voz varre antes de responder.
    */
   router.get("/voice/sweep", async (req, res) => {
-    // segredo do cron comparado em tempo constante (auditoria de 17/10)
-    if (!deps || !cronAutorizado(req.headers.authorization, process.env.CRON_SECRET)) return fail(res, 401, "Não autorizado.");
+    if (!deps || !segredoDoCronConfere(req.headers.authorization, process.env.CRON_SECRET)) return fail(res, 401, "Não autorizado.");
     try {
       // a tarefa diária também aplica a retenção das transcrições da voz (painel)
       res.json({ expired: await sweepVoice(deps), purged_transcripts: await purgeVoiceTranscripts(deps).catch(() => 0) });
@@ -66,12 +75,14 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       if (!uuid.test(String(b.vc ?? "")) || !uuid.test(String(b.u ?? "")) || Math.abs(Date.now() - Number(b.t ?? 0)) > 10 * 60_000) return fail(res, 400, "Relatório inválido.");
       const v = await voiceCall(deps, String(b.u), String(b.vc));
       const n = (x: unknown) => (Number.isFinite(Number(x)) ? Math.max(0, Math.round(Number(x))) : 0);
-      await deps.db.service("ch_worker_tutor_ledger", { p_user: b.u, p_session_id: v.session_id, p_entry: {
+      // o mesmo relatório assinado chegando de novo (dentro dos 10 min de validade) não conta o custo outra vez (auditoria de 17/10)
+      const relatorio = createHash("sha256").update(corpo, "utf8").digest("hex").slice(0, 40);
+      const gravou = await deps.db.service<boolean>("ch_worker_tutor_ponte_uso", { p_user: b.u, p_session_id: v.session_id, p_hash: relatorio, p_entry: {
         feature: "tutor_voice_gemini", provider: "google-vertex", model: String(b.modelo ?? "").slice(0, 60),
         input_text_tokens: n(b.uso?.textoEntrada), input_audio_tokens: n(b.uso?.audioEntrada), output_text_tokens: n(b.uso?.textoSaida), output_audio_tokens: n(b.uso?.audioSaida),
-        duration_seconds: n(b.duracao_s), estimated_cost_usd: Math.max(0, Number(b.custo_usd) || 0), meta: { voice_call: b.vc, via: "vertex-ponte", por: "tokens" },
+        duration_seconds: n(b.duracao_s), estimated_cost_usd: Math.max(0, Number(b.custo_usd) || 0), meta: { voice_call: b.vc, via: "vertex-ponte", por: "tokens", relatorio },
       } });
-      res.json({ ok: true });
+      res.json(gravou ? { ok: true } : { ok: true, repetido: true });
     } catch (error) {
       fail(res, 500, shown(error));
     }
@@ -285,6 +296,28 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     const sessionId = String(req.body?.session_id ?? "");
     if (!/^[0-9a-f-]{36}$/i.test(sessionId)) return fail(res, 400, "Conversa inválida.");
     res.json({ opening: await naturalOpening(deps!, req.user!.id, sessionId, req.body?.rapido === true ? OPENING_WAIT_MS : OPENING_TIMEOUT_MS) });
+  });
+
+  /**
+   * Abertura PREPARADA (17/10): a entrada do Tutor pede a abertura da escolha do aluno (professor e modo, e o tema/questão quando
+   * outra tela abriu o Tutor) antes de ele tocar em "Começar". body: os argumentos de app_tutor_start sem o "p_" ({ personality,
+   * mode, topic?, question_id?, context? }). O banco reserva (limite 'tutor_opening', uma por escolha, teto do dia) e o custo é da
+   * casa. Devolve { ok } (true = ficou pronta); o app não espera a resposta.
+   */
+  router.post("/opening/prepare", async (req: Authed, res) => {
+    const b = req.body ?? {};
+    const texto = (x: unknown, max: number) => (typeof x === "string" && x.trim() ? x.trim().slice(0, max) : null);
+    const personality = texto(b.personality, 40);
+    const mode = texto(b.mode, 20);
+    if (!personality || !mode || !/^[a-z_]+$/.test(personality) || !/^[a-z_]+$/.test(mode)) return fail(res, 400, "Escolha inválida.");
+    const questionId = texto(b.question_id, 80);
+    if (questionId && !/^[A-Za-z0-9_.:-]{3,80}$/.test(questionId)) return fail(res, 400, "Questão inválida.");
+    const c = b.context && typeof b.context === "object" ? b.context : null;
+    const ok = await prepararAbertura(deps!, req.user!.id, {
+      personality, mode, topic: texto(b.topic, 160), question_id: questionId,
+      context: c ? { type: texto(c.type, 20), id: texto(c.id, 200), label: texto(c.label, 160), area: texto(c.area, 40) } : null,
+    });
+    res.json({ ok });
   });
 
   /**

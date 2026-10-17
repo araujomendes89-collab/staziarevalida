@@ -49,6 +49,22 @@ export async function tutorOpening(backend, sessionId, { rapido = false } = {}) 
   }
 }
 
+/**
+ * Abertura PREPARADA (17/10): enquanto o aluno escolhe professor e modo na entrada, o servidor já cria a abertura daquela escolha;
+ * quando a conversa nasce com a mesma escolha, ela entra na hora. `args` = os argumentos de app_tutor_start (startArgs). Ninguém
+ * espera a resposta e nunca lança (sem ela, a abertura é criada na hora, como antes). O custo é da casa: não gasta a cota do aluno.
+ */
+export async function tutorPrepareOpening(backend, args) {
+  try {
+    if (!args?.p_personality || !args?.p_mode) return false;
+    const body = { personality: args.p_personality, mode: args.p_mode, topic: args.p_topic ?? null, question_id: args.p_question_id ?? null, context: args.p_context ?? null };
+    const r = await parse(await fetch(`${BASE}/opening/prepare`, { method: "POST", headers: await headers(backend, { "Content-Type": "application/json" }), body: JSON.stringify(body) }));
+    return r?.ok === true;
+  } catch {
+    return false;
+  }
+}
+
 /** A conversa com a fala de abertura (ou de passagem) trocada pela criada agora; sem troca, a mesma conversa. */
 export const withOpening = (session, opening) =>
   opening && Array.isArray(session?.messages)

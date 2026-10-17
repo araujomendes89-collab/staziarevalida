@@ -274,6 +274,10 @@ describe("Gemini pelo VERTEX (ponte no Cloud Run, decisão do dono de 16/10/2026
       const enviar = (assinatura: string) => fetch(`${base}/voice/ponte-uso`, { method: "POST", headers: { "Content-Type": "application/json", "X-Stazia-Ponte-Assinatura": assinatura }, body: corpo });
       expect((await enviar("0".repeat(64))).status).toBe(401);
       expect((await enviar(assinarRelatorio(corpo, SEGREDO))).status).toBe(200);
+      // o mesmo relatório assinado de novo (dentro da validade) não conta o custo outra vez (auditoria de 17/10)
+      const repetido = await enviar(assinarRelatorio(corpo, SEGREDO));
+      expect(repetido.status).toBe(200);
+      expect(await repetido.json()).toEqual({ ok: true, repetido: true });
       await end(r.body.voice_call_id);
       // pelo Vertex o custo é o dos tokens relatados pela ponte (o encerramento não lança custo por tempo)
       const linhas = await sql(`select provider, input_text_tokens, output_audio_tokens, estimated_cost_usd::float as custo, meta ->> 'via' as via from public.ai_usage_ledger where user_id = $1 and meta ->> 'voice_call' = $2 and feature = 'tutor_voice_gemini'`, [ALUNA, r.body.voice_call_id]);

@@ -46,6 +46,8 @@ const OLHADA = /\b(da uma olhada|da uma lida)\b/;
 const PASSADO = /\b(de novo|outra vez|novamente|mais uma vez|da ultima vez|ultima conversa|sempre|ontem|de volta|voltou)\b/;
 const AGORA = /(?<![a-z])agora,?\s+(?:me\s+)?(?:diz|diga|responde|responda|fala|fale|conta|conte|explica|explique|mostra|mostre)(?![a-z])/;
 const RESERVA_DADO = "esse dado eu nao tenho confirmado aqui";
+/** Preço oficial do Claude (US$ por 1 milhão de tokens, sem cache), o mesmo da bancada. */
+const PRECO_CLAUDE = { "claude-sonnet-5-5": { entrada: 2, saida: 10 }, "claude-haiku-5-5": { entrada: 0.1, saida: 0.5 }, "claude-opus-5-5": { entrada: 4, saida: 20 } };
 
 const tri = (t, skip) => { const w = norm(t).split(" ").filter((x) => x && !skip.has(x)); const s = new Set(); for (let i = 0; i + 3 <= w.length; i++) s.add(w.slice(i, i + 3).join(" ")); return s; };
 const temaSkip = new Set(TEMAS.flatMap((t) => norm(t).split(" ")));
@@ -115,6 +117,33 @@ function medir(regs, pid) {
     estrutura_repetida_pares_pct: pct(paresEstr, paresTot), estrutura_repetida_mesmo_aluno: `${paresAluno}/${paresAlunoTot}`,
     passado_inventado_na_primeira_conversa: `${passadoInventado}/${primeiras}`,
     abertura_ms: ms.length ? { p50: q(ms.map((x) => x.ms), 0.5), p95: q(ms.map((x) => x.ms), 0.95), max: Math.max(...ms.map((x) => x.ms)), pedidos: ms.length, trocou_pct: pct(ms.filter((x) => x.trocou).length, ms.length) } : null,
+    // 17/10: só a ABERTURA (sem a passagem), de onde veio (pronta = preparada na entrada; na_hora; reserva) e o tempo de espera
+    so_abertura: (() => {
+      const ab = ms.filter((x) => x.tipo === "abertura");
+      if (!ab.length) return null;
+      const origem = ab.reduce((o, x) => ({ ...o, [x.origem ?? (x.trocou ? "na_hora" : "reserva")]: (o[x.origem ?? (x.trocou ? "na_hora" : "reserva")] ?? 0) + 1 }), {});
+      return { pedidos: ab.length, da_ia_pct: pct(ab.filter((x) => x.trocou).length, ab.length), origem, ms_p50: q(ab.map((x) => x.ms), 0.5), ms_p95: q(ab.map((x) => x.ms), 0.95), ms_max: Math.max(...ab.map((x) => x.ms)) };
+    })(),
+    prontas: fixas.filter((x) => x.origem === "pronta").length,
+    primeira_resposta_ms: (() => { const xs = convs.map((c) => c.respostas_ms?.[0]).filter((x) => Number.isFinite(x)); return xs.length ? { p50: q(xs, 0.5), p95: q(xs, 0.95), max: Math.max(...xs), conversas: xs.length } : null; })(),
+    resposta_ms: (() => { const xs = convs.flatMap((c) => c.respostas_ms ?? []); return xs.length ? { p50: q(xs, 0.5), p95: q(xs, 0.95), max: Math.max(...xs), respostas: xs.length } : null; })(),
+    claude: (() => {
+      const cs = convs.map((c) => c.claude).filter(Boolean);
+      if (!cs.length) return null;
+      const soma = (k) => cs.reduce((a, c) => a + (c[k] ?? 0), 0);
+      const entrada = soma("sem_cache") + soma("gravado") + soma("lido");
+      const usdTot = soma("usd");
+      const abMs = cs.flatMap((c) => c.abertura?.ms ?? []);
+      return {
+        modelo: convs[0].modelo_professor, chamadas: soma("chamadas"), tokens_entrada: entrada, sem_cache: soma("sem_cache"), gravado_no_cache: soma("gravado"), lido_do_cache: soma("lido"),
+        lido_do_cache_pct: pct(soma("lido"), entrada), saida: soma("saida"), entrada_por_chamada: Math.round(entrada / Math.max(1, soma("chamadas"))), saida_por_chamada: Math.round(soma("saida") / Math.max(1, soma("chamadas"))),
+        usd_total: Math.round(usdTot * 10000) / 10000, usd_por_conversa: Math.round((usdTot / cs.length) * 10000) / 10000,
+        // o mesmo volume sem cache nenhum (tudo como entrada normal), para ver quanto o cache poupou
+        usd_por_conversa_sem_cache: (() => { const pr = PRECO_CLAUDE[convs[0].modelo_professor] ?? PRECO_CLAUDE["claude-sonnet-5-5"]; return Math.round(((entrada * pr.entrada + soma("saida") * pr.saida) / 1e6 / cs.length) * 10000) / 10000; })(),
+        abertura: { chamadas: cs.reduce((a, c) => a + (c.abertura?.chamadas ?? 0), 0), usd: Math.round(cs.reduce((a, c) => a + (c.abertura?.usd ?? 0), 0) * 10000) / 10000, ms_p50: q(abMs, 0.5), ms_p95: q(abMs, 0.95) },
+        chamada_ms: (() => { const xs = cs.flatMap((c) => c.ms ?? []); return { p50: q(xs, 0.5), p95: q(xs, 0.95), max: xs.length ? Math.max(...xs) : null }; })(),
+      };
+    })(),
     tokens_por_chamada_do_professor: prof.n ? Math.round(prof.e / prof.n) : 0,
     custo_medio_usd: convs.length ? Math.round((10000 * convs.reduce((s, c) => s + c.custo.usd, 0)) / convs.length) / 10000 : 0,
   };
@@ -174,6 +203,10 @@ for (const pasta of PASTAS) {
     const r = out.pastas[pasta].por_personalidade[pid];
     console.log(`${r.nome}: apelidos ${r.apelidos_no_texto_final} (barradas por ataque ${r.respostas_barradas_por_ataque_pessoal}) · palavras ${r.palavras_por_resposta} · marca Tranquilo ${r.marca_tranquilo_pct}% · marca própria ${r.marca_propria_pct}% · kkkk ${r.kkkk_pct}% · agora+verbo ${r.agora_mais_verbo_pct}% · humor fora de neutral ${r.humor_antes_da_fala.fora_de_neutral_pct}%/${r.humor_depois_da_fala.fora_de_neutral_pct}% · reserva dado ${r.reserva_dado_sem_fonte_identica}`);
     console.log(`   aberturas/passagens IA ${r.criadas_pela_ia}/${r.aberturas_e_passagens} (preparadas ${r.preparadas}) · período ${r.cita_periodo_pct}% · meta ${r.meta_ou_gabaritar} · humor anunciado ${r.humor_anunciado.length} · olhada ${r.da_uma_olhada} · estrutura ${r.estrutura_repetida_pares_pct}% (mesmo aluno ${r.estrutura_repetida_mesmo_aluno}) · passado inventado ${r.passado_inventado_na_primeira_conversa} · abertura ${JSON.stringify(r.abertura_ms)} · tokens/chamada ${r.tokens_por_chamada_do_professor} · US$/conversa ${r.custo_medio_usd}`);
+  }
+  for (const pid of pids) {
+    const r = out.pastas[pasta].por_personalidade[pid];
+    if (r.so_abertura || r.primeira_resposta_ms || r.claude) console.log(`   ${r.nome} (17/10): abertura ${JSON.stringify(r.so_abertura)} · 1ª resposta ${JSON.stringify(r.primeira_resposta_ms)} · respostas ${JSON.stringify(r.resposta_ms)}${r.claude ? ` · claude ${JSON.stringify(r.claude)}` : ""}`);
   }
   if (out.pastas[pasta].juiz_cego) console.log(`   juiz cego: ${JSON.stringify(out.pastas[pasta].juiz_cego)}`);
 }
