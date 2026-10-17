@@ -20,7 +20,7 @@ export const CENAS = [
     pose: "estudando",
     titulo: () => "Todo dia, um Plano de Hoje",
     texto: () =>
-      "Você conta quando é a prova e quanto tempo tem por dia. O app monta as tarefas do dia: praticar questões, rever o que errou e estudar o que falta.",
+      "Você conta quanto tempo tem por dia e o app monta as tarefas: praticar questões e rever o que errou. Depois do nivelamento, ele começa pela área que mais precisa.",
     itens: [
       ["list-checks", "Plano de Hoje"],
       ["file-question", "Praticar"],
@@ -105,6 +105,10 @@ export const PASSOS_TEXTO = {
   lembretes: { titulo: "Quer lembretes para estudar?" },
 };
 
+/** Os jeitos firmes (Durão, Durona) o próprio Tutor confirma na primeira conversa; aqui fica só a preferência. */
+export const JEITOS_FIRMES = ["durao", "durona"];
+export const AVISO_JEITO_FIRME = "O jeito firme é confirmado com você na primeira conversa com o Tutor. Até lá, ele começa no jeito calmo.";
+
 export const AVISO_LEMBRETES =
   "Por enquanto guardamos só a sua preferência: o app ainda não envia lembretes. Quando passar a enviar, ele vai usar o horário e os dias que você escolheu.";
 
@@ -164,7 +168,7 @@ export const TOUR = [
     // o cartão do Início chega depois dos dados: espera um pouco por ele antes de usar o menu
     esperarPreferido: true,
     titulo: "Seu Plano de Hoje",
-    texto: "Comece sempre por aqui: as tarefas do dia, montadas com o seu tempo, a sua prova e o seu nível.",
+    texto: "Comece sempre por aqui: as tarefas do dia, montadas com o seu tempo por dia e, depois do nivelamento, com o seu nível.",
   },
   {
     id: "questoes",

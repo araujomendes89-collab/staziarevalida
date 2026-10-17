@@ -19,7 +19,8 @@ export const ordem = (passo) => ORDEM.indexOf(passo);
 /** Passos que este aluno vê, na ordem. O nivelamento só entra para quem ele cabe e ainda não terminou. */
 export function passosVisiveis(estado) {
   const niv = estado?.nivelamento;
-  const comNivelamento = Boolean(niv?.cabe) && !niv?.concluido;
+  // já decidido no onboarding (feito, pulado ou não se aplica): não volta a aparecer ao ajustar as respostas
+  const comNivelamento = Boolean(niv?.cabe) && !niv?.concluido && !estado?.etapas?.nivelamento;
   return ORDEM.filter((p) => p !== "fim" && (p !== "nivelamento" || comNivelamento));
 }
 

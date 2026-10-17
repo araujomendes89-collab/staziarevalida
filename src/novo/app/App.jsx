@@ -156,7 +156,7 @@ function Screen() {
   if (route === "sessao") return <TutorDockProvider go={go}><PracticeSession go={go} /></TutorDockProvider>;
   if (route === "nivelamento" && query.get("etapa") === "questoes") return <Nivelamento modo="rota" go={go} />;
   // "Refazer apresentação" (Conta → Ajuda) e o convite/Primeiros passos do Início: o onboarding em tela cheia, sem obrigar
-  if (route === "apresentacao") return <Onboarding modo="refazer" inicio={query.get("inicio")} go={go} />;
+  if (route === "apresentacao") return boot.onboarding ? <Onboarding modo="refazer" inicio={query.get("inicio")} go={go} /> : <Navigate to="/" replace />;
   // a tela de uma estação abre sem a moldura: o aviso de "em reconstrução" entra aqui, antes dela
   if (route === "estacao")
     return (

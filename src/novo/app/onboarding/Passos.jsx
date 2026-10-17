@@ -7,9 +7,10 @@ import { AREAS } from "../practice/format.js";
 import { AREA_ART } from "../../ds/area-art/index.js";
 import { MINUTES } from "../home/TodayPlan.jsx";
 import { Personagem, NOMES } from "./Personagem.jsx";
-import { AVISO_LEMBRETES, DIAS, DIAS_PADRAO, JEITOS, JEITOS_TUTOR, NOME_FASE, PASSOS_TEXTO } from "./textos.js";
+import { AVISO_JEITO_FIRME, AVISO_LEMBRETES, DIAS, DIAS_PADRAO, JEITOS, JEITOS_FIRMES, JEITOS_TUTOR, NOME_FASE, PASSOS_TEXTO } from "./textos.js";
 
-const hojeISO = () => new Date().toLocaleDateString("en-CA");
+// "hoje" no calendário de Brasília, o mesmo do banco (today_br), para o aluno no exterior não ser barrado pelo fuso dele
+const hojeISO = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const dataBR = (iso) => (iso ? String(iso).slice(0, 10).split("-").reverse().join("/") : "");
 
 /** Cartão de escolha (rádio ou caixa) com o campo nativo dentro: o cartão inteiro é o rótulo. */
@@ -43,7 +44,7 @@ function Grupo({ legenda, children, className = "" }) {
 
 // ---------------------------------------------------------------- 1. fase (a pergunta muda conforme o acesso decidido no servidor)
 export function PassoFase({ estado, valor, setValor }) {
-  const a = estado.acesso || {};
+  const a = estado?.acesso || {};
   const fase2 = Boolean(a.fase2_aberta);
   const fimTeste = a.teste_fim ? dataBR(a.teste_fim) : null;
   const modo = a.modo_fase;
@@ -114,14 +115,14 @@ export function PassoFase({ estado, valor, setValor }) {
   );
 }
 export const faseValida = (estado, v) => {
-  const m = estado.acesso?.modo_fase;
+  const m = estado?.acesso?.modo_fase;
   if (m === "escolher_teste") return Boolean(v.escolha);
   if (m === "elite") return Boolean(v.prioridade);
   return true;
 };
 export const faseInicial = (estado) => {
-  const p = estado.preferencias || {};
-  const m = estado.acesso?.modo_fase;
+  const p = estado?.preferencias || {};
+  const m = estado?.acesso?.modo_fase;
   if (m === "elite") return { prioridade: p.prioridade_fase || "teoria" };
   if (m === "escolher_teste") return { escolha: p.fase_escolhida && (p.fase_escolhida === "teoria" || estado.acesso?.fase2_aberta) ? p.fase_escolhida : "teoria" };
   return {};
@@ -254,6 +255,12 @@ export function PassoTutor({ valor, setValor, mobile }) {
               <Opcao key={j.id} nome="personalidade" valor={j.id} marcado={valor.personalidade === j.id} onChange={() => setValor({ ...valor, personalidade: j.id })} titulo={j.nome} texto={j.texto} />
             ))}
           </div>
+          {JEITOS_FIRMES.includes(valor.personalidade) ? (
+            <p className="ob-nota" style={{ marginTop: 12 }}>
+              <Icon name="info" size={16} />
+              {AVISO_JEITO_FIRME}
+            </p>
+          ) : null}
         </fieldset>
       ) : null}
     </>

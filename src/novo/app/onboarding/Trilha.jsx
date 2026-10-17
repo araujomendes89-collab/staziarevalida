@@ -8,7 +8,7 @@ import { areaLabel } from "../practice/format.js";
 import { KIND_LABEL, reasonText } from "../home/plan.js";
 import { TaskIcon, taskTile } from "../home/parts.jsx";
 import { MINUTES } from "../home/TodayPlan.jsx";
-import { DIAS, JEITOS, JEITOS_TUTOR, NOME_FASE } from "./textos.js";
+import { DIAS, JEITOS, JEITOS_FIRMES, JEITOS_TUTOR, NOME_FASE } from "./textos.js";
 import { NOMES } from "./Personagem.jsx";
 
 const TEMPO = Object.fromEntries(MINUTES.map(([v, l]) => [Number(v), l]));
@@ -41,7 +41,10 @@ export function Trilha({ estado, onPronto, tituloRef, erro, setErro }) {
   }, [backend]);
 
   const p = estado.preferencias || {};
-  const tutor = p.tutor_personagem ? `${NOMES[p.tutor_personagem]} · ${JEITOS_TUTOR[p.tutor_personagem]?.find((j) => j.id === p.tutor_personalidade)?.nome ?? ""}` : null;
+  const jeitoTutor = JEITOS_TUTOR[p.tutor_personagem]?.find((j) => j.id === p.tutor_personalidade)?.nome ?? "";
+  const tutor = p.tutor_personagem
+    ? `${NOMES[p.tutor_personagem]} · ${jeitoTutor}${JEITOS_FIRMES.includes(p.tutor_personalidade) ? " (confirmado na 1ª conversa)" : ""}`
+    : null;
   const resumo = [
     ["target", "Prova", p.exam_date ? `em ${dataBR(p.exam_date)}` : "data ainda não definida"],
     ["timer", "Rotina", [p.daily_minutes ? `${TEMPO[p.daily_minutes] ?? `${p.daily_minutes} min`} por dia` : null, diasTexto(p.dias_semana)].filter(Boolean).join(" · ") || "a definir"],

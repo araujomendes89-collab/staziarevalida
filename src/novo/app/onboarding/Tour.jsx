@@ -262,6 +262,10 @@ export function Tour({ inicio = 0, onMudou }) {
 export function TourNoPainel({ route }) {
   const { boot, setOnboarding } = useSession();
   const tour = boot.onboarding?.tour;
+  // função estável: recriá-la a cada desenho reiniciava a busca do alvo (o tour piscava ao abrir)
+  const onMudou = React.useCallback((e) => {
+    if (e?.tour?.status !== "em_andamento") setOnboarding(e);
+  }, [setOnboarding]);
   if (route !== "home" || tour?.status !== "em_andamento") return null;
-  return <Tour key={`tour-${tour.passo}`} inicio={tour.passo} onMudou={(e) => (e?.tour?.status === "em_andamento" ? null : setOnboarding(e))} />;
+  return <Tour key={`tour-${tour.passo}`} inicio={tour.passo} onMudou={onMudou} />;
 }

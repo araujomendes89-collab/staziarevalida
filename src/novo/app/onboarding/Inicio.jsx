@@ -96,7 +96,8 @@ export function PrimeirosPassosCartao({ estado, go }) {
 export function PrimeirosPassosFaixa({ estado, go }) {
   const acoes = useAcoes(go);
   const passos = primeirosPassos(estado);
-  if (!estado?.aplicavel || !passos.length || (estado.dicas_vistas || []).includes("primeiros_passos")) return null;
+  // só para quem chegou pelo cadastro (a conta antiga tem o convite, e não as duas faixas juntas)
+  if (!estado?.aplicavel || estado.convite || estado.origem !== "cadastro" || !passos.length || (estado.dicas_vistas || []).includes("primeiros_passos")) return null;
   const falta = passos.find((p) => !p.feito);
   const tour = tourParaRetomar(estado) && estado.tour?.status === "pausado";
   if (!falta && !tour) return null;
@@ -136,7 +137,7 @@ export function ConviteOnboarding({ estado, go }) {
       <span className="ob-convite__ic" aria-hidden="true">{AppRealIcon({ name: "sparkles", size: 30 })}</span>
       <span className="ob-convite__txt">
         <b>{continuar ? "Continue a montar o seu estudo" : "Monte o seu estudo em 2 minutos"}</b>
-        <span>Data da prova, tempo por dia, áreas difíceis e quem te acompanha no Tutor. O Plano de Hoje se ajusta às respostas.</span>
+        <span>Data da prova, tempo por dia, áreas difíceis e quem te acompanha no Tutor. O tempo por dia define o tamanho do seu Plano de Hoje.</span>
       </span>
       <span className="ob-convite__acoes">
         <button type="button" className="ob-btn ob-btn--pri ob-btn--sm" onClick={() => go("apresentacao", continuar ? undefined : { inicio: "fase" })}>

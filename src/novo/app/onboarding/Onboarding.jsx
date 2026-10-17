@@ -130,10 +130,12 @@ export function Onboarding({ modo = "primeira", inicio = null, go }) {
   const visiveis = passosVisiveis(estado);
   const indice = visiveis.indexOf(passo);
 
-  const salvar = async (p, dados = {}) => {
+  // publicar=false: ao sair da tela cheia (concluir/pular), quem troca a abertura inteira é o refresh(); publicar antes faria o
+  // app aparecer com o nivelamento antigo por um instante (e, se o refresh falhasse, o aviso de erro sumiria com a tela)
+  const salvar = async (p, dados = {}, publicar = true) => {
     const e = await backend.rpc("app_onboarding_salvar", { p_passo: p, p_dados: dados });
     setEstado(e);
-    setOnboarding(e);
+    if (publicar) setOnboarding(e);
     return e;
   };
   const executar = async (fn) => {
@@ -180,11 +182,11 @@ export function Onboarding({ modo = "primeira", inicio = null, go }) {
   const voltar = () => irPara(visiveis[Math.max(0, indice - 1)]);
   const pularTudo = () => executar(async () => {
     if (modo === "refazer") return entrarNoApp();
-    await salvar("pular");
+    await salvar("pular", {}, false);
     await entrarNoApp();
   });
   const concluir = (destino = null) => executar(async () => {
-    await salvar("concluir");
+    await salvar("concluir", {}, modo !== "primeira");
     await entrarNoApp(destino);
   });
 

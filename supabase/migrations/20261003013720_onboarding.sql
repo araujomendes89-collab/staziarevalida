@@ -228,7 +228,9 @@ begin
       'situacao', coalesce(v_niv, 'novo'),
       'concluido', coalesce(v_niv, 'novo') in ('parcial', 'bloco2', 'concluido'),
       -- o diagnóstico usa questões da 1ª fase: quem só tem a 2ª fase (PRÁTICA) não faz
-      'cabe', v_aplicavel and v_modo <> 'pratica'),
+      -- e a equipe pode desligar o nivelamento como primeira tela (nivelamento_config.primeira_tela): aí o onboarding não o oferece
+      'cabe', v_aplicavel and v_modo <> 'pratica'
+              and coalesce((select c.primeira_tela from public.nivelamento_config c limit 1), true)),
     'primeiros_passos', v_passos);
 end
 $$;
@@ -271,6 +273,10 @@ as $$
 declare
   v_sit text;
 begin
+  -- app_nivelamento_adiar grava para o aluno logado: só serve para ele mesmo
+  if p_user is distinct from (select auth.uid()) then
+    raise exception 'onboarding_adiar_diagnostico: só para o aluno logado.';
+  end if;
   if public.user_has_full_access(p_user) then return; end if;
   select d.situacao into v_sit from public.nivelamento_diagnosticos d where d.user_id = p_user;
   if coalesce(v_sit, 'novo') in ('parcial', 'bloco2', 'concluido') then return; end if;

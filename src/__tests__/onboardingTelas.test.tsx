@@ -28,6 +28,9 @@ vi.mock("../novo/app/nivelamento/Nivelamento.jsx", () => ({
   deveMostrarNivelamento: () => false,
 }));
 
+// a arte da Stazia só existe com o ramo tutor-personagens: os textos testados aqui são os de hoje (só o Stazi)
+vi.mock("../novo/app/onboarding/Personagem.jsx", async (original) => ({ ...(await original<any>()), temArteDaStazia: () => false }));
+
 import { Onboarding, deveMostrarOnboarding } from "../novo/app/onboarding/Onboarding.jsx";
 import { ConviteOnboarding, DicaPrimeiroUso, PrimeirosPassosCartao, PrimeirosPassosFaixa } from "../novo/app/onboarding/Inicio.jsx";
 import { Tour, posicionar } from "../novo/app/onboarding/Tour.jsx";
@@ -144,6 +147,8 @@ describe("fluxo inteiro de uma conta nova em teste (2ª fase fechada)", () => {
     fireEvent.click(screen.getByRole("button", { name: /Ir para o meu painel/ }));
     await waitFor(() => expect(sessao.refresh).toHaveBeenCalled());
     expect(salvos.at(-1)).toEqual(["concluir", {}]);
+    // ao sair da tela cheia, quem troca a abertura é o refresh (sem publicar antes o retrato com mostrar=false)
+    expect(sessao.setOnboarding.mock.calls.some(([e]: any) => e?.status === "completed")).toBe(false);
   });
 
   it("pular tudo: grava 'pular' e entra no app", async () => {
@@ -215,6 +220,8 @@ describe("retomar, passos visíveis e quem não faz o nivelamento", () => {
     expect(passosVisiveis(ESTADO({ nivelamento: { cabe: true, concluido: true } }))).not.toContain("nivelamento");
     expect(passoInicial(ESTADO({ status: "in_progress", passo_atual: "nivelamento", nivelamento: { cabe: false } }))).toBe("trilha");
     expect(passoInicial(ESTADO({ status: "completed", passo_atual: "fim" }), "fase")).toBe("fase");
+    // nivelamento já decidido (pulado) não volta ao "Ajustar respostas"
+    expect(passosVisiveis(ESTADO({ etapas: { nivelamento: "pulado" } }))).not.toContain("nivelamento");
     expect(deveMostrarOnboarding({ onboarding: { mostrar: true } })).toBe(true);
     expect(deveMostrarOnboarding({ onboarding: null })).toBe(false);
   });

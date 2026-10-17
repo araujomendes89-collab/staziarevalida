@@ -131,6 +131,15 @@ describe("a pergunta da fase vem do acesso decidido no servidor", () => {
     expect((await estado(PRATICA)).nivelamento).toMatchObject({ cabe: false });
     expect((await salvar(PRATICA, "nivelamento")).etapas).toMatchObject({ nivelamento: "nao_se_aplica" });
   });
+  it("com o nivelamento desligado como primeira tela pela equipe, o onboarding não o oferece", async () => {
+    await db.query(`update public.nivelamento_config set primeira_tela = false`);
+    try {
+      expect((await estado(NOVO)).nivelamento.cabe).toBe(false);
+    } finally {
+      await db.query(`update public.nivelamento_config set primeira_tela = true`);
+    }
+    expect((await estado(NOVO)).nivelamento.cabe).toBe(true);
+  });
   it("teste com a 2ª fase fechada: 2ª fase e 'as duas' recusadas; 1ª fase guardada SEM travar a escolha do teste", async () => {
     await expect(salvar(NOVO, "fase", { escolha: "pratica" })).rejects.toThrow(/2ª fase ainda não está aberta/);
     await expect(salvar(NOVO, "fase", { escolha: "as_duas" })).rejects.toThrow(/2ª fase ainda não está aberta/);
