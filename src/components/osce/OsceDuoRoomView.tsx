@@ -19,7 +19,6 @@ import {
   AlertCircle,
   HelpCircle,
   Play,
-  ArrowRightLeft,
   ChevronRight,
   LogOut,
 } from "lucide-react";
@@ -127,11 +126,6 @@ export const OsceDuoRoomView: React.FC<OsceDuoRoomViewProps> = ({
     await DuoSessionService.revealExam(sessionId, examName);
   };
 
-  const handleSwapRoles = async () => {
-    NotificationService.playNotificationSound("match");
-    await DuoSessionService.swapRoles(sessionId);
-  };
-
   const handleFinishSession = async () => {
     NotificationService.playNotificationSound("success");
     await DuoSessionService.finishSession(sessionId);
@@ -195,17 +189,8 @@ export const OsceDuoRoomView: React.FC<OsceDuoRoomViewProps> = ({
             </button>
           )}
 
-          {session.status === "COMPLETED" && (
-            <button
-              onClick={handleSwapRoles}
-              id="btn-inverter-papeis"
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition-all shadow-md active:scale-95 cursor-pointer"
-            >
-              <ArrowRightLeft className="w-3.5 h-3.5" />
-              <span>Inverter Papéis (Rodada 2)</span>
-            </button>
-          )}
-
+          {/* Sem "Inverter papéis" na mesma estação (decisão do dono de 17/10): o novo candidato já viu o tema como avaliador.
+              Concluída a estação, fica só "Sair da sala" (o app antigo não tem "Treinar outra estação"). */}
           <button
             onClick={onExit}
             className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"

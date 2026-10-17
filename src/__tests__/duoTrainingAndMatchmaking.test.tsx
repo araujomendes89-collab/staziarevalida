@@ -7,6 +7,21 @@ import { OsceDuoRoomView } from "../components/osce/OsceDuoRoomView";
 import { SEED_OSCE_STATIONS } from "../data/osceStationsData";
 import { DuoSession } from "../types/duoSession";
 
+// O app antigo usa o Firebase de PRODUÇÃO: aqui ele é sempre simulado, para nenhum teste ler ou gravar nada lá.
+vi.mock("../lib/firebase", () => ({ db: {} }));
+vi.mock("firebase/firestore", () => ({
+  collection: vi.fn(() => ({})),
+  doc: vi.fn(() => ({})),
+  setDoc: vi.fn(async () => undefined),
+  getDoc: vi.fn(async () => ({ exists: () => false, data: () => undefined })),
+  deleteDoc: vi.fn(async () => undefined),
+  updateDoc: vi.fn(async () => undefined),
+  onSnapshot: vi.fn(() => () => undefined),
+  query: vi.fn(() => ({})),
+  where: vi.fn(() => ({})),
+  serverTimestamp: vi.fn(() => "agora"),
+}));
+
 describe("Sessão de Treino em Dupla, Matchmaking de Radar & Notificações", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -90,11 +105,8 @@ describe("Sessão de Treino em Dupla, Matchmaking de Radar & Notificações", ()
       ).resolves.not.toThrow();
     });
 
-    it("should swap roles seamlessly for round 2", async () => {
-      const session = await DuoSessionService.createDuoSession(station, doctor, evaluator);
-      vi.spyOn(DuoSessionService, "getDuoSession").mockResolvedValue(session);
-
-      await expect(DuoSessionService.swapRoles(session.id)).resolves.not.toThrow();
+    it("não inverte mais os papéis na mesma estação (decisão do dono de 17/10)", () => {
+      expect((DuoSessionService as unknown as Record<string, unknown>).swapRoles).toBeUndefined();
     });
   });
 
@@ -175,6 +187,19 @@ describe("Sessão de Treino em Dupla, Matchmaking de Radar & Notificações", ()
       // Click Roteiro do Paciente
       fireEvent.click(screen.getByText("Roteiro do Paciente"));
       expect(screen.getByText(/Roteiro Confidencial do Ator \/ Paciente/i)).toBeInTheDocument();
+    });
+
+    it("estação concluída: sem 'Inverter Papéis', só 'Sair da sala' (decisão do dono de 17/10)", () => {
+      vi.spyOn(DuoSessionService, "subscribeToDuoSession").mockImplementation((_id, cb) => {
+        cb({ ...mockSession, status: "COMPLETED" });
+        return () => {};
+      });
+      const onExit = vi.fn();
+      const { container } = render(<OsceDuoRoomView sessionId="duo_mock_123" currentUserId="usr_partner" onExit={onExit} />);
+      expect(screen.queryByText(/Inverter Pap/i)).toBeNull();
+      expect(container.querySelector("#btn-inverter-papeis")).toBeNull();
+      fireEvent.click(screen.getByTitle("Sair da sala"));
+      expect(onExit).toHaveBeenCalled();
     });
 
     it("should allow sending clinical dialogue message", async () => {
