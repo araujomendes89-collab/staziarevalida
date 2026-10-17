@@ -77,7 +77,7 @@ interface Ctx {
 function dbError(e: unknown): BillingError | null {
   const m = /([a-z_]{4,40}): (.{3,300})$/.exec(String((e as Error)?.message ?? ""));
   if (!m) return null;
-  const known: Record<string, number> = { renovacao_pendente: 409, vendas_desligadas: 503, pedido_aberto: 409, fora_de_venda: 409, ja_assinante: 409, sem_devolucao: 409, devolucao_em_andamento: 409 };
+  const known: Record<string, number> = { renovacao_pendente: 409, sem_renovacao: 409, ja_no_cartao: 409, renovacao_paga: 409, vendas_desligadas: 503, pedido_aberto: 409, fora_de_venda: 409, ja_assinante: 409, sem_devolucao: 409, devolucao_em_andamento: 409 };
   return m[1] in known ? new BillingError(m[2], known[m[1]], m[1]) : null;
 }
 
@@ -97,9 +97,11 @@ export function createBilling(deps: BillingDeps) {
 
   async function overview(user: Identity) {
     if (!provider) return { enabled: false };
-    const [resumo, ctx] = await Promise.all([
+    const [resumo, ctx, doc] = await Promise.all([
       db.asUser<Record<string, unknown>>(user, "app_billing_resumo", {}),
       svc<Ctx | null>("ch_worker_billing_contexto", { p_user: user.id }),
+      // documento do Contrato de Assinatura vigente (013760); sem a migração, o link aponta para os Termos
+      svc<{ versao: string | null; url: string } | null>("ch_worker_billing_contrato_doc", {}).catch(() => null),
     ]);
     return {
       enabled: true,
@@ -108,6 +110,7 @@ export function createBilling(deps: BillingDeps) {
       methods: provider.capabilities.methods,
       // CPF só é pedido quando ainda não há cliente no fornecedor (primeira compra)
       precisa_documento: !ctx?.clientes?.[provider.name],
+      contrato_doc: { versao: doc?.versao ?? null, url: doc?.url ?? "/novo/termos" },
       ...(resumo ?? {}),
     };
   }
@@ -131,6 +134,9 @@ export function createBilling(deps: BillingDeps) {
     if (ctx.full_access) throw new BillingError("Sua conta já tem acesso completo; não há o que comprar.", 403);
     if (!ctx.terms_ok) throw new BillingError("Aceite o Termo de uso antes de pagar.", 403);
     if (!ctx.vendas_ligadas) throw new BillingError("As vendas ainda não estão abertas.", 503, "vendas_desligadas");
+    // aceite na contratação (clickwrap): sem a versão do Contrato de Assinatura vigente no banco, ninguém contrata
+    const doc = await svc<{ versao: string | null } | null>("ch_worker_billing_contrato_doc", {}).catch(() => null);
+    if (!doc?.versao) throw new BillingError("A contratação ainda não está aberta: falta publicar o contrato vigente.", 503, "contrato_pendente");
 
     // CPF/CNPJ só agora (na hora de pagar) e só se ainda não houver cliente no fornecedor. Vai para o fornecedor; não é gravado aqui.
     let customerId = ctx.clientes?.[p.name] ?? null;
@@ -157,6 +163,10 @@ export function createBilling(deps: BillingDeps) {
     // clique repetido / pedido igual já aberto: devolve o mesmo pagamento (nada novo no fornecedor)
     if (pedido.url) return publicOrder(pedido);
     if (pedido.status !== "aberto") throw new BillingError("Este pedido já foi encerrado. Atualize a página.", 409, "pedido_encerrado");
+    // o aceite também vira prova em legal_acceptances quando o documento do contrato existir no banco (nunca impede a compra)
+    if (!pedido.repetido && !pedido.reaproveitado) {
+      await svc("ch_worker_billing_aceite_registrar", { p_user: user.id, p_user_agent: (info.userAgent ?? "").slice(0, 300) || null }).catch(() => undefined);
+    }
 
     try {
       if (!customerId) {
@@ -270,6 +280,91 @@ export function createBilling(deps: BillingDeps) {
     }
   }
 
+  /**
+   * Trocar a forma de pagamento da renovação (Minha conta > Assinatura, 013760). Sem multa, sem cobrança a mais:
+   *   - cartão -> Pix: cancela a assinatura no fornecedor e o contrato passa a Pix (o Pix sai 7 dias antes do vencimento);
+   *   - Pix -> cartão: abre a assinatura no cartão com a 1ª cobrança no vencimento atual; o aluno digita o cartão SÓ na página
+   *     segura do fornecedor e paga ali essa renovação (antes do vencimento: não perde dias). Um Pix de renovação já gerado é
+   *     cancelado antes, depois de conferir que não foi pago (se foi, vale o pagamento e a troca segue para o período seguinte).
+   */
+  async function changeMethod(user: Identity, body: { metodo?: unknown; idem?: unknown }) {
+    const p = need();
+    const metodo = body?.metodo === "pix" || body?.metodo === "cartao" ? body.metodo : null;
+    if (!metodo || !p.capabilities.methods[METODO[metodo]]) throw new BillingError("Escolha Pix ou cartão de crédito.");
+    type Situ = { plano: string; ciclo: "mensal" | "trimestral"; metodo: "pix" | "cartao"; valor_centavos: number; renova: boolean; provider: string;
+      subscription_id: string | null; periodo_fim: string; vigente: boolean; pendente: boolean; customer_id: string | null;
+      pix_aberto: { id: string; provider: string | null; payment_id: string | null } | null; troca_aberta: Pedido | null };
+    const ler = () => svc<Situ | null>("ch_worker_billing_troca_situacao", { p_user: user.id });
+    let s = await ler();
+    if (!s || !s.renova || !s.vigente) throw new BillingError("Você não tem uma assinatura que renova para trocar a forma de pagamento.", 409, "sem_renovacao");
+    if (s.pendente) throw new BillingError("A renovação no cartão não passou: pague essa cobrança por Pix em Meu plano para voltar na hora.", 409, "renovacao_pendente");
+    if (s.provider !== p.name) throw new BillingError("Esta assinatura foi feita por outro meio. Fale com o suporte.", 409);
+
+    if (metodo === "pix") {
+      if (s.metodo === "pix") return { ok: true, metodo: "pix", periodo_fim: s.periodo_fim };
+      if (s.subscription_id) {
+        try {
+          await p.cancelSubscription(s.subscription_id);
+        } catch (e) {
+          log(`[billing] troca para Pix: cancelar assinatura falhou: ${(e as Error).message}`);
+          throw new BillingError("Não foi possível trocar agora. Tente de novo.", 502);
+        }
+      }
+      try {
+        const r = await svc<{ metodo: string; periodo_fim: string }>("ch_worker_billing_para_pix", { p_user: user.id });
+        return { ok: true, metodo: "pix", periodo_fim: r.periodo_fim };
+      } catch (e) {
+        throw dbError(e) ?? e;
+      }
+    }
+
+    // Pix -> cartão
+    if (s.metodo === "cartao") throw new BillingError("Sua assinatura já renova no cartão de crédito.", 409, "ja_no_cartao");
+    if (s.troca_aberta?.url) return publicOrder(s.troca_aberta);
+    const idem = typeof body?.idem === "string" && SAFE_IDEM.test(body.idem) ? body.idem : null;
+    if (!idem) throw new BillingError("Pedido inválido. Atualize a página e tente de novo.");
+    if (!s.customer_id) throw new BillingError("Não encontramos o seu cadastro na instituição de pagamento. Fale com o suporte.", 409);
+    if (s.pix_aberto) {
+      // o Pix da renovação já gerado: se foi pago, vale o pagamento (e o novo vencimento); se não, é cancelado antes da troca
+      if (s.pix_aberto.payment_id && s.pix_aberto.provider === p.name) {
+        const c0 = await p.getCharge(s.pix_aberto.payment_id);
+        if (c0 && c0.status !== "paid") await p.cancelCharge(s.pix_aberto.payment_id);
+        const c1 = c0 ? await p.getCharge(s.pix_aberto.payment_id) : null;
+        if (c1?.status === "paid") {
+          await processCharge(c1.id, null);
+          throw new BillingError("O Pix desta renovação já foi pago. A troca para cartão vale a partir do próximo vencimento: tente de novo daqui a pouco.", 409, "renovacao_paga");
+        }
+      }
+      await svc("ch_worker_billing_pedido_encerrar", { p_pedido: s.pix_aberto.id, p_status: "cancelado", p_erro: "Troca para cartão", p_user: user.id });
+      s = (await ler())!;
+    }
+    let pedido: Pedido;
+    try {
+      pedido = await svc<Pedido>("ch_worker_billing_troca_cartao_abrir", { p_user: user.id, p_idem: idem });
+    } catch (e) {
+      throw dbError(e) ?? e;
+    }
+    if (pedido.url) return publicOrder(pedido);
+    try {
+      const first = brtDate(new Date(s.periodo_fim));
+      const today = brtDate(now());
+      const created = await p.createCardSubscription({
+        customerId: s.customer_id, amountCents: pedido.valor_centavos, cycle: s.ciclo === "trimestral" ? "quarterly" : "monthly",
+        description: `StaziaMed ${pedido.nome}`, reference: `smp:${pedido.id}`, firstDueDate: first < today ? today : first,
+        returnUrl: `${deps.baseUrl ?? ""}/novo/perfil?pedido=${pedido.id}`,
+      });
+      await svc("ch_worker_billing_pedido_anexar", {
+        p_pedido: pedido.id, p_provider: p.name, p_customer: s.customer_id, p_payment: created.chargeId, p_subscription: created.subscriptionId,
+        p_url: created.url, p_pix: null, p_vencimento: first < today ? today : first,
+      });
+      return publicOrder({ ...pedido, url: created.url, pix: null, provider_payment_id: created.chargeId });
+    } catch (e) {
+      log(`[billing] troca para cartão falhou: ${(e as Error).message}`);
+      await svc("ch_worker_billing_pedido_encerrar", { p_pedido: pedido.id, p_status: "falhou", p_erro: (e as Error).message, p_user: null }).catch(() => undefined);
+      throw new BillingError("Não foi possível abrir a página do cartão agora. Tente de novo.", 502);
+    }
+  }
+
   /** Devolução pedida pelo aluno (regra do dono; o cálculo é do banco). Abuso/sem regra automática = vai para a equipe. */
   async function refund(user: Identity, cobrancaId: unknown) {
     const p = need();
@@ -344,6 +439,9 @@ export function createBilling(deps: BillingDeps) {
         p_customer: charge.customerId, p_tipo: tipo, p_codigo: codigo, p_ciclo: ciclo, p_metodo: metodo, p_valor: charge.amountCents,
         p_pago_em: paidAt.toISOString(), p_periodo_fim: periodEnd ? periodEnd.toISOString() : null,
       });
+      if (charge.receiptUrl) {
+        await svc("ch_worker_billing_recibo_salvar", { p_provider: p.name, p_payment: charge.id, p_url: charge.receiptUrl }).catch((e) => log(`[billing] recibo não salvo (${charge.id}): ${(e as Error).message}`));
+      }
       if (!r?.repetido && p.afterPaid) {
         await p.afterPaid(charge, tipo === "plano" ? `Acesso à plataforma StaziaMed Revalida - plano ${codigo.toUpperCase()} ${ciclo}` : `StaziaMed Revalida - pacote extra de IA (${codigo})`)
           .catch((e) => log(`[billing] nota fiscal não pedida (${charge.id}): ${(e as Error).message}`));
@@ -406,7 +504,7 @@ export function createBilling(deps: BillingDeps) {
     return out;
   }
 
-  return { overview, checkout, orderStatus, cancelOrder, cancelRenewal, payRenewalByPix, refund, handleNotice, processCharge, runScheduled };
+  return { overview, checkout, orderStatus, cancelOrder, cancelRenewal, payRenewalByPix, changeMethod, refund, handleNotice, processCharge, runScheduled };
 }
 
 export type Billing = ReturnType<typeof createBilling>;

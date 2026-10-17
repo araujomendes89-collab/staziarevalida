@@ -120,6 +120,7 @@ export function toProviderCharge(p: Obj): ProviderCharge {
     dueDate: typeof p.dueDate === "string" ? p.dueDate.slice(0, 10) : null,
     paidAt: dayToDate(paid),
     installments: Boolean(p.installment),
+    receiptUrl: [p.transactionReceiptUrl, p.invoiceUrl].find((u) => typeof u === "string" && /^https:\/\//.test(u) && u.length <= 500) ?? null,
   };
 }
 

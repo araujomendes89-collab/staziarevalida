@@ -11,12 +11,15 @@ import type { Identity } from "../contentHub/infra";
 import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 import { BillingError, type Billing } from "./core";
 import { BillingSignatureError, type PaymentProvider } from "./provider";
+import type { Avisos } from "../avisos/avisos";
 
 export interface BillingRoutesDeps {
   billing: Billing;
   provider: PaymentProvider | null;
   authenticate: (req: Request) => Promise<Identity | null>;
   log?: (m: string) => void;
+  /** Avisos de cobrança (013760): e-mail logo depois do aviso do fornecedor e na tarefa diária. Opcional. */
+  avisos?: Avisos | null;
 }
 
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -43,6 +46,8 @@ export function createWebhookHandler(get: () => BillingRoutesDeps | null) {
     }
     try {
       await deps.billing.handleNotice(notice);
+      // o aviso ao aluno (pagamento falhou / acesso liberado) nasce no banco; o e-mail sai já, sem atrasar a resposta por erro
+      await deps.avisos?.enviar(5).catch((e) => deps.log?.(`[avisos] envio depois do aviso falhou: ${(e as Error).message}`.slice(0, 300)));
       res.json({ received: true });
     } catch (e) {
       deps.log?.(`[billing] falha ao processar ${notice.eventId}: ${(e as Error).message}`.slice(0, 300));
@@ -62,7 +67,18 @@ export function createBillingRouter(get: () => BillingRoutesDeps | null) {
     if (!secret || !sameSecret(`Bearer ${secret}`, got)) return fail(res, 401, "Não autorizado.");
     if (!deps?.provider) return res.json({ enabled: false });
     try {
-      res.json(await deps.billing.runScheduled());
+      const cobranca = await deps.billing.runScheduled();
+      // depois do Pix de renovação gerado (7 dias antes), os avisos 7/3/1 e de acesso pausado; e os e-mails pendentes
+      let avisos: unknown = null;
+      if (deps.avisos) {
+        try {
+          avisos = { novos: await deps.avisos.gerar(), email: await deps.avisos.enviar(50) };
+        } catch (e) {
+          deps.log?.(`[avisos] tarefa diária falhou: ${(e as Error).message}`.slice(0, 300));
+          avisos = { erro: true };
+        }
+      }
+      res.json({ ...cobranca, avisos });
     } catch (e) {
       deps.log?.(`[billing] tarefa agendada falhou: ${(e as Error).message}`.slice(0, 300));
       fail(res, 500, shown(e));
@@ -101,6 +117,7 @@ export function createBillingRouter(get: () => BillingRoutesDeps | null) {
   router.get("/orders/:id", run((d, req) => d.billing.orderStatus(req.user!, String(req.params.id))));
   router.post("/orders/:id/cancel", run((d, req) => d.billing.cancelOrder(req.user!, String(req.params.id))));
   router.post("/renewal/pix", run((d, req) => d.billing.payRenewalByPix(req.user!)));
+  router.post("/payment-method", run((d, req) => d.billing.changeMethod(req.user!, req.body ?? {})));
   router.post("/cancel-renewal", run((d, req) => d.billing.cancelRenewal(req.user!)));
   router.post("/refunds", run((d, req) => d.billing.refund(req.user!, req.body?.cobranca_id)));
   return router;

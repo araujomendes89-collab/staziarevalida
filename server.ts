@@ -50,6 +50,8 @@ import { createPlanosRouter } from "./server/planos/router";
 import { createBilling } from "./server/billing/core";
 import { createProviderFromEnv } from "./server/billing/providerFromEnv";
 import { createBillingRouter, createWebhookHandler, type BillingRoutesDeps } from "./server/billing/router";
+import { createAvisos } from "./server/avisos/avisos";
+import { createSmtpMailer, smtpConfigFromEnv } from "./server/avisos/smtp";
 import { createLessonsRouter, lessonsStorage } from "./server/lessons/router";
 import { createQuestionFiguresRouter, questionFiguresStorage } from "./server/questions/figures";
 import { createAdminAssistantRouter } from "./server/adminAssistant/router";
@@ -122,7 +124,10 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   if (hub.deps) {
     const billingProvider = createProviderFromEnv();
     const billing = createBilling({ db: hub.deps.db, provider: billingProvider, baseUrl: (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "") || null, log: (m) => console.log(m) });
-    billingDeps = { billing, provider: billingProvider, authenticate: (req) => hub.deps!.db.authenticate(req), log: (m) => console.log(m) };
+    // avisos de cobrança (013760): e-mail só com SMTP_HOST/SMTP_USER/SMTP_PASSWORD/SMTP_FROM no servidor; sem eles, só o aviso na tela
+    const smtp = smtpConfigFromEnv();
+    const avisos = createAvisos({ db: hub.deps.db, mailer: smtp ? createSmtpMailer(smtp) : null, baseUrl: (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "") || null, log: (m) => console.log(m) });
+    billingDeps = { billing, provider: billingProvider, authenticate: (req) => hub.deps!.db.authenticate(req), log: (m) => console.log(m), avisos };
     if (billingProvider) console.log(`[billing] cobrança ligada (${billingProvider.name}, modo ${billingProvider.mode}).`);
     app.use("/api/cobranca", createBillingRouter(() => billingDeps));
   }

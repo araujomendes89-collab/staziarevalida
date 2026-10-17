@@ -196,6 +196,9 @@ describe("desligada", () => {
     const r = await comprar(ALUNO, { tipo: "extra", codigo: "boost", metodo: "pix" });
     expect(r).toMatchObject({ status: 503, body: { code: "vendas_desligadas" } });
     await dev.db.query(`update public.billing_config set vendas_ligadas = true`);
+    // etapa 4 (013760): sem a versão do Contrato de Assinatura no banco, ninguém contrata
+    expect(await comprar(ALUNO, { tipo: "extra", codigo: "boost", metodo: "pix" })).toMatchObject({ status: 503, body: { code: "contrato_pendente" } });
+    await dev.db.query(`update public.billing_config set contrato_versao = '3.0'`);
     const r2 = await comprar(ALUNO, { tipo: "extra", codigo: "nao_existe", metodo: "pix" });
     expect(r2).toMatchObject({ status: 409, body: { code: "fora_de_venda" } });
     void CATALOGO;

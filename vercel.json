@@ -66,6 +66,10 @@
     {
       "path": "/api/planos/cron",
       "schedule": "15 11 * * *"
+    },
+    {
+      "path": "/api/cobranca/cron",
+      "schedule": "0 10 * * *"
     }
   ]
 }

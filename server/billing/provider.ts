@@ -31,6 +31,8 @@ export interface ProviderCharge {
   paidAt: Date | null;
   /** Parcelada? (nunca deveria: o dono decidiu só à vista). */
   installments: boolean;
+  /** Página do comprovante/fatura no fornecedor (https), para o histórico do aluno. Opcional. */
+  receiptUrl?: string | null;
 }
 
 /** Aviso do fornecedor já conferido (token/assinatura). Não traz decisão: o núcleo relê a cobrança antes de agir. */
