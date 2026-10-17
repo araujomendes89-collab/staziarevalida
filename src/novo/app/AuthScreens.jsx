@@ -435,11 +435,16 @@ function MasterSetup({ go }) {
   );
 }
 
+/** /novo/criar-conta abre direto o Criar conta (botões "Teste grátis" da página inicial); o resto abre o login. */
+export function telaInicialPeloEndereco(pathname = typeof window !== "undefined" ? window.location.pathname : "") {
+  return /^\/novo\/criar-conta\/?$/.test(pathname || "") ? "signup" : "login";
+}
+
 /** Fluxo de entrada: login → cadastro → recuperar senha (e, no 1º acesso local, conta master). */
-export function AuthFlow({ link = initialAuthLink } = {}) {
+export function AuthFlow({ link = initialAuthLink, inicial = telaInicialPeloEndereco() } = {}) {
   // link do e-mail vencido ou já usado: abre direto o aviso "Esse link venceu. Peça um novo."
   // (o de confirmar o cadastro tem a própria tela: quem já confirmou só entra, quem não confirmou pede outro link)
-  const [screen, setScreen] = React.useState(link?.kind === "expired" ? (link.signup ? "expired-confirm" : "expired") : "login");
+  const [screen, setScreen] = React.useState(link?.kind === "expired" ? (link.signup ? "expired-confirm" : "expired") : inicial);
   // dados da próxima tela (ex.: o e-mail que ainda não foi confirmado, vindo do login)
   const [data, setData] = React.useState(null);
   const go = (next, nextData = null) => {

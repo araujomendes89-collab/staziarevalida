@@ -1,0 +1,5 @@
+/* Página inicial sem JavaScript: mostra todo o conteúdo das abas e o menu do celular (o texto inteiro fica legível). */
+[role="tabpanel"][hidden] { display: block !important; margin-top: 16px; }
+.ciclo__conteudo[role="tabpanel"][hidden] { display: flex !important; }
+[role="tablist"] { display: none !important; }
+@media (max-width: 1080px) { .topo__painel[hidden] { display: block !important; border-top: 1px solid #DCE1E8; } .topo__menu { display: none !important; } }
