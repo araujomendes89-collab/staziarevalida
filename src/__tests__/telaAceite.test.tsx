@@ -187,6 +187,25 @@ describe("tela de aceite", () => {
     await waitFor(() => expect(acceptTerms).toHaveBeenCalledTimes(3));
   });
 
+  it("cláusula 6.5-A: com plano pago ativo, o app abre com o aviso; 'Ler e aceitar' leva à tela, 'Agora não' volta", async () => {
+    const legal = legalOf({ gate_required: false, grace_until: "2026-11-01T15:00:00Z" }, { current: "2.0", accepted: "1.0", accepted_at: "2026-10-07T12:00:00Z" });
+    const { acceptTerms } = open("/", bootOf(legal));
+    expect(screen.getByTestId("tela-home")).toBeTruthy();
+    expect(screen.getByText("Atualizamos o Contrato (versão 2.0)")).toBeTruthy();
+    expect(screen.getByText(/Você continua com o seu plano até 01\/11\/2026/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Ler e aceitar" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Atualizamos nosso Contrato" })).toBeTruthy();
+    expect(screen.getByText(/Você pode usar o seu plano até 01\/11\/2026/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Agora não" }));
+    expect(await screen.findByTestId("tela-home")).toBeTruthy();
+    expect(acceptTerms).not.toHaveBeenCalled();
+    cleanup();
+    // sem o prazo, o endereço /aceite volta ao início
+    open("/aceite", bootOf(legalOf({ gate_required: false }, { accepted: "1.0" })));
+    expect(await screen.findByTestId("tela-home")).toBeTruthy();
+    expect(screen.queryByText(/Atualizamos o Contrato/)).toBeNull();
+  });
+
   it("Sair da conta encerra a sessão", () => {
     const { signOut } = open("/", bootOf(legalOf()));
     fireEvent.click(screen.getByRole("button", { name: "Sair da conta" }));

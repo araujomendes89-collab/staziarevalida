@@ -15,7 +15,7 @@ Este quadro resume os pontos mais importantes. Ele não substitui o contrato com
 | Quem pode contratar | Pessoa com **18 anos ou mais e plenamente capaz** (cláusula 5) |
 | Teste grátis | 7 dias por fase, com limites de uso. Começa no cadastro, não pede cartão e não cobra sozinho ao fim. (cláusula 8) |
 | Planos | PRO, PRÁTICA e ELITE, mensal ou trimestral, com os preços mostrados na hora da contratação (cláusula 9 e Anexo I) |
-| Renovação | No cartão, a assinatura renova sozinha a cada período até você cancelar. Você é avisado antes. (cláusula 10) |
+| Renovação | No cartão de crédito, a assinatura renova sozinha a cada período até você cancelar. No Pix e no cartão de débito, cada período é pago na hora. Você é avisado antes. (cláusula 10) |
 | Cancelamento | A qualquer momento, pelo botão "Cancelar assinatura" em Minha Conta. Você usa o plano até o fim do período já pago. (cláusula 12) |
 | Arrependimento | **7 dias** a partir da contratação, com devolução integral do que foi pago (cláusula 13) |
 | Atraso de pagamento | Sem tolerância: se o pagamento não estiver confirmado no dia da renovação, o acesso pago é bloqueado na hora e volta sozinho quando pagar (cláusula 15) |
@@ -38,7 +38,7 @@ Este quadro resume os pontos mais importantes. Ele não substitui o contrato com
 
 1.2. **CONTRATANTE:** a pessoa que cria conta e aceita este contrato ("**Aluno**" ou "**você**"), identificada pelos dados do cadastro.
 
-1.3. **Atendimento (SAC):** suporte@staziamed.com.br; site www.staziamed.com.br. Telefone/WhatsApp: (41) 99903-1074, de segunda a sexta, das 9h às 18h. Prazo de resposta: confirmação imediata de recebimento por mensagem automática e resposta de mérito em até 5 dias úteis. Canais: suporte@staziamed.com.br (atendimento), privacidade@staziamed.com.br (dados pessoais) e (41) 99903-1074 (segunda a sexta, 9h às 18h) (conferir Decreto 7.962/2013).
+1.3. **Atendimento (SAC):** suporte@staziamed.com.br; site www.staziamed.com.br. Telefone/WhatsApp: (41) 99903-1074, de segunda a sexta, das 9h às 18h. Prazo de resposta: confirmação imediata de recebimento por mensagem automática e resposta de mérito em até 5 dias úteis. Canais: suporte@staziamed.com.br (atendimento), privacidade@staziamed.com.br (dados pessoais) e (41) 99903-1074 (segunda a sexta, 9h às 18h) (Decreto 7.962/2013).
 
 1.4. **Encarregado pelo tratamento de dados (DPO):** João Paulo Mendes, privacidade@staziamed.com.br. Pedidos de titulares são respondidos em até 15 dias.
 
@@ -90,7 +90,7 @@ Este quadro resume os pontos mais importantes. Ele não substitui o contrato com
 
 ## 6. ACEITE ELETRÔNICO, VERSÕES E GUARDA DO CONTRATO
 
-6.1. **Como você aceita.** O aceite é eletrônico (*clickwrap*): você marca a caixa, inicialmente desmarcada, com o texto "Li e aceito os Termos de Uso e o Contrato de Assinatura e declaro ter acesso à Política de Privacidade", e clica em continuar. Os textos completos ficam acessíveis por link antes do aceite. A manifestação de vontade por meio eletrônico tem validade jurídica (Código Civil, art. 107; Medida Provisória 2.200-2/2001, art. 10, § 2º; conferir).
+6.1. **Como você aceita.** O aceite é eletrônico (*clickwrap*): você marca a caixa, inicialmente desmarcada, com o texto "Li e aceito os Termos de Uso e o Contrato de Assinatura, declaro ter acesso à Política de Privacidade e declaro ter 18 anos ou mais", e clica em continuar. Os textos completos ficam acessíveis por link antes do aceite. A manifestação de vontade por meio eletrônico tem validade jurídica (Código Civil, art. 107; Medida Provisória 2.200-2/2001, art. 10, § 2º).
 
 6.2. **Caixa de marketing separada.** O recebimento de comunicações promocionais depende de outra caixa, **opcional e desmarcada**. Não marcar não impede o uso do serviço (cláusula 32).
 
@@ -106,7 +106,7 @@ Este quadro resume os pontos mais importantes. Ele não substitui o contrato com
 
 ## 7. LICENÇA DE USO E PROPRIEDADE INTELECTUAL
 
-7.1. A interface, o software, a marca, as aulas, vídeos, áudios, textos, questões autorais, explicações, mapas, flashcards, simulados, imagens, personagens (inclusive Stazi e Stazia) e demais conteúdos da plataforma pertencem à Stazia ou a terceiros licenciantes e são protegidos pela Lei 9.610/1998 (direitos autorais), pela Lei 9.279/1996 (propriedade industrial; conferir) e demais normas.
+7.1. A interface, o software, a marca, as aulas, vídeos, áudios, textos, questões autorais, explicações, mapas, flashcards, simulados, imagens, personagens (inclusive Stazi e Stazia) e demais conteúdos da plataforma pertencem à Stazia ou a terceiros licenciantes e são protegidos pela Lei 9.610/1998 (direitos autorais), pela Lei 9.279/1996 (propriedade industrial) e demais normas.
 
 7.2. A contratação dá a você **licença pessoal, limitada, temporária, revogável nos casos deste contrato, não exclusiva e intransferível**, para acessar e usar o conteúdo **para seu estudo individual**, enquanto o contrato estiver vigente. Nada transfere propriedade.
 
@@ -118,7 +118,7 @@ Este quadro resume os pontos mais importantes. Ele não substitui o contrato com
 
 ## 7-A. PROTEÇÃO DA PROPRIEDADE INTELECTUAL E DO SERVIÇO
 
-7-A.1. **Titularidade.** São de titularidade da Stazia, ou licenciados a ela, todos os direitos sobre: aulas, vídeos, áudios, podcasts, questões inéditas, comentários e explicações, flashcards, mapas, textos, imagens, simulados, estações e checklists, bases de dados, o software e o código, o layout e a interface, as vozes e os personagens **Stazi** e **Stazia**, e as marcas **StaziaMed**, **Stazia**, **Stazi** e seus logotipos. Esses bens são protegidos pela Lei 9.610/1998 (direitos autorais), pela Lei 9.609/1998 (programas de computador) e pela Lei 9.279/1996 (propriedade industrial e marcas); conferir. Nada neste contrato transfere a você qualquer desses direitos.
+7-A.1. **Titularidade.** São de titularidade da Stazia, ou licenciados a ela, todos os direitos sobre: aulas, vídeos, áudios, podcasts, questões inéditas, comentários e explicações, flashcards, mapas, textos, imagens, simulados, estações e checklists, bases de dados, o software e o código, o layout e a interface, as vozes e os personagens **Stazi** e **Stazia**, e as marcas **StaziaMed**, **Stazia**, **Stazi** e seus logotipos. Esses bens são protegidos pela Lei 9.610/1998 (direitos autorais), pela Lei 9.609/1998 (programas de computador) e pela Lei 9.279/1996 (propriedade industrial e marcas). Nada neste contrato transfere a você qualquer desses direitos.
 
 7-A.2. **Licença.** A licença que você recebe é **pessoal, intransferível, não exclusiva, revogável nos casos previstos neste contrato e limitada ao seu estudo individual**, enquanto o contrato estiver vigente.
 
@@ -137,7 +137,7 @@ Estudar com anotações pessoais e usar os recursos de impressão ou exportaçã
 
 7-A.4. **Medidas técnicas e monitoramento.** A Stazia pode adotar **marca d'água ou identificação** nos materiais, **registros de acesso**, **sessão única** e outros controles, e **monitorar o uso indevido** do serviço, sempre nos limites da LGPD e da Política de Privacidade (finalidade de segurança e proteção de direitos).
 
-7-A.5. **Consequências.** Havendo **fraude ou má-fé comprovada**, a Stazia pode, garantido o **direito de defesa** (cláusula 27): suspender ou cancelar a conta; remover o conteúdo publicado indevidamente; comunicar as autoridades; e exigir reparação por **perdas e danos**. O uso indevido pode gerar **responsabilidade civil** (Lei 9.610/1998, arts. 101 a 110) e **criminal** (Código Penal, art. 184; Lei 9.609/1998, art. 12; Lei 9.279/1996, arts. 189 e 190; conferir). **Este contrato não cria multa contratual abusiva contra o consumidor**: a reparação é a prevista em lei, proporcional ao dano comprovado.
+7-A.5. **Consequências.** Havendo **fraude ou má-fé comprovada**, a Stazia pode, garantido o **direito de defesa** (cláusula 27): suspender ou cancelar a conta; remover o conteúdo publicado indevidamente; comunicar as autoridades; e exigir reparação por **perdas e danos**. O uso indevido pode gerar **responsabilidade civil** (Lei 9.610/1998, arts. 101 a 110) e **criminal** (Código Penal, art. 184; Lei 9.609/1998, art. 12; Lei 9.279/1996, arts. 189 e 190). **Este contrato não cria multa contratual abusiva contra o consumidor**: a reparação é a prevista em lei, proporcional ao dano comprovado.
 
 7-A.6. **Conteúdo do aluno e sugestões.** O conteúdo que você cria continua seu; você concede à Stazia licença não exclusiva e gratuita **apenas para operar o serviço** (cláusula 7.4). **Feedback e sugestões** que você enviar sobre o serviço podem ser usados pela Stazia **sem compensação**, sem que isso transfira a você qualquer direito sobre o serviço.
 
@@ -161,9 +161,9 @@ Estudar com anotações pessoais e usar os recursos de impressão ou exportaçã
 
 9.1. Os planos são **PRO** (1ª fase e ENAMED), **PRÁTICA** (2ª fase) e **ELITE** (completo), em periodicidade **mensal** ou **trimestral**. O que cada plano inclui e **não inclui** (cadeados), os limites de uso de IA e de voz e os preços de lista estão no **Anexo I**. O preço aplicável é o **exibido na tela de contratação**, junto com o resumo da oferta, antes de você confirmar.
 
-9.2. O preço mostrado já é o **preço total** (impostos incluídos), com a periodicidade, a data da primeira cobrança, as datas de renovação e as eventuais restrições (Decreto 7.962/2013, art. 2º; conferir).
+9.2. O preço mostrado já é o **preço total** (impostos incluídos), com a periodicidade, a data da primeira cobrança, as datas de renovação e as eventuais restrições (Decreto 7.962/2013, art. 2º).
 
-9.3. **Cobrança.** Os pagamentos são processados por **instituição de pagamento terceira**, **sempre à vista**, por **cartão de crédito ou Pix**. **Não há parcelamento nem boleto**; o plano trimestral é pago de uma vez. A Stazia não armazena o número completo do seu cartão. A **nota fiscal é emitida automaticamente a cada pagamento** pelo sistema de cobrança. **CPF.** Para emitir a cobrança e a nota fiscal, a instituição de pagamento exige o seu CPF. A Stazia o **pede só na hora de pagar** (não no cadastro) e o repassa a essa instituição (Política de Privacidade).
+9.3. **Cobrança.** Os pagamentos são processados por **instituição de pagamento terceira**, por **Pix, cartão de crédito ou cartão de débito, sempre à vista**. **A renovação automática é feita só no cartão de crédito; no Pix e no cartão de débito, cada período é pago na hora.** **Não há parcelamento nem boleto**; o plano trimestral é pago de uma vez. A Stazia não armazena o número completo do seu cartão. A **nota fiscal é emitida automaticamente a cada pagamento** pelo sistema de cobrança. **CPF.** Para emitir a cobrança e a nota fiscal, a instituição de pagamento exige o seu CPF. A Stazia o **pede só na hora de pagar** (não no cadastro) e o repassa a essa instituição (Política de Privacidade).
 
 9.4. Cupons e promoções valem apenas nas condições anunciadas e não se acumulam, salvo se dito expressamente.
 
@@ -171,11 +171,11 @@ Estudar com anotações pessoais e usar os recursos de impressão ou exportaçã
 
 ## 10. RENOVAÇÃO AUTOMÁTICA
 
-10.1. Pagando no **cartão**, a assinatura **renova automaticamente** por períodos iguais (um mês ou um trimestre) até o cancelamento, pelo mesmo preço vigente, salvo reajuste informado conforme a cláusula 16.
+10.1. Pagando no **cartão de crédito**, a assinatura **renova automaticamente** por períodos iguais (um mês ou um trimestre) até o cancelamento, pelo mesmo preço vigente, salvo reajuste informado conforme a cláusula 16. No **Pix** e no **cartão de débito** não há renovação automática: cada período é pago na hora.
 
 10.2. Antes de cada renovação (mensal ou trimestral), a Stazia envia **aviso por e-mail e por aviso na tela do aplicativo (pop-up em Avisos)**, em **7, 3 e 1 dia antes do vencimento**, informando valor, data e como cancelar.
 
-10.3. Pagando por **Pix**, a Stazia gera a **cobrança 7 dias antes do vencimento**, para dar tempo de compensar, e avisa você (não há débito automático). No **cartão**, a cobrança é feita **no dia da renovação**. **O acesso ao novo período só é liberado com a confirmação de pagamento pela instituição de pagamento.** Se não houver confirmação no dia, vale a cláusula 15.
+10.3. Pagando por **Pix** ou **cartão de débito**, a Stazia gera a **cobrança 7 dias antes do vencimento**, para dar tempo de compensar, e avisa você (não há cobrança automática). No **cartão de crédito**, a cobrança é feita **no dia da renovação**. **O acesso ao novo período só é liberado com a confirmação de pagamento pela instituição de pagamento.** Se não houver confirmação no dia, vale a cláusula 15.
 
 10.4. Se o pagamento da renovação falhar, vale a cláusula 15.
 
@@ -185,7 +185,7 @@ Estudar com anotações pessoais e usar os recursos de impressão ou exportaçã
 
 ## 12. CANCELAMENTO PELO ALUNO
 
-12.1. Você pode cancelar **a qualquer momento**, **sem multa**, pelo botão "Cancelar assinatura" em Minha Conta, ou pelo SAC. O cancelamento deve ser possível pelo mesmo meio da contratação (Decreto 7.962/2013, art. 5º; conferir).
+12.1. Você pode cancelar **a qualquer momento**, **sem multa**, pelo botão "Cancelar assinatura" em Minha Conta, ou pelo SAC. O cancelamento deve ser possível pelo mesmo meio da contratação (Decreto 7.962/2013, art. 5º).
 
 12.2. O cancelamento **impede novas cobranças**. Você continua usando o plano **até o fim do período já pago**. A Stazia confirma o cancelamento por e-mail na hora.
 
@@ -195,7 +195,7 @@ Estudar com anotações pessoais e usar os recursos de impressão ou exportaçã
 
 ## 13. DIREITO DE ARREPENDIMENTO E REEMBOLSO
 
-13.1. Como a contratação é feita pela internet, você pode **desistir em até 7 (sete) dias corridos** contados da contratação (da confirmação do pedido ou do primeiro acesso ao plano pago, o que ocorrer por último, para sua proteção) (CDC, art. 49; conferir). Para os extras de IA, vale a cláusula 13-A.5.
+13.1. Como a contratação é feita pela internet, você pode **desistir em até 7 (sete) dias corridos** contados da contratação (da confirmação do pedido ou do primeiro acesso ao plano pago, o que ocorrer por último, para sua proteção) (CDC, art. 49). Para os extras de IA, vale a cláusula 13-A.5.
 
 13.2. Exerça pelo botão "Desistir da compra (7 dias)" em Minha Conta ou pelo SAC. A Stazia confirma por e-mail na hora.
 
@@ -227,16 +227,16 @@ Exemplos (cancelando depois dos 7 dias):
 | ELITE | R$ 539,70 | R$ 179,90 | (2 × 179,90) − 10% = R$ 323,82 | 179,90 − 10% = R$ 161,91 |
 Cancelando no 3º mês não há meses não iniciados, e portanto não há devolução do plano; o acesso vai até o fim do trimestre.
 
-13-A.5. **(d) Extras de IA.** **Dentro de 7 dias** da compra: devolução **integral**, inclusive do que já foi usado (cláusula 13); fraude ou má-fé comprovada leva à suspensão da conta, com direito de defesa (cláusula 13.5). **Depois dos 7 dias:** a Stazia devolve **só os créditos não usados**, em proporção ao preço do pacote, **menos 10%**. Fórmula: devolução = (créditos não usados ÷ créditos do pacote) × preço do pacote × 0,90 Os **minutos de voz ao vivo** do pacote seguem a mesma regra e a mesma proporção: minutos não usados ÷ minutos do pacote × preço × 0,90.. Os créditos já usados não são devolvidos. Os Extras vencidos (30 dias) não são devolvidos.
+13-A.5. **(d) Extras de IA.** **Dentro de 7 dias** da compra: devolução **integral**, inclusive do que já foi usado (cláusula 13); fraude ou má-fé comprovada leva à suspensão da conta, com direito de defesa (cláusula 13.5). **Depois dos 7 dias:** a Stazia devolve **só os créditos não usados**, em proporção ao preço do pacote, **menos 10%**. Fórmula: devolução = (créditos não usados ÷ créditos do pacote) × preço do pacote × 0,90. Os **minutos de voz ao vivo** do pacote seguem a mesma regra e a mesma proporção: minutos não usados ÷ minutos do pacote × preço × 0,90. Os créditos já usados não são devolvidos. Os Extras vencidos (30 dias) não são devolvidos.
 Exemplo conjunto: PRO trimestral cancelado no 2º mês = **R$ 80,91** (plano) **+** IA Boost de R$ 24,90 com 50 de 100 créditos usados: 50% × R$ 24,90 = R$ 12,45, menos 10% = **R$ 11,21** (extra). **Total devolvido: R$ 92,12.**
 
-13-A.6. **(e) Como e quando o dinheiro volta:** em caso de **arrependimento (7 dias) pago no cartão**, a Stazia comunica a administradora **imediatamente** para providenciar o estorno, que pode aparecer em até duas faturas. Nos **demais cancelamentos** e nos pagamentos por **Pix**, a devolução é feita por transferência para a conta que você indicar, em até **10 dias úteis** depois da confirmação do pedido e da informação dos dados bancários. No arrependimento pago no cartão, o valor aparece conforme o fechamento da fatura da operadora.
+13-A.6. **(e) Como e quando o dinheiro volta:** em caso de **arrependimento (7 dias) pago no cartão de crédito**, a Stazia comunica a administradora **imediatamente** para providenciar o estorno, que pode aparecer em até duas faturas. Nos **demais cancelamentos** e nos pagamentos por **Pix** ou **cartão de débito**, a devolução é feita por transferência para a conta que você indicar, em até **10 dias úteis** depois da confirmação do pedido e da informação dos dados bancários. No arrependimento pago no cartão de crédito, o valor aparece conforme o fechamento da fatura da operadora.
 
 13-A.7. Falha grave do serviço, cobrança em duplicidade e cancelamento por iniciativa da Stazia sem justa causa seguem a cláusula 13.6.
 
 ## 14. FALHA DO SERVIÇO E VÍCIOS
 
-14.1. Se o serviço contratado apresentar vício ou falha grave que a Stazia não corrija em prazo razoável, você pode exigir, nos termos do CDC (art. 20; conferir), a reexecução do serviço, a devolução proporcional do valor pago ou o abatimento do preço.
+14.1. Se o serviço contratado apresentar vício ou falha grave que a Stazia não corrija em prazo razoável, você pode exigir, nos termos do CDC (art. 20), a reexecução do serviço, a devolução proporcional do valor pago ou o abatimento do preço.
 
 ## 15. ATRASO OU FALHA DE PAGAMENTO
 
@@ -252,7 +252,7 @@ Exemplo conjunto: PRO trimestral cancelado no 2º mês = **R$ 80,91** (plano) **
 
 ## 16. REAJUSTE DE PREÇO
 
-16.1. O preço contratado fica **mantido durante o período já pago**. Os preços podem ser reajustados na renovação, respeitada a periodicidade mínima de **12 (doze) meses** contados da contratação ou do último reajuste (Lei 9.069/1995, art. 28, § 1º; conferir), com base na variação positiva do IPCA/IBGE ou, na falta dele, de índice oficial que o substitua, além de eventuais repasses de custos tributários ou de fornecedores essenciais, sempre com o aviso da cláusula 16.2.
+16.1. O preço contratado fica **mantido durante o período já pago**. Os preços podem ser reajustados na renovação, respeitada a periodicidade mínima de **12 (doze) meses** contados da contratação ou do último reajuste (Lei 9.069/1995, art. 28, § 1º), com base na variação positiva do IPCA/IBGE ou, na falta dele, de índice oficial que o substitua, além de eventuais repasses de custos tributários ou de fornecedores essenciais, sempre com o aviso da cláusula 16.2.
 
 16.2. O reajuste só vale se for **avisado com no mínimo 30 dias de antecedência**, com o valor novo e a data. Se você não concordar, pode **cancelar sem ônus** até a renovação (cláusula 12).
 
@@ -296,7 +296,11 @@ Exemplo conjunto: PRO trimestral cancelado no 2º mês = **R$ 80,91** (plano) **
 
 18.6. **Registros de conversa.** As conversas por **escrito** ficam no seu histórico enquanto sua conta existir, para seu uso, para continuidade do estudo e para personalização. O **texto** das falas das conversas por **voz** (transcrição) fica por até **7 dias** e é apagado automaticamente. A Stazia **não grava o áudio da sua voz**. Em casos limitados (suporte a pedido seu, segurança, prevenção de abuso e investigação de violação deste contrato), pessoas autorizadas da Stazia podem ter acesso ao conteúdo das conversas, com dever de sigilo. **As conversas não são usadas para treinar IA nem para "melhoria" com dados identificáveis**; só são usadas métricas agregadas e anônimas de qualidade, se for o caso.
 
-18.7. **Fornecedores de IA.** O Tutor usa **provedores de inteligência artificial, de nuvem e de voz**, que podem estar **no exterior**, com as salvaguardas da LGPD (cláusula 26.5). A **lista nominal** dos fornecedores é informada ao titular **sob pedido** pelo e-mail privacidade@staziamed.com.br (LGPD, arts. 9º e 18, VII; conferir). Os provedores de IA **não usam os dados dos alunos para treinar seus modelos**, por contrato empresarial, e **a Stazia não usa as conversas com o Tutor para treinar IA**. Se um provedor que receba sua voz for incluído ou trocado de modo relevante, a Política será atualizada e, se material, será pedido novo aceite.
+18.7. **Fornecedores de IA.** O Tutor usa **provedores de inteligência artificial, de nuvem e de voz**, que podem estar **no exterior**, com as salvaguardas da LGPD (cláusula 26.5). A **lista nominal** dos fornecedores é informada ao titular **sob pedido** pelo e-mail privacidade@staziamed.com.br (LGPD, arts. 9º e 18, VII). Os provedores de IA **não usam os dados dos alunos para treinar seus modelos**, por contrato empresarial, e **a Stazia não usa as conversas com o Tutor para treinar IA**. Se um provedor que receba sua voz for incluído ou trocado de modo relevante, a Política será atualizada e, se material, será pedido novo aceite.
+
+18.8. **Voz.** Usar o microfone é opcional: todos os Tutores funcionam por escrito. Ao ligar o microfone pela primeira vez, você autoriza o envio do áudio ao fornecedor, somente para a conversa. A voz do Tutor é artificial. Você pode retirar a autorização a qualquer momento deixando de usar o microfone ou pedindo ao suporte.
+
+18.9. **Conteúdo gerado pelo Tutor.** As respostas do Tutor são fornecidas a você sob a licença pessoal e intransferível da cláusula 7. A Stazia não reivindica direitos sobre as perguntas que você faz. A estrutura, o modelo e o método de resposta pertencem à Stazia ou aos seus fornecedores.
 
 18.10. **Janelinha do Tutor.** Nas Questões, nos Simulados e nas Aulas o Tutor pode abrir em uma **janelinha** com o personagem em miniatura. Ela **consome seus créditos ou minutos**. **Durante um simulado em andamento ela fica travada** e só funciona depois que você entregar. Em questões, o Tutor **não revela o gabarito antes de você responder**.
 
@@ -307,10 +311,6 @@ Exemplo conjunto: PRO trimestral cancelado no 2º mês = **R$ 80,91** (plano) **
 18.13. **Sigilo.** O Tutor não revela senhas, instruções internas, regras de segurança, chaves, nem a tecnologia que usa; ao ser perguntado, responde como o personagem e volta ao estudo. Tentar burlar essa proteção é conduta proibida (cláusula 24).
 
 18.14. **Dois tipos de voz.** (a) **Voz ao vivo**: conversa em tempo real com o Tutor, que usa provedores de IA de voz; (b) **Voz do professor**: o texto da resposta é lido por voz sintética de outro provedor, que não recebe o áudio da sua voz. Só a voz ao vivo consome a franquia de minutos (cláusula 17.5).
-
-18.9. **Conteúdo gerado pelo Tutor.** As respostas do Tutor são fornecidas a você sob a licença pessoal e intransferível da cláusula 7. A Stazia não reivindica direitos sobre as perguntas que você faz. A estrutura, o modelo e o método de resposta pertencem à Stazia ou aos seus fornecedores.
-
-18.8. **Voz.** Usar o microfone é opcional: todos os Tutores funcionam por escrito. Ao ligar o microfone pela primeira vez, você autoriza o envio do áudio ao fornecedor, somente para a conversa. A voz do Tutor é artificial. Você pode retirar a autorização a qualquer momento deixando de usar o microfone ou pedindo ao suporte.
 
 ## 19. PERSONALIDADES COM LINGUAGEM FORTE
 
@@ -348,19 +348,19 @@ Exemplo conjunto: PRO trimestral cancelado no 2º mês = **R$ 80,91** (plano) **
 
 22.1. Funções de interação entre alunos (como Treino em Dupla, Match, Radar e chat, quando disponíveis) permitem formar duplas e treinar. Ao usá-las, você aceita que outros alunos vejam as informações de perfil que você escolher exibir (por exemplo, nome ou apelido, foto, nível, áreas de interesse) e que sua atividade na dupla seja visível ao parceiro durante o treino.
 
-22.2. **Conduta.** Seja respeitoso. É proibido: ofender, discriminar, assediar, ameaçar, expor dados de terceiros, enviar conteúdo ilícito, sexual ou violento, fazer propaganda ou venda, enviar *spam*, gravar ou divulgar sessões e conversas de outro aluno sem autorização, ou usar as funções para fins diferentes do estudo.
-
-22.3. **Denúncia, bloqueio e moderação.** Você pode **denunciar** condutas e **bloquear** outro aluno pela plataforma. A Stazia pode revisar denúncias, remover conteúdo, limitar ou encerrar funções e suspender contas, respeitada a cláusula 27. Para apurar denúncias e proteger alunos, a Stazia guarda os relatos e registros necessários (conteúdo por 6 meses e registro mínimo por 3 anos após o fechamento da denúncia) e pode acessar o conteúdo das interações denunciadas.
-
-22.4. **Conteúdo de terceiros.** A Stazia não controla previamente o que os alunos dizem uns aos outros. O Aluno é responsável pelo que publica e fala. A Stazia atua após ciência (denúncia) e cumpre ordem judicial (Lei 12.965/2014, art. 19; conferir). A Stazia pode fornecer dados à autoridade nos casos legais.
-
-22.5. A Stazia não garante que haverá parceiro disponível nem a qualidade do treino com outro aluno. Os parceiros de treino não são empregados nem representantes da Stazia.
-
 22.1-A. **Funções.** (a) **Treino em Dupla**: treino de estações com outro aluno, em salas; (b) **Stazia Match**: sugestão de pares por compatibilidade (prova, áreas, ritmo, papel, disponibilidade), com "curtir" recíproco; (c) **Radar** ("Perto de você"): lista de alunos online ou próximos **por cidade**, só de quem escolheu "Aparecer no radar"; quem não aparece não vê a lista; (d) **chat** entre quem formou dupla; (e) **convite por link**; (f) **treino sozinho**, em que a IA avalia o que você escreveu (cláusulas 17 e 18), conta no seu histórico e **fica fora de rankings**.
 
 22.1-B. **Seu nome público e @.** Você escolhe um nome público e um **@ único**. O @ pode ser **trocado a cada 15 dias**, não pode imitar equipe, marcas ou pessoas, e pode ser recusado ou alterado pela Stazia se violar o contrato. O perfil mostra apenas o que você escolher (por exemplo, iniciais, cidade, prova, áreas, ritmo, disponibilidade); **nunca e-mail, telefone ou foto**. A localização do Radar é a **cidade que você informa**, não a sua posição por GPS. O aplicativo **não coleta GPS nem a localização do aparelho**.
 
+22.2. **Conduta.** Seja respeitoso. É proibido: ofender, discriminar, assediar, ameaçar, expor dados de terceiros, enviar conteúdo ilícito, sexual ou violento, fazer propaganda ou venda, enviar *spam*, gravar ou divulgar sessões e conversas de outro aluno sem autorização, ou usar as funções para fins diferentes do estudo.
+
+22.3. **Denúncia, bloqueio e moderação.** Você pode **denunciar** condutas e **bloquear** outro aluno pela plataforma. A Stazia pode revisar denúncias, remover conteúdo, limitar ou encerrar funções e suspender contas, respeitada a cláusula 27. Para apurar denúncias e proteger alunos, a Stazia guarda os relatos e registros necessários (conteúdo por 6 meses e registro mínimo por 3 anos após o fechamento da denúncia) e pode acessar o conteúdo das interações denunciadas.
+
 22.3-A. **Chat, denúncia e guarda.** As mensagens do chat (Treino em Dupla e Match) ficam registradas no banco de dados enquanto a sua conta existir. Ao encerrar a conta, as mensagens são eliminadas ou anonimizadas, **exceto** as que façam parte de uma **denúncia**: o **conteúdo das mensagens denunciadas** fica guardado por **6 meses** após o fechamento da denúncia e o **registro mínimo** (quem, quando, motivo e decisão) por **3 anos**, para segurança e defesa de direitos. Ao receber uma denúncia, a equipe da Stazia passa a ter acesso à conversa denunciada. O **bloqueio** vale nos dois sentidos, na hora: a pessoa bloqueada some do baralho e do radar e não pode convidar você.
+
+22.4. **Conteúdo de terceiros.** A Stazia não controla previamente o que os alunos dizem uns aos outros. O Aluno é responsável pelo que publica e fala. A Stazia atua após ciência (denúncia) e cumpre ordem judicial (Lei 12.965/2014, art. 19). A Stazia pode fornecer dados à autoridade nos casos legais.
+
+22.5. A Stazia não garante que haverá parceiro disponível nem a qualidade do treino com outro aluno. Os parceiros de treino não são empregados nem representantes da Stazia.
 
 22.6. A 2ª fase e algumas dessas funções podem estar fechadas ("em breve") até o lançamento (cláusula 2.2-A). Algumas funções (como o formar dupla no Match) podem consumir cota ou créditos do plano, informados antes do uso (por exemplo, usos do Tutor e correção de estação por IA, conforme a cláusula 17.5).
 
@@ -368,7 +368,7 @@ Exemplo conjunto: PRO trimestral cancelado no 2º mês = **R$ 80,91** (plano) **
 
 23.1. A Stazia pode divulgar **ofertas e descontos de empresas parceiras** em produtos e serviços ("**Benefícios**"). Os Benefícios são uma **liberalidade** da Stazia: um bônus voluntário e **não fazem parte do preço nem do serviço essencial contratado**.
 
-23.2. A Stazia **não é obrigada** a manter, criar, renovar ou negociar Benefícios, e **pode alterar, suspender ou encerrar qualquer Benefício ou parceria**, porque a oferta depende do parceiro. Ao fazer isso por decisão sua, a Stazia avisa na plataforma com antecedência razoável; se o encerramento for imediato por decisão do parceiro, retira a oferta e avisa o mais rápido possível. **Exceção:** se um Benefício tiver sido anunciado expressamente como parte da oferta da sua assinatura, a Stazia o mantém pelo período do plano já contratado ou oferece compensação equivalente (CDC, art. 30; conferir). Por isso, a Stazia evita anunciar Benefícios como motivo principal da contratação.
+23.2. A Stazia **não é obrigada** a manter, criar, renovar ou negociar Benefícios, e **pode alterar, suspender ou encerrar qualquer Benefício ou parceria**, porque a oferta depende do parceiro. Ao fazer isso por decisão sua, a Stazia avisa na plataforma com antecedência razoável; se o encerramento for imediato por decisão do parceiro, retira a oferta e avisa o mais rápido possível. **Exceção:** se um Benefício tiver sido anunciado expressamente como parte da oferta da sua assinatura, a Stazia o mantém pelo período do plano já contratado ou oferece compensação equivalente (CDC, art. 30). Por isso, a Stazia evita anunciar Benefícios como motivo principal da contratação.
 
 23.3. **Responsabilidade do parceiro.** O produto ou serviço é vendido e entregue **pelo parceiro**, que responde pela oferta, preço, qualidade, entrega, garantia, nota fiscal, atendimento e pelo direito de arrependimento da compra feita com ele (CDC). A Stazia não é vendedora nem garante o produto, salvo se a lei determinar o contrário. A divulgação identifica claramente que se trata de oferta de parceiro e se a Stazia recebe remuneração por ela. Exigências de segurança do parceiro valem para você.
 
@@ -394,15 +394,15 @@ Exemplo conjunto: PRO trimestral cancelado no 2º mês = **R$ 80,91** (plano) **
 
 26.1. A Stazia é **controladora** dos seus dados pessoais e os trata conforme a Lei 13.709/2018 (LGPD) e a **Política de Privacidade**, que explica quais dados, para quê, com quem compartilhamos, por quanto tempo e como exercer seus direitos.
 
-26.2. **Principais finalidades e bases legais** (resumo, detalhado na Política): criar e manter a conta, prestar o serviço, cobrar e emitir nota (execução do contrato); guardar o registro do aceite com IP e outros dados, e dados necessários à defesa em processos (exercício regular de direitos, art. 7º, VI, e legítimo interesse; conferir); guardar registros de acesso por prazo mínimo (obrigação legal, Marco Civil da Internet, art. 15; conferir); segurança e prevenção de fraude (legítimo interesse); personalização do estudo (execução do contrato/legítimo interesse); marketing (consentimento opcional); áudio de voz (consentimento).
+26.2. **Principais finalidades e bases legais** (resumo, detalhado na Política): criar e manter a conta, prestar o serviço, cobrar e emitir nota (execução do contrato); guardar o registro do aceite com IP e outros dados, e dados necessários à defesa em processos (exercício regular de direitos, art. 7º, VI, e legítimo interesse); guardar registros de acesso por prazo mínimo (obrigação legal, Marco Civil da Internet, art. 15); segurança e prevenção de fraude (legítimo interesse); personalização do estudo (execução do contrato/legítimo interesse); marketing (consentimento opcional); áudio de voz (consentimento).
 
 26.3. **Registro do aceite.** O aceite grava o IP, a data e a hora, o navegador, a versão, o código de integridade do documento, o plano e o retrato do preço (cláusula 6.3). A finalidade é provar a contratação e o texto aceito, defender direitos em eventual disputa, e prevenir fraude. O prazo de guarda do registro de aceite é de 5 (cinco) anos após o fim do contrato, conforme a Política de Privacidade.
 
 26.4. **Parceiros e terceiros.** Os dados são compartilhados com operadores (hospedagem, banco de dados, autenticação, pagamento, envio de e-mails, IA e voz, suporte) sob contrato e dever de segurança, e com autoridades por exigência legal. **Não vendemos seus dados.** Dados para empresas parceiras de Benefícios só com base legal informada e, se necessário, consentimento específico.
 
-26.5. **Transferência internacional.** Alguns fornecedores (IA, nuvem, voz) processam dados fora do Brasil, com salvaguardas previstas na LGPD (art. 33; conferir), como cláusulas contratuais padrão ou garantias equivalentes.
+26.5. **Transferência internacional.** Alguns fornecedores (IA, nuvem, voz) processam dados fora do Brasil, com salvaguardas previstas na LGPD (art. 33), como cláusulas contratuais padrão ou garantias equivalentes.
 
-26.6. **Retenção.** Os dados são guardados pelo tempo necessário. Resumo: conta ativa, enquanto existir; transcrição de voz, 7 dias; conversas escritas, enquanto a conta existir; registros de acesso, 6 meses (Marco Civil, art. 15; conferir); registro do aceite, dados de cobrança e histórico financeiro: **5 (cinco) anos após o fim do contrato**, para defesa em eventuais disputas (CDC, art. 27; conferir); após o encerramento da assinatura, os dados de progresso e histórico de estudo são preservados por 12 (doze) meses para facilitar o seu retorno; passado esse prazo, ou se você pedir a exclusão da conta, são eliminados ou anonimizados (eliminação em até 30 dias após o pedido, salvo o que a lei exigir). Podemos manter por mais tempo o que a lei ou a defesa de direitos exigirem.
+26.6. **Retenção.** Os dados são guardados pelo tempo necessário. Resumo: conta ativa, enquanto existir; transcrição de voz, 7 dias; conversas escritas, enquanto a conta existir; registros de acesso, 6 meses (Marco Civil, art. 15); registro do aceite, dados de cobrança e histórico financeiro: **5 (cinco) anos após o fim do contrato**, para defesa em eventuais disputas (CDC, art. 27); após o encerramento da assinatura, os dados de progresso e histórico de estudo são preservados por 12 (doze) meses para facilitar o seu retorno; passado esse prazo, ou se você pedir a exclusão da conta, são eliminados ou anonimizados (eliminação em até 30 dias após o pedido, salvo o que a lei exigir). Podemos manter por mais tempo o que a lei ou a defesa de direitos exigirem.
 
 26.6-A. **Dados das funções novas** (resumo, detalhes na Política): cidade e @ do perfil; chat (guardado conforme a cláusula 22.3-A); denúncias (conteúdo 6 meses e registro mínimo 3 anos após o fechamento); histórico do Nivelamento e do treino sozinho; consumo de créditos e de minutos de voz; e e-mails de serviço. **Cookies:** apenas essenciais (sessão, segurança, preferências), sem propaganda e sem estatística de terceiros.
 
@@ -410,7 +410,7 @@ Exemplo conjunto: PRO trimestral cancelado no 2º mês = **R$ 80,91** (plano) **
 
 26.8. A plataforma é destinada a maiores de 18 anos e não coleta intencionalmente dados de crianças e adolescentes.
 
-26.9. Incidente de segurança que possa causar risco relevante será comunicado ao Aluno e à ANPD na forma da lei (LGPD, art. 48; conferir).
+26.9. Incidente de segurança que possa causar risco relevante será comunicado ao Aluno e à ANPD na forma da lei (LGPD, art. 48).
 
 ## 27. SUSPENSÃO, BLOQUEIO E ENCERRAMENTO PELA STAZIA
 
@@ -464,11 +464,11 @@ Exemplo conjunto: PRO trimestral cancelado no 2º mês = **R$ 80,91** (plano) **
 
 34.5. **Integralidade e precedência.** Este contrato, o Anexo I, o Regulamento e a Política de Privacidade formam o acordo completo. Havendo conflito, valem, nesta ordem: a lei aplicável; a Política de Privacidade (exclusivamente quanto a dados pessoais); este contrato; o Regulamento; e o Anexo I (quanto a preços e limites mais recentes).
 
-34.6. **Força maior.** Nenhuma parte responde por descumprimento causado por caso fortuito ou força maior (Código Civil, art. 393; conferir).
+34.6. **Força maior.** Nenhuma parte responde por descumprimento causado por caso fortuito ou força maior (Código Civil, art. 393).
 
 34.7. **Prova.** Os registros eletrônicos mantidos pela Stazia, inclusive o registro do aceite, são aceitos como prova, sem prejuízo do direito do Aluno de produzir prova em contrário.
 
-## 35. CLÁUSULAS EM DESTAQUE (CDC, art. 54, § 4º; conferir)
+## 35. CLÁUSULAS EM DESTAQUE (CDC, art. 54, § 4º)
 
 Chamamos sua atenção especialmente para as cláusulas que limitam direitos ou criam obrigações: **3** (sem garantia de aprovação), **6.5** (mudança de versão), **7-A** (proteção da propriedade intelectual), **10** (renovação automática), **12.3** (sem devolução proporcional após o período), **15** (atraso e suspensão), **16** (reajuste), **17.3 e 17.4** (validade e não reembolso de extras), **19** (linguagem forte), **21** (Coins e ligas), **22** (conduta e moderação), **23** (parceiros), **25** (disponibilidade), **27** (suspensão), **28** (limitação de responsabilidade).
 
@@ -476,7 +476,7 @@ Chamamos sua atenção especialmente para as cláusulas que limitam direitos ou 
 
 36.1. Aplica-se a lei brasileira.
 
-36.2. Fica eleito o foro do **domicílio do Aluno no Brasil** (consumidor) para resolver conflitos (CDC, art. 101, I, e art. 51, IV; conferir). Se o Aluno não tiver domicílio no Brasil no momento do conflito, fica eleito o foro da Comarca de Curitiba/PR, sendo garantido ao Aluno participar de eventuais audiências de forma integralmente virtual, nos termos da lei processual.
+36.2. Fica eleito o foro do **domicílio do Aluno no Brasil** (consumidor) para resolver conflitos (CDC, art. 101, I, e art. 51, IV). Se o Aluno não tiver domicílio no Brasil no momento do conflito, fica eleito o foro da Comarca de Curitiba/PR, sendo garantido ao Aluno participar de eventuais audiências de forma integralmente virtual, nos termos da lei processual.
 
 ---
 

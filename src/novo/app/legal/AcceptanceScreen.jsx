@@ -41,12 +41,26 @@ export function termoAceito(legal) {
  * vigente já foi aceito e o único motivo que sobra é o WhatsApp vazio (banco ainda sem a migração …13660_cadastro_sem_whatsapp), a
  * tela não aparece, porque ela não pede mais o WhatsApp e a pessoa ficaria presa. Com a 13660 no banco, isto é igual a gate_required.
  */
+/**
+ * Contrato 3.0, cláusula 6.5-A: o aluno com plano pago ativo que ainda não aceitou a versão nova continua usando o app até o fim do
+ * período pago (o servidor manda grace_until e gate_required falso). Nesse prazo o app mostra um aviso com "Ler e aceitar".
+ */
+export function emPrazoDeAceite(legal) {
+  return Boolean(legal?.grace_until) && !legal?.gate_required && !termoAceito(legal);
+}
+
+/** Data (dia/mês/ano) no fuso de Brasília. */
+export function dataBR(iso) {
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso));
+}
+
 export function precisaTelaDeAceite(legal) {
   if (!legal?.gate_required) return false;
   return !(termoAceito(legal) && legal.phone_missing);
 }
 
-export function AcceptanceScreen() {
+/** @param {{ onAgoraNao?: () => void }} props onAgoraNao: aberta pelo aviso do prazo (cláusula 6.5-A); mostra "Agora não". */
+export function AcceptanceScreen({ onAgoraNao } = {}) {
   const session = useSession();
   const supportEmail = useSupportEmail();
   const legal = session.boot?.legal;
@@ -130,7 +144,10 @@ export function AcceptanceScreen() {
   )}`;
 
   const titulo = atualizacao ? "Atualizamos nosso Contrato" : "Antes de começar";
-  const sub = atualizacao
+  const prazo = onAgoraNao && legal?.grace_until ? dataBR(legal.grace_until) : null;
+  const sub = prazo
+    ? `Versão ${current}. Você pode usar o seu plano até ${prazo}; para renovar depois disso, aceite a nova versão.`
+    : atualizacao
     ? `Versão ${current}. Veja o que mudou, leia os textos completos e aceite para continuar.`
     : "Leia e aceite os Termos de Uso e o Contrato de Assinatura para usar o StaziaMed.";
 
@@ -202,7 +219,8 @@ export function AcceptanceScreen() {
         <RecoveryButton type="submit" loading={busy} loadingText="SALVANDO…">ACEITAR E CONTINUAR</RecoveryButton>
 
         <div className="rc-actions ac3-acoes">
-          {atualizacao && (
+          {onAgoraNao && <RecoveryLink onClick={onAgoraNao}>Agora não</RecoveryLink>}
+          {atualizacao && !onAgoraNao && (
             <>
               <RecoveryLink onClick={baixarDados}>{exportando ? "Gerando o arquivo…" : "Baixar meus dados"}</RecoveryLink>
               <a className="ln-link rc-back ac3-link" href={cancelamento}>

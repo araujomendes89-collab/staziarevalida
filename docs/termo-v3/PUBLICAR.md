@@ -13,7 +13,7 @@ existem e ele usa a reserva. A troca para o 3.0 acontece **só quando o SQL é c
    versão 3.0"), login e cadastro.
 2. Colar `termo_v3_aplicar.sql` no editor de SQL do Supabase (uma transação; se a conferência do fim falhar, nada muda).
    Pré-requisitos já no ar: 013660 e 013661. Não usar `supabase db push`.
-3. Rodar `termo_v3_conferir.sql`: termo_uso 3.0 (`497d18a8…`), politica_privacidade 3.0 (`b7b4e4dd…`), regulamento 1.0 (`d7be859d…`),
+3. Rodar `termo_v3_conferir.sql`: termo_uso 3.0 (`0a9b58cf…`), politica_privacidade 3.0 (`479660a6…`), regulamento 1.0 (`b4494a46…`),
    tutor_ia 2.0.
 4. Conferir no site: `/novo/termos`, `/novo/privacidade` e `/novo/regulamento` mostram os textos 3.0; um aluno de teste vê "Atualizamos nosso
    Contrato", aceita e entra; Minha Conta → Documentos mostra o aceite; uma conta nova aceita a 3.0 no cadastro.
@@ -49,6 +49,12 @@ O site não precisa ser publicado de novo: ele lê a versão vigente e o texto d
 
 Quem decide se a mudança é "relevante" (novo aceite) é o dono/advogado. O Contrato 3.0 (cláusula 6.5) chama de material a mudança que
 afete preço, limites, direitos, dados ou o serviço, com aviso de 30 dias.
+
+## Quem tem plano pago (Contrato 3.0, cláusula 6.5-A)
+Aluno que já tinha aceitado uma versão anterior e tem plano pago ativo (plano que não é o teste, situação "active", fim do período no
+futuro) continua usando o app até o fim do período pago, com um aviso no topo e o botão "Ler e aceitar" (abre a tela de aceite com
+"Agora não"). Terminado o período, a tela de aceite passa a ser obrigatória. Pagamento atrasado, teste ou amostra: a tela vem na hora.
+Quando a cobrança for ligada, a renovação deve exigir o aceite da versão vigente (ramo da cobrança).
 
 ## O que o registro guarda (legal_acceptances)
 Versão, data e hora do servidor, origem (cadastro, google, tela_aceite, tutor), navegador, e-mail em código (SHA-256), IP (versões com

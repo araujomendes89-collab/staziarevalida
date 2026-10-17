@@ -110,6 +110,32 @@ describe("Termo 3.0 — novo aceite", () => {
     expect(await legal(equipe)).toMatchObject({ gate_required: false, student: false });
   });
 
+  it("cláusula 6.5-A: quem tinha aceitado antes e tem plano pago ativo usa até o fim do período; depois, a tela volta", async () => {
+    const pago = await signUp({ terms_version: "2.0", declares_adult: "true" }); // criado depois da 013740: grava sem aceite
+    await db.exec(`alter table public.legal_acceptances disable trigger legal_acceptances_carimbo`);
+    await db.query(`insert into public.legal_acceptances (user_id, account_id, document, version, origin, email_hash) values ($1, $1, 'termo_uso', '2.0', 'cadastro', 'x')`, [pago]);
+    await db.exec(`alter table public.legal_acceptances enable trigger legal_acceptances_carimbo`);
+    await db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '10 days' where user_id = $1`, [pago]);
+    const l = await legal(pago);
+    expect(l).toMatchObject({ gate_required: false, termo_uso: { current: "3.0", accepted: "2.0", valid: false } });
+    expect(new Date(l.grace_until).getTime()).toBeGreaterThan(Date.now());
+    // período acabou: a tela volta
+    await db.query(`update public.subscriptions set current_period_end = now() - interval '1 minute' where user_id = $1`, [pago]);
+    expect(await legal(pago)).toMatchObject({ gate_required: true, grace_until: null });
+    // pagamento atrasado (sem tolerância) ou só no teste: a tela vem na hora
+    await db.query(`update public.subscriptions set status = 'past_due', current_period_end = now() + interval '10 days' where user_id = $1`, [pago]);
+    expect(await legal(pago)).toMatchObject({ gate_required: true });
+    expect(await legal(antigo2)).toMatchObject({ gate_required: true, grace_until: null });
+    // plano pago, mas nunca tinha aceitado nada: a tela vem na hora
+    const novoPago = await signUp();
+    await db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '10 days' where user_id = $1`, [novoPago]);
+    expect(await legal(novoPago)).toMatchObject({ gate_required: true, grace_until: null });
+    // aceitando no prazo, segue normal
+    await aceitar(pago, "3.0");
+    await db.query(`update public.subscriptions set status = 'active' where user_id = $1`, [pago]);
+    expect(await legal(pago)).toMatchObject({ gate_required: false, grace_until: null, termo_uso: { valid: true } });
+  });
+
   it("aceitar a versão velha ou sem a maioridade é recusado", async () => {
     expect(await recusa(aceitar(antigo2, "2.0"))).toBe("Versão desatualizada do termo.");
     expect(await recusa(aceitar(antigo2, "3.0", undefined, false))).toBe("Confirme que você tem 18 anos ou mais.");
