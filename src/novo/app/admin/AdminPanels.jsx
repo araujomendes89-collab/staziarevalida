@@ -5,6 +5,8 @@ import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { dateTimeBR, LoadError, Loading, messageOf, PLAN_LABEL, ROLE_LABEL, SUB_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
 import { auditActor, auditLabel, auditSummary } from "./auditLog.js";
+import { PlanosPorFase } from "./planos/DireitosPorFase.jsx";
+import { CarteiraIA } from "./planos/CarteiraIA.jsx";
 
 // ---------------------------------------------------------------- visão geral
 /** O que espera conferência, por aba (chaves de pending_review em app_admin_overview). */
@@ -301,6 +303,8 @@ export function AdminPlans() {
       {data.map((plan) => (
         <PlanEditor key={plan.code} plan={plan} onSaved={setData} signupRule={signupRule} />
       ))}
+      <PlanosPorFase />
+      <CarteiraIA />
     </div>
   );
 }

@@ -267,3 +267,13 @@
   .smn-ph--plan .smn-ph-row--plan .smn-ph-btn{position:relative;min-height:36px;height:36px}
   .smn-ph--plan .smn-ph-row--plan .smn-ph-btn::after{content:"";position:absolute;inset:-4px 0}
 }
+
+/* Início · saldo de IA ao lado da sequência (planos etapa 1, …013640): chip compacto; no celular só ícone + número */
+.smn-chips{display:inline-flex;align-items:center;gap:8px;flex:none;min-width:0}
+.smn-saldo{position:relative;display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 12px;border-radius:999px;border:0;background:var(--ai-bg);color:var(--ai-text);font:700 13px var(--font-sans);cursor:pointer;white-space:nowrap}
+.smn-saldo::after{content:"";position:absolute;inset:-6px 0}
+.smn-saldo:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.smn-saldo.is-esgotado{background:var(--warning-bg);color:var(--warning-text)}
+.smn-saldo-rot{font-weight:600}
+.smn-saldo-sep{width:1px;height:14px;margin:0 3px;background:currentColor;opacity:.3}
+@media (max-width:719px){.smn-saldo{padding:0 10px}.smn-saldo-rot{display:none}.smn-ph-l>.smn-chips{flex-direction:column;align-items:flex-end;gap:6px}}

@@ -46,6 +46,7 @@ import { createVoicePreviewRouter, tutorVoiceSamplesStorage } from "./server/tut
 import { tutorMockRespond } from "./server/tutor/mock";
 import { startVoiceSweeper } from "./server/tutor/realtime";
 import { createPlayRouter, startPlayScheduler } from "./server/play/router";
+import { createPlanosRouter } from "./server/planos/router";
 import { createLessonsRouter, lessonsStorage } from "./server/lessons/router";
 import { createQuestionFiguresRouter, questionFiguresStorage } from "./server/questions/figures";
 import { createAdminAssistantRouter } from "./server/adminAssistant/router";
@@ -127,6 +128,8 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   app.use("/api/tutor", createTutorRouter(tutorDeps, hub.pending));
   // Stazia Play: rotina diária (sequências, score, ranking, ligas) com o papel de serviço
   app.use("/api/play", createPlayRouter(hub.deps ? { db: hub.deps.db, log: (m: string) => console.log(m) } : null));
+  // Planos (etapa 3): ativação do teste grátis vendo o IP (só o código/hash vai ao banco) e tarefa diária (avisos de renovação)
+  app.use("/api/planos", createPlanosRouter(hub.deps ? { db: hub.deps.db, log: (m: string) => console.log(m) } : null, hub.pending));
   // Aulas: slides e áudios ficam no depósito privado; o banco decide quem vê
   app.use("/api/lessons", createLessonsRouter(hub.deps ? { db: hub.deps.db, storage: lessonsStorage(hub.deps.db.mode), log: (m: string) => console.log(m) } : null, hub.pending));
   // Figuras das questões (PNG/JPG, até 5 MB, uma por questão): depósito privado; o banco decide quem envia (equipe) e quem vê
