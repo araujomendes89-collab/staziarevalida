@@ -281,7 +281,9 @@ describe("Voz ao vivo para os alunos — tetos de gasto e limites", () => {
     // a conversa abre pelo caminho do app com os aceites; depois o aceite do Tutor sai (fica só o do Termo)
     await aceitarTermos(dev.db, SEM_ACEITE);
     const sNovo = await start(SEM_ACEITE);
+    await sql(`select set_config('app.legal_expurgo', 'on', false)`); // a prova não se apaga sem a chave de expurgo (013740)
     await sql(`delete from public.legal_acceptances where user_id = $1 and origin = 'tutor'`, [SEM_ACEITE]);
+    await sql(`select set_config('app.legal_expurgo', '', false)`);
     const antes = (await sql(`select count(*)::int n from public.tutor_voice_calls where user_id = $1`, [SEM_ACEITE]))[0].n;
 
     const res = await post(SEM_ACEITE, "/voice/start", { session_id: sNovo });

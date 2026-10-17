@@ -56,7 +56,7 @@ let definicaoAntes: string;
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(ler("supabase/tests/bootstrap.sql"));
-  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== NOVA).sort()) {
+  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== NOVA && f !== "20261003013740_termo_v3.sql").sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
   comZap = await signUp({ name: "Com WhatsApp", phone: PHONE, terms_version: "2.0", ...DECLARA });

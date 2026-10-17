@@ -58,6 +58,7 @@ function devDatabaseWithoutSeed(pg: PGlite, localCore: LocalCore): DevDatabase {
   };
 }
 
+let VIG = "";
 const acceptances = async (userId: string) =>
   (await db.query<any>(`select document, version, origin, user_agent, email_hash from public.legal_acceptances where user_id = $1 order by id`, [userId])).rows;
 const profileOf = async (userId: string) => (await db.query<any>(`select name, phone from public.profiles where id = $1`, [userId])).rows[0];
@@ -65,8 +66,11 @@ const metaOf = async (userId: string) => (await db.query<any>(`select raw_user_m
 
 beforeAll(async () => {
   backend = await createLocalBackend({ persist: false, seed: false });
+  // banco local do navegador: todas as migrações (Contrato 3.0 vigente desde a 013740)
+  VIG = (await backend.rpc<any>("app_legal_current")).termo_uso.version;
 
-  const files = fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql"));
+  // banco do servidor de desenvolvimento: sem a 013740 (Termo 2.0), para os testes do cadastro de antes; o 3.0 está em termoV3Banco
+  const files = fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== "20261003013740_termo_v3.sql");
   const source = Object.fromEntries(files.map((f) => [f, fs.readFileSync(path.join(MIGRATIONS, f), "utf8")]));
   db = new PGlite();
   await migrateLocalDatabase(db, source, null);
@@ -87,7 +91,7 @@ afterAll(async () => {
 
 describe("Cadastro — banco local do navegador", () => {
   it("cadastro local com WhatsApp e versão do termo já abre sem a tela de aceite", async () => {
-    const result = await backend.signUp("Ana Lima", "ana@teste.dev", "senha-segura", { phone: PHONE, termsVersion: "2.0", declaresAdult: true, declaresPhysician: true, userAgent: "T" });
+    const result = await backend.signUp("Ana Lima", "ana@teste.dev", "senha-segura", { phone: PHONE, termsVersion: VIG, declaresAdult: true, declaresPhysician: true, userAgent: "T" });
     expect(result.needsEmailConfirmation).toBe(false);
 
     const boot = await backend.rpc<any>("app_bootstrap");
@@ -96,12 +100,12 @@ describe("Cadastro — banco local do navegador", () => {
       student: true,
       phone_missing: false,
       gate_required: false,
-      termo_uso: { current: "2.0", accepted: "2.0", accepted_at: expect.any(String) },
+      termo_uso: { current: VIG, accepted: VIG, accepted_at: expect.any(String) },
     });
 
     // o aceite veio do cadastro, não da tela de aceite
     const exported = await backend.rpc<any>("app_export_my_data");
-    expect(exported.acceptances).toEqual([{ document: "termo_uso", version: "2.0", accepted_at: expect.any(String), origin: "cadastro", user_agent: "T" }]);
+    expect(exported.acceptances).toEqual([expect.objectContaining({ document: "termo_uso", version: VIG, accepted_at: expect.any(String), origin: "cadastro", user_agent: "T" })]);
   });
 
   it("cadastro sem versão do termo pede a tela de aceite", async () => {
@@ -120,7 +124,7 @@ describe("Cadastro — banco local do navegador", () => {
   });
 
   it("versão vigente sem a declaração de maioridade não vale como aceite", async () => {
-    await backend.signUp("Lia Souza", "lia2@teste.dev", "senha-segura", { phone: PHONE, termsVersion: TERMO_VERSAO, declaresPhysician: true, userAgent: "T" });
+    await backend.signUp("Lia Souza", "lia2@teste.dev", "senha-segura", { phone: PHONE, termsVersion: VIG, declaresPhysician: true, userAgent: "T" });
     const boot = await backend.rpc<any>("app_bootstrap");
     expect(boot.legal).toMatchObject({ gate_required: true, declarations_required: true, termo_uso: { accepted: null } });
   });
@@ -133,21 +137,21 @@ describe("Cadastro — banco local do navegador", () => {
 
   it("aceitar depois, com os argumentos da sessão, fecha a tela de aceite (e repetir não duplica)", async () => {
     await backend.signUp("Eva Costa", "eva@teste.dev", "senha-segura");
-    const args = { p_document: "termo_uso", p_version: TERMO_VERSAO, p_origin: "tela_aceite", p_phone: PHONE, p_user_agent: "UA/1", p_adult: true, p_physician: true };
+    const args = { p_document: "termo_uso", p_version: VIG, p_origin: "tela_aceite", p_phone: PHONE, p_user_agent: "UA/1", p_adult: true, p_physician: true };
 
     const boot = await backend.rpc<any>("app_accept_terms_declared", args);
     expect(boot.profile.phone).toBe(PHONE);
-    expect(boot.legal).toMatchObject({ phone_missing: false, gate_required: false, termo_uso: { accepted: "2.0" } });
+    expect(boot.legal).toMatchObject({ phone_missing: false, gate_required: false, termo_uso: { accepted: VIG } });
     await backend.rpc("app_accept_terms_declared", { ...args, p_phone: null });
 
     expect((await backend.rpc<any>("app_export_my_data")).acceptances).toEqual([
-      { document: "termo_uso", version: "2.0", accepted_at: expect.any(String), origin: "tela_aceite", user_agent: "UA/1" },
+      expect.objectContaining({ document: "termo_uso", version: VIG, accepted_at: expect.any(String), origin: "tela_aceite", user_agent: "UA/1" }),
     ]);
   });
 
   it("versão desatualizada e WhatsApp inválido são recusados com as mensagens do spec, sem gravar nada", async () => {
     await backend.signUp("Rui Neto", "rui@teste.dev", "senha-segura");
-    const args = { p_document: "termo_uso", p_version: TERMO_VERSAO, p_origin: "tela_aceite", p_phone: PHONE, p_user_agent: "UA/1", p_adult: true, p_physician: true };
+    const args = { p_document: "termo_uso", p_version: VIG, p_origin: "tela_aceite", p_phone: PHONE, p_user_agent: "UA/1", p_adult: true, p_physician: true };
 
     await expect(backend.rpc("app_accept_terms_declared", { ...args, p_version: "0.9" })).rejects.toThrow("Versão desatualizada do termo.");
     await expect(backend.rpc("app_accept_terms_declared", { ...args, p_phone: "41999998888" })).rejects.toThrow("Informe o WhatsApp com código do país.");
@@ -164,7 +168,10 @@ describe("Cadastro — banco local do navegador", () => {
 
   it("as versões do app são as vigentes no banco", async () => {
     const boot = await backend.rpc<any>("app_bootstrap");
-    expect(boot.legal.termo_uso.current).toBe(TERMO_VERSAO);
+    // com a 013740 o site lê a versão vigente do banco (app_legal_current); a constante do site é a reserva para banco sem ela
+    expect(boot.legal.termo_uso.current).toBe(VIG);
+    expect(VIG).toBe("3.0");
+    expect(TERMO_VERSAO).toBe("2.0");
     expect(boot.legal.tutor_ia.current).toBe(TUTOR_IA_VERSAO);
   });
 

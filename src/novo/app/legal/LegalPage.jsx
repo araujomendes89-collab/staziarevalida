@@ -1,65 +1,24 @@
-// Páginas públicas /termos e /privacidade (abrem com ou sem login, também carregando ou com erro).
+// Páginas públicas /novo/termos, /novo/privacidade e /novo/regulamento (abrem com ou sem login, também carregando ou com erro).
+// Mostram a versão VIGENTE de cada texto: do banco (cópia do sistema, desde a migração …13740) ou, num banco sem ela, a do próprio site.
 import React, { useEffect } from "react";
 import "../auth/login.css";
 import "./legal.css";
-import { LegalText, Inline } from "./LegalText.jsx";
-import { TERMO_VERSAO } from "./versions.js";
-import { documentosDa } from "./documentos.js";
+import { DocumentoLegal } from "./DocumentoLegal.jsx";
 
-function Secao({ bloco }) {
-  return (
-    <section id={bloco.id}>
-      <h2>{bloco.num}. {bloco.titulo}</h2>
-      {bloco.itens.map((item, i) => {
-        if (item.tipo === "ul") return <ul key={i}>{item.itens.map((t, j) => <li key={j}><Inline text={t} /></li>)}</ul>;
-        if (item.tipo === "sub") return <h3 key={i}>{item.texto}</h3>;
-        if (item.tipo === "caixa") {
-          return (
-            <p key={i} className="lgl-caixa">
-              {item.linhas[0]} <br />
-              <strong>{item.linhas[1]}</strong>
-            </p>
-          );
-        }
-        return <p key={i} className={item.forte ? "lgl-forte" : undefined}><Inline text={item.texto} /></p>;
-      })}
-    </section>
-  );
-}
+export { Privacidade } from "./PrivacidadeSite.jsx";
 
-/** versao: a do Termo que a Política acompanha (padrão: a de versions.js). */
-export function Privacidade({ versao = TERMO_VERSAO } = {}) {
-  const PRIVACIDADE = documentosDa(versao).privacidade;
-  return (
-    <>
-      <header className="lgl-head">
-        <h1>POLÍTICA DE PRIVACIDADE</h1>
-        <p className="lgl-sub">STAZIAMED REVALIDA</p>
-        <p className="lgl-meta">Última atualização: {PRIVACIDADE.atualizada}</p>
-      </header>
-      <div data-testid="legal-texto" className="lgl-text">
-        {PRIVACIDADE.blocos.map((b) =>
-          b.tipo === "controlador" ? (
-            <div key="controlador" className="lgl-controlador">
-              <h2>{b.titulo}</h2>
-              {b.linhas.map((l) => <p key={l}><Inline text={l} /></p>)}
-            </div>
-          ) : (
-            <Secao key={b.id} bloco={b} />
-          ),
-        )}
-      </div>
-      <footer className="lgl-foot">
-        <p>{PRIVACIDADE.rodape}</p>
-      </footer>
-    </>
-  );
-}
+/** Endereço público e chave de cada documento. */
+export const PAGINAS_LEGAIS = [
+  { pagina: "termos", doc: "termo_uso", href: "/novo/termos", nome: "Termos de Uso e Contrato" },
+  { pagina: "privacidade", doc: "politica_privacidade", href: "/novo/privacidade", nome: "Política de Privacidade" },
+  { pagina: "regulamento", doc: "regulamento", href: "/novo/regulamento", nome: "Regulamento de Coins e Ligas" },
+];
 
 export function LegalPage({ doc }) {
   useEffect(() => {
     window.scrollTo?.(0, 0);
   }, [doc]);
+  const atual = PAGINAS_LEGAIS.find((p) => p.pagina === doc) ?? PAGINAS_LEGAIS[0];
   return (
     <div className="lg-root lgl-root">
       <div className="lgl-shell">
@@ -67,15 +26,15 @@ export function LegalPage({ doc }) {
           <img className="lgl-logo" src="/brand/horizontal-escuro-480w.png" alt="StaziaMed Revalida" width="200" height="62" />
           <a className="lgl-back" href="/novo">Voltar para o app</a>
         </div>
+        <nav className="lgl-nav" aria-label="Documentos legais">
+          {PAGINAS_LEGAIS.map((p) => (
+            <a key={p.pagina} href={p.href} aria-current={p.pagina === atual.pagina ? "page" : undefined}>
+              {p.nome}
+            </a>
+          ))}
+        </nav>
         <main className="lgl-paper">
-          {doc === "termos" ? (
-            <>
-              <p className="lgl-meta">Versão {TERMO_VERSAO}</p>
-              <div data-testid="legal-texto"><LegalText source={documentosDa(TERMO_VERSAO).termo} /></div>
-            </>
-          ) : (
-            <Privacidade />
-          )}
+          <DocumentoLegal doc={atual.doc} />
         </main>
       </div>
     </div>

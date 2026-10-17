@@ -74,7 +74,7 @@ export function createDevServerBackend(base = "/api/dev-db"): Backend {
       // os dados extras seguem no corpo com os nomes dos metadados da conta (phone, terms_version, user_agent)
       const r = await call<{ user: AuthUser; token: string }>("/auth/signup", { name, email, password, ...signUpMetadata(extra) });
       setSession(r.user, r.token);
-      return { needsEmailConfirmation: false };
+      return { needsEmailConfirmation: false, userId: r.user.id };
     },
     masterSetup: {
       async needed() {

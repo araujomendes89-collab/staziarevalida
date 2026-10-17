@@ -1,6 +1,6 @@
-// Textos de cada versão do Termo (e da Política que vai junto). A tela de aceite mostra o texto da versão que o BANCO diz que está
-// vigente (boot.legal.termo_uso.current); o cadastro e as páginas públicas, o da versão de versions.js (TERMO_VERSAO).
-// Assim o banco é quem liga uma versão nova: o 2.0 só aparece depois de colar supabase/migrations/…11510_termo_v2_ativar.sql.
+// Textos do Termo 1.0 e 2.0 (e da Política que vai junto) guardados no próprio site. Da versão 3.0 em diante (migração …13740) os
+// textos vêm do banco (vigente.js e DocumentoLegal.jsx); estes ficam como reserva para banco sem a 013740 e para mostrar o que foi
+// aceito antes. O banco é quem liga uma versão nova.
 import termoV1 from "./termo-uso-v1.0.md?raw";
 import termoV2 from "./termo-uso-v2.0.md?raw";
 import { PRIVACIDADE } from "./privacidade.js";
@@ -16,6 +16,11 @@ const DOCUMENTOS = {
   "2.0": { termo: termoV2, privacidade: PRIVACIDADE_V2, declaracoes: true },
 };
 
+/** O site traz o texto desta versão do Termo (1.0 e 2.0)? Da 3.0 em diante, o texto vem do banco. */
+export function temNoSite(versao) {
+  return Object.prototype.hasOwnProperty.call(DOCUMENTOS, versao ?? "");
+}
+
 /** Textos da versão pedida; versão desconhecida (ou nenhuma) cai na de versions.js. */
 export function documentosDa(versao = TERMO_VERSAO) {
   return DOCUMENTOS[versao] ?? DOCUMENTOS[TERMO_VERSAO];
@@ -23,3 +28,20 @@ export function documentosDa(versao = TERMO_VERSAO) {
 
 /** A caixa única do aceite (cadastro, volta do Google e tela de aceite): Termos, Política e a declaração de maioridade juntos. */
 export const ACEITE_TEXTO = "Li e aceito os Termos de Uso e a Política de Privacidade e declaro ter 18 anos ou mais.";
+
+/**
+ * Contrato 3.0 em diante (textos do banco): a caixa única fala em Termos de Uso e Contrato de Assinatura, diz que a pessoa teve acesso
+ * à Política (cláusula 6.1 do Contrato) e mantém a declaração de maioridade na mesma caixa (decisão do dono de 17/10/2026; cláusula 5).
+ */
+export const ACEITE_TEXTO_V3 = "Li e aceito os Termos de Uso e o Contrato de Assinatura, declaro ter acesso à Política de Privacidade e declaro ter 18 anos ou mais.";
+/** Aviso fixo logo abaixo da caixa (textos-da-tela.md, item 1). */
+export const AVISO_ACEITE_V3 =
+  "Ao aceitar, você declara que tem 18 anos ou mais e é plenamente capaz (cláusula 5 do Contrato). Guardamos a data, a hora, o IP e o navegador do seu aceite como prova (veja a Política de Privacidade).";
+/** Mensagem quando a pessoa tenta seguir sem marcar a caixa (textos-da-tela.md, item 1). */
+export const ACEITE_ERRO_V3 = "Para continuar, aceite os Termos de Uso e o Contrato de Assinatura.";
+export const ACEITE_ERRO_CADASTRO_V3 = "Para criar a conta, aceite os Termos de Uso e o Contrato de Assinatura.";
+
+/** A versão vigente usa os textos novos (3.0 em diante, vindos do banco)? */
+export function aceiteNovo(vigentes) {
+  return vigentes?.fonte === "banco" && !temNoSite(vigentes.termo_uso?.version);
+}

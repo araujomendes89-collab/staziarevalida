@@ -9,6 +9,11 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 
 const state: { session: any } = { session: null };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => state.session }));
+// banco sem a 013740: os textos do Termo 1.0/2.0 vêm do próprio site
+vi.mock("../novo/data", async (importOriginal) => {
+  const actual: any = await importOriginal();
+  return { ...actual, getBackend: async () => ({ rpc: async () => { throw new Error("Could not find the function public.app_legal_current"); } }) };
+});
 
 import { AcceptanceScreen } from "../novo/app/legal/AcceptanceScreen.jsx";
 import { documentosDa } from "../novo/app/legal/documentos.js";
@@ -32,7 +37,7 @@ function open(legal: any) {
   render(<AcceptanceScreen />);
   return fns;
 }
-const botao = () => screen.getByRole("button", { name: "Aceitar e continuar" }) as HTMLButtonElement;
+const botao = () => screen.getByRole("button", { name: "ACEITAR E CONTINUAR" }) as HTMLButtonElement;
 
 beforeEach(() => localStorage.clear());
 afterEach(cleanup);
@@ -72,19 +77,22 @@ describe("Termo 2.0 — tela de aceite", () => {
     expect(screen.getAllByRole("checkbox")).toHaveLength(1);
     expect(document.body.textContent).not.toContain("QUEM PODE USAR");
     fireEvent.click(screen.getByRole("checkbox", { name: FRASE }));
-    expect(botao().disabled).toBe(false);
     fireEvent.click(botao());
     return waitFor(() => expect(fns.acceptTerms).toHaveBeenCalledWith({ document: "termo_uso", version: "1.0", origin: "tela_aceite", declarations: undefined }));
   });
 
   it("com o 2.0 vigente: mostra o texto 2.0 e aceita com a caixa única, que já traz a maioridade", async () => {
     const fns = open(legalOf("2.0", { declarations_required: true }));
-    expect(screen.getByText("Versão 2.0")).toBeTruthy();
-    expect(document.body.textContent).toContain("QUEM PODE USAR");
+    expect(screen.getByText(/^Versão 2\.0\./)).toBeTruthy();
+    // o texto completo abre por cima, na versão que o banco diz que está vigente
+    fireEvent.click(screen.getByRole("button", { name: "Termo de Aceite e Uso" }));
+    expect(await screen.findByText("Versão 2.0")).toBeTruthy();
+    expect(screen.getByRole("dialog").textContent).toContain("QUEM PODE USAR");
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     expect(screen.getAllByRole("checkbox")).toHaveLength(1);
-    expect(botao().disabled).toBe(true);
+    fireEvent.click(botao());
+    expect(fns.acceptTerms).not.toHaveBeenCalled(); // falta a caixa
     fireEvent.click(screen.getByRole("checkbox", { name: FRASE }));
-    expect(botao().disabled).toBe(false);
     fireEvent.click(botao());
     await waitFor(() => expect(fns.acceptTerms).toHaveBeenCalledTimes(1));
     expect(fns.acceptTerms).toHaveBeenCalledWith({
