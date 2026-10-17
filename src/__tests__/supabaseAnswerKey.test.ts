@@ -50,7 +50,8 @@ describe("Gabarito — leitura direta da tabela", () => {
   });
 
   it("o aluno não altera questão nem o próprio acerto", async () => {
-    await expect(as(ANA, (q) => q(`update public.questions set statement = 'x' where id = (select id from public.questions limit 1) returning id`))).resolves.toEqual([]);
+    // desde a 013780 (auditoria de segurança) o aluno nem tem permissão de gravar em questões; o RLS continua como segunda trava
+    await expect(as(ANA, (q) => q(`update public.questions set statement = 'x' where id = (select id from public.questions limit 1) returning id`))).rejects.toThrow(/permission denied/);
     await expect(as(ANA, (q) => q(`insert into public.question_attempts (question_id, selected_option, is_correct) select id, 'A', true from public.questions where status = 'valid' limit 1 returning is_correct`))).resolves.toBeDefined();
     // o banco corrige: marcar "acertei" na inserção não vale
     const forged = (await db.query<any>(`select a.is_correct, a.selected_option = q.correct_option as truth from public.question_attempts a join public.questions q on q.id = a.question_id where a.user_id = $1`, [ANA])).rows[0];

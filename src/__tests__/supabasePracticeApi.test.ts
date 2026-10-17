@@ -369,7 +369,8 @@ describe("Simulado — cronômetro: tempo escolhido, pausar, continuar e encerra
     const sim = await rpc(CAIO, "app_start_session", { p_kind: "simulado", p_filters: {}, p_count: 5, p_time_limit_seconds: 600 });
     await expect(rpc(ANA, "app_pause_session", { p_session_id: sim.session_id })).rejects.toThrow(/não encontrada/);
     await expect(rpc(ANA, "app_resume_session", { p_session_id: sim.session_id })).rejects.toThrow(/não encontrada/);
-    await expect(rpc(null, "app_pause_session", { p_session_id: sim.session_id })).rejects.toThrow(/não encontrada/);
+    // visitante: recusado (desde a 013780 ele nem tem permissão de gravar na tabela de sessões)
+    await expect(rpc(null, "app_pause_session", { p_session_id: sim.session_id })).rejects.toThrow(/não encontrada|permission denied/);
     const free = await rpc(CAIO, "app_start_session", { p_kind: "simulado", p_filters: {}, p_count: 5 });
     const p = await rpc(CAIO, "app_pause_session", { p_session_id: free.session_id });
     expect(p).toMatchObject({ time_limit_seconds: null, deadline_at: null, remaining_seconds: null });

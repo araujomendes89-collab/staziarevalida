@@ -462,12 +462,13 @@ describe("Loja, moedas e histórico", () => {
 describe("Segurança", () => {
   it("aluno não altera XP, score, moedas nem liga; não grava evento; não chama o motor", async () => {
     const before = await stats(ANA);
-    await asUser(ANA, `update public.user_gamification_stats set total_xp = 999999, stazia_score = 1000, coins = 99999 where user_id = $1`, [ANA]);
+    // desde a 013780 (auditoria de segurança) o aluno nem tem permissão de gravar: além do RLS, o banco recusa
+    await expect(asUser(ANA, `update public.user_gamification_stats set total_xp = 999999, stazia_score = 1000, coins = 99999 where user_id = $1`, [ANA])).rejects.toThrow(/permission denied/);
     expect(await stats(ANA)).toMatchObject({ total_xp: before.total_xp, stazia_score: before.stazia_score, coins: before.coins });
     await expect(asUser(ANA, `insert into public.gamification_events (user_id, event_type, source_type, source_id, xp_awarded) values ($1, 'QUESTION_CORRECT', 'x', 'y', 5000)`, [ANA])).rejects.toThrow();
     await expect(asUser(ANA, `insert into public.user_achievements (user_id, achievement_slug) values ($1, 'insano')`, [ANA])).rejects.toThrow();
     await expect(asUser(ANA, `insert into public.coin_transactions (user_id, amount, type, source_type) values ($1, 500, 'earn', 'x')`, [ANA])).rejects.toThrow();
-    await expect(asUser(ANA, `update public.league_memberships set league_slug = 'revalida_master'`)).resolves.toMatchObject({ affectedRows: 0 });
+    await expect(asUser(ANA, `update public.league_memberships set league_slug = 'revalida_master'`)).rejects.toThrow(/permission denied/);
     await expect(asUser(ANA, `select public.gam_award($1, 'QUESTION_CORRECT', 'x', 'z', 5000, 0)`, [ANA])).rejects.toThrow(/permission denied/);
     await expect(asUser(ANA, `select public.ch_worker_gamification_daily()`)).rejects.toThrow(/permission denied/);
     await expect(asUser(ANA, `select public.ch_worker_gamification_close_week()`)).rejects.toThrow(/permission denied/);
