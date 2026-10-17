@@ -34,7 +34,8 @@ const COM_SINAL = ["ana", "bruno", "carla", "diego", "eva", "fabio", "gil"] as c
 describe("Migrações 013470 e 013480 — radar e convite direto", () => {
   let d: DuplaDb;
 
-  const radar = (uid: string, estacao?: string | null) => d.rpc(uid, "app_dupla_radar", estacao === undefined ? {} : { p_station_id: estacao });
+  const radar = (uid: string, estacao?: string | null, aba?: string) =>
+    d.rpc(uid, "app_dupla_radar", { ...(estacao === undefined ? {} : { p_station_id: estacao }), ...(aba ? { p_aba: aba } : {}) });
   const convidar = (de: string, para: string, estacao?: string | null) =>
     d.rpc(de, "app_dupla_invite", { p_to: para, ...(estacao === undefined ? {} : { p_station_id: estacao }) });
   const deck = (uid: string) => d.rpc(uid, "app_dupla_deck");
@@ -122,7 +123,7 @@ describe("Migrações 013470 e 013480 — radar e convite direto", () => {
     const cru = JSON.stringify(r);
     expect(cru).not.toMatch(/@|teste\.dev|email|phone|telefone|photo|avatar/i);
     expect(Object.keys(oculto).sort()).toEqual(
-      ["areas", "bio", "can_invite", "city", "compat", "days", "exam", "goal", "online", "pace", "public_name", "reasons", "role_pref", "school", "shifts", "state", "stats", "user_id", "why_not"].sort()
+      ["areas", "bio", "can_invite", "city", "compat", "days", "exam", "goal", "near", "online", "pace", "public_name", "reasons", "role_pref", "school", "shifts", "state", "stats", "user_id", "why_not"].sort()
     );
   });
 
@@ -171,6 +172,77 @@ describe("Migrações 013470 e 013480 — radar e convite direto", () => {
     expect(r.people.length).toBe(50);
     expect(r.online).toBe(61);
     await d.sql(`delete from auth.users where email like 'massa%'`);
+  });
+
+
+  // ------------------------------------------------------------------ abas: Ator/avaliador e Perto de você
+  it("aba Ator/avaliador: só quem topa esse papel (ator ou qualquer papel)", async () => {
+    const r = await radar(U.carla, null, "atores");
+    expect(new Set(nomes(r))).toEqual(new Set(["Ana Souza", "Bruno Lima", "Diego Melo", "Gil Nunes"]));
+    await expect(radar(U.carla, null, "outra")).rejects.toThrow(/Aba inválida\./);
+  });
+
+  const cidades = async () => {
+    const c: Record<string, string | null> = {
+      ana: "Curitiba · PR", bruno: "curitíba - pr", carla: "Londrina, PR", diego: "São Paulo · SP", eva: null, fabio: "Curitiba", gil: "Campinas SP",
+    };
+    for (const [k, v] of Object.entries(c)) await d.sql(`update public.study_profiles set city = $2 where user_id = $1`, [(U as any)[k], v]);
+  };
+
+  it("Perto de você: mesma cidade antes do mesmo estado; quem não informou cidade e quem é de longe ficam fora", async () => {
+    await cidades();
+    const r = await radar(U.ana, null, "perto");
+    expect(r.needs_city).toBe(false);
+    expect(r.people.map((p: any) => [p.public_name, p.near])).toEqual([
+      ["Fábio Reis", "cidade"], ["Bruno Lima", "cidade"], ["Carla Dias", "estado"], // na mesma cidade, a maior compatibilidade primeiro
+    ]);
+    // quem ficou de fora continua nas outras abas
+    expect(nomes(await radar(U.ana))).toEqual(expect.arrayContaining(["Eva Rocha", "Diego Melo", "Gil Nunes"]));
+  });
+
+  it("Perto de você: dentro de cada grupo, livres primeiro e depois a compatibilidade", async () => {
+    await cidades();
+    await d.sql(`update public.study_profiles set city = 'Curitiba · PR' where user_id = $1`, [U.carla]); // três na mesma cidade
+    await makeRoom(d.db, { members: [U.bruno, U.eva], phase: "roles" }); // Bruno em sala
+    const r = await radar(U.ana, null, "perto");
+    const nomesLista = r.people.map((p: any) => p.public_name);
+    expect(nomesLista[nomesLista.length - 1]).toBe("Bruno Lima"); // ocupado vai ao fim do grupo
+    const livres = r.people.filter((p: any) => p.state === "livre").map((p: any) => p.compat);
+    expect(livres).toEqual([...livres].sort((a: number, b: number) => b - a));
+  });
+
+  it("Perto de você: quem olha sem cidade recebe o aviso e a lista vazia; só a cidade informada sai, nunca localização", async () => {
+    await cidades();
+    const r = await radar(U.eva, null, "perto");
+    expect(r.needs_city).toBe(true);
+    expect(r.people).toEqual([]);
+    const ana = await radar(U.ana, null, "perto");
+    expect(JSON.stringify(ana)).not.toMatch(/lat|lng|latitude|longitude|gps|geo/i);
+    // estado só no mesmo estado: sem sigla, a cidade é igual a qualquer estado informado
+    await d.sql(`update public.study_profiles set city = 'Curitiba' where user_id = $1`, [U.ana]);
+    const sem = await radar(U.ana, null, "perto");
+    expect(sem.people.map((p: any) => [p.public_name, p.near])).toEqual([["Fábio Reis", "cidade"], ["Bruno Lima", "cidade"]]);
+  });
+
+  it("Perto de você: bloqueado não aparece; quem desligou o radar também não", async () => {
+    await cidades();
+    await bloquear(U.ana, U.bruno);
+    await d.sql(`update public.study_profiles set radar_visible = false where user_id = $1`, [U.fabio]);
+    const r = await radar(U.ana, null, "perto");
+    expect(r.people.map((p: any) => p.public_name)).toEqual(["Carla Dias"]);
+    expect(nomes(await radar(U.bruno, null, "perto"))).not.toContain("Ana Souza");
+  });
+
+  it("dupla_place: lê 'Cidade · UF' em vários jeitos, sem acento, e ignora o que não é sigla", async () => {
+    const lugar = async (t: string | null) => (await d.sql<{ r: any }>(`select public.dupla_place($1) as r`, [t]))[0].r;
+    expect(await lugar("Curitiba · PR")).toEqual({ city: "curitiba", uf: "pr" });
+    expect(await lugar("  São Paulo / SP ")).toEqual({ city: "sao paulo", uf: "sp" });
+    expect(await lugar("Belo Horizonte MG")).toEqual({ city: "belo horizonte", uf: "mg" });
+    expect(await lugar("Santa Fé")).toEqual({ city: "santa fe", uf: null }); // 'fe' não é sigla
+    expect(await lugar("São Paulo")).toEqual({ city: "sao paulo", uf: null }); // 'lo' não é sigla
+    expect(await lugar("PR")).toEqual({ city: null, uf: "pr" });
+    expect(await lugar("   ")).toBeNull();
+    expect(await lugar(null)).toBeNull();
   });
 
   // ------------------------------------------------------------------ bloqueio (o do chat)
@@ -492,11 +564,11 @@ describe("Migrações 013470 e 013480 — radar e convite direto", () => {
     await d.db.exec(SQL_2);
     expect(await retrato()).toEqual(antes);
     const acl = Object.fromEntries((antes.funcoes as any[]).map((f) => [f.id, f.acl]));
-    for (const f of ["app_dupla_radar(text)", "app_dupla_invite(uuid,text)", "app_dupla_deck()", "app_dupla_save_profile(jsonb)"]) expect(acl[f], f).toBe(acl["app_dupla_room(uuid,integer)"]);
+    for (const f of ["app_dupla_radar(text,text)", "app_dupla_invite(uuid,text)", "app_dupla_deck()", "app_dupla_save_profile(jsonb)"]) expect(acl[f], f).toBe(acl["app_dupla_room(uuid,integer)"]);
     for (const f of ["app_admin_dupla_radar()", "app_admin_save_dupla_radar(jsonb)"]) {
       expect(acl[f], f).not.toContain("anon");
     }
-    for (const f of ["dupla_radar_settings()", "dupla_blocked(uuid,uuid)", "dupla_hides(uuid,uuid)"]) {
+    for (const f of ["dupla_radar_settings()", "dupla_blocked(uuid,uuid)", "dupla_hides(uuid,uuid)", "dupla_place(text)", "dupla_near(jsonb,jsonb)"]) {
       expect(acl[f], f).not.toContain("authenticated");
       expect(acl[f], f).not.toContain("anon");
     }

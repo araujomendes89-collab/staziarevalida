@@ -21,8 +21,9 @@
 --  2) study_invites.kind: 'match' (o "Deu match!" de sempre, o padrão) ou 'direto' (convite do radar, 60 s).
 --  3) Limites dos convites diretos dentro da chave que já existe, app_settings.treino_dupla, no bloco "convites"
 --     (por_hora, por_dia, espera_min; ausente ou vazio = sem limite). Nenhuma chave nova em app_settings.
---  4) dupla_blocked / dupla_hides: a regra interna do bloqueio (usa o registro do chat).
---  5) app_dupla_radar(p_station_id): quem está online agora, com o cartão público do baralho, a compatibilidade e a situação
+--  4) dupla_blocked / dupla_hides: a regra interna do bloqueio (usa o registro do chat). dupla_place / dupla_near: leem o campo
+--     "Cidade / estado" do perfil (sem GPS) para a aba "Perto de você" do radar.
+--  5) app_dupla_radar(p_station_id, p_aba): quem está online agora, com o cartão público do baralho, a compatibilidade e a situação
 --     (livre | em_sala | sozinho). Nunca e-mail, telefone ou foto.
 --  6) app_dupla_invite(p_to, p_station_id): convite direto. Cria a sala na fase dos papéis (sem match) e o convite de 60 s.
 --  7) Painel: app_admin_dupla_radar() lê e app_admin_save_dupla_radar(jsonb) grava o bloco "convites" SEM tocar no resto da
@@ -49,7 +50,7 @@
 --    convites inválida.'.
 --
 -- COMO DESFAZER: apagar as funções criadas aqui (dupla_radar_settings(), dupla_blocked(uuid, uuid), dupla_hides(uuid, uuid),
---   app_dupla_radar(text), app_dupla_invite(uuid, text), app_admin_dupla_radar(), app_admin_save_dupla_radar(jsonb)); tirar o
+--   app_dupla_radar(text, text), dupla_place(text), dupla_near(jsonb, jsonb), app_dupla_invite(uuid, text), app_admin_dupla_radar(), app_admin_save_dupla_radar(jsonb)); tirar o
 --   índice study_invites_from_idx e a restrição study_invites_kind_check; as colunas study_invites.kind e
 --   study_profiles.allow_direct_invites podem ficar (inofensivas); recolocar as funções da 013480 pelas da 013310/013320.
 --   Salas e convites já criados ficam. O prazo de 180 dias das denúncias volta a vazio em Administração › Configurações.
@@ -107,16 +108,60 @@ as $$
   select public.dupla_blocked(a, b)
 $$;
 
+-- ---------------------------------------------------------------- 3b) lugar (aba "Perto de você")
+-- Lê o campo "Cidade / estado" do perfil de estudo (texto livre, ex.: "Curitiba · PR"), SEM GPS e SEM localização do aparelho.
+-- Sem acento, minúsculas; o estado é o último termo de 2 letras quando for uma sigla de UF. → { city, uf } ou nulo (campo vazio).
+create or replace function public.dupla_place(p_text text) returns jsonb
+  language plpgsql immutable security definer set search_path = ''
+as $$
+declare
+  v text := regexp_replace(public.dupla_chat_normalize(btrim(coalesce(p_text, ''))), '\s+', ' ', 'g');
+  v_uf text;
+  v_city text;
+begin
+  if v = '' then
+    return null;
+  end if;
+  v_uf := substring(v from '(?:^|[^a-z])([a-z]{2})[^a-z]*$');
+  if v_uf is not null and v_uf <> all (array['ac','al','ap','am','ba','ce','df','es','go','ma','mt','ms','mg','pa','pb','pr','pe','pi','rj','rn','rs','ro','rr','sc','sp','se','to']) then
+    v_uf := null;
+  end if;
+  v_city := case when v_uf is null then v else regexp_replace(v, '(?:^|[^a-z])' || v_uf || '[^a-z]*$', '') end;
+  v_city := nullif(btrim(regexp_replace(v_city, '[^a-z0-9]+', ' ', 'g')), '');
+  if v_city is null and v_uf is null then
+    return null;
+  end if;
+  return jsonb_build_object('city', v_city, 'uf', v_uf);
+end
+$$;
+
+-- Quão perto dois lugares estão: 'cidade' (mesma cidade; se os dois informaram o estado, o mesmo estado), 'estado' (mesma sigla)
+-- ou nulo.
+create or replace function public.dupla_near(a jsonb, b jsonb) returns text
+  language sql immutable security definer set search_path = ''
+as $$
+  select case
+    when a is null or b is null then null
+    when (a ->> 'city') is not null and (a ->> 'city') = (b ->> 'city')
+         and ((a ->> 'uf') is null or (b ->> 'uf') is null or (a ->> 'uf') = (b ->> 'uf')) then 'cidade'
+    when (a ->> 'uf') is not null and (a ->> 'uf') = (b ->> 'uf') then 'estado'
+  end
+$$;
+
 -- ---------------------------------------------------------------- 4) radar
 -- Quem está online agora (sinal há menos de 2 minutos, situação diferente de "fora"), com acesso ao módulo, perfil e
 -- "Aparecer no radar" ligado, sem bloqueio entre as duas pessoas. A lista é aberta a todos com acesso (quem está invisível a vê). Cartão público igual ao do baralho: instituição só com show_school;
 -- estações e média só com show_stats; nunca e-mail, telefone ou foto. Ordem: livres, depois compatibilidade, depois sinal mais
 -- recente; no máximo 50. Mesmo papel específico NÃO esconde a pessoa (a sala deixa trocar os papéis): vem sem compatibilidade.
 -- Com a estação (p_station_id) a lista já diz quem pode receber aquele convite.
--- → { people: [{ user_id, public_name, school, city, exam, bio, goal, areas, role_pref, pace, days, shifts, stats, compat,
+-- p_aba: 'online' (todos, padrão), 'atores' (quem topa ser ator/avaliador: ator ou qualquer papel) ou 'perto' ("Perto de você": só
+-- quem informou cidade; primeiro a mesma cidade, depois o mesmo estado; dentro de cada grupo, livres e compatibilidade). A cidade
+-- vem só do que a própria pessoa informou e já está no cartão público; sem GPS. Quem olha sem cidade no perfil recebe
+-- needs_city = true e a lista vazia na aba 'perto'. Cada pessoa traz near = 'cidade' | 'estado' | null.
+-- → { needs_city, people: [{ near, user_id, public_name, school, city, exam, bio, goal, areas, role_pref, pace, days, shifts, stats, compat,
 --                reasons, online, state: livre|em_sala|sozinho, can_invite, why_not }],
 --     online, open_room, me: { radar_visible, allow_direct_invites }, server_now }
-create or replace function public.app_dupla_radar(p_station_id text default null) returns jsonb
+create or replace function public.app_dupla_radar(p_station_id text default null, p_aba text default 'online') returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -127,12 +172,17 @@ declare
   v_people jsonb := '[]'::jsonb;
   v_online integer;
   v_me_pro boolean := public.tutor_is_pro(v_uid);
+  v_mp jsonb;
 begin
+  if p_aba is null or p_aba not in ('online', 'atores', 'perto') then
+    raise exception 'Aba inválida.' using errcode = '22023';
+  end if;
   perform public.dupla_sweep();
   select * into me from public.study_profiles where user_id = v_uid;
   if not found then
     raise exception 'Crie seu perfil de estudo antes de procurar uma dupla.' using errcode = '22023';
   end if;
+  v_mp := public.dupla_place(me.city);
   if p_station_id is not null then
     select * into st from public.checklist_stations s
      where s.id = p_station_id and (s.medical_review = 'approved' or public.is_staff());
@@ -149,16 +199,19 @@ begin
    order by r.updated_at desc
    limit 1;
 
-  select coalesce(jsonb_agg(z.person order by z.rank, z.compat desc nulls last, z.seen desc), '[]'::jsonb)
+  select coalesce(jsonb_agg(z.person order by z.prox, z.rank, z.compat desc nulls last, z.seen desc), '[]'::jsonb)
     into v_people
   from (
-    select x.person, x.compat, x.seen, case when x.state = 'livre' then 0 else 1 end as rank
+    select x.person, x.compat, x.seen, case when x.state = 'livre' then 0 else 1 end as rank,
+           case when p_aba = 'perto' and x.near = 'cidade' then 0 when p_aba = 'perto' then 1 else 0 end as prox
     from (
       select
         (k.c ->> 'compat')::integer as compat,
         p.last_seen_at as seen,
         s.state,
+        n.near,
         jsonb_build_object(
+          'near', n.near,
           'user_id', p.user_id,
           'public_name', p.public_name,
           'school', case when p.show_school then p.school end,
@@ -183,6 +236,7 @@ begin
         ) as person
       from public.study_profiles p
       cross join lateral (select public.dupla_compat(me, p) as c) k
+      cross join lateral (select public.dupla_near(v_mp, public.dupla_place(p.city)) as near) n
       cross join lateral (
         select case when p.status = 'sozinho' then 'sozinho'
                     when p.status = 'em_estacao' or exists (
@@ -206,8 +260,12 @@ begin
         and p.status <> 'fora'
         and public.dupla_allowed(p.user_id)
         and not public.dupla_hides(v_uid, p.user_id)
+        and (p_aba = 'online'
+             or (p_aba = 'atores' and p.role_pref in ('ator', 'any'))
+             or (p_aba = 'perto' and n.near is not null))
     ) x
-    order by case when x.state = 'livre' then 0 else 1 end, x.compat desc nulls last, x.seen desc
+    order by case when p_aba = 'perto' and x.near = 'cidade' then 0 when p_aba = 'perto' then 1 else 0 end,
+             case when x.state = 'livre' then 0 else 1 end, x.compat desc nulls last, x.seen desc
     limit 50
   ) z;
 
@@ -217,6 +275,7 @@ begin
      and public.dupla_allowed(p.user_id) and not public.dupla_hides(v_uid, p.user_id);
 
   return jsonb_build_object('people', v_people, 'online', v_online, 'open_room', v_open,
+                            'needs_city', (p_aba = 'perto' and v_mp is null),
                             'me', jsonb_build_object('radar_visible', me.radar_visible, 'allow_direct_invites', me.allow_direct_invites),
                             'server_now', clock_timestamp());
 end
@@ -410,7 +469,9 @@ update public.app_settings
 -- ---------------------------------------------------------------- permissões
 -- As do app: só quem entra (visitante não); o porteiro dupla_assert_access / assert_admin barra o resto.
 -- As de apoio: só rodam dentro das funções do servidor (security definer).
-revoke execute on function public.app_dupla_radar(text) from public, anon;
+revoke execute on function public.app_dupla_radar(text, text) from public, anon;
+revoke execute on function public.dupla_place(text) from public, anon, authenticated;
+revoke execute on function public.dupla_near(jsonb, jsonb) from public, anon, authenticated;
 revoke execute on function public.app_dupla_invite(uuid, text) from public, anon;
 revoke execute on function public.app_admin_dupla_radar() from public, anon;
 revoke execute on function public.app_admin_save_dupla_radar(jsonb) from public, anon;

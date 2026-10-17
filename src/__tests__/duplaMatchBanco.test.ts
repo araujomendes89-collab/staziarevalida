@@ -451,7 +451,7 @@ describe("Migração 9770 — sinal, baralho, escolha, match, convite e saída d
       const r = await formar();
       expect(r.matched).toBe(true);
       const bruno = await convites(U.bruno);
-      expect(bruno.invites).toEqual([{ id: expect.any(String), room_id: r.room_id, from: { user_id: U.ana, public_name: "Ana Souza" }, expires_at: expect.any(String) }]);
+      expect(bruno.invites).toEqual([{ id: expect.any(String), room_id: r.room_id, kind: "match", from: { user_id: U.ana, public_name: "Ana Souza" }, station: null, expires_at: expect.any(String) }]);
       expect(new Date(bruno.invites[0].expires_at).getTime()).toBeGreaterThan(Date.now());
       expect(new Date(bruno.server_now).getTime()).toBeGreaterThan(Date.now() - 60_000);
       // Quem completou o match não recebe o convite; outras pessoas também não.
@@ -668,6 +668,8 @@ describe("Migração 9770 — sinal, baralho, escolha, match, convite e saída d
     });
     const antes = await retrato();
     await d.db.exec(SQL);
+    // A 013480 (radar) refaz deck, swipe, invites e answer_invite por cima desta; colar esta de novo exige colar a 013480 depois.
+    await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013480_treino_dupla_radar_refeitas.sql"), "utf8"));
     expect(await retrato()).toEqual(antes);
   });
 });
