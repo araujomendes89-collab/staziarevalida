@@ -16,15 +16,16 @@ const BANCO = ESTACOES.map(resumo);
 const porId = (id) => ESTACOES.find((s) => resumo(s).id === id) ?? ESTACOES[0];
 
 let perfil = {
-  public_name: "Aluno de Teste", school: "Faculdade de Teste", city: "Cidade de Teste · UF", goal: "Treinar as estações de Ginecologia e Clínica",
+  public_name: "Aluno de Teste", handle: "revalida.t3st", school: "Faculdade de Teste", city: "Cidade de Teste · UF", goal: "Treinar as estações de Ginecologia e Clínica",
   exam: "2026/2", bio: "Perfil de teste, sem pessoa real.", areas: ["GO", "CM"], role_pref: "any", pace: "cronometrado",
   days: ["Seg", "Qua", "Sex"], shifts: ["Noite"], radar_visible: true, show_school: true, show_stats: true,
 };
 const semPerfil = new URLSearchParams(location.search).get("perfil") === "nenhum";
 if (semPerfil) perfil = null;
+if (perfil && new URLSearchParams(location.search).get("cidade") === "nenhuma") perfil.city = ""; // "?cidade=nenhuma": perfil sem cidade (aba "Perto de você")
 
 const colega = (id, nome, extra = {}) => ({
-  user_id: id, public_name: nome, school: "Faculdade de Teste", city: "Cidade de Teste · UF", exam: "2026/2", bio: "Colega fictício (dados de teste).",
+  user_id: id, public_name: nome, handle: "colega." + id.replace("t-", "teste"), school: "Faculdade de Teste", city: "Cidade de Teste · UF", exam: "2026/2", bio: "Colega fictício (dados de teste).",
   goal: "Treinar GO", areas: ["GO"], role_pref: "ator", pace: "cronometrado", days: ["Seg", "Qua"], shifts: ["Noite"], stats: { done: 3, avg: 7.8 },
   compat: 92, reasons: [{ icon: "check", text: "Ginecologia e Obstetrícia em comum", strong: true }, { icon: "check", text: "Papéis se completam" }], online: true, ...extra,
 });
@@ -34,6 +35,28 @@ let baralho = [
   colega("t-3", "Colega Teste Três", { compat: 63, areas: ["CR"], role_pref: "med", reasons: [{ icon: "alert", text: "Poucas áreas em comum", weak: true }] }),
   colega("t-4", "Colega Teste Quatro", { compat: 41, areas: ["MFC"], role_pref: "ator", stats: null }),
 ];
+
+// ----- radar SIMULADO (Etapa 6C): colegas fictícios com cidade, situação e proximidade; "?radar=vazio" mostra a lista vazia e
+// "?limite=1" faz o convite recusar com a mensagem de limite (para ver o aviso). Cidade do perfil de teste: "Cidade de Teste · UF".
+const radarParam = new URLSearchParams(location.search).get("radar");
+const limiteParam = new URLSearchParams(location.search).get("limite");
+const pessoaRadar = (id, nome, extra = {}) => ({
+  ...colega(id, nome), near: null, state: "livre", can_invite: true, why_not: null, ...extra,
+});
+const PESSOAS_RADAR = [
+  pessoaRadar("t-1", "Colega Teste Um", { compat: 92, near: "cidade", city: "Cidade de Teste · UF" }),
+  pessoaRadar("t-2", "Colega Teste Dois", { compat: 78, areas: ["CM", "PED"], role_pref: "any", near: "cidade", city: "Cidade de Teste · UF", state: "em_sala", can_invite: false, why_not: "Em sala." }),
+  pessoaRadar("t-3", "Colega Teste Três", { compat: 63, areas: ["CR"], role_pref: "med", near: "estado", city: "Outra Cidade de Teste · UF", school: null }),
+  pessoaRadar("t-4", "Colega Teste Quatro", { compat: null, reasons: [], areas: ["MFC"], role_pref: "ator", stats: null, city: null, state: "sozinho", can_invite: false, why_not: "Treinando sozinho." }),
+  pessoaRadar("t-5", "Colega Teste Cinco", { compat: 55, areas: ["PED"], role_pref: "med", city: "Cidade Distante de Teste · XX", can_invite: false, why_not: "Não recebe convites." }),
+];
+const radarDaAba = (aba) => {
+  if (radarParam === "vazio") return [];
+  const todos = PESSOAS_RADAR.filter((p) => p.state !== "fora");
+  if (aba === "atores") return todos.filter((p) => p.role_pref === "ator" || p.role_pref === "any");
+  if (aba === "perto") return todos.filter((p) => p.near).sort((a, b) => (a.near === "cidade" ? 0 : 1) - (b.near === "cidade" ? 0 : 1));
+  return todos;
+};
 
 // ----- sala ao vivo SIMULADA (Etapa 5): cada aba guarda a sua sala; o "colega" é simulado (confirma, fica pronto, inicia…) -----
 // O id da sala é "<fase>-<papel>" (de onde a prévia começa). As ações mudam o estado como as funções app_dupla_* do banco.
@@ -274,9 +297,21 @@ const sala_acoes = {
 };
 
 let convites = [];
-if (new URLSearchParams(location.search).get("convite") === "1") {
-  convites = [{ id: "cv-1", room_id: "roles-candidate", from: { user_id: "t-1", public_name: "Colega Teste Um" }, expires_at: EM(10 * 60000) }];
+const convParam = new URLSearchParams(location.search).get("convite");
+if (convParam === "1") {
+  convites = [{ id: "cv-1", room_id: "roles-candidate", kind: "match", from: { user_id: "t-1", public_name: "Colega Teste Um" }, station: null, expires_at: EM(10 * 60000) }];
 }
+// "?convite=direto": convite direto do radar (60 s), com a estação só como "Estação N", área e duração (sem o nome da estação).
+if (convParam === "direto") {
+  convites = [{
+    id: "cv-2", room_id: "roles-candidate", kind: "direto", from: { user_id: "t-1", public_name: "Colega Teste Um" },
+    station: { label: "Estação 1", number: 1, area: "Clínica Médica", area_code: "CM", duration_ms: 600000 }, expires_at: EM(60000),
+  }];
+}
+// "?convite=pedido": pedido de treino por link (vale 24 h) de um colega que não estava online.
+let pedidos = convParam === "pedido"
+  ? [{ id: "pd-1", from: { user_id: "t-3", public_name: "Colega Teste Três", handle: "colega.teste3" }, station: { label: "Estação 1", number: 1, area: "Clínica Médica", area_code: "CM", duration_ms: 600000 }, expires_at: EM(20 * 3600000) }]
+  : [];
 // Chat de estudo (Etapa C) na prévia: uma conversa com o colega de teste, em memória. O filtro de verdade é do servidor
 // (migração 013370); aqui só "idiota" é recusada, para ver o aviso na tela.
 let bloqueado = false;
@@ -352,6 +387,44 @@ const respostas = {
   ...respostasChat,
   ...respostasAdm,
   ...respostasHistorico,
+  // ----- radar, @ e convite por link (dados de teste)
+  app_dupla_radar: ({ p_aba }) => {
+    const sem = !perfil?.city?.trim();
+    if (p_aba === "perto" && sem) return { people: [], online: PESSOAS_RADAR.length, needs_city: true, open_room: null, me: { radar_visible: perfil?.radar_visible !== false, allow_direct_invites: perfil?.allow_direct_invites !== false }, server_now: NOW() };
+    return { people: radarDaAba(p_aba), online: radarParam === "vazio" ? 0 : PESSOAS_RADAR.length, needs_city: false, open_room: null, me: { radar_visible: perfil?.radar_visible !== false, allow_direct_invites: perfil?.allow_direct_invites !== false }, server_now: NOW() };
+  },
+  app_dupla_invite: ({ p_to }) => {
+    if (limiteParam === "1") throw new Error("Muitos convites seguidos. Tente de novo em 12 min.");
+    const quem = PESSOAS_RADAR.find((p) => p.user_id === p_to);
+    return { room_id: "roles-candidate", expires_at: EM(60000), partner: { user_id: p_to, public_name: quem?.public_name ?? "Colega Teste" } };
+  },
+  app_dupla_handle_check: ({ p_handle }) => {
+    const h = String(p_handle ?? "").replace(/^@+/, "").toLowerCase();
+    if (h === perfil?.handle) return { ok: true, handle: h, code: null, message: "Este já é o seu @.", next_change_at: null, next_change_message: null };
+    if (!/^[a-z0-9._]{3,20}$/.test(h) || /^\.|\.$/.test(h)) return { ok: false, handle: h, code: "formato", message: "Use de 3 a 20 caracteres: letras minúsculas, números, ponto ou sublinhado, sem ponto no começo nem no fim.", next_change_at: null };
+    if (h === "colega.teste1" || h === "admin") return { ok: false, handle: h, code: h === "admin" ? "reservado" : "em_uso", message: h === "admin" ? "Esse @ não está disponível." : "Esse @ já está em uso.", next_change_at: null };
+    return { ok: true, handle: h, code: null, message: "Disponível.", next_change_at: null };
+  },
+  app_dupla_link_lookup: ({ p_handle, p_station_id }) => {
+    const h = String(p_handle ?? "").toLowerCase();
+    if (h === perfil?.handle) return { found: true, self: true, person: { public_name: perfil.public_name, handle: h } };
+    const quem = PESSOAS_RADAR.find((p) => p.handle === h);
+    if (!quem) return { found: false };
+    const station = p_station_id ? { label: "Estação 1", number: 1, area: "Clínica Médica", area_code: "CM", duration_ms: 600000 } : null;
+    const mode = !quem.can_invite && quem.why_not === "Não recebe convites." ? "indisponivel" : quem.state === "livre" ? "convite" : "pedido";
+    return { found: true, self: false, mode, why_not: mode === "indisponivel" ? "Não recebe convites." : null, station, pending: false, incoming: false, person: quem };
+  },
+  app_dupla_link_request: ({ p_handle }) => {
+    const h = String(p_handle ?? "").toLowerCase();
+    const quem = PESSOAS_RADAR.find((p) => p.handle === h);
+    if (quem?.state === "livre") return { kind: "convite", room_id: "roles-candidate", expires_at: EM(60000), partner: { user_id: quem.user_id, public_name: quem.public_name } };
+    return { kind: "pedido", request_id: "pd-novo", expires_at: EM(24 * 3600000), partner: { user_id: quem?.user_id ?? "t-9", public_name: quem?.public_name ?? "Colega Teste" } };
+  },
+  app_dupla_requests: () => ({ requests: pedidos, server_now: NOW() }),
+  app_dupla_answer_request: ({ p_accept }) => {
+    pedidos = [];
+    return p_accept ? { room_id: "roles-candidate", expires_at: EM(60000), partner: { user_id: "t-3", public_name: "Colega Teste Três" } } : { room_id: null };
+  },
   app_dupla_access: () => ({ aberto: true, permitido: true, equipe: true, planos: ["pro", "elite"] }),
   app_dupla_profile: () => ({ profile: perfil, defaults: perfil ? null : { public_name: "Aluno de Teste", exam: "2026/2" }, stats: { done: 3, avg: 7.8 } }),
   app_dupla_save_profile: ({ p_profile }) => {

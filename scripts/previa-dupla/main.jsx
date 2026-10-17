@@ -1,10 +1,12 @@
 // PRÉVIA do Treinamento em Dupla (porta 31997): dados de teste, sem login e sem banco.
-//   /tela.html?t=praticar|perfil|estacoes|sala|vitrine|estacoes-adm|peps  [&sala=<fase>-<papel>] [&estacao=<id>] [&perfil=nenhum] [&convite=1] [&tema=escuro]
+//   /tela.html?t=praticar|perfil|estacoes|sala|vitrine|estacoes-adm|peps|convite  [&sala=<fase>-<papel>] [&estacao=<id>] [&perfil=nenhum]
+//     [&convite=1|direto|pedido] [&modo=online (radar)] [&radar=vazio] [&limite=1] [&h=<@> (t=convite)] [&tema=escuro]
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import "../../src/novo/ds/styles.css";
 import { PracticeScreen } from "../../src/novo/app/dupla/PracticeScreen.jsx";
+import { InviteLinkScreen } from "../../src/novo/app/dupla/InviteLinkScreen.jsx";
 import { StudyProfileScreen } from "../../src/novo/app/dupla/StudyProfileScreen.jsx";
 import { StationsScreen } from "../../src/novo/app/dupla/StationsScreen.jsx";
 import { RoomScreen } from "../../src/novo/app/dupla/room/RoomScreen.jsx";
@@ -17,14 +19,17 @@ const tela = params.get("t") || "praticar";
 document.documentElement.dataset.theme = params.get("tema") === "escuro" ? "dark" : "light";
 
 const ROTAS = { dupla: "praticar", "dupla-perfil": "perfil", estacoes: "estacoes", "dupla-sala": "sala", peps: "peps" };
-const KEEP = ["tema", "perfil", "convite"];
+const KEEP = ["tema", "perfil", "convite", "radar", "limite"];
 function go(route, query = {}) {
   if (route === "planos" || !ROTAS[route]) { location.href = "/"; return; }
   const next = new URLSearchParams();
   KEEP.forEach((k) => params.get(k) && next.set(k, params.get(k)));
   next.set("t", ROTAS[route]);
   if (route === "dupla-sala") next.set("sala", query.sala || "roles-candidate");
-  else if (query.estacao) next.set("estacao", query.estacao);
+  else {
+    if (query.estacao) next.set("estacao", query.estacao);
+    if (query.modo) next.set("modo", query.modo);
+  }
   location.href = "/tela.html?" + next.toString();
 }
 
@@ -44,6 +49,7 @@ function Faixa() {
 
 function Tela() {
   if (tela === "perfil") return <StudyProfileScreen go={go} />;
+  if (tela === "convite") return <InviteLinkScreen go={go} handle={params.get("h") || "colega.teste1"} stationId={params.get("estacao")} />;
   if (tela === "estacoes") return <StationsScreen go={go} />;
   if (tela === "sala") return <RoomScreen roomId={params.get("sala") || "roles-candidate"} go={go} />;
   if (tela === "vitrine") return <Vitrine />;

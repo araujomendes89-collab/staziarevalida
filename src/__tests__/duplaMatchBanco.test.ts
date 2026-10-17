@@ -248,7 +248,7 @@ describe("Migração 9770 — sinal, baralho, escolha, match, convite e saída d
       stats: { done: 2, avg: 7.25 }, online: true,
     });
     expect(Object.keys(completo).sort()).toEqual(
-      ["areas", "bio", "city", "compat", "days", "exam", "goal", "online", "pace", "public_name", "reasons", "role_pref", "school", "shifts", "stats", "user_id"]
+      ["areas", "bio", "city", "compat", "days", "exam", "goal", "handle", "online", "pace", "public_name", "reasons", "role_pref", "school", "shifts", "stats", "user_id"]
     );
     // Instituição e estatística escondidas quando a pessoa pede.
     await d.sql(`update public.study_profiles set show_school = false, show_stats = false where user_id = $1`, [U.bruno]);

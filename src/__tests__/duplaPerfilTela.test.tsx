@@ -48,7 +48,7 @@ afterEach(() => {
 
 async function open() {
   render(<StudyProfileScreen go={go} />);
-  await screen.findByLabelText("Nome público");
+  await screen.findByLabelText("Nome ou apelido");
 }
 
 describe("card.js e profile.js", () => {
@@ -108,7 +108,7 @@ describe("Meu perfil de estudo", () => {
   it("primeira vez: nome e prova vêm da Conta; prova só entre as três próximas edições", async () => {
     loaded = { profile: null, defaults: { public_name: "Ana Lima", exam: "2027/1" }, stats: NO_STATS };
     await open();
-    expect((screen.getByLabelText("Nome público") as HTMLInputElement).value).toBe("Ana Lima");
+    expect((screen.getByLabelText("Nome ou apelido") as HTMLInputElement).value).toBe("Ana Lima");
     const group = screen.getByRole("radiogroup", { name: "Prova" });
     expect(within(group).getAllByRole("radio").map((r) => r.textContent)).toEqual(["2026/2", "2027/1", "2027/2"]);
     expect(within(group).getByRole("radio", { name: "2027/1" }).getAttribute("aria-checked")).toBe("true");
@@ -140,7 +140,7 @@ describe("Meu perfil de estudo", () => {
     expect(discard.disabled).toBe(true);
     expect(screen.queryByText("Alterações não salvas")).toBeNull();
 
-    fireEvent.change(screen.getByLabelText("Nome público"), { target: { value: "Ab" } });
+    fireEvent.change(screen.getByLabelText("Nome ou apelido"), { target: { value: "Ab" } });
     expect(screen.getByText("Informe como você quer aparecer para os colegas.")).toBeTruthy();
     expect(save.disabled).toBe(true);
     expect(discard.disabled).toBe(false);
@@ -149,14 +149,14 @@ describe("Meu perfil de estudo", () => {
     expect(rpcCalls("app_dupla_save_profile")).toHaveLength(0);
 
     fireEvent.click(discard);
-    expect((screen.getByLabelText("Nome público") as HTMLInputElement).value).toBe("Maria Souza");
+    expect((screen.getByLabelText("Nome ou apelido") as HTMLInputElement).value).toBe("Maria Souza");
     expect(screen.queryByText("Informe como você quer aparecer para os colegas.")).toBeNull();
     expect(discard.disabled).toBe(true);
   });
 
   it("salvar manda p_profile e mostra 'Perfil de estudo salvo'", async () => {
     await open();
-    fireEvent.change(screen.getByLabelText("Nome público"), { target: { value: "  Maria S. Souza " } });
+    fireEvent.change(screen.getByLabelText("Nome ou apelido"), { target: { value: "  Maria S. Souza " } });
     fireEvent.click(screen.getByRole("button", { name: "Sáb" }));
     fireEvent.click(screen.getByRole("button", { name: "Cirurgia" }));
     fireEvent.click(screen.getByRole("button", { name: "Salvar perfil" }));
@@ -169,7 +169,7 @@ describe("Meu perfil de estudo", () => {
     });
     expect(await screen.findByText("Perfil de estudo salvo")).toBeTruthy();
     await waitFor(() => expect((screen.getByRole("button", { name: "Salvar perfil" }) as HTMLButtonElement).disabled).toBe(true));
-    expect((screen.getByLabelText("Nome público") as HTMLInputElement).value).toBe("Maria S. Souza");
+    expect((screen.getByLabelText("Nome ou apelido") as HTMLInputElement).value).toBe("Maria S. Souza");
   });
 
   it("salvar com erro do servidor mostra a mensagem e mantém o rascunho", async () => {
@@ -178,10 +178,10 @@ describe("Meu perfil de estudo", () => {
       if (fn === "app_dupla_save_profile") throw new Error("Bio: máximo de 160 caracteres.");
       return loaded;
     });
-    fireEvent.change(screen.getByLabelText("Nome público"), { target: { value: "Maria Nova" } });
+    fireEvent.change(screen.getByLabelText("Nome ou apelido"), { target: { value: "Maria Nova" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar perfil" }));
     expect(await screen.findByText("Bio: máximo de 160 caracteres.")).toBeTruthy();
-    expect((screen.getByLabelText("Nome público") as HTMLInputElement).value).toBe("Maria Nova");
+    expect((screen.getByLabelText("Nome ou apelido") as HTMLInputElement).value).toBe("Maria Nova");
   });
 
   it("prévia: meta, Disponível ('Noite · Seg, Qua'), Papel e Estações ('Oculto'; '3 feitas · PEP 7,80')", async () => {

@@ -164,6 +164,142 @@ export function useInvites(inviteTick, live) {
   return { invites: state.invites, serverNow: state.serverNow, refresh };
 }
 
+/**
+ * Pedidos de treino que chegaram para mim (`app_dupla_requests`, valem 24 h): na entrada, a cada aviso (`inviteTick`), ao voltar a
+ * aba e a rede e de 30 em 30 s. Erro de rede (ou função ausente) mantém a lista anterior; resposta atrasada nunca vence a nova.
+ * @returns {{ requests: object[], refresh(): Promise<void> }}
+ */
+export function useRequests(inviteTick) {
+  const { backend } = useSession();
+  const [requests, setRequests] = React.useState([]);
+  const seq = React.useRef(0);
+  const alive = React.useRef(true);
+
+  React.useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  const refresh = React.useCallback(async () => {
+    if (!backend) return;
+    const mine = ++seq.current;
+    const res = await quiet(() => backend.rpc("app_dupla_requests"));
+    if (!alive.current || mine !== seq.current || !res) return;
+    setRequests(Array.isArray(res.requests) ? res.requests : []);
+  }, [backend]);
+
+  React.useEffect(() => {
+    void refresh();
+  }, [refresh, inviteTick]);
+
+  React.useEffect(() => {
+    const timer = setInterval(() => void refresh(), POLL_LIVE_MS);
+    const onVisible = () => {
+      if (pageVisible()) void refresh();
+    };
+    const onOnline = () => void refresh();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onOnline);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [refresh]);
+
+  return { requests, refresh };
+}
+
+// ------------------------------------------------------------------ radar (quem está online)
+const RADAR_POLL_LOCAL_MS = 20000;
+const RADAR_POLL_LIVE_MS = 30000;
+/** Quando a Presença muda, a lista é consultada de novo, mas no máximo uma vez a cada 5 s. */
+const RADAR_MIN_GAP_MS = 5000;
+
+/**
+ * Lista do radar (`app_dupla_radar`): consulta na entrada, ao trocar de aba ou de estação, a cada 20 s no banco local (30 s com o
+ * tempo real ligado), ao voltar a aba e a rede e quando a Presença muda (agrupado: no máximo 1 consulta a cada 5 s). Erro mantém a
+ * lista anterior; resposta atrasada nunca vence uma mais nova. Quem escolhe quem aparece é o banco.
+ * @param {{ stationId?: string | null, aba?: "online" | "atores" | "perto", onlineIds?: Set<string> | null, live?: boolean }} p
+ * @returns {{ people: object[], online: number, needsCity: boolean, openRoom: object | null, me: object | null, loading: boolean,
+ *   error: Error | null, refresh(): Promise<void> }}
+ */
+export function useRadar({ stationId = null, aba = "online", onlineIds = null, live = false } = {}) {
+  const { backend } = useSession();
+  const [state, setState] = React.useState({ people: [], online: 0, needsCity: false, openRoom: null, me: null, loading: true, error: null });
+  const seq = React.useRef(0);
+  const alive = React.useRef(true);
+  const lastRun = React.useRef(0);
+
+  React.useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  const refresh = React.useCallback(async () => {
+    if (!backend) return;
+    const mine = ++seq.current;
+    lastRun.current = Date.now();
+    try {
+      const res = await backend.rpc("app_dupla_radar", { p_station_id: stationId ?? null, p_aba: aba });
+      if (!alive.current || mine !== seq.current) return;
+      setState({
+        people: Array.isArray(res?.people) ? res.people : [],
+        online: res?.online ?? 0,
+        needsCity: res?.needs_city === true,
+        openRoom: res?.open_room ?? null,
+        me: res?.me ?? null,
+        loading: false,
+        error: null,
+      });
+    } catch (e) {
+      if (!alive.current || mine !== seq.current) return;
+      setState((prev) => ({ ...prev, loading: false, error: e instanceof Error ? e : new Error(String(e)) }));
+    }
+  }, [backend, stationId, aba]);
+
+  // Trocar de aba ou de estação limpa a lista e mostra "carregando" (a lista da outra aba não serve).
+  React.useEffect(() => {
+    setState((prev) => ({ ...prev, people: [], needsCity: false, loading: true }));
+    void refresh();
+  }, [refresh]);
+
+  React.useEffect(() => {
+    const timer = setInterval(() => void refresh(), live ? RADAR_POLL_LIVE_MS : RADAR_POLL_LOCAL_MS);
+    const onVisible = () => {
+      if (pageVisible()) void refresh();
+    };
+    const onOnline = () => void refresh();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onOnline);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [refresh, live]);
+
+  // Presença mudou (alguém entrou ou saiu): consulta de novo, agrupando as mudanças.
+  const presenceKey = onlineIds ? [...onlineIds].sort().join(",") : null;
+  const firstPresence = React.useRef(true);
+  React.useEffect(() => {
+    if (presenceKey === null) return undefined;
+    if (firstPresence.current) {
+      firstPresence.current = false;
+      return undefined;
+    }
+    const wait = Math.max(0, RADAR_MIN_GAP_MS - (Date.now() - lastRun.current));
+    const timer = setTimeout(() => void refresh(), wait);
+    return () => clearTimeout(timer);
+  }, [presenceKey, refresh]);
+
+  return { ...state, refresh };
+}
+
 // ------------------------------------------------------------------ sala ao vivo (Tarefa 15)
 /** Sala sem tempo real (banco local, ou canal com erro): consulta rápida (só traz algo se o `rev` mudou) e completa. */
 const ROOM_POLL_MS = 2000;

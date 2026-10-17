@@ -14,6 +14,7 @@ import { useDuplaChannel, useHeartbeat } from "./live.js";
 import { InviteWatcher, MatchModal } from "./MatchModal.jsx";
 import { installAudioWake, playSkipSound } from "./sound.js";
 import { useChatWindows } from "./chat/ChatList.jsx";
+import { RadarScreen } from "./RadarScreen.jsx";
 
 const ROLE_OPTIONS = [
   { value: "any", label: "Qualquer papel" },
@@ -328,6 +329,9 @@ function PracticeBoard({ go, profile, saved, stationId, station, onRemoveStation
           <Button variant="secondary" size="sm" icon="message-circle" onClick={chat.openList}>
             Conversas
           </Button>
+          <Button variant="secondary" size="sm" icon="radar" onClick={() => go("dupla", stationId ? { estacao: stationId, modo: "online" } : { modo: "online" })}>
+            Ver quem está online
+          </Button>
           {deck.loaded && (
             <>
               <span style={{ ...pill, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}>
@@ -472,6 +476,7 @@ export function PracticeScreen({ go }) {
   const { backend } = useSession();
   const [params, setParams] = useSearchParams();
   const stationId = params.get("estacao");
+  const modo = params.get("modo");
 
   const profile = useLoad(() => backend.rpc("app_dupla_profile"), [backend]);
   // O Banco de estações leva o id da estação no endereço; ela só é lida quando há id.
@@ -489,6 +494,10 @@ export function PracticeScreen({ go }) {
     setParams(next, { replace: true });
   };
 
+  // `?modo=online` abre o radar de quem está online (tela própria); sem perfil de estudo o radar não existe (cai na tela abaixo).
+  if (saved && modo === "online") {
+    return <RadarScreen go={go} profile={profile} saved={saved} station={station} stationId={stationId} />;
+  }
   if (saved) {
     return <PracticeBoard go={go} profile={profile} saved={saved} stationId={stationId} station={station} onRemoveStation={removeStation} />;
   }

@@ -10,6 +10,7 @@ import { AREAS, DAYS, PACE_LABEL, ROLE_PREF_LABEL, SHIFTS, areaVars } from "./la
 import { toCard } from "./card.js";
 import { useDuplaChannel, useHeartbeat } from "./live.js";
 import { InviteWatcher } from "./MatchModal.jsx";
+import { HandleField } from "./HandleField.jsx";
 import { installAudioWake } from "./sound.js";
 import { AREA_ORDER, DAY_ORDER, SHIFT_ORDER, draftErrors, draftPayload, nextEditions, profileDraft, toggleInOrder } from "./profile.js";
 
@@ -149,13 +150,14 @@ export function StudyProfileScreen({ go }) {
               <div style={{ font: "13px/1.5 var(--font-sans)", color: "var(--text-tertiary)" }}>A foto usa suas iniciais.</div>
             </div>
             <TextField
-              label="Nome público"
+              label="Nome ou apelido"
               value={draft.public_name}
               maxLength={40}
               onChange={(e) => set("public_name", e.target.value)}
               error={errors.public_name}
               placeholder="Como você quer aparecer"
             />
+            <HandleField saved={data.profile?.handle ?? ""} value={draft.handle} hasProfile={Boolean(data.profile)} onChange={(v) => set("handle", v)} />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14 }}>
               <TextField label="Instituição de formação" value={draft.school} maxLength={80} onChange={(e) => set("school", e.target.value)} placeholder="ex.: UMSA · Bolívia" />
               <TextField label="Cidade / estado" value={draft.city} maxLength={80} onChange={(e) => set("city", e.target.value)} placeholder="ex.: Curitiba · PR" />
@@ -224,6 +226,12 @@ export function StudyProfileScreen({ go }) {
               description="Colegas compatíveis podem ver seu cartão e convidar você."
               checked={draft.radar_visible}
               onChange={(e) => set("radar_visible", e.target.checked)}
+            />
+            <Switch
+              label="Permitir convites diretos"
+              description="Colegas podem chamar você para uma estação"
+              checked={draft.allow_direct_invites}
+              onChange={(e) => set("allow_direct_invites", e.target.checked)}
             />
             <Switch
               label="Mostrar instituição de formação"
