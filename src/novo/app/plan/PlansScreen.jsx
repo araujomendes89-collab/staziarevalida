@@ -78,6 +78,8 @@ export function PlansScreen({ go }) {
   const [tick, setTick] = React.useState(0);
   const lock = usePlanLock();
   const reviewer = Boolean(boot?.reviewer_areas?.length);
+  // volta da página de pagamento (?pedido=<id>), quando o "endereço de volta" do fornecedor estiver ligado
+  const pedidoInicial = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("pedido");
   const label = planStatusLabel(boot?.subscription, boot?.role, reviewer);
   const current = currentPlanCode(boot?.subscription, boot?.role, reviewer);
 
@@ -141,7 +143,7 @@ export function PlansScreen({ go }) {
           {situation}
         </>
       )}
-      {!hasFullAccess(boot) && <BillingSection onEnabled={onBilling} />}
+      {!hasFullAccess(boot) && <BillingSection onEnabled={onBilling} go={go} pedidoInicial={pedidoInicial} />}
       {state.status === "loading" && <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Carregando os planos…</p>}
       {state.status === "error" && (
         <EmptyState
@@ -151,7 +153,8 @@ export function PlansScreen({ go }) {
           action={<Button onClick={() => setTick((n) => n + 1)}>Tentar de novo</Button>}
         />
       )}
-      {state.status === "ready" && (
+      {/* com a cobrança ligada, a vitrine acima (preços e o que cada plano libera, do banco) substitui a lista informativa antiga */}
+      {state.status === "ready" && !billingOn && (
         <>
           {plans.length === 0 ? (
             <EmptyState icon="crown" title="Nenhum plano para mostrar agora" description="Volte aqui mais tarde." />

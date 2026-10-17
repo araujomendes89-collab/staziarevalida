@@ -79,10 +79,18 @@ describe("tela Planos com a cobrança", () => {
     render(<PlansScreen go={vi.fn()} />);
     await screen.findByTestId("cobranca");
     fireEvent.click(screen.getByTestId("cobranca-extra-boost").querySelector("button")!);
-    const pagar = await screen.findByRole("button", { name: "Gerar o Pix" });
-    expect((pagar as HTMLButtonElement).disabled).toBe(true);
+    // etapa 1: forma de pagamento e CPF (só aqui); sem CPF válido não avança
+    const revisar = await screen.findByRole("button", { name: "Revisar e pagar" });
+    expect((revisar as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(screen.getByLabelText("Nome completo"), { target: { value: "Aluno Teste" } });
-    fireEvent.change(screen.getByLabelText("CPF"), { target: { value: "366.385.446-91" } });
+    fireEvent.change(screen.getByLabelText("CPF"), { target: { value: "111.111.111-11" } });
+    expect((revisar as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("CPF"), { target: { value: "36638544691" } });
+    expect((screen.getByLabelText("CPF") as HTMLInputElement).value).toBe("366.385.446-91");
+    fireEvent.click(revisar);
+    // etapa 2: resumo (CPF escondido) e aceite obrigatório
+    expect(screen.getByTestId("cobranca-resumo").textContent).toContain("***.385.446-**");
+    const pagar = screen.getByRole("button", { name: "Gerar o Pix" });
     expect((pagar as HTMLButtonElement).disabled).toBe(true); // falta o aceite
     fireEvent.click(screen.getByRole("checkbox"));
     expect((pagar as HTMLButtonElement).disabled).toBe(false);

@@ -42,6 +42,8 @@ export const cancelOrder = (backend, id) => call(backend, `/orders/${encodeURICo
 export const cancelRenewal = (backend) => call(backend, "/cancel-renewal", {});
 /** Renovação do cartão que falhou: a mesma cobrança vira Pix (volta na hora ao pagar). */
 export const payRenewalByPix = (backend) => call(backend, "/renewal/pix", {});
+/** Trocar a forma de pagamento da renovação (013760): "pix" (cancela a assinatura do cartão) ou "cartao" (abre a página segura). */
+export const changePaymentMethod = (backend, metodo, idem) => call(backend, "/payment-method", { metodo, idem });
 export const requestRefund = (backend, cobrancaId) => call(backend, "/refunds", { cobranca_id: cobrancaId });
 
 /** Centavos em reais (ex.: 9990 -> "R$ 99,90"). */

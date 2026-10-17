@@ -16,6 +16,7 @@ import { Panel, RichIcon, Tile, useBreakpoint } from "../evolucao/ui.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
 import { CelebracoesPreferencias } from "../play/celebracoes/CelebracoesPreferencias.jsx";
 import { COUNTRIES, normalizePhone, phoneError, splitPhone } from "../legal/phone.js";
+import { AssinaturaSection, useCobrancaLigada } from "../plan/Assinatura.jsx";
 import "./account.css";
 
 // icon = ícone ilustrado do pacote (RichIcon); tone = cor do azulejo. "Ajuda e suporte" fica fora do bloco "Sua conta" (vem depois, junto de "Sair da conta").
@@ -42,6 +43,8 @@ function SectionHeader({ title, subtitle }) {
   );
 }
 const MAIN_SECTIONS = SECTIONS.filter((s) => s.id !== "ajuda");
+// planos etapa 4: "Assinatura" só aparece com a cobrança ligada no servidor e para aluno (sem chave, a Conta fica igual a hoje)
+const ASSINATURA = { id: "assinatura", label: "Assinatura", sub: "Plano, pagamento, recibos e cancelamento", icon: "crown", tone: "orange" };
 const HELP = SECTIONS.find((s) => s.id === "ajuda");
 const THEMES = [
   { value: "light", label: "Claro", icon: "sun" },
@@ -564,8 +567,9 @@ export function AccountScreen({ go }) {
     };
   }, [backend, isElite, eliteKey, tick]);
   const bp = useBreakpoint();
+  const secaoPedida = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("secao");
   // no celular a lista abre com as seções fechadas (D9); no computador e no tablet a primeira seção já aparece
-  const [section, setSection] = React.useState(() => (bp === "narrow" ? "" : "conta"));
+  const [section, setSection] = React.useState(() => (secaoPedida === "assinatura" ? "assinatura" : bp === "narrow" ? "" : "conta"));
   const active = section || "conta";
   const profile = boot.profile;
   const plan = planBadge(boot.subscription, boot.role, Boolean(boot.reviewer_areas?.length));
@@ -577,10 +581,16 @@ export function AccountScreen({ go }) {
   const staff = isStaffRole(boot.role);
   const staffTitle = boot.role === "admin" ? "Você é administrador" : "Você é editor";
   const fullAccess = staff || Boolean(boot.reviewer_areas?.length);
+  const cobranca = useCobrancaLigada(!fullAccess);
+  const secoes = cobranca && !fullAccess ? [ASSINATURA, ...MAIN_SECTIONS] : MAIN_SECTIONS;
+  React.useEffect(() => {
+    if (cobranca && secaoPedida === "assinatura") setSection("assinatura");
+  }, [cobranca, secaoPedida]);
   const initials = (profile.name || user?.email || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 
   const content = (id) => (
     <>
+      {id === "assinatura" && <AssinaturaSection go={go} Cabecalho={SectionHeader} />}
       {id === "conta" && <AccountSection email={user?.email} />}
       {id === "play" && <PlayProfileSection go={go} />}
       {id === "comemoracoes" && <CelebracoesPreferencias Cabecalho={SectionHeader} />}
@@ -644,7 +654,7 @@ export function AccountScreen({ go }) {
         </Panel>
         <h2 className="ac-grp">Sua conta</h2>
         <Panel className="ac-list">
-          {MAIN_SECTIONS.map((s) => {
+          {secoes.map((s) => {
             const open = section === s.id;
             return (
               <div key={s.id} className="ac-acc">
@@ -718,7 +728,7 @@ export function AccountScreen({ go }) {
       <div className={`ac-cols${bp === "mid" ? " ac-cols--mid" : ""}`}>
         {bp === "wide" ? (
           <Panel as="nav" className="ac-nav" aria-label="Seções da conta">
-            {MAIN_SECTIONS.map((s) => (
+            {secoes.map((s) => (
               <button key={s.id} type="button" className="ac-nav__item" aria-current={active === s.id ? "page" : undefined} onClick={() => setSection(s.id)}>
                 <Tile tone={s.tone} size={40} radius={12}><RichIcon name={s.icon} size={26} /></Tile>
                 <span className="ac-row__t"><b>{s.label}</b><small>{s.sub}</small></span>
@@ -736,7 +746,7 @@ export function AccountScreen({ go }) {
           </Panel>
         ) : (
           <nav aria-label="Seções da conta" className="ac-chips">
-            {MAIN_SECTIONS.map((s) => (
+            {secoes.map((s) => (
               <button key={s.id} type="button" className="ac-chip" aria-current={active === s.id ? "page" : undefined} onClick={() => setSection(s.id)}>
                 <RichIcon name={s.icon} size={22} />
                 {s.label}

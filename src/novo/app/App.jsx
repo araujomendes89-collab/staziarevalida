@@ -45,6 +45,8 @@ import { CelebracoesProvider } from "./play/celebracoes/CelebracoesProvider.jsx"
 import { Onboarding, deveMostrarOnboarding } from "./onboarding/Onboarding.jsx";
 import { TourNoPainel } from "./onboarding/Tour.jsx";
 import { DicaPrimeiroUso } from "./onboarding/Inicio.jsx";
+import { AmostraFaixa, CadeadoDialog } from "./plan/cadeado.jsx";
+import { AvisosPopup } from "./plan/AvisosPopup.jsx";
 
 // [título, subtítulo] de cada rota (o início é montado com nome e data reais).
 const TITLES = {
@@ -76,6 +78,8 @@ const TITLES = {
   desempenho2: ["Desempenho prático", "Notas pelo PEP"],
   admin: ["Administração", "Gestão da plataforma"],
 };
+// planos etapa 4: a faixa da amostra do dia nas telas que gastam a amostra
+const AMOSTRA_ROTA = { questoes: "questoes", simulados: "simulados_teoricos", flash: "flashcards" };
 const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps", "paciente", "desempenho2"];
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", "nivelamento", "apresentacao", ...Object.keys(TITLES)]);
 
@@ -249,6 +253,8 @@ function Screen() {
       {!CONNECTED.has(route) && <ReconstructionNotice />}
       <DicaPrimeiroUso route={route} />
       <TourNoPainel route={route} />
+      {/* planos etapa 4: quanto sobra da amostra hoje (só com os cadeados ligados; desligados, nada aparece) */}
+      {AMOSTRA_ROTA[route] && !isStaffRole(boot.role) && <AmostraFaixa recurso={AMOSTRA_ROTA[route]} go={go} />}
       {route === "flash" && reviewSwitch("flash")}
       {route === "erros" && reviewSwitch("erros")}
       {body}
@@ -271,6 +277,20 @@ function Splash({ children }) {
       <img src="/brand/simbolo-96w.png" alt="StaziaMed Revalida" width="38" height="56" style={{ height: 56, width: "auto" }} />
       {children}
     </div>
+  );
+}
+
+/** Planos etapa 4, acima de todas as rotas (inclusive o treino, fora do menu): a mensagem "assine para liberar" quando o banco
+ * recusa por plano e o pop-up dos avisos de cobrança (só aluno). Sem cadeados e sem cobrança ligados, nada aparece. */
+function AvisosGlobais({ boot }) {
+  const navigate = useNavigate();
+  const go = (rota, query) => navigate(`/${rota}` + (query ? `?${new URLSearchParams(query)}` : ""));
+  const aluno = !isStaffRole(boot?.role) && !boot?.reviewer_areas?.length;
+  return (
+    <>
+      <CadeadoDialog go={go} />
+      <AvisosPopup go={go} ativo={aluno} />
+    </>
   );
 }
 
@@ -318,6 +338,7 @@ function Root() {
   // Comemorações do Stazi acima de todas as rotas (inclusive o treino/simulado, que fica fora do menu)
   return (
     <CelebracoesProvider rota={pathname}>
+      <AvisosGlobais boot={session.boot} />
       <Routes>
         {/* /novo/login: sem sessão, qualquer endereço mostra o login; com sessão, volta para o início */}
         <Route path="/login" element={<Navigate to="/" replace />} />

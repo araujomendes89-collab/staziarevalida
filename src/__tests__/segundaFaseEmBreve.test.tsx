@@ -35,7 +35,7 @@ vi.mock("../novo/app/study/LessonsScreen.jsx", () => ({ LessonsScreen: () => nul
 vi.mock("../novo/app/study/UpdatesScreen.jsx", () => ({ UpdatesScreen: () => null }));
 vi.mock("../novo/app/study/ThemesScreen.jsx", () => ({ ThemesScreen: () => null }));
 vi.mock("../novo/app/home/HomeScreen.jsx", () => ({ HomeScreen: () => <div data-testid="tela-home" /> }));
-vi.mock("../novo/app/home/TodayPlan.jsx", () => ({ TodayPlan: () => null }));
+vi.mock("../novo/app/home/TodayPlan.jsx", () => ({ TodayPlan: () => null, MINUTES: [] }));
 vi.mock("../novo/app/home/PlanningScreen.jsx", () => ({ PlanningScreen: () => null }));
 vi.mock("../novo/app/review/ErrorNotebook.jsx", () => ({ ErrorNotebook: () => null }));
 vi.mock("../novo/app/review/PerformanceScreen.jsx", () => ({ PerformanceScreen: () => null }));

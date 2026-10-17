@@ -4,6 +4,7 @@
 // modo "refazer": pela Conta → Ajuda ("Refazer apresentação") ou pelo Início (convite / Primeiros passos); fecha e volta ao app.
 // Quem decide acesso, teste e plano é sempre o servidor: aqui só se pergunta e se guarda a preferência.
 import React from "react";
+import { ativarTeste } from "../plan/testeGratis.js";
 import { useNavigate } from "react-router-dom";
 import { Banner, Icon } from "../../ds";
 import { useSession } from "../session.jsx";
@@ -121,6 +122,13 @@ export function Onboarding({ modo = "primeira", inicio = null, go }) {
     if (modo === "primeira") aplicarTema(boot.profile?.theme);
   }, [modo, boot.profile?.theme]);
 
+  // teste grátis "ativado no cadastro" (planos etapa 4): o servidor registra a ativação e o código do IP (alerta, nunca bloqueia).
+  // Sem o servidor de planos (503) ou sem rede: segue igual (o teste já existe desde o cadastro).
+  React.useEffect(() => {
+    if (modo !== "primeira") return;
+    ativarTeste(backend, null).catch(() => undefined);
+  }, [modo, backend]);
+
   // cada passo (e cada cena) começa do topo, com o foco no título (o leitor de tela anuncia a pergunta)
   React.useEffect(() => {
     if (!/jsdom/i.test(navigator.userAgent)) window.scrollTo?.(0, 0);
@@ -170,6 +178,15 @@ export function Onboarding({ modo = "primeira", inicio = null, go }) {
     irPara(proximoDe("apresentacao", e));
   });
   const continuarPergunta = () => executar(async () => {
+    // a escolha do teste (1ª fase, 2ª fase ou as duas) passa pelo servidor, que vê o IP; recusa do banco aparece na tela.
+    // Servidor de planos fora (503/rede): o próprio passo do onboarding grava a escolha, como antes.
+    if (passo === "fase" && estado?.acesso?.modo_fase === "escolher_teste" && valores.fase?.escolha) {
+      try {
+        await ativarTeste(backend, valores.fase.escolha);
+      } catch (err) {
+        if (err?.status === 400) throw err;
+      }
+    }
     const e = await salvar(passo, dadosDoPasso(passo, valores[passo]));
     // nivelamento já feito (ou que não cabe): o servidor registra e o passo some da lista
     let prox = proximoDe(passo, e);
