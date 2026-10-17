@@ -28,6 +28,8 @@ import { useMovimentoReduzido } from "../personagens/useMovimentoReduzido.js";
 import { MINI_TUTOR, TEXTOS } from "./config.js";
 import { atalhos, chaveDoContexto, faseDaQuestao } from "./contexto.js";
 import { useMiniTutor } from "./useMiniTutor.js";
+import { useDemorou } from "../useDemorou.js";
+import { textoConferindo } from "../../../../../server/tutor/conhecimento/frasesEspera";
 import "./miniTutor.css";
 
 // a voz só baixa quando o aluno toca no microfone
@@ -388,6 +390,8 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
   const pref = st?.preferences ?? {};
   const personagem = personagemValido(pref.character) ?? personagemDe(pref.personality_id) ?? lerPersonagem(pref.personality_id ?? null);
   const nomePersonagem = PERSONAGENS[personagem]?.nome ?? "Tutor";
+  // resposta que passa de ~600 ms: "Stazia está conferindo a fonte…" (frases de espera, decisão do dono de 17/10)
+  const conferindo = useDemorou(mt.enviando);
   const personalidade = (st?.personalities ?? []).find((p) => p.id === pref.personality_id) ?? null;
   const fase = faseDaQuestao(contexto);
   const ent = st?.entitlement ?? null;
@@ -653,10 +657,11 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
             </div>
           ))}
           {mt.enviando && (
-            <div className="mt-msg mt-msg--tutor mt-msg--pensando" aria-label={`${nomePersonagem} está pensando`}>
+            <div className="mt-msg mt-msg--tutor mt-msg--pensando" aria-label={conferindo ? textoConferindo(nomePersonagem) : `${nomePersonagem} está pensando`}>
               <span />
               <span />
               <span />
+              {conferindo && <em className="mt-conferindo">{textoConferindo(nomePersonagem)}</em>}
             </div>
           )}
         </div>

@@ -14,13 +14,15 @@
 --     complementar), e da estação o roteiro do ator, o checklist, as pressões e a cena do médico (o portão nem lê esses campos).
 --   * ch_worker_tutor_kb_buscar: numa ida ao banco confere o aluno, a ligação de voz, o limite de frequência e a chave da IA; exclui a
 --     questão aberta, as equivalentes e relacionadas, as questões de simulado/prova em andamento, as que o aluno ainda não respondeu
---     (regra padrão) e as Inéditas fora do plano; junta palavras e significado (RRF, k = 60) usando o índice HNSW de verdade (sem
+--     (sempre, decisão do dono de 17/10) e as Inéditas fora do plano; junta palavras e significado (RRF, k = 60) usando o índice HNSW de verdade (sem
 --     filtro de distância no where) e devolve a citação pronta. Registra os trechos entregues (tutor_kb_entregas).
 --     Mínimo de relevância: por palavras, o trecho precisa ter os termos da pergunta (e o mais raro); por significado, semelhança
 --     >= regras.semelhanca_minima. Nada passou: lista vazia ("não encontrei no material aprovado"). Palavras sem acento dos dois lados.
 --   * ch_worker_tutor_kb_pacote: o MATERIAL DO TEMA da abertura da conversa, sem chamar o Google (vetor da questão ou do tema,
 --     guardado na indexação). Nunca leva explicação de questão nem estação.
---   * public.tutor_kb_regras: as decisões do dono (padrões conservadores até ele decidir).
+--   * public.tutor_kb_regras: as decisões do dono. DECIDIDAS em 17/10/2026: (1) fonte sem aprovação editorial nunca entra no
+--     Tutor (308 trechos de 91 fontes saíram), nem pela reserva (ch_worker_tutor_kb_fontes_reserva); (2) explicação de questão
+--     oficial conferida só por IA vale, e (3) só depois de o aluno responder aquela questão (Inédita: só a liberada no plano).
 --   * Só o servidor lê e grava: RLS ligada sem políticas e execução revogada de public/anon/authenticated. Funções SECURITY DEFINER
 --     com search_path vazio. A busca da Central (ch_worker_search_official_passages) NÃO muda.
 --
@@ -30,11 +32,15 @@
 -- ---------------------------------------------------------------- regras do dono (1 linha)
 create table if not exists public.tutor_kb_regras (
   id boolean primary key default true check (id),
-  -- decisão 1: os trechos de fontes sem aprovação editorial ficam fora do Tutor (só do Tutor; a Central continua igual)
+  -- decisão 1 (DECIDIDA pelo dono em 17/10/2026): fonte sem aprovação editorial NUNCA entra no Tutor (só no Tutor; a busca da
+  -- Central continua igual). O portão (tutor_kb_versao_atual) e a reserva (ch_worker_tutor_kb_fontes_reserva) exigem a aprovação
+  -- sempre; esta coluna fica só por compatibilidade e não libera nada.
   fontes_exigem_aprovacao_editorial boolean not null default true,
-  -- decisão 2: revisão mínima para o Tutor citar a explicação de uma questão: 'humana' | 'dois_revisores_ia' | 'ia'
-  questoes_nivel_minimo text not null default 'humana' check (questoes_nivel_minimo in ('humana', 'dois_revisores_ia', 'ia')),
-  -- decisão 3: explicação só de questão que o aluno já respondeu
+  -- decisão 2 (DECIDIDA em 17/10/2026): revisão mínima para o Tutor citar a explicação de uma questão: 'humana' | 'dois_revisores_ia' |
+  -- 'ia'. O dono liberou as conferidas só por IA ('ia'), SEMPRE depois de o aluno responder aquela questão (abaixo).
+  questoes_nivel_minimo text not null default 'ia' check (questoes_nivel_minimo in ('humana', 'dois_revisores_ia', 'ia')),
+  -- decisão 3 (DECIDIDA em 17/10/2026): explicação só de questão que o aluno já respondeu. A busca exige isso sempre; a coluna fica
+  -- só por compatibilidade e não libera nada.
   questoes_so_respondidas boolean not null default true,
   -- decisão 4: tamanho do material da abertura (tokens; ~4 caracteres por token)
   pacote_tokens integer not null default 4000 check (pacote_tokens between 0 and 40000),
@@ -45,6 +51,10 @@ create table if not exists public.tutor_kb_regras (
 -- (cerebro/correcao/bancada-*.json): de outro assunto ficaram entre 0,63 e 0,73; os certos, de 0,73 a 0,84.
 alter table public.tutor_kb_regras add column if not exists semelhanca_minima real not null default 0.74 check (semelhanca_minima between 0 and 1);
 insert into public.tutor_kb_regras (id) values (true) on conflict (id) do nothing;
+-- banco que recebeu a versão anterior desta migração (padrão 'humana', antes da decisão do dono de 17/10/2026): passa a 'ia' uma vez
+alter table public.tutor_kb_regras alter column questoes_nivel_minimo set default 'ia';
+update public.tutor_kb_regras set questoes_nivel_minimo = 'ia', updated_at = now()
+ where id and questoes_nivel_minimo = 'humana' and updated_at < timestamptz '2026-10-17 18:00:00-03';
 alter table public.tutor_kb_regras enable row level security;
 
 -- ---------------------------------------------------------------- trechos
@@ -187,7 +197,7 @@ declare
   uuid_ok constant boolean := coalesce(p_origem, '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
 begin
   select * into r from public.tutor_kb_regras where id;
-  if not found then r := row(true, true, 'humana', true, 4000, now(), 0.74)::public.tutor_kb_regras; end if;
+  if not found then r := row(true, true, 'ia', true, 4000, now(), 0.74)::public.tutor_kb_regras; end if;
   case p_tipo
     when 'fonte' then
       if not uuid_ok then return null; end if;
@@ -198,7 +208,7 @@ begin
          and (s.valid_until is null or s.valid_until >= current_date)
          and ((s.kind = 'final' and s.authority_level in ('A', 'B', 'C', 'D'))
               or (s.kind = 'society_guideline' and s.editorial_approved and coalesce(s.authority_level, 'A') in ('A', 'B', 'C', 'D')))
-         and (not r.fontes_exigem_aprovacao_editorial or s.editorial_approved);
+         and s.editorial_approved is true; -- decisão 1 do dono (17/10): sem aprovação editorial, nunca no Tutor
     when 'aula' then
       if not uuid_ok then return null; end if;
       select l.ch_version_id::text into v
@@ -295,7 +305,7 @@ begin
   elsif p_tipo = 'questao' then
     select coalesce(jsonb_agg(x.o order by x.k), '[]'::jsonb) into out from (
       select q.id as k, jsonb_build_object('origem_id', q.id, 'versao', public.tutor_kb_versao_atual('questao', q.id), 'grupo', q.id,
-               'prova', coalesce(e.title, q.exam_id), 'ano', e.year, 'numero', q.number, 'origem', q.origin, 'area', q.area::text, 'tema', q.topic, 'subtema', q.subtopic,
+               'prova', coalesce(e.title, q.exam_id), 'tipo_prova', e.kind, 'semestre', e.semester, 'ano', e.year, 'numero', q.number, 'origem', q.origin, 'area', q.area::text, 'tema', q.topic, 'subtema', q.subtopic,
                'enunciado', q.statement, 'correta', q.correct_option,
                'explicacao_correta', (select o ->> 'explanation' from jsonb_array_elements(q.options) o where o ->> 'id' = q.correct_option::text limit 1),
                'texto_correta', (select o ->> 'text' from jsonb_array_elements(q.options) o where o ->> 'id' = q.correct_option::text limit 1),
@@ -681,7 +691,7 @@ begin
     end if;
   end if;
   select * into r from public.tutor_kb_regras where id;
-  if not found then r := row(true, true, 'humana', true, 4000, now(), 0.74)::public.tutor_kb_regras; end if;
+  if not found then r := row(true, true, 'ia', true, 4000, now(), 0.74)::public.tutor_kb_regras; end if;
 
   -- vetor: o recebido (e guardado no cache) ou o do cache
   v_vetor := public.tutor_kb_vetor_de(p_vetor);
@@ -790,11 +800,18 @@ begin
     continue when not public.tutor_kb_plano_libera(p_user, c.plano_minimo);
     if c.tipo = 'questao' then
       continue when c.questao_id = any (v_travadas);
-      continue when r.questoes_so_respondidas and not (c.questao_id = any (v_respondidas));
+      -- decisão do dono (17/10): explicação de questão SÓ depois de o aluno responder aquela questão (sempre; a coluna não desliga)
+      continue when not (c.questao_id = any (v_respondidas));
       continue when public.tutor_kb_nivel_rank(c.nivel_revisao) < public.tutor_kb_nivel_rank(r.questoes_nivel_minimo);
       if exists (select 1 from public.questions qq where qq.id = c.questao_id and qq.origin = 'staziamed') then
         if not v_ineditas_lidas then
-          select coalesce(array_agg(x), '{}') into v_ineditas from public.ineditas_released_ids_for(p_user) x;
+          -- como ineditas_can_open: o plano tem de dar acesso às Inéditas AGORA e a questão tem de estar liberada nele (a respondida
+          -- conta como liberada); sem acesso hoje (teste vencido, plano sem Inéditas), nenhuma explicação de Inédita sai
+          if public.ineditas_user_access(p_user) then
+            select coalesce(array_agg(x), '{}') into v_ineditas from public.ineditas_released_ids_for(p_user) x;
+          else
+            v_ineditas := '{}';
+          end if;
           v_ineditas_lidas := true;
         end if;
         continue when not (c.questao_id = any (v_ineditas));
@@ -809,7 +826,9 @@ begin
     ids := ids || c.id;
     out := out || jsonb_build_array(jsonb_build_object(
       'ref', 'C' || k, 'id', c.id, 'tipo', c.tipo, 'titulo', c.titulo, 'ano', c.ano, 'secao', c.secao, 'pagina', c.pagina,
-      'citacao', c.titulo || coalesce(' (' || c.ano || ')', '') || coalesce(', seção "' || c.secao || '"', '') || coalesce(', p. ' || c.pagina, ''),
+      -- questão: o título já é a citação pedida pelo dono ("Explicação da questão (Revalida 2023/1 Q6)")
+      'citacao', case when c.tipo = 'questao' then c.titulo
+                      else c.titulo || coalesce(' (' || c.ano || ')', '') || coalesce(', seção "' || c.secao || '"', '') || coalesce(', p. ' || c.pagina, '') end,
       'texto', c.texto, 'nivel', c.nivel_revisao,
       'por', case when v_ok_palavras and v_ok_significado then 'ambos' when v_ok_significado then 'significado' else 'palavras' end,
       'semelhanca', case when c.distancia is null then null else round((1 - c.distancia)::numeric, 3) end));
@@ -821,6 +840,21 @@ begin
   -- indice: false enquanto o indexador nunca rodou (o servidor usa a busca antiga só nesse caso)
   return jsonb_build_object('ok', true, 'trechos', out, 'vetor', v_origem_vetor, 'indice', k > 0 or exists (select 1 from public.tutor_kb_trechos));
 end
+$$;
+
+-- ---------------------------------------------------------------- reserva do Tutor (índice vazio ou busca nova fora do ar)
+-- A busca antiga das fontes oficiais (ch_worker_search_official_passages, que a Central e a equipe usam e que NÃO muda) com o portão do
+-- Tutor por cima: cada trecho só sai se a fonte passar em tutor_kb_versao_atual('fonte') — vigente, final A–D, não complementar, não
+-- retirada, dentro da validade e COM aprovação editorial (decisão 1 do dono, 17/10/2026). Mesmo formato de linha da busca antiga.
+create or replace function public.ch_worker_tutor_kb_fontes_reserva(p_query text, p_limit integer default 3) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select coalesce(jsonb_agg(x.e order by x.o), '[]'::jsonb)
+    from (select z.e, z.o
+            from jsonb_array_elements(coalesce(public.ch_worker_search_official_passages(p_query, 20), '[]'::jsonb)) with ordinality as z (e, o)
+           where public.tutor_kb_versao_atual('fonte', z.e ->> 'passage_id') is not null
+           order by z.o
+           limit least(greatest(coalesce(p_limit, 3), 1), 20)) x
 $$;
 
 -- ---------------------------------------------------------------- o material do tema (abertura), sem chamar o Google
@@ -855,7 +889,7 @@ begin
     raise exception 'A conversa por voz foi encerrada.' using errcode = 'P0001';
   end if;
   select * into r from public.tutor_kb_regras where id;
-  if not found then r := row(true, true, 'humana', true, 4000, now(), 0.74)::public.tutor_kb_regras; end if;
+  if not found then r := row(true, true, 'ia', true, 4000, now(), 0.74)::public.tutor_kb_regras; end if;
   orc := least(greatest(coalesce(p_orcamento_chars, r.pacote_tokens * 4), 0), 160000);
   if orc = 0 then return jsonb_build_object('ok', true, 'trechos', '[]'::jsonb, 'chars', 0, 'vetor', 'nenhum'); end if;
 
@@ -913,7 +947,7 @@ create or replace function public.ch_worker_tutor_kb_evidencias(p_user uuid, p_s
 as $$
   select coalesce(jsonb_agg(jsonb_build_object('citacao', x.citacao, 'texto', x.texto) order by x.quando desc), '[]'::jsonb)
   from (
-    select distinct on (t.id) t.id, t.titulo || coalesce(' (' || t.ano || ')', '') as citacao, t.texto, e.criado_em as quando
+    select distinct on (t.id) t.id, case when t.tipo = 'questao' then t.titulo else t.titulo || coalesce(' (' || t.ano || ')', '') end as citacao, t.texto, e.criado_em as quando
       from public.tutor_sessions s
       join public.tutor_kb_entregas e on e.sessao_id = s.id and e.criado_em > now() - make_interval(hours => least(greatest(coalesce(p_horas, 6), 1), 48))
       join public.tutor_kb_trechos t on t.id = any (e.trecho_ids)

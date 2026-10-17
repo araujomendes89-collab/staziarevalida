@@ -249,10 +249,15 @@ export async function termsOrFail(deps: TutorDeps): Promise<string[]> {
   }
 }
 
+/**
+ * Reserva do Tutor (cérebro sem índice ou fora do ar): só fontes oficiais, por palavras, e só as COM aprovação editorial (decisão do
+ * dono de 17/10/2026; ch_worker_tutor_kb_fontes_reserva, migração 013620). A busca da Central (ch_worker_search_official_passages)
+ * não muda. Sem a função nova no banco, nenhuma fonte sai (lado seguro): a busca antiga deixaria passar fonte sem aprovação.
+ */
 export async function searchSources(deps: TutorDeps, query: string): Promise<Passage[]> {
   if (!query) return [];
   try {
-    const rows = (await deps.db.service<Passage[]>("ch_worker_search_official_passages", { p_query: query, p_limit: 3 })) ?? [];
+    const rows = (await deps.db.service<Passage[]>("ch_worker_tutor_kb_fontes_reserva", { p_query: query, p_limit: 3 })) ?? [];
     // fonte complementar (apostila) nunca vai ao aluno: o banco já só devolve fonte oficial, e aqui confere de novo pelo nome
     const terms = await loadComplementarTerms(deps.db, undefined, deps.log); // sem a lista, cai no catch abaixo: nenhuma fonte é devolvida
     return rows.filter((p) => !labelIsSupportMaterial(`${p.source} ${p.organ}`, terms));

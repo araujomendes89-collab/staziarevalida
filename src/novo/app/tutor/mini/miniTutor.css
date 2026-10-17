@@ -59,6 +59,7 @@
 .mt-msg--pensando span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary); animation: mt-ponto 1.2s infinite ease-in-out; }
 .mt-msg--pensando span:nth-child(2) { animation-delay: 0.15s; }
 .mt-msg--pensando span:nth-child(3) { animation-delay: 0.3s; }
+.mt-conferindo { margin-left: 6px; font: var(--type-caption); font-style: normal; color: var(--text-secondary); align-self: center; }
 
 .mt-atalhos { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px; }
 .mt-atalho { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: var(--radius-pill); border: 1px solid color-mix(in oklab, var(--ai) 35%, var(--border-default)); background: var(--ai-bg); color: var(--ai-text); font: var(--type-caption); font-weight: var(--weight-semibold); cursor: pointer; }

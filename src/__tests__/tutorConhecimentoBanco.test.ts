@@ -5,6 +5,8 @@
  * ataque em massa: são sondas fixas, uma por regra (regra do dono de 17/10).
  *   a. questão aberta, equivalentes e relacionadas nunca voltam; depois da resposta, a dela pode voltar
  *   b. questão não respondida e Inédita fora do plano nunca voltam; questão de simulado em andamento também não
+ *      (decisões do dono de 17/10: explicação conferida só por IA vale, mas SÓ depois de o aluno responder; citação
+ *      "Explicação da questão (Revalida <ano> Q<n>)"; fonte sem aprovação editorial nunca, nem pela reserva do Tutor)
  *   c. rascunho, atualização do app antigo ou pendente, fonte preliminar/substituída/sem aprovação editorial, apostila: nunca
  *   d. estação: só a porta (roteiro do ator, checklist, pressões e cena do médico nunca)
  *   e. aula recolhida some da busca NA HORA, antes da limpeza
@@ -19,6 +21,7 @@ import path from "path";
 import { PGlite } from "@electric-sql/pglite";
 import { sincronizar } from "../../server/tutor/conhecimento/indexador";
 import { buscarConhecimento, NOTA_SEM_RESULTADO, paraFerramenta } from "../../server/tutor/conhecimento/buscar";
+import { searchSources } from "../../server/tutor/engine";
 import { pacoteDoTema } from "../../server/tutor/conhecimento/pacote";
 import { normalizar } from "../../server/tutor/conhecimento/consulta";
 import type { Embedder } from "../../server/contentHub/embeddings";
@@ -78,7 +81,7 @@ const vetor = (t: string) => ({ model: "gemini-embedding-2", values: vetorFalso(
 const SENTINELAS = [
   "SENTINELA-SEM-APROVACAO-EDITORIAL", "SENTINELA-PRELIMINAR", "SENTINELA-SUBSTITUIDA", "SENTINELA-APOSTILA", "SENTINELA-AULA-RECOLHIDA",
   "SENTINELA-LEGACY", "SENTINELA-PENDENTE", "SENTINELA-PRATICA", "SENTINELA-ROTEIRO", "SENTINELA-CHECKLIST", "SENTINELA-PRESSAO",
-  "SENTINELA-CENA", "SENTINELA-PESSOAL", "SENTINELA-FLASH-NAO-PUBLICADO", "SENTINELA-SO-IA", "SENTINELA-INEDITA-SEM-REVISAO",
+  "SENTINELA-CENA", "SENTINELA-PESSOAL", "SENTINELA-FLASH-NAO-PUBLICADO", "SENTINELA-SEM-REVISAO",
   "SENTINELA-ESTACAO-PENDENTE", "SENTINELA-RASCUNHO",
 ];
 const todosOsTextos = async () => (await rows<{ t: string }>(`select titulo || ' ' || coalesce(secao, '') || ' ' || texto as t from public.tutor_kb_trechos`)).map((r) => r.t).join("\n");
@@ -148,9 +151,11 @@ beforeAll(async () => {
   await questao("q-rel", 3, "official", HUMANA, "Anafilaxia adrenalina SENTINELA-RELACIONADA explicação da questão relacionada.");
   await questao("q-resp", 4, "official", HUMANA, "Anafilaxia adrenalina explicação LIBERADA-RESPONDIDA da questão já respondida pelo aluno.");
   await questao("q-nao-resp", 5, "official", HUMANA, "Anafilaxia adrenalina SENTINELA-NAO-RESPONDIDA explicação de questão que o aluno ainda vai fazer.");
-  await questao("q-ia", 6, "official", SO_IA, "Anafilaxia adrenalina SENTINELA-SO-IA explicação conferida só por IA.");
+  await questao("q-ia", 6, "official", SO_IA, "Anafilaxia adrenalina SO-IA-RESPONDIDA explicação conferida só por IA.");
+  await questao("q-ia-nao-resp", 10, "official", SO_IA, "Anafilaxia adrenalina SO-IA-NAO-RESPONDIDA explicação conferida só por IA que o aluno ainda vai fazer.");
+  await questao("q-sem-revisao", 11, "official", null, "Anafilaxia adrenalina SENTINELA-SEM-REVISAO explicação que ninguém conferiu.");
   await questao("q-simulado", 7, "official", HUMANA, "Anafilaxia adrenalina SENTINELA-SIMULADO explicação de questão de simulado em andamento.");
-  await questao("sz-inedita", 8, "staziamed", null, "Anafilaxia adrenalina SENTINELA-INEDITA-SEM-REVISAO explicação de inédita.");
+  await questao("sz-inedita", 8, "staziamed", null, "Anafilaxia adrenalina INEDITA-DUPLA-IA explicação de inédita revisada pelos 2 revisores (IA).");
   await questao("sz-inedita-humana", 9, "staziamed", HUMANA, "Anafilaxia adrenalina SENTINELA-INEDITA-FORA-DO-PLANO explicação de inédita revisada.");
   await pg.query(`insert into public.question_equivalents (question_id, group_id, similarity) values ('q-aberta', 'g1', 1), ('q-equiv', 'g1', 0.97)`);
   await pg.query(`insert into public.question_relations (question_a, question_b, relation, score, confidence, origin) values ('q-aberta', 'q-rel', 'duplicada_semantica', 1, 1, 'regra')`);
@@ -222,9 +227,11 @@ describe("cérebro do Tutor: índice do conhecimento aprovado (migração 013620
     expect(sit.por_tipo.aula.origens).toBe(1);
     expect(sit.por_tipo.atualizacao.origens).toBe(1);
     expect(sit.por_tipo.flashcard.origens).toBe(1);
-    // questões: só revisão humana (padrão); a "só IA" e a Inédita sem comment_review ficaram fora
+    // questões (decisão do dono de 17/10): a conferida só por IA e a Inédita dos 2 revisores (IA) entram no índice; a oficial sem
+    // nenhuma revisão fica fora. Entrar no índice não é chegar ao aluno: a busca só entrega depois de ele responder (testes a/b/h).
     const qs = (await rows<{ origem_id: string }>(`select distinct origem_id from public.tutor_kb_trechos where tipo = 'questao' order by 1`)).map((r) => r.origem_id);
-    expect(qs).toEqual(["q-aberta", "q-equiv", "q-nao-resp", "q-rel", "q-resp", "q-simulado", "sz-inedita-humana"]);
+    expect(qs).toEqual(["q-aberta", "q-equiv", "q-ia", "q-ia-nao-resp", "q-nao-resp", "q-rel", "q-resp", "q-simulado", "sz-inedita", "sz-inedita-humana"]);
+    expect((await rows(`select questoes_nivel_minimo from public.tutor_kb_regras`))[0].questoes_nivel_minimo).toBe("ia");
     for (const t of Object.values<any>(sit.por_tipo)) expect(t.com_vetor).toBe(t.trechos);
     expect(sit.rotulos).toBeGreaterThan(5);
     expect(sit.cobertura).toMatchObject({ completa: true }); // todos os tipos com vetor: a busca soma palavras + significado
@@ -279,28 +286,63 @@ describe("cérebro do Tutor: índice do conhecimento aprovado (migração 013620
     await pg.query(`update public.tutor_sessions set question_state = 'open' where id = $1`, [S.aberta]);
   });
 
-  it("b. não respondida, simulado em andamento e Inédita fora do plano nunca voltam; a regra 3 desligada libera só a não respondida", async () => {
-    const pergunta = "anafilaxia adrenalina explicação LIBERADA-RESPONDIDA SENTINELA-NAO-RESPONDIDA SENTINELA-SIMULADO SENTINELA-INEDITA-FORA-DO-PLANO";
+  it("b. não respondida (mesmo conferida só por IA), simulado em andamento e Inédita fora do plano nunca voltam; nem com a coluna da regra 3 desligada", async () => {
+    const pergunta = "anafilaxia adrenalina explicação LIBERADA-RESPONDIDA SO-IA-RESPONDIDA SO-IA-NAO-RESPONDIDA SENTINELA-NAO-RESPONDIDA SENTINELA-SIMULADO SENTINELA-INEDITA-FORA-DO-PLANO INEDITA-DUPLA-IA SENTINELA-SEM-REVISAO";
     const busca = () => buscarConhecimento(deps, { userId: ANA, sessionId: S.livre, pergunta, vetor: vetor(pergunta), via: "texto", limite: 8 });
-    const t1 = textoDe(await busca());
+    const NUNCA = ["SO-IA-NAO-RESPONDIDA", "SENTINELA-NAO-RESPONDIDA", "SENTINELA-SIMULADO", "SENTINELA-INEDITA-FORA-DO-PLANO", "SENTINELA-SEM-REVISAO"];
+    const r1 = await busca();
+    const t1 = textoDe(r1);
     expect(t1).toContain("LIBERADA-RESPONDIDA");
-    for (const s of ["SENTINELA-NAO-RESPONDIDA", "SENTINELA-SIMULADO", "SENTINELA-INEDITA-FORA-DO-PLANO"]) expect(t1, s).not.toContain(s);
+    // conferida só por IA e já respondida: volta, citada como o dono pediu
+    expect(t1).toContain("SO-IA-RESPONDIDA");
+    expect(r1.trechos.find((t) => t.texto.includes("SO-IA-RESPONDIDA"))!.citacao).toBe("Explicação da questão (Revalida 2023/1 Q6)");
+    for (const x of NUNCA) expect(t1, x).not.toContain(x);
+    expect(t1).not.toContain("INEDITA-DUPLA-IA"); // Inédita no plano, mas ainda não respondida
+    // a coluna antiga da regra 3 não libera mais nada (decisão do dono: sempre só depois de responder)
     await pg.query(`update public.tutor_kb_regras set questoes_so_respondidas = false`);
-    // com o teste grátis valendo, as Inéditas estão no plano da Ana: a revisada por humano pode voltar
-    expect((await rows(`select public.ineditas_user_access($1) as ok`, [ANA]))[0].ok).toBe(true);
     const t2 = textoDe(await busca());
-    expect(t2).toContain("SENTINELA-NAO-RESPONDIDA");
-    expect(t2).not.toContain("SENTINELA-SIMULADO"); // simulado em andamento continua travado
-    expect(t2).toContain("SENTINELA-INEDITA-FORA-DO-PLANO");
-    // sem plano (teste vencido): a Inédita não respondida sai do que o plano libera e nunca volta
+    for (const x of NUNCA) expect(t2, x).not.toContain(x);
+    expect(t2).not.toContain("INEDITA-DUPLA-IA");
+    await pg.query(`update public.tutor_kb_regras set questoes_so_respondidas = true`);
+    // Inédita respondida e liberada no plano (teste grátis valendo): volta, citada como Inédita
+    expect((await rows(`select public.ineditas_user_access($1) as ok`, [ANA]))[0].ok).toBe(true);
+    await pg.query(`insert into public.question_attempts (user_id, question_id, selected_option) values ($1, 'sz-inedita', 'A')`, [ANA]);
+    const r3 = await busca();
+    expect(textoDe(r3)).toContain("INEDITA-DUPLA-IA");
+    expect(r3.trechos.find((t) => t.texto.includes("INEDITA-DUPLA-IA"))!.citacao).toBe("Explicação da questão (Inédita StaziaMed Q8)");
+    expect(textoDe(r3)).not.toContain("SENTINELA-INEDITA-FORA-DO-PLANO");
+    // sem plano (teste vencido): nem a Inédita respondida volta
     const sub = await rows(`select * from public.subscriptions where user_id = $1`, [ANA]);
     await pg.query(`delete from public.subscriptions where user_id = $1`, [ANA]);
     expect((await rows(`select public.ineditas_user_access($1) as ok`, [ANA]))[0].ok).toBe(false);
-    const t3 = textoDe(await busca());
-    expect(t3).toContain("SENTINELA-NAO-RESPONDIDA");
-    expect(t3).not.toContain("SENTINELA-INEDITA-FORA-DO-PLANO");
+    const t4 = textoDe(await busca());
+    expect(t4).not.toContain("INEDITA-DUPLA-IA");
+    expect(t4).toContain("SO-IA-RESPONDIDA"); // a oficial respondida não depende do plano
     for (const x of sub) await pg.query(`insert into public.subscriptions select * from json_populate_record(null::public.subscriptions, $1)`, [JSON.stringify(x)]);
-    await pg.query(`update public.tutor_kb_regras set questoes_so_respondidas = true`);
+    await pg.query(`delete from public.question_attempts where user_id = $1 and question_id = 'sz-inedita'`, [ANA]);
+  });
+
+  it("decisão 1: fonte sem aprovação editorial nunca volta ao Tutor, nem pela reserva; a busca da Central continua igual", async () => {
+    const pergunta = "anafilaxia adrenalina dose SENTINELA-SEM-APROVACAO-EDITORIAL";
+    // a busca nova (com e sem vetor)
+    for (const v of [null, vetor(pergunta)]) {
+      const r = await buscarConhecimento(deps, { userId: ANA, sessionId: S.livre, pergunta, vetor: v, via: "texto", limite: 8 });
+      expect(textoDe(r)).not.toContain("SENTINELA-SEM-APROVACAO-EDITORIAL");
+    }
+    // a reserva do Tutor (índice vazio ou busca nova fora do ar) também não entrega
+    const reserva = await searchSources(deps as never, "anafilaxia adrenalina");
+    expect(reserva.length).toBeGreaterThan(0);
+    expect(reserva.map((p) => p.text).join("\n")).not.toContain("SENTINELA-SEM-APROVACAO-EDITORIAL");
+    expect(reserva.map((p) => p.text).join("\n")).not.toMatch(/SENTINELA/);
+    // a Central (equipe) continua vendo a fonte não aprovada pela busca de sempre (não mudou)
+    const central = await db.service<{ text: string }[]>("ch_worker_search_official_passages", { p_query: "anafilaxia adrenalina", p_limit: 10 });
+    expect(central.map((p) => p.text).join("\n")).toContain("SENTINELA-SEM-APROVACAO-EDITORIAL");
+    // e a coluna antiga da regra 1 desligada não devolve a fonte ao Tutor (o portão exige a aprovação sempre)
+    await pg.query(`update public.tutor_kb_regras set fontes_exigem_aprovacao_editorial = false`);
+    expect(await db.service("tutor_kb_versao_atual", { p_tipo: "fonte", p_origem: id(1102) })).toBeNull();
+    const r2 = await searchSources(deps as never, "anafilaxia adrenalina");
+    expect(r2.map((p) => p.text).join("\n")).not.toContain("SENTINELA-SEM-APROVACAO-EDITORIAL");
+    await pg.query(`update public.tutor_kb_regras set fontes_exigem_aprovacao_editorial = true`);
   });
 
   it("e. aula recolhida some da busca NA HORA (antes da limpeza); a limpeza depois apaga os trechos", async () => {
@@ -370,11 +412,11 @@ describe("cérebro do Tutor: índice do conhecimento aprovado (migração 013620
     await pg.query(`delete from public.tutor_sessions where id = $1`, [S.refaz]);
   });
 
-  it("h. treino de QUESTÕES em andamento: a questão ainda não respondida nele fica travada, mesmo com a regra 3 desligada", async () => {
-    await pg.query(`update public.tutor_kb_regras set questoes_so_respondidas = false`);
+  it("h. treino de QUESTÕES em andamento: a questão ainda não respondida nele fica travada; respondeu nele, a explicação sai", async () => {
+    await pg.query(`update public.tutor_kb_regras set questoes_so_respondidas = false`); // a coluna antiga não libera nada
     const pergunta = "anafilaxia adrenalina explicação SENTINELA-NAO-RESPONDIDA";
     const busca = async () => textoDe(await buscarConhecimento(deps, { userId: ANA, sessionId: S.livre, pergunta, vetor: vetor(pergunta), via: "texto", limite: 8 }));
-    expect(await busca()).toContain("SENTINELA-NAO-RESPONDIDA");
+    expect(await busca()).not.toContain("SENTINELA-NAO-RESPONDIDA");
     const ps = (await rows(`insert into public.practice_sessions (user_id, kind, question_ids) values ($1, 'questoes', '{q-nao-resp,q-resp}') returning id`, [ANA]))[0].id;
     expect(await busca()).not.toContain("SENTINELA-NAO-RESPONDIDA");
     // respondeu dentro do treino: liberada (no treino de questões o gabarito sai a cada resposta)

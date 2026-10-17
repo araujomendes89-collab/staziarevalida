@@ -157,7 +157,8 @@ beforeAll(async () => {
   ids.docComp = (await sql(`insert into public.ch_documents (owner_id, name, sha256, storage_path, author) values ($1, $2, $3, 'documents/apostila-original.pdf', 'Dr. Fulano de Tal') returning id`, [ADMIN, COMP_FILE, "a".repeat(64)]))[0].id;
   store.set("documents/apostila-original.pdf", Buffer.from("%PDF-1.4 apostila"));
   ids.sComp = (await sql(`insert into public.ch_sources (title, organ, kind, url, version, authority_level, document_id, authors) values ($1, $2, 'final', $3, '2026', 'E', $4, 'Dr. Fulano de Tal') returning id`, [COMP_TITLE, COMP_ORGAN, COMP_URL, ids.docComp]))[0].id;
-  ids.sOfi = (await sql(`insert into public.ch_sources (title, organ, kind, url, version, authority_level) values ($1, $2, 'final', $3, '2024', 'A') returning id`, [OFI_TITLE, OFI_ORGAN, OFI_URL]))[0].id;
+  // com aprovação editorial: sem ela o Tutor não usa a fonte (decisão do dono de 17/10/2026; a Central continua vendo)
+  ids.sOfi = (await sql(`insert into public.ch_sources (title, organ, kind, url, version, authority_level, editorial_approved) values ($1, $2, 'final', $3, '2024', 'A', true) returning id`, [OFI_TITLE, OFI_ORGAN, OFI_URL]))[0].id;
   await sql(`insert into public.ch_source_passages (source_id, page, text) values ($1, 12, 'Hepatite B crônica: tratamento com tenofovir conforme o protocolo oficial.'), ($2, $3, $4)`,
     [ids.sOfi, ids.sComp, COMP_PAGE, `Hepatite B crônica: tratamento com tenofovir, macete da apostila ${COMP_TRECHO}.`]);
 

@@ -249,6 +249,8 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
       )}
 
       {rt.micError && <p className="svm__hint" role="status">{rt.micError}</p>}
+      {/* frase de espera: a busca no material passou de ~600 ms (frasesEspera.ts, decisão do dono de 17/10) */}
+      {rt.conferindo && <p className="svm__hint svm__conferindo" role="status">{rt.conferindo}</p>}
 
       {rt.tapToTalk && connected && rt.state === "ready" && !rt.muted && rt.streams?.input && (
         <div className="svm__actions">

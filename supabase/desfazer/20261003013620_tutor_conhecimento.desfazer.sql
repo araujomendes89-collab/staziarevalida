@@ -5,6 +5,7 @@
 -- NÃO desfaz nada fora daqui: aulas, atualizações, questões, fontes e vetores da Central continuam como estavam.
 
 drop function if exists public.ch_worker_tutor_kb_evidencias(uuid, uuid, integer);
+drop function if exists public.ch_worker_tutor_kb_fontes_reserva(text, integer);
 drop function if exists public.ch_worker_tutor_kb_pacote(uuid, uuid, text, text, integer, uuid);
 drop function if exists public.ch_worker_tutor_kb_buscar(uuid, uuid, text, text, jsonb, text, integer, uuid, text, text, boolean);
 drop function if exists public.tutor_kb_questoes_travadas(uuid, uuid);

@@ -21,6 +21,19 @@ import { unlockAudio } from "./voice/audioUnlock.js";
 import { openGeminiLive } from "./voice/geminiLive.js";
 import { openGeminiPonte } from "./voice/geminiPonte.js";
 import { refreshVoiceLanguage, TUTOR_SPOKEN_LANGUAGE } from "../../../shared/tutor/voiceLanguage";
+import { comEspera, personaDeEspera, RodizioDeEspera } from "../../../../server/tutor/conhecimento/frasesEspera";
+
+// Frases de espera (decisão do dono de 17/10): um rodízio por conversa, para não repetir frase na mesma conversa nem quando a
+// ligação cai e volta.
+const rodizios = new Map();
+const rodizioDe = (sessionId) => {
+  let x = rodizios.get(sessionId);
+  if (!x) {
+    x = new RodizioDeEspera();
+    rodizios.set(sessionId, x);
+  }
+  return x;
+};
 
 const CALLS_URL = "https://api.openai.com/v1/realtime/calls";
 const CONNECT_TIMEOUT_MS = 20_000;
@@ -104,6 +117,8 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   const [streams, setStreams] = React.useState({ input: null, output: null });
   const [provider, setProvider] = React.useState(null);
   const [playbackBlocked, setPlaybackBlocked] = React.useState(false);
+  // frase de espera mostrada enquanto a busca no material passa de ~600 ms (null: nada a mostrar)
+  const [conferindo, setConferindo] = React.useState(null);
   const r = React.useRef({ handled: new Set(), transcript: [] });
   const stateRef = React.useRef("idle");
   const cb = React.useRef({});
@@ -131,6 +146,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   const teardown = (keep = false) => {
     const cur = r.current;
     clearTimers();
+    setConferindo(null);
     try {
       cur.gem?.close();
     } catch {
@@ -345,7 +361,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
         setState("thinking");
         for (const c of calls) {
           const t0 = Date.now();
-          const out = await voiceApi.tool(backend, id, c.name, c.arguments ?? "{}").catch((e) => ({ output: { error: e.message } }));
+          const out = await comFraseDeEspera(c.name, voiceApi.tool(backend, id, c.name, c.arguments ?? "{}").catch((e) => ({ output: { error: e.message } })));
           const m = metrics();
           m.tools++;
           m.toolSum += Date.now() - t0;
@@ -470,6 +486,15 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     }
   };
 
+  // frase de espera (frasesEspera.ts): sem a personalidade (servidor antigo), nada aparece
+  const mostrarEspera = () => {
+    const p = r.current.personaEspera;
+    if (p) setConferindo(rodizioDe(sessionId).proxima(p).frase);
+  };
+  const apagarEspera = () => setConferindo(null);
+  /** Busca no material pelo navegador: passou de ~600 ms, a frase aparece até a resposta voltar. */
+  const comFraseDeEspera = (nome, trabalho) => (nome === "get_topic_context" ? comEspera(trabalho, mostrarEspera, apagarEspera) : trabalho);
+
   /** O professor pediu ferramentas: o servidor executa; o resultado volta para ele continuar falando. */
   const geminiTools = async (calls) => {
     const cur = r.current;
@@ -479,7 +504,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     for (const c of calls) {
       if (!c?.name) continue;
       const t0 = Date.now();
-      const out = await voiceApi.tool(backend, id, c.name, JSON.stringify(c.args ?? {})).catch((e) => ({ output: { error: e.message } }));
+      const out = await comFraseDeEspera(c.name, voiceApi.tool(backend, id, c.name, JSON.stringify(c.args ?? {})).catch((e) => ({ output: { error: e.message } })));
       const m = metrics();
       m.tools++;
       m.toolSum += Date.now() - t0;
@@ -653,6 +678,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
       }
     }
     r.current.voiceCallId = data.voice_call_id;
+    r.current.personaEspera = data.persona_espera ? personaDeEspera(data.persona_espera) : null;
     r.current.provider = "realtime";
     metrics().provider = "realtime";
     setProvider("realtime");
@@ -718,6 +744,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
       return;
     }
     r.current.voiceCallId = data.voice_call_id;
+    r.current.personaEspera = data.persona_espera ? personaDeEspera(data.persona_espera) : null;
     r.current.provider = data.provider === "live" ? "live" : "realtime";
     metrics().provider = r.current.provider;
     setProvider(r.current.provider);
@@ -773,7 +800,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
       return;
     }
     const cur = r.current;
-    Object.assign(cur, { voiceCallId: data.voice_call_id, provider: "gemini", stream, track: stream.getAudioTracks?.()[0] ?? null });
+    Object.assign(cur, { voiceCallId: data.voice_call_id, provider: "gemini", stream, track: stream.getAudioTracks?.()[0] ?? null, personaEspera: data.persona_espera ? personaDeEspera(data.persona_espera) : null });
     metrics().provider = "gemini";
     setProvider("gemini");
     setStreams({ input: stream, output: null });
@@ -809,8 +836,12 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
             cur.gem?.sendText("O aluno acabou de abrir a conversa por voz. Abra do seu jeito, numa frase curta.");
           },
           onAudio: () => {
+            apagarEspera();
             if (stateRef.current !== "speaking" && stateRef.current !== "paused") speakingStarted();
           },
+          // ponte: a busca no material passou de ~600 ms (frase de espera) e terminou (as fontes chegaram)
+          onWaiting: () => mostrarEspera(),
+          onWaitingEnd: () => apagarEspera(),
           onIdle: () => speakingStopped(),
           onInterrupted: () => {
             metrics().interruptions++;
@@ -1047,7 +1078,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   return {
     state, error, remaining, start, stop, interrupt, pause, resume, setVolume, enablePlayback, playbackBlocked,
     muted, mute: () => setMuted(true), unmute: () => setMuted(false), toggleMute: () => setMuted(!r.current.muted),
-    sendText, captions, streams, provider,
+    sendText, captions, streams, provider, conferindo,
     active: !["idle", "ended", "error"].includes(state),
   };
 }

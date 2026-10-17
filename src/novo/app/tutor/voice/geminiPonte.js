@@ -13,7 +13,8 @@ const loaded = new WeakSet();
  * Abre a voz pela ponte. `ponte`: { url, bilhete } vindos de /voice/start. `semitons`: afinação da voz do personagem (como em
  * openGeminiLive; sem valor, segue a tela de voz). handlers: onReady, onAudio, onIdle,
  * onTranscript(role, text, finished), onTurnComplete, onInterrupted, onToolCalls(calls), onUsage(uso), onReconnect(why),
- * onClose({ beforeReady, reason }), onError(err). Testes podem trocar o WebSocket (WebSocketImpl).
+ * onClose({ beforeReady, reason }), onError(err), onWaiting() (a busca no material passou de ~600 ms: frase de espera) e
+ * onWaitingEnd() (a busca terminou). Testes podem trocar o WebSocket (WebSocketImpl).
  */
 export async function openGeminiPonte({ ponte, stream, volume = 1, handlers = {}, audioContext = null, WebSocketImpl = null, semitons = null }) {
   const ctx = audioContext ?? getAudioContext();
@@ -77,6 +78,12 @@ export async function openGeminiPonte({ ponte, stream, volume = 1, handlers = {}
         break;
       case "ferramentas":
         h.onToolCalls?.(m.chamadas ?? []);
+        break;
+      case "espera":
+        h.onWaiting?.();
+        break;
+      case "fontes":
+        h.onWaitingEnd?.();
         break;
       case "uso":
         h.onUsage?.(m);

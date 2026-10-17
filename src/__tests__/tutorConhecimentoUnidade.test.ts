@@ -16,7 +16,7 @@ import { CABECALHO_ASSINATURA, conferirCorpo, corpoAssinado, NoncesConhecimento 
 import { _zerarPausaDoApp, CacheLRU, urlHttpDaPonte, urlVertexEmbed, VetorDaPonte, vetorPelaPonte } from "../../server/tutor/conhecimento/vetorPergunta";
 import { rotasConhecimentoPonte } from "../../server/tutor/conhecimento/rotaPonte";
 import { criarConhecimentoPonte, NOTA_SEM_CONFIRMAR } from "../../server/vozPonte/conhecimento";
-import { montarOrigem } from "../../server/tutor/conhecimento/indexador";
+import { montarOrigem, citacaoDaQuestao } from "../../server/tutor/conhecimento/indexador";
 
 const SEG = "s".repeat(48);
 const VC = "11111111-1111-4111-8111-111111111111";
@@ -81,7 +81,12 @@ describe("limpeza e corte", () => {
   });
   it("questão: caso resumido, alternativa correta, explicação e conduta; atualização sem questão de treino", () => {
     const q = montarOrigem("questao", { origem_id: "q1", versao: "v", prova: "Revalida 2023/1", numero: 7, enunciado: "Caso ".repeat(100), correta: "B", texto_correta: "Adrenalina IM", explicacao_correta: "Porque é a primeira medida.", conduta: "Adrenalina 0,5 mg IM.", fontes: [{ title: "Protocolo", organ: "MS", year: 2024, page: 3 }], nivel: "humana" } as never, []);
-    expect(q!.meta.titulo).toBe("Questão Revalida 2023/1 nº 7");
+    expect(q!.meta.titulo).toBe("Explicação da questão (Revalida 2023/1 Q7)");
+    // citação pedida pelo dono (17/10): "Explicação da questão (Revalida <ano> Q<n>)", com o semestre quando a prova tem
+    expect(citacaoDaQuestao({ origem: "official", tipo_prova: "REVALIDA", ano: 2024, numero: 12 })).toBe("Explicação da questão (Revalida 2024 Q12)");
+    expect(citacaoDaQuestao({ origem: "official", tipo_prova: "REVALIDA", ano: 2023, semestre: 2, numero: 45 })).toBe("Explicação da questão (Revalida 2023/2 Q45)");
+    expect(citacaoDaQuestao({ origem: "official", tipo_prova: "ENAMED", ano: 2025, numero: 3 })).toBe("Explicação da questão (ENAMED 2025 Q3)");
+    expect(citacaoDaQuestao({ origem: "staziamed", tipo_prova: "REVALIDA", ano: 2026, numero: 9 })).toBe("Explicação da questão (Inédita StaziaMed Q9)");
     const txt = q!.trechos.map((x) => x.texto).join(" ");
     expect(txt).toMatch(/Resposta correta: B\) Adrenalina IM/);
     expect(txt).toMatch(/Fonte citada na questão: Protocolo · MS, 2024, p\. 3/);

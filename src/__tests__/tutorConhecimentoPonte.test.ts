@@ -93,6 +93,37 @@ describe("busca de conhecimento dentro da ponte", () => {
     expect(g.enviados.filter((m) => m.toolResponse)).toHaveLength(0);
   });
 
+  it("frase de espera: só quando a busca passa de ~600 ms o navegador recebe 'espera' (antes das fontes); busca rápida ou cancelada, nada", async () => {
+    const resposta = { response: { passages: [] }, rotulos: ["Protocolo (2024)"], ms: 1, vetor: "nenhum" };
+    // lenta (700 ms)
+    const lenta = montar({ intercepta: () => true, buscar: vi.fn(() => new Promise<any>((ok) => setTimeout(() => ok(resposta), 700))), pacote: vi.fn(async () => "") });
+    await esperar();
+    lenta.googles[0].receber({ setupComplete: {} });
+    lenta.googles[0].receber({ toolCall: { functionCalls: [{ id: "e1", name: "get_topic_context", args: { topic: "asma" } }] } });
+    await esperar(400);
+    expect(doCliente(lenta.cliente, "espera")).toHaveLength(0); // ainda dentro dos 600 ms
+    await esperar(450);
+    const tipos = lenta.cliente.enviados.map((m) => m.t).filter((t) => ["buscando", "espera", "fontes"].includes(t));
+    expect(tipos).toEqual(["buscando", "espera", "fontes"]);
+    expect(doCliente(lenta.cliente, "espera")).toEqual([{ t: "espera" }]); // a frase é da tela (rodízio do personagem), nada da busca
+    // rápida (50 ms): sem frase
+    const rapida = montar({ intercepta: () => true, buscar: vi.fn(() => new Promise<any>((ok) => setTimeout(() => ok(resposta), 50))), pacote: vi.fn(async () => "") });
+    await esperar();
+    rapida.googles[0].receber({ setupComplete: {} });
+    rapida.googles[0].receber({ toolCall: { functionCalls: [{ id: "e2", name: "get_topic_context", args: { topic: "asma" } }] } });
+    await esperar(750);
+    expect(doCliente(rapida.cliente, "fontes")).toHaveLength(1);
+    expect(doCliente(rapida.cliente, "espera")).toHaveLength(0);
+    // cancelada pelo Google antes dos 600 ms: sem frase
+    const cancelada = montar({ intercepta: () => true, buscar: vi.fn(() => new Promise<any>((ok) => setTimeout(() => ok(resposta), 900))), pacote: vi.fn(async () => "") });
+    await esperar();
+    cancelada.googles[0].receber({ setupComplete: {} });
+    cancelada.googles[0].receber({ toolCall: { functionCalls: [{ id: "e3", name: "get_topic_context", args: {} }] } });
+    cancelada.googles[0].receber({ toolCallCancellation: { ids: ["e3"] } });
+    await esperar(750);
+    expect(doCliente(cancelada.cliente, "espera")).toHaveLength(0);
+  });
+
   it("depois de next_question, troca só o material nas instruções (contextUpdate); material igual ou vazio não manda nada", async () => {
     const pacote = vi.fn(async () => "MATERIAL DO TEMA novo\n\n[M1] Atualização (2025)\ndengue grupo C");
     const { cliente, googles } = montar({ intercepta: () => false, buscar: vi.fn(), pacote });

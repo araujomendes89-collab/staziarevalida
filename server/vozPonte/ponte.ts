@@ -21,6 +21,7 @@
 import WebSocket from "ws";
 import { abrirBilhete, assinarRelatorio, type ConteudoBilhete, type FerramentaDeclarada, type NoncesUsados } from "./bilhete";
 import type { ConhecimentoPonte } from "./conhecimento";
+import { ATRASO_ESPERA_MS } from "../tutor/conhecimento/frasesEspera";
 import { acertoDaFerramenta, HumorDaLigacao, humorValido, instrucoesComEstado } from "../tutor/humorVoz";
 
 export const PRECO_LIVE_USD_POR_MILHAO = { textoEntrada: 0.75, audioEntrada: 3.0, textoSaida: 4.5, audioSaida: 12.0 };
@@ -251,7 +252,10 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
   };
   const responderNaPonte = async (f: { id: string; name: string; args: unknown }) => {
     enviar({ t: "buscando" });
-    const r = await deps.conhecimento!.buscar({ vc: c!.vc, u: c!.u }, (f.args ?? {}) as Record<string, unknown>);
+    // frase de espera (decisão do dono de 17/10): só se a busca passar de ~600 ms; a tela escolhe a frase do personagem (rodízio
+    // por conversa, frasesEspera.ts). O modelo não fala enquanto a ferramenta roda (cerebro/gemini-live.md), por isso vai à tela.
+    const espera = setTimeout(() => { if (!fim && pendentes.has(f.id)) enviar({ t: "espera" }); }, ATRASO_ESPERA_MS);
+    const r = await deps.conhecimento!.buscar({ vc: c!.vc, u: c!.u }, (f.args ?? {}) as Record<string, unknown>).finally(() => clearTimeout(espera));
     if (fim || !pendentes.delete(f.id)) return; // cancelada pelo Google ou sessão reaberta
     paraGoogle({ toolResponse: { functionResponses: [{ id: f.id, name: f.name, response: r.response }] } });
     enviar({ t: "fontes", rotulos: r.rotulos });

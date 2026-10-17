@@ -44,6 +44,7 @@ import { aiAllowed } from "../contentHub/ai/registry";
 import { estimateCost, voiceTimeCost } from "./costs";
 import { deterministicTutor, tutorSettings, type TutorSettings } from "./settings";
 import { pacoteDoTema } from "./conhecimento/pacote";
+import { personaDeEspera, type PersonaEspera } from "./conhecimento/frasesEspera";
 import {
   closeLiveSession, createGeminiVoiceToken, createLiveSession, geminiVoiceConfig, geminiVoiceName, GeminiVoiceError, liveConfig, LiveSessionError,
   liveVoiceLockPending, markGeminiUnavailable, markLiveUnavailable, planProviders, type GeminiVoiceConfig, type LiveConfig, type VoiceProviderId,
@@ -230,6 +231,8 @@ export interface VoiceStart {
   lease_seconds: number;
   session_max_seconds: number;
   entitlement: unknown;
+  /** frases de espera (frasesEspera.ts): de qual personalidade a tela tira a frase quando a busca demora */
+  persona_espera?: PersonaEspera;
 }
 
 export const reasonError = (reason: string | undefined, e: unknown): TutorError => {
@@ -323,7 +326,7 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
     return r as { voice_call_id: string; lease_seconds: number; entitlement: unknown };
   };
   const release = (id: string) => deps.db.service("ch_worker_tutor_voice_end", { p_user: userId, p_voice_call: id, p_reason: "error" }).catch(() => undefined);
-  const base = { voice, session_max_seconds: settings.voice_session_max_seconds };
+  const base = { voice, session_max_seconds: settings.voice_session_max_seconds, persona_espera: personaDeEspera(ctx.personality.id) };
 
   const tryLive = async (): Promise<VoiceStart> => {
     const r = await reserve(live.model!);

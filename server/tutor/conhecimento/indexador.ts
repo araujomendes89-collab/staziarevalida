@@ -57,6 +57,21 @@ function fonteDaQuestao(fontes: unknown): string {
   return [t, txt(f.year), f.page ? `p. ${txt(f.page)}` : ""].filter(Boolean).join(", ");
 }
 
+/**
+ * Como o Tutor cita a explicação de uma questão (decisão do dono de 17/10/2026): "Explicação da questão (Revalida <ano> Q<n>)".
+ * Com o semestre quando a prova tem dois no ano ("Revalida 2023/1 Q6"), para o aluno achar a questão certa; ENAMED igual; Inédita:
+ * "Explicação da questão (Inédita StaziaMed Q<n>)". Sem ano ou número, o nome da prova.
+ */
+export function citacaoDaQuestao(o: Record<string, unknown>): string {
+  const n = Number(o.numero) > 0 ? ` Q${Number(o.numero)}` : "";
+  if (txt(o.origem) === "staziamed") return `Explicação da questão (Inédita StaziaMed${n})`;
+  const ano = Number(o.ano) > 0 ? String(Number(o.ano)) : "";
+  const sem = ano && Number(o.semestre) > 0 ? `/${Number(o.semestre)}` : "";
+  const prova = txt(o.tipo_prova).toUpperCase() === "ENAMED" ? "ENAMED" : txt(o.tipo_prova) ? "Revalida" : "";
+  const nome = prova && ano ? `${prova} ${ano}${sem}` : txt(o.prova) || "prova";
+  return `Explicação da questão (${nome}${n})`;
+}
+
 /** Trechos + metadados de uma origem, por tipo. Devolve null se não sobrou texto. */
 export function montarOrigem(tipo: TipoConhecimento, o: Origem, termos: readonly string[]): { meta: MetaOrigem; trechos: TrechoNovo[]; comandos: number } | null {
   let comandos = 0;
@@ -97,7 +112,7 @@ export function montarOrigem(tipo: TipoConhecimento, o: Origem, termos: readonly
       break;
     }
     case "questao": {
-      const titulo = `Questão ${txt(o.prova)}${o.numero ? ` nº ${o.numero}` : ""}`.slice(0, 300);
+      const titulo = citacaoDaQuestao(o).slice(0, 300);
       meta = { titulo, ano: o.ano ?? null, area: o.area ?? null, grupo: txt(o.grupo), tema_ids: (o.tema_ids ?? []).map(String), nivel: txt(o.nivel) || "ia" };
       const caso = limpo(o.enunciado);
       const corpo = juntar(
