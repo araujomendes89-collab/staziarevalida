@@ -7,9 +7,9 @@ Ramo `pagina-inicial`. Nada disto está no ar. Publicar só com ordem do dono (p
 | Arquivo | O que é |
 |---|---|
 | `index.html` | A página inicial (texto todo escrito no HTML; o Google lê sem JavaScript). |
-| `src/inicio/inicio.css` | Estilo da página no estilo do site do grupo (stazia.com.br), opções aprovadas pelo dono em 17/10: topo com desfoque e barra de rolagem, rótulos monoespaçados, fundo escuro com pontos, título com cursor, linha de metrô no ciclo, seções alternando escuro e claro. Cores de marca copiadas dos tokens do app (não importa o design system, que puxa fonte do Google). |
-| `src/inicio/inicio.js` | Abas (fases, franquia, ranking), linha de metrô do ciclo (acende ao rolar ou ao tocar; teclado e leitor de tela), título que aparece letra a letra, topo e barra de rolagem, menu do celular, volta dos links de e-mail para `/novo`. 6,5 kB (2,9 kB comprimido). Com "menos movimento" nada anima. |
-| `src/inicio/fonts/` | Manrope (textos) e JetBrains Mono (rótulos e números), ambas licença OFL, guardadas no próprio site (nada do Google). |
+| `src/inicio/inicio.css` | Estilo da página (visual do desenho do dono; tokens do app copiados; não importa o design system, que puxa fonte do Google). Do site do grupo (stazia.com.br) vieram só comportamentos (decisão do dono, 17/10): topo que gruda e ganha sombra ao rolar com barra de progresso, título com cursor digitando, passos do ciclo que acendem. |
+| `src/inicio/inicio.js` | Abas (fases, franquia, ranking), passos do ciclo que acendem ao rolar ou tocar (teclado e leitor de tela), título letra a letra, topo e barra de rolagem, menu do celular, volta dos links de e-mail para `/novo`. Com "menos movimento" nada anima. |
+| `src/inicio/fonts/` | Plus Jakarta Sans (OFL). A Barlow Condensed vem de `src/novo/app/auth/fonts/`. |
 | `src/inicio/img/` | Lontra (Stazi) em WebP e AVIF, 2 tamanhos cada, tirada dos sprites aprovados do ramo `tutor-personagens`. |
 | `404.html` | Página "não encontrada" (a Vercel usa sozinha, com código 404). |
 | `public/robots.txt`, `public/sitemap.xml` | Google: só `/`, `/novo/termos` e `/novo/privacidade`. |

@@ -150,68 +150,53 @@ describe("página inicial: abas (fases, franquia e ranking)", () => {
   });
 });
 
-describe("página inicial: estilo do site do grupo (opções aprovadas em 17/10)", () => {
-  it("Manrope e JetBrains Mono guardadas no próprio site, com a licença OFL; nada de Plus Jakarta nem Barlow", () => {
-    expect(css).toMatch(/font-family: "Manrope";[\s\S]*?url\("\.\/fonts\/manrope-latin\.woff2"\)/);
-    expect(css).toMatch(/font-family: "JetBrains Mono";[\s\S]*?url\("\.\/fonts\/jetbrains-mono-latin\.woff2"\)/);
-    for (const f of ["manrope-latin.woff2", "jetbrains-mono-latin.woff2", "OFL-Manrope.txt", "OFL-JetBrainsMono.txt"]) {
-      expect(fs.existsSync(path.join(raiz, "src/inicio/fonts", f)), f).toBe(true);
-    }
-    expect(fs.readFileSync(path.join(raiz, "src/inicio/fonts/OFL-JetBrainsMono.txt"), "utf-8")).toMatch(/SIL Open Font License/);
-    expect(css).not.toMatch(/Plus Jakarta|Barlow|novo\/app/);
-    expect(pagina().querySelector('link[rel="preload"][as="font"]')?.getAttribute("href")).toBe("/src/inicio/fonts/manrope-latin.woff2");
+describe("página inicial: comportamentos trazidos do site do grupo (visual continua o do desenho)", () => {
+  it("fontes do desenho guardadas no próprio site; Manrope e JetBrains Mono não ficam no projeto", () => {
+    expect(css).toMatch(/url\("\.\/fonts\/plus-jakarta-sans-latin\.woff2"\)/);
+    expect(css).toMatch(/barlow-condensed-700\.woff2/);
+    expect(css).not.toMatch(/Manrope|JetBrains|--mono/);
+    expect(fs.readdirSync(path.join(raiz, "src/inicio/fonts")).sort()).toEqual(["OFL-PlusJakartaSans.txt", "plus-jakarta-sans-latin.woff2"]);
   });
 
-  it("título com a parte final em destaque e cursor; leitor de tela recebe o texto inteiro", () => {
+  it("título com cursor digitando a segunda parte; leitor de tela recebe a frase inteira", () => {
     const doc = pagina();
     const h1 = doc.querySelector("h1")!;
-    expect(textoDe(doc).includes("Estude, treine e dispute. Tudo no mesmo lugar")).toBe(true);
-    expect(h1.querySelector(".h1__destaque [data-digita]")?.textContent).toBe("Tudo no mesmo lugar");
+    expect(textoDe(doc).includes("Estude, treine e dispute. Tudo no mesmo lugar.")).toBe(true);
+    expect(h1.querySelector("[data-digita]")?.textContent).toBe("Tudo no mesmo lugar.");
     expect(h1.querySelector(".cursor")?.getAttribute("aria-hidden")).toBe("true");
     digitarTitulo(doc, false);
-    expect(h1.querySelector(".so-leitor")?.textContent).toBe("Tudo no mesmo lugar");
-    expect(h1.querySelector('[aria-hidden="true"]')?.querySelectorAll(".letra")).toHaveLength("Tudo no mesmo lugar".length);
+    expect(h1.querySelector(".so-leitor")?.textContent).toBe("Tudo no mesmo lugar.");
+    expect(h1.querySelector('[aria-hidden="true"]')?.querySelectorAll(".letra")).toHaveLength("Tudo no mesmo lugar.".length);
     const parado = pagina();
     digitarTitulo(parado, true); // menos movimento: nada muda
     expect(parado.querySelectorAll(".letra")).toHaveLength(0);
   });
 
-  it("rótulos de seção monoespaçados com quadradinho, e seções alternando escuro e claro", () => {
-    expect(css).toMatch(/\.rotulo \{[^}]*font-family: var\(--mono\)[^}]*letter-spacing: \.14em[^}]*text-transform: uppercase/);
-    expect(css).toMatch(/\.rotulo::before \{[^}]*width: 8px; height: 8px/);
-    const doc = pagina();
-    expect(doc.querySelectorAll("main .rotulo").length).toBeGreaterThanOrEqual(8);
-    const fundos = [...doc.querySelectorAll("main > section")].map((s) => (s.classList.contains("escuro") ? "escuro" : "claro"));
-    expect(fundos).toEqual(["escuro", "claro", "claro", "escuro", "claro", "escuro", "claro", "claro", "escuro"]);
-    expect(doc.querySelector("footer")?.classList.contains("escuro")).toBe(true);
-  });
-
-  it("topo ganha fundo ao rolar e a barra fina acompanha a rolagem", () => {
+  it("topo gruda no alto, ganha sombra ao rolar e a barra fina acompanha a rolagem", () => {
     const doc = pagina();
     const barra = doc.querySelector(".topo__progresso") as HTMLElement;
     expect(barra.getAttribute("aria-hidden")).toBe("true");
-    const win = { scrollY: 0, innerHeight: 800 } as unknown as Window;
     Object.defineProperty(doc.documentElement, "scrollHeight", { value: 2800, configurable: true });
-    atualizarTopo(doc, win, true);
+    atualizarTopo(doc, { scrollY: 0, innerHeight: 800 } as unknown as Window, true);
     expect(doc.getElementById("topo")!.classList.contains("topo--rolou")).toBe(false);
     expect(barra.style.transform).toBe("scaleX(0)");
     atualizarTopo(doc, { scrollY: 1000, innerHeight: 800 } as unknown as Window, true);
     expect(doc.getElementById("topo")!.classList.contains("topo--rolou")).toBe(true);
     expect(barra.style.transform).toBe("scaleX(0.5)");
-    expect(css).toMatch(/backdrop-filter: blur\(16px\)/);
+    expect(css).toMatch(/\.topo \{ position: sticky; top: 0;/);
     expect(css).toMatch(/animation-timeline: scroll\(root\)/);
   });
 
-  it("menos movimento: o CSS desliga animações e transições, esconde a bolinha e deixa a linha acesa", () => {
+  it("menos movimento: o CSS desliga animações e transições, esconde barra, cursor e bolinha e deixa a linha acesa", () => {
     const bloco = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
     expect(bloco).toMatch(/animation: none !important; transition: none !important/);
-    expect(bloco).toMatch(/\.metro__bolinha \{ display: none; \}/);
+    expect(bloco).toMatch(/\.topo__progresso, \.cursor, \.metro__bolinha \{ display: none; \}/);
     expect(bloco).toMatch(/\.js \.metro__aceso \{ transform: none; \}/);
   });
 
   it("só anima transform e opacity (nada de mexer em largura, altura ou posição)", () => {
     const quadros = [...css.matchAll(/@keyframes [\w-]+ \{([\s\S]*?\})\s*\}/g)].map((m) => m[1]);
-    expect(quadros.length).toBeGreaterThanOrEqual(8);
+    expect(quadros.length).toBeGreaterThanOrEqual(6);
     for (const q of quadros) {
       const props = [...q.matchAll(/([a-z-]+)\s*:/g)].map((m) => m[1]);
       for (const prop of props) expect(["transform", "opacity"], q).toContain(prop);
@@ -219,7 +204,7 @@ describe("página inicial: estilo do site do grupo (opções aprovadas em 17/10)
   });
 });
 
-describe("página inicial: linha de metrô do ciclo", () => {
+describe("página inicial: passos do ciclo acendendo", () => {
   function metro(reduzido = false) {
     const doc = pagina();
     const raizMetro = doc.querySelector<HTMLElement>("[data-metro]")!;
@@ -229,11 +214,10 @@ describe("página inicial: linha de metrô do ciclo", () => {
     return { doc, raizMetro, api, botoes };
   }
 
-  it("5 paradas na ordem Estude, Treine, Simule, Corrija, Revise, com número monoespaçado e todo o texto visível", () => {
+  it("5 passos na ordem Estude, Treine, Simule, Corrija, Revise, com número e todo o texto visível", () => {
     const { doc, botoes } = metro();
     expect(botoes.map((b) => b.querySelector(".metro__nome")!.textContent)).toEqual(["Passo 1 de 5: Estude", "Passo 2 de 5: Treine", "Passo 3 de 5: Simule", "Passo 4 de 5: Corrija", "Passo 5 de 5: Revise"]);
-    expect(botoes.map((b) => b.querySelector(".metro__n")!.textContent)).toEqual(["01", "02", "03", "04", "05"]);
-    expect(css).toMatch(/\.metro__n \{[^}]*font-family: var\(--mono\)/);
+    expect(botoes.map((b) => b.querySelector(".metro__ponto")!.textContent)).toEqual(["1", "2", "3", "4", "5"]);
     // nada de abas escondendo conteúdo: os 5 passos ficam no HTML e visíveis (bom para o Google e sem JavaScript)
     expect(doc.querySelectorAll("#ciclo [hidden], #ciclo [role=tab], #ciclo [role=tabpanel]")).toHaveLength(0);
     expect(doc.querySelectorAll("#ciclo .metro__t")).toHaveLength(5);
@@ -306,12 +290,8 @@ describe("página inicial: acessibilidade básica", () => {
     };
     const razao = (a: string, b: string) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
     const pares: Array<[string, string]> = [
-      // claro: texto, apoio, rótulos e números azuis
-      ["#052A5A", "#FFFFFF"], ["#052A5A", "#F5F8FC"], ["#4F5A69", "#FFFFFF"], ["#4F5A69", "#F5F8FC"],
-      ["#0B5FC4", "#FFFFFF"], ["#0B5FC4", "#F5F8FC"], ["#0B5FC4", "#EBF5FF"], ["#FFFFFF", "#0A6FD8"], ["#9A5B06", "#FEF5E3"], ["#081426", "#FFFFFF"],
-      // escuro (#081426), rodapé (#050E1C) e cartões de vidro sobre o escuro (#172233, #0D203F)
-      ["#B6C2D6", "#081426"], ["#9FB0C9", "#081426"], ["#C5D0E2", "#081426"], ["#00C9C2", "#081426"], ["#7FE7E2", "#081426"],
-      ["#9FB0C9", "#050E1C"], ["#B6C2D6", "#172233"], ["#9FB0C9", "#172233"], ["#7FE7E2", "#172233"], ["#9FB0C9", "#0D203F"], ["#7FE7E2", "#0D203F"],
+      ["#0B5FC4", "#FFFFFF"], ["#0B5FC4", "#F1F5FB"], ["#0B5FC4", "#EBF5FF"], ["#4F5A69", "#F1F5FB"], ["#4F5A69", "#FFFFFF"],
+      ["#FFFFFF", "#0A6FD8"], ["#9A5B06", "#FEF5E3"], ["#CFE0F7", "#052A5A"], ["#B3DCFF", "#052A5A"], ["#AFC6E6", "#052A5A"], ["#052A5A", "#FFFFFF"],
     ];
     for (const [t, f] of pares) expect(razao(t, f), `${t} sobre ${f}`).toBeGreaterThanOrEqual(4.5);
   });
