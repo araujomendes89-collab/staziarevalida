@@ -177,6 +177,9 @@
 .ob-resumo dt>span{display:inline-flex}
 .ob-resumo dd{margin:0;font:600 15px/1.4 var(--font-sans);color:var(--text-primary)}
 
+.ob-trilha__cab{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.ob-trilha__pers{flex:none;display:inline-flex;margin-bottom:-6px}
+
 /* ---------------------------------------------------------------- tour no painel */
 /* acima da barra de abas do celular (60) e das folhas do menu (até 100) */
 .ob-tour{position:fixed;inset:0;z-index:200}
@@ -185,7 +188,9 @@
 [data-theme="dark"] .ob-tour__furo{box-shadow:0 0 0 2px var(--action-primary),0 0 0 200vmax rgba(0,0,0,.66)}
 .ob-tour__caixa{position:fixed;width:min(360px,calc(100vw - 32px));box-sizing:border-box;padding:18px 18px 16px;border-radius:20px;background:var(--surface-card);border:1px solid var(--border-default);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;gap:8px;transition:top var(--dur-base) var(--ease-standard),left var(--dur-base) var(--ease-standard)}
 .ob-tour--parado .ob-tour__caixa,.ob-tour--parado .ob-tour__furo{transition:none}
-.ob-tour__cab{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ob-tour__cab{display:flex;align-items:center;gap:10px}
+.ob-tour__cab .ob-over{margin-right:auto}
+.ob-tour__pers{flex:none;width:44px;height:52px;display:inline-flex;align-items:flex-end;justify-content:center;margin:-6px 0 -4px}
 .ob-tour__x{width:40px;height:40px;margin:-8px -8px -8px 0;border-radius:12px;border:0;background:none;color:var(--text-tertiary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 .ob-tour__x:hover{background:var(--surface-sunken);color:var(--text-primary)}
 .ob-tour__t{margin:0;font:800 19px/1.3 var(--font-sans);color:var(--text-primary)}
@@ -196,6 +201,8 @@
 /* ---------------------------------------------------------------- Início: primeiros passos, faixa, convite e dicas de primeiro uso */
 .ob-pp{display:flex;flex-direction:column;gap:6px}
 .ob-pp__cab{display:flex;flex-direction:column;gap:10px;margin-bottom:4px}
+.ob-pp__topo{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;min-height:56px}
+.ob-pp__pers{flex:none;display:inline-flex;margin:-8px 0 -10px}
 .ob-pp__barra{display:block;height:6px;border-radius:999px;background:var(--chart-track);overflow:hidden}
 .ob-pp__barra>i{display:block;height:100%;border-radius:inherit;background:var(--action-primary)}
 .ob-pp__lista{list-style:none;margin:0;padding:0}

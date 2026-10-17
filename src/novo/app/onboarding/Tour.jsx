@@ -8,6 +8,7 @@ import { useReducedMotion } from "motion/react";
 import { Icon } from "../../ds";
 import { useSession } from "../session.jsx";
 import { TOUR } from "./textos.js";
+import { Personagem, personagemDoAluno } from "./Personagem.jsx";
 
 const MARGEM = 12;
 const BORDA = 16;
@@ -60,7 +61,7 @@ export function posicionar(r, caixa, vw, vh) {
   return { top: lim(top, BORDA, Math.max(BORDA, vh - H - BORDA)), left: lim(left, BORDA, Math.max(BORDA, vw - W - BORDA)), lado };
 }
 
-export function Tour({ inicio = 0, onMudou }) {
+export function Tour({ inicio = 0, onMudou, personagem = "stazi" }) {
   const { backend } = useSession();
   const reduzir = useReducedMotion();
   const [idx, setIdx] = React.useState(() => Math.min(Math.max(0, inicio), TOUR.length - 1));
@@ -217,6 +218,9 @@ export function Tour({ inicio = 0, onMudou }) {
         style={pos ? { top: pos.top, left: pos.left } : { top: -9999, left: 0 }}
       >
         <div className="ob-tour__cab">
+          <span className="ob-tour__pers" aria-hidden="true">
+            <Personagem id={personagem} pose={idx === TOUR.length - 1 ? "polegar" : "acenando"} altura={52} decorativo animar={false} />
+          </span>
           <span className="ob-over">
             Tour · {idx + 1} de {TOUR.length}
           </span>
@@ -267,5 +271,5 @@ export function TourNoPainel({ route }) {
     if (e?.tour?.status !== "em_andamento") setOnboarding(e);
   }, [setOnboarding]);
   if (route !== "home" || tour?.status !== "em_andamento") return null;
-  return <Tour key={`tour-${tour.passo}`} inicio={tour.passo} onMudou={onMudou} />;
+  return <Tour key={`tour-${tour.passo}`} inicio={tour.passo} onMudou={onMudou} personagem={personagemDoAluno(boot.onboarding)} />;
 }

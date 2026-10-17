@@ -240,7 +240,7 @@ export function Onboarding({ modo = "primeira", inicio = null, go }) {
             </button>
           </>
         }>
-        <Trilha estado={estado} tituloRef={titulo} erro={erro} setErro={setErro} onPronto={() => salvar("trilha").catch(() => {})} />
+        <Trilha estado={estado} mobile={mobile} tituloRef={titulo} erro={erro} setErro={setErro} onPronto={() => salvar("trilha").catch(() => {})} />
       </Moldura>
     );
   }

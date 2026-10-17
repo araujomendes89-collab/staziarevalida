@@ -25,6 +25,12 @@ const POSES = {
 
 export const NOMES = { stazi: "Stazi", stazia: "Stazia" };
 
+/** O personagem que o aluno escolheu no onboarding (ou o do Tutor dele); sem escolha, o Stazi. Só aparência, não libera nada. */
+export function personagemDoAluno(estado) {
+  const p = estado?.preferencias?.tutor_personagem ?? estado?.tutor_atual?.personagem;
+  return p === "stazia" ? "stazia" : "stazi";
+}
+
 /** A arte da Stazia já está no app? (sem ela, a tela mostra o selo com a inicial) */
 export const temArteDaStazia = () => Boolean(urlDoRamo("stazia", "base"));
 

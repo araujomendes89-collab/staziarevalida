@@ -6,6 +6,7 @@ import { Icon } from "../../ds";
 import { useSession } from "../session.jsx";
 import { AppRealIcon } from "../AppIcons.jsx";
 import { primeirosPassos, tourParaRetomar } from "./estado.js";
+import { Personagem, personagemDoAluno } from "./Personagem.jsx";
 import { dicaDaRota, TOUR } from "./textos.js";
 import "./onboarding.css";
 
@@ -74,8 +75,14 @@ export function PrimeirosPassosCartao({ estado, go }) {
   return (
     <section className="ob-pp" aria-label="Primeiros passos">
       <div className="ob-pp__cab">
-        <span className="sm-overline" style={{ color: "var(--text-secondary)" }}>
-          Primeiros passos · {feitos} de {passos.length}
+        <span className="ob-pp__topo">
+          <span className="sm-overline" style={{ color: "var(--text-secondary)" }}>
+            Primeiros passos · {feitos} de {passos.length}
+          </span>
+          {/* o personagem escolhido pelo aluno acompanha a lista */}
+          <span className="ob-pp__pers" aria-hidden="true">
+            <Personagem id={personagemDoAluno(estado)} pose={feitos === passos.length ? "comemorando" : "acenando"} altura={64} decorativo animar={false} />
+          </span>
         </span>
         <span className="ob-pp__barra" aria-hidden="true"><i style={{ width: `${(feitos / passos.length) * 100}%` }} /></span>
       </div>

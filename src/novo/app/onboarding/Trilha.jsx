@@ -9,7 +9,7 @@ import { KIND_LABEL, reasonText } from "../home/plan.js";
 import { TaskIcon, taskTile } from "../home/parts.jsx";
 import { MINUTES } from "../home/TodayPlan.jsx";
 import { DIAS, JEITOS, JEITOS_FIRMES, JEITOS_TUTOR, NOME_FASE } from "./textos.js";
-import { NOMES } from "./Personagem.jsx";
+import { NOMES, Personagem, personagemDoAluno } from "./Personagem.jsx";
 
 const TEMPO = Object.fromEntries(MINUTES.map(([v, l]) => [Number(v), l]));
 const diasTexto = (dias) => {
@@ -19,7 +19,7 @@ const diasTexto = (dias) => {
 };
 const dataBR = (iso) => (iso ? String(iso).slice(0, 10).split("-").reverse().join("/") : "");
 
-export function Trilha({ estado, onPronto, tituloRef, erro, setErro }) {
+export function Trilha({ estado, onPronto, tituloRef, erro, setErro, mobile }) {
   const { backend } = useSession();
   const [plano, setPlano] = React.useState(null);
 
@@ -56,12 +56,18 @@ export function Trilha({ estado, onPronto, tituloRef, erro, setErro }) {
 
   return (
     <div className="ob-trilha">
+      <div className="ob-trilha__cab">
       <div className="ob-q__cab">
         <span className="ob-over">Seu plano</span>
         <h1 className="ob-h1" ref={tituloRef} tabIndex={-1}>
           Seu plano de hoje está pronto
         </h1>
         <p className="ob-sub">É o mesmo Plano de Hoje que você vai ver no painel, montado com as suas respostas. Ele se refaz todo dia.</p>
+      </div>
+      {/* quem o aluno escolheu para o Tutor comemora o plano pronto */}
+      <span className="ob-trilha__pers">
+        <Personagem id={personagemDoAluno(estado)} pose="comemorando" altura={mobile ? 104 : 150} />
+      </span>
       </div>
       {erro ? <Banner tone="danger">{erro}</Banner> : null}
       <section className="ob-card ob-plano" aria-label="Plano de hoje" aria-busy={!plano && !erro}>

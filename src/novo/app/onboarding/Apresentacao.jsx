@@ -31,7 +31,8 @@ export function Apresentacao({ contexto, cena, setCena, onFim, onPular, ocupado,
     return () => window.removeEventListener("keydown", tecla);
   }, [cena, ultima, ocupado, onFim, setCena]);
 
-  const segundo = c.temStazia && (atual.id === "oi" || atual.id === "tutor");
+  // com a arte dos dois no app, Stazi e Stazia aparecem juntos em todas as cenas
+  const segundo = c.temStazia;
   return (
     <section className="ob-cena" aria-roledescription="apresentação" aria-label={`Apresentação, parte ${cena + 1} de ${CENAS.length}`}>
       <div className="ob-palco">

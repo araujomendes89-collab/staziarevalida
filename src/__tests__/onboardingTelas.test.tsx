@@ -35,6 +35,7 @@ import { Onboarding, deveMostrarOnboarding } from "../novo/app/onboarding/Onboar
 import { ConviteOnboarding, DicaPrimeiroUso, PrimeirosPassosCartao, PrimeirosPassosFaixa } from "../novo/app/onboarding/Inicio.jsx";
 import { Tour, posicionar } from "../novo/app/onboarding/Tour.jsx";
 import { passoInicial, passosVisiveis } from "../novo/app/onboarding/estado.js";
+import { personagemDoAluno } from "../novo/app/onboarding/Personagem.jsx";
 
 const ESTADO = (extra: any = {}) => ({
   versao: 1, aplicavel: true, mostrar: true, convite: false, conta_antiga: false, status: "not_started", origem: "cadastro", passo_atual: "apresentacao",
@@ -224,6 +225,10 @@ describe("retomar, passos visíveis e quem não faz o nivelamento", () => {
     expect(passosVisiveis(ESTADO({ etapas: { nivelamento: "pulado" } }))).not.toContain("nivelamento");
     expect(deveMostrarOnboarding({ onboarding: { mostrar: true } })).toBe(true);
     expect(deveMostrarOnboarding({ onboarding: null })).toBe(false);
+    // depois da escolha, plano, tour e primeiros passos mostram o personagem do aluno
+    expect(personagemDoAluno(ESTADO({ preferencias: { tutor_personagem: "stazia" } }))).toBe("stazia");
+    expect(personagemDoAluno(ESTADO({ tutor_atual: { personagem: "stazia" } }))).toBe("stazia");
+    expect(personagemDoAluno(ESTADO())).toBe("stazi");
   });
   it("PRÁTICA (sem nivelamento): depois dos lembretes o servidor registra o nivelamento e vai direto ao plano", async () => {
     const e = ESTADO({ status: "in_progress", passo_atual: "lembretes", nivelamento: { cabe: false, concluido: false } });
