@@ -147,8 +147,8 @@ describe("Treino sozinho: leitura e atendimento", () => {
     const img = await screen.findByAltText("Imagem do impresso: Exame de teste B");
     expect(img.getAttribute("src")).toBe("https://imagens.teste/p2.png");
     const call = fetchMock.mock.calls.find(([u]) => String(u).endsWith("/prints/p2/link"))!;
-    expect(call[0]).toBe("/api/dupla/solo/att-teste-1/prints/p2/link");
-    expect((call[1] as any).headers.Authorization).toBe("Bearer token-de-teste");
+    expect((call as any[])[0]).toBe("/api/dupla/solo/att-teste-1/prints/p2/link");
+    expect(((call as any[])[1] as any).headers.Authorization).toBe("Bearer token-de-teste");
 
     // ampliar a imagem e fechar com Esc
     fireEvent.click(screen.getByRole("button", { name: "Ampliar impresso" }));
