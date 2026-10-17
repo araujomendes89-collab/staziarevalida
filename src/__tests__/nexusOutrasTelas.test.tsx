@@ -19,9 +19,10 @@ vi.mock("../novo/app/tutor/useRealtimeVoice.js", () => ({
 }));
 
 const PERSONALITIES = [
-  { id: "acolhedor", name: "Tranquilo", emoji: "😌", tagline: "Descontraído.", swears: false, voice: {} },
-  { id: "durona", name: "Durona", emoji: "🔥", tagline: "Firme.", swears: true, voice: {} },
-  { id: "direto", name: "Direto", emoji: "🎯", tagline: "Solto.", swears: true, voice: {} },
+  { id: "durao", name: "Durão", emoji: "🔥", tagline: "Firme.", swears: true, voice: {}, character: "stazi" },
+  { id: "acolhedor", name: "Tranquilo", emoji: "😌", tagline: "Descontraído.", swears: false, voice: {}, character: "stazi" },
+  { id: "durona", name: "Durona", emoji: "🔥", tagline: "Provocadora.", swears: true, voice: {}, character: "stazia" },
+  { id: "tranquila", name: "Tranquila", emoji: "😌", tagline: "Calma.", swears: false, voice: {}, character: "stazia" },
 ];
 const ENT = { enabled: true, mode: "paid", is_paid: true, trial: { state: "none", days: 7 }, can_use: true, can_text: true, can_voice: true, text: { used: 0, limit: 40, remaining: 40 }, voice: { enabled: true, remaining_s: 600 }, questions: { limit: null, used: 0 } };
 const status = (over: any = {}) => ({ enabled: true, available: true, requires_pro: true, daily_limit: 40, used_today: 0, voice_enabled: true, reviews_due: 0, entitlement: ENT, preferences: { personality_id: "durona", profanity: "moderate", chosen: true }, personalities: PERSONALITIES, ...over });
@@ -38,6 +39,7 @@ const rpcCalls: { fn: string; args: any }[] = [];
 const calls: { url: string; body: any }[] = [];
 
 beforeEach(() => {
+  window.localStorage.clear(); // a escolha do personagem fica guardada no aparelho
   rpcCalls.length = 0;
   calls.length = 0;
   (navigator as any).mediaDevices = { getUserMedia: vi.fn(async () => ({ getTracks: () => [{ stop() {} }] })) };
@@ -84,13 +86,16 @@ describe("Nexus por cima das outras telas", () => {
     const overlay = await dock(request, "Discutir com o Tutor");
     expect(within(overlay).queryByRole("group", { name: "Modo" })).toBeNull();
     expect(within(overlay).getByText(/Perguntar ao Tutor/)).toBeInTheDocument();
-    for (const p of PERSONALITIES) expect(within(overlay).getByRole("button", { name: new RegExp(`^${p.name} `) })).toBeInTheDocument();
+    // a Durona vem preferida: abre no personagem dela (Stazia); as do Stazi aparecem ao trocar de personagem
+    for (const p of PERSONALITIES.filter((x) => x.character === "stazia")) expect(within(overlay).getByRole("button", { name: new RegExp(`^${p.name} `) })).toBeInTheDocument();
     await act(async () => { await new Promise((r) => setTimeout(r, 30)); });
     expect(rpcCalls.some((c) => c.fn === "app_tutor_start")).toBe(false);
-    fireEvent.click(within(overlay).getByRole("button", { name: /^Direto / }));
-    fireEvent.click(within(overlay).getByRole("button", { name: "Começar com o Direto" }));
+    fireEvent.click(within(overlay).getByRole("button", { name: /Stazi\b/ }));
+    for (const p of PERSONALITIES.filter((x) => x.character === "stazi")) expect(within(overlay).getByRole("button", { name: new RegExp(`^${p.name} `) })).toBeInTheDocument();
+    fireEvent.click(within(overlay).getByRole("button", { name: /^Durão / }));
+    fireEvent.click(within(overlay).getByRole("button", { name: "Começar com o Durão" }));
     await waitFor(() => expect(rpcCalls.filter((c) => c.fn === "app_tutor_start")).toHaveLength(1));
-    expect(rpcCalls.find((c) => c.fn === "app_tutor_start")!.args).toEqual({ p_mode: "livre", p_topic: null, p_question_id: "q1", p_context: { type: "question", id: "q1" }, p_personality: "direto" });
+    expect(rpcCalls.find((c) => c.fn === "app_tutor_start")!.args).toEqual({ p_mode: "livre", p_topic: null, p_question_id: "q1", p_context: { type: "question", id: "q1" }, p_personality: "durao" });
   });
 
   it("Temas → Me teste no tema; Desempenho → pontos fracos; Flashcards → Perguntar sobre o tema (modo travado)", async () => {

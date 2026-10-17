@@ -9,7 +9,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { StaziaVoiceOrb, orbEmotion } from "./StaziaVoiceOrb.jsx";
 import { PersonagemTutor } from "../personagens/PersonagemTutor.jsx";
-import { PERSONAGENS, gravarPersonagem, lerPersonagem } from "../personagens/personagens.js";
+import { PERSONAGENS, gravarPersonagem, personagemDaConversa, personagemDe } from "../personagens/personagens.js";
 import "../personagens/escolha.css";
 import { VoiceControls } from "./VoiceControls.jsx";
 import { VoiceStatus } from "./VoiceStatus.jsx";
@@ -80,10 +80,13 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
   const dialog = React.useRef(null);
   const mic = React.useRef(null);
   const emo = orbEmotion(avatar);
-  const [quem, setQuem] = React.useState(() => personagem ?? lerPersonagem(persona?.id));
+  const [quem, setQuem] = React.useState(() => personagem ?? personagemDaConversa(persona?.id));
   const [semPersonagem, setSemPersonagem] = React.useState(false);
   const outro = quem === "stazia" ? "stazi" : "stazia";
-  // trocar de personagem no meio da conversa só muda o desenho: a ligação, o microfone e a conversa seguem como estão
+  // 17/10/2026: a voz e a personalidade são do personagem. Com uma personalidade conhecida (Durão, Tranquilo, Durona, Tranquila) o
+  // personagem fica fixo na conversa; a troca no meio só existe para conversa antiga, de professor aposentado, e só muda o desenho
+  // (a ligação, o microfone e a conversa seguem como estão).
+  const personagemFixo = Boolean(personagemDe(persona?.id));
   const trocarPersonagem = () => {
     setQuem(outro);
     gravarPersonagem(outro);
@@ -175,7 +178,7 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
           {persona?.name ?? "Professor"}
         </span>
         {jeitoLabel && <span className="svm__jeito">{jeitoLabel}</span>}
-        {!semPersonagem && (
+        {!semPersonagem && !personagemFixo && (
           <button type="button" className="svm__troca" onClick={trocarPersonagem} aria-label={`Trocar para ${PERSONAGENS[outro].genero === "a" ? "a" : "o"} ${PERSONAGENS[outro].nome}, ${PERSONAGENS[outro].papel}`}>
             Trocar para {PERSONAGENS[outro].nome}
           </button>

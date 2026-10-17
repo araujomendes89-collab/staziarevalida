@@ -1,20 +1,52 @@
 // Os dois personagens do Tutor por voz (pedido do dono, 17/10/2026): o aluno escolhe UM antes de começar e só ele fica na tela.
 // - Stazi: lontra menino de moletom azul-marinho com o S da logo (mascote oficial; reaproveita os sprites do Motion Studio).
 // - Stazia: lontra menina de moletom rosa e laço rosa, também com o S (personagem nova; poses geradas a partir da arte do dono).
-// A escolha fica guardada no aparelho (localStorage). O perfil do Tutor (tutor_preferences) ainda não tem campo para isso; quando
-// tiver, basta ler/gravar aqui.
+// Cada personagem tem 1 voz e 2 personalidades (decisão de 17/10/2026): Stazi = Durão e Tranquilo; Stazia = Durona e Tranquila.
+// O aluno escolhe PRIMEIRO o personagem, depois uma das 2 personalidades dele; a voz vem do personagem. A escolha do personagem
+// fica guardada no aparelho (localStorage); a personalidade é a do perfil do Tutor (tutor_preferences).
 
 export const PERSONAGENS = {
   stazi: { id: "stazi", nome: "Stazi", papel: "seu professor", genero: "o", descricao: "Lontra de moletom azul" },
   stazia: { id: "stazia", nome: "Stazia", papel: "sua professora", genero: "a", descricao: "Lontra de moletom rosa e laço" },
 };
 export const PERSONAGEM_IDS = ["stazi", "stazia"];
+
+/**
+ * As quatro personalidades e a que personagem cada uma pertence (espelho da coluna tutor_personalities.character, que vence
+ * quando o servidor manda). `artigo` concorda com o nome: "o Durão", "a Durona", "o Tranquilo", "a Tranquila". `duro` marca as
+ * duas que têm o "Jeito" (nível, gritos e palavrões) e o aviso de 18+.
+ */
+export const PERSONALIDADES = {
+  durao: { id: "durao", personagem: "stazi", artigo: "o", duro: true },
+  acolhedor: { id: "acolhedor", personagem: "stazi", artigo: "o", duro: false },
+  durona: { id: "durona", personagem: "stazia", artigo: "a", duro: true },
+  tranquila: { id: "tranquila", personagem: "stazia", artigo: "a", duro: false },
+};
 export const CHAVE_PERSONAGEM = "smn-tutor-personagem";
 
 export const personagemValido = (id) => (PERSONAGEM_IDS.includes(id) ? id : null);
 
-/** Sem escolha salva, o padrão acompanha o professor: a Durona começa com a Stazia, os outros com o Stazi. */
-export const personagemPadrao = (personalityId) => (personalityId === "durona" ? "stazia" : "stazi");
+/**
+ * A que personagem a personalidade pertence: o campo `character` do servidor quando vier (objeto da lista ou texto), senão a tabela
+ * acima. Personalidade desconhecida ou aposentada (o Direto) = null.
+ */
+export function personagemDe(personalidade) {
+  const id = typeof personalidade === "string" ? personalidade : personalidade?.id;
+  const doServidor = typeof personalidade === "object" && personalidade ? personagemValido(personalidade.character) : null;
+  return doServidor ?? PERSONALIDADES[id]?.personagem ?? null;
+}
+
+/** "o" ou "a": o gênero da personalidade, para "Começar com o Durão", "a Tranquila". */
+export function artigoDe(personalidade) {
+  const id = typeof personalidade === "string" ? personalidade : personalidade?.id;
+  return PERSONALIDADES[id]?.artigo ?? (personagemDe(personalidade) === "stazia" ? "a" : "o");
+}
+
+/**
+ * Sem escolha salva, o personagem padrão é o do professor que o aluno já usava (cada personalidade pertence a um personagem) ou,
+ * sem professor, o Stazi. Depois que o aluno escolhe, o personagem manda: trocar de personalidade nunca troca de personagem.
+ */
+export const personagemPadrao = (personalityId) => personagemDe(personalityId) ?? "stazi";
 
 export function lerPersonagem(personalityId = null) {
   try {
@@ -25,6 +57,9 @@ export function lerPersonagem(personalityId = null) {
   }
   return personagemPadrao(personalityId);
 }
+
+/** Quem aparece numa conversa: o personagem da personalidade dela (a voz é dele); sem isso (conversa antiga), a escolha guardada. */
+export const personagemDaConversa = (personalityId) => personagemDe(personalityId) ?? lerPersonagem(personalityId);
 
 export function temPersonagemSalvo() {
   try {

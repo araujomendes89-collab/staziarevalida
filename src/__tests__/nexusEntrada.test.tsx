@@ -1,5 +1,5 @@
 /**
- * Entrada do Nexus (/tutor): os três professores em cartões, o modo (Perguntar ao Tutor já marcado), a linha de voz do dia,
+ * Entrada do Nexus (/tutor): o personagem (Stazi ou Stazia) e as 2 personalidades dele em cartões, o modo (Perguntar ao Tutor já marcado), a linha de voz do dia,
  * o aviso da Política, "Ouvir" com a amostra aprovada, Começar (som e microfone no mesmo toque), outra aba aberta ("Assumir
  * aqui"), a voz reserva, Encerrar com o resumo, o Histórico e o portão do Tutor (aceite, desligado, plano).
  */
@@ -32,15 +32,17 @@ vi.mock("../novo/app/tutor/useRealtimeVoice.js", () => ({
 }));
 
 const PERSONALITIES = [
-  { id: "acolhedor", name: "Tranquilo", emoji: "😌", tagline: "Descontraído, faz você pensar antes de explicar.", swears: false, voice: {} },
-  { id: "durona", name: "Durona", emoji: "🔥", tagline: "Firme e exigente, cobra raciocínio.", swears: true, voice: {} },
-  { id: "direto", name: "Direto", emoji: "🎯", tagline: "Fala solto e sem rodeios.", swears: true, voice: {} },
+  { id: "durao", name: "Durão", emoji: "🔥", tagline: "Firme e exigente, cobra raciocínio.", swears: true, voice: {}, character: "stazi" },
+  { id: "acolhedor", name: "Tranquilo", emoji: "😌", tagline: "Descontraído, faz você pensar antes de explicar.", swears: false, voice: {}, character: "stazi" },
+  { id: "durona", name: "Durona", emoji: "🔥", tagline: "Provocadora, escrachada e sem passar a mão na cabeça.", swears: true, voice: {}, character: "stazia" },
+  { id: "tranquila", name: "Tranquila", emoji: "😌", tagline: "Calma, acolhedora e sem pressa.", swears: false, voice: {}, character: "stazia" },
 ];
 const ENT = { enabled: true, mode: "paid", is_paid: true, staff: false, trial: { state: "none", days: 7 }, can_use: true, can_text: true, can_voice: true, text: { used: 2, limit: 40, remaining: 38 }, voice: { enabled: true, remaining_s: 600 }, questions: { limit: null, used: 0 } };
 const status = (over: any = {}) => ({ enabled: true, available: true, requires_pro: true, daily_limit: 40, used_today: 2, voice_enabled: true, reviews_due: 0, entitlement: ENT, preferences: { personality_id: "durona", profanity: "moderate", chosen: true }, personalities: PERSONALITIES, ...over });
 const nexus = (over: any = {}) => ({
   voice_enabled: true, stt: true, reserve: true, reserve_minutes: 10, minutes_today: 5,
-  professors: [{ id: "acolhedor", eleven: true, sample: false, reason: null }, { id: "durona", eleven: true, sample: true, reason: null }, { id: "direto", eleven: false, sample: false, reason: "not_approved" }],
+  // uma voz por personagem: a do Stazi (Durão e Tranquilo) ainda não foi aprovada; a da Stazia (Durona e Tranquila) sim
+  professors: [{ id: "durao", eleven: false, sample: false, reason: "not_approved" }, { id: "acolhedor", eleven: false, sample: false, reason: "not_approved" }, { id: "durona", eleven: true, sample: true, reason: null }, { id: "tranquila", eleven: true, sample: true, reason: null }],
   ...over,
 });
 const SID = "22222222-2222-4222-8222-222222222222";
@@ -60,6 +62,7 @@ let tracks: any[] = [];
 let play: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  window.localStorage.clear(); // a escolha do personagem fica guardada no aparelho: cada teste começa sem ela
   calls.length = 0;
   rpcCalls.length = 0;
   audio.order.length = 0;
@@ -121,14 +124,25 @@ const card = (name: string) => screen.getByRole("button", { name: new RegExp(`^.
 const startButton = () => screen.getByRole("button", { name: /^Começar com/ });
 
 describe("Nexus: entrada", () => {
-  it("/tutor abre a Nexus: Tranquilo, Durona e Direto com a frase curta; o último escolhido marcado; nada começa sem o toque", async () => {
+  it("/tutor abre a Nexus pelo personagem (Stazia, por causa da Durona): as 2 personalidades dele com a frase curta; a última escolhida marcada; nada começa sem o toque", async () => {
     await mount();
-    for (const p of PERSONALITIES) {
+    expect(screen.getByRole("button", { name: /Stazia/ })).toHaveAttribute("aria-pressed", "true");
+    for (const p of PERSONALITIES.filter((x) => x.character === "stazia")) {
       expect(card(p.name)).toBeInTheDocument();
       expect(screen.getByText(p.tagline)).toBeInTheDocument();
     }
+    // as do outro personagem só aparecem depois de escolher o Stazi
+    expect(screen.queryByRole("button", { name: /^.{0,3}\s*Durão\b/ })).toBeNull();
     expect(card("Durona")).toHaveAttribute("aria-pressed", "true");
-    expect(card("Tranquilo")).toHaveAttribute("aria-pressed", "false");
+    expect(card("Tranquila")).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: /Stazi\b/ }));
+    for (const p of PERSONALITIES.filter((x) => x.character === "stazi")) {
+      expect(card(p.name)).toBeInTheDocument();
+      expect(screen.getByText(p.tagline)).toBeInTheDocument();
+    }
+    expect(screen.queryByRole("button", { name: /^.{0,3}\s*Durona\b/ })).toBeNull();
+    expect(card("Tranquilo")).toHaveAttribute("aria-pressed", "true"); // a calma abre quando o aluno troca de personagem
+    expect(card("Durão")).toHaveAttribute("aria-pressed", "false");
     await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
     expect(rpcCalls.some((c) => c.fn === "app_tutor_start")).toBe(false);
     expect(calls.some((c) => c.url.endsWith("/voice/open"))).toBe(false);
@@ -141,14 +155,18 @@ describe("Nexus: entrada", () => {
     expect(screen.getByRole("button", { name: "Histórico" })).toBeInTheDocument();
   });
 
-  it("'Perguntar ao Tutor' já marcado; o botão diz 'Começar com a Durona' e muda com a escolha", async () => {
+  it("'Perguntar ao Tutor' já marcado; o botão diz 'Começar com a Durona' e muda com a escolha (o artigo concorda: o Durão, a Durona, o Tranquilo, a Tranquila)", async () => {
     await mount();
     const modes = within(screen.getByRole("group", { name: "Modo" })).getAllByRole("button");
     expect(modes.map((m) => m.textContent)).toEqual(["Perguntar ao Tutor", "Questões", "Meus erros", "Me teste"]);
     expect(modes[0]).toHaveAttribute("aria-pressed", "true");
     expect(startButton()).toHaveTextContent("Começar com a Durona");
-    fireEvent.click(card("Tranquilo"));
+    fireEvent.click(card("Tranquila"));
+    expect(startButton()).toHaveTextContent("Começar com a Tranquila");
+    fireEvent.click(screen.getByRole("button", { name: /Stazi\b/ }));
     expect(startButton()).toHaveTextContent("Começar com o Tranquilo");
+    fireEvent.click(card("Durão"));
+    expect(startButton()).toHaveTextContent("Começar com o Durão");
     fireEvent.click(modes[1]);
     expect(modes[1]).toHaveAttribute("aria-pressed", "true");
     expect(modes[0]).toHaveAttribute("aria-pressed", "false");
@@ -156,10 +174,13 @@ describe("Nexus: entrada", () => {
 
   it("'Ouvir' só com amostra aprovada; toca a amostra guardada (nenhum /speech)", async () => {
     await mount();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Ouvir a voz da Durona" })).toBeInTheDocument());
-    expect(screen.queryByRole("button", { name: /Ouvir a voz do Tranquilo/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Ouvir a voz do Direto/ })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Ouvir a voz da Durona" }));
+    // a voz é do personagem: um só "Ouvir", com a voz da Stazia; o Stazi não tem amostra aprovada
+    await waitFor(() => expect(screen.getByRole("button", { name: "Ouvir a voz da Stazia" })).toBeInTheDocument());
+    expect(screen.getAllByRole("button", { name: /^Ouvir a voz/ })).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: /Stazi\b/ }));
+    expect(screen.queryByRole("button", { name: /^Ouvir a voz/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Stazia/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Ouvir a voz da Stazia" }));
     await waitFor(() => expect(play).toHaveBeenCalledTimes(1));
     expect(calls.some((c) => c.url === "/api/tutor/voice/sample/durona")).toBe(true);
     expect(calls.some((c) => c.url.endsWith("/speech"))).toBe(false);
@@ -170,7 +191,7 @@ describe("Nexus: entrada", () => {
     await mount();
     expect(await screen.findByText("Voz hoje: 5 min")).toHaveClass("nx-voice-line__min"); // minutos em fonte de números
     expect(screen.getByText(POLICY)).toBeInTheDocument();
-    fireEvent.click(card("Direto")); // a voz do Direto não está aprovada: vai para a reserva
+    fireEvent.click(screen.getByRole("button", { name: /Stazi\b/ })); // a voz do Stazi não está aprovada: vai para a reserva
     expect(await screen.findByText("Voz reserva hoje: 10 min")).toBeInTheDocument();
     cleanup();
     server["/api/tutor/nexus"] = () => ({ body: nexus({ reserve: false, reserve_minutes: 0, professors: nexus().professors.map((p: any) => ({ ...p, eleven: false, sample: false })) }) });
@@ -249,7 +270,7 @@ describe("Nexus: entrada", () => {
     const OLD = "55555555-5555-4555-8555-555555555555";
     const OFF = "66666666-6666-4666-8666-666666666666";
     rpcImpl.app_tutor_sessions = () => [
-      { id: SID, title: "Me teste", mode: "perguntas", status: "active", personality: "🎯", persona: "Direto", personality_id: "direto", read_only: false, minutes: 4, questions: 0 },
+      { id: SID, title: "Me teste", mode: "perguntas", status: "active", personality: "🔥", persona: "Durão", personality_id: "durao", read_only: false, minutes: 4, questions: 0 },
       { id: SID2, title: "Pré-eclâmpsia", mode: "livre", status: "closed", personality: "🔥", persona: "Durona", personality_id: "durona", read_only: false, minutes: 9, questions: 0 },
       { id: OLD, title: "Questões", mode: "questao", status: "closed", personality: "🤗", persona: "Acolhedor", personality_id: "acolhedor", read_only: true, minutes: 12, questions: 3 },
       { id: OFF, title: "Revisão", mode: "livre", status: "active", personality: "😴", persona: "Preguiçoso", personality_id: "preguicoso", read_only: true, minutes: 3, questions: 0 },
@@ -258,7 +279,7 @@ describe("Nexus: entrada", () => {
       p_session_id === SID2 ? session({ id: SID2, status: "closed", summary: { concepts_mastered: ["sulfato de magnésio"] } })
       : p_session_id === OLD ? session({ id: OLD, status: "closed", read_only: true, personality: { id: "acolhedor", name: "Acolhedor", emoji: "🤗" } })
       : p_session_id === OFF ? session({ id: OFF, read_only: true, personality: { id: "preguicoso", name: "Preguiçoso", emoji: "😴" } })
-      : session({ id: SID, mode: "perguntas", personality: { id: "direto", name: "Direto", emoji: "🎯" } });
+      : session({ id: SID, mode: "perguntas", personality: { id: "durao", name: "Durão", emoji: "🔥" } });
     await mount();
     fireEvent.click(screen.getByRole("button", { name: "Histórico" }));
     fireEvent.click(await screen.findByRole("button", { name: /Durona · Perguntar ao Tutor/ }));
@@ -273,7 +294,7 @@ describe("Nexus: entrada", () => {
     expect(await screen.findByText("Este professor mudou. Comece uma conversa nova.")).toBeInTheDocument();
     expect(calls.some((c) => c.url.endsWith("/voice/open"))).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Histórico" }));
-    fireEvent.click(await screen.findByRole("button", { name: /Direto · Me teste/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Durão · Me teste/ }));
     await waitFor(() => expect(calls.find((c) => c.url.endsWith("/voice/open"))!.body).toEqual({ session_id: SID }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });

@@ -251,27 +251,42 @@ describe("componentes", () => {
   it("entrada do Nexus: troca a esfera pelo personagem e guarda a escolha ao começar", async () => {
     const { NexusLobby } = await import("../novo/app/tutor/nexus/NexusLobby.jsx");
     const onStart = vi.fn();
-    const status = { personalities: [{ id: "acolhedor", name: "Tranquilo", emoji: "😌", tagline: "x" }, { id: "durona", name: "Durona", emoji: "🔥", tagline: "y" }], preferences: { personality_id: "durona" }, daily_limit: 40, used_today: 2, entitlement: { enabled: true, mode: "paid", is_paid: true, can_use: true, can_text: true, can_voice: true, text: { used: 2, limit: 40, remaining: 38 }, voice: { enabled: true, remaining_s: 600 }, questions: { limit: null, used: 0 }, trial: { state: "none", days: 7 } } };
+    const status = { personalities: [{ id: "durao", name: "Durão", emoji: "🔥", tagline: "w", character: "stazi" }, { id: "acolhedor", name: "Tranquilo", emoji: "😌", tagline: "x", character: "stazi" }, { id: "durona", name: "Durona", emoji: "🔥", tagline: "y", character: "stazia" }, { id: "tranquila", name: "Tranquila", emoji: "😌", tagline: "z", character: "stazia" }], preferences: { personality_id: "durona" }, daily_limit: 40, used_today: 2, entitlement: { enabled: true, mode: "paid", is_paid: true, can_use: true, can_text: true, can_voice: true, text: { used: 2, limit: 40, remaining: 38 }, voice: { enabled: true, remaining_s: 600 }, questions: { limit: null, used: 0 }, trial: { state: "none", days: 7 } } };
     const { container } = render(<NexusLobby status={status} nexus={{}} onStart={onStart} onHistory={() => {}} onListen={() => {}} />);
-    // sem escolha salva: a Durona começa com a Stazia
+    // sem escolha salva: abre no personagem do professor que o aluno já usava (a Durona é da Stazia)
     expect(screen.getByRole("button", { name: /Stazia/ })).toHaveAttribute("aria-pressed", "true");
     expect(container.querySelector(".nx-lobby__orb [data-personagem='stazia']")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Stazi\b/ }));
     expect(container.querySelector(".nx-lobby__orb [data-personagem='stazi']")).toBeTruthy();
+    // trocar de personagem leva a personalidade calma dele, não a Durona (que é da Stazia): o personagem manda
+    expect(screen.queryByRole("button", { name: /^.{0,3}\s*Durona\b/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Começar com/ }));
-    expect(onStart).toHaveBeenCalledWith("durona", "livre");
+    expect(onStart).toHaveBeenCalledWith("acolhedor", "livre");
     expect(window.localStorage.getItem(CHAVE_PERSONAGEM)).toBe("stazi");
   });
 
-  it("tela de voz: o personagem escolhido no lugar da esfera, troca no meio da conversa e cor de fundo pela emoção", async () => {
+  it("tela de voz: o personagem da personalidade no lugar da esfera, fixo na conversa (a voz é dele), e cor de fundo pela emoção", async () => {
     const { StaziaVoiceMode } = await import("../novo/app/tutor/voice/StaziaVoiceMode.jsx");
     const rt: any = { state: "speaking", muted: false, streams: { input: null, output: null }, captions: { tutor: "Foco.", student: "" }, provider: "live", setVolume() {}, start() {}, sendText() {}, toggleMute() {}, interrupt() {} };
-    window.localStorage.setItem(CHAVE_PERSONAGEM, "stazia");
+    window.localStorage.setItem(CHAVE_PERSONAGEM, "stazi"); // a escolha guardada não vence a personalidade da conversa
     render(<StaziaVoiceMode rt={rt} persona={{ id: "durona", name: "Durona", emoji: "🔥" }} avatar={{ emotion: "angry", intensity: 90 }} onClose={() => {}} />);
     expect(document.querySelector(".svm-orb")).toBeNull();
     const el = screen.getByRole("img", { name: /^Stazia, sua professora, falando/ });
     expect(el).toHaveAttribute("data-emotion", "angry");
     expect(document.querySelector(".svm")).toHaveAttribute("data-emo", "angry");
+    expect(screen.queryByRole("button", { name: /Trocar para/ })).toBeNull();
+    cleanup();
+    render(<StaziaVoiceMode rt={rt} persona={{ id: "durao", name: "Durão", emoji: "🔥" }} onClose={() => {}} />);
+    expect(screen.getByRole("img", { name: /^Stazi, seu professor, falando/ })).toBeTruthy();
+    cleanup();
+  });
+
+  it("tela de voz: conversa antiga de professor aposentado ainda troca o desenho no meio da conversa", async () => {
+    const { StaziaVoiceMode } = await import("../novo/app/tutor/voice/StaziaVoiceMode.jsx");
+    const rt: any = { state: "speaking", muted: false, streams: { input: null, output: null }, captions: { tutor: "Foco.", student: "" }, provider: "live", setVolume() {}, start() {}, sendText() {}, toggleMute() {}, interrupt() {} };
+    window.localStorage.setItem(CHAVE_PERSONAGEM, "stazia");
+    render(<StaziaVoiceMode rt={rt} persona={{ id: "direto", name: "Direto", emoji: "🎯" }} avatar={{ emotion: "angry", intensity: 90 }} onClose={() => {}} />);
+    expect(screen.getByRole("img", { name: /^Stazia, sua professora, falando/ })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Trocar para o Stazi, seu professor" }));
     expect(screen.getByRole("img", { name: /^Stazi, seu professor, falando/ })).toBeTruthy();
     expect(window.localStorage.getItem(CHAVE_PERSONAGEM)).toBe("stazi");

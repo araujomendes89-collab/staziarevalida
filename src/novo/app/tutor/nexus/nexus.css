@@ -652,3 +652,15 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* 17/10/2026: o personagem vem primeiro; embaixo, as 2 personalidades dele e o "Ouvir a voz" do personagem */
+.nx-lobby__jeitos {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.nx-listen--voz {
+  align-self: center;
+}
