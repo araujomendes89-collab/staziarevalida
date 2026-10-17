@@ -1,7 +1,7 @@
 // Movimento natural dos personagens do Tutor: função pura do tempo, com semente. Testa troca de pose, vida contínua (respiração,
 // balanço, piscar irregular), boca (ataque rápido, queda lenta, histerese), amplitude por intensidade e emoção, e movimento reduzido.
 import { describe, expect, it } from "vitest";
-import { quadro, piscada, seguidorVoz, dinamicaPose, TROCA_MS, PERMANENCIA_MS, BOCA_SEGURA_MS, opacidadesTroca, aparenciaBoca, geometriaBoca } from "../novo/app/tutor/personagens/movimento.js";
+import { quadro, piscada, seguidorVoz, dinamicaPose, TROCA_MS, PERMANENCIA_MS, BOCA_SEGURA_MS, opacidadesTroca, aparenciaBoca, geometriaBoca, posicaoNaBoca } from "../novo/app/tutor/personagens/movimento.js";
 import { ADIANTO_BOCA_S } from "../novo/app/tutor/personagens/usePersonagemAnimacao.js";
 import { spritePose } from "../novo/app/tutor/personagens/sprites.js";
 import { AudioPlayer, nivelDoFluxo, rmsPorBloco } from "../novo/app/tutor/voice/audioPlayer.js";
@@ -197,7 +197,7 @@ describe("corpo parado na sílaba (o tremor do falando)", () => {
 });
 
 describe("desenho da boca (sem imagem nova, sem desencaixe)", () => {
-  it("fechada some, meia é a aberta achatada presa no focinho, aberta é o recorte inteiro", () => {
+  it("fechada some, meia é a aberta com o queixo achatado (presa na linha da boca), aberta é o recorte inteiro", () => {
     expect(aparenciaBoca(0).opacidade).toBe(0);
     expect(aparenciaBoca(0.5).opacidade).toBe(1);
     expect(aparenciaBoca(0.5).escala).toBeGreaterThan(0.6);
@@ -217,6 +217,53 @@ describe("desenho da boca (sem imagem nova, sem desencaixe)", () => {
         expect(g.cx).toBeLessThan(s.boca!.w);
       }
     }
+  });
+
+  // 17/10/2026, "a boca sai um pouco do quadro": a dobra da meia boca era o centro do focinho, ~31–41 px lógicos acima do lábio; na
+  // meia boca o lábio de cima e os cantos subiam ~6 px na tela de voz (medido no navegador: scripts/boca-alinhamento/medir.mjs).
+  // px de tela por px lógico: tela de voz (caixa 480), prévia de voz (440), rosto do Mini Tutor (123). A geometria é em px lógicos,
+  // então vale igual para a versão cheia e a "meia" dos sprites (as duas são esticadas ao mesmo tamanho lógico).
+  const TELAS = { "tela de voz": 480 / 820, "prévia de voz": 440 / 820, "Mini Tutor": 123 / 820 };
+  const COM_BOCA = ["stazi", "stazia"].flatMap((id) => ["falando", "falandoFirme"].map((pose) => [id, pose] as const));
+
+  it("a dobra fica na linha da boca (lábio de cima), bem abaixo do focinho, em todas as poses com boca", () => {
+    for (const [id, pose] of COM_BOCA) {
+      const s = spritePose(id, pose)!;
+      const b = s.boca!;
+      const g = geometriaBoca(s)!;
+      expect(Number.isFinite(b.labio), `${id} ${pose}: manifest sem boca.labio`).toBe(true);
+      expect(g.dobra, `${id} ${pose}`).toBeCloseTo(b.labio - b.y, 5);
+      expect(g.dobra - g.corte, `${id} ${pose}: dobra colada no focinho`).toBeGreaterThan(20);
+      expect(b.labio - s.ny, `${id} ${pose}`).toBeLessThan(60); // ainda na boca, não no queixo
+      expect(g.hCima + g.hBaixo).toBeCloseTo(g.h, 5);
+      expect(g.hBaixo).toBeGreaterThan(b.h * 0.2);
+    }
+  });
+
+  it("o lábio de cima não sai do lugar em nenhuma abertura (≤ 1 px na tela), nos três tamanhos e nos dois personagens", () => {
+    for (const [id, pose] of COM_BOCA) {
+      const s = spritePose(id, pose)!;
+      const g = geometriaBoca(s)!;
+      const labio = s.boca!.labio - s.boca!.y;
+      for (const [tela, u] of Object.entries(TELAS)) {
+        for (let v = 0; v <= 1.0001; v += 0.05) {
+          const e = aparenciaBoca(v).escala;
+          // lábio de cima e tudo entre o focinho e ele: parados
+          expect(Math.abs(posicaoNaBoca(g, labio, e) - labio) * u, `${id} ${pose} ${tela} abertura ${v.toFixed(2)}`).toBeLessThanOrEqual(1);
+          expect(posicaoNaBoca(g, g.corte + 1, e)).toBe(g.corte + 1);
+          // e a boca abre de verdade: o fim do recorte (queixo) desce com a abertura
+          expect(posicaoNaBoca(g, s.boca!.h, e)).toBeCloseTo(g.dobra + g.hBaixo * e, 5);
+        }
+      }
+      expect(posicaoNaBoca(g, s.boca!.h, 1)).toBeCloseTo(s.boca!.h, 5); // aberta = recorte inteiro, no lugar
+    }
+  });
+
+  it("sem a linha da boca no manifesto, cai no jeito antigo (dobra no focinho) sem quebrar", () => {
+    const s = spritePose("stazi", "falando")!;
+    const g = geometriaBoca({ ...s, boca: { ...s.boca!, labio: undefined } })!;
+    expect(g.dobra).toBeCloseTo(g.corte, 5);
+    expect(g.hCima).toBe(0);
   });
 });
 

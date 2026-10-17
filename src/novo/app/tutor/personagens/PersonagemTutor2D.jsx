@@ -82,19 +82,37 @@ function Camada({ id, chave, papel, refs, escondida = false, meia = false, onPro
 
 /**
  * Boca que acompanha a voz (17/10/2026): só a parte do recorte ABAIXO do focinho (as sobrancelhas do recorte não pulam a cada
- * sílaba), com a borda apagada por uma elipse e escala vertical presa no focinho: fechada, meia e aberta, sem mexer o corpo.
+ * sílaba), com a borda apagada por uma elipse. Duas partes do mesmo recorte: do focinho até a linha da boca fica parada (lábio de
+ * cima e cantos no lugar da boca aberta original) e, abaixo dela, a parte que estica (escala vertical presa na linha da boca):
+ * fechada, meia e aberta, sem a boca sair do lugar e sem mexer o corpo. A opacidade vai no conjunto (sem emenda entre as partes).
  */
 function Boca({ s, refs, papel, src }) {
   const g = geometriaBoca(s);
-  const u = (n) => `calc(${n.toFixed(1)} * var(--tp-u))`;
-  const mascara = `radial-gradient(ellipse ${u(g.rx)} ${u(g.ry)} at ${u(g.cx)} 0px, #000 65%, transparent 100%)`;
+  const u = (n) => `calc(${n.toFixed(2)} * var(--tp-u))`;
+  // a mesma elipse nas duas partes (centro no focinho), deslocada para o topo de cada uma
+  const mascara = (topo) => {
+    const m = `radial-gradient(ellipse ${u(g.rx)} ${u(g.ry)} at ${u(g.cx)} ${u(-topo)}, #000 65%, transparent 100%)`;
+    return { maskImage: m, WebkitMaskImage: m };
+  };
+  const img = (topo) => <img className="tp__extra" src={src} alt="" draggable={false} style={{ left: 0, top: u(-topo), width: u(s.boca.w), height: u(s.boca.h) }} />;
+  // emenda sem fresta: a parte que estica começa 2 px lógicos ACIMA da dobra (com o pivô na dobra) e a parada passa 1 px abaixo
+  // dela, por cima; sem isso a borda das duas deixava uma linha clara dentro da boca aberta (medido na tela de 2x)
+  const sobra = Math.min(2, g.hCima);
+  const cima = Math.min(g.hCima + 1, g.h);
   return (
     <div
       ref={(el) => (refs.current[`${papel}-boca`] = el)}
       className="tp__boca"
-      style={{ position: "absolute", left: u(s.boca.x), top: u(s.boca.y + g.corte), width: u(s.boca.w), height: u(g.h), overflow: "hidden", opacity: 0, transformOrigin: "50% 0", willChange: "transform, opacity", maskImage: mascara, WebkitMaskImage: mascara }}
+      style={{ position: "absolute", left: u(s.boca.x), top: u(s.boca.y + g.corte), width: u(s.boca.w), height: u(g.h), opacity: 0, willChange: "opacity" }}
     >
-      <img className="tp__extra" src={src} alt="" draggable={false} style={{ left: 0, top: u(-g.corte), width: u(s.boca.w), height: u(s.boca.h) }} />
+      <div ref={(el) => (refs.current[`${papel}-boca-dobra`] = el)} className="tp__boca-baixo" style={{ position: "absolute", left: 0, top: u(g.hCima - sobra), width: "100%", height: u(g.hBaixo + sobra), overflow: "hidden", transformOrigin: `50% ${u(sobra)}`, willChange: "transform", ...mascara(g.hCima - sobra) }}>
+        {img(g.dobra - sobra)}
+      </div>
+      {g.hCima > 0 && (
+        <div className="tp__boca-cima" style={{ position: "absolute", left: 0, top: 0, width: "100%", height: u(cima), overflow: "hidden", ...mascara(0) }}>
+          {img(g.corte)}
+        </div>
+      )}
     </div>
   );
 }
@@ -218,7 +236,8 @@ export function PersonagemTutor2D({ personagem = "stazi", conversationState = "i
     if (R["atual-boca"]) {
       const b = aparenciaBoca(q.boca);
       R["atual-boca"].style.opacity = b.opacidade.toFixed(3);
-      R["atual-boca"].style.transform = `scaleY(${b.escala.toFixed(3)})`;
+      // só a parte abaixo da linha da boca estica (o lábio de cima fica no lugar)
+      if (R["atual-boca-dobra"]) R["atual-boca-dobra"].style.transform = `scaleY(${b.escala.toFixed(3)})`;
     }
     el.dataset.boca = q.boca.toFixed(2);
     if (R["atual-olhos"]) R["atual-olhos"].style.opacity = q.olhos.toFixed(3);

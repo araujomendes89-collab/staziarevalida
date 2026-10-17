@@ -275,6 +275,57 @@ describe("componentes", () => {
     }
   });
 
+  // 17/10/2026, "a boca sai um pouco do quadro": o recorte da boca tem de cair no lugar da pose, na versão cheia e na "meia", e só a
+  // parte abaixo da linha da boca pode esticar (o lábio de cima fica parado).
+  it("2D: recorte da boca no lugar da pose (cheia e meia), dobra na linha da boca e só a parte de baixo estica", async () => {
+    const { PersonagemTutor2D } = await import("../novo/app/tutor/personagens/PersonagemTutor2D.jsx");
+    const { geometriaBoca } = await import("../novo/app/tutor/personagens/movimento.js");
+    const num = (v: string) => (/^0(px)?$/.test(v) ? 0 : Number(/calc\((-?[\d.]+) \* var\(--tp-u\)\)/.exec(v)?.[1]));
+    const dpr = window.devicePixelRatio;
+    try {
+      for (const [densidade, meia] of [[2, false], [1, true]] as const) {
+        Object.defineProperty(window, "devicePixelRatio", { value: densidade, configurable: true });
+        for (const id of ["stazi", "stazia"]) {
+          for (const [emocao, chave] of [["neutral", "falando"], ["firm", "falandoFirme"]]) {
+            const s = spritePose(id, chave)!;
+            const g = geometriaBoca(s)!;
+            const { container, rerender, unmount } = render(<PersonagemTutor2D personagem={id} conversationState="speaking" emotion={emocao} emotionIntensity={0.3} time={0} />);
+            const caso = `${id} ${chave} ${meia ? "meia" : "cheia"}`;
+            const pose = container.querySelector(".tp__pose--atual .tp__img") as HTMLImageElement;
+            fireEvent.load(pose);
+            rerender(<PersonagemTutor2D personagem={id} conversationState="speaking" emotion={emocao} emotionIntensity={0.3} time={16} />);
+            const boca = container.querySelector(".tp__pose--atual .tp__boca") as HTMLElement;
+            const baixo = boca.querySelector(".tp__boca-baixo") as HTMLElement;
+            const cima = boca.querySelector(".tp__boca-cima") as HTMLElement;
+            expect(baixo, caso).toBeTruthy();
+            expect(cima, caso).toBeTruthy();
+            // mesma resolução da pose (cheia com cheia, meia com meia)
+            expect(pose.getAttribute("src")?.includes(".meia."), caso).toBe(meia);
+            for (const img of boca.querySelectorAll("img")) expect(img.getAttribute("src")?.includes(".meia."), caso).toBe(meia);
+            // o recorte inteiro cai exatamente onde o manifest diz (px lógicos da pose), nas duas partes
+            expect(num(boca.style.left), caso).toBeCloseTo(s.boca!.x, 1);
+            for (const [peca, img] of [[cima, cima.querySelector("img")!], [baixo, baixo.querySelector("img")!]] as const) {
+              expect(num(boca.style.top) + num(peca.style.top) + num(img.style.top), caso).toBeCloseTo(s.boca!.y, 1);
+              expect(num(img.style.width), caso).toBeCloseTo(s.boca!.w, 1);
+              expect(num(img.style.height), caso).toBeCloseTo(s.boca!.h, 1);
+            }
+            // a parte que estica começa na linha da boca (labio), bem abaixo do focinho; a de cima vai do focinho até ela
+            expect(num(boca.style.top) + num(baixo.style.top) + num(baixo.style.transformOrigin), caso).toBeCloseTo(s.boca!.labio, 1); // o pivô da escala
+            expect(num(boca.style.top), caso).toBeCloseTo(s.ny, 1);
+            expect(num(cima.style.height), caso).toBeGreaterThanOrEqual(g.hCima - 0.01);
+            // o quadro pinta a escala só na parte de baixo; o conjunto só muda a opacidade
+            expect(baixo.style.transform, caso).toMatch(/^scaleY\(/);
+            expect(boca.style.transform, caso).toBe("");
+            expect(cima.style.transform, caso).toBe("");
+            unmount();
+          }
+        }
+      }
+    } finally {
+      Object.defineProperty(window, "devicePixelRatio", { value: dpr, configurable: true });
+    }
+  });
+
   it("2D com preCarregar=\"nada\" não baixa as outras poses", async () => {
     const criadas: string[] = [];
     const ImagemReal = window.Image;

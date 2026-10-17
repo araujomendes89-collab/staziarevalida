@@ -58,7 +58,7 @@ function App() {
         const pt = performance.now();
         quadros.push({
           pt, ctxT: ctx.currentTime, outCtx: ts.contextTime, outPt: ts.performanceTime, lat: ctx.outputLatency ?? null, base: ctx.baseLatency ?? null,
-          pose: el?.dataset.pose, bocaOp: boca ? Number(boca.style.opacity || 0) : null, bocaTr: boca?.style.transform || "", corpo: corpo?.style.transform || "",
+          pose: el?.dataset.pose, bocaOp: boca ? Number(boca.style.opacity || 0) : null, bocaTr: (document.querySelector(".tp__pose--atual .tp__boca-baixo") ?? boca)?.style.transform || "", corpo: corpo?.style.transform || "",
           bocaVal: el?.dataset.boca != null ? Number(el.dataset.boca) : null,
           olhosOp: olhos ? Number(olhos.style.opacity || 0) : 0,
           u: el ? Math.min(el.clientHeight / 820, el.clientWidth / 600) : null,

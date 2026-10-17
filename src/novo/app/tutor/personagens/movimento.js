@@ -273,8 +273,8 @@ export function seguidorVoz(amostras, { ataqueMs = CORPO_ATAQUE_MS, quedaMs = CO
 }
 
 /**
- * Como desenhar a abertura da boca com o recorte de boca ABERTA (sem imagem nova): escala vertical presa logo abaixo do focinho
- * (a meia boca é a aberta "achatada") e opacidade só para entrar/sair do fechado.
+ * Como desenhar a abertura da boca com o recorte de boca ABERTA (sem imagem nova): escala vertical presa na linha da boca (a meia
+ * boca é a aberta com o queixo "achatado" para cima; o lábio de cima não mexe) e opacidade só para entrar/sair do fechado.
  */
 export function aparenciaBoca(boca) {
   const b = clamp(boca);
@@ -282,16 +282,30 @@ export function aparenciaBoca(boca) {
 }
 
 /**
- * Geometria da boca dentro do recorte (px do arquivo), tirada do manifesto: `corte` = altura do focinho dentro do recorte (o que
- * fica acima, como as sobrancelhas, NÃO mexe com a boca: senão a testa pula a cada sílaba); a elipse (centro no focinho) apaga a
- * borda do recorte (gola, queixo) para a boca meio aberta não deixar emenda. Vale para qualquer recorte novo do manifesto.
+ * Geometria da boca dentro do recorte (px lógicos), tirada do manifesto. Vale para qualquer recorte novo do manifesto.
+ * - `corte`: altura do focinho dentro do recorte. O que fica acima (as sobrancelhas) não aparece: senão a testa pula a cada sílaba.
+ * - `dobra`: a linha da boca (`boca.labio`, o ponto mais baixo do lábio de cima). Do focinho até a dobra o recorte fica PARADO, no
+ *   lugar exato da boca aberta original (lábio de cima e cantos da boca); só o que está abaixo dela (abertura, lábio de baixo,
+ *   queixo) estica com a abertura. Antes (17/10/2026) a dobra era o centro do focinho, ~31–41 px lógicos acima do lábio: na meia
+ *   boca o lábio e os cantos subiam até ~6 px na tela de voz ("a boca sai do lugar"). Sem `labio` no manifesto: dobra no focinho.
+ * - a elipse (centro no focinho) apaga a borda do recorte (gola, queixo) para a boca meio aberta não deixar emenda; as duas partes
+ *   usam a mesma elipse, então a boca aberta é exatamente o recorte inteiro.
  */
 export function geometriaBoca(sprite) {
   const b = sprite?.boca;
   if (!b) return null;
   const corte = clamp((sprite.ny ?? b.y) - b.y, 0, b.h * 0.9);
   const h = b.h - corte;
-  return { corte, h, cx: clamp((sprite.nx ?? b.x + b.w / 2) - b.x, 0, b.w), rx: 0.4 * b.w, ry: 0.8 * h };
+  const dobra = clamp(Number.isFinite(b.labio) ? b.labio - b.y : corte, corte, b.h * 0.95);
+  return { corte, h, dobra, hCima: dobra - corte, hBaixo: b.h - dobra, cx: clamp((sprite.nx ?? b.x + b.w / 2) - b.x, 0, b.w), rx: 0.4 * b.w, ry: 0.8 * h };
+}
+
+/**
+ * Onde fica, em px lógicos do recorte, a linha que estava em `y` na boca aberta original, com a abertura `escala` (aparenciaBoca):
+ * acima da dobra nada mexe; abaixo, encolhe em direção à dobra. Serve aos testes e à bancada (a mesma conta que o CSS faz).
+ */
+export function posicaoNaBoca(g, y, escala) {
+  return y <= g.dobra ? y : g.dobra + (y - g.dobra) * escala;
 }
 
 /** Jeito de se mexer por emoção (a intensidade 0..1 dosa o quanto vale): quentes contidas e tensas, alegres com mais balanço. */
