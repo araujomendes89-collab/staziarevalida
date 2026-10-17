@@ -5,7 +5,8 @@
  *   - a IA só avalia contra o PEP oficial da estação, sem ferramentas e sem internet; o texto do aluno é DADO, nunca instrução;
  *   - cada item volta com nível, um trecho LITERAL do texto do aluno e uma razão curta; o servidor confere o trecho
  *     (sem acento, caixa e espaços repetidos) e recusa tudo o que o item não permite;
- *   - duas IAs de empresas diferentes avaliam o mesmo material sem se ver; se divergirem, vale o nível MENOR (decisão D4);
+ *   - UM avaliador por padrão (o Gemini mais forte do Vertex que a Central oferece); a segunda IA é opcional (modo comitê, de qualquer
+ *     empresa cadastrada, ligado pela equipe): as duas avaliam o mesmo material sem se ver e, se divergirem, vale o nível MENOR (D4);
  *   - a NOTA nunca vem da IA: o banco calcula (ch_worker_solo_save_eval).
  *
  * Fluxo de evaluateSolo: confere a função pronta (antes de reservar qualquer coisa) → ch_worker_solo_prepare (barreiras e
@@ -16,7 +17,7 @@
  */
 import type { ContentDb } from "../contentHub/infra";
 import type { Schema } from "../contentHub/ai/schema";
-import { companyOf, functionChecks, loadAiConfig, TREINO_EXIGE_OUTRA_EMPRESA, type ModelRef } from "../ai/config";
+import { companyOf, functionChecks, loadAiConfig, type AiMode, type ModelRef } from "../ai/config";
 import { runFunction, type MaestroDeps, type MaestroRequest } from "../ai/maestro";
 
 // ------------------------------------------------------------------ tipos
@@ -234,13 +235,12 @@ export function validateMember(out: unknown, material: Material): MemberResult |
 export type MergeResult = ({ ok: true } & Merged) | { ok: false; message: string };
 
 /**
- * Mescla (spec §3.5, decisão D4): item igual → vale; diferente → vale o nível MENOR (pendente < incorrect < partial < correct),
- * com a etiqueta "divergiram" e o trecho e a razão do membro cujo nível foi usado. Exige pelo menos 2 membros que responderam,
- * de empresas diferentes (TREINO_EXIGE_OUTRA_EMPRESA); senão não sai nota de IA.
+ * Mescla (spec §3.5, decisão D4). Um avaliador só (padrão): vale o que ele disse. Comitê de duas IAs (opção da equipe): item igual →
+ * vale; diferente → vale o nível MENOR (pendente < incorrect < partial < correct), com a etiqueta "divergiram" e o trecho e a razão do
+ * membro cujo nível foi usado; as duas precisam ter respondido (senão não sai nota de IA). As IAs podem ser de qualquer empresa.
  */
-export function mergeMembers(members: Member[], material: Material): MergeResult {
-  if (members.length < 2) return { ok: false, message: "Menos de duas IAs responderam." };
-  if (TREINO_EXIGE_OUTRA_EMPRESA && new Set(members.map((m) => m.company)).size < 2) return { ok: false, message: "As IAs que responderam são da mesma empresa." };
+export function mergeMembers(members: Member[], material: Material, minMembers = 1): MergeResult {
+  if (members.length < Math.max(1, minMembers)) return { ok: false, message: minMembers > 1 ? "Menos de duas IAs responderam." : "A IA não respondeu." };
   let diverged = 0;
   const items = material.items.map((item, i): EvalItem => {
     const cands = members.map((m) => m.items[i] ?? pending(item.id));
@@ -270,24 +270,25 @@ export type SoloEvalResult = { ok: true } | { ok: false; status: number; message
 
 const fail = (status: number, message: string): SoloEvalResult => ({ ok: false, status, message });
 
-/** A função está pronta (salva, ligada, comitê com IAs de empresas diferentes)? Conferido ANTES de reservar a cota. */
-async function functionReady(deps: SoloEvalDeps): Promise<boolean> {
+/** A função está pronta (salva, IA ligada, uma IA ou o comitê de duas)? Conferido ANTES de reservar a cota. Devolve o modo, ou null. */
+async function readyMode(deps: SoloEvalDeps): Promise<AiMode | null> {
   const cfg = await loadAiConfig(deps.db);
   const check = functionChecks(cfg, deps.env ?? process.env).treino_avaliacao;
-  if (!check?.ready) return false;
   const saved = cfg.functions.treino_avaliacao;
-  if (!saved || saved.mode !== "comite") return false;
-  const refs = [saved.primary, ...saved.reviewers].filter(Boolean) as ModelRef[];
-  if (refs.length < 2) return false;
-  return !TREINO_EXIGE_OUTRA_EMPRESA || new Set(refs.map(companyOf)).size >= 2;
+  if (!check?.ready || !saved?.primary) return null;
+  if (saved.mode === "sozinha") return "sozinha";
+  if (saved.mode === "comite") return 1 + (saved.reviewers as ModelRef[]).length === 2 ? "comite" : null;
+  return null;
 }
 
 export async function evaluateSolo(deps: SoloEvalDeps, uid: string, attemptId: string): Promise<SoloEvalResult> {
   const log = (m: string) => deps.log?.(`treino sozinho: ${m}`.slice(0, 200));
 
   // (a) a função tem de estar pronta antes de reservar qualquer coisa
+  let mode: AiMode | null;
   try {
-    if (!(await functionReady(deps))) return fail(503, MSG_UNAVAILABLE);
+    mode = await readyMode(deps);
+    if (!mode) return fail(503, MSG_UNAVAILABLE);
   } catch {
     log("não foi possível ler a configuração da Central.");
     return fail(503, MSG_UNAVAILABLE);
@@ -319,7 +320,7 @@ export async function evaluateSolo(deps: SoloEvalDeps, uid: string, attemptId: s
   };
 
   try {
-    // (c) comitê da Central: os membros vêm da configuração salva; o código não escolhe IA
+    // (c) a IA da Central (uma, ou o comitê de duas se a equipe ligou): vem da configuração salva; o código não escolhe IA
     const req: MaestroRequest = {
       promptId: "treino_avaliacao",
       promptVersion: "1",
@@ -339,7 +340,7 @@ export async function evaluateSolo(deps: SoloEvalDeps, uid: string, attemptId: s
       const v = validateMember(o.output, material);
       if (v) answered.push({ ...v, company: companyOf(o.ref) });
     }
-    const merged = mergeMembers(answered, material);
+    const merged = mergeMembers(answered, material, mode === "comite" ? 2 : 1);
     if (!merged.ok) return await giveUp((merged as Extract<MergeResult, { ok: false }>).message);
     const saved = await deps.db.service<{ ok?: boolean }>("ch_worker_solo_save_eval", {
       p_user: uid,

@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 /**
  * Tela da Central de IAs · função "Avaliação do treino sozinho" (treino_avaliacao, grupo dupla-sozinho-ia).
- * Servidor simulado (fetch). A função aparece com os mesmos controles das outras, nasce desligada, exige o comitê com empresas
- * diferentes; só o administrador abre a Central; editor e aluno não a veem. Textos de teste, sem conteúdo clínico.
+ * Servidor simulado (fetch). A função aparece com os mesmos controles das outras, nasce desligada, usa UMA IA por padrão (sugestão: o
+ * Gemini mais forte do Vertex) e tem a segunda IA como opção (comitê, de qualquer empresa); só o administrador abre a Central; editor e
+ * aluno não a veem. Textos de teste, sem conteúdo clínico.
  */
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -71,46 +72,68 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-const savedTreino = (extra: any = {}) => ({ key: "treino_avaliacao", mode: "comite", primary_ref: { provider: "anthropic", model: "claude-a" }, fallback_ref: null, reviewers: [{ provider: "openai", model: "gpt-x" }], care: "caprichado", ...extra });
-const readyCheck = { source: "banco", ready: true, ref: { provider: "anthropic", model: "claude-a" }, problems: [], warnings: [] };
+const savedTreino = (extra: any = {}) => ({ key: "treino_avaliacao", mode: "sozinha", primary_ref: { provider: "gemini", model: "gemini-3.1-pro-preview" }, fallback_ref: null, reviewers: [], care: "caprichado", ...extra });
+const readyCheck = { source: "banco", ready: true, ref: { provider: "gemini", model: "gemini-3.1-pro-preview" }, problems: [], warnings: [] };
 const pick = (box: HTMLElement, name: string, value: string) => fireEvent.change(within(box).getByLabelText(name), { target: { value } });
+const MODO = "Modo — Avaliação do treino sozinho";
 
 describe("Central de IAs · Avaliação do treino sozinho (tela)", () => {
-  it("lista a função com os mesmos controles das outras, nasce desligada e avisa que precisa de empresas diferentes", async () => {
+  it("lista a função com os mesmos controles das outras, nasce desligada, com uma IA por padrão e a sugestão do Gemini mais forte", async () => {
     render(<AdminAI />);
     const box = await screen.findByTestId("function-treino_avaliacao");
     expect(within(box).getByText("Avaliação do treino sozinho")).toBeTruthy();
     expect(within(box).getByText("não está pronta")).toBeTruthy();
     expect(within(box).getByText("Desligada: configure esta função na Central de IAs.")).toBeTruthy();
-    expect(within(box).getByText("Esta função precisa de dois membros de empresas diferentes.")).toBeTruthy();
     expect(within(box).getByText("Nasce desligada: sem configuração salva, a avaliação por IA do treino sozinho não roda.")).toBeTruthy();
-    // modelos, cuidado e salvar como nas outras; o modo é fixo no comitê
+    expect(within(box).getByText("Uma IA avalia o treino. Sugestão: Gemini pelo Vertex, o modelo mais forte da lista (gemini-3.1-pro-preview).")).toBeTruthy();
+    // modelos, cuidado e salvar como nas outras; uma IA por padrão, sem linha de produção
     expect(within(box).getByLabelText("Principal: IA — Avaliação do treino sozinho")).toBeTruthy();
     expect(within(box).getByLabelText("Reserva: IA — Avaliação do treino sozinho")).toBeTruthy();
-    expect(within(box).getByLabelText("Membro 1: IA — Avaliação do treino sozinho")).toBeTruthy();
     expect(within(box).getByLabelText("Cuidado — Avaliação do treino sozinho")).toBeTruthy();
-    expect(within(box).getByText("Modo: comitê (obrigatório)")).toBeTruthy();
-    expect(within(box).queryByLabelText("Modo — Avaliação do treino sozinho")).toBeNull();
-    expect(within(box).getByText("Todos os membros avaliam o treino; a principal também participa.")).toBeTruthy();
+    const modo = within(box).getByLabelText(MODO) as HTMLSelectElement;
+    expect(modo.value).toBe("sozinha");
+    expect(Array.from(modo.options).map((o) => o.text)).toEqual(["Uma IA (padrão)", "Comitê de duas IAs (opcional)"]);
+    // a segunda IA só aparece quando a equipe liga o comitê
+    expect(within(box).queryByLabelText("Segunda IA: IA — Avaliação do treino sozinho")).toBeNull();
+    expect(within(box).getByText(/A segunda IA é opcional e fica desligada por padrão/)).toBeTruthy();
+    expect(within(box).queryByText(/empresas diferentes/)).toBeNull();
     expect(within(box).queryByText(/não são chamados/)).toBeNull();
     expect(within(box).queryByRole("button", { name: "Desligar a função" })).toBeNull();
-    // as outras 9 funções continuam na tela
     for (const k of KEYS) expect(screen.getByTestId(`function-${k}`)).toBeTruthy();
   });
 
-  it("duas IAs da mesma empresa travam o Salvar com a mensagem; empresas diferentes salvam em comitê", async () => {
+  it("'Usar a sugestão' põe o Gemini mais forte como principal e salva em modo de uma IA", async () => {
+    render(<AdminAI />);
+    const box = await screen.findByTestId("function-treino_avaliacao");
+    fireEvent.click(within(box).getByRole("button", { name: "Usar a sugestão" }));
+    expect((within(box).getByLabelText("Principal: IA — Avaliação do treino sozinho") as HTMLSelectElement).value).toBe("gemini");
+    fireEvent.click(within(box).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url.endsWith("/functions/treino_avaliacao"))).toBe(true));
+    const put = calls.find((c) => c.method === "PUT" && c.url.endsWith("/functions/treino_avaliacao"))!;
+    expect(put.body.config).toEqual({ mode: "sozinha", care: "caprichado", primary: { provider: "gemini", model: "gemini-3.1-pro-preview" }, fallback: null, reviewers: [] });
+  });
+
+  it("o Gemini mais forte da lista da Central é o sugerido", async () => {
+    overview.providers = overview.providers.map((p: any) => (p.id === "gemini" ? { ...p, models: [{ id: "gemini-2.5-pro", label: "2.5 Pro" }, { id: "gemini-3.1-pro-preview", label: "3.1 Pro" }, { id: "gemini-2.5-flash", label: "2.5 Flash" }] } : p));
+    render(<AdminAI />);
+    const box = await screen.findByTestId("function-treino_avaliacao");
+    expect(within(box).getByText(/o modelo mais forte da lista \(gemini-3\.1-pro-preview\)/)).toBeTruthy();
+  });
+
+  it("a segunda IA é opcional: ligar o comitê pede exatamente mais uma IA, de qualquer empresa (inclusive da mesma)", async () => {
     render(<AdminAI />);
     const box = await screen.findByTestId("function-treino_avaliacao");
     pick(box, "Principal: IA — Avaliação do treino sozinho", "anthropic");
     pick(box, "Principal: modelo — Avaliação do treino sozinho", "claude-a");
-    pick(box, "Membro 1: IA — Avaliação do treino sozinho", "anthropic");
-    pick(box, "Membro 1: modelo — Avaliação do treino sozinho", "claude-b");
+    pick(box, MODO, "comite");
     const save = within(box).getByRole("button", { name: "Salvar" }) as HTMLButtonElement;
-    expect(within(box).getByText("O comitê da avaliação do treino sozinho precisa de membros de pelo menos duas empresas diferentes.")).toBeTruthy();
+    expect(within(box).getByText("O comitê da avaliação do treino sozinho tem exatamente duas IAs: a principal e mais uma.")).toBeTruthy();
     expect(save.disabled).toBe(true);
-    pick(box, "Membro 1: IA — Avaliação do treino sozinho", "openai");
-    pick(box, "Membro 1: modelo — Avaliação do treino sozinho", "gpt-x");
+    // a mesma empresa vale (a conferência por outra empresa NÃO é exigida)
+    pick(box, "Segunda IA: IA — Avaliação do treino sozinho", "anthropic");
+    pick(box, "Segunda IA: modelo — Avaliação do treino sozinho", "claude-b");
     expect(save.disabled).toBe(false);
+    expect(within(box).queryByRole("button", { name: "Adicionar a segunda IA" })).toBeNull(); // só uma
     fireEvent.click(save);
     await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url.endsWith("/functions/treino_avaliacao"))).toBe(true));
     const put = calls.find((c) => c.method === "PUT" && c.url.endsWith("/functions/treino_avaliacao"))!;
@@ -119,32 +142,30 @@ describe("Central de IAs · Avaliação do treino sozinho (tela)", () => {
       care: "caprichado",
       primary: { provider: "anthropic", model: "claude-a" },
       fallback: null,
-      reviewers: [{ provider: "openai", model: "gpt-x" }],
+      reviewers: [{ provider: "anthropic", model: "claude-b" }],
     });
   });
 
   it("recusa do servidor aparece em português e nada some da tela", async () => {
-    handlers[PUT] = () => json({ error: "A função tem problemas: x", problems: ["A avaliação do treino sozinho usa o modo comitê, com IAs de empresas diferentes."], warnings: [] }, 400);
+    handlers[PUT] = () => json({ error: "A função tem problemas: x", problems: ["A avaliação do treino sozinho usa uma IA ou, opcionalmente, o comitê de duas IAs."], warnings: [] }, 400);
     render(<AdminAI />);
     const box = await screen.findByTestId("function-treino_avaliacao");
     pick(box, "Principal: IA — Avaliação do treino sozinho", "anthropic");
     pick(box, "Principal: modelo — Avaliação do treino sozinho", "claude-a");
-    pick(box, "Membro 1: IA — Avaliação do treino sozinho", "openai");
-    pick(box, "Membro 1: modelo — Avaliação do treino sozinho", "gpt-x");
     fireEvent.click(within(box).getByRole("button", { name: "Salvar" }));
-    expect(await within(box).findByText("A avaliação do treino sozinho usa o modo comitê, com IAs de empresas diferentes.")).toBeTruthy();
+    expect(await within(box).findByText("A avaliação do treino sozinho usa uma IA ou, opcionalmente, o comitê de duas IAs.")).toBeTruthy();
     expect(screen.getByTestId("function-treino_avaliacao")).toBeTruthy();
   });
 
-  it("função salva e pronta: mostra 'pronta', o comitê salvo e 'Desligar a função' apaga a configuração", async () => {
+  it("função salva e pronta: mostra 'pronta', a IA salva e 'Desligar a função' apaga a configuração", async () => {
     overview.functions = [savedTreino()];
     overview.checks.treino_avaliacao = readyCheck;
     render(<AdminAI />);
     const box = await screen.findByTestId("function-treino_avaliacao");
     expect(within(box).getByText("pronta")).toBeTruthy();
     expect(within(box).queryByText("Nasce desligada: sem configuração salva, a avaliação por IA do treino sozinho não roda.")).toBeNull();
-    expect((within(box).getByLabelText("Principal: modelo — Avaliação do treino sozinho") as HTMLSelectElement).value).toBe("claude-a");
-    expect((within(box).getByLabelText("Membro 1: modelo — Avaliação do treino sozinho") as HTMLSelectElement).value).toBe("gpt-x");
+    expect((within(box).getByLabelText("Principal: IA — Avaliação do treino sozinho") as HTMLSelectElement).value).toBe("gemini");
+    expect((within(box).getByLabelText(MODO) as HTMLSelectElement).value).toBe("sozinha");
     expect(within(box).queryByText("Voltar às variáveis do servidor")).toBeNull();
     fireEvent.click(within(box).getByRole("button", { name: "Desligar a função" }));
     expect((window.confirm as any).mock.calls[0][0]).toBe('Desligar "Avaliação do treino sozinho"? A configuração salva será apagada e a função para de rodar.');
@@ -152,18 +173,20 @@ describe("Central de IAs · Avaliação do treino sozinho (tela)", () => {
     expect(calls.find((c) => c.method === "PUT" && c.url.endsWith("/functions/treino_avaliacao"))!.body).toEqual({ config: null });
   });
 
-  it("função salva com o mesmo problema do servidor aparece como 'não está pronta' com a mensagem", async () => {
-    overview.functions = [savedTreino({ reviewers: [{ provider: "anthropic", model: "claude-b" }] })];
-    overview.checks.treino_avaliacao = { ...readyCheck, ready: false, problems: ["O comitê da avaliação do treino sozinho precisa de membros de pelo menos duas empresas diferentes."] };
+  it("função salva em comitê mostra as duas IAs; com problema do servidor aparece 'não está pronta' com a mensagem", async () => {
+    overview.functions = [savedTreino({ mode: "comite", reviewers: [{ provider: "openai", model: "gpt-x" }] })];
+    overview.checks.treino_avaliacao = { ...readyCheck, ready: false, problems: ["OpenAI está desligada na Central de IAs."] };
     render(<AdminAI />);
     const box = await screen.findByTestId("function-treino_avaliacao");
+    expect((within(box).getByLabelText(MODO) as HTMLSelectElement).value).toBe("comite");
+    expect((within(box).getByLabelText("Segunda IA: modelo — Avaliação do treino sozinho") as HTMLSelectElement).value).toBe("gpt-x");
     expect(within(box).getByText("não está pronta")).toBeTruthy();
-    expect(within(box).getAllByText("O comitê da avaliação do treino sozinho precisa de membros de pelo menos duas empresas diferentes.").length).toBeGreaterThan(0);
+    expect(within(box).getAllByText("OpenAI está desligada na Central de IAs.").length).toBeGreaterThan(0);
   });
 
   it("o gasto da função aparece com o nome em português na Central e o Registro conhece o nome", async () => {
     overview.spend_by_function = [{ function_key: "treino_avaliacao", cost_usd: 0.42 }];
-    overview.recent_calls = [{ id: 1, function_key: "treino_avaliacao", mode: "comite", role: "membro", provider: "openai", model: "gpt-x", cost_usd: 0.2, outcome: "ok", created_at: "2026-10-17T12:00:00Z" }];
+    overview.recent_calls = [{ id: 1, function_key: "treino_avaliacao", mode: "sozinha", role: "principal", provider: "gemini", model: "gemini-3.1-pro-preview", cost_usd: 0.2, outcome: "ok", created_at: "2026-10-17T12:00:00Z" }];
     render(<AdminAI />);
     await screen.findByTestId("function-treino_avaliacao");
     expect(await screen.findByText(/Avaliação do treino sozinho: US\$ 0,42/)).toBeTruthy();

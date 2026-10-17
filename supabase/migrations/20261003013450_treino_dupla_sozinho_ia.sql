@@ -10,7 +10,7 @@
 --   ch_worker_solo_fail(p_user, p_attempt, mensagem)  → devolve a cota e volta a "entregue"
 --
 -- Barreiras de ch_worker_solo_prepare, nesta ordem (cada recusa tem mensagem em português e NÃO gasta cota):
---   tentativa do próprio aluno e entregue → função "pronta" (comitê de empresas diferentes) → chave aberta → plano ou benefício Elite
+--   tentativa do próprio aluno e entregue → função "pronta" (uma IA, ou o comitê de duas se a equipe ligou) → chave aberta → plano ou benefício Elite
 --   → aceite do Tutor → limites preenchidos → cota do dia → cota do mês → texto não vazio e com pelo menos 20 palavras.
 --   Equipe (administrador, editor, revisor médico) não depende de plano, aceite nem limite; a função pronta vale para todos.
 -- O material enviado à IA tem o enunciado, as tarefas, TODOS os itens do PEP (níveis, pontos, critérios, subitens), o texto do aluno

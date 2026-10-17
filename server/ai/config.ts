@@ -61,11 +61,12 @@ export const requiresSavedConfig = (fn: AiFunctionKey): boolean => isSearchFunct
 
 /**
  * Avaliação do treino sozinho (2ª fase, 2026-10-17): a IA que atende o aluno. Só roda com a configuração SALVA (nasce DESLIGADA, sem
- * linha salva) e SEMPRE em modo comitê com membros de EMPRESAS DIFERENTES, pela regra "conferência por outra empresa" (decisão do
- * dono de 10/10, confirmada pelo coordenador em 17/10; a decisão D3 de 12/10 dizia que não era obrigatória: ver o relatório).
- * Para relaxar: esta constante em false (aqui, na Central) E a mesma regra em solo_ia_function_ready() no banco (013430).
+ * linha salva). Decisão do dono: UM avaliador, o Gemini mais forte do Vertex que a Central oferece (TREINO_MODELOS_SUGERIDOS), e a
+ * segunda IA é OPCIONAL: a equipe liga escolhendo o modo "comitê" (principal + mais uma IA, de qualquer empresa cadastrada), desligado
+ * por padrão. Com as duas, se divergirem em um item vale o nível menor (D4). A conferência por outra empresa NÃO é exigida (D3 de 12/10).
  */
-export const TREINO_EXIGE_OUTRA_EMPRESA = true;
+/** Modelos Gemini sugeridos para esta função, do mais forte para o menos (os que a chave do Vertex em modo expresso aceita; ver VERTEX_EXPRESS_MODELS). */
+export const TREINO_MODELOS_SUGERIDOS = ["gemini-3.1-pro-preview", "gemini-2.5-pro"];
 export const isTreinoFunction = (fn: AiFunctionKey): boolean => fn === "treino_avaliacao";
 /** A empresa por trás da IA cadastrada (o nome do modelo pode não dizer). */
 export const COMPANY_OF_PROVIDER: Record<AiProviderId, string> = { anthropic: "anthropic", openai: "openai", gemini: "google", ollama: "ollama" };
@@ -515,13 +516,10 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig, opts: 
     if (max !== null && max !== undefined && !(Number.isInteger(max) && max >= 1 && max <= 10)) add("Máximo de buscas por pedido: de 1 a 10.");
   }
 
-  // Avaliação do treino sozinho: comitê com membros de empresas diferentes (regra "conferência por outra empresa")
-  if (isTreinoFunction(fc.key) && TREINO_EXIGE_OUTRA_EMPRESA) {
-    if (fc.mode !== "comite") add("A avaliação do treino sozinho usa o modo comitê, com IAs de empresas diferentes.");
-    else {
-      const companies = new Set([fc.primary, ...reviewers].filter(Boolean).map((r) => companyOf(r as ModelRef)));
-      if (companies.size < 2) add("O comitê da avaliação do treino sozinho precisa de membros de pelo menos duas empresas diferentes.");
-    }
+  // Avaliação do treino sozinho: uma IA (padrão) ou, opcionalmente, o comitê de duas IAs (de qualquer empresa cadastrada)
+  if (isTreinoFunction(fc.key)) {
+    if (fc.mode === "linha") add("A avaliação do treino sozinho usa uma IA ou, opcionalmente, o comitê de duas IAs.");
+    else if (fc.mode === "comite" && (fc.primary ? 1 : 0) + reviewers.length !== 2) add("O comitê da avaliação do treino sozinho tem exatamente duas IAs: a principal e mais uma.");
   }
 
   // modelo pago sem preço (IA09). Com os tetos ligados, refProblems já bloqueia. Com os tetos desligados o gasto dele apareceria

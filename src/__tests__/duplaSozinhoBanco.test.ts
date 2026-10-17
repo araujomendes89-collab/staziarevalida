@@ -118,22 +118,32 @@ describe("Treino sozinho no banco (013430 a 013460)", () => {
       await limpar();
     });
 
-    it("a função treino_avaliacao nasce desligada e só fica pronta com comitê de empresas diferentes e ligadas", async () => {
+    it("a função treino_avaliacao nasce desligada; fica pronta com UMA IA ligada (padrão) ou com o comitê de exatamente duas (opcional, de qualquer empresa)", async () => {
       await sql(`delete from public.ai_functions where key = 'treino_avaliacao'`);
       const pronta = () => sql<{ r: any }>(`select public.solo_ia_function_ready() as r`).then((x) => x[0].r);
       expect((await pronta()).ready).toBe(false); // sem linha salva = desligada
-      await sql(`insert into public.ai_functions (key, mode, primary_ref) values ('treino_avaliacao', 'sozinha', '{"provider":"anthropic","model":"m"}')`);
-      expect((await pronta()).ready).toBe(false); // modo errado
+      await sql(`update public.ai_providers set enabled = (id = 'gemini')`);
+      await sql(`insert into public.ai_functions (key, mode, primary_ref) values ('treino_avaliacao', 'sozinha', '{"provider":"gemini","model":"gemini-3.1-pro-preview"}')`);
+      expect(await pronta()).toMatchObject({ ready: true, mode: "sozinha" }); // uma IA, padrão
+      await sql(`update public.ai_providers set enabled = false`);
+      expect((await pronta()).ready).toBe(false); // IA desligada na Central
+      await sql(`update public.ai_functions set fallback_ref = '{"provider":"anthropic","model":"claude-sonnet-5-5"}' where key = 'treino_avaliacao'`);
+      await sql(`update public.ai_providers set enabled = (id = 'anthropic')`);
+      expect((await pronta()).ready).toBe(true); // a reserva ligada cobre a principal desligada
+      await sql(`delete from public.ai_functions where key = 'treino_avaliacao'`);
+      await sql(`insert into public.ai_functions (key, mode, primary_ref) values ('treino_avaliacao', 'linha', '{"provider":"gemini","model":"m"}')`);
+      expect((await pronta()).ready).toBe(false); // modo linha não existe nesta função
+      // comitê opcional: exatamente duas IAs, ligadas, de qualquer empresa (inclusive da MESMA)
       await comite(d.db, [DUAS[0], { provider: "anthropic", model: "outro" }]);
-      expect((await pronta()).ready).toBe(false); // mesma empresa
+      expect(await pronta()).toMatchObject({ ready: true, mode: "comite" });
       await comite(d.db, DUAS, { ligar: ["anthropic"] });
-      expect((await pronta()).ready).toBe(false); // IA desligada
+      expect((await pronta()).ready).toBe(false); // uma das duas desligada
+      await comite(d.db, [DUAS[0]]);
+      expect((await pronta()).ready).toBe(false); // comitê de uma só
+      await comite(d.db, [DUAS[0], DUAS[1], { provider: "openai", model: "gpt-6.1-sol" }]);
+      expect((await pronta()).ready).toBe(false); // três
       await comite(d.db, DUAS);
-      expect((await pronta()).ready).toBe(true);
-      // Gemini e Anthropic são empresas diferentes; OpenAI também
-      await comite(d.db, [DUAS[0], { provider: "openai", model: "gpt-6.1-sol" }]);
-      expect((await pronta()).ready).toBe(true);
-      await comite(d.db, DUAS);
+      expect(await pronta()).toMatchObject({ ready: true, mode: "comite" });
     });
 
     it("solo_ia_status: equipe passa; aluno passa por cada barreira, na ordem, sem gastar cota", async () => {
@@ -264,7 +274,7 @@ describe("Treino sozinho no banco (013430 a 013460)", () => {
       expect(e.status).toBe("submitted");
       expect(e.checklist).toBeUndefined();
       expect(JSON.stringify(e)).not.toContain("Item um");
-      expect(e.ia.available).toBe(true); // equipe, com a função pronta (comitê de duas empresas)
+      expect(e.ia.available).toBe(true); // equipe, com a função pronta
       await sql(`delete from public.ai_functions where key = 'treino_avaliacao'`);
       const e2 = await rpc(U.admin, "app_fase2_attempt", { p_attempt_id: id });
       expect(e2.ia).toEqual({ available: false, reason: "A avaliação por IA está indisponível agora.", consent_required: false });
@@ -401,6 +411,19 @@ describe("Treino sozinho no banco (013430 a 013460)", () => {
       expect((await sql(`select status, how from public.station_attempts where id = $1`, [id]))[0]).toEqual({ status: "evaluating", how: "ia" });
       // clique duplo: o segundo recebe 409 e não gasta de novo
       expect(await barra()).toMatchObject({ ok: false, status: 409, message: "A avaliação já está em andamento." });
+    });
+
+    it("com UMA IA (padrão, modo sozinha) a preparação passa e o material é o mesmo; só o modo do banco muda", async () => {
+      const id = await aluna();
+      await liberar();
+      await sql(`update public.ai_providers set enabled = (id = 'gemini')`);
+      await sql(`delete from public.ai_functions where key = 'treino_avaliacao'`);
+      await sql(`insert into public.ai_functions (key, mode, primary_ref) values ('treino_avaliacao', 'sozinha', '{"provider":"gemini","model":"gemini-3.1-pro-preview"}')`);
+      const ok = await servico<any>("ch_worker_solo_prepare", { p_user: U.ana, p_attempt: id });
+      expect(ok.ok).toBe(true);
+      expect(ok.material.items).toHaveLength(3);
+      await servico("ch_worker_solo_fail", { p_user: U.ana, p_attempt: id, p_message: "teste" });
+      await comite(d.db, DUAS);
     });
 
     it("cota: o limite do dia vale (429), uma falha devolve a cota e o texto do aluno pode ser reenviado", async () => {

@@ -211,10 +211,19 @@ describe("mergeMembers (spec §3.5, decisão D4)", () => {
     expect(m.note).toBe("Texto organizado e claro.");
   });
 
-  it("um só membro que respondeu, ou dois da mesma empresa: não sai nota de IA", () => {
-    expect(mergeMembers([A()], MAT)).toMatchObject({ ok: false });
+  it("UM avaliador (padrão): vale o que ele disse, sem etiqueta de divergência", () => {
+    const m = mergeMembers([A()], MAT);
+    if (!m.ok) throw new Error("devia valer");
+    expect(m.items.map((i) => [i.item_id, i.grade, i.label])).toEqual([["i1", "correct", null], ["i2", "correct", null], ["i3", "partial", null]]);
+    expect(m.diverged).toBe(0);
+    expect(m.members).toEqual([{ company: "anthropic" }]);
     expect(mergeMembers([], MAT)).toMatchObject({ ok: false });
-    expect(mergeMembers([A(), member("anthropic", BOA())], MAT)).toMatchObject({ ok: false });
+  });
+
+  it("comitê opcional (minMembers 2): com uma só resposta não sai nota de IA; duas da MESMA empresa valem (sem exigir outra empresa)", () => {
+    expect(mergeMembers([A()], MAT, 2)).toMatchObject({ ok: false });
+    expect(mergeMembers([], MAT, 2)).toMatchObject({ ok: false });
+    expect(mergeMembers([A(), member("anthropic", BOA())], MAT, 2)).toMatchObject({ ok: true, diverged: 0 });
   });
 });
 
@@ -228,6 +237,7 @@ const TOKENS: Record<string, Identity> = {
 };
 const DUAS = [{ provider: "anthropic", model: "claude-sonnet-5-5" }, { provider: "gemini", model: "gemini-3.8-flash" }];
 const MESMA = [{ provider: "anthropic", model: "claude-sonnet-5-5" }, { provider: "anthropic", model: "claude-opus-5-5" }];
+const GEMINI_FORTE = { provider: "gemini", model: "gemini-3.1-pro-preview" };
 
 describe("avaliação por IA do treino sozinho (rota, maestro simulado e banco)", () => {
   let d: DuplaDb;
@@ -307,7 +317,14 @@ describe("avaliação por IA do treino sozinho (rota, maestro simulado e banco)"
     await sql(`insert into public.ai_functions (key, mode, primary_ref, reviewers) values ('treino_avaliacao', 'comite', $1::jsonb, $2::jsonb)`, [JSON.stringify(refs[0]), JSON.stringify(refs.slice(1))]);
     invalidateAiConfig(db);
   };
-  /** Aluna liberada (plano Pro, aceite, comitê de duas empresas) e uma entrega pronta para avaliar. */
+  /** O padrão: UMA IA (modo sozinha), com reserva opcional. */
+  const uma = async (ref: { provider: string; model: string }, reserva: { provider: string; model: string } | null = null, ligar = ["anthropic", "gemini", "openai"]) => {
+    await sql(`update public.ai_providers set enabled = (id = any($1::text[]))`, [ligar]);
+    await sql(`delete from public.ai_functions where key = 'treino_avaliacao'`);
+    await sql(`insert into public.ai_functions (key, mode, primary_ref, fallback_ref) values ('treino_avaliacao', 'sozinha', $1::jsonb, $2::jsonb)`, [JSON.stringify(ref), reserva ? JSON.stringify(reserva) : null]);
+    invalidateAiConfig(db);
+  };
+  /** Aluna liberada (plano Pro, aceite, comitê de duas IAs, a opção da equipe) e uma entrega pronta para avaliar. */
   const pronta = async (opts: { answers?: unknown; dia?: number } = {}) => {
     await limpar();
     await setDupla(d.db, { aberto: true, planos: ["pro"] });
@@ -441,19 +458,64 @@ describe("avaliação por IA do treino sozinho (rota, maestro simulado e banco)"
     expect((await tentativa(id)).status).toBe("submitted");
   });
 
-  it("dois membros da mesma empresa: recusa ANTES de gastar (nenhuma chamada, nenhuma cota reservada)", async () => {
+  it("padrão: UMA IA (o Gemini mais forte) avalia sozinha: uma chamada, nota do banco, sem etiqueta de divergência e sem exigir outra empresa", async () => {
+    const id = await pronta();
+    await uma(GEMINI_FORTE);
+    calls = [];
+    behavior = { gemini: () => BOA() };
+    const r = await evaluate(id);
+    expect(r).toMatchObject({ status: 200, body: { ok: true } });
+    expect(calls.map((c) => c.provider)).toEqual(["gemini"]);
+    const a = await tentativa(id);
+    expect(a.status).toBe("done");
+    expect(a.source).toBe("ia");
+    expect(a.marks.map((m: any) => [m.order, m.grade, m.label ?? null])).toEqual([[1, "correct", null], [2, "correct", null], [3, "partial", null]]);
+    expect(a.ia.diverged).toBe(0);
+    expect(Number(a.score)).toBe(7.5);
+    expect(JSON.stringify(r.body)).not.toMatch(/gemini|google|pro-preview/i);
+  });
+
+  it("padrão: a IA caiu, a cota volta; com reserva (de qualquer empresa) a reserva responde", async () => {
     const id = await pronta({ dia: 1 });
+    await uma(GEMINI_FORTE);
+    calls = [];
+    behavior = { gemini: () => { throw new Error("fora do ar"); } };
+    const r = await evaluate(id);
+    expect(r).toMatchObject({ status: 502, body: { error: FALHA } });
+    expect(await tentativa(id)).toMatchObject({ status: "submitted", ia_reserved_at: null, ia_message: FALHA });
+    await uma(GEMINI_FORTE, { provider: "anthropic", model: "claude-sonnet-5-5" });
+    behavior = { gemini: () => { throw new Error("fora do ar"); }, anthropic: () => BOA() };
+    calls = [];
+    expect((await evaluate(id)).status).toBe(200); // limite 1: a cota tinha voltado; a reserva respondeu
+    expect(calls.some((c) => c.provider === "anthropic")).toBe(true);
+    expect((await tentativa(id)).status).toBe("done");
+  });
+
+  it("comitê opcional: duas IAs da MESMA empresa também avaliam (a conferência por outra empresa não é exigida) e as duas são chamadas", async () => {
+    const id = await pronta();
     await comite(MESMA);
+    calls = [];
+    behavior = { anthropic: () => BOA() };
+    const r = await evaluate(id);
+    expect(r.status).toBe(200);
+    expect(calls).toHaveLength(2);
+    expect((await tentativa(id)).status).toBe("done");
+  });
+
+  it("função fora do ar (IA da Central desligada, sem linha salva, modo linha, comitê de três): recusa ANTES de gastar, sem chamada e sem cota", async () => {
+    const id = await pronta({ dia: 1 });
+    await comite(DUAS, ["anthropic"]); // uma das duas desligada
     const r = await evaluate(id);
     expect(r).toMatchObject({ status: 503, body: { error: "A avaliação por IA está indisponível agora." } });
     expect(calls).toHaveLength(0);
     expect(await tentativa(id)).toMatchObject({ status: "submitted", ia_reserved_at: null });
-    // função desligada (IA da Central desligada) e função sem linha salva: o mesmo
-    await comite(DUAS, ["anthropic"]);
+    await uma(GEMINI_FORTE, null, ["anthropic"]); // a única IA da função desligada
+    expect((await evaluate(id)).status).toBe(503);
+    await comite([...DUAS, { provider: "openai", model: "gpt-6.1-sol" }]); // três
     expect((await evaluate(id)).status).toBe(503);
     await sql(`delete from public.ai_functions where key = 'treino_avaliacao'`);
     invalidateAiConfig(db);
-    expect((await evaluate(id)).status).toBe(503);
+    expect((await evaluate(id)).status).toBe(503); // sem linha salva = desligada
     expect(calls).toHaveLength(0);
     expect((await tentativa(id)).ia_reserved_at).toBeNull();
     await comite(DUAS);

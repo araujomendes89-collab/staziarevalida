@@ -360,7 +360,7 @@ const respostasPainel = {
   app_admin_save_dupla: ({ p_aberto, p_planos }) => ({ aberto: p_aberto, planos: p_planos }),
   app_admin_dupla_ia: () => ({
     ...painelIA, funcao_pronta: pronta,
-    funcao_motivo: pronta ? null : "O comitê precisa de pelo menos dois membros de empresas diferentes.",
+    funcao_motivo: pronta ? null : "A IA da função está desligada na Central.",
     elite_libera: new URLSearchParams(location.search).get("elite") === "1",
   }),
   app_admin_save_dupla_ia: ({ p_config }) => {

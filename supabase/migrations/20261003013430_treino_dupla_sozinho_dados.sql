@@ -23,8 +23,10 @@
 --     substituí-lo (senão salvar "aberto/planos" apagaria os blocos 'sozinho', 'radar' e 'convites').
 --  5) app_admin_save_dupla_ia(jsonb): grava só 'treino_dupla' → 'sozinho' → 'ia' { aberto, planos, limite_dia, limite_mes }.
 --     Vazio = bloqueado (falha fechada); nenhum número é proposto aqui (decisão D6 do dono: os limites ainda vão entrar no cálculo).
---  6) A função "Avaliação do treino sozinho" (chave treino_avaliacao) entra na Central de IAs, NASCE DESLIGADA (sem linha salva)
---     e só fica pronta com comitê de IAs de EMPRESAS DIFERENTES (regra "conferência por outra empresa").
+--  6) A função "Avaliação do treino sozinho" (chave treino_avaliacao) entra na Central de IAs e NASCE DESLIGADA (sem linha salva).
+--     Padrão: UM avaliador (decisão do dono de 17/10: o Gemini mais forte do Vertex que a Central oferece). A segunda IA é OPCIONAL:
+--     a equipe liga escolhendo o modo "comitê" (a principal e mais uma, de qualquer empresa cadastrada). A conferência por outra
+--     empresa NÃO é exigida (decisão D3 de 12/10). Com as duas, se divergirem em um item vale o nível menor (D4, no servidor).
 --  7) Regras da IA no banco: solo_ia_function_ready() e solo_ia_status(uid) (internas) dizem se a avaliação por IA está liberada
 --     e o motivo curto quando não está. A cota fica na própria tentativa (ia_reserved_at), no fuso de São Paulo.
 --  8) Cortes por mode: app_dupla_history, dupla_result_payload ("Última vez" só do mesmo modo) e app_admin_dupla_usage (nesta
@@ -238,43 +240,45 @@ begin
 end
 $keys$;
 
--- A empresa por trás de cada IA cadastrada (regra "conferência por outra empresa", decisão do dono de 10/10).
-create or replace function public.solo_ia_company(p_provider text) returns text
-  language sql immutable set search_path = ''
-as $$ select case p_provider when 'anthropic' then 'anthropic' when 'openai' then 'openai' when 'gemini' then 'google' when 'ollama' then 'ollama' else null end $$;
-
--- A função treino_avaliacao está pronta? Linha salva no modo comitê, com a principal e pelo menos um membro, todos de IAs LIGADAS
--- e de pelo menos DUAS empresas diferentes. Interna (só as funções do servidor e as do banco chamam).
--- → { ready: boolean, reason: texto curto ou nulo, companies: n }
+-- A função treino_avaliacao está pronta? Linha salva com a IA principal (modo "sozinha", o padrão) ou com o comitê de EXATAMENTE
+-- duas IAs (a principal e mais uma, de qualquer empresa), com as IAs que vão ser chamadas LIGADAS na Central. No modo sozinha, a
+-- reserva (se houver) pode substituir a principal desligada. Interna (só as funções do servidor e as do banco chamam).
+-- → { ready: boolean, reason: texto curto ou nulo, mode: 'sozinha' | 'comite' | nulo }
 create or replace function public.solo_ia_function_ready() returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
 declare
   f public.ai_functions;
   v_members jsonb;
-  v_n integer;
-  v_companies integer;
   v_off text;
+  v_enabled boolean;
 begin
   select * into f from public.ai_functions where key = 'treino_avaliacao';
   if not found or f.primary_ref is null then
-    return jsonb_build_object('ready', false, 'reason', 'A avaliação por IA está indisponível agora.', 'detail', 'Função sem configuração salva (desligada).', 'companies', 0);
+    return jsonb_build_object('ready', false, 'reason', 'A avaliação por IA está indisponível agora.', 'detail', 'Função sem configuração salva (desligada).', 'mode', null);
   end if;
-  if f.mode <> 'comite' then
-    return jsonb_build_object('ready', false, 'reason', 'A avaliação por IA está indisponível agora.', 'detail', 'A função precisa do modo comitê, com IAs de empresas diferentes.', 'companies', 0);
+  if f.mode = 'comite' then
+    v_members := jsonb_build_array(f.primary_ref) || coalesce(f.reviewers, '[]'::jsonb);
+    if jsonb_array_length(v_members) <> 2 then
+      return jsonb_build_object('ready', false, 'reason', 'A avaliação por IA está indisponível agora.', 'detail', 'O comitê tem exatamente duas IAs: a principal e mais uma.', 'mode', 'comite');
+    end if;
+    select string_agg(m ->> 'provider', ', ') into v_off
+      from jsonb_array_elements(v_members) m
+     where not exists (select 1 from public.ai_providers p where p.id = m ->> 'provider' and p.enabled);
+    if v_off is not null then
+      return jsonb_build_object('ready', false, 'reason', 'A avaliação por IA está indisponível agora.', 'detail', 'IA desligada na Central: ' || v_off || '.', 'mode', 'comite');
+    end if;
+    return jsonb_build_object('ready', true, 'reason', null, 'mode', 'comite');
+  elsif f.mode = 'sozinha' then
+    select exists (select 1 from public.ai_providers p
+                    where p.enabled and (p.id = f.primary_ref ->> 'provider' or p.id = f.fallback_ref ->> 'provider'))
+      into v_enabled;
+    if not v_enabled then
+      return jsonb_build_object('ready', false, 'reason', 'A avaliação por IA está indisponível agora.', 'detail', 'A IA da função está desligada na Central.', 'mode', 'sozinha');
+    end if;
+    return jsonb_build_object('ready', true, 'reason', null, 'mode', 'sozinha');
   end if;
-  v_members := jsonb_build_array(f.primary_ref) || coalesce(f.reviewers, '[]'::jsonb);
-  select count(*), count(distinct public.solo_ia_company(m ->> 'provider')),
-         string_agg(distinct m ->> 'provider', ', ') filter (where not exists (select 1 from public.ai_providers p where p.id = m ->> 'provider' and p.enabled))
-    into v_n, v_companies, v_off
-    from jsonb_array_elements(v_members) m;
-  if v_n < 2 or v_companies < 2 then
-    return jsonb_build_object('ready', false, 'reason', 'A avaliação por IA está indisponível agora.', 'detail', 'O comitê precisa de pelo menos dois membros de empresas diferentes.', 'companies', coalesce(v_companies, 0));
-  end if;
-  if v_off is not null then
-    return jsonb_build_object('ready', false, 'reason', 'A avaliação por IA está indisponível agora.', 'detail', 'IA desligada na Central: ' || v_off || '.', 'companies', v_companies);
-  end if;
-  return jsonb_build_object('ready', true, 'reason', null, 'companies', v_companies);
+  return jsonb_build_object('ready', false, 'reason', 'A avaliação por IA está indisponível agora.', 'detail', 'A função usa uma IA ou, opcionalmente, o comitê de duas IAs.', 'mode', null);
 end
 $$;
 
@@ -536,7 +540,6 @@ revoke execute on function public.app_admin_dupla_ia() from public, anon;
 revoke execute on function public.app_dupla_history(integer) from public, anon;
 revoke execute on function public.app_admin_dupla_usage(text) from public, anon;
 -- Apoios: só rodam por dentro das funções acima (security definer).
-revoke execute on function public.solo_ia_company(text) from public, anon, authenticated;
 revoke execute on function public.solo_ia_function_ready() from public, anon, authenticated;
 revoke execute on function public.solo_sp_day(timestamptz) from public, anon, authenticated;
 revoke execute on function public.solo_ia_status(uuid) from public, anon, authenticated;

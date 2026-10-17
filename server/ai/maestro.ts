@@ -920,8 +920,9 @@ function writerFamily(cfg: AiConfig, model: string): string {
 
 /** O modelo da empresa já escolhido na Central (Verificação primeiro, depois as outras funções); senão o das variáveis ou o padrão. */
 function companyModel(cfg: AiConfig, id: AiProviderId, env: NodeJS.ProcessEnv): ModelRef | null {
-  // (a função de busca na internet fica de fora: o modelo dela é escolhido para buscar, não para conferir)
-  for (const k of ["verificacao", ...FUNCTION_KEYS.filter((f) => f !== "verificacao" && !isSearchFunction(f))] as AiFunctionKey[]) {
+  // (a função de busca na internet e a avaliação do treino sozinho ficam de fora: o modelo delas é escolhido para buscar e para
+  // avaliar o aluno, não para conferir conteúdo)
+  for (const k of ["verificacao", ...FUNCTION_KEYS.filter((f) => f !== "verificacao" && f !== "treino_avaliacao" && !isSearchFunction(f))] as AiFunctionKey[]) {
     const fc = cfg.functions[k];
     const found = fc ? [fc.primary, fc.fallback, ...(fc.reviewers ?? [])].find((r) => r?.provider === id) : null;
     if (found) return found;

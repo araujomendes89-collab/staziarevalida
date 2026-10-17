@@ -20,13 +20,20 @@ const DEFAULT_MAX_SEARCHES = 5;
 const MAX_SEARCHES_PROBLEM = "Máximo de buscas por pedido: de 1 a 10.";
 const validMax = (t) => t.trim() === "" || (/^\d+$/.test(t.trim()) && Number(t) >= 1 && Number(t) <= 10);
 /**
- * Avaliação do treino sozinho (a IA que atende o aluno): nasce desligada (só roda com a configuração salva), exige o modo comitê e
- * membros de empresas diferentes (conferência por outra empresa); todos os membros avaliam de verdade.
+ * Avaliação do treino sozinho (a IA que atende o aluno): nasce desligada (só roda com a configuração salva). Padrão: UMA IA, o Gemini
+ * mais forte do Vertex que a Central oferece. A segunda IA é OPCIONAL (modo comitê, de qualquer empresa): se divergirem em um
+ * item, vale o nível menor. Sem conferência obrigatória por outra empresa (decisão D3 do dono).
  */
 const TREINO_FN = "treino_avaliacao";
-const TREINO_COMPANIES_NOTICE = "Esta função precisa de dois membros de empresas diferentes.";
-const TREINO_COMPANIES_PROBLEM = "O comitê da avaliação do treino sozinho precisa de membros de pelo menos duas empresas diferentes.";
+const TREINO_MODES = [
+  { value: "sozinha", label: "Uma IA (padrão)" },
+  { value: "comite", label: "Comitê de duas IAs (opcional)" },
+];
+/** Gemini mais forte primeiro (os que a chave do Vertex em modo expresso aceita). */
+const TREINO_SUGERIDOS = ["gemini-3.1-pro-preview", "gemini-2.5-pro"];
+const TREINO_COMITE_PROBLEM = "O comitê da avaliação do treino sozinho tem exatamente duas IAs: a principal e mais uma.";
 const TREINO_OFF_NOTICE = "Nasce desligada: sem configuração salva, a avaliação por IA do treino sozinho não roda.";
+const TREINO_SECOND_NOTICE = "A segunda IA é opcional e fica desligada por padrão. Ao escolher o comitê, uma segunda IA, de qualquer empresa, avalia o mesmo treino; se as duas divergirem em um item, vale o nível menor.";
 const MAX_OTHERS = { linha: 3, comite: 3 };
 const toRef = (r) => (r && r.provider && r.model ? { provider: r.provider, model: String(r.model).trim() } : null);
 const asDraft = (r) => (r ? { provider: r.provider ?? "", model: r.model ?? "" } : { ...EMPTY });
@@ -77,7 +84,7 @@ export function FunctionEditor({ fnKey, label, saved, check, providers: allProvi
   const treino = fnKey === TREINO_FN;
   const providers = search ? allProviders.filter((p) => p.id !== "ollama" && p.id !== "gemini") : allProviders; // o Ollama não busca na internet e o Gemini não limita a busca aos sites oficiais
   const init = () => ({
-    mode: search ? "sozinha" : treino ? "comite" : (saved?.mode ?? "sozinha"),
+    mode: search ? "sozinha" : treino ? (saved?.mode === "comite" ? "comite" : "sozinha") : (saved?.mode ?? "sozinha"),
     maxSearches: saved?.max_searches == null ? "" : String(saved.max_searches),
     care: saved?.care ?? "caprichado",
     primary: asDraft(saved?.primary_ref),
@@ -101,24 +108,25 @@ export function FunctionEditor({ fnKey, label, saved, check, providers: allProvi
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
   const others = draft.mode === "sozinha" ? [] : draft.others.length ? draft.others : [{ ...EMPTY }];
-  const max = MAX_OTHERS[draft.mode] ?? 0;
+  const max = treino ? 1 : (MAX_OTHERS[draft.mode] ?? 0);
+  // o Gemini mais forte da lista que a Central oferece para esta função (sugestão; a equipe escolhe)
+  const geminiModels = (allProviders.find((p) => p.id === "gemini")?.models ?? []).map((m) => m.id);
+  const sugerido = treino ? (TREINO_SUGERIDOS.find((m) => geminiModels.includes(m)) ?? (geminiModels.length === 0 ? TREINO_SUGERIDOS[0] : null)) : null;
   const setOther = (i, v) => set({ others: others.map((o, j) => (j === i ? v : o)) });
 
   const complete = others.filter((o) => toRef(o));
   const half = others.some((o) => (o.provider || o.model) && !toRef(o));
   const minOthers = draft.mode === "linha" ? 1 : draft.mode === "comite" ? 1 : 0;
-  // cada IA cadastrada pertence a uma empresa (Claude, OpenAI, Gemini ou Ollama): IAs diferentes são empresas diferentes
-  const treinoCompanies = new Set([draft.primary, ...complete].filter((r) => toRef(r)).map((r) => r.provider));
   const localProblem = search && !validMax(draft.maxSearches)
     ? MAX_SEARCHES_PROBLEM
     : half
     ? "Complete ou remova o conferente/membro incompleto."
     : draft.mode === "linha" && complete.length < 1
       ? "Linha de produção precisa de pelo menos 1 conferente."
-      : draft.mode === "comite" && complete.length < minOthers
-        ? "O comitê precisa de pelo menos 2 IAs."
-        : treino && toRef(draft.primary) && complete.length >= 1 && treinoCompanies.size < 2
-          ? TREINO_COMPANIES_PROBLEM
+      : treino && draft.mode === "comite" && complete.length !== 1
+        ? TREINO_COMITE_PROBLEM
+        : draft.mode === "comite" && complete.length < minOthers
+          ? "O comitê precisa de pelo menos 2 IAs."
           : null;
 
   const run = async (fn, after) => {
@@ -171,14 +179,24 @@ export function FunctionEditor({ fnKey, label, saved, check, providers: allProvi
 
       {treino && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{TREINO_COMPANIES_NOTICE}</div>
+          <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+            {sugerido ? `Uma IA avalia o treino. Sugestão: Gemini pelo Vertex, o modelo mais forte da lista (${sugerido}).` : "Uma IA avalia o treino. Sugestão: o Gemini mais forte que a lista do Vertex oferecer."}
+          </div>
+          <div style={subtle}>{TREINO_SECOND_NOTICE}</div>
           {!saved && <div style={subtle}>{TREINO_OFF_NOTICE}</div>}
+          {sugerido && (
+            <div>
+              <Button size="sm" variant="secondary" onClick={() => set({ primary: { provider: "gemini", model: sugerido } })}>
+                Usar a sugestão
+              </Button>
+            </div>
+          )}
         </div>
       )}
       {search ? (
         <div style={{ font: "var(--type-body-sm)" }}>Modo: sozinha (principal e reserva)</div>
       ) : treino ? (
-        <div style={{ font: "var(--type-body-sm)" }}>Modo: comitê (obrigatório)</div>
+        <SelectField label="Modo" aria-label={`Modo — ${label}`} value={draft.mode} onChange={(e) => set({ mode: e.target.value })} options={TREINO_MODES} />
       ) : (
         <SelectField label="Modo" aria-label={`Modo — ${label}`} value={draft.mode} onChange={(e) => set({ mode: e.target.value })} options={MODES} />
       )}
@@ -192,10 +210,10 @@ export function FunctionEditor({ fnKey, label, saved, check, providers: allProvi
       </div>
       {draft.mode !== "sozinha" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={subtle}>{draft.mode === "linha" ? "Conferentes (1 a 3)" : "Outros membros — a principal também participa; total de 2 a 4"}</div>
+          <div style={subtle}>{treino ? "Segunda IA — a principal também avalia; o comitê tem exatamente duas IAs" : draft.mode === "linha" ? "Conferentes (1 a 3)" : "Outros membros — a principal também participa; total de 2 a 4"}</div>
           <div style={subtle}>
             {treino
-              ? "Todos os membros avaliam o treino; a principal também participa."
+              ? "As duas IAs avaliam o mesmo treino sem ver uma à outra."
               : fnKey === "verificacao"
               ? `No processamento só a IA principal e a reserva rodam; ${draft.mode === "linha" ? "os conferentes" : "os membros"} só são usados na conferência de rascunhos feita por comando.`
               : `${draft.mode === "linha" ? "Por enquanto os conferentes não são chamados" : "Por enquanto os membros não são chamados"}: a função usa só a IA principal e a reserva.`}
@@ -203,7 +221,7 @@ export function FunctionEditor({ fnKey, label, saved, check, providers: allProvi
           {others.map((o, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
               <div style={{ flex: "1 1 360px" }}>
-                <ModelPicker fn={label} title={`${draft.mode === "linha" ? "Conferente" : "Membro"} ${i + 1}`} value={o} onChange={(v) => setOther(i, v)} providers={providers} checks={providerChecks} savedProviders={(saved?.reviewers ?? []).map((r) => r.provider)} />
+                <ModelPicker fn={label} title={treino ? "Segunda IA" : `${draft.mode === "linha" ? "Conferente" : "Membro"} ${i + 1}`} value={o} onChange={(v) => setOther(i, v)} providers={providers} checks={providerChecks} savedProviders={(saved?.reviewers ?? []).map((r) => r.provider)} />
               </div>
               {others.length > 1 && (
                 <Button size="sm" variant="ghost" icon="trash-2" onClick={() => set({ others: others.filter((_, j) => j !== i) })}>
@@ -215,7 +233,7 @@ export function FunctionEditor({ fnKey, label, saved, check, providers: allProvi
           {others.length < max && (
             <div>
               <Button size="sm" variant="secondary" icon="plus" onClick={() => set({ others: [...others, { ...EMPTY }] })}>
-                {draft.mode === "linha" ? "Adicionar conferente" : "Adicionar membro"}
+                {treino ? "Adicionar a segunda IA" : draft.mode === "linha" ? "Adicionar conferente" : "Adicionar membro"}
               </Button>
             </div>
           )}

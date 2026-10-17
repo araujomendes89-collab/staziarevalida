@@ -84,7 +84,7 @@ Migrações `…013430` a `…013460` (ordem para colar: depois da `013420`; cad
 - **013450** · funções de **serviço** `ch_worker_solo_prepare` / `ch_worker_solo_save_eval` / `ch_worker_solo_fail` (só o servidor Node executa): barreiras antes de qualquer gasto, reserva da cota (a própria tentativa, fuso de São Paulo), a nota é calculada no banco.
 - **013460** · "Uso do mês" com o sozinho à parte e `solo_attempts` na exportação dos dados.
 
-Regras: a avaliação por IA só roda com a função `treino_avaliacao` salva em **modo comitê com IAs de empresas diferentes**; limites por dia e por mês **vazios = bloqueada**; equipe passa por plano, aceite e limite; o aceite é o dos Tutores (`tutor_ia`); o benefício Elite "correção de estação" (`station_feedback_for`, migração 9731) libera sem estar nos planos marcados. Desfazer: `supabase/desfazer/20261003013430…013460`.
+Regras: a avaliação por IA só roda com a função `treino_avaliacao` salva na Central (desligada por padrão): **uma IA** (o Gemini mais forte do Vertex que a Central oferece) ou, se a equipe ligar, o **comitê de duas IAs** (de qualquer empresa; se divergirem, vale o nível menor); limites por dia e por mês **vazios = bloqueada**; equipe passa por plano, aceite e limite; o aceite é o dos Tutores (`tutor_ia`); o benefício Elite "correção de estação" (`station_feedback_for`, migração 9731) libera sem estar nos planos marcados. Desfazer: `supabase/desfazer/20261003013430…013460`.
 
 ## Aprovar estações (revisão médica)
 

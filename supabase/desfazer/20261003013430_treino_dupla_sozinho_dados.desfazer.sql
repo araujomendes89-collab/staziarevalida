@@ -11,5 +11,4 @@ drop function if exists public.solo_ia_function_ready();
 drop function if exists public.solo_plan_matches(uuid, text);
 drop function if exists public.station_feedback_for(uuid);
 drop function if exists public.solo_sp_day(timestamptz);
-drop function if exists public.solo_ia_company(text);
 update public.app_settings set value = value - 'sozinho' where key = 'treino_dupla';
