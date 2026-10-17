@@ -12,6 +12,7 @@ import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 import { BillingError, type Billing } from "./core";
 import { BillingSignatureError, type PaymentProvider } from "./provider";
 import type { Avisos } from "../avisos/avisos";
+import type { EmailsCobranca } from "../avisos/emailsCobranca";
 
 export interface BillingRoutesDeps {
   billing: Billing;
@@ -20,6 +21,8 @@ export interface BillingRoutesDeps {
   log?: (m: string) => void;
   /** Avisos de cobrança (013760): e-mail logo depois do aviso do fornecedor e na tarefa diária. Opcional. */
   avisos?: Avisos | null;
+  /** 013850: e-mail "Sua nota fiscal" ao aluno e alertas de gasto de IA ao dono. Opcional. */
+  emails?: EmailsCobranca | null;
 }
 
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -48,6 +51,8 @@ export function createWebhookHandler(get: () => BillingRoutesDeps | null) {
       await deps.billing.handleNotice(notice);
       // o aviso ao aluno (pagamento falhou / acesso liberado) nasce no banco; o e-mail sai já, sem atrasar a resposta por erro
       await deps.avisos?.enviar(5).catch((e) => deps.log?.(`[avisos] envio depois do aviso falhou: ${(e as Error).message}`.slice(0, 300)));
+      // nota fiscal autorizada: o e-mail "Sua nota fiscal" sai já (o que sobrar vai na tarefa de hora em hora)
+      if (notice.kind === "invoice") await deps.emails?.enviarNotas(5).catch((e) => deps.log?.(`[notas] envio depois do aviso falhou: ${(e as Error).message}`.slice(0, 300)));
       res.json({ received: true });
     } catch (e) {
       deps.log?.(`[billing] falha ao processar ${notice.eventId}: ${(e as Error).message}`.slice(0, 300));
@@ -65,7 +70,9 @@ export function createBillingRouter(get: () => BillingRoutesDeps | null) {
     const secret = process.env.CRON_SECRET ?? "";
     const got = String(req.headers.authorization ?? "");
     if (!secret || !sameSecret(`Bearer ${secret}`, got)) return fail(res, 401, "Não autorizado.");
-    if (!deps?.provider) return res.json({ enabled: false });
+    // alertas de gasto de IA ao dono e e-mails de nota (013850): valem mesmo com a cobrança desligada (o gasto de IA existe sem ela)
+    const emails = deps?.emails ? await deps.emails.rodar().catch((e) => (deps.log?.(`[emails] tarefa falhou: ${(e as Error).message}`.slice(0, 300)), { erro: true })) : null;
+    if (!deps?.provider) return res.json({ enabled: false, emails });
     try {
       const cobranca = await deps.billing.runScheduled();
       // depois do Pix de renovação gerado (7 dias antes), os avisos 7/3/1 e de acesso pausado; e os e-mails pendentes
@@ -78,7 +85,9 @@ export function createBillingRouter(get: () => BillingRoutesDeps | null) {
           avisos = { erro: true };
         }
       }
-      res.json({ ...cobranca, avisos });
+      // as notas que a tarefa acabou de achar: o e-mail sai nesta mesma rodada
+      const notas = cobranca.notas && deps.emails ? await deps.emails.enviarNotas(50).catch(() => ({ erro: true })) : null;
+      res.json({ ...cobranca, avisos, emails, ...(notas ? { notas_email: notas } : {}) });
     } catch (e) {
       deps.log?.(`[billing] tarefa agendada falhou: ${(e as Error).message}`.slice(0, 300));
       fail(res, 500, shown(e));
@@ -120,5 +129,8 @@ export function createBillingRouter(get: () => BillingRoutesDeps | null) {
   router.post("/payment-method", run((d, req) => d.billing.changeMethod(req.user!, req.body ?? {})));
   router.post("/cancel-renewal", run((d, req) => d.billing.cancelRenewal(req.user!)));
   router.post("/refunds", run((d, req) => d.billing.refund(req.user!, req.body?.cobranca_id)));
+  // Administração > ficha do aluno > Pagamentos > "Devolver pagamento" (013850). Só administrador: o banco confere o papel de quem
+  // está logado (ch_worker_billing_admin_devolucao) e grava quem fez.
+  router.post("/admin/devolver", run((d, req) => d.billing.adminRefund(req.user!, req.body ?? {})));
   return router;
 }

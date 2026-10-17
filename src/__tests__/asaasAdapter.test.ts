@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
-import { asaasProvider, asaasStatus, createAsaasProvider, toProviderCharge, webhookTokenMatches } from "../../server/billing/asaasAdapter";
+import { asaasInvoiceStatus, asaasProvider, asaasStatus, createAsaasProvider, toProviderCharge, toProviderInvoice, webhookTokenMatches } from "../../server/billing/asaasAdapter";
 import { BillingSignatureError, ProviderError } from "../../server/billing/provider";
 import { descricaoDaNota } from "../../server/billing/nota";
 
@@ -246,5 +246,44 @@ describe("chamadas à API", () => {
     const p = asaasProvider({ apiKey: KEY, webhookToken: TOKEN, fetchImpl: f });
     expect(await p.ensureCustomer({ userId: "u1", email: "a@b.dev", name: "Aluno Teste", document: "36638544691" })).toBe("cus_novo");
     expect(calls[1].body).toMatchObject({ notificationDisabled: true, externalReference: "u1", cpfCnpj: "36638544691" });
+  });
+});
+
+describe("nota fiscal: aviso INVOICE_* e leitura da nota (013850)", () => {
+  const nota = fx("189-nota-depois").resposta;
+  const NFSE = { serviceCode: "08.02.01", serviceName: "Instrução", iss: 2.01 };
+
+  it("o aviso da nota vira 'invoice' (o núcleo relê a nota); sem id da nota continua ignorado", () => {
+    const p = asaasProvider({ apiKey: KEY, webhookToken: TOKEN });
+    const n = p.parseNotice(Buffer.from(JSON.stringify({ id: "evt_9", event: "INVOICE_AUTHORIZED", invoice: nota })), { "asaas-access-token": TOKEN });
+    expect(n).toEqual({ kind: "invoice", eventId: "evt_9", event: "INVOICE_AUTHORIZED", invoiceId: "inv_000000590510" });
+    expect(p.parseNotice(Buffer.from(JSON.stringify({ id: "evt_10", event: "INVOICE_CANCELED" })), { "asaas-access-token": TOKEN }).kind).toBe("ignored");
+  });
+
+  it("traduz a nota real do sandbox: autorizada, com o PDF, o número e a cobrança", () => {
+    expect(toProviderInvoice(nota)).toEqual({ id: "inv_000000590510", status: "autorizada", chargeId: "pay_b8agr0lj3ghifywt", pdfUrl: nota.pdfUrl, numero: "590510" });
+    expect(["SCHEDULED", "SYNCHRONIZED", "AUTHORIZED", "PROCESSING_CANCELLATION", "CANCELED", "CANCELLATION_DENIED", "ERROR"].map(asaasInvoiceStatus))
+      .toEqual(["agendada", "agendada", "autorizada", "cancelando", "cancelada", "autorizada", "erro"]);
+    expect(toProviderInvoice({ ...nota, pdfUrl: "http://inseguro/x.pdf" }).pdfUrl).toBeNull();
+  });
+
+  it("lê a nota e as notas de uma cobrança pela API; nota de outra conta (404) = null", async () => {
+    const { f, calls } = fakeFetch([
+      [/\/invoices\/inv_000000590510$/, "GET", nota],
+      [/\/invoices\?payment=pay_b8agr0lj3ghifywt/, "GET", { data: [nota] }],
+    ]);
+    const p = asaasProvider({ apiKey: KEY, webhookToken: TOKEN, nfse: NFSE, fetchImpl: f });
+    expect(p.capabilities.invoices).toBe(true);
+    expect((await p.getInvoice!("inv_000000590510"))?.status).toBe("autorizada");
+    expect(await p.getInvoice!("inv_de_outra_conta")).toBeNull();
+    expect((await p.listInvoices!("pay_b8agr0lj3ghifywt")).map((i) => i.id)).toEqual(["inv_000000590510"]);
+    expect(calls.every((c) => c.method === "GET")).toBe(true);
+    expect(asaasProvider({ apiKey: KEY, webhookToken: TOKEN }).capabilities.invoices).toBe(false);
+  });
+
+  it("os avisos do cliente no Asaas (sandbox) não têm evento de nota fiscal: por isso o e-mail da nota é nosso", () => {
+    const eventos = fx("21-notificacoes-padrao-cliente").resposta.data.map((x: { event: string }) => x.event);
+    expect(eventos.length).toBeGreaterThan(0);
+    expect(eventos.some((e: string) => /INVOICE|NOTA|FISCAL/i.test(e))).toBe(false);
   });
 });
