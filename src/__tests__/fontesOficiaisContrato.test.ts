@@ -150,9 +150,9 @@ describe("Contrato: Central de IAs (FunctionEditor e AdminAI)", () => {
     expect((await http(ai, "PUT", "/functions/busca_fontes", { config: { ...body.config, primary: { provider: "ollama", model: "llama-x" } } })).status).toBe(400);
   });
 
-  it("o resumo da equipe traz as 9 funções (o texto 'de N' da Central de Conteúdo usa essa lista)", async () => {
+  it("o resumo da equipe traz as 10 funções (o texto 'de N' da Central de Conteúdo usa essa lista)", async () => {
     const summary = (await http(ai, "GET", "/summary")).body;
-    expect(summary.functions).toHaveLength(9); // 9910 (similaridade) e 9941 (analise_mudancas) somaram funções à Central de IAs
+    expect(summary.functions).toHaveLength(10); // 9910 (similaridade), 9941 (analise_mudancas) e 13430 (treino_avaliacao) somaram funções à Central de IAs
     expect(summary.functions.find((f: any) => f.key === "busca_fontes")).toMatchObject({ configured: true });
   });
 

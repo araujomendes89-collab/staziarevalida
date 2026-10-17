@@ -19,6 +19,14 @@ const SEARCH_FN = "busca_fontes";
 const DEFAULT_MAX_SEARCHES = 5;
 const MAX_SEARCHES_PROBLEM = "Máximo de buscas por pedido: de 1 a 10.";
 const validMax = (t) => t.trim() === "" || (/^\d+$/.test(t.trim()) && Number(t) >= 1 && Number(t) <= 10);
+/**
+ * Avaliação do treino sozinho (a IA que atende o aluno): nasce desligada (só roda com a configuração salva), exige o modo comitê e
+ * membros de empresas diferentes (conferência por outra empresa); todos os membros avaliam de verdade.
+ */
+const TREINO_FN = "treino_avaliacao";
+const TREINO_COMPANIES_NOTICE = "Esta função precisa de dois membros de empresas diferentes.";
+const TREINO_COMPANIES_PROBLEM = "O comitê da avaliação do treino sozinho precisa de membros de pelo menos duas empresas diferentes.";
+const TREINO_OFF_NOTICE = "Nasce desligada: sem configuração salva, a avaliação por IA do treino sozinho não roda.";
 const MAX_OTHERS = { linha: 3, comite: 3 };
 const toRef = (r) => (r && r.provider && r.model ? { provider: r.provider, model: String(r.model).trim() } : null);
 const asDraft = (r) => (r ? { provider: r.provider ?? "", model: r.model ?? "" } : { ...EMPTY });
@@ -66,9 +74,10 @@ const subtle = { font: "var(--type-caption)", color: "var(--text-tertiary)" };
 
 export function FunctionEditor({ fnKey, label, saved, check, providers: allProviders, providerChecks, backend, onSaved }) {
   const search = fnKey === SEARCH_FN;
+  const treino = fnKey === TREINO_FN;
   const providers = search ? allProviders.filter((p) => p.id !== "ollama" && p.id !== "gemini") : allProviders; // o Ollama não busca na internet e o Gemini não limita a busca aos sites oficiais
   const init = () => ({
-    mode: search ? "sozinha" : (saved?.mode ?? "sozinha"),
+    mode: search ? "sozinha" : treino ? "comite" : (saved?.mode ?? "sozinha"),
     maxSearches: saved?.max_searches == null ? "" : String(saved.max_searches),
     care: saved?.care ?? "caprichado",
     primary: asDraft(saved?.primary_ref),
@@ -98,6 +107,8 @@ export function FunctionEditor({ fnKey, label, saved, check, providers: allProvi
   const complete = others.filter((o) => toRef(o));
   const half = others.some((o) => (o.provider || o.model) && !toRef(o));
   const minOthers = draft.mode === "linha" ? 1 : draft.mode === "comite" ? 1 : 0;
+  // cada IA cadastrada pertence a uma empresa (Claude, OpenAI, Gemini ou Ollama): IAs diferentes são empresas diferentes
+  const treinoCompanies = new Set([draft.primary, ...complete].filter((r) => toRef(r)).map((r) => r.provider));
   const localProblem = search && !validMax(draft.maxSearches)
     ? MAX_SEARCHES_PROBLEM
     : half
@@ -106,7 +117,9 @@ export function FunctionEditor({ fnKey, label, saved, check, providers: allProvi
       ? "Linha de produção precisa de pelo menos 1 conferente."
       : draft.mode === "comite" && complete.length < minOthers
         ? "O comitê precisa de pelo menos 2 IAs."
-        : null;
+        : treino && toRef(draft.primary) && complete.length >= 1 && treinoCompanies.size < 2
+          ? TREINO_COMPANIES_PROBLEM
+          : null;
 
   const run = async (fn, after) => {
     setState({ busy: true, problems: null, error: null, warnings: null });
@@ -133,7 +146,7 @@ export function FunctionEditor({ fnKey, label, saved, check, providers: allProvi
     );
   const revert = () => {
     // a busca de fontes nunca usa as variáveis do servidor: tirar a configuração só a desliga
-    const question = search ? `Desligar "${label}"? A configuração salva será apagada e a função para de rodar.` : `Voltar "${label}" às variáveis do servidor? A configuração salva aqui será apagada.`;
+    const question = search || treino ? `Desligar "${label}"? A configuração salva será apagada e a função para de rodar.` : `Voltar "${label}" às variáveis do servidor? A configuração salva aqui será apagada.`;
     if (!window.confirm(question)) return;
     run(() => aiSend(backend, "PUT", `/functions/${fnKey}`, { config: null }), true);
   };
@@ -156,8 +169,16 @@ export function FunctionEditor({ fnKey, label, saved, check, providers: allProvi
         </ul>
       )}
 
+      {treino && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{TREINO_COMPANIES_NOTICE}</div>
+          {!saved && <div style={subtle}>{TREINO_OFF_NOTICE}</div>}
+        </div>
+      )}
       {search ? (
         <div style={{ font: "var(--type-body-sm)" }}>Modo: sozinha (principal e reserva)</div>
+      ) : treino ? (
+        <div style={{ font: "var(--type-body-sm)" }}>Modo: comitê (obrigatório)</div>
       ) : (
         <SelectField label="Modo" aria-label={`Modo — ${label}`} value={draft.mode} onChange={(e) => set({ mode: e.target.value })} options={MODES} />
       )}
@@ -173,7 +194,9 @@ export function FunctionEditor({ fnKey, label, saved, check, providers: allProvi
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={subtle}>{draft.mode === "linha" ? "Conferentes (1 a 3)" : "Outros membros — a principal também participa; total de 2 a 4"}</div>
           <div style={subtle}>
-            {fnKey === "verificacao"
+            {treino
+              ? "Todos os membros avaliam o treino; a principal também participa."
+              : fnKey === "verificacao"
               ? `No processamento só a IA principal e a reserva rodam; ${draft.mode === "linha" ? "os conferentes" : "os membros"} só são usados na conferência de rascunhos feita por comando.`
               : `${draft.mode === "linha" ? "Por enquanto os conferentes não são chamados" : "Por enquanto os membros não são chamados"}: a função usa só a IA principal e a reserva.`}
           </div>
@@ -243,7 +266,7 @@ export function FunctionEditor({ fnKey, label, saved, check, providers: allProvi
         </Button>
         {saved && (
           <Button size="sm" variant="secondary" disabled={state.busy} onClick={revert}>
-            {search ? "Desligar a função" : "Voltar às variáveis do servidor"}
+            {search || treino ? "Desligar a função" : "Voltar às variáveis do servidor"}
           </Button>
         )}
       </div>

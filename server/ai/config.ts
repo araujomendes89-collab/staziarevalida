@@ -656,7 +656,7 @@ function savedFunctionCheck(saved: FunctionConfig, cfg: AiConfig, env: NodeJS.Pr
 }
 
 /**
- * Situação de cada uma das 8 funções: pronta ou o motivo. Função sem configuração salva usa as variáveis de ambiente, menos a
+ * Situação de cada função (FUNCTION_KEYS): pronta ou o motivo. Função sem configuração salva usa as variáveis de ambiente, menos a
  * de busca na internet, que sem configuração fica desligada.
  */
 export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): Record<AiFunctionKey, FunctionCheck> {

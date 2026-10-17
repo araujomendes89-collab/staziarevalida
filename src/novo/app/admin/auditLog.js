@@ -19,6 +19,7 @@ export const AI_FUNCTION_NAME = {
   busca_fontes: "Busca de fontes oficiais",
   similaridade: "Questões parecidas",
   analise_mudancas: "Análise do que mudou (Vigilância científica)",
+  treino_avaliacao: "Avaliação do treino sozinho",
 };
 /** Dólar em pt-BR: "US$ 0,0123" (até 4 casas); zero vira "US$ 0" (igual ao da Central de IAs). */
 const usd = (n) => {
@@ -55,6 +56,7 @@ export const ACTION_LABEL = {
   "station.summary.review": "Revisão do resumo sobre o tema da estação",
   // treinamento em dupla
   "dupla.save": "Treinamento em Dupla: acesso salvo",
+  "dupla.ia.save": "Treino sozinho: avaliação por IA salva",
   "dupla.chat.save": "Chat do Treinamento em Dupla: regras salvas",
   "dupla.chat.denuncia.ler": "Denúncia do chat aberta",
   "dupla.chat.denuncia.encerrar": "Denúncia do chat encerrada",
