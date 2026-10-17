@@ -23,6 +23,7 @@ import { NO_EVALUATION, TUTOR_PROMPT_LAYERS, TUTOR_SCHEMA, TUTOR_VERSION, compos
 import { ComplementarTermsUnavailable, labelIsSupportMaterial, loadComplementarTerms } from "../contentHub/complementarGuard";
 import { fallbackReply, safetyCheck, spokenText, type BaseBlock, type SafetyResult, type Violation } from "./safety";
 import { deterministicTutor, tutorSettings } from "./settings";
+import { reservarCarteira, type ReservaCarteira } from "../planos/carteira";
 
 export interface TutorDeps {
   db: ContentDb;
@@ -55,6 +56,8 @@ export interface TutorAction {
   voiceCallId?: string | null;
   /** Gasta 1 interação de texto mesmo vindo pela voz (turno da Nexus pela voz do professor). Padrão: só fora da voz. */
   chargeText?: boolean;
+  /** De onde veio o turno: "janela" = janelinha do Tutor (mini tutor). Só muda o recurso registrado na carteira. */
+  origem?: "janela" | null;
 }
 
 /** Erro que o aluno pode ler (com o código HTTP certo). */
@@ -428,18 +431,23 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
 
     // ---- reserva atômica de uma interação (dois aparelhos não passam do limite juntos); devolvida se a IA falhar.
     // Turno da voz ao vivo não reserva: a voz é cobrada pelo tempo autorizado na ligação.
+    // Carteira de créditos (planos, etapa 2): com a chave desligada, por dentro é a MESMA reserva antiga (ch_worker_tutor_text_reserve);
+    // a carteira só anota o custo real. Com a chave ligada, a carteira decide pelos créditos.
     let release: () => Promise<unknown> = async () => undefined;
+    let wallet: ReservaCarteira | null = null;
     if (charged) {
-      const reserved = await deps.db.service<{ ok: boolean; reason?: string; reservation?: number; entitlement?: Entitlement }>("ch_worker_tutor_text_reserve", { p_user: userId, p_session_id: sessionId });
-      if (!reserved.ok) {
-        if (reserved.reason === "trial_expired") throw new TutorError(trialOverMessage(reserved.entitlement ?? ent), 403);
-        if (reserved.reason === "disabled") throw new TutorError("O Tutor ainda não está ligado.", 503);
-        throw new TutorError(textLimitMessage(reserved.entitlement ?? ent), 429);
+      wallet = await reservarCarteira(deps.db, { user: userId, recurso: action.origem === "janela" ? "tutor_janela" : "tutor_texto", sessionId, log: deps.log });
+      if (!wallet.ok) {
+        if (wallet.reason === "trial_expired") throw new TutorError(trialOverMessage(wallet.entitlement ?? ent), 403);
+        if (wallet.reason === "disabled") throw new TutorError("O Tutor ainda não está ligado.", 503);
+        if (wallet.modo === "ligado") throw new TutorError(wallet.mensagem || textLimitMessage(wallet.entitlement ?? ent), wallet.reason === "trancado" ? 403 : wallet.reason === "teto_global" ? 503 : 429);
+        throw new TutorError(textLimitMessage(wallet.entitlement ?? ent), 429);
       }
-      release = () => deps.db.service("ch_worker_tutor_text_release", { p_user: userId, p_reservation: reserved.reservation }).catch(() => undefined);
+      release = wallet.devolver;
     }
 
     // ---- gerar e validar (uma nova tentativa com a correção)
+    let custoConhecido = false; // sem preço do provedor, a carteira cobra a reserva (nunca "zero")
     const usage = { calls: 0, input_tokens: 0, output_tokens: 0, cost_usd: 0, provider: provider.name, model: provider.model, ...(voiceTurn && !charged ? { feature: "tutor_voice_backend" } : {}) };
     let out: TutorOutput | null = null;
     let check: SafetyResult | null = null;
@@ -469,6 +477,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       usage.input_tokens += r.inputTokens ?? 0;
       usage.output_tokens += r.outputTokens ?? 0;
       usage.cost_usd += r.costUsd ?? 0;
+      if (r.costUsd != null) custoConhecido = true;
       model = r.model;
       providerName = r.provider;
       usage.model = r.model;
@@ -550,6 +559,9 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       await release();
       throw error;
     }
+    // acerta a carteira pelo custo real (nunca derruba a resposta já gravada)
+    const conta = wallet ? await wallet.confirmar(custoConhecido ? usage.cost_usd : null) : null;
+    const pelaCarteira = wallet?.modo === "ligado" && conta?.ok === true && conta.usado_hoje != null;
     return {
       message: {
         id: saved.id, role: "tutor", content: reply, spoken: spokenText(reply), grounding: String(meta.grounding), sources: meta.sources as { ref: string; label: string }[], hint_level: hintLevel,
@@ -559,8 +571,8 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       tone: stateLayer(ctx.personality.id, emotion, engine, profanity),
       gate: emotion.gate,
       question_state: reveals ? "revealed" : ctx.session.question_state,
-      used_today: saved.used_today,
-      daily_limit: ent.text.limit,
+      used_today: pelaCarteira ? Number(conta!.usado_hoje) : saved.used_today,
+      daily_limit: pelaCarteira && conta!.limite_hoje != null ? Number(conta!.limite_hoje) : ent.text.limit,
     };
   } finally {
     busy.delete(userId);

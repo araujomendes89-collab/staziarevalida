@@ -223,7 +223,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     }
   });
 
-  /** Um turno da conversa. body: { session_id, action: "message" | "hint" | "react", text?, voice?, interrupted? } */
+  /** Um turno da conversa. body: { session_id, action: "message" | "hint" | "react", text?, voice?, interrupted?, origem?: "janela" } */
   router.post("/turn", async (req: Authed, res) => {
     try {
       const body = req.body ?? {};
@@ -236,6 +236,8 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
         text: typeof body.text === "string" ? body.text : undefined,
         voice: body.voice === true,
         interrupted: typeof body.interrupted === "string" ? body.interrupted : null,
+        // janelinha do Tutor (mini tutor): só muda o recurso registrado na carteira de créditos
+        origem: body.origem === "janela" ? "janela" : null,
       });
       res.json(result);
     } catch (error) {

@@ -62,6 +62,10 @@
     {
       "path": "/api/play/cron",
       "schedule": "5 3 * * *"
+    },
+    {
+      "path": "/api/planos/cron",
+      "schedule": "15 11 * * *"
     }
   ]
 }

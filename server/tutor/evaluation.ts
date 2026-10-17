@@ -31,7 +31,7 @@ export interface EvaluationInput {
 export interface EvaluationResult extends TutorEvaluation {
   correct: boolean | null;
   reveal_answer: boolean;
-  usage: { provider: string; model: string; input_tokens: number; output_tokens: number; cost_usd: number };
+  usage: { provider: string; model: string; input_tokens: number; output_tokens: number; cost_usd: number; /** custo informado pelo provedor (null = desconhecido; a carteira cobra a reserva) */ cost_known_usd?: number | null };
 }
 
 export async function evaluateReasoning(deps: TutorDeps, input: EvaluationInput): Promise<EvaluationResult> {
@@ -54,7 +54,7 @@ export async function evaluateReasoning(deps: TutorDeps, input: EvaluationInput)
     ...ev,
     correct: input.correct === null ? (ev.answer_correct === "yes" ? true : ev.answer_correct === "no" ? false : null) : input.correct,
     reveal_answer: ev.recommended_action === "reveal",
-    usage: { provider: r.provider, model: r.model, input_tokens: r.inputTokens ?? 0, output_tokens: r.outputTokens ?? 0, cost_usd: r.costUsd ?? 0 },
+    usage: { provider: r.provider, model: r.model, input_tokens: r.inputTokens ?? 0, output_tokens: r.outputTokens ?? 0, cost_usd: r.costUsd ?? 0, cost_known_usd: r.costUsd ?? null },
   };
 }
 

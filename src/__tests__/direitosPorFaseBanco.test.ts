@@ -101,7 +101,7 @@ let antes: Awaited<ReturnType<typeof retratoAntigo>>;
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(fs.readFileSync(path.join(ROOT, "supabase/tests/bootstrap.sql"), "utf8"));
-  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== NOME).sort()) {
+  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f < NOME).sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
   for (const uid of TODOS) await db.query(`insert into auth.users (id, email, raw_user_meta_data, created_at) values ($1, $2, '{}', now() - interval '20 days')`, [uid, `u${parseInt(uid.slice(-4))}@teste.dev`]);
