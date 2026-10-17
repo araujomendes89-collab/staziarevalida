@@ -195,8 +195,8 @@ export function renderAvisoInatividade(item: ItemFila, baseUrl: string | null): 
     ? "Pela nossa Política de Privacidade, contas gratuitas sem nenhum acesso por mais de 12 meses têm os dados de estudo eliminados, com aviso de pelo menos 30 dias."
     : "Pelo Regulamento de Coins e Ligas (item 4.3), o saldo de Stazia Coins de contas sem acesso por 12 meses seguidos pode ser zerado, com aviso de 30 dias.";
   const efeito = apagar
-    ? `Se você não entrar no app até <strong>${esc(ate)}</strong>, a sua conta e os seus dados de estudo serão apagados a partir dessa data. Guardamos só o que a lei exige (como o registro do aceite do contrato).`
-    : `Se você não entrar no app até <strong>${esc(ate)}</strong>, o seu saldo de Stazia Coins será zerado a partir dessa data. A sua conta e o seu progresso continuam.`;
+    ? `Se você não entrar no app até <strong>${esc(ate)}</strong>, a sua conta e os seus dados de estudo serão apagados depois dessa data. Guardamos só o que a lei exige (como o registro do aceite do contrato).`
+    : `Se você não entrar no app até <strong>${esc(ate)}</strong>, o seu saldo de Stazia Coins será zerado depois dessa data. A sua conta e o seu progresso continuam.`;
   const efeitoTxt = efeito.replace(/<\/?strong>/g, "");
   const manter = apagar
     ? "Para manter a conta, basta entrar no StaziaMed. Se preferir guardar seus dados antes, use Minha Conta → Privacidade e dados → Baixar meus dados."

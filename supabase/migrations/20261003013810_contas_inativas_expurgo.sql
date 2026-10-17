@@ -20,6 +20,7 @@
 --        criação da conta e último aceite. Quem já tinha conta quando esta migração entrou conta como visto AGORA (nenhuma conta é
 --        dada como parada por falta de registro: a primeira rotina de verdade só acha alguém daqui a 11 meses);
 --      * 11 meses sem acesso: aviso por e-mail. O prazo do e-mail é o maior entre 12 meses do último acesso e 31 dias depois do envio;
+--        o e-mail diz "se você não entrar até <prazo>": a ação só acontece a partir do dia seguinte ao prazo (horário de Brasília);
 --      * ação, depois do prazo, só se o e-mail foi ENVIADO e a pessoa não voltou:
 --          - conta gratuita que NUNCA teve plano pago: a conta é apagada (como em "Excluir minha conta"; o registro do aceite fica,
 --            sem a pessoa, pelos 5 anos da Política);
@@ -226,7 +227,7 @@ begin
     from public.conta_inativa c
     join public.email_saida e on e.id = c.email_id
     where c.situacao = 'avisando' and e.status = 'enviado'
-      and now() >= (((e.payload ->> 'prazo')::date)::timestamp at time zone 'America/Sao_Paulo')
+      and now() >= (((e.payload ->> 'prazo')::date + 1)::timestamp at time zone 'America/Sao_Paulo')
   loop
     n_agir := n_agir + 1;
     if jsonb_array_length(v_lista) < 50 then

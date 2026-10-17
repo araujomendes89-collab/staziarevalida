@@ -372,6 +372,26 @@ describe("013810 — conta inativa", () => {
     await chaves("inativas_avisar = false");
   });
 
+  it("o dia do prazo ainda vale: a ação só acontece a partir do dia seguinte (horário de Brasília)", async () => {
+    await chaves("inativas_avisar = true, inativas_agir = true");
+    try {
+      const dia = await signUp();
+      await parada(dia, "13 months");
+      await servico("ch_worker_contas_inativas");
+      const [e] = (await fila(dia)).filter((x) => x.kind === "aviso_inatividade");
+      await db.query(`update public.email_saida set status = 'enviado', enviado_em = now() - interval '40 days',
+                        payload = payload || jsonb_build_object('prazo', to_char((now() at time zone 'America/Sao_Paulo')::date, 'YYYY-MM-DD'))
+                      where id = $1`, [e.id]);
+      await servico("ch_worker_contas_inativas");
+      expect(await linhas(`select 1 from auth.users where id = $1`, [dia])).toHaveLength(1);
+      await db.query(`update public.email_saida set payload = payload || jsonb_build_object('prazo', to_char((now() at time zone 'America/Sao_Paulo')::date - 1, 'YYYY-MM-DD')) where id = $1`, [e.id]);
+      await servico("ch_worker_contas_inativas");
+      expect(await linhas(`select 1 from auth.users where id = $1`, [dia])).toEqual([]);
+    } finally {
+      await chaves("inativas_avisar = false, inativas_agir = false");
+    }
+  });
+
   it("aviso que não foi entregue: nada é feito; tenta outro aviso; depois de 3, desiste", async () => {
     await chaves("inativas_avisar = true, inativas_agir = true");
     const sem = await signUp();
