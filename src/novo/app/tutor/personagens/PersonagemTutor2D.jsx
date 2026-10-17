@@ -5,7 +5,7 @@
 import React from "react";
 import { usePersonagemAnimacao } from "./usePersonagemAnimacao.js";
 import { opacidadesTroca, aparenciaBoca, geometriaBoca } from "./movimento.js";
-import { spritePose, urlsDoPersonagem, ALTURA_EM_PE } from "./sprites.js";
+import { spritePose, urlsDoPersonagem, ALTURA_EM_PE, POSES_PROVAVEIS } from "./sprites.js";
 import { rotuloPersonagem, personagemValido } from "./personagens.js";
 import "./personagem.css";
 
@@ -16,18 +16,55 @@ const PE_Y = 800; // onde ficam os pés dentro da caixa
 // os deslocamentos do quadro (movimento.js) são pensados para uma lontra de ~400 px de altura na tela
 const REF_PX = 400;
 
-function preCarregar(urls) {
-  if (typeof Image === "undefined") return;
-  for (const u of urls) {
+// abaixo disto (px do aparelho por px lógico do sprite) a versão de meia resolução basta: rosto do Mini Tutor, bolinha, cartões
+const LIMITE_MEIA = 0.55;
+const jaPedidas = new Set();
+
+/**
+ * Pré-carrega as outras poses DEPOIS que a pose da tela chegou, uma de cada vez e nos intervalos livres do navegador (a pose
+ * visível não divide a rede com as outras 23). Devolve a função que cancela.
+ */
+function preCarregarEmFila(urls) {
+  if (typeof Image === "undefined") return () => {};
+  const fila = urls.filter((u) => !jaPedidas.has(u));
+  let parado = false;
+  let espera = null;
+  const ocioso = (fn) => {
+    if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+      const h = window.requestIdleCallback(fn, { timeout: 1500 });
+      return () => window.cancelIdleCallback?.(h);
+    }
+    const h = setTimeout(fn, 120);
+    return () => clearTimeout(h);
+  };
+  const proxima = () => {
+    espera = null;
+    if (parado) return;
+    const u = fila.shift();
+    if (!u) return;
+    if (jaPedidas.has(u)) return proxima();
+    jaPedidas.add(u);
     const im = new Image();
     im.decoding = "async";
+    const seguir = () => {
+      if (!parado) espera = ocioso(proxima);
+    };
+    im.onload = seguir;
+    im.onerror = seguir;
     im.src = u;
-  }
+  };
+  espera = ocioso(proxima);
+  return () => {
+    parado = true;
+    espera?.();
+  };
 }
 
-function Camada({ id, chave, papel, refs, escondida = false }) {
+// `extras` (boca e piscada): só depois que a primeira pose chegou, para não dividirem a rede com ela
+function Camada({ id, chave, papel, refs, escondida = false, meia = false, onPronta = null, extras = true }) {
   const s = spritePose(id, chave);
   if (!s) return null;
+  const src = (o) => (meia && o.urlMeia) || o.url;
   const pos = (o) => ({ left: `calc(${o.x} * var(--tp-u))`, top: `calc(${o.y} * var(--tp-u))`, width: `calc(${o.w} * var(--tp-u))`, height: `calc(${o.h} * var(--tp-u))` });
   return (
     <div
@@ -36,9 +73,9 @@ function Camada({ id, chave, papel, refs, escondida = false }) {
       data-pose={chave}
       style={{ left: `calc((${CAIXA_W / 2} - ${s.ax}) * var(--tp-u))`, top: `calc((${PE_Y} - ${s.ay}) * var(--tp-u))`, width: `calc(${s.w} * var(--tp-u))`, height: `calc(${s.h} * var(--tp-u))`, opacity: escondida ? 0 : 1 }}
     >
-      <img className="tp__img" src={s.url} alt="" draggable={false} decoding="async" />
-      {s.olhos && <img ref={(el) => (refs.current[`${papel}-olhos`] = el)} className="tp__extra" src={s.olhos.url} alt="" draggable={false} style={{ ...pos(s.olhos), opacity: 0 }} />}
-      {s.boca && <Boca s={s} refs={refs} papel={papel} />}
+      <img className="tp__img" src={src(s)} alt="" draggable={false} decoding="async" fetchPriority={papel === "atual" ? "high" : undefined} onLoad={onPronta ?? undefined} onError={onPronta ?? undefined} />
+      {extras && s.olhos && <img ref={(el) => (refs.current[`${papel}-olhos`] = el)} className="tp__extra" src={src(s.olhos)} alt="" draggable={false} style={{ ...pos(s.olhos), opacity: 0 }} />}
+      {extras && s.boca && <Boca s={s} refs={refs} papel={papel} src={src(s.boca)} />}
     </div>
   );
 }
@@ -47,7 +84,7 @@ function Camada({ id, chave, papel, refs, escondida = false }) {
  * Boca que acompanha a voz (17/10/2026): só a parte do recorte ABAIXO do focinho (as sobrancelhas do recorte não pulam a cada
  * sílaba), com a borda apagada por uma elipse e escala vertical presa no focinho: fechada, meia e aberta, sem mexer o corpo.
  */
-function Boca({ s, refs, papel }) {
+function Boca({ s, refs, papel, src }) {
   const g = geometriaBoca(s);
   const u = (n) => `calc(${n.toFixed(1)} * var(--tp-u))`;
   const mascara = `radial-gradient(ellipse ${u(g.rx)} ${u(g.ry)} at ${u(g.cx)} 0px, #000 65%, transparent 100%)`;
@@ -57,7 +94,7 @@ function Boca({ s, refs, papel }) {
       className="tp__boca"
       style={{ position: "absolute", left: u(s.boca.x), top: u(s.boca.y + g.corte), width: u(s.boca.w), height: u(g.h), overflow: "hidden", opacity: 0, transformOrigin: "50% 0", willChange: "transform, opacity", maskImage: mascara, WebkitMaskImage: mascara }}
     >
-      <img className="tp__extra" src={s.boca.url} alt="" draggable={false} style={{ left: 0, top: u(-g.corte), width: u(s.boca.w), height: u(s.boca.h) }} />
+      <img className="tp__extra" src={src} alt="" draggable={false} style={{ left: 0, top: u(-g.corte), width: u(s.boca.w), height: u(s.boca.h) }} />
     </div>
   );
 }
@@ -100,9 +137,11 @@ function Efeitos({ refs }) {
 const EFEITOS = ["ondas", "pensando", "raiva", "brilho", "reconectando"];
 
 /**
- * <PersonagemTutor2D personagem="stazia" conversationState emotion emotionIntensity inputStream outputStream onFrame time? niveis? reduzido? />
+ * <PersonagemTutor2D personagem="stazia" conversationState emotion emotionIntensity inputStream outputStream onFrame time? niveis? reduzido? preCarregar? />
+ * `preCarregar`: "tudo" (padrão; tela de voz), "provaveis" (só falando/ouvindo/pensando/base/firme/acenando; rosto do Mini Tutor) ou
+ * "nada". Sempre depois que a pose da tela carregou. Personagem pequeno na tela usa a versão de meia resolução dos sprites.
  */
-export function PersonagemTutor2D({ personagem = "stazi", conversationState = "idle", emotion = "neutral", emotionIntensity = 0.3, inputStream = null, outputStream = null, personality = null, onFrame = null, time = null, niveis = null, desde = null, semente, reduzido, className = "", decorativo = false }) {
+export function PersonagemTutor2D({ personagem = "stazi", conversationState = "idle", emotion = "neutral", emotionIntensity = 0.3, inputStream = null, outputStream = null, personality = null, onFrame = null, time = null, niveis = null, desde = null, semente, reduzido, className = "", decorativo = false, preCarregar = "tudo" }) {
   const id = personagemValido(personagem) ?? "stazi";
   const raiz = React.useRef(null);
   const corpo = React.useRef(null);
@@ -110,18 +149,34 @@ export function PersonagemTutor2D({ personagem = "stazi", conversationState = "i
   const escala = React.useRef(1);
   const unidade = React.useRef(0.4); // px de tela por px de sprite
 
+  // null até medir a caixa (antes do primeiro quadro): assim a pose só é pedida uma vez, já na resolução certa
+  const [meia, setMeia] = React.useState(null);
+  const [pronta, setPronta] = React.useState(false);
+  const aoCarregar = React.useCallback(() => setPronta(true), []);
+
+  // as outras poses (e a boca/piscada) só depois que a da tela chegou (ou, se ela não avisar, depois de alguns segundos)
   React.useEffect(() => {
-    preCarregar(urlsDoPersonagem(id));
-  }, [id]);
+    if (meia === null || preCarregar === "nada") return undefined;
+    if (!pronta) return undefined;
+    return preCarregarEmFila(urlsDoPersonagem(id, { meia, so: preCarregar === "provaveis" ? POSES_PROVAVEIS : null }));
+  }, [id, meia, pronta, preCarregar]);
+  React.useEffect(() => {
+    if (pronta) return undefined;
+    const t = setTimeout(aoCarregar, 5000);
+    return () => clearTimeout(t);
+  }, [pronta, aoCarregar]);
 
   // px de tela por px de sprite (atualiza só quando a caixa muda de tamanho)
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const el = raiz.current;
     if (!el) return undefined;
     const medir = () => {
       const u = Math.min(el.clientHeight / CAIXA_H, el.clientWidth / CAIXA_W) || 0.4;
       unidade.current = u;
       escala.current = (u * ALTURA_EM_PE) / REF_PX;
+      const dpr = (typeof window !== "undefined" && window.devicePixelRatio) || 1;
+      // só desce para a meia resolução; uma vez na cheia, fica nela (não troca a imagem no meio da conversa)
+      setMeia((antes) => (antes === false ? false : u * dpr <= LIMITE_MEIA));
     };
     medir();
     if (typeof ResizeObserver === "undefined") return undefined;
@@ -212,8 +267,8 @@ export function PersonagemTutor2D({ personagem = "stazi", conversationState = "i
         <div className="tp__aura" />
         <div className="tp__chao" />
         <div ref={corpo} className="tp__corpo">
-          {poses.anterior && poses.anterior !== poses.atual && <Camada key={`a-${poses.anterior}`} id={id} chave={poses.anterior} papel="anterior" refs={refs} />}
-          <Camada key={`p-${poses.atual}`} id={id} chave={poses.atual} papel="atual" refs={refs} escondida={Boolean(poses.anterior && poses.anterior !== poses.atual && !red)} />
+          {poses.anterior && poses.anterior !== poses.atual && <Camada key={`a-${poses.anterior}`} id={id} chave={poses.anterior} papel="anterior" refs={refs} meia={Boolean(meia)} />}
+          {meia !== null && <Camada key={`p-${poses.atual}`} id={id} chave={poses.atual} papel="atual" refs={refs} meia={meia} onPronta={pronta ? null : aoCarregar} extras={pronta} escondida={Boolean(poses.anterior && poses.anterior !== poses.atual && !red)} />}
           <Efeitos refs={refs} />
         </div>
       </div>

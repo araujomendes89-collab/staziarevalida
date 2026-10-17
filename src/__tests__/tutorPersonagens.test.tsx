@@ -199,6 +199,27 @@ describe("sprites e textos", () => {
     }
   });
 
+  it("pré-carga em ordem de probabilidade, versão de meia resolução e só as poses pedidas", () => {
+    for (const id of PERSONAGEM_IDS) {
+      const todas = urlsDoPersonagem(id);
+      const falando = spritePose(id, "falando")!;
+      expect(todas[0]).toBe(falando.url); // a pose mais provável depois da primeira vem antes
+      expect(todas[1]).toBe(falando.boca!.url);
+      for (const chave of Object.keys(POSES[id as "stazi"])) {
+        const s = spritePose(id, chave)!;
+        expect(s.urlMeia, `${id}/${chave} meia`).toBeTruthy();
+        expect(s.urlMeia).not.toBe(s.url);
+      }
+      const meia = urlsDoPersonagem(id, { meia: true });
+      expect(meia).toHaveLength(todas.length);
+      expect(meia.every((u: string) => /\.meia\.webp/.test(u))).toBe(true);
+      const provaveis = urlsDoPersonagem(id, { so: ["falando", "ouvindo"] });
+      expect(provaveis.length).toBeLessThan(todas.length);
+      expect(provaveis).toContain(spritePose(id, "ouvindo")!.url);
+      expect(provaveis).not.toContain(spritePose(id, "comemorando")!.url);
+    }
+  });
+
   it("texto para leitor de tela em português, com o gênero de cada personagem", () => {
     expect(rotuloPersonagem("stazia", "listening")).toBe("Stazia, sua professora, ouvindo");
     expect(rotuloPersonagem("stazi", "speaking", "angry")).toBe("Stazi, seu professor, falando, bravo");
@@ -228,6 +249,47 @@ describe("componentes", () => {
     const el = screen.getByRole("img", { name: "Stazia, sua professora, ouvindo" });
     expect(el).toHaveAttribute("data-pose", "ouvindo");
     expect(el.querySelector(".tp__img")).toHaveAttribute("src");
+  });
+
+  it("2D: a pose da tela vem primeiro (prioridade alta) e as outras só depois que ela carrega", async () => {
+    const criadas: string[] = [];
+    const ImagemReal = window.Image;
+    (window as any).Image = class { decoding = ""; onload: any = null; onerror: any = null; set src(u: string) { criadas.push(u); setTimeout(() => this.onload?.(), 0); } };
+    vi.useFakeTimers();
+    try {
+      const { PersonagemTutor2D } = await import("../novo/app/tutor/personagens/PersonagemTutor2D.jsx");
+      const { container } = render(<PersonagemTutor2D personagem="stazi" conversationState="listening" emotion="neutral" emotionIntensity={0.3} time={0} />);
+      const img = container.querySelector(".tp__img") as HTMLImageElement;
+      expect(img.getAttribute("fetchpriority")).toBe("high");
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(criadas).toHaveLength(0); // nada disputa a rede com a pose da tela
+      expect(container.querySelector(".tp__extra")).toBeNull(); // nem a piscada
+      fireEvent.load(img);
+      expect(container.querySelector(".tp__extra")).not.toBeNull();
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(criadas.length).toBeGreaterThan(15);
+      expect(criadas[0]).toMatch(/falando/);
+    } finally {
+      vi.useRealTimers();
+      (window as any).Image = ImagemReal;
+    }
+  });
+
+  it("2D com preCarregar=\"nada\" não baixa as outras poses", async () => {
+    const criadas: string[] = [];
+    const ImagemReal = window.Image;
+    (window as any).Image = class { set src(u: string) { criadas.push(u); } };
+    vi.useFakeTimers();
+    try {
+      const { PersonagemTutor2D } = await import("../novo/app/tutor/personagens/PersonagemTutor2D.jsx");
+      const { container } = render(<PersonagemTutor2D personagem="stazia" conversationState="idle" time={0} preCarregar="nada" />);
+      fireEvent.load(container.querySelector(".tp__img")!);
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(criadas).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+      (window as any).Image = ImagemReal;
+    }
   });
 
   it("2D com movimento reduzido fica na pose da emoção", async () => {
