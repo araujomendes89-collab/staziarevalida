@@ -11,6 +11,7 @@
  * corrige é o banco, nunca a voz nem a personalidade.
  */
 import { PROFESSOR_CHANGED, TutorError, consentError, tutorTurn, type TurnResult, type TutorDeps } from "./engine";
+import { naturalOpening } from "./opening";
 import { voiceCall } from "./realtime";
 import { phraseText } from "./speech";
 import { rateHit } from "./limits";
@@ -134,6 +135,9 @@ export async function delegateVoice(deps: TutorDeps, userId: string, voiceCallId
     case "next": {
       const next = await svc<{ question?: { statement?: string; options?: { id: string; text: string }[] } | null; opening?: string | null }>("ch_worker_tutor_next_as", { p_session_id: v.session_id });
       const nq = next?.question;
+      // a passagem fixa é só a reserva: a IA cria a fala do momento (sem ela, fica a reserva)
+      const natural = await naturalOpening(deps, userId, v.session_id);
+      if (natural && next) next.opening = natural.content;
       const caseText = nq?.statement
         ? `Leia para o aluno, com naturalidade e sem dar a resposta, o caso e as alternativas desta questão: ${nq.statement} ${(nq.options ?? []).map((o) => `Alternativa ${o.id}: ${o.text}.`).join(" ")}`
         : "";
@@ -241,6 +245,8 @@ async function sayTurn(deps: TutorDeps, userId: string, sessionId: string, voice
   if (intent.kind === "next") {
     // a tela relê a conversa e fala a abertura da nova questão; o enunciado não é lido
     const next = await svc<{ question?: unknown } | null>("ch_worker_tutor_next_as", { p_session_id: sessionId });
+    // a passagem fixa é só a reserva: a IA cria a fala do momento antes de a tela reler a conversa (sem ela, fica a reserva)
+    await naturalOpening(deps, userId, sessionId);
     return { ...none, intent: "next", question_state: next?.question ? "open" : null };
   }
 

@@ -17,7 +17,7 @@ import { asDocument } from "../contentHub/ai/prompts";
 import { AiInvalidOutput, resolveProviderKind, withFallback, type StructuredRequest } from "../contentHub/ai/provider";
 import { aiAllowed, registerPrompts, type PromptEntry } from "../contentHub/ai/registry";
 import type { ContentDb } from "../contentHub/infra";
-import { avatarOf, engineFor, languageIntensity, normalize, profanityForIntensity, recentExpressions, stateLayer, step, type Happening, type PersonaEngine, type TutorState } from "./emotion";
+import { avatarOf, engineFor, languageIntensity, normalize, profanityForIntensity, recentExpressions, stateLayer, step, usedStarts, type Happening, type PersonaEngine, type TutorState } from "./emotion";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
 import { NO_EVALUATION, TUTOR_PROMPT_LAYERS, TUTOR_SCHEMA, TUTOR_VERSION, composeSystem, taskInstruction, type TutorMode, type TutorOutput, type TutorTask } from "./prompts";
 import { ComplementarTermsUnavailable, labelIsSupportMaterial, loadComplementarTerms } from "../contentHub/complementarGuard";
@@ -387,7 +387,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     // a conferência aceita um degrau acima do pedido (a reação à gravidade real do erro pode subir o tom)
     const checkLevel = RANK[profanityForIntensity(Math.min(5, li + 1))] < RANK[personaMax] ? profanityForIntensity(Math.min(5, li + 1)) : personaMax;
     const mood = { label: before.mood, text: stateLayer(ctx.personality.id, before, engine, profanity), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado", strong: li >= 3 };
-    const system = composeSystem({ mode: ctx.session.mode, browserVoice: Boolean(action.voice), persona: personalityLayer(ctx.personality, eff, profanity, 3, null, mood), personaId: ctx.personality.id });
+    const system = composeSystem({ mode: ctx.session.mode, browserVoice: Boolean(action.voice), persona: personalityLayer(ctx.personality, eff, profanity, 3, null, mood, { seed: sessionId }), personaId: ctx.personality.id });
 
     const mem = ctx.memory;
     const studentCtx = {
@@ -412,6 +412,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       erros_repetidos: (mem?.recurrent_errors ?? []).filter((r) => r.times >= 2).map((r) => `${r.error_type}${r.knowledge_gap ? ` (${r.knowledge_gap})` : ""} ×${r.times}`),
       piadas_internas: (settings.inside_jokes ? mem?.inside_jokes ?? [] : []).map((j) => (j.beaten ? `${j.topic}: já foi o "inimigo" dele (${j.strength} erros) e ele superou` : `${j.topic}: o assunto que mais o derruba (${j.strength} erros); dá para virar uma referência recorrente, com leveza e de vez em quando`)),
       evite_repetir: recentExpressions(ctx.history.filter((h) => h.role === "tutor").map((h) => h.content)),
+      comecos_ja_usados: usedStarts(ctx.history.filter((h) => h.role === "tutor").map((h) => h.content)),
     };
     // leitura do aluno por software (sem IA): uma linha interna na tarefa quando há sinal claro (leituraDoAluno.ts)
     const leitura = task.type === "message" ? notaDoRegistro(lerRegistro(studentText)) : "";

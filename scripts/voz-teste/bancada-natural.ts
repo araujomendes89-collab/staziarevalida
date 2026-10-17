@@ -2,7 +2,8 @@
 //
 // Mede o quanto o professor se repete, ANTES e DEPOIS da mudança, sempre pelo MESMO caminho do aplicativo:
 //   * banco local (PGlite) com todas as migrações e a carga de questões oficiais, como o servidor de desenvolvimento;
-//   * a abertura sai de app_tutor_start (sorteio em SQL de tutor_personalities.openings / lines, como o app faz hoje);
+//   * a abertura sai de app_tutor_start (sorteio em SQL de tutor_personalities.openings / lines) e, desde 17/10, a IA troca essa
+//     reserva pela fala criada na hora (server/tutor/opening.ts), como o app faz; --abertura-fixa mede sem a troca;
 //   * cada resposta sai de tutorTurn (server/tutor/engine.ts): núcleo, modo, personalidade, estado emocional, conferência por
 //     software (safety.ts) e gravação; a "passagem" de questão sai de app_tutor_next_question;
 //   * a IA do professor é o Gemini 3.8 Flash pelo Vertex (TUTOR_AI_PROVIDER=gemini), com esforço baixo ("rapido"), que é o
@@ -17,7 +18,7 @@
 //
 // Uso (na raiz do projeto):
 //   npx tsx scripts/voz-teste/bancada-natural.ts [--n 20] [--personalidade durao,acolhedor,durona,tranquila]
-//        [--saida <pasta>] [--paralelo 6] [--so-medir] [--sem-juiz] [--so-faltantes]
+//        [--saida <pasta>] [--paralelo 6] [--so-medir] [--sem-juiz] [--so-faltantes] [--abertura-fixa] [--db <pasta>]
 // --so-medir refaz só as contas a partir dos .json já gravados (sem chamar IA); --so-faltantes roda de novo só as que faltam ou deram erro.
 import fs from "node:fs";
 import path from "node:path";
@@ -141,6 +142,10 @@ type Db = import("../../server/devDb/devDatabase").DevDatabase;
 let dev: Db;
 let cdb: import("../../server/contentHub/infra").ContentDb;
 let tutorTurn: typeof import("../../server/tutor/engine").tutorTurn;
+/** Abertura e passagem naturais (17/10): a IA troca a fala sorteada pelo banco, como o app faz (/voice/open, /opening). */
+let naturalOpening: typeof import("../../server/tutor/opening").naturalOpening;
+/** --abertura-fixa: mede como antes (sem a troca pela IA). */
+const ABERTURA_FIXA = flag("abertura-fixa");
 const ADMIN = "00000000-0000-4000-8000-00000000bada";
 
 const rpc = async <T = any>(uid: string, fn: string, ...params: unknown[]): Promise<T> =>
@@ -158,6 +163,7 @@ async function prepararBanco() {
   const { devContentDb } = await import("../../server/contentHub/infra");
   const { aceitarTermos } = await import("../../src/__tests__/helpers/aceites");
   ({ tutorTurn } = await import("../../server/tutor/engine"));
+  ({ naturalOpening } = await import("../../server/tutor/opening"));
   console.log(`[bancada] abrindo o banco local em ${DB_DIR} (a primeira vez aplica todas as migrações e a carga: alguns minutos)...`);
   dev = await openDevDatabaseForTests(DB_DIR);
   cdb = devContentDb(async () => dev);
@@ -269,6 +275,7 @@ async function conversa(pid: string, p: Plano, novoAluno: (uid: string) => Promi
       const tema = p.modo === "livre_tema" || p.modo === "perguntas" ? p.tema : null;
       const s = await rpc<any>(uid, "app_tutor_start", modo, tema, null, null, pid);
       reg.sessao = s.id;
+      if (!ABERTURA_FIXA) await naturalOpening({ db: cdb, log: (m: string) => falhas.push(m.slice(0, 240)) }, uid, s.id);
       let q = p.modo === "questao" ? await questaoDaSessao(uid, s.id) : null;
       if (q) reg.questao!.push({ id: q.id, gabarito: q.gabarito, texto_gabarito: q.texto_gabarito });
       let turnosDesdeQuestao = 0;
@@ -307,6 +314,7 @@ async function conversa(pid: string, p: Plano, novoAluno: (uid: string) => Promi
         // passagem para a próxima questão (frase fixa de hoje) depois de discutir a correção
         if (q && q.estado === "answered" && !proximaFeita && turnosDesdeQuestao >= 4 && t < p.turnos - 2) {
           await rpc(uid, "app_tutor_next_question", s.id);
+          if (!ABERTURA_FIXA) await naturalOpening({ db: cdb, log: (m: string) => falhas.push(m.slice(0, 240)) }, uid, s.id);
           proximaFeita = true;
           q = await questaoDaSessao(uid, s.id);
           if (q) reg.questao!.push({ id: q.id, gabarito: q.gabarito, texto_gabarito: q.texto_gabarito });
@@ -512,12 +520,16 @@ async function medir(regs: Registro[], pid: string) {
       for (const code of ((t.meta as any)?.violations ?? []) as string[]) barradas[code] = (barradas[code] ?? 0) + 1;
       if ((t.meta as any)?.notice) substituidas++;
       const q = c.questao?.[qi];
-      if (q && t.estado_questao === "open" && IA(t)) { const w = vazou(t.texto, q.gabarito, q.texto_gabarito); if (w) vazamentos.push(`conversa ${c.plano.idx + 1}: ${w}`); }
+      if (q && t.estado_questao === "open" && (IA(t) || (t.meta as any)?.generated)) { const w = vazou(t.texto, q.gabarito, q.texto_gabarito); if (w) vazamentos.push(`conversa ${c.plano.idx + 1}: ${w}`); }
     }
   }
   const custo = convs.reduce((s, c) => s + c.custo.usd, 0);
+  // aberturas e passagens criadas pela IA (meta.generated) e as que ficaram na reserva sorteada
+  const fixasTurnos = convs.flatMap((c) => c.turnos.filter(FIXA));
+  const criadas = fixasTurnos.filter((t) => (t.meta as any)?.generated).length;
   return {
     id: pid, nome: NOMES[pid], conversas: nConv, conversas_com_erro: erros,
+    aberturas_e_passagens_criadas_pela_ia: `${criadas}/${fixasTurnos.length}`, aberturas_e_passagens_criadas_pela_ia_pct: pct(criadas, fixasTurnos.length),
     falas_professor: convs.reduce((s, c) => s + c.turnos.filter((t) => t.papel === "professor").length, 0),
     aberturas_distintas_pct: pct(aberturasDistintas, aberturas.length), aberturas_distintas: `${aberturasDistintas}/${aberturas.length}`,
     modelos_de_abertura_distintos_pct: pct(modelosAbertura, aberturas.length), modelos_de_abertura_distintos: `${modelosAbertura}/${aberturas.length}`,

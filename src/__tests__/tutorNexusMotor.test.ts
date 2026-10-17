@@ -169,7 +169,7 @@ describe("Motor do Nexus: escalada e alívio", () => {
       expect(sys).toContain("- Nunca escreva marcações entre colchetes nem indicações de som ou de tom (risada, suspiro, grito): a atuação da voz é decidida pelo sistema.");
       expect(sys).not.toMatch(/\[(angry|laughs|sighs|frustrated|encouraging|risos)\]/i);
     }
-    expect(TUTOR_VERSION).toBe("2.7.0");
+    expect(TUTOR_VERSION).toBe("2.8.0");
   });
 });
 

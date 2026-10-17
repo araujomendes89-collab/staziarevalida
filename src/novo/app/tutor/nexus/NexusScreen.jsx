@@ -4,7 +4,7 @@
 // o professor escolhido e o servidor diz o jeito: voz do professor, voz reserva (a voz ao vivo de antes) ou por escrito.
 import React from "react";
 import { useSession } from "../../session.jsx";
-import { nexusApi, tutorServerStatus } from "../api.js";
+import { nexusApi, tutorOpening, tutorServerStatus, withOpening } from "../api.js";
 import { ERROR_CLASS, modeLabel } from "../labels.js";
 import { useRealtimeVoice } from "../useRealtimeVoice.js";
 import { StaziaVoiceMode } from "../voice/StaziaVoiceMode.jsx";
@@ -202,7 +202,8 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
       const o = await nexusApi.open(backend, s.id, force);
       pending.current = null;
       setError(null);
-      setSession(s);
+      // a abertura criada agora pela IA (o servidor já trocou a reserva no banco)
+      setSession(withOpening(s, o.opening));
       setOpened(o);
       setFallback(null);
       setPicked(null);
@@ -376,9 +377,12 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
           onReveal={() => live.sendText("Me mostra a resolução.")}
           onNext={async () => {
             try {
-              setSession(await backend.rpc("app_tutor_next_question", { p_session_id: session.id }));
+              const s2 = await backend.rpc("app_tutor_next_question", { p_session_id: session.id });
+              setSession(s2);
               setPicked(null);
               live.sendText("Vamos para a próxima.");
+              // a passagem fixa é só a reserva: a criada agora pela IA aparece quando chegar
+              void tutorOpening(backend, s2?.id ?? session.id).then((op) => op && setSession((cur) => (cur?.id === s2?.id ? withOpening(cur, op) : cur)));
             } catch (e) {
               setFallback((f) => ({ ...(f ?? {}), note: messageOf(e) }));
             }

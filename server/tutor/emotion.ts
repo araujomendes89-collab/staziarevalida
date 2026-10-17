@@ -443,6 +443,23 @@ export function recentExpressions(tutorTexts: string[], max = 20): string[] {
     if (first && first.split(/\s+/).length <= 7) push(first);
     else push(text.split(/\s+/).slice(0, 4).join(" "));
     for (const m of text.matchAll(/\b(porra|caralho|merda|cacete|puta merda|pô|putz|de novo\??|presta atenção|eu acabei de explicar|finalmente|até que enfim|agora sim|olha só)\b/gi)) push(m[0]);
+    // bordões que a medição de 17/10 achou repetidos (bancada de naturalidade): uma vez na conversa, não voltam
+    for (const m of text.matchAll(/(?<![\p{L}])(na mosca|na veia|mandou bem|matou a pau|matou a|isso aí|bora|com calma|respira fundo|sem pressa|vamos por partes|preguiça de|a banca|conduta imediata|destrinchar)(?![\p{L}])/giu)) push(m[0]);
   }
   return out.slice(0, max);
+}
+
+/**
+ * Começos de fala já usados nesta conversa (as 2 primeiras palavras de cada fala do professor, sem pontuação): a próxima fala não
+ * começa igual a nenhuma delas (a medição de 17/10 achou muitas falas começando com o mesmo par de palavras).
+ */
+export function usedStarts(tutorTexts: string[], max = 12): string[] {
+  const out: string[] = [];
+  for (const text of tutorTexts.slice(-max).reverse()) {
+    const words = text.replace(/[^\p{L}\p{N}\s]/gu, " ").trim().split(/\s+/).filter(Boolean).slice(0, 2);
+    if (!words.length) continue;
+    const start = words.join(" ");
+    if (!out.some((o) => o.toLowerCase() === start.toLowerCase())) out.push(start);
+  }
+  return out;
 }

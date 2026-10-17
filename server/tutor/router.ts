@@ -10,6 +10,7 @@ import { endVoice, purgeVoiceTranscripts, recordVoiceMetrics, recordVoiceUsage, 
 import { runTutorTool, TOOL_NAMES } from "./tools";
 import { limparRetornoFerramenta } from "./sigilo";
 import { delegateVoice, sayVoice, type Letter } from "./delegate";
+import { naturalOpening } from "./opening";
 import { tutorSettings } from "./settings";
 import { questionHint, questionHintEnabled } from "./questionHint";
 import { geminiVoiceConfig, planProviders, vertexPonteConfig } from "./voiceProviders";
@@ -241,6 +242,17 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       deps!.log?.(`[tutor] erro: ${(error as Error).message}`);
       fail(res, 500, "O Tutor não conseguiu responder agora.");
     }
+  });
+
+  /**
+   * Abertura e passagem naturais (17/10): depois de app_tutor_start ou app_tutor_next_question chamados direto pelo aplicativo, a
+   * fala sorteada pelo banco é só a reserva; aqui a IA cria a fala do momento e troca o texto. body: { session_id }.
+   * Devolve { opening: { id, content } } ou { opening: null } (a reserva fica). Só troca a última fala da conversa, uma vez.
+   */
+  router.post("/opening", async (req: Authed, res) => {
+    const sessionId = String(req.body?.session_id ?? "");
+    if (!/^[0-9a-f-]{36}$/i.test(sessionId)) return fail(res, 400, "Conversa inválida.");
+    res.json({ opening: await naturalOpening(deps!, req.user!.id, sessionId) });
   });
 
   /**

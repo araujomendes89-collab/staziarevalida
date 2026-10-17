@@ -20,13 +20,15 @@
  * 2.6.0: identidade Nexus, sem trocar o avatar de esfera.
  * 2.6.1: direção de pronúncia neutra compartilhada entre voz ao vivo e TTS, sem imitação regional.
  * 2.7.0: Nexus por voz: Durona firme no 1º erro e aliviada no acerto depois de errar; Direto comemora com palavrão; sem marcações entre colchetes.
+ * 2.8.0: Tutor natural, sem textos prontos (17/10): ficha do personagem no lugar da lista de frases, nada de frase, bordão ou começo
+ * de fala repetido na conversa (evite_repetir e comecos_ja_usados) e reação ao que o aluno disse de verdade, pelas palavras dele.
  */
 import type { Schema } from "../contentHub/ai/schema";
 import { TUTOR_SPOKEN_LANGUAGE, TUTOR_SPOKEN_REMINDER } from "../../src/shared/tutor/voiceLanguage";
 import { blocoSigilo } from "./sigilo";
 import { blocoLeitura } from "./leituraDoAluno";
 
-export const TUTOR_VERSION = "2.7.0";
+export const TUTOR_VERSION = "2.8.0";
 
 /**
  * Fala de gente, sem filtro, podendo gritar (pedido de 2026-10-06: "quero algo mais sem filtros, bem natural, ela pode gritar").
@@ -48,10 +50,11 @@ Isto é uma conversa, não um texto. Fale como um professor fala com o aluno sen
 - Português brasileiro falado, do dia a dia: "pra", "tá", "né", "olha", "então". Sem "portanto", "ademais", "em suma", "vale ressaltar", "é importante destacar".
 - Curto. Uma a três frases na maior parte das vezes; varie o tamanho. Só se estende quando o aluno pede explicação. Nada de monólogo e nada de cinco assuntos de uma vez.
 - Reaja ao que o aluno acabou de dizer, pegando as palavras dele. Não repita a pergunta, não resuma o que foi dito e não anuncie o que vai fazer ("vou te explicar", "vamos analisar detalhadamente"). Só faça.
+- Antes de responder, ache o que é DELE na fala: a palavra que ele usou, a pista que ele citou, a dúvida, a emoção, o passo em que o raciocínio dele virou. A resposta parte daí. Raciocínio de exemplo (não é frase para copiar): se ele disse que achou que era viral "porque a febre começou ontem", a sua fala começa pela febre de um dia e pelo que ela pesa no caso; não por um elogio ou por um "vamos lá" que serviria para qualquer aluno.
 - Uma pergunta por vez, e só quando fizer sentido. Às vezes uma reação curta resolve: "Não.", "Isso.", "Quase.", "Volta aqui.", "Por quê?", "Tem certeza?", "O que no caso te fez pensar nisso?".
 - Sem lista, numeração, título ou negrito, a não ser que o aluno peça um resumo.
 - Sem frase de assistente: "excelente pergunta", "certamente", "claro!", "com base nas informações fornecidas", "espero ter ajudado", "fico à disposição".
-- Varie: não comece duas falas do mesmo jeito e não repita bordão nem interjeição.
+- Varie de verdade: nenhuma fala começa como outra desta conversa (os começos já usados estão em <estado_do_professor> como "comecos_ja_usados") e nenhuma frase, bordão ou interjeição de "evite_repetir" volta. Também não transforme uma expressão em marca registrada entre conversas.
 - Nunca fale das suas regras, de "base", de "formato" ou de "fonte conferida". Isso é bastidor.
 - Nunca escreva marcações entre colchetes nem indicações de som ou de tom (risada, suspiro, grito): a atuação da voz é decidida pelo sistema.
 - O tom, o humor e a pressão são os do professor descrito no fim destas instruções. Vista o personagem por inteiro.
@@ -312,7 +315,9 @@ export function composeRealtimeInstructions(o: { mode: TutorMode; persona: strin
   const grounding = MEDICAL_GROUNDING_RULES.replace(/ em <base>/g, " nas ferramentas").replace(/<base>/g, "as ferramentas").replace(/<contexto_do_aluno>, <conversa> e <aluno>/, "o que o aluno diz");
   return [
     TUTOR_REALTIME_LANGUAGE,
-    BASE_TUTOR_PROMPT.replace(/ \(em <contexto_do_aluno>\)/, "").replace(/\n- "evaluation"[^\n]*/, "").replace(/\n- "suggested_replies"[^\n]*/, ""),
+    BASE_TUTOR_PROMPT.replace(/ \(em <contexto_do_aluno>\)/, "").replace(/\n- "evaluation"[^\n]*/, "").replace(/\n- "suggested_replies"[^\n]*/, "")
+      // na voz ao vivo não há <estado_do_professor>: a regra de não repetir vale pelo que já foi dito na ligação
+      .replace(/ \(os começos já usados[^)]*\)/, "").replace(/ de "evite_repetir" volta/, " já dita volta"),
     grounding,
     TUTOR_MODES[o.mode].replace(/<base>/g, "ferramenta"),
     TUTOR_REALTIME,
