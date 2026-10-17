@@ -14,6 +14,7 @@ import { useShellCounts } from "./shell/useShellCounts.js";
 import { MaisPage } from "./shell/MaisPage.jsx";
 import { useLayout, useMQ, useMobile } from "./shell/useLayout.js";
 import "./shell/shell.css";
+import { SaldoChip } from "./home/SaldoChip.jsx";
 
 export { useMQ, useMobile, useLayout };
 
@@ -464,7 +465,10 @@ function SimpleTopHeader({ title, sub, theme, go, phase, info }) {
           <img className="wm" src={theme === "dark" ? "/brand/horizontal-escuro-320w.png" : "/brand/horizontal-320w.png"} alt="StaziaMed Revalida" width="97" height="30" />
         </button>
         <span style={{ flex: 1 }} />
-        <StreakChip info={info} go={go} />
+        <span className="smn-chips">
+          <StreakChip info={info} go={go} />
+          <SaldoChip go={go} />
+        </span>
         <button type="button" className="smn-hdr-btn" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`}>
           <Avatar name={info.name} size={36} />
         </button>
@@ -494,7 +498,10 @@ function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, tablet, pha
             ) : (
               <h1 className="smn-ph-h1">{title}</h1>
             )}
-            <StreakChip info={info} go={go} />
+            <span className="smn-chips">
+              <StreakChip info={info} go={go} />
+              <SaldoChip go={go} />
+            </span>
           </div>
           {!mobile && (
             <div className="smn-ph-r">
