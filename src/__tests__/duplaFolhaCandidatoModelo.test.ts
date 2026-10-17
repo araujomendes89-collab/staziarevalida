@@ -9,7 +9,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { blocosDoRelato, cenarioInep, escapeHtml, folhaHtml, notaInep, minutosDe, paragrafos, tarefasDe, textosEsperados, type FolhaFonte } from "../shared/dupla/folhaCandidato";
+import { blocosDoRelato, cenarioEObservacao, cenarioInep, escapeHtml, FOLHA_MODELO, folhaHtml, notaInep, minutosDe, paragrafos, tarefasDe, textosEsperados, type FolhaFonte } from "../shared/dupla/folhaCandidato";
 import { openDuplaDb, type DuplaDb } from "./helpers/duplaDb";
 import { buildDuplaTestStatements } from "../../server/dupla/testStations";
 import { localStorageDir, type ContentDb } from "../../server/contentHub/infra";
@@ -58,9 +58,9 @@ describe("modelo da folha (só formata, não muda o texto)", () => {
     expect(html).toContain("ESTAÇÃO 1</div>");
     expect(html).toContain("AVALIAÇÃO DE HABILIDADES CLÍNICAS");
     expect(html).toContain("Área: Clínica Médica");
-    expect(html).toContain("INSTRUÇÕES PARA O(A) PARTICIPANTE");
-    expect(html).toContain("CENÁRIO DE ATUAÇÃO");
-    expect(html).toContain("Nos próximos 10 minutos, deverão ser realizadas as seguintes tarefas:");
+    expect(html).toContain("INSTRUÇÕES AO PARTICIPANTE");
+    expect(html).toContain("CENÁRIO DE ATENDIMENTO");
+    expect(html).toContain("Nos 10 minutos de duração da estação, você deverá executar as seguintes tarefas:");
     expect(html).toContain("RELATO DO CASO CLÍNICO");
     expect(html).toContain("Cenário &lt;script&gt;x&lt;/script&gt;");
     expect(html).not.toContain("<script>");
@@ -140,7 +140,7 @@ describe("geração da imagem (Chromium) e gravação, sobre o banco em memória
   }, 120_000);
 });
 
-describe("títulos do INEP (opção desligada por padrão; comparação de 17/10)", () => {
+describe("títulos do INEP (padrão desde a folha-1.2; opção B aprovada em 17/10; modelo antigo só para comparação)", () => {
   const fonte: FolhaFonte = {
     numero: 1, area: "Clínica Médica", duracao_ms: 600000,
     cenario: "Nível de atenção: primária.\nA unidade possui:\n• consultório;\n\nDESCRIÇÃO DO CASO\nVocê é um médico atendendo um paciente de 36 anos.",
@@ -149,32 +149,65 @@ describe("títulos do INEP (opção desligada por padrão; comparação de 17/10
   };
   const opc = { logoSrc: "data:image/png;base64,AA==" };
 
-  it("sem a opção, o modelo aprovado continua igual (nada muda para o app)", () => {
-    const h = folhaHtml(fonte, opc);
-    expect(h).toContain("INSTRUÇÕES PARA O(A) PARTICIPANTE");
-    expect(h).toContain("CENÁRIO DE ATUAÇÃO");
-    expect(h).toContain("Nos próximos 10 minutos, deverão ser realizadas as seguintes tarefas:");
-    expect(h).toContain("Observação: ATENÇÃO!");
-    expect(h).not.toMatch(/class="caixa"|INSTRUÇÕES AO PARTICIPANTE/);
-    expect(folhaHtml(fonte, { ...opc, titulosInep: false })).toBe(h);
+  it("a versão do modelo é a folha-1.2", () => {
+    expect(FOLHA_MODELO).toBe("folha-1.2");
   });
 
-  it("com a opção: títulos e blocos do caderno, tarefas dentro da descrição, ATENÇÃO em destaque, mesmo texto", () => {
-    const h = folhaHtml(fonte, { ...opc, titulosInep: true });
+  it("padrão: títulos e blocos do caderno, tarefas dentro da descrição, ATENÇÃO em destaque, mesmo texto", () => {
+    const h = folhaHtml(fonte, opc);
     expect(h).toContain("INSTRUÇÕES AO PARTICIPANTE");
     expect(h).toContain("CENÁRIO DE ATENDIMENTO");
     expect(h).toContain("DESCRIÇÃO DO CASO");
     expect(h).toContain("Nos 10 minutos de duração da estação, você deverá executar as seguintes tarefas:");
     expect(h).toContain('<span class="atencao-rotulo">ATENÇÃO!</span> CASO JULGUE NECESSÁRIO, VERBALIZE!<br>O PACIENTE NÃO DEVERÁ SER TOCADO.');
     expect(h).not.toMatch(/CENÁRIO DE ATUAÇÃO|Observação:|INSTRUÇÕES PARA O\(A\)/);
+    expect(folhaHtml(fonte, { ...opc, titulosInep: true })).toBe(h);
     // a descrição vem depois do bloco do cenário e as tarefas ficam no bloco da descrição
     expect(h.indexOf("CENÁRIO DE ATENDIMENTO")).toBeLessThan(h.indexOf("DESCRIÇÃO DO CASO"));
     expect(h.indexOf("DESCRIÇÃO DO CASO")).toBeLessThan(h.indexOf("realizar anamnese"));
     expect(h.indexOf("realizar anamnese")).toBeLessThan(h.indexOf("ATENÇÃO!"));
     // o texto esperado pela conferência continua todo na página (sem o "Observação:" na frente da nota)
-    const esperados = textosEsperados(fonte, { titulosInep: true });
-    expect(esperados).toContain("ATENÇÃO! CASO JULGUE NECESSÁRIO, VERBALIZE! O PACIENTE NÃO DEVERÁ SER TOCADO.");
-    expect(textosEsperados(fonte)).toContain("Observação: ATENÇÃO! CASO JULGUE NECESSÁRIO, VERBALIZE! O PACIENTE NÃO DEVERÁ SER TOCADO.");
+    expect(textosEsperados(fonte)).toContain("ATENÇÃO! CASO JULGUE NECESSÁRIO, VERBALIZE! O PACIENTE NÃO DEVERÁ SER TOCADO.");
+    expect(textosEsperados(fonte)).toEqual(textosEsperados(fonte, { titulosInep: true }));
+  });
+
+  it("titulosInep: false volta ao modelo antigo (só para comparação)", () => {
+    const h = folhaHtml(fonte, { ...opc, titulosInep: false });
+    expect(h).toContain("INSTRUÇÕES PARA O(A) PARTICIPANTE");
+    expect(h).toContain("CENÁRIO DE ATUAÇÃO");
+    expect(h).toContain("Nos próximos 10 minutos, deverão ser realizadas as seguintes tarefas:");
+    expect(h).toContain("Observação: ATENÇÃO!");
+    expect(h).not.toMatch(/class="caixa"|INSTRUÇÕES AO PARTICIPANTE/);
+    expect(textosEsperados(fonte, { titulosInep: false })).toContain("Observação: ATENÇÃO! CASO JULGUE NECESSÁRIO, VERBALIZE! O PACIENTE NÃO DEVERÁ SER TOCADO.");
+  });
+
+  it("bloco OBSERVAÇÃO do caderno: depois das tarefas, com título próprio, diferente do ATENÇÃO", () => {
+    const comCampo: FolhaFonte = {
+      ...fonte, cenario: "Você atende uma paciente.",
+      observacao_caderno: { titulo: "OBSERVAÇÃO", linhas: ["O hospital possui a seguinte estrutura:", "• setor de radiologia;", "• laboratório de análises clínicas."] },
+    };
+    const h = folhaHtml(comCampo, opc);
+    expect(h).toContain('<h3 class="caixa-titulo">OBSERVAÇÃO</h3>');
+    expect(h).toContain('<p class="obs-p">O hospital possui a seguinte estrutura:</p>');
+    expect(h).toContain('<ul class="marcadores obs"><li>setor de radiologia;</li><li>laboratório de análises clínicas.</li></ul>');
+    // depois das tarefas e antes do aviso ATENÇÃO (que continua sem prefixo)
+    expect(h.indexOf("solicitar exame físico")).toBeLessThan(h.indexOf('caixa-titulo">OBSERVAÇÃO'));
+    expect(h.indexOf('caixa-titulo">OBSERVAÇÃO')).toBeLessThan(h.indexOf('<span class="atencao-rotulo">'));
+    expect(textosEsperados(comCampo)).toEqual(expect.arrayContaining(["OBSERVAÇÃO", "O hospital possui a seguinte estrutura:", "setor de radiologia;"]));
+    // modelo antigo: também depois das tarefas, com o título
+    const antigo = folhaHtml(comCampo, { ...opc, titulosInep: false });
+    expect(antigo.indexOf("solicitar exame físico")).toBeLessThan(antigo.indexOf(">OBSERVAÇÃO<"));
+    // sem o campo, o bloco "OBSERVAÇÃO" no fim do cenário (como o banco guarda) sai do cenário e vai para depois das tarefas
+    const noCenario: FolhaFonte = { ...fonte, cenario: "Você atende uma paciente.\n\nOBSERVAÇÃO\nO hospital possui:\n• radiologia;\n• laboratório." };
+    expect(cenarioEObservacao(noCenario)).toEqual({
+      cenario: ["Você atende uma paciente."],
+      observacao: { titulo: "OBSERVAÇÃO", linhas: ["O hospital possui:", "• radiologia;", "• laboratório."] },
+    });
+    const h2 = folhaHtml(noCenario, opc);
+    expect(h2.indexOf("realizar anamnese")).toBeLessThan(h2.indexOf('caixa-titulo">OBSERVAÇÃO'));
+    // sem bloco, nada muda
+    expect(cenarioEObservacao(fonte).observacao).toBeNull();
+    expect(folhaHtml(fonte, opc)).not.toContain('<p class="obs-p">');
   });
 
   it("ajudantes: divide o cenário no título; sem o título tudo fica no cenário de atendimento; nota sem Observação", () => {

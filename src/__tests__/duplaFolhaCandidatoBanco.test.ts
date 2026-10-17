@@ -84,7 +84,7 @@ describe("Migração 013390: folha do candidato em imagem", () => {
     d.sql(`select p.id, p.initially_visible as inicial, p.screen_number as tela
              from public.checklist_station_contents k, public.dupla_pressings_tela(k.content) p where k.station_id = $1 order by p.n`, [id]);
   const gravar = (id: string, hash: string, sha = SHA) =>
-    d.sql(`select public.ch_worker_dupla_folha_gravar(null, $1, $2, $3, $4, 1604, 2400, 1000, 'folha-1.1') as r`, [id, hash, caminho(sha), sha]);
+    d.sql(`select public.ch_worker_dupla_folha_gravar(null, $1, $2, $3, $4, 1604, 2400, 1000, 'folha-1.2') as r`, [id, hash, caminho(sha), sha]);
   const fonte = async (id: string) => (await d.sql(`select public.ch_worker_dupla_folha_fonte($1) as r`, [id]))[0].r;
 
   it("regra do relato: o impresso 1 (e os seguidos) com nome de relato/instruções fica inicial; os outros seguem 1, 2, 3", async () => {
@@ -158,7 +158,7 @@ describe("Migração 013390: folha do candidato em imagem", () => {
     await expect(d.sql(`select public.ch_worker_dupla_folha_gravar(null, $1, $2, 'dupla/folhas/outro.png', $3, 1, 1, 1, 'x')`, [RELATO.id, hash, SHA])).rejects.toThrow(/inválido/);
     await expect(d.sql(`select public.ch_worker_dupla_folha_gravar($1, $2, $3, $4, $5, 1, 1, 1, 'x')`, [U.ana, RELATO.id, hash, caminho(SHA), SHA])).rejects.toThrow(/só a equipe/);
     const [{ r }] = await gravar(RELATO.id, hash);
-    expect(r).toMatchObject({ estado: "pronta", imagem_valendo: true, tem_imagem: true, modelo: "folha-1.1" });
+    expect(r).toMatchObject({ estado: "pronta", imagem_valendo: true, tem_imagem: true, modelo: "folha-1.2" });
     const [{ content }] = await d.sql(`select content from public.checklist_station_contents where station_id = $1`, [RELATO.id]);
     expect(content.pressing_assets).toEqual({ candidate_sheet: { folha: SHA } });
     // o resto do conteúdo não mudou

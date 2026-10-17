@@ -13,8 +13,11 @@
  *     "IMPORTANTE:", "OBSERVAÇÃO:" e "ORIENTAÇÃO:" viram título mesmo com texto depois, inclusive no meio do parágrafo,
  *     depois do ponto final (o texto segue como parágrafo); antes do primeiro rótulo, duas ou mais linhas seguidas viram marcadores (uma linha só fica como
  *     parágrafo); linhas que já começam com "•", "-" ou "*" viram marcadores (o sinal sai).
- * Os títulos fixos ("INSTRUÇÕES PARA O(A) PARTICIPANTE", "CENÁRIO DE ATUAÇÃO", "Nos próximos N minutos, deverão ser realizadas
- * as seguintes tarefas:") são os do modelo aprovado. Marca: logotipo StaziaMed Revalida, sem outros logos (decisão D2).
+ * Os títulos fixos são os do caderno do INEP (opção B aprovada pelo dono em 17/10, padrão desde a folha-1.2): "INSTRUÇÕES AO
+ * PARTICIPANTE", "CENÁRIO DE ATENDIMENTO", "DESCRIÇÃO DO CASO" (com as tarefas dentro), "Nos N minutos de duração da estação, você
+ * deverá executar as seguintes tarefas:" e o aviso "ATENÇÃO" em destaque, sem o prefixo "Observação:". `titulosInep: false` volta
+ * aos títulos do modelo antigo ("INSTRUÇÕES PARA O(A) PARTICIPANTE", "CENÁRIO DE ATUAÇÃO", "Nos próximos N minutos, deverão ser
+ * realizadas as seguintes tarefas:"), só para comparação. Marca: logotipo StaziaMed Revalida, sem outros logos (decisão D2).
  * Tarefas: com o relato na folha, "ler o impresso 1 (relato…)" e "orientação do impresso 1" passam a citar o relato
  * (tarefasRelato.ts, decisão do dono de 17/10); o texto oficial guardado não muda.
  */
@@ -23,8 +26,9 @@ import { relatoNaFolha, tarefasAjustadas } from "./tarefasRelato";
 /**
  * Versão do modelo: mudou o desenho, a Administração mostra que a folha foi feita com um modelo anterior.
  * folha-1.1 (17/10): com o relato na folha, as tarefas citam "o relato do caso clínico (na sua folha, acima)" e não "impresso 1".
+ * folha-1.2 (17/10): títulos e disposição do caderno do INEP (opção B "Igual ao INEP", aprovada pelo dono); mesmo texto da estação.
  */
-export const FOLHA_MODELO = "folha-1.1";
+export const FOLHA_MODELO = "folha-1.2";
 /** Largura da folha em px de CSS; a imagem sai com o dobro (FOLHA_ESCALA), perto dos 1605 px do modelo. */
 export const FOLHA_LARGURA = 802;
 export const FOLHA_ESCALA = 2;
@@ -32,6 +36,16 @@ export const FOLHA_ESCALA = 2;
 export interface FolhaImpresso {
   nome: string;
   texto: string;
+}
+
+/**
+ * Bloco "OBSERVAÇÃO" do caderno (por exemplo a estrutura do hospital), que vem DEPOIS das tarefas. Diferente do aviso "ATENÇÃO",
+ * que fica em destaque sem prefixo. Linhas que começam com "•" viram marcadores; as outras, parágrafos.
+ */
+export interface FolhaObservacao {
+  /** Padrão "OBSERVAÇÃO"; o caderno às vezes escreve "OBSERVAÇÕES". */
+  titulo?: string;
+  linhas: string[];
 }
 
 /** Fonte da folha, como dupla_folha_fonte (013390) devolve. */
@@ -43,6 +57,11 @@ export interface FolhaFonte {
   tarefas: string;
   impressos: FolhaImpresso[];
   bloqueio: string | null;
+  /**
+   * Opcional. Bloco "OBSERVAÇÃO" desenhado logo depois das tarefas. Sem este campo, um bloco que abre o último trecho do cenário com
+   * uma linha só "OBSERVAÇÃO" (ou "OBSERVAÇÕES") também sai depois das tarefas (é como a estação guarda o texto no banco).
+   */
+  observacao_caderno?: FolhaObservacao | null;
 }
 
 export interface FolhaOpcoes {
@@ -53,11 +72,15 @@ export interface FolhaOpcoes {
   /**
    * Títulos como no caderno do INEP ("INSTRUÇÕES AO PARTICIPANTE", "CENÁRIO DE ATENDIMENTO", bloco "DESCRIÇÃO DO CASO" com as tarefas
    * dentro, "Nos N minutos de duração da estação, você deverá executar as seguintes tarefas:" e o aviso "ATENÇÃO" em destaque).
-   * DESLIGADO por padrão: o modelo aprovado ("INSTRUÇÕES PARA O(A) PARTICIPANTE", "CENÁRIO DE ATUAÇÃO", "Observação:") continua o
-   * do app até o dono escolher (comparação de 17/10). Só muda os títulos e a disposição; o texto da estação é o mesmo.
+   * LIGADO por padrão desde a folha-1.2 (decisão do dono de 17/10: opção B "Igual ao INEP"). Só `false` volta ao modelo antigo
+   * ("INSTRUÇÕES PARA O(A) PARTICIPANTE", "CENÁRIO DE ATUAÇÃO", "Observação:"), para comparação. Só muda os títulos e a disposição;
+   * o texto da estação é o mesmo.
    */
   titulosInep?: boolean;
 }
+
+/** Títulos do INEP valem, salvo se pedirem o modelo antigo (`titulosInep: false`). */
+export const titulosInepLigado = (opcoes: Pick<FolhaOpcoes, "titulosInep"> = {}) => opcoes.titulosInep !== false;
 
 const texto = (v: unknown) => (typeof v === "string" ? v : "");
 
@@ -157,6 +180,45 @@ export function tarefasDaFolha(fonte: Pick<FolhaFonte, "tarefas" | "impressos">)
   return tarefasAjustadas(fonte.tarefas, relatoNaFolha(fonte.impressos, true));
 }
 
+const TITULO_OBSERVACAO = /^OBSERVA[ÇC](?:[ÃA]O|[ÕO]ES)\s*:?$/i;
+const MARCADOR_OBS = /^[•▪◦*-]\s*/;
+
+/**
+ * Cenário e bloco "OBSERVAÇÃO" da folha. Com `observacao_caderno` no fonte, o cenário fica como está. Sem o campo, um parágrafo do
+ * cenário cuja primeira linha é só "OBSERVAÇÃO"/"OBSERVAÇÕES" e tudo o que vem depois dele saem do cenário e viram o bloco.
+ */
+export function cenarioEObservacao(fonte: Pick<FolhaFonte, "cenario" | "observacao_caderno">): { cenario: string[]; observacao: FolhaObservacao | null } {
+  const paras = paragrafos(fonte.cenario);
+  const o = fonte.observacao_caderno;
+  const explicit = o && Array.isArray(o.linhas) ? o.linhas.map((l) => texto(l).trim()).filter(Boolean) : [];
+  if (explicit.length) return { cenario: paras, observacao: { titulo: texto(o?.titulo).trim() || "OBSERVAÇÃO", linhas: explicit } };
+  const i = paras.findIndex((p) => TITULO_OBSERVACAO.test(linhas(p)[0] ?? ""));
+  if (i < 0) return { cenario: paras, observacao: null };
+  const [titulo, ...resto] = linhas(paras[i]);
+  const corpo = [...resto, ...paras.slice(i + 1).flatMap((p) => linhas(p))];
+  if (!corpo.length) return { cenario: paras, observacao: null };
+  return { cenario: paras.slice(0, i), observacao: { titulo: titulo.replace(/\s*:$/, "").toLocaleUpperCase("pt-BR"), linhas: corpo } };
+}
+
+/** Corpo do bloco: marcadores seguidos viram uma lista, as outras linhas parágrafos. */
+function htmlObservacaoCorpo(obs: FolhaObservacao): string {
+  let out = "";
+  let lista: string[] = [];
+  const fechar = () => {
+    if (lista.length) out += `<ul class="marcadores obs">${lista.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>`;
+    lista = [];
+  };
+  for (const l of obs.linhas) {
+    if (MARCADOR_OBS.test(l)) lista.push(l.replace(MARCADOR_OBS, ""));
+    else {
+      fechar();
+      out += `<p class="obs-p">${escapeHtml(l)}</p>`;
+    }
+  }
+  fechar();
+  return out;
+}
+
 /** "10" ou "7,5" (minutos da estação). */
 export function minutosDe(duracaoMs: number): string {
   const m = (Number(duracaoMs) || 0) / 60000;
@@ -199,16 +261,16 @@ export function notaInep(v: string): string[] {
 export function folhaHtml(fonte: FolhaFonte, opcoes: FolhaOpcoes): string {
   const numero = typeof fonte.numero === "number" && Number.isFinite(fonte.numero) ? ` ${fonte.numero}` : "";
   const tarefas = tarefasDe(tarefasDaFolha(fonte));
-  const cenario = paragrafos(fonte.cenario);
+  const { cenario, observacao } = cenarioEObservacao(fonte);
   const impressos = Array.isArray(fonte.impressos) ? fonte.impressos : [];
 
-  const inep = Boolean(opcoes.titulosInep);
+  const inep = titulosInepLigado(opcoes);
   const htmlTarefas = tarefas.length
     ? `<h3 class="tarefas-titulo">Nos próximos ${escapeHtml(minutosDe(fonte.duracao_ms))} minutos, deverão ser realizadas as seguintes tarefas:</h3>
 <ul class="marcadores tarefas">${tarefas.map((t) => (t.tipo === "nota" ? `<li class="nota">${escapeHtml(t.texto)}</li>` : `<li>${escapeHtml(t.texto)}</li>`)).join("")}</ul>`
     : "";
 
-  // Títulos do INEP (opção): cenário de atendimento e descrição do caso em blocos; tarefas dentro da descrição; aviso em destaque.
+  // Títulos do INEP (padrão): cenário de atendimento e descrição do caso em blocos; tarefas dentro da descrição; aviso em destaque.
   let htmlCorpoInep = "";
   if (inep) {
     const { atendimento, descricao, temDescricao } = cenarioInep(cenario);
@@ -222,8 +284,9 @@ export function folhaHtml(fonte: FolhaFonte, opcoes: FolhaOpcoes): string {
     htmlCorpoInep =
       (atendimento.length ? caixa("CENÁRIO DE ATENDIMENTO", `<div class="cenario-bloco">${atendimento.map((p) => `<p>${comQuebras(p)}</p>`).join("")}</div>`) : "") +
       (temDescricao || blocoTarefas
-        ? caixa(temDescricao ? "DESCRIÇÃO DO CASO" : "", `<div class="cenario-bloco">${descricao.map((p) => `<p>${comQuebras(p)}</p>`).join("")}</div>${blocoTarefas}`)
+        ? caixa(temDescricao ? "DESCRIÇÃO DO CASO" : "", `${descricao.length ? `<div class="cenario-bloco">${descricao.map((p) => `<p>${comQuebras(p)}</p>`).join("")}</div>` : ""}${blocoTarefas}`)
         : "") +
+      (observacao ? caixa(escapeHtml(observacao.titulo ?? ""), htmlObservacaoCorpo(observacao)) : "") +
       notas
         .map((n) => `<p class="atencao">${notaInep(n.texto).map((s) => escapeHtml(s).replace(/^(ATENÇÃO!?)/, '<span class="atencao-rotulo">$1</span>')).join("<br>")}</p>`)
         .join("");
@@ -286,7 +349,12 @@ ul.relato + p.relato-p, h2.secao + p.relato-p{margin-top:18px}
 .caixa-titulo{position:absolute;top:-14px;left:16px;margin:0;padding:3px 12px;background:#E8EEF8;color:var(--azul);font-size:15.5px;letter-spacing:.2px}
 .cenario-bloco p{margin:0 0 10px;font-size:15.5px;line-height:1.62;text-align:justify;hyphens:none}
 h3.tarefas-titulo.dentro{margin:18px 0 0}
+.caixa > h3.tarefas-titulo.dentro:first-child{margin-top:0}
 .caixa ul.tarefas{margin-left:4px}
+.obs-p{margin:0 0 10px;font-size:15.5px;line-height:1.55;text-align:justify}
+ul.obs{margin:0 0 6px 4px}
+ul.obs li{padding-left:24px;text-align:justify}
+ul.obs li::before{left:2px}
 .atencao{margin:30px 30px 0;text-align:center;font-size:16px;font-weight:700;line-height:1.7}
 .atencao-rotulo{color:var(--azul)}
 </style></head>
@@ -300,7 +368,8 @@ ${
   inep
     ? htmlCorpoInep
     : `${cenario.length ? `<h3 class="cenario-titulo">CENÁRIO DE ATUAÇÃO</h3><div class="cenario">${cenario.map((p) => `<p>${comQuebras(p)}</p>`).join("")}</div>` : ""}
-${htmlTarefas}`
+${htmlTarefas}
+${observacao ? `<h3 class="tarefas-titulo">${escapeHtml(observacao.titulo)}</h3><div class="cenario">${htmlObservacaoCorpo(observacao)}</div>` : ""}`
 }
 ${htmlImpressos}
 </main></body></html>`;
@@ -312,9 +381,12 @@ ${htmlImpressos}
  */
 export function textosEsperados(fonte: FolhaFonte, opcoes: Pick<FolhaOpcoes, "titulosInep"> = {}): string[] {
   const out: string[] = [];
-  for (const p of paragrafos(fonte.cenario)) out.push(...linhas(p));
+  const { cenario, observacao } = cenarioEObservacao(fonte);
+  for (const p of cenario) out.push(...linhas(p));
   // com os títulos do INEP o título "DESCRIÇÃO DO CASO" continua na página (vira o título do bloco) e a nota perde o "Observação:"
-  for (const t of tarefasDe(tarefasDaFolha(fonte))) out.push(opcoes.titulosInep && t.tipo === "nota" ? notaInep(t.texto).join(" ") : t.texto);
+  const inep = titulosInepLigado(opcoes);
+  for (const t of tarefasDe(tarefasDaFolha(fonte))) out.push(inep && t.tipo === "nota" ? notaInep(t.texto).join(" ") : t.texto);
+  if (observacao) out.push(observacao.titulo ?? "", ...observacao.linhas.map((l) => l.replace(MARCADOR_OBS, "")));
   for (const imp of fonte.impressos ?? []) {
     for (const b of blocosDoRelato(imp.texto)) {
       if (b.tipo === "lista") out.push(...b.itens);

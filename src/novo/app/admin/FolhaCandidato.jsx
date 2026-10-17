@@ -144,7 +144,7 @@ export function FolhaCandidato({ stationId, onSituacao }) {
         {situacao.com_relato && <Badge size="sm">Com o relato do caso</Badge>}
       </div>
       <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
-        Instruções para o participante{situacao.com_relato ? " e relato do caso clínico (o impresso 1, que sai da lista de impressos do candidato)" : ""}, no desenho da estação simulada. O texto é o da
+        Instruções ao participante{situacao.com_relato ? " e relato do caso clínico (o impresso 1, que sai da lista de impressos do candidato)" : ""}, no desenho da estação simulada. O texto é o da
         estação, sem o nome nem o tema.
         {situacao.gerada_em ? ` Gerada em ${new Date(situacao.gerada_em).toLocaleString("pt-BR")}.` : ""}
       </p>
