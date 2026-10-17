@@ -74,6 +74,8 @@ export function useRoom(roomId) {
   roomRef.current = room;
   const applyRef = React.useRef(live.apply);
   applyRef.current = live.apply;
+  const refreshRef = React.useRef(live.refresh);
+  refreshRef.current = live.refresh;
   const pending = React.useRef(new Map()); // itemId → { grade, subitems, timer }
 
   const say = React.useCallback((text, tone = "danger") => setNotice({ text, tone, k: Date.now() + Math.random() }), []);
@@ -142,6 +144,8 @@ export function useRoom(roomId) {
         return res ?? true;
       } catch (e) {
         say(messageOf(e));
+        // A sala pode ter mudado no servidor (ex.: 013406, a estação ficou indisponível e a rodada voltou aos papéis): relê.
+        void Promise.resolve(refreshRef.current?.()).catch(() => undefined);
         return null;
       }
     };

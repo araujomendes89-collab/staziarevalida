@@ -482,6 +482,39 @@ describe("Sala: fases a partir do estado gravado", () => {
     expect(document.body.textContent).not.toContain("Estação de teste");
   });
 
+  it("013406: estação que ficou indisponível → aviso neutro nos papéis, sem o tema; ação recusada relê o estado da sala", async () => {
+    const AVISO = "Esta estação ficou indisponível. Escolham outra.";
+    await mount({ room: roles("candidate", { station: null, notice: AVISO }), content: { role: null, station: null, pressing_count: 0, pressings: [], notice: AVISO } });
+    expect(screen.getByText(AVISO)).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/revis|aprova|pendente/i);
+    cleanup();
+    await mount({ room: roles("evaluator", { station: null, notice: AVISO }), content: contentFor(null) });
+    expect(screen.getByText(AVISO)).toBeTruthy();
+    cleanup();
+    // sem o campo: nada
+    await mount({ room: roles("candidate"), content: contentFor("candidate") });
+    expect(screen.queryByText(AVISO)).toBeNull();
+    cleanup();
+
+    // a preparação: o servidor recusa "pronto" com a mensagem neutra; a tela mostra e relê a sala (que voltou aos papéis)
+    const prep = roles("candidate", { phase: "setup", me: { confirmed: true, connected: true }, partner: { confirmed: true, connected: true } });
+    const depois = roles("candidate", { rev: 9, station: null, notice: AVISO });
+    let lido = 0;
+    rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_dupla_room") return lido++ === 0 ? prep : depois;
+      if (fn === "app_dupla_room_content") return contentFor("candidate");
+      if (fn === "app_dupla_ready") throw new Error(AVISO);
+      if (fn === "app_dupla_heartbeat") return { server_now: NOW };
+      return [];
+    });
+    const view = render(<RoomScreen roomId="r1" go={vi.fn()} />);
+    await waitFor(() => expect(view.container.querySelector("[aria-busy='true']")).toBeNull());
+    const antes = rpc.mock.calls.filter(([fn]) => fn === "app_dupla_room").length;
+    fireEvent.click(screen.getByRole("button", { name: /pronto/i }));
+    await waitFor(() => expect(rpc.mock.calls.filter(([fn]) => fn === "app_dupla_room").length).toBeGreaterThan(antes));
+    await waitFor(() => expect(screen.getAllByText(AVISO).length).toBeGreaterThan(0));
+  });
+
   it("conferência: avaliador com nota provisória e pendentes; candidato com 'Aguardando avaliação' e Sair da sala", async () => {
     const marks = [
       { item_id: "i1", grade: "correct", subitems: [] },

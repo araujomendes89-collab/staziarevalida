@@ -92,6 +92,26 @@ export function RolesPhase({ room, actions }) {
           {room.match_note}
         </div>
       )}
+      {room.notice && (
+        // 013406: a estação da rodada deixou de estar liberada (voltou à revisão médica) com aluno na sala. O servidor fechou
+        // a rodada sem nota e devolveu a sala aos papéis; a mensagem é neutra (não diz o motivo nem a estação).
+        <div
+          role="status"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "12px 16px",
+            borderRadius: "var(--radius-lg)",
+            background: "var(--warning-bg)",
+            color: "var(--warning-text)",
+            font: "600 var(--text-sm)/1.45 var(--font-sans)",
+          }}
+        >
+          <Icon name="circle-alert" size={18} />
+          {room.notice}
+        </div>
+      )}
       {room.invite_pending && (
         <div role="status" style={{ display: "flex", alignItems: "center", gap: 10, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
           <Icon name="loader" size={16} />

@@ -334,6 +334,10 @@ describe("Migração 013370 — chat entre os dois do match", () => {
     });
     const antes = await retrato();
     await d.db.exec(SQL);
+    // A 013406 refaz app_export_my_data (base: esta): colada de novo, a cadeia segue na ordem, depois desta.
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.includes("treino_dupla") && x > MIGRACAO).sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect(await retrato()).toEqual(antes);
 
     const acl = Object.fromEntries((antes.funcoes as any[]).map((f) => [f.id, f.acl]));

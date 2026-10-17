@@ -233,9 +233,10 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
     // aluno não fica sabendo que a estação existe
     const alunos = await makeRoom(d.db, { members: [U.ana, U.bruno], phase: "roles", station: null, candidate: U.ana, evaluator: U.bruno });
     await expect(act(U.bruno, "set_station", alunos, { p_station_id: PENDENTE.id })).rejects.toThrow("Estação não encontrada.");
-    // estação pendente já gravada na sala (por outro caminho): confirmar recusa
+    // estação pendente já gravada na sala (por outro caminho): confirmar recusa. Desde a 013406 a rodada fecha antes, com a
+    // mensagem neutra (a estação ficou indisponível; a sala volta aos papéis sem estação).
     const gravada = await makeRoom(d.db, { members: [U.admin, U.ana], phase: "roles", station: PENDENTE.id, candidate: U.ana, evaluator: U.admin });
-    await expect(act(U.ana, "confirm_roles", gravada)).rejects.toThrow(SEM_APROVACAO);
+    await expect(act(U.ana, "confirm_roles", gravada)).rejects.toThrow("Esta estação ficou indisponível. Escolham outra.");
     // escolha no Banco de estações com estação pendente para uma aluna
     await addProfile(d.db, U.admin, { public_name: "Equipe Teste" });
     await addProfile(d.db, U.ana, { public_name: "Ana Souza" });
@@ -291,7 +292,11 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
     const vistas = () => d.sql(`select room_id, station_id, user_id, how from public.checklist_room_station_views order by 1, 2, 3`);
     const antes = await defs();
     const vAntes = await vistas();
-    await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8"));
+    // Colar a 013405 de novo volta as versões dela; por isso recola-se a cadeia a partir dela, na ordem (a 013406 refaz
+    // dupla_room_seen, dupla_room_state e app_dupla_confirm_roles).
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.includes("treino_dupla") && x >= MIGRACAO).sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect(await defs()).toEqual(antes);
     expect(await vistas()).toEqual(vAntes);
     expect(vAntes).toEqual([{ room_id: id, station_id: SECRETA.id, user_id: U.bruno, how: "escolheu" }]);
