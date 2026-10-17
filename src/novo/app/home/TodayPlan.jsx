@@ -15,7 +15,7 @@ import "./inicio.css";
 
 // [minutos, rótulo, descrição]
 // Pedido do dono (17/10/2026): 9 opções. O banco guarda os minutos (0 a 1440) e a regra das questões fica em public.daily_question_target.
-const MINUTES = [
+export const MINUTES = [
   ["15", "15 min", "rápido"],
   ["30", "30 min", "leve"],
   ["45", "45 min", "constante"],

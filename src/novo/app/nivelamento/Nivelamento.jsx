@@ -28,8 +28,13 @@ export function deveMostrarNivelamento(boot) {
   return Boolean(boot?.nivelamento?.primeira_tela);
 }
 
-export function Nivelamento({ modo, go }) {
+/**
+ * `aoSair` (opcional): quem abriu o nivelamento em tela cheia por dentro de outro fluxo (o onboarding) decide o que vem depois de
+ * "Depois", "Sair do diagnóstico" e "Entrar"; sem ele, a primeira tela recarrega a abertura do app, como sempre.
+ */
+export function Nivelamento({ modo, go, aoSair = null }) {
   const { backend, refresh, boot } = useSession();
+  const sairDaPrimeira = () => (aoSair ? aoSair() : refresh());
   const narrow = useNarrow();
   
   const [estado, setEstado] = useState(null);
@@ -90,7 +95,7 @@ export function Nivelamento({ modo, go }) {
     try {
       if (modo === "primeira") {
         await backend.rpc("app_nivelamento_adiar");
-        await refresh();
+        await sairDaPrimeira();
       } else {
         go("home");
       }
@@ -105,7 +110,7 @@ export function Nivelamento({ modo, go }) {
       setLoadingAction(true);
       try {
         await backend.rpc("app_nivelamento_adiar");
-        await refresh();
+        await sairDaPrimeira();
       } catch (err) {
         setErro(err);
         setLoadingAction(false);
@@ -345,7 +350,7 @@ export function Nivelamento({ modo, go }) {
 
 
   const entrar = async () => {
-    if (modo === "primeira") await refresh();
+    if (modo === "primeira") await sairDaPrimeira();
     else go("home");
   };
 

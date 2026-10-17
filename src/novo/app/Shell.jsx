@@ -18,6 +18,9 @@ import { SaldoChip } from "./home/SaldoChip.jsx";
 
 export { useMQ, useMobile, useLayout };
 
+// Marcadores estáveis do tour do onboarding (onboarding/Tour.jsx): grupo do menu → nome do alvo
+const TOUR_GRUPO = { jornada: "nav-jornada", praticar: "questoes", tutor: "tutor", evolucao: "evolucao" };
+
 // Ícone ilustrado do app quando existe; senão o ícone do design system
 const Ic = ({ name, size = 22 }) => <span className="smn-ic" aria-hidden="true">{AppRealIcon({ name, size }) || <Icon name={name} size={size - 4} />}</span>;
 const phaseLabel = (phase) => (phase === 1 ? "1ª fase · objetiva" : "2ª fase · prática");
@@ -57,7 +60,7 @@ function SideGroup({ g, route, go, info, open, current, collapsed, onToggle, up 
   if (g.direct) {
     const on = route === g.direct;
     return (
-      <button type="button" className={`smn-grp${on ? " is-current" : ""}`} aria-current={on ? "page" : undefined} aria-label={g.label} title={collapsed ? g.label : undefined} onClick={() => go(g.direct)}>
+      <button type="button" className={`smn-grp${on ? " is-current" : ""}`} aria-current={on ? "page" : undefined} aria-label={g.label} title={collapsed ? g.label : undefined} onClick={() => go(g.direct)} data-tour={TOUR_GRUPO[g.id]}>
         <Ic name={g.icon} size={26} />
         {!collapsed && <span className="smn-lbl">{g.label}</span>}
         {g.badgeText &&
@@ -78,7 +81,7 @@ function SideGroup({ g, route, go, info, open, current, collapsed, onToggle, up 
   const sub = isOpen && (
     <div className={`smn-sub${up ? " smn-sub--up" : ""}`} id={`smn-sub-${g.id}`} role="group" aria-label={g.label}>
       {g.items.map(([id, ic, l]) => (
-        <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} onClick={() => go(id)}>
+        <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} onClick={() => go(id)} data-tour={id === "hoje" ? "nav-hoje" : undefined}>
           <Ic name={ic} size={22} />
           <span className="smn-lbl">{l}</span>
           <Badge b={itemBadge(id, info)} />
@@ -97,6 +100,7 @@ function SideGroup({ g, route, go, info, open, current, collapsed, onToggle, up 
         aria-label={g.label}
         title={collapsed ? g.label : undefined}
         onClick={onToggle}
+        data-tour={TOUR_GRUPO[g.id]}
       >
         <Ic name={g.icon} size={26} />
         {!collapsed && <span className="smn-lbl">{g.label}</span>}
@@ -138,7 +142,7 @@ function Sidebar({ route, go, phase, info, theme, collapsed, setCollapsed }) {
       </button>
       <div id="smn-side-body" style={{ display: "contents" }}>
         <div className="smn-userwrap">
-          <button type="button" className="smn-user" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}, ${phaseLabel(phase)}`} title={collapsed ? info.name : undefined}>
+          <button type="button" className="smn-user" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}, ${phaseLabel(phase)}`} title={collapsed ? info.name : undefined} data-tour="conta">
             <Avatar name={info.name} size={36} />
             {!collapsed && (
               <>
@@ -214,7 +218,7 @@ function Rail({ route, go, phase, setPhase, phase2Locked, info, theme, setTheme 
         <button type="button" className="smn-logo" onClick={() => go(phase === 2 ? "home2" : "home")} aria-label="StaziaMed, início">
           <img src={logoSrc(theme, "symbol")} alt="" />
         </button>
-        <button type="button" className="smn-hdr-btn smn-rail-av" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`}>
+        <button type="button" className="smn-hdr-btn smn-rail-av" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`} data-tour="conta">
           <Avatar name={info.name} size={40} />
         </button>
         {groups.map((g) => {
@@ -231,6 +235,7 @@ function Rail({ route, go, phase, setPhase, phase2Locked, info, theme, setTheme 
               aria-expanded={g.direct ? undefined : openId === g.id}
               aria-label={g.direct === "tutor" ? "Perguntar ao tutor" : g.label}
               onClick={() => toggle(g)}
+              data-tour={TOUR_GRUPO[g.id]}
             >
               <Ic name={g.icon} size={26} />
               <span>{g.short}</span>
@@ -308,7 +313,7 @@ function MobileTabs({ route, go, phase, setPhase, phase2Locked, info, theme, set
           const n = badgeFrom ? badgeOf(badgeFrom, info) : null;
           if (id === "tutor") {
             return (
-              <button key={id} type="button" className={`smn-tab smn-tab--fab${on ? " is-current" : ""}`} aria-label={l} aria-current={on ? "page" : undefined} onClick={() => go(id)}>
+              <button key={id} type="button" className={`smn-tab smn-tab--fab${on ? " is-current" : ""}`} aria-label={l} aria-current={on ? "page" : undefined} onClick={() => go(id)} data-tour="tutor">
                 <span className="smn-fab" aria-hidden="true">
                   <Icon name="sparkles" size={26} />
                 </span>
@@ -317,7 +322,7 @@ function MobileTabs({ route, go, phase, setPhase, phase2Locked, info, theme, set
             );
           }
           return (
-            <button key={id} type="button" className={`smn-tab${on ? " is-current" : ""}`} aria-label={n ? `${l}, ${n} ${n === 1 ? "questão errada" : "questões erradas"} para revisar` : l} aria-current={on ? "page" : undefined} onClick={() => go(id)}>
+            <button key={id} type="button" className={`smn-tab${on ? " is-current" : ""}`} aria-label={n ? `${l}, ${n} ${n === 1 ? "questão errada" : "questões erradas"} para revisar` : l} aria-current={on ? "page" : undefined} onClick={() => go(id)} data-tour={id === "questoes" ? "questoes" : undefined}>
               <span className="smn-tab-pill">
                 {AppRealIcon({ name: ic, size: 24 }) || <Icon name={ic} size={22} />}
                 {n ? <span className="smn-tab-badge" aria-hidden="true">{n}</span> : null}
@@ -327,7 +332,7 @@ function MobileTabs({ route, go, phase, setPhase, phase2Locked, info, theme, set
           );
         })}
         {phase === 1 && (
-          <button type="button" className={`smn-tab${more || moreOn ? " is-current" : ""}`} aria-label="Mais" aria-haspopup="dialog" aria-expanded={more} onClick={() => setMore((m) => !m)}>
+          <button type="button" className={`smn-tab${more || moreOn ? " is-current" : ""}`} aria-label="Mais" aria-haspopup="dialog" aria-expanded={more} onClick={() => setMore((m) => !m)} data-tour="mais">
             <span className="smn-tab-pill">
               <MoreGrid />
             </span>
@@ -449,7 +454,7 @@ function MobileTopBar({ theme, go, phase, setPhase, phase2Locked, info }) {
       </button>
       <span style={{ flex: 1 }} />
       <PhasePill phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} />
-      <button type="button" className="smn-hdr-btn" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`}>
+      <button type="button" className="smn-hdr-btn" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`} data-tour="conta">
         <Avatar name={info.name} size={36} />
       </button>
     </div>
@@ -469,7 +474,7 @@ function SimpleTopHeader({ title, sub, theme, go, phase, info }) {
           <StreakChip info={info} go={go} />
           <SaldoChip go={go} />
         </span>
-        <button type="button" className="smn-hdr-btn" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`}>
+        <button type="button" className="smn-hdr-btn" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`} data-tour="conta">
           <Avatar name={info.name} size={36} />
         </button>
       </div>
