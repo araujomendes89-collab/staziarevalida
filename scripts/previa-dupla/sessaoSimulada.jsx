@@ -161,6 +161,52 @@ function resultado(roomId) {
     feedback: feedbackFinal, review: revisao,
   };
 }
+// Histórico em Meus PEPs (decisão do dono de 17/10, migração 013400): rodadas de salas JÁ ENCERRADAS, DADOS DE TESTE.
+// 1) estação 1 como candidato, sala fechada, resultado liberado (abre só leitura); 2) estação 2 como avaliador, revisão da
+// nota pedida e não feita ("Aguardando revisão", sem nome e sem nota); 3) um treino sozinho de teste.
+const HIST_ESTACOES = [ESTACAO_INICIAL, resumo(ESTACOES[1]).id];
+function historicoResultado() {
+  const { ST, itens } = dados(ESTACAO_INICIAL);
+  const notas = ["correct", "partial", "correct", "incorrect"];
+  const lista = itens.map((it, i) => {
+    const grade = notas[i % notas.length];
+    return { id: it.id, order: it.order, content: it.content, max_points: it.grades.correct, grade, points: pontos(it, grade) };
+  });
+  const score = lista.reduce((a, b) => a + b.points, 0);
+  const max = itens.reduce((a, b) => a + b.grades.correct, 0) || 10;
+  return {
+    round: 1, viewer: "candidate", station: ST, score, max_score: max, pct: Math.round((score / max) * 100), previous_pct: null,
+    items: lista, evaluator: ELE, candidate: EU, finished_at: EM(-2 * 86400000), used_ms: 9 * 60000,
+    feedback: { pos: "Feedback de TESTE (prévia): boa apresentação.", neg: "Feedback de TESTE: faltou um item do exame.", gen: "" },
+    review: { requested_at: null, reason: null, revised_at: null, score_before_review: null },
+  };
+}
+const respostasHistorico = {
+  app_fase2_peps: () => [{ id: "tentativa-teste", origin: "solo", station_id: HIST_ESTACOES[1], name: "Treino sozinho de TESTE", area: "Clínica Médica", at: EM(-5 * 86400000), score10: 6.5 }],
+  app_fase2_performance: () => ({ count: 1, by_phase: [], lost_items: [] }),
+  app_dupla_history: () => {
+    const r = historicoResultado();
+    const E2 = dados(HIST_ESTACOES[1]).ST;
+    return [
+      {
+        room_id: "sala-encerrada-1", round: 1, role: "candidate", status: "concluida", revised: false, finished_at: r.finished_at,
+        partner: { public_name: ELE.public_name },
+        station: { number: r.station.number, area: r.station.area, area_code: r.station.area_code, name: r.station.name, edition: r.station.edition },
+        score: r.score, max_score: r.max_score, pct: r.pct,
+      },
+      {
+        room_id: "sala-encerrada-2", round: 2, role: "evaluator", status: "aguardando_revisao", revised: false, finished_at: EM(-86400000),
+        partner: { public_name: "Colega Teste Dois" },
+        station: { number: E2.number, area: E2.area, area_code: E2.area_code, name: null, edition: null },
+        score: null, max_score: null, pct: null,
+      },
+    ].sort((a, b) => Date.parse(b.finished_at) - Date.parse(a.finished_at));
+  },
+  app_dupla_history_result: ({ p_room_id }) => {
+    if (p_room_id !== "sala-encerrada-1") throw new Error("Aguardando revisão da nota.");
+    return historicoResultado();
+  },
+};
 const JA_TREINADA = "Vocês já treinaram esta estação nesta sala. Escolham outra.";
 const sala_acoes = {
   app_dupla_room: ({ p_room_id, p_since_rev }) => (p_since_rev != null && p_since_rev === sala(p_room_id).rev ? null : estado(p_room_id)),
@@ -260,13 +306,14 @@ const respostasChat = {
 };
 // Administração › Estações na prévia: "Resumo sobre o tema" com rascunho → aprovado (013380). Tudo em memória, DADOS DE TESTE;
 // a estação 1 começa com o resumo de EXEMPLO DE TESTE já aprovado (o mesmo que aparece em Materiais na sala).
-const resumos = { [ESTACAO_INICIAL]: { body: RESUMO_TESTE, status: "approved", updated_at: EM(-86400000), approved_at: EM(-3600000) } };
+const resumos = { [ESTACAO_INICIAL]: { body: RESUMO_TESTE, status: "approved", updated_at: EM(-86400000), approved_at: EM(-3600000), note: "Nota de TESTE (prévia): conferido com a fonte." } };
 const resumoDe = (id) => {
   const r = resumos[id];
   return {
     station_id: id, body: r?.body ?? null, status: r?.status ?? null, origin: r ? "equipe" : null,
     updated_at: r?.updated_at ?? null, updated_by: r ? "Editora de Teste" : null,
-    approved_at: r?.status === "approved" ? r.approved_at : null, approved_by: r?.status === "approved" ? "Revisor de Teste" : null, can_approve: true,
+    approved_at: r?.status === "approved" ? r.approved_at : null, approved_by: r?.status === "approved" ? "Revisor de Teste" : null,
+    approval_note: r?.status === "approved" ? r.note ?? null : null, can_approve: true,
   };
 };
 const respostasAdm = {
@@ -292,16 +339,19 @@ const respostasAdm = {
     else if (resumos[p_station_id]?.body !== body) resumos[p_station_id] = { body, status: "draft", updated_at: NOW() };
     return resumoDe(p_station_id);
   },
-  app_admin_review_station_summary: ({ p_station_id, p_status }) => {
+  app_admin_review_station_summary: ({ p_station_id, p_status, p_note }) => {
     const r = resumos[p_station_id];
     if (!r) throw new Error("Esta estação ainda não tem resumo.");
-    resumos[p_station_id] = { ...r, status: p_status, approved_at: p_status === "approved" ? NOW() : null };
+    // 013400: aprovar pede a nota do que foi conferido (10 caracteres ou mais)
+    if (p_status === "approved" && String(p_note ?? "").trim().length < 10) throw new Error("Registre o que foi conferido no resumo (pelo menos 10 caracteres).");
+    resumos[p_station_id] = { ...r, status: p_status, approved_at: p_status === "approved" ? NOW() : null, note: p_status === "approved" ? String(p_note).trim() : null };
     return resumoDe(p_station_id);
   },
 };
 const respostas = {
   ...respostasChat,
   ...respostasAdm,
+  ...respostasHistorico,
   app_dupla_access: () => ({ aberto: true, permitido: true, equipe: true, planos: ["pro", "elite"] }),
   app_dupla_profile: () => ({ profile: perfil, defaults: perfil ? null : { public_name: "Aluno de Teste", exam: "2026/2" }, stats: { done: 3, avg: 7.8 } }),
   app_dupla_save_profile: ({ p_profile }) => {

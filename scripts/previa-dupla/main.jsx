@@ -1,5 +1,5 @@
 // PRÉVIA do Treinamento em Dupla (porta 31997): dados de teste, sem login e sem banco.
-//   /tela.html?t=praticar|perfil|estacoes|sala|vitrine|estacoes-adm  [&sala=<fase>-<papel>] [&estacao=<id>] [&perfil=nenhum] [&convite=1] [&tema=escuro]
+//   /tela.html?t=praticar|perfil|estacoes|sala|vitrine|estacoes-adm|peps  [&sala=<fase>-<papel>] [&estacao=<id>] [&perfil=nenhum] [&convite=1] [&tema=escuro]
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -10,12 +10,13 @@ import { StationsScreen } from "../../src/novo/app/dupla/StationsScreen.jsx";
 import { RoomScreen } from "../../src/novo/app/dupla/room/RoomScreen.jsx";
 import { Vitrine } from "../../src/novo/app/dupla/Vitrine.jsx";
 import { AdminStations } from "../../src/novo/app/admin/AdminPanels.jsx";
+import { Fase2Peps } from "../../src/novo/app/fase2/Fase2Peps.jsx";
 
 const params = new URLSearchParams(location.search);
 const tela = params.get("t") || "praticar";
 document.documentElement.dataset.theme = params.get("tema") === "escuro" ? "dark" : "light";
 
-const ROTAS = { dupla: "praticar", "dupla-perfil": "perfil", estacoes: "estacoes", "dupla-sala": "sala" };
+const ROTAS = { dupla: "praticar", "dupla-perfil": "perfil", estacoes: "estacoes", "dupla-sala": "sala", peps: "peps" };
 const KEEP = ["tema", "perfil", "convite"];
 function go(route, query = {}) {
   if (route === "planos" || !ROTAS[route]) { location.href = "/"; return; }
@@ -47,6 +48,7 @@ function Tela() {
   if (tela === "sala") return <RoomScreen roomId={params.get("sala") || "roles-candidate"} go={go} />;
   if (tela === "vitrine") return <Vitrine />;
   if (tela === "estacoes-adm") return <AdminStations />;
+  if (tela === "peps") return <Fase2Peps go={go} />;
   return <PracticeScreen go={go} />;
 }
 
