@@ -34,7 +34,7 @@
 --   app_dupla_heartbeat ← 013320:141; app_admin_save_dupla ← 013310:471; app_dupla_history ← 013400:139;
 --   dupla_result_payload ← 013400:43; app_admin_dupla_usage ← 013360:139.
 --
--- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003013430_treino_sozinho_dados.desfazer.sql
+-- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003013430_treino_dupla_sozinho_dados.desfazer.sql
 -- =============================================================================
 
 -- ---------------------------------------------------------------- 1) tentativas do treino sozinho (station_attempts)

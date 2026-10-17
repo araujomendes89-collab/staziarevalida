@@ -290,12 +290,11 @@ describe("Migração 013360 (+013380): resultado, revisão da nota, treinar outr
     await d.sql(`update public.checklist_study_sessions set pressings_released = $2::jsonb where id = $1`, [s1, JSON.stringify(["p1", "p2"])]);
     await d.sql(`update public.checklist_study_sessions set pressings_released = $2::jsonb where id = $1`, [s2, JSON.stringify(["p1"])]);
     await d.sql(`update public.checklist_study_sessions set pressings_released = '[]'::jsonb where id = $1`, [s3]);
-    expect(await d.rpc(U.admin, "app_admin_dupla_usage", { p_month: "2026-08" })).toEqual({
-      month: "2026-08", salas: 2, rodadas_avaliadas: 3, alunos: 3, impressos_por_rodada: 1,
-    });
-    expect(await d.rpc(U.admin, "app_admin_dupla_usage", { p_month: "2026-07" })).toEqual({
-      month: "2026-07", salas: 1, rodadas_avaliadas: 0, alunos: 0, impressos_por_rodada: null,
-    });
+    // (o bloco "sozinho" do treino sozinho vem à parte, 013460: aqui só os números da dupla)
+    const { sozinho: _s1, ...ago } = await d.rpc<any>(U.admin, "app_admin_dupla_usage", { p_month: "2026-08" });
+    expect(ago).toEqual({ month: "2026-08", salas: 2, rodadas_avaliadas: 3, alunos: 3, impressos_por_rodada: 1 });
+    const { sozinho: _s2, ...jul } = await d.rpc<any>(U.admin, "app_admin_dupla_usage", { p_month: "2026-07" });
+    expect(jul).toEqual({ month: "2026-07", salas: 1, rodadas_avaliadas: 0, alunos: 0, impressos_por_rodada: null });
     expect(await d.rpc(U.admin, "app_admin_dupla_usage", { p_month: "2026-09" })).toMatchObject({ salas: 1, rodadas_avaliadas: 1, alunos: 2, impressos_por_rodada: 0 });
     // padrão: o mês atual em Brasília
     const atual = (await d.sql<{ m: string }>(`select to_char(now() at time zone 'America/Sao_Paulo', 'YYYY-MM') as m`))[0].m;

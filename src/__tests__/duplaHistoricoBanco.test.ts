@@ -116,6 +116,10 @@ describe("Migração 013400 (parte 1): histórico das rodadas em dupla com o res
       );
     const antes = await defs();
     await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8"));
+    // o treino sozinho (013430 a 013460) refaz funções desta migração: coladas de novo, na ordem, o banco volta igual
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.includes("treino_dupla_sozinho")).sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect(await defs()).toEqual(antes);
     const f = await d.sql(`select proname, prosecdef, proconfig from pg_proc where proname = any ($1) order by 1`, [
       ["app_dupla_history", "app_dupla_history_result", "dupla_history_released", "dupla_result_payload", "app_dupla_result"],

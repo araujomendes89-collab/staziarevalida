@@ -385,6 +385,8 @@ const backend = {
     await new Promise((r) => setTimeout(r, 120));
     return f(args);
   },
+  // as rotas do servidor do treino sozinho (/api/dupla/solo) são atendidas em soloSimulado.js; o token é só de teste
+  accessToken: async () => "token-de-teste-da-previa",
   // imagens da estação 1 (folha do candidato e esfregaço) vindas do protótipo, só no servidor da prévia
   duplaPrintUrl: async (_roomId, id) => (IMAGEM[id] ? `/previa-imagens/${IMAGEM[id]}` : null),
 };

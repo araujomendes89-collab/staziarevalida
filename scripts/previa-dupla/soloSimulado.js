@@ -74,7 +74,7 @@ export function criarSolo({ dados, porEstacaoId, resumoEstacao, NOW, EM }) {
       marks: linhas,
       ia: source === "ia" ? { note: ia.note, diverged: ia.diverged } : null,
       positive: linhas.filter((m) => m.grade === "correct").map((m) => m.content),
-      negative: linhas.filter((m) => m.grade !== "correct").map((m) => m.content),
+      negative: linhas.filter((m) => m.grade === "partial" || m.grade === "incorrect").map((m) => m.content),
     };
     a.peps = { id: a.id, origin: "solo", source, station_id: a.station_id, name: dados(a.station_id).ST.name, area: dados(a.station_id).ST.area, at: fim, score10: a.result.score10 };
   }

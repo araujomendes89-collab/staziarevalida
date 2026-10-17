@@ -392,13 +392,13 @@ describe("avaliação por IA do treino sozinho (rota, maestro simulado e banco)"
     expect(JSON.stringify(a.marks)).not.toContain("inventado");
   });
 
-  it("correct sem trecho literal vira sem avaliação; incorrect sem trecho fica 'não citado'", async () => {
+  it("correct sem trecho literal vira sem trecho; incorrect sem trecho fica 'não citado'", async () => {
     const id = await pronta();
     const out = { items: [entry("i1", "correct", "isto o aluno não escreveu"), entry("i2", "incorrect", null, "O PEP pede o hemograma."), entry("i3", "incorrect", "Examino o abdome")], note: "" };
     behavior = { anthropic: () => out, gemini: () => out };
     expect((await evaluate(id)).status).toBe(200);
     const a = await tentativa(id);
-    expect(a.marks.map((m: any) => [m.order, m.grade, m.label ?? null])).toEqual([[1, null, "sem_avaliacao"], [2, "incorrect", "nao_citado"], [3, "incorrect", null]]);
+    expect(a.marks.map((m: any) => [m.order, m.grade, m.label ?? null])).toEqual([[1, null, "sem_trecho"], [2, "incorrect", "nao_citado"], [3, "incorrect", null]]);
     expect(a.marks[1].quote ?? null).toBeNull();
     expect(a.marks[2].quote).toBe("Examino o abdome");
     expect(Number(a.score)).toBe(0);

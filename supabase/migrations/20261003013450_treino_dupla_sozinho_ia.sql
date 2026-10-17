@@ -17,7 +17,7 @@
 -- por tarefa, os impressos abertos (com a hora) e o tempo usado. Não tem nome, e-mail, perfil, plano nem o roteiro do ator.
 -- A cota é a própria tentativa: ia_reserved_at preenchido = uma avaliação usada hoje e no mês (fuso de São Paulo); uma falha devolve.
 --
--- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003013450_treino_sozinho_ia.desfazer.sql
+-- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003013450_treino_dupla_sozinho_ia.desfazer.sql
 -- =============================================================================
 
 create or replace function public.ch_worker_solo_prepare(p_user uuid, p_attempt uuid) returns jsonb

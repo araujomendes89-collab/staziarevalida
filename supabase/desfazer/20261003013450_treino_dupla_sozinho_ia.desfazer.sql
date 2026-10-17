@@ -1,4 +1,4 @@
--- DESFAZER da 20261003013450_treino_sozinho_ia.sql (avaliação por IA do treino sozinho).
+-- DESFAZER da 20261003013450_treino_dupla_sozinho_ia.sql (avaliação por IA do treino sozinho).
 -- Apaga as funções de serviço. Treinos já avaliados por IA continuam como estão (nota, resultado e a avaliação espelhada).
 -- Uma tentativa que estava "avaliando" volta a "entregue" (a cota é devolvida).
 update public.station_attempts set status = 'submitted', ia_reserved_at = null where status = 'evaluating';

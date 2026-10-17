@@ -11,7 +11,7 @@
 --     ATENÇÃO NA JUNÇÃO: outras frentes também refazem app_export_my_data; quem colar por último precisa partir da definição MAIS NOVA
 --     e manter as chaves das outras (esta só acrescenta 'solo_attempts' no fim).
 --
--- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003013460_treino_sozinho_uso_exportacao.desfazer.sql
+-- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003013460_treino_dupla_sozinho_uso_exportacao.desfazer.sql
 -- =============================================================================
 
 create or replace function public.app_admin_dupla_usage(p_month text default null) returns jsonb
@@ -143,6 +143,6 @@ $$;
 
 -- ---------------------------------------------------------------- permissões
 revoke execute on function public.app_admin_dupla_usage(text) from public, anon;
-revoke execute on function public.app_export_my_data() from public, anon;
+-- (app_export_my_data mantém as permissões de antes: create or replace não as muda; o visitante recebe nulo)
 revoke execute on function public.dupla_export_solo() from public;
 grant execute on function public.dupla_export_solo() to anon, authenticated;

@@ -334,6 +334,8 @@ describe("Migração 013370 — chat entre os dois do match", () => {
     });
     const antes = await retrato();
     await d.db.exec(SQL);
+    // a 013460 (treino sozinho) refaz app_export_my_data a partir desta mesma função; colar a 013370 de novo volta à versão dela
+    await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013460_treino_dupla_sozinho_uso_exportacao.sql"), "utf8"));
     expect(await retrato()).toEqual(antes);
 
     const acl = Object.fromEntries((antes.funcoes as any[]).map((f) => [f.id, f.acl]));

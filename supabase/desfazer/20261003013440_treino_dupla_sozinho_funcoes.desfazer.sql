@@ -1,4 +1,4 @@
--- DESFAZER da 20261003013440_treino_sozinho_funcoes.sql (funções do treino sozinho).
+-- DESFAZER da 20261003013440_treino_dupla_sozinho_funcoes.sql (funções do treino sozinho).
 -- Apaga as funções NOVAS. As funções refeitas (fase2_attempt_payload, app_fase2_start/begin/finish/submit/abandon/attempt/overview/peps
 -- e fase2_evaluations) ficam com o corpo novo, que continua funcionando; para voltar ao corpo antigo cole de novo a 013330.
 -- Tentativas entregues ou avaliando voltam a "atendimento" para a tela antiga conseguir abri-las.

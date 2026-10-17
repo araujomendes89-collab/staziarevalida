@@ -1,4 +1,4 @@
--- DESFAZER da 20261003013430_treino_sozinho_dados.sql.
+-- DESFAZER da 20261003013430_treino_dupla_sozinho_dados.sql.
 -- Apaga as funções novas e a função treino_avaliacao da Central. As colunas novas (station_attempts: answers, pressings_opened, how,
 -- source, ia...; checklist_study_sessions: mode, source, solo_run_id) ficam (guardam o que os alunos escreveram). As funções refeitas
 -- (app_dupla_heartbeat, app_admin_save_dupla, app_dupla_history, dupla_result_payload, app_admin_dupla_usage) ficam com o corpo novo,

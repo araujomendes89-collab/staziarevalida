@@ -668,6 +668,10 @@ describe("Migração 9770 — sinal, baralho, escolha, match, convite e saída d
     });
     const antes = await retrato();
     await d.db.exec(SQL);
+    // o treino sozinho (013430 a 013460) refaz funções desta migração: coladas de novo, na ordem, o banco volta igual
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.includes("treino_dupla_sozinho")).sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect(await retrato()).toEqual(antes);
   });
 });

@@ -23,7 +23,7 @@
 -- NOVAS: solo_clean_text, solo_pep_rows, solo_has_image, solo_finalize, solo_sweep, app_fase2_save_answers, app_fase2_open_pressing,
 --   app_fase2_print_path, app_fase2_deliver, app_fase2_report_ia.
 --
--- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003013440_treino_sozinho_funcoes.desfazer.sql
+-- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003013440_treino_dupla_sozinho_funcoes.desfazer.sql
 -- =============================================================================
 
 -- ---------------------------------------------------------------- peças compartilhadas
@@ -231,7 +231,7 @@ begin
       'ia', case when a.source = 'ia' then jsonb_build_object('note', coalesce(a.ia ->> 'note', ''), 'diverged', coalesce((a.ia ->> 'diverged')::int, 0)) end,
       'positive', coalesce((select jsonb_agg(m ->> 'content' order by (m ->> 'order')::int) from jsonb_array_elements(a.marks) m where m ->> 'grade' = 'correct'), '[]'::jsonb),
       'negative', coalesce((select jsonb_agg(m ->> 'content' order by (m ->> 'order')::int) from jsonb_array_elements(a.marks) m
-                             where m ->> 'grade' is distinct from 'correct'), '[]'::jsonb)));
+                             where m ->> 'grade' in ('partial', 'incorrect')), '[]'::jsonb)));
   end if;
   return v;
 end

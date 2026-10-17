@@ -207,13 +207,13 @@ describe("Migração 9750 sobre o estado de produção", () => {
     expect(Object.keys(depoisDa1a.tabelas).filter((t) => !(t in antes.tabelas)).sort()).toEqual(["checklist_room_marks", "study_matches", "study_profiles", "study_swipes"]);
   });
 
-  it("depois de todas as do Treino, a exportação antiga continua inteira (com declarations) e ganha só as chaves do Treino (4 + a do chat)", () => {
+  it("depois de todas as do Treino, a exportação antiga continua inteira (com declarations) e ganha só as chaves do Treino (4 + a do chat + a do treino sozinho)", () => {
     expect(exportAntes).toHaveProperty("declarations");
     expect(exportDepois).toBeTruthy();
     const { exported_at: _a, ...velho } = exportAntes;
     const { exported_at: _b, ...novo } = exportFinal;
     for (const k of Object.keys(velho)) expect(novo[k], k).toEqual(velho[k]);
-    expect(Object.keys(novo).filter((k) => !(k in velho)).sort()).toEqual(["checklist_rooms", "study_chat", "study_matches", "study_profile", "study_swipes"]);
+    expect(Object.keys(novo).filter((k) => !(k in velho)).sort()).toEqual(["checklist_rooms", "solo_attempts", "study_chat", "study_matches", "study_profile", "study_swipes"]);
   });
 
   it("salas, convites e avaliações antigos não se perdem: a sala fecha (sem sinal), o convite fica, as avaliações ganham rodadas 1 e 2", async () => {
