@@ -35,6 +35,8 @@ como" dessa conta no Gmail, senão o Google troca o remetente. Os nomes são os 
 um conjunto só serve aos dois.
 
 ## Ordem de publicação (SQL antes do site)
+0. **Antes de tudo: "Confirm email" ligado no Supabase** (Authentication → Providers → Email). Sem ele, a conta já nasce "confirmada"
+   e a cópia do contrato (e a escolha de marketing) podem ir para um e-mail digitado errado ou de outra pessoa (revisão LGPD).
 1. Colar `013800_…_aplicar.sql` e depois `013810_…_aplicar.sql` no editor de SQL do Supabase. **Nunca `supabase db push`.**
    Cada uma confere tudo no fim e, se algo não bater, para sem mudar nada. Podem ser coladas de novo.
 2. Rodar `termo_funcoes_conferir.sql`: estrutura "ok", chaves todas `false`, permissões todas `false`.
