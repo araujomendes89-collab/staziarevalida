@@ -162,6 +162,9 @@ describe("Migração 012900: o candidato não recebe o tema da estação", () =>
     await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8"));
     // As do Treino que vêm depois refazem funções desta (a 013350 refaz dupla_room_state e app_dupla_room_content; a 013370, do
     // chat, refaz a exportação dos dados): coladas de novo na ordem, o banco volta igual.
+    // A lista de chaves de app_settings da 013370 não tem 'creditos' (013490): colada de novo antes dela, seria recusada pela
+    // linha dos créditos. A linha sai antes e a 013490, colada em seguida na ordem, devolve a lista e a linha, como antes.
+    await d.sql(`delete from public.app_settings where key = 'creditos'`);
     for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.includes("treino_dupla") && f > MIGRACAO).sort()) {
       await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
     }

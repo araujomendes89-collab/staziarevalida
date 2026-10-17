@@ -668,6 +668,12 @@ describe("Migração 9770 — sinal, baralho, escolha, match, convite e saída d
     });
     const antes = await retrato();
     await d.db.exec(SQL);
+    // As do Treino que vêm depois refazem funções desta (a 013510 refaz app_dupla_swipe, a 013520 também): coladas de novo na
+    // ordem, o banco volta igual. A linha 'creditos' sai antes (a lista de chaves da 013370 não a conhece; a 013490 a devolve).
+    await d.sql(`delete from public.app_settings where key = 'creditos'`);
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.includes("treino_dupla") && f > MIGRACAO).sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect(await retrato()).toEqual(antes);
   });
 });

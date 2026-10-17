@@ -119,7 +119,8 @@ describe("Migração 013370 — chat entre os dois do match", () => {
     await expect(msgs(U.ana, "00000000-0000-4000-8000-000000000999")).rejects.toThrow(SEM_MATCH);
     expect((await d.rpc(U.bruno, "app_dupla_chat_open", { p_partner: U.ana })).chat_id).toBe(chat);
     // O mesmo par deu match de novo: continua uma conversa só.
-    await d.sql(`insert into public.study_matches (user_a, user_b) values ($1, $2)`, [U.bruno, U.ana]);
+    // (Desde a 013510 o banco nem aceita o mesmo par duas vezes em study_matches: uma conexão por par.)
+    await expect(d.sql(`insert into public.study_matches (user_a, user_b) values ($1, $2)`, [U.bruno, U.ana])).rejects.toThrow(/study_matches_par_uniq/);
     expect(await d.sql(`select count(*)::int as n from public.study_chats where $1 in (user_a, user_b)`, [U.ana])).toEqual([{ n: 1 }]);
     expect((await d.rpc(U.ana, "app_dupla_chat_open", { p_partner: U.bruno })).chat_id).toBe(chat);
     await send(U.ana, "Oi, Bruno");
@@ -166,7 +167,7 @@ describe("Migração 013370 — chat entre os dois do match", () => {
 
   it("lista e limites vêm de app_settings; só administrador edita; a união das chaves vale", async () => {
     expect(await d.sql(`select key from public.app_settings order by key`)).toEqual(
-      ["announcement", "simulado_ineditas_pct", "treino_dupla", "treino_dupla_chat", "trial_days"].map((key) => ({ key })),
+      ["announcement", "creditos", "simulado_ineditas_pct", "treino_dupla", "treino_dupla_chat", "trial_days"].map((key) => ({ key })),
     );
     await expect(d.sql(`insert into public.app_settings (key, value) values ('outra', '1')`)).rejects.toThrow(/check constraint/);
 
@@ -333,7 +334,13 @@ describe("Migração 013370 — chat entre os dois do match", () => {
       conversas: await d.sql(`select id, user_a, user_b from public.study_chats order by id`),
     });
     const antes = await retrato();
+    // A lista de chaves desta migração não tem 'creditos' (013490): a linha sai antes e a 013490, colada em seguida, a devolve.
+    await d.sql(`delete from public.app_settings where key = 'creditos'`);
     await d.db.exec(SQL);
+    // (A 013500 refaz app_export_my_data a partir desta, com "study_credits": colada em seguida, a função volta igual.)
+    for (const f of ["20261003013490_treino_dupla_creditos_tabelas.sql", "20261003013500_treino_dupla_creditos_funcoes.sql", "20261003013540_treino_dupla_creditos_ia.sql"]) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect(await retrato()).toEqual(antes);
 
     const acl = Object.fromEntries((antes.funcoes as any[]).map((f) => [f.id, f.acl]));

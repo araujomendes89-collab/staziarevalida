@@ -327,6 +327,8 @@ describe("Migração 013360 (+013380): resultado, revisão da nota, treinar outr
     const antes = await defs();
     // a 013380 apaga o app_dupla_swap que a 013360 cria, e a 013400 refaz o app_dupla_result: a 013360 e as seguintes, na
     // ordem, voltam ao mesmo banco
+    // (A lista de chaves da 013370 não tem 'creditos': a linha sai antes e a 013490, na ordem, a devolve.)
+    await d.sql(`delete from public.app_settings where key = 'creditos'`);
     for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.endsWith(".sql") && x >= MIGRACAO).sort()) {
       await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
     }

@@ -232,6 +232,11 @@ export async function makeRoom(
     round: o.round ?? 1,
     ...(o.extra ?? {}),
   };
+  // Uma pessoa, uma sala aberta (013510, garantido no banco): a sala de teste nova fecha as abertas das mesmas pessoas, como a
+  // pessoa que sai de uma sala antes de entrar em outra.
+  if (o.phase !== "closed") {
+    await db.query(`update public.checklist_rooms set phase = 'closed' where phase <> 'closed' and member_ids && $1::uuid[]`, [o.members]);
+  }
   const cols = Object.keys(row);
   const r = await db.query<{ id: string }>(
     `insert into public.checklist_rooms (${cols.join(", ")}) values (${cols.map((_, i) => `$${i + 1}`).join(", ")}) returning id`,

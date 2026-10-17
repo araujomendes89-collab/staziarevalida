@@ -548,7 +548,9 @@ describe("Migração 013350: ações da sala do Treino em Dupla", () => {
     // falha no envio não derruba a ação
     await d.db.exec(`create or replace function realtime.send(payload jsonb, event text, topic text, private boolean default true) returns void
       language plpgsql as $$ begin raise exception 'falhou'; end $$;`);
-    expect((await act(U.ana, "set_roles", antes, { p_candidate_id: U.bruno })).rev).toBe(2);
+    // (Uma pessoa, uma sala aberta: a sala de teste nova fecha a anterior, então a prova do envio que falha usa uma sala nova.)
+    const nova = await sala("roles", { papeis: false });
+    expect((await act(U.ana, "set_roles", nova, { p_candidate_id: U.bruno })).rev).toBe(1);
   });
 
   // ------------------------------------------------------------------ colar de novo e permissões
@@ -564,6 +566,9 @@ describe("Migração 013350: ações da sala do Treino em Dupla", () => {
     await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8"));
     // As do Treino que vêm depois refazem funções desta (a 013380 refaz app_dupla_set_station, app_dupla_confirm_roles e
     // app_dupla_room_content; a 013390, app_dupla_print_path): coladas de novo na ordem, o banco volta igual.
+    // A lista de chaves de app_settings da 013370 não tem 'creditos' (013490): colada de novo antes dela, seria recusada pela
+    // linha dos créditos. A linha sai antes e a 013490, colada em seguida na ordem, devolve a lista e a linha, como antes.
+    await d.sql(`delete from public.app_settings where key = 'creditos'`);
     for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.includes("treino_dupla") && f > MIGRACAO).sort()) {
       await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
     }
