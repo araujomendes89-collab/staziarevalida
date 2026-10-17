@@ -21,7 +21,8 @@ import { unlockAudio } from "./voice/audioUnlock.js";
 import { openGeminiLive } from "./voice/geminiLive.js";
 import { openGeminiPonte } from "./voice/geminiPonte.js";
 import { refreshVoiceLanguage, TUTOR_SPOKEN_LANGUAGE } from "../../../shared/tutor/voiceLanguage";
-import { comEspera, personaDeEspera, RodizioDeEspera } from "../../../../server/tutor/conhecimento/frasesEspera";
+import { comEspera, personaDeEspera, RodizioDeEspera, VINHETAS } from "../../../../server/tutor/conhecimento/frasesEspera";
+import { FalaDeEspera, preCarregarVinhetas } from "./voice/falaDeEspera.js";
 
 // Frases de espera (decisão do dono de 17/10): um rodízio por conversa, para não repetir frase na mesma conversa nem quando a
 // ligação cai e volta.
@@ -121,6 +122,31 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   const [conferindo, setConferindo] = React.useState(null);
   const r = React.useRef({ handled: new Set(), transcript: [] });
   const stateRef = React.useRef("idle");
+  // frase de espera FALADA (voice/falaDeEspera.js): gravação já afinada, pelo tocador da voz do Gemini; enquanto toca, o personagem
+  // fica "falando" (a boca mexe) e depois volta ao estado de antes; o texto da frase só some quando a gravação acaba
+  const falaEspera = React.useRef(null);
+  falaEspera.current ??= new FalaDeEspera({
+    controle: () => r.current.gem ?? null,
+    podeFalar: () => {
+      const cur = r.current;
+      // ninguém falando: nem o professor (tocador ocupado), nem o aluno (microfone ouviu voz há pouco; interrompendo; pausado)
+      return cur.provider === "gemini" && !cur.gem?.speaking && !cur.gem?.alunoFalando && ["listening", "thinking", "ready"].includes(stateRef.current);
+    },
+    aoComecar: () => {
+      r.current.esperaEstadoAntes = stateRef.current;
+      setState("speaking");
+    },
+    aoTerminar: () => {
+      const cur = r.current;
+      const antes = cur.esperaEstadoAntes;
+      cur.esperaEstadoAntes = null;
+      if (stateRef.current === "speaking" && !cur.gem?.speaking) setState(antes === "thinking" ? "thinking" : "listening");
+      if (cur.esperaApagar) {
+        cur.esperaApagar = false;
+        setConferindo(null);
+      }
+    },
+  });
   const cb = React.useRef({});
   cb.current = { onTranscript, onWarning, onAvatar };
   const setState = (next) => {
@@ -146,6 +172,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   const teardown = (keep = false) => {
     const cur = r.current;
     clearTimers();
+    falaEspera.current?.parar(false);
     setConferindo(null);
     try {
       cur.gem?.close();
@@ -489,9 +516,17 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   // frase de espera (frasesEspera.ts): sem a personalidade (servidor antigo), nada aparece
   const mostrarEspera = () => {
     const p = r.current.personaEspera;
-    if (p) setConferindo(rodizioDe(sessionId).proxima(p).frase);
+    if (!p) return;
+    const { frase, vinheta } = rodizioDe(sessionId).proxima(p);
+    r.current.esperaApagar = false;
+    setConferindo(frase);
+    if (vinheta) void falaEspera.current.tocar(vinheta);
   };
-  const apagarEspera = () => setConferindo(null);
+  // a busca terminou: o texto some (se a gravação ainda estiver tocando, some quando ela acabar ou for cortada)
+  const apagarEspera = () => {
+    if (falaEspera.current.ativa) r.current.esperaApagar = true;
+    else setConferindo(null);
+  };
   /** Busca no material pelo navegador: passou de ~600 ms, a frase aparece até a resposta voltar. */
   const comFraseDeEspera = (nome, trabalho) => (nome === "get_topic_context" ? comEspera(trabalho, mostrarEspera, apagarEspera) : trabalho);
 
@@ -836,18 +871,24 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
             cur.gem?.sendText("O aluno acabou de abrir a conversa por voz. Abra do seu jeito, numa frase curta.");
           },
           onAudio: () => {
+            // a resposta chegou: a frase de espera falada já foi cortada pelo tocador; o professor começa a falar de verdade
+            const cortou = falaEspera.current.parar(false);
+            r.current.esperaEstadoAntes = null;
             apagarEspera();
-            if (stateRef.current !== "speaking" && stateRef.current !== "paused") speakingStarted();
+            if (cortou || (stateRef.current !== "speaking" && stateRef.current !== "paused")) speakingStarted();
           },
           // ponte: a busca no material passou de ~600 ms (frase de espera) e terminou (as fontes chegaram)
           onWaiting: () => mostrarEspera(),
           onWaitingEnd: () => apagarEspera(),
           onIdle: () => speakingStopped(),
           onInterrupted: () => {
+            falaEspera.current.parar(false);
             metrics().interruptions++;
             setState((s) => (s === "paused" ? s : "listening"));
           },
           onTranscript: (role, text, finished) => geminiDelta(role, text, finished),
+          // o microfone ouviu o aluno começar a falar: a frase de espera falada para na hora (a transcrição chega atrasada)
+          onVozDoAluno: () => falaEspera.current.parar(),
           onTurnComplete: () => {
             if (r.current.utter?.role === "tutor") finalizeUtterance();
           },
@@ -876,6 +917,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
       }
       cur.gem = gem;
       setStreams({ input: stream, output: gem.outputStream });
+      if (cur.personaEspera) preCarregarVinhetas(VINHETAS[cur.personaEspera]); // frases de espera faladas: prontas antes de precisar
     } catch (e) {
       await giveUp(e?.message ?? "connect");
     }

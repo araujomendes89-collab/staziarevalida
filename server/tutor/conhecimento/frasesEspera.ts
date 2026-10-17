@@ -1,5 +1,5 @@
 /**
- * FRASES DE ESPERA do Tutor (decisão do dono de 17/10/2026) — AGUARDAM APROVAÇÃO DO DONO.
+ * FRASES DE ESPERA do Tutor (decisão do dono de 17/10/2026) — APROVADAS pelo dono e GRAVADAS (VINHETAS).
  * Cópia para aprovação: /Volumes/StaziaMed/.tmp-aulas/tutor-personagens/cerebro/FRASES-DE-ESPERA.md
  *
  * Quando a busca no material aprovado passa de ~600 ms, o professor "segura" o aluno com uma frase curta, no jeito de cada uma das
@@ -11,7 +11,8 @@
  *   - voz ao vivo (ponte do Gemini e caminho pelo navegador): passou de ATRASO_ESPERA_MS com a busca rodando, a tela mostra a frase
  *     (legenda, papel "status"). O modelo do Gemini Live não fala enquanto a ferramenta roda (medido em 17/10: ferramenta "não
  *     bloqueante" não tem efeito no Vertex e pedir a frase ao modelo atrasa a resposta de 2 s para 4 a 6 s; cerebro/gemini-live.md),
- *     então o áudio da frase é uma gravação curta na voz do personagem, gravada DEPOIS que o dono aprovar o texto (VINHETAS, hoje vazio);
+ *     então o áudio da frase é uma gravação curta na voz do personagem (VINHETAS), tocada pelo tocador da voz
+ *     (src/novo/app/tutor/voice/falaDeEspera.js: nunca por cima do professor nem do aluno; a resposta ou a fala do aluno cortam);
  *   - texto (Mini Tutor): o indicador "Stazia está conferindo a fonte…" (textoConferindo) quando a resposta passa de ATRASO_ESPERA_MS.
  *
  * Sem dependências: o aplicativo (navegador) importa este arquivo.
@@ -70,10 +71,20 @@ export const FRASES_ESPERA: Readonly<Record<PersonaEspera, readonly string[]>> =
 };
 
 /**
- * Gravações das frases na voz do personagem (endereço por frase, mesma ordem de FRASES_ESPERA). VAZIO de propósito: só se grava
- * depois de o dono aprovar o texto. Sem gravação, a frase aparece só escrita.
+ * Gravações das frases na voz do personagem (endereço por frase, mesma ordem de FRASES_ESPERA), gravadas em 17/10/2026 depois da
+ * aprovação do dono: Gemini TTS (gemini-3.8-flash-tts), Stazi = "Zubenelgenubi" JÁ afinado +3 semitons (o mesmo afinador da voz ao
+ * vivo; o app toca sem afinar de novo), Stazia = "Kore". mp3 mono 24 kHz em public/novo-assets/tutor/espera (manifesto.json traz
+ * texto, duração e volume de cada uma); `?v=` muda quando o arquivo muda (o navegador não fica com a gravação velha).
+ * Mudou o texto de uma frase? Grave de novo (scripts/voz-teste/gravar-frases-espera.ts): o teste confere texto x manifesto.
+ * Sem gravação, a frase aparece só escrita.
  */
-export const VINHETAS: Readonly<Partial<Record<PersonaEspera, readonly string[]>>> = {};
+const gravadas = (prefixo: string, versoes: readonly string[]) => versoes.map((v, i) => `/novo-assets/tutor/espera/${prefixo}-${i + 1}.mp3?v=${v}`);
+export const VINHETAS: Readonly<Partial<Record<PersonaEspera, readonly string[]>>> = {
+  durao: gravadas("stazi-durao", ["8d7d5dc0", "e1851865", "c6c1d1ed", "cd6cf96b", "2977addd", "fbd2417a", "5d2af30f", "c12dbd1c"]),
+  acolhedor: gravadas("stazi-tranquilo", ["729a3c27", "d37f5f87", "3147359d", "30598b41", "4924cf86", "bdfc8a60", "4ec3f43b", "990080a4"]),
+  durona: gravadas("stazia-durona", ["062b7bd7", "94c64fe4", "4f738174", "b148c753", "d7b0c9f1", "4957912a", "6190839c", "aa0def81"]),
+  tranquila: gravadas("stazia-tranquila", ["8f062b8f", "1bf0a8ee", "98354b87", "68e53778", "1036a443", "39ba1396", "6bcfded7", "eae36dea"]),
+};
 
 /** A personalidade (id do banco) para as frases. "direto" virou Tranquilo (migração 013590); desconhecida: Tranquila. */
 export function personaDeEspera(id: string | null | undefined): PersonaEspera {

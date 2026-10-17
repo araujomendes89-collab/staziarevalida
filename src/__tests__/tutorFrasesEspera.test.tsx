@@ -1,5 +1,5 @@
 /**
- * Frases de espera do Tutor (decisão do dono de 17/10/2026; AGUARDAM APROVAÇÃO DO DONO): 8 por personalidade, no jeito de cada uma,
+ * Frases de espera do Tutor (decisão do dono de 17/10/2026; APROVADAS e gravadas — a gravação falada está em tutorFalaDeEspera.test.tsx): 8 por personalidade, no jeito de cada uma,
  * sem citar tecnologia, sem prometer conteúdo e sem palavrão; rodízio sem repetir na mesma conversa; só aparecem quando a busca passa
  * de ~600 ms (comEspera e useDemorou). A ponte de voz está em tutorConhecimentoPonte.test.ts ("frase de espera").
  */
@@ -29,8 +29,8 @@ describe("as frases", () => {
     expect(new Set(todas).size).toBe(32);
     expect(FRASES_ESPERA.tranquila).toContain("Deixa eu conferir isso com calma na diretriz…");
     expect(FRASES_ESPERA.durao).toContain("Segura aí que eu vou checar a fonte, não vou chutar número.");
-    // nenhuma gravação antes da aprovação do dono
-    expect(VINHETAS).toEqual({});
+    // gravadas depois da aprovação do dono: uma por frase, em todas as personalidades
+    for (const p of PERSONAS) expect(VINHETAS[p], p).toHaveLength(8);
   });
 
   it("sem tecnologia, sem palavrão, sem grito e sem prometer conteúdo", () => {
@@ -76,7 +76,8 @@ describe("rodízio sem repetir na mesma conversa", () => {
       }
     }
     const r = new RodizioDeEspera(() => 0);
-    expect(r.proxima("durao").vinheta).toBeNull(); // sem gravação ainda: só escrita
+    const x = r.proxima("durao");
+    expect(x.vinheta).toBe(VINHETAS.durao![x.indice]); // a gravação da mesma frase
   });
 });
 

@@ -6,6 +6,7 @@
 // O áudio usa o contexto liberado no toque do aluno (audioUnlock.js): o Safari não toca nem capta som num contexto criado depois
 // de uma espera, e o Firefox não liga o microfone num contexto com outra taxa. Por isso a captura reduz a taxa aqui mesmo.
 import { AudioPlayer, base64ToFloat32 } from "./audioPlayer.js";
+import { OuvidoDoAluno } from "./falaDeEspera.js";
 import { getAudioContext } from "./audioUnlock.js";
 
 export const GEMINI_IN_RATE = 16_000;
@@ -78,7 +79,8 @@ export { base64ToFloat32 };
 /**
  * Abre a voz do Gemini. `semitons`: afinação da voz do personagem (manifest `voz.semitons`; +3 = Stazi); sem valor, segue o que a
  * tela de voz definiu (definirSemitonsDaVoz), e 0 é o caminho original. `handlers`: onReady, onAudio, onIdle, onTranscript(role, text, finished), onTurnComplete, onInterrupted,
- * onToolCalls(calls), onUsage(usage), onReconnect(why: "goaway" | "drop"), onClose({ beforeReady, reason }), onError(err).
+ * onToolCalls(calls), onUsage(usage), onReconnect(why: "goaway" | "drop"), onClose({ beforeReady, reason }), onError(err),
+ * onVozDoAluno() (o microfone ouviu o aluno começar a falar).
  * onReady só chega depois de esta função devolver o controle (a abertura do professor usa o controle).
  * Devolve o controle: mute, sendText, respondTools, interrupt, setVolume, setSemitons, close, outputStream.
  */
@@ -90,6 +92,7 @@ export async function openGeminiLive({ token, model, stream, volume = 1, handler
   const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: "v1alpha" } });
   const h = handlers;
   const player = new AudioPlayer(ctx, volume, () => h.onIdle?.(), semitons == null ? { seguirTela: true } : { semitons });
+  const ouvido = new OuvidoDoAluno(); // o aluno começou a falar? (onVozDoAluno: a frase de espera falada para)
   // `current`: qual conexão vale agora (a antiga, ao fechar depois de trocada, não derruba a nova).
   // O Google troca a conexão de tempos em tempos (aviso "goAway", rotina em conversa longa); quedas de rede são poucas.
   const state = { session: null, current: 0, ready: false, readySent: false, handedOver: false, muted: false, closed: false, resuming: false, handle: null, resumes: 0, drops: 0, capture: null };
@@ -214,6 +217,7 @@ export async function openGeminiLive({ token, model, stream, volume = 1, handler
     silent.connect(ctx.destination);
     node.port.onmessage = (e) => {
       if (state.muted || state.closed || !state.session) return;
+      if (ouvido.ouvir(e.data)) h.onVozDoAluno?.();
       try {
         state.session.sendRealtimeInput({ audio: { data: pcm16Base64(e.data), mimeType: `audio/pcm;rate=${GEMINI_IN_RATE}` } });
       } catch {
@@ -267,6 +271,10 @@ export async function openGeminiLive({ token, model, stream, volume = 1, handler
     get speaking() {
       return player.playing;
     },
+    /** O microfone ouviu o aluno há pouco (frase de espera falada não começa por cima dele). */
+    get alunoFalando() {
+      return ouvido.falando;
+    },
     mute(on) {
       state.muted = on;
       if (on) {
@@ -296,6 +304,16 @@ export async function openGeminiLive({ token, model, stream, volume = 1, handler
     /** Afinação da voz do personagem (semitons; 0 = sem afinar). */
     setSemitons(n) {
       player.setSemitons(n);
+    },
+    /**
+     * Frase de espera gravada (mp3 já afinado): toca pelo MESMO tocador (a boca mexe), sem afinar de novo, nunca por cima do
+     * professor; a fala do professor ou a interrupção cortam na hora. Resolve true se tocou até o fim.
+     */
+    tocarVinheta(audio) {
+      return state.closed ? Promise.resolve(false) : player.tocarVinheta(audio);
+    },
+    pararVinheta() {
+      player.pararVinheta();
     },
     close() {
       if (state.closed) return;

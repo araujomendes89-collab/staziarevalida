@@ -6,6 +6,7 @@
 import { AudioPlayer } from "./audioPlayer.js";
 import { getAudioContext } from "./audioUnlock.js";
 import { CAPTURE_WORKLET, GEMINI_IN_RATE, pcm16Base64 } from "./geminiLive.js";
+import { OuvidoDoAluno } from "./falaDeEspera.js";
 
 const loaded = new WeakSet();
 
@@ -14,7 +15,8 @@ const loaded = new WeakSet();
  * openGeminiLive; sem valor, segue a tela de voz). handlers: onReady, onAudio, onIdle,
  * onTranscript(role, text, finished), onTurnComplete, onInterrupted, onToolCalls(calls), onUsage(uso), onReconnect(why),
  * onClose({ beforeReady, reason }), onError(err), onWaiting() (a busca no material passou de ~600 ms: frase de espera) e
- * onWaitingEnd() (a busca terminou). Testes podem trocar o WebSocket (WebSocketImpl).
+ * onWaitingEnd() (a busca terminou), onVozDoAluno() (o microfone ouviu o aluno começar a falar: a frase de espera falada para).
+ * Testes podem trocar o WebSocket (WebSocketImpl).
  */
 export async function openGeminiPonte({ ponte, stream, volume = 1, handlers = {}, audioContext = null, WebSocketImpl = null, semitons = null }) {
   const ctx = audioContext ?? getAudioContext();
@@ -23,6 +25,7 @@ export async function openGeminiPonte({ ponte, stream, volume = 1, handlers = {}
   const h = handlers;
   const player = new AudioPlayer(ctx, volume, () => h.onIdle?.(), semitons == null ? { seguirTela: true } : { semitons });
   const state = { ws: null, ready: false, readySent: false, handedOver: false, muted: false, closed: false, capture: null };
+  const ouvido = new OuvidoDoAluno();
   const send = (o) => {
     if (state.ws?.readyState === 1) state.ws.send(JSON.stringify(o));
   };
@@ -153,6 +156,7 @@ export async function openGeminiPonte({ ponte, stream, volume = 1, handlers = {}
     silent.connect(ctx.destination);
     node.port.onmessage = (e) => {
       if (state.muted || state.closed || !state.ready) return;
+      if (ouvido.ouvir(e.data)) h.onVozDoAluno?.();
       send({ t: "audio", d: pcm16Base64(e.data) });
     };
     state.capture = { node, src, silent };
@@ -173,6 +177,10 @@ export async function openGeminiPonte({ ponte, stream, volume = 1, handlers = {}
     },
     get speaking() {
       return player.playing;
+    },
+    /** O microfone ouviu o aluno há pouco (frase de espera falada não começa por cima dele). */
+    get alunoFalando() {
+      return ouvido.falando;
     },
     mute(on) {
       state.muted = on;
@@ -195,6 +203,16 @@ export async function openGeminiPonte({ ponte, stream, volume = 1, handlers = {}
     /** Afinação da voz do personagem (semitons; 0 = sem afinar). */
     setSemitons(n) {
       player.setSemitons(n);
+    },
+    /**
+     * Frase de espera gravada (mp3 já afinado): toca pelo MESMO tocador (a boca mexe), sem afinar de novo, nunca por cima do
+     * professor; a fala do professor ou a interrupção cortam na hora. Resolve true se tocou até o fim.
+     */
+    tocarVinheta(audio) {
+      return state.closed ? Promise.resolve(false) : player.tocarVinheta(audio);
+    },
+    pararVinheta() {
+      player.pararVinheta();
     },
     close() {
       if (state.closed) return;

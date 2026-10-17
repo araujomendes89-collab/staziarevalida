@@ -3,6 +3,8 @@
 // interrompe.
 // 17/10/2026: a voz ao vivo pode vir afinada (o Stazi sobe +3 semitons, efeito de desenho; pitchShift.js). Com 0 semitons (a Stazia)
 // o caminho é exatamente o de antes. O mp3 do professor (playEncoded) nunca é afinado.
+// 17/10/2026: frase de espera FALADA (tocarVinheta): gravação curta na voz do personagem, JÁ afinada no arquivo; sai pelo mesmo ganho
+// e pela mesma trilha da boca, nunca pelo afinador, e a fala ao vivo ou a interrupção cortam na hora.
 import { AfinadorStream, normalizarSemitons, seguirSemitonsDaVoz, semitonsDaVoz } from "./pitchShift.js";
 
 // Folga para agendar o primeiro pedaço de uma fala (como sempre foi).
@@ -70,6 +72,8 @@ export class AudioPlayer {
     this.semitons = 0;
     this.afinador = null;
     this.esvaziar = null; // relógio que solta o fim guardado no afinador quando a fila de som vai acabar
+    this.vinheta = null; // frase de espera tocando: { src, g, trilha, resolve }
+    this._vinhetaVez = null; // frase de espera sendo preparada (decodificando)
     if (opcoes.semitons != null) this.setSemitons(opcoes.semitons);
     else if (opcoes.seguirTela) {
       // sem valor próprio: segue o que a tela de voz pede (definirSemitonsDaVoz), inclusive se mudar com a ligação aberta
@@ -132,6 +136,7 @@ export class AudioPlayer {
   }
   /** Pedaço de PCM 16 bits em base64 (a voz ao vivo), na sequência dos anteriores, sem buraco. */
   play(b64, rate = 24000) {
+    this.pararVinheta(); // a resposta chegou: a frase de espera para na hora (nunca as duas juntas)
     if (this.ctx.state === "suspended") this.ctx.resume?.()?.catch?.(() => {});
     let data = base64ToFloat32(b64);
     if (this.semitons) {
@@ -195,6 +200,7 @@ export class AudioPlayer {
   }
   /** Um áudio inteiro já codificado (mp3 da voz do professor). Resolve true quando termina e false quando o stop() corta. */
   async playEncoded(arrayBuffer) {
+    this.pararVinheta();
     if (this.ctx.state === "suspended") await this.ctx.resume?.()?.catch?.(() => {});
     const buf = await this.ctx.decodeAudioData(arrayBuffer.slice ? arrayBuffer.slice(0) : arrayBuffer);
     return new Promise((resolve) => {
@@ -216,10 +222,83 @@ export class AudioPlayer {
       src.start(0);
     });
   }
+  /**
+   * Frase de espera gravada (ArrayBuffer do mp3, ou AudioBuffer já decodificado). O arquivo JÁ vem afinado: aqui NUNCA passa pelo
+   * afinador (semitons 0 para este áudio, qualquer que seja a afinação da voz ao vivo). Sai pelo mesmo ganho e MediaStream (a boca do
+   * personagem mexe pela mesma trilha), mas não conta como fala do professor (`playing` e onIdle não mudam). Não toca por cima do
+   * professor. Uma por vez. Resolve true se tocou até o fim; false se foi cortada (play, playEncoded, stop, pararVinheta) ou não tocou.
+   */
+  async tocarVinheta(audio) {
+    this.pararVinheta();
+    const vez = {};
+    this._vinhetaVez = vez;
+    let buf;
+    try {
+      if (this.ctx.state === "suspended") await this.ctx.resume?.()?.catch?.(() => {});
+      buf = audio && typeof audio.getChannelData === "function" ? audio : await this.ctx.decodeAudioData(audio.slice ? audio.slice(0) : audio);
+    } catch {
+      buf = null;
+    }
+    if (this._vinhetaVez !== vez) return false; // cortada enquanto preparava
+    this._vinhetaVez = null;
+    if (!buf || this.sources.size) return false; // não decodificou, ou o professor está falando
+    return new Promise((resolve) => {
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      const g = this.ctx.createGain(); // ganho próprio: o corte sai com 20 ms de rampa, sem estalo
+      g.gain.value = 1;
+      src.connect(g);
+      g.connect(this.gain);
+      const at = this.ctx.currentTime + FOLGA_S;
+      this._anotar(buf.getChannelData(0), buf.sampleRate, at);
+      const v = { src, g, trilha: this.trilha[this.trilha.length - 1], resolve };
+      this.vinheta = v;
+      src.onended = () => {
+        if (this.vinheta !== v) return;
+        this.vinheta = null;
+        this._soltar(v);
+        resolve(true);
+      };
+      src.start(at);
+    });
+  }
+  get vinhetaTocando() {
+    return Boolean(this.vinheta || this._vinhetaVez);
+  }
+  /** Corta a frase de espera agora (a boca fecha junto). Sem frase, não faz nada. */
+  pararVinheta() {
+    this._vinhetaVez = null;
+    const v = this.vinheta;
+    if (!v) return;
+    this.vinheta = null;
+    v.src.onended = null;
+    const t = this.ctx.currentTime;
+    try {
+      v.g.gain.setValueAtTime?.(v.g.gain.value, t);
+      v.g.gain.linearRampToValueAtTime?.(0, t + 0.02);
+      v.src.stop(t + 0.02);
+    } catch {
+      try {
+        v.src.stop();
+      } catch {
+        // já parou
+      }
+    }
+    this.trilha = this.trilha.filter((p) => p !== v.trilha);
+    v.resolve(false);
+  }
+  _soltar(v) {
+    try {
+      v.g.disconnect?.();
+    } catch {
+      // já desligado
+    }
+  }
   stop() {
     // interrupção: o que o afinador guardava é descartado junto (nada da fala cortada sai depois)
     this._pararRelogio();
     this.afinador?.reiniciar();
+    this.pararVinheta();
     for (const s of this.sources) {
       try {
         s.onended = null;
