@@ -532,9 +532,10 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
   // é gabarito antes da hora, ataque pessoal, palavrão acima do liberado e contestar o gabarito
   const serious = check.violations.filter((x) => ["answer_leak", "personal_attack", "profanity", "challenges_official_answer", "ungrounded_number", "invented_reference", "currency_claim", "cites_support_material"].includes(x.code));
   // sigilo (escudo.ts): a fala já foi dita; grava sem o vazamento, avisa a equipe pelo registro e a próxima fala corrige sem repetir
-  const sigilo = conferirTranscricao(clean, ctx?.personality.id, { pergunta: [...(ctx?.history ?? [])].reverse().find((h) => h.role === "student")?.content ?? null, permitidos: [...(ctx?.history ?? []).map((h) => h.content), ...blocks.map((b) => b.text)] });
+  const sigilo = conferirTranscricao(clean, ctx?.personality.id, { pergunta: [...(ctx?.history ?? [])].reverse().find((h) => h.role === "student")?.content ?? null, permitidos: [...(ctx?.history ?? []).map((h) => h.content), ...blocks.map((b) => b.text)], base: blocks.map((b) => b.text) });
   if (sigilo.vazou) {
-    serious.push({ code: "sigilo", detail: sigilo.categorias.join(",") });
+    // correção na próxima fala só nas categorias fortes (escudo.ts); "bastidor" ou "treino" sozinhos só saem do histórico
+    if (sigilo.correcao) serious.push({ code: "sigilo", detail: sigilo.categorias.join(",") });
     deps.log?.(`[tutor] voz: sigilo na fala do professor (${sigilo.categorias.join(", ")}), chamada ${voiceCallId}`);
   }
   await deps.db.service("ch_worker_tutor_append", {
