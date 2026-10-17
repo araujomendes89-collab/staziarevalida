@@ -15,7 +15,7 @@ import { atenderPonte } from "../../server/vozPonte/ponte";
 import { acertoDaFerramenta, HumorDaLigacao, humorParaBilhete, humorValido, instrucoesComEstado, linhaComecos, type HumorBilhete } from "../../server/tutor/humorVoz";
 import { DEFAULT_EXPLOSIVA, PROFILES, personaFixedLayer, personaPromptLayer, personaStateLayer, personaTurn, resolveProfile } from "../../server/tutor/personalityEngine";
 import { guardarAberturaDaPonte, sessionContext, voiceTranscript } from "../../server/tutor/realtime";
-import { fichaDe, fichaTexto } from "../../server/tutor/fichas";
+import { fichaDe, fichaVoz } from "../../server/tutor/fichas";
 
 const SEG = "h".repeat(48);
 const PLATFORM = { maxProfanity: "moderate" as const, explosivaEnabled: true };
@@ -200,7 +200,7 @@ describe("instruções da voz ao vivo: ficha, sem falas fixas, aberturas variada
     for (const id of ["durao", "durona", "acolhedor", "tranquila"]) {
       const dir = d(id);
       const fixa = personaFixedLayer(dir, { personalityId: id, examples: ["fala sorteada"] });
-      expect(fixa).toContain(fichaTexto(fichaDe(id)!));
+      expect(fixa).toContain(fichaVoz(fichaDe(id)!)); // revisão de 17/10: na voz, a ficha sem valores e sem abertura/passagem (instruções menores)
       expect(fixa).toContain("«fala sorteada»");
       for (const e of PROFILES[dir.profileKey].examples) expect(fixa).not.toContain(e);
       expect(fixa).not.toMatch(/ESTADO AGORA \(interno/);

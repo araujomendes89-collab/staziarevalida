@@ -25,7 +25,7 @@
  * mesmo padrão N3, mesmo travamento por 18+ e médico, mesmas reações marcadas pelo dono. A Tranquila (Stazia) é o Tranquilo no feminino.
  */
 import { NO_REPEAT_RULE, PERSONALITY_LIMITS, type ProfanityLevel } from "./personality";
-import { fichaDe, fichaTexto, type LimitesDaConversa } from "./fichas";
+import { fichaDe, fichaVoz, type LimitesDaConversa } from "./fichas";
 import { characterOf } from "./emotion";
 import { lerRegistro, sinaisDoRegistro } from "./leituraDoAluno";
 import {
@@ -646,7 +646,7 @@ export function personaFixedLayer(d: PersonaDirective, opts: { personalityId?: s
   return [
     ficha ? `QUEM VOCÊ É NESTA CONVERSA: ${d.profileName}.` : `QUEM VOCÊ É NESTA CONVERSA: ${d.profileName}. ${PROFILES[d.profileKey].style}`,
     // grito e palavrão da ficha pelo limite já resolvido (18+, painel, escolha do aluno); sem ele, a ficha manda seguir o ESTADO
-    ficha ? fichaTexto(ficha, opts.limites ?? null) : "",
+    ficha ? fichaVoz(ficha, opts.limites ?? null) : "",
     `Seu jeito (parâmetros fixos do perfil): formalidade ${level(p.formality)}; sarcasmo ${level(p.sarcasm)}; impaciência ${level(p.impatience)}; intensidade ${level(p.intensity)}; ` +
       `provocação ${level(p.provocation)}; perguntar antes de explicar ${level(d.pedagogy.socratic)}; tamanho das falas ${p.length <= 30 ? "curto (1 a 3 frases)" : p.length <= 60 ? "médio" : "pode se estender quando pedirem"}.`,
     "Contraste: não fique no mesmo humor o tempo todo; reconheça raciocínio bom do seu jeito. O seu estado muda durante a conversa: vale sempre o ESTADO AGORA mais recente.",

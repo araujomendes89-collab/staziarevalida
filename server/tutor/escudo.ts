@@ -13,7 +13,7 @@
 import { BASE_TUTOR_PROMPT, FALA_SEM_FILTRO, MEDICAL_GROUNDING_RULES, TUTOR_LIVE, TUTOR_MODES, TUTOR_REALTIME, TUTOR_VOICE } from "./prompts";
 import { PERSONALITY_LIMITS } from "./personality";
 import { blocoLeitura } from "./leituraDoAluno";
-import { fichaDe, fichaTexto } from "./fichas";
+import { fichaDe, fichaTexto, fichaVoz } from "./fichas";
 import { achadosDeSigilo, blocoSigilo, correcaoDeSigilo, ngramasDasInstrucoes, nomeDoPersonagem, reescreverNoPersonagem, type AchadoSigilo, type ContextoSigilo } from "./sigilo";
 
 export const VIOLACAO_SIGILO = "sigilo";
@@ -37,7 +37,7 @@ export function ngramasFixos(): Set<string> {
       blocoSigilo(), blocoLeitura(null, true), blocoLeitura(null, false),
       ...ids.flatMap((id) => [blocoSigilo(id), blocoLeitura(id, true), blocoLeitura(id, false)]),
       // a frase de grito e palavrão muda com o limite da conversa: entram as três formas
-      ...ids.map((id) => fichaDe(id)).filter((f) => f != null).flatMap((f) => [null, { palavrao: "moderate" as const, gritos: true }, { palavrao: "off" as const, gritos: false }].map((l) => fichaTexto(f!, l))),
+      ...ids.map((id) => fichaDe(id)).filter((f) => f != null).flatMap((f) => [null, { palavrao: "moderate" as const, gritos: true }, { palavrao: "off" as const, gritos: false }].flatMap((l) => [fichaTexto(f!, l), fichaVoz(f!, l)])),
     ]);
     for (const g of livresDeAula()) fixos.delete(g);
   }

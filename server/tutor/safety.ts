@@ -191,6 +191,8 @@ const APELIDO_DIRIGIDO = [
   "mala", "desgracado", "desgracada", "moleque", "moleca", "folgado", "folgada", "abusado", "abusada", "safado", "safada", "malandro", "malandra",
   "pilantra", "marrento", "marrenta", "metido", "metida", "bobao", "bobona", "bobinho", "bobinha", "fanfarrao", "fanfarrona",
   "atrevido", "atrevida", "cara de pau", "sem vergonha", "sem-vergonha", "vagabundo", "vagabunda", "preguicoso", "preguicosa",
+  // de carinho também não (a ficha proíbe; a voz ao vivo da Durona disse «rapaz» na medição de 17/10): só como vocativo
+  "rapaz", "moca", "meu filho", "minha filha", "querido", "querida", "meu querido", "minha querida",
 ];
 const ESC = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+");
 const NICK = `(?:${[...APELIDO_SEMPRE, ...APELIDO_DIRIGIDO].map(ESC).join("|")})`;

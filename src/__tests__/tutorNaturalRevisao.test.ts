@@ -23,7 +23,9 @@ describe("apelido para o aluno é barrado (bancada de 17/10: palhaço, engraçad
     "Moleque, presta atenção no enunciado.",
     "Sabichão, então me diz o critério.",
   ];
-  const outros = ["Seu folgado, lê o enunciado.", "Você é muito abusado.", "Que folgado!", "Tu tá muito marrento hoje.", "Desgraçado, olha o caso!"];
+  const outros = ["Seu folgado, lê o enunciado.", "Você é muito abusado.", "Que folgado!", "Tu tá muito marrento hoje.", "Desgraçado, olha o caso!",
+    // de carinho também não (a voz ao vivo da Durona disse «rapaz» na medição de 17/10)
+    "Qual corticoide o que, rapaz! Tá querendo matar o paciente?", "Calma, querida, vamos por partes.", "Meu filho, olha o enunciado."];
 
   it("todas as formas viram ataque pessoal, em qualquer nível de palavrão, com a correção que pede para zoar a situação", () => {
     for (const t of [...reais, ...outros]) {

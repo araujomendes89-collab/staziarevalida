@@ -229,6 +229,23 @@ export function fichaResumo(f: Ficha, limites?: LimitesDaConversa | null): strin
   ].join("\n");
 }
 
+/**
+ * Ficha da VOZ AO VIVO (revisão de 17/10: as instruções da voz cresceram ~26% com a ficha inteira, e elas são cobradas de novo a
+ * cada fala). Fica quem é, o jeito, como reage em cada situação, o tamanho, o que nunca faz e os vícios; saem os valores (já ditos
+ * no jeito e nos limites) e a abertura/passagem (a abertura da voz tem instrução própria no contexto da ligação).
+ */
+export function fichaVoz(f: Ficha, limites?: LimitesDaConversa | null): string {
+  return [
+    `FICHA DO PERSONAGEM (descrição, não roteiro: nenhuma frase daqui é para ser dita como está).`,
+    f.quem,
+    `Jeito de falar: ${f.jeito.replace("{LIMITES}", limitesTexto(limites))}`,
+    `Como você reage: ${(Object.keys(SITUACOES) as Situacao[]).map((k) => `${SITUACOES[k]}: ${f.reacoes[k]}`).join(" ")}`,
+    `Tamanho da fala: ${f.tamanho}`,
+    `Nunca: ${f.nunca}`,
+    `Vícios que você NÃO tem: ${[...f.tiques, ...TIQUES_COMUNS].map((t) => `«${t}»`).join(", ")}.`,
+  ].join("\n");
+}
+
 /** A ficha em texto corrido para o prompt (sem lista com hífen: texto de regra gera resposta com cara de regra). */
 export function fichaTexto(f: Ficha, limites?: LimitesDaConversa | null): string {
   return [
