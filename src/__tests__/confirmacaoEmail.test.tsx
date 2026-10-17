@@ -58,7 +58,7 @@ describe("Supabase: cadastro, entrada e reenvio", () => {
   it("o link do e-mail volta para /novo com a marca ?confirmacao=1", async () => {
     expect(confirmRedirect("https://app.exemplo.test/novo")).toBe("https://app.exemplo.test/novo?confirmacao=1");
     supabase.signUp.mockResolvedValueOnce({ data: { session: null, user: { id: "u", identities: [{ id: "i" }] } }, error: null });
-    expect(await sb().signUp("Ana", "ana@teste.dev", "senha-segura")).toEqual({ needsEmailConfirmation: true });
+    expect(await sb().signUp("Ana", "ana@teste.dev", "senha-segura")).toEqual({ needsEmailConfirmation: true, userId: "u" });
     expect(supabase.signUp.mock.lastCall![0].options.emailRedirectTo).toBe("https://app.exemplo.test/novo?confirmacao=1");
   });
 

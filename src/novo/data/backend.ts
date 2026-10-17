@@ -37,8 +37,9 @@ export interface Backend {
   /**
    * `extra` vai nos metadados da conta (`phone`, `terms_version`, `user_agent`), que o gatilho de criação da conta lê.
    * `needsEmailConfirmation`: a conta foi criada, mas o login depende de confirmar o e-mail.
+   * `userId`: o número da conta criada (o cadastro manda logo depois a app_legal_cadastro_ip, para o aceite guardar o IP).
    */
-  signUp(name: string, email: string, password: string, extra?: SignUpExtra): Promise<{ needsEmailConfirmation: boolean }>;
+  signUp(name: string, email: string, password: string, extra?: SignUpExtra): Promise<{ needsEmailConfirmation: boolean; userId?: string }>;
   /**
    * Manda de novo o e-mail "Confirme seu e-mail" (cadastro com a confirmação ligada no Supabase). Só existe no Supabase;
    * no banco local a conta já nasce confirmada. Pedido repetido cedo demais: BackendError "rate_limited".

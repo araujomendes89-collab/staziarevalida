@@ -8,7 +8,8 @@ import { AppShell, useMobile } from "./Shell.jsx";
 import { AuthFlow, NewPasswordScreen } from "./AuthScreens.jsx";
 import { SessaoDerrubadaScreen } from "./auth/SessaoDerrubada.jsx";
 import { LegalPage } from "./legal/LegalPage.jsx";
-import { AcceptanceScreen, precisaTelaDeAceite } from "./legal/AcceptanceScreen.jsx";
+import { AcceptanceScreen, emPrazoDeAceite, precisaTelaDeAceite } from "./legal/AcceptanceScreen.jsx";
+import { AvisoContratoNovo } from "./legal/AvisoContratoNovo.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
 import { forgetShellCounts } from "./shell/useShellCounts.js";
 import { rememberScreen } from "./support/lastScreen.js";
@@ -241,6 +242,7 @@ function Screen() {
         themeChoice: profile.theme || "light",
       }}
     >
+      {emPrazoDeAceite(boot.legal) && <AvisoContratoNovo legal={boot.legal} onAceitar={() => navigate("/aceite")} />}
       {!CONNECTED.has(route) && <ReconstructionNotice />}
       {route === "flash" && reviewSwitch("flash")}
       {route === "erros" && reviewSwitch("erros")}
@@ -270,11 +272,13 @@ function Splash({ children }) {
 function Root() {
   const session = useSession();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
 
-  // Termo e Política são públicas: abrem com ou sem login, também carregando ou com erro.
+  // Contrato/Termo, Política e Regulamento são públicos: abrem com ou sem login, também carregando ou com erro.
   const publicPath = pathname.replace(/\/+$/, "");
   if (publicPath === "/termos") return <LegalPage doc="termos" />;
   if (publicPath === "/privacidade") return <LegalPage doc="privacidade" />;
+  if (publicPath === "/regulamento") return <LegalPage doc="regulamento" />;
 
   if (session.status === "loading") {
     return (
@@ -304,6 +308,11 @@ function Root() {
   if (session.recovery) return <NewPasswordScreen />;
   // Aluno sem aceite do Termo vigente: a tela de aceite vem antes de qualquer rota (o servidor decide em gate_required)
   if (precisaTelaDeAceite(session.boot?.legal)) return <AcceptanceScreen />;
+  // Contrato 3.0, cláusula 6.5-A: com plano pago ativo, o aceite pode esperar o fim do período; o aviso do app leva para cá
+  if (publicPath === "/aceite") {
+    if (emPrazoDeAceite(session.boot?.legal)) return <AcceptanceScreen onAgoraNao={() => navigate("/", { replace: true })} />;
+    return <Navigate to="/" replace />;
+  }
   if (deveMostrarNivelamento(session.boot)) return <Nivelamento modo="primeira" go={() => {}} />;
 
   // Comemorações do Stazi acima de todas as rotas (inclusive o treino/simulado, que fica fora do menu)

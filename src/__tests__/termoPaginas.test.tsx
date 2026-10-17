@@ -18,6 +18,11 @@ vi.mock("../novo/app/session.jsx", () => ({
   useSession: () => state.session,
 }));
 vi.mock("../novo/app/AuthScreens.jsx", () => ({ AuthFlow: () => <div data-testid="tela-login" /> }));
+// banco sem a 013740 (as funções app_legal_* não existem): as páginas mostram os textos do próprio site, como antes
+vi.mock("../novo/data", async (importOriginal) => {
+  const actual: any = await importOriginal();
+  return { ...actual, getBackend: async () => ({ rpc: async () => { throw new Error("Could not find the function public.app_legal_current"); } }) };
+});
 
 import { App } from "../novo/app/App.jsx";
 import { LegalPage, Privacidade } from "../novo/app/legal/LegalPage.jsx";
@@ -36,7 +41,7 @@ describe("Termo e Política públicos", () => {
     expect(hash).toBe("21611cdab66939edeae1bef6c12c034b4660ea214a96ce116dbf9f1b119ee548");
   });
 
-  it("a página do termo mostra todas as palavras do arquivo da versão vigente (2.0)", () => {
+  it("a página do termo mostra todas as palavras do arquivo da versão vigente (2.0)", async () => {
     const fonte = readFileSync(TERMO_V2_PATH, "utf8");
     const esperadas = words(
       fonte
@@ -48,6 +53,7 @@ describe("Termo e Política públicos", () => {
     // A conta do plano falava em 2.545 palavras; contando do arquivo (sem #, **, "- " e ---) dão 2.497. O que vale é a igualdade abaixo.
     expect(esperadas.length).toBeGreaterThan(2400);
     render(<MemoryRouter><LegalPage doc="termos" /></MemoryRouter>);
+    await screen.findByTestId("legal-texto");
     // Palavras de cada título, parágrafo e item (o textContent junto cola o fim de um bloco no começo do outro).
     const naPagina = [...texto().querySelectorAll("h1, h2, p, li")].flatMap((el) => words(el.textContent));
     expect(naPagina).toEqual(esperadas);
@@ -80,9 +86,9 @@ describe("Termo e Política públicos", () => {
     expect(tudo).not.toContain("Vigente a partir");
   });
 
-  it("a página da política mostra a que acompanha o Termo 2.0, com a mesma controladora", () => {
+  it("a página da política mostra a que acompanha o Termo 2.0, com a mesma controladora", async () => {
     const { container } = render(<MemoryRouter><LegalPage doc="privacidade" /></MemoryRouter>);
-    expect(screen.getByText("Última atualização: 16 de outubro de 2026")).toBeInTheDocument();
+    expect(await screen.findByText("Última atualização: 16 de outubro de 2026")).toBeInTheDocument();
     expect(screen.getByText("STAZIA TECNOLOGIA E EDUCAÇÃO LTDA - CNPJ 64.964.213/0001-16")).toBeInTheDocument();
     const tudo = container.textContent!;
     for (const trecho of ["Vertex AI", "até 7 dias", "ElevenLabs", "não grava o áudio", "18 anos ou mais"]) expect(tudo).toContain(trecho);
@@ -99,11 +105,11 @@ describe("Termo e Política públicos", () => {
   for (const [status, session] of SESSOES) {
     it.each([["/termos", "TERMO DE ACEITE E USO"], ["/privacidade", "Política de Privacidade"]])(
       `${status}: %s abre sem login`,
-      (caminho, titulo) => {
+      async (caminho, titulo) => {
         state.session = session;
         window.history.pushState({}, "", `/novo${caminho}`);
         render(<App />);
-        expect(texto()).toBeInTheDocument();
+        expect(await screen.findByTestId("legal-texto")).toBeInTheDocument();
         expect(screen.getByRole("heading", { level: 1 }).textContent!.toUpperCase()).toContain(titulo.toUpperCase());
         expect(screen.queryByTestId("tela-login")).not.toBeInTheDocument();
         expect(screen.queryByText("Carregando…")).not.toBeInTheDocument();

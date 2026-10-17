@@ -145,7 +145,7 @@ async function montarMundo() {
   await sql(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id = $1`, [ALUNO]);
   await sql(`insert into public.legal_acceptances (user_id, document, version, origin, email_hash)
              select $1::uuid, v.document, v.version, case v.document when 'termo_uso' then 'cadastro' else 'tutor' end, public.legal_email_hash('aluno@t.dev')
-             from public.legal_versions v on conflict do nothing`, [ALUNO]);
+             from public.legal_versions v where v.document in ('termo_uso', 'tutor_ia') on conflict do nothing`, [ALUNO]);
 
   // ---- biblioteca: documento da apostila (nome do arquivo), fonte complementar (nível E → nasce complementar) e fonte oficial
   docComp = (await sql(`insert into public.ch_documents (owner_id, name, sha256, storage_path, mime) values ($1, $2, $3, $4, 'application/pdf') returning id`,

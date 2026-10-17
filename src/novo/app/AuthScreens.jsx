@@ -12,7 +12,8 @@ import { ConfirmEmailScreen, ConfirmLinkExpired } from "./auth/ConfirmEmail.jsx"
 import { DocumentModal } from "./legal/DocumentModal.jsx";
 import { TERMO_VERSAO } from "./legal/versions.js";
 import { rememberGoogleAcceptance } from "./legal/googleAcceptance.js";
-import { ACEITE_TEXTO } from "./legal/documentos.js";
+import { ACEITE_ERRO_CADASTRO_V3, ACEITE_TEXTO, ACEITE_TEXTO_V3, AVISO_ACEITE_V3, aceiteNovo } from "./legal/documentos.js";
+import { VIGENTES_DO_SITE, useVigentes } from "./legal/vigente.js";
 import { AceiteFrase } from "./legal/AceiteFrase.jsx";
 import { clearAuthLinkFromUrl, initialAuthLink } from "./auth/authLink.js";
 import { FieldError, RecoveryButton, RecoveryField, RecoveryLayout, RecoveryLink, RecoveryMessage } from "./auth/RecoveryLayout.jsx";
@@ -70,6 +71,10 @@ const FIELD_IDS = { name: "secure-name", email: "secure-email", pw: "secure-pw",
  */
 function Signup({ go }) {
   const { backend } = useSession();
+  // versão vigente do Contrato/Termo (do banco desde a migração …13740; num banco sem ela, a do próprio site): caixa, aviso e versão enviada
+  const vig = useVigentes();
+  const novo = aceiteNovo(vig.vigentes);
+  const acceptError = novo ? ACEITE_ERRO_CADASTRO_V3 : ACCEPT_ERROR;
   const [errors, setErrors] = React.useState({});
   const [error, setError] = React.useState(null);
   // Supabase com "Confirm email" ligado: a conta nasce sem sessão e a tela "Confirme seu e-mail" toma o lugar do formulário
@@ -98,7 +103,7 @@ function Signup({ go }) {
     if (!isEmail(email)) next.email = "Informe um e-mail válido.";
     if (password.length < PASSWORD_MIN_LENGTH) next.pw = `Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`;
     else if (password !== field("pw2")) next.pw2 = "As senhas não são iguais.";
-    if (!accepted) next.accept = ACCEPT_ERROR;
+    if (!accepted) next.accept = acceptError;
     setErrors(next);
     setError(null);
     if (Object.keys(next).length) {
@@ -109,13 +114,20 @@ function Signup({ go }) {
     setLoading(true);
     try {
       rememberChoice(true);
+      // a versão que vai é sempre a da caixa que a pessoa viu: a vigente lida do banco ou, se ainda não chegou (ou falhou), a do
+      // próprio site com a caixa de antes. O banco só grava o aceite da versão vigente; outra versão cai na tela de aceite depois.
+      const vigentes = vig.vigentes ?? VIGENTES_DO_SITE;
+      const termsVersion = vigentes.termo_uso?.version ?? TERMO_VERSAO;
       const result = await backend.signUp(name, email, password, {
-        termsVersion: TERMO_VERSAO,
+        termsVersion,
         userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
         // a caixa do aceite já traz a declaração de maioridade
         declaresAdult: true,
       });
       setSaved({ name, email });
+      // Contrato 3.0: o aceite guarda o IP; o cadastro passa pelo serviço de login, que não entrega o IP ao banco, então este mesmo
+      // navegador avisa logo depois, com o número da conta recém-criada (app_legal_cadastro_ip; sem a 013740 a chamada só falha)
+      if (result?.userId && aceiteNovo(vigentes)) backend.rpc("app_legal_cadastro_ip", { p_user: result.userId }).catch(() => {});
       if (result?.needsEmailConfirmation) {
         setLoading(false);
         setConfirmEmail(email);
@@ -147,7 +159,7 @@ function Signup({ go }) {
   const google = async () => {
     setError(null);
     if (!accepted) {
-      const next = { accept: ACCEPT_ERROR };
+      const next = { accept: acceptError };
       setErrors(next);
       focusFirst(next);
       return;
@@ -155,7 +167,7 @@ function Signup({ go }) {
     setErrors({});
     try {
       // guarda o aceite (com a maioridade, que está na mesma caixa) para gravar na volta do Google
-      rememberGoogleAcceptance(TERMO_VERSAO, { adult: true });
+      rememberGoogleAcceptance((vig.vigentes ?? VIGENTES_DO_SITE).termo_uso?.version ?? TERMO_VERSAO, { adult: true });
       await backend.signInWithGoogle();
     } catch (err) {
       setError(messageFor(err));
@@ -189,17 +201,22 @@ function Signup({ go }) {
             <label className="cc-check">
               <input
                 id={FIELD_IDS.accept}
-                aria-label={ACEITE_TEXTO}
+                aria-label={novo ? ACEITE_TEXTO_V3 : ACEITE_TEXTO}
                 type="checkbox"
                 checked={accepted}
                 onChange={(e) => setAccepted(e.target.checked)}
                 aria-invalid={errors.accept ? "true" : "false"}
-                aria-describedby={errors.accept ? "secure-accept-error" : undefined}
+                aria-describedby={errors.accept ? "secure-accept-error" : novo ? "secure-accept-aviso" : undefined}
               />
-              <AceiteFrase onDoc={setDoc} linkClassName="cc-inline-link" />
+              <AceiteFrase onDoc={setDoc} linkClassName="cc-inline-link" novo={novo} />
             </label>
             {errors.accept ? <FieldError id="secure-accept-error">{errors.accept}</FieldError> : null}
           </div>
+          {novo && (
+            <p id="secure-accept-aviso" className="cc-aviso">
+              {AVISO_ACEITE_V3}
+            </p>
+          )}
         </div>
 
         <RecoveryButton type="submit" loading={loading} loadingText="CRIANDO CONTA…">CRIAR CONTA</RecoveryButton>

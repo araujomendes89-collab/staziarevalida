@@ -77,7 +77,13 @@ async function novoAluno(): Promise<string> {
   return uid;
 }
 /** Tira só o aceite dos Tutores (as conversas ficam): é o estado de quem aceitou antes e precisa aceitar de novo. */
-const perderAceiteTutor = (uid: string) => sql(`delete from public.legal_acceptances where user_id = $1 and document = 'tutor_ia'`, [uid]);
+const termoVigente = async () => (await sql(`select version from public.legal_versions where document = 'termo_uso'`))[0].version as string;
+// a prova do aceite não se apaga (013740): só com a chave de expurgo ligada, como a rotina dos 5 anos
+const perderAceiteTutor = async (uid: string) => {
+  await sql(`select set_config('app.legal_expurgo', 'on', false)`);
+  await sql(`delete from public.legal_acceptances where user_id = $1 and document = 'tutor_ia'`, [uid]);
+  await sql(`select set_config('app.legal_expurgo', '', false)`);
+};
 /** Resposta da IA simulada no formato que o motor do Tutor espera. */
 const reply = (text: string, over: Partial<TutorOutput> = {}): TutorOutput => ({ reply: text, grounding: "GENERAL", citations: [], evaluation: NO_EVALUATION, justification: "NONE", reveals_answer: false, suggested_replies: [], ...over });
 
@@ -239,8 +245,8 @@ describe("Aceite dos Tutores — aluno sem o aceite", () => {
     const aluna = await novoAluno();
     expect(await recusa(rpc(aluna, "app_tutor_start", "livre", null, null))).toEqual(pendente);
     // aceitar só o Termo (tela de aceite) não libera o Tutor: são dois aceites
-    // Termo 2.0 vigente: o aceite do termo vai com as declarações de maioridade e de médico
-    await rpc(aluna, "app_accept_terms_declared", "termo_uso", "2.0", true, true, "tela_aceite", "+5541999998888");
+    // o aceite do Termo vigente (3.0 desde a 013740) vai com a declaração de maioridade
+    await rpc(aluna, "app_accept_terms_declared", "termo_uso", await termoVigente(), true, true, "tela_aceite", "+5541999998888");
     expect(await status(aluna)).toMatchObject({ consent_required: true });
     expect(await recusa(rpc(aluna, "app_tutor_start", "livre", null, null))).toEqual(pendente);
     // aceitar uma versão velha também não
@@ -347,7 +353,8 @@ describe("Aceite dos Tutores — versão nova", () => {
       expect((await recusa(rpc(aluna, "app_accept_terms", "tutor_ia", "2.0", "tutor"))).message).toBe("Versão desatualizada do termo.");
       expect(await recusa(rpc(aluna, "app_tutor_start", "livre", null, null))).toEqual(pendente);
       // o Termo não mudou: só o cartão do Tutor volta
-      expect((await rpc(aluna, "app_bootstrap")).legal).toMatchObject({ termo_uso: { current: "2.0", accepted: "2.0" }, tutor_ia: { current: "2.1", accepted: "2.0" } });
+      const termo = await termoVigente();
+      expect((await rpc(aluna, "app_bootstrap")).legal).toMatchObject({ termo_uso: { current: termo, accepted: termo }, tutor_ia: { current: "2.1", accepted: "2.0" } });
       await rpc(aluna, "app_accept_terms", "tutor_ia", "2.1", "tutor");
       expect(await status(aluna)).toMatchObject({ consent_required: false, consent_version: "2.1" });
       expect((await sessoes(aluna)).map((s: any) => s.id)).toEqual([conversa.id]);
