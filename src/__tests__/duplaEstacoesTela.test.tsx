@@ -1,6 +1,9 @@
 /**
  * Treino em Dupla · etapa 3 · tarefa 7: tela Banco de estações (/novo/estacoes).
- * Comportamento e textos do protótipo (Stations.jsx:19-58), sem "Simulado de prova" e sem dificuldade.
+ * Comportamento e textos do protótipo (Stations.jsx:19-58), sem "Simulado de prova".
+ * Pedido do dono de 17/10: o cartão e a linha trazem só área, nome, grau de dificuldade (selo só quando a revisão médica
+ * gravou) e origem ("Revalida 2020 · INEP" ou "Estação inédita"); embaixo, "Sua última nota" e "Média geral". Sem o número e
+ * sem os temas pequenos (styles), que continuam valendo na busca.
  * Os dados seguem o contrato de `app_dupla_stations()` (Tarefa 6); aqui entram por um backend simulado, com as 10 estações
  * de TESTE do INEP 2020 (ids `teste-inep2020-eNN`, só dado de teste) como conteúdo. Nada disso existe em produção.
  */
@@ -44,6 +47,7 @@ type Row = {
   my_last_pct: number | null;
   average_pct: number | null;
   evaluations: number;
+  difficulty?: "facil" | "medio" | "dificil" | null;
 };
 
 /** Linhas no formato de app_dupla_stations(), na ordem da prova que o servidor entrega (aqui, a numeração 1 a 10). */
@@ -90,18 +94,21 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe("Banco de estações: cartões", () => {
-  it("cartões com número, 'Revalida 2020 · INEP', 'Sua última nota' e 'Média geral' (— sem dado)", async () => {
+  it("cartões com área, nome, 'Revalida 2020 · INEP', 'Sua última nota' e 'Média geral' (— sem dado); sem número e sem temas pequenos", async () => {
     setup(bankRows({ [ID(3)]: { my_last_pct: 72, average_pct: 61.4, evaluations: 6 }, [ID(4)]: { average_pct: 70.56, evaluations: 5 } }));
     await ready();
     expect(state.rpc).toHaveBeenCalledWith("app_dupla_stations");
 
     const peds = cardOf("Coqueluche no lactente");
-    expect(within(peds).getByText("3")).toBeTruthy(); // número da estação
+    expect(within(peds).getByText("Pediatria")).toBeTruthy(); // área
+    expect(within(peds).queryByText("3")).toBeNull(); // sem o número da estação
+    expect(peds.querySelector(".osce-station__num")).toBeNull();
     expect(within(peds).getByText("Revalida 2020 · INEP")).toBeTruthy();
     expect(within(peds).getByText("Sua última nota").nextSibling?.textContent).toBe("72%");
     expect(within(peds).getByText("Média geral").nextSibling?.textContent).toBe("61,4%");
     expect(within(peds).getByTitle("Já realizada")).toBeTruthy();
-    expect(within(peds).getByText("Tosse")).toBeTruthy(); // pílulas = styles
+    expect(within(peds).queryByText("Tosse")).toBeNull(); // sem os temas pequenos (styles)
+    expect(peds.querySelector(".osce-station__tags")).toBeNull();
 
     const semDado = cardOf("Leucemia aguda: palpação de fígado e baço");
     expect(within(semDado).getByText("Sua última nota").nextSibling?.textContent).toBe("—");
@@ -115,16 +122,53 @@ describe("Banco de estações: cartões", () => {
     expect(cardTitles()).toHaveLength(10);
   });
 
-  it("estação autoral (sem instituição) fica sem origem e sem número: nada inventado", async () => {
+  it("estação sem instituição é 'Estação inédita'; reaplicação com a edição certa", async () => {
     const rows = bankRows();
     rows[0] = { ...rows[0], number: null, edition: null, institution: null };
     rows[1] = { ...rows[1], edition: "2022/1", reapplication: true };
     setup(rows);
     await ready();
-    const autoral = cardOf(rows[0].name);
-    expect(autoral.querySelector(".osce-station__source")).toBeNull();
-    expect(autoral.querySelector(".osce-station__num")).toBeNull();
+    expect(within(cardOf(rows[0].name)).getByText("Estação inédita")).toBeTruthy();
     expect(within(cardOf(rows[1].name)).getByText("Revalida 2022/1 (reaplicação) · INEP")).toBeTruthy();
+  });
+
+  it("grau de dificuldade: selo Fácil, Médio ou Difícil na ordem área, nome, grau, origem; sem grau, selo nenhum", async () => {
+    setup(bankRows({ [ID(1)]: { difficulty: "dificil" }, [ID(2)]: { difficulty: "facil" }, [ID(3)]: { difficulty: "medio" } }));
+    await ready();
+    const leucemia = cardOf("Leucemia aguda: palpação de fígado e baço");
+    expect(within(leucemia).getByText("Difícil")).toBeTruthy();
+    // ordem no cartão: área, nome, grau, origem e, embaixo, as notas
+    const texto = leucemia.textContent ?? "";
+    const pos = ["Clínica Médica", "Leucemia aguda", "Difícil", "Revalida 2020 · INEP", "Sua última nota", "Média geral"].map((t) => texto.indexOf(t));
+    expect(pos.every((p) => p >= 0)).toBe(true);
+    expect([...pos].sort((a, b) => a - b)).toEqual(pos);
+    expect(within(cardOf("Trauma: fratura exposta de tíbia")).getByText("Fácil")).toBeTruthy();
+    expect(within(cardOf("Coqueluche no lactente")).getByText("Médio")).toBeTruthy();
+    // sem grau gravado: nada (nem "—", nem palavra de dificuldade)
+    const semGrau = cardOf("Apendicite aguda");
+    expect(semGrau.querySelector(".osce-level")).toBeNull();
+    expect(semGrau.textContent).not.toMatch(/F[áa]cil|M[ée]dio|Dif[íi]cil|Dificuldade/);
+    expect(document.querySelectorAll(".osce-level")).toHaveLength(3);
+    // código desconhecido também não vira selo
+    cleanup();
+    setup(bankRows({ [ID(1)]: { difficulty: "extremo" as any } }));
+    await ready();
+    expect(document.querySelectorAll(".osce-level")).toHaveLength(0);
+  });
+
+  it("lista: mesma ordem e mesmos dados do cartão, sem número e sem temas pequenos", async () => {
+    setup(bankRows({ [ID(1)]: { difficulty: "medio", my_last_pct: 80, average_pct: 61.5, evaluations: 7 } }));
+    await ready();
+    fireEvent.click(within(screen.getByRole("radiogroup", { name: "Visualização" })).getByRole("radio", { name: "Lista" }));
+    const rows = screen.getAllByRole("button").filter((b) => b.textContent?.includes("Sua última nota"));
+    expect(rows).toHaveLength(10);
+    const texto = rows[0].textContent ?? "";
+    const pos = ["Clínica Médica", "Leucemia aguda", "Médio", "Revalida 2020 · INEP", "Sua última nota", "80%", "Média geral", "61,5%"].map((t) => texto.indexOf(t));
+    expect(pos.every((p) => p >= 0)).toBe(true);
+    expect([...pos].sort((a, b) => a - b)).toEqual(pos);
+    expect(texto).not.toMatch(/Cansaço|Febre|Sangramento gengival/); // styles da estação 1 de teste
+    expect(rows[0].querySelector(".dst__num")).toBeNull();
+    expect(rows[1].querySelector(".osce-level")).toBeNull(); // sem grau, sem selo
   });
 });
 
@@ -237,7 +281,7 @@ describe("Banco de estações: ordem, visualização e agrupamento", () => {
     expect(within(view).getAllByRole("radio").map((r) => r.textContent)).toEqual(["Grade", "Lista"]);
     fireEvent.click(within(view).getByRole("radio", { name: "Lista" }));
     expect(screen.queryAllByRole("heading", { level: 3 })).toHaveLength(0);
-    const rows = screen.getAllByRole("button").filter((b) => b.textContent?.includes("Última nota"));
+    const rows = screen.getAllByRole("button").filter((b) => b.textContent?.includes("Sua última nota"));
     expect(rows).toHaveLength(10);
     expect(within(rows[0]).getByText("Média geral")).toBeTruthy();
     expect(rows[0].textContent).toContain("Leucemia aguda: palpação de fígado e baço");
@@ -272,7 +316,7 @@ describe("Banco de estações: clique", () => {
 });
 
 describe("Banco de estações: nada inventado", () => {
-  it("sem Simulado de prova, sem Dificuldade e sem número inventado", async () => {
+  it("sem Simulado de prova e, sem grau gravado, sem Dificuldade nem número inventado", async () => {
     const { container } = setup();
     await ready();
     const visible = container.cloneNode(true) as HTMLElement;

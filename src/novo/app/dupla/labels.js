@@ -31,3 +31,13 @@ export function sourceLabel(station) {
   if (!year) return from;
   return `Revalida ${year}${reapplication ? " (reaplicação)" : ""} · ${from}`;
 }
+
+/**
+ * Origem no cartão e na linha do Banco de estações (pedido do dono de 17/10): a edição do Revalida
+ * ("Revalida 2020 · INEP", "Revalida 2022/1 (reaplicação) · INEP") ou, sem instituição, "Estação inédita".
+ * @param {{ edition?: string | null, reapplication?: boolean, institution?: string | null } | null} [station]
+ * @returns {string}
+ */
+export function originLabel(station) {
+  return sourceLabel(station) ?? "Estação inédita";
+}

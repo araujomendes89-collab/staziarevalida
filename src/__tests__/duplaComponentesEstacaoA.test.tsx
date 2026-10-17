@@ -66,14 +66,14 @@ describe("Timer", () => {
 
 describe("StationCard", () => {
   it("'—' sem nota, '72%' e '61,4%', sem dificuldade", () => {
-    const { rerender, container } = render(<StationCard areaCode="PED" number={7} title="Bronquiolite viral aguda" />);
+    const { rerender, container } = render(<StationCard areaCode="PED" title="Bronquiolite viral aguda" />);
     const btn = screen.getByRole("button");
     expect(btn.textContent).toContain("Sua última nota—");
     expect(btn.textContent).toContain("Média geral—");
     expect(screen.queryByTitle("Já realizada")).toBeNull();
     expect(container.querySelector(".osce-station__bar")).toBeNull();
 
-    rerender(<StationCard areaCode="PED" number={7} title="Bronquiolite viral aguda" myScorePct={72} averagePct={61.4} />);
+    rerender(<StationCard areaCode="PED" title="Bronquiolite viral aguda" myScorePct={72} averagePct={61.4} />);
     const b2 = screen.getByRole("button");
     expect(b2.textContent).toContain("Sua última nota72%");
     expect(b2.textContent).toContain("Média geral61,4%");
@@ -83,6 +83,27 @@ describe("StationCard", () => {
     // sem dificuldade: nem texto nem rótulo
     expect(b2.textContent).not.toMatch(/Fácil|Médio|Difícil/);
     expect(container.querySelector("[aria-label^='Dificuldade']")).toBeNull();
+    expect(container.querySelector(".osce-level")).toBeNull();
+  });
+
+  it("grau de dificuldade (pedido do dono de 17/10): selo Fácil, Médio ou Difícil; sem grau ou código desconhecido, nada", () => {
+    const { container, rerender } = render(<StationCard areaCode="CM" title="X" difficulty="facil" source="Revalida 2020 · INEP" />);
+    const selo = () => container.querySelector(".osce-level") as HTMLElement | null;
+    expect(selo()?.textContent).toBe("Fácil");
+    expect(selo()?.getAttribute("data-level")).toBe("facil");
+    expect(selo()?.querySelectorAll('[data-on="true"]')).toHaveLength(1);
+    rerender(<StationCard areaCode="CM" title="X" difficulty="medio" />);
+    expect(selo()?.textContent).toBe("Médio");
+    expect(selo()?.querySelectorAll('[data-on="true"]')).toHaveLength(2);
+    rerender(<StationCard areaCode="CM" title="X" difficulty="dificil" />);
+    expect(selo()?.textContent).toBe("Difícil");
+    expect(selo()?.querySelectorAll('[data-on="true"]')).toHaveLength(3);
+    for (const d of [null, undefined, "", "extremo"]) {
+      rerender(<StationCard areaCode="CM" title="X" difficulty={d as any} />);
+      expect(selo()).toBeNull();
+      expect(container.querySelector(".osce-station__meta")).toBeNull();
+      expect(screen.getByRole("button").textContent).not.toMatch(/—Sua|F[áa]cil|M[ée]dio|Dif[íi]cil/);
+    }
   });
 
   it("zero é nota (0%), não ausência; valor fora de 0-100 não estoura a barra", () => {
@@ -94,30 +115,32 @@ describe("StationCard", () => {
     expect((container.querySelector(".osce-station__bar > span") as HTMLElement).style.width).toBe("100%");
   });
 
-  it("área, número, origem, tags, clique e cores da área (selo usa o tom .solid)", () => {
+  it("área, nome, grau, origem, clique e cores da área; sem número e sem tags, mesmo se vierem", () => {
     const onClick = vi.fn();
-    const { container } = render(
-      <StationCard areaCode="CR" number={3} title="Apendicite" tags={["Dor abdominal", "Febre"]} source="INEP 2020" onClick={onClick} />,
-    );
+    const props: any = { areaCode: "CR", number: 3, title: "Apendicite", tags: ["Dor abdominal", "Febre"], difficulty: "medio", source: "INEP 2020", onClick };
+    const { container } = render(<StationCard {...props} />);
     const btn = screen.getByRole("button");
     expect(btn.getAttribute("type")).toBe("button");
     expect(btn.textContent).toContain("Cirurgia");
     expect(screen.getByRole("heading", { level: 3 }).textContent).toBe("Apendicite");
-    expect(screen.getByText("Dor abdominal")).toBeTruthy();
-    expect(screen.getByText("Febre")).toBeTruthy();
+    expect(screen.queryByText("Dor abdominal")).toBeNull();
+    expect(screen.queryByText("Febre")).toBeNull();
     expect(screen.getByText("INEP 2020")).toBeTruthy();
-    const num = container.querySelector(".osce-station__num") as HTMLElement;
-    expect(num.textContent).toBe("3");
+    expect(container.querySelector(".osce-station__num")).toBeNull();
+    expect(btn.textContent).not.toContain("3");
+    // ordem: área, nome, grau, origem, notas
+    const t = btn.textContent ?? "";
+    const pos = ["Cirurgia", "Apendicite", "Médio", "INEP 2020", "Sua última nota", "Média geral"].map((x) => t.indexOf(x));
+    expect([...pos].sort((a, b) => a - b)).toEqual(pos);
     expect(btn.style.getPropertyValue("--osce-solid")).toBe("var(--area-cirurgia-solid)");
     expect(btn.style.getPropertyValue("--osce-base")).toBe("var(--area-cirurgia)");
     fireEvent.click(btn);
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it("sem número não desenha o selo; sem origem e sem tags não desenha as linhas; nomes das cinco áreas", () => {
-    const { container, rerender } = render(<StationCard areaCode="MFC" number={null} title="Pré-natal" />);
-    expect(container.querySelector(".osce-station__num")).toBeNull();
-    expect(container.querySelector(".osce-station__tags")).toBeNull();
+  it("sem grau e sem origem não desenha a linha; nomes das cinco áreas", () => {
+    const { container, rerender } = render(<StationCard areaCode="MFC" title="Pré-natal" />);
+    expect(container.querySelector(".osce-station__meta")).toBeNull();
     expect(container.querySelector(".osce-station__source")).toBeNull();
     expect(screen.getByRole("button").textContent).toContain("Medicina de Família");
     rerender(<StationCard areaCode="GO" title="a" />);
