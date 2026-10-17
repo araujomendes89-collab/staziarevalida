@@ -1,0 +1,44 @@
+/* Recuperar senha / Criar nova senha / Link vencido (17/10/2026): mesmo padrão do login no ar (login-novo.css, classes ln-).
+   Aqui só o que o login não tem: dica e erro embaixo do campo, link de voltar, bloco "Lembrou da senha?" no lado azul e os links do
+   rodapé como botões (abrem o documento por cima). Textos pequenos com contraste >= 4,5:1 no claro e no escuro. Classes rc-. */
+.rc-root .rc-form { gap: 18px; }
+.rc-fields { display: flex; flex-direction: column; gap: 16px; margin: 0; }
+.rc-actions { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+
+/* avisos com texto longo: ícone no alto, texto quebra ao lado */
+.rc-root .rc-msg { margin: 0; align-items: flex-start; line-height: 1.45; }
+.rc-root .rc-msg svg { margin-top: 1px; }
+:root[data-theme="dark"] .rc-root .ln-msg--error { background: rgba(255, 107, 107, .12); color: #ffb4b4; border-color: rgba(255, 140, 140, .35); }
+:root[data-theme="dark"] .rc-root .ln-msg--success { background: rgba(79, 211, 154, .12); color: #8be3b8; border-color: rgba(79, 211, 154, .35); }
+
+.rc-field-hint { font-size: 13px; color: var(--ln-muted); }
+.rc-field-error { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #b42318; }
+:root[data-theme="dark"] .rc-field-error { color: #ffb4b4; }
+.rc-root .ln-input.is-error:focus { box-shadow: 0 0 0 4px rgba(198, 40, 40, .18); }
+
+.rc-back { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border-radius: 10px; }
+.rc-back:hover { text-decoration: none; background: rgba(10, 111, 216, .07); }
+.rc-back:hover span { text-decoration: underline; text-underline-offset: 3px; }
+
+/* lado azul (computador): o bloco que antes ficava ao lado do formulário ("Lembrou da senha?" / "Defina sua nova senha") */
+.rc-aside { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 18px; padding-top: 26px; border-top: 1px solid rgba(159, 215, 255, .2); max-width: 440px; }
+.rc-aside-t { margin: 0; font: 700 26px/1.1 var(--ln-title); color: #fff; letter-spacing: .01em; }
+.rc-aside .ln-hero-sub { font-size: 15px; }
+.rc-aside-btn {
+  margin-top: 8px; min-height: 44px; padding: 0 22px; border-radius: 12px; border: 1px solid rgba(159, 215, 255, .45); background: rgba(255, 255, 255, .06);
+  color: #fff; font: 700 15px var(--ln-font); cursor: pointer; transition: background .15s, border-color .15s;
+}
+.rc-aside-btn:hover { background: rgba(255, 255, 255, .12); border-color: rgba(159, 215, 255, .7); }
+
+/* rodapé: Termos e Privacidade abrem o documento por cima da tela (botões com o visual dos links do login) */
+.rc-foot-link {
+  min-height: 24px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.ln-root--m .rc-foot-link { min-height: 44px; }
+.ln-root--m .rc-foot { gap: 0 14px; }
+
+/* celular: o cartão branco vai até o fim da tela (no login ele já é alto o bastante; aqui o formulário é mais curto) e a dica do
+   lado azul não aparece, o cartão já tem o caminho de volta */
+.ln-root--m.rc-root .ln-main { align-items: stretch; }
+.ln-root--m.rc-root .ln-side { padding-block: 32px 28px; }
+.ln-root--m .rc-form { gap: 20px; }

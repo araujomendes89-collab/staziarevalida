@@ -45,14 +45,29 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Tela Criar nova senha", () => {
-  it("usa o visual do login (Acesso seguro REVALIDA) e pede nova senha e conferência", () => {
+  it("usa o padrão do login no ar (cartão com o selo, campos do login) e pede nova senha e conferência", () => {
     render(<NewPasswordScreen />);
-    expect(document.querySelector(".lg-root")).toBeTruthy();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Acesso seguro");
+    expect(document.querySelector(".ln-root.rc-root")).toBeTruthy();
+    expect(document.querySelector(".lg-root")).toBeNull();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Criar nova senha");
     expect(screen.getByRole("region", { name: "Criar nova senha" })).toBeTruthy();
-    expect(screen.getByLabelText("Nova senha").className).toContain("lg-input");
+    expect(screen.getByText("Acesso seguro · Revalida")).toBeTruthy();
+    expect(screen.getByText("Escreva a nova senha duas vezes para confirmar.")).toBeTruthy();
+    expect(screen.getByText(/Escolha uma senha que só você conheça/)).toBeTruthy();
+    expect(screen.getByLabelText("Nova senha").className).toContain("ln-input");
     expect(screen.getByLabelText("Conferir nova senha")).toBeTruthy();
     expect(screen.getByText("Mínimo de 8 caracteres.")).toBeTruthy();
+    expect(screen.getByLabelText("Nova senha").getAttribute("aria-describedby")).toBe("secure-pw-hint");
+  });
+
+  it("o olho mostra e esconde a senha digitada", () => {
+    render(<NewPasswordScreen />);
+    const campo = screen.getByLabelText("Nova senha") as HTMLInputElement;
+    expect(campo.type).toBe("password");
+    fireEvent.click(screen.getAllByRole("button", { name: "Mostrar senha" })[0]);
+    expect(campo.type).toBe("text");
+    fireEvent.click(screen.getByRole("button", { name: "Ocultar senha" }));
+    expect(campo.type).toBe("password");
   });
 
   it("senha curta ou senhas diferentes: mostra o erro no campo e não salva", () => {
@@ -60,7 +75,9 @@ describe("Tela Criar nova senha", () => {
     typeIn("Nova senha", "curta");
     typeIn("Conferir nova senha", "curta");
     send();
-    expect(screen.getByText("Mínimo de 8 caracteres.", { selector: ".lg-field-error" })).toBeTruthy();
+    expect(screen.getByText("Mínimo de 8 caracteres.", { selector: ".rc-field-error" })).toBeTruthy();
+    expect(screen.getByLabelText("Nova senha").getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(screen.getByLabelText("Nova senha"));
     typeIn("Nova senha", "senha-boa-123");
     typeIn("Conferir nova senha", "senha-boa-124");
     send();
@@ -75,6 +92,8 @@ describe("Tela Criar nova senha", () => {
     send();
     await waitFor(() => expect(session.backend.updatePassword).toHaveBeenCalledWith("senha-boa-123"));
     expect(await screen.findByText(/Senha alterada com sucesso/)).toBeTruthy();
+    expect(screen.queryByText("Escreva a nova senha duas vezes para confirmar.")).toBeNull();
+    expect(screen.queryByText(/Escolha uma senha que só você conheça/)).toBeNull();
     expect(session.finishRecovery).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "ENTRAR NO APP" }));
     expect(session.finishRecovery).toHaveBeenCalledTimes(1);
