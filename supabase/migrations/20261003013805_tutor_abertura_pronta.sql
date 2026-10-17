@@ -132,7 +132,8 @@ begin
     v_state := 'answered';
   end if;
   if v_q is not null and not exists (select 1 from public.questions where id = v_q and status <> 'annulled' and origin = 'official') then return null; end if;
-  if v_q is not null and v_ctype is null then v_ctype := 'question'; end if;
+  -- como app_tutor_start: conversa com questão (escolhida ou sorteada no início, nos modos questão/erros) tem o contexto 'question'
+  if v_ctype is null and (v_q is not null or p_mode in ('questao', 'erros')) then v_ctype := 'question'; end if;
   v_topic_col := coalesce(v_topic, case when v_ctype in ('theme', 'flashcard') then v_clabel end);
 
   -- um pedido por vez por aluno (toques seguidos na entrada)

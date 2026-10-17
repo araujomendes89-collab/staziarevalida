@@ -350,8 +350,11 @@ async function montarFala(deps: TutorDeps, seed: string, st: OpeningState, ctx: 
   return { provider, system, baseInput, conferir };
 }
 
-/** Pede a fala à IA e confere (até `tentativas` dentro de `timeoutMs`, contado de `t0`). Nunca lança. Sem provedor: null. */
-async function gerarFala(deps: TutorDeps, seed: string, st: OpeningState, ctx: OpeningContext, timeoutMs: number, t0: number, tentativas = 2): Promise<Gerada | null> {
+/**
+ * Pede a fala à IA e confere (até `tentativas` dentro de `timeoutMs`, contado de `t0`; cada tentativa leva no máximo `porTentativaMs`,
+ * para uma resposta presa não gastar o tempo todo). Nunca lança. Sem provedor: null.
+ */
+async function gerarFala(deps: TutorDeps, seed: string, st: OpeningState, ctx: OpeningContext, timeoutMs: number, t0: number, tentativas = 2, porTentativaMs = Infinity): Promise<Gerada | null> {
   const m = await montarFala(deps, seed, st, ctx);
   if (!m) return null;
   const { provider, system, baseInput, conferir } = m;
@@ -363,7 +366,7 @@ async function gerarFala(deps: TutorDeps, seed: string, st: OpeningState, ctx: O
     if (left < 600) break;
     const input = attempt === 0 ? baseInput : `${baseInput}\n<correcao_obrigatoria>\nSua fala anterior foi barrada. Faça outra sem estes problemas:\n${violations.map((x) => `- ${x.detail}`).join("\n")}\n</correcao_obrigatoria>`;
     const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), left);
+    const timer = setTimeout(() => ac.abort(), Math.min(left, porTentativaMs));
     try {
       const r = await provider.generate<{ fala: string }>({
         promptId: "tutor_abertura", promptVersion: OPENING_VERSION, system, input, schema: OPENING_SCHEMA, schemaName: "staziamed_tutor_abertura",
@@ -502,6 +505,8 @@ export interface EscolhaDaEntrada {
 }
 /** Tempo da preparação na entrada: ninguém espera por ela (o app não aguarda a resposta); 3 tentativas cabem. */
 export const PREP_ABERTURA_TIMEOUT_MS = 9000;
+/** Cada tentativa da preparação (a IA responde em ~2,2 s na mediana; acima disto costuma ser resposta presa). */
+export const PREP_TENTATIVA_MS = 3500;
 
 /**
  * ABERTURA PREPARADA (pedido do dono de 17/10: "mais de 90% das aberturas vindas da IA, sem o aluno esperar mais"). Enquanto o
@@ -527,7 +532,8 @@ export async function prepararAbertura(deps: TutorDeps, userId: string, escolha:
       p_context: c ? { type: c.type ?? null, id: c.id ?? null, label: c.label ?? null, area: c.area ?? null } : null,
     });
     if (!lido?.id || !lido.state?.message || !lido.state.session || !lido.ctx) return false;
-    const g = await gerarFala(deps, `pronta:${lido.id}`, lido.state, lido.ctx, timeoutMs, t0, 3);
+    // bancada de 17/10: às vezes a IA demora mais de 9 s numa resposta; com 3,5 s por tentativa, a seguinte ainda chega a tempo
+    const g = await gerarFala(deps, `pronta:${lido.id}`, lido.state, lido.ctx, timeoutMs, t0, 3, PREP_TENTATIVA_MS);
     const ok = await deps.db.service<boolean | null>("ch_worker_tutor_opening_prep_save", { p_user: userId, p_id: lido.id, p_text: g?.text ?? null, p_usage: g?.usage ?? { calls: 0 } });
     if (!g?.text && g?.violations.length) deps.log?.(`[tutor] abertura preparada barrada (${g.violations.map((v) => v.code).join(", ")})`);
     return Boolean(ok);

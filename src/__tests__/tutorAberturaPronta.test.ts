@@ -117,6 +117,20 @@ describe("abertura preparada na entrada do Tutor", () => {
     expect(await naturalOpening(deps, ANA, sid, 3000)).toBeNull();
   });
 
+  it("modo questão: a questão é sorteada quando a conversa nasce e a fala preparada (sem a questão) serve a ela", async () => {
+    await limpar(ANA);
+    respond = () => ({ fala: "Hora do treino. Lê inteiro antes de marcar qualquer coisa." });
+    expect((await prepare(ANA, { personality: "durao", mode: "questao" })).body.ok).toBe(true);
+    // a IA da preparação não recebe questão nenhuma
+    expect(calls[0].input).not.toMatch(/alternativ|enunciado/i);
+    calls.length = 0;
+    const sid = await start(ANA, "questao", "durao");
+    expect((await sql(`select context_type, question_id is not null as tem from public.tutor_sessions where id = $1`, [sid]))[0]).toEqual({ context_type: "question", tem: true });
+    const o = await naturalOpening(deps, ANA, sid, 3000);
+    expect(o?.content).toBe("Hora do treino. Lê inteiro antes de marcar qualquer coisa.");
+    expect(calls).toHaveLength(0);
+  });
+
   it("custo da casa: a preparação vai para o registro sem gastar a cota de interações (usada ou não)", async () => {
     await limpar(BIA);
     const antes = (await sql(`select coalesce(sum(requests), 0)::int n from public.ai_usage where user_id = $1`, [BIA]))[0].n;
