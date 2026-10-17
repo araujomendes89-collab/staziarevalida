@@ -69,7 +69,26 @@ A chave `GEMINI_API_KEY` deixa de ser usada pela voz quando a ponte está config
 
 - Termo/Política: o áudio do aluno passa pelo Google (Vertex) — citar fornecedor, retenção e consentimento (decisão do dono de 15/10).
 - Uso único do bilhete é por instância da ponte (até 10 instâncias): reuso entre instâncias dentro dos 60 s é possível só para quem já tem o bilhete (o próprio aluno). Se quiser fechar 100%, gravar o nonce no banco.
-- O tom muda só quando o aluno responde (ferramenta). Mudança de humor a cada fala (sinais do texto do aluno) fica para a Fase 4.
+- ~~O tom muda só quando o aluno responde (ferramenta).~~ Resolvido em 17/10: humor a cada fala (ver a seção no fim).
 - As instruções da voz têm ~4.900 tokens e são cobradas a cada fala (metade do custo): encurtar.
 - 2 de 10 conversas explosivas caíram no meio na bancada (sem diagnóstico ainda); a ponte reabre sozinha.
 - ElevenAgents (endpoint Custom LLM pronto em `server/vozTeste/customLlm.ts`) e Claude pelo Vertex (cota 0) estão parados.
+
+## Humor a cada fala e abertura natural na voz ao vivo (17/10/2026, "Tutor natural", parte 2)
+
+- **Instruções**: a camada do professor virou parte FIXA (ficha do personagem de `fichas.ts`, falas de tom sorteadas por conversa, limites, "não repita") + BLOCO DO ESTADO (`personaStateLayer`: humor, palavrão, grito, zombaria, calma/crise). As falas fixas de referência dos perfis (`PROFILES[...].examples`) não entram mais nas 4 personalidades com ficha.
+- **Humor na ponte** (`server/tutor/humorVoz.ts`): o bilhete leva o perfil resolvido, as regras e a memória inicial (`humor`). A ponte recalcula o estado com o Personality Engine pela transcrição do aluno, pela correção de `submit_answer` (com a memória da ligação: erro repetido, alívio) e pelos começos de fala já usados, e troca SÓ o bloco do estado nas instruções (`contextUpdate`, sem pedir resposta). O tom que volta junto da correção ao Google é o da ligação.
+- **Quando a troca vai**: o Google devolve a transcrição do aluno no mesmo instante do 1º áudio da resposta (medido), então a troca vai quando o professor termina a fala (ou é interrompido), antes da próxima fala do aluno. Na própria fala o professor reage pelo que ouviu (ficha + leitura do aluno); o estado carrega o humor para as seguintes. Não mexe na geração em andamento nem na latência.
+- **Abertura**: criada na hora pelo modelo de voz, com as 5 últimas aberturas que o aluno ouviu desta personalidade (`ch_worker_tutor_voice_openings`), o período do dia, um jeito de começar sorteado e as entradas batidas proibidas; a primeira fala de cada ligação entra na mesma memória (`ch_worker_tutor_voice_opening_save`, uma por ligação).
+- **Reserva da OpenAI (Realtime)**: a cada fala do aluno o estado anda um passo no motor de sempre desta voz (`emotion.ts`, gravado na sessão) e volta em `/voice/transcript` (`humor`); o app põe na conversa como mensagem de sistema sem pedir resposta. O Personality Engine continua só no caminho do Vertex.
+- **Ponte no Cloud Run**: o Dockerfile passa a copiar `src/shared` (catálogo de reações usado pelo motor). Ponte antiga + app novo: o campo `humor` é ignorado e as instruções já trazem o estado inicial (como antes).
+
+Medição (17/10, `scripts/voz-teste/bancada-humor-live.ts`, ponte real local → Vertex us-central1, gemini-3.8-live, 3 conversas de 4 falas, sem ferramentas; dados em `/Volumes/StaziaMed/.tmp-aulas/tutor-personagens/natural/voz-ao-vivo/resultados.jsonl`):
+
+| | n | 1º áudio depois da fala do aluno | sessão caiu | trocas de estado | custo |
+|---|---|---|---|---|---|
+| Durona (troca na hora da transcrição, versão descartada) | 3 | 693 / 701 / 891 ms | não | 7 | US$ 0,044 |
+| Durona (versão final) | 3 | 707 / 711 / 781 ms | não | 4 | US$ 0,037 |
+| Tranquila (versão final) | 3 | 755 / 864 / 868 ms | não | 4 | US$ 0,042 |
+
+P50 das 9 falas: 755 ms (máx. 891 ms), contra 933–995 ms da linha de base (§2). A abertura (do pedido do app até o 1º áudio) levou 944–1.150 ms. Estados vistos: desconfiada/calma → brincalhona (aluno brincando) → acolhedora (aluno ansioso) → calma.

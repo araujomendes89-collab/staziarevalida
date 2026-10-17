@@ -10,7 +10,7 @@
  */
 import type { TutorDeps } from "./engine";
 import { tutorSettings } from "./settings";
-import { personaTurn, resolveProfile, type ExamContext, type ExplosivaChoice, type PersonaDirective, type PersonaMemory, type Signal } from "./personalityEngine";
+import { personaTurn, resolveProfile, type ExamContext, type ExplosivaChoice, type PersonaDirective, type PersonaMemory, type ResolvedProfile, type Signal } from "./personalityEngine";
 import { FREQUENCY_LIMITS, REACTION_IDS, type ReactionRule, type VoiceProviderId } from "../../src/shared/tutor/voiceReactions";
 
 export interface ReactionConfig {
@@ -92,9 +92,21 @@ export interface PlanInput {
   exam?: ExamContext | null;
 }
 
+/** Perfil resolvido (painel, interruptor da Explosiva, escolha e maioridade do aluno) e a lista de reações do dono. */
+export async function resolvePersona(deps: Pick<TutorDeps, "db" | "log">, userId: string, personality: string): Promise<{ resolved: ResolvedProfile; rules: ReactionRule[] }> {
+  const [settings, config, choice] = await Promise.all([tutorSettings(deps), reactionConfig(deps), explosivaChoice(deps, userId)]);
+  const resolved = resolveProfile({ personality, explosiva: choice, platform: { maxProfanity: settings.max_profanity, explosivaEnabled: config.explosiva_enabled } });
+  return { resolved, rules: config.rules };
+}
+
 /** Diretiva do turno com tudo do servidor: teto de palavrão do painel, lista do dono, interruptor e escolha do aluno. */
 export async function planPersonaTurn(deps: Pick<TutorDeps, "db" | "log">, input: PlanInput): Promise<PersonaDirective> {
-  const [settings, config, choice] = await Promise.all([tutorSettings(deps), reactionConfig(deps), explosivaChoice(deps, input.userId)]);
-  const resolved = resolveProfile({ personality: input.personality, explosiva: choice, platform: { maxProfanity: settings.max_profanity, explosivaEnabled: config.explosiva_enabled } });
-  return personaTurn({ resolved, memory: input.memory, facts: input.facts, studentText: input.studentText, rules: config.rules, provider: input.provider, exam: input.exam });
+  return (await planPersonaVoz(deps, input)).directive;
+}
+
+/** O mesmo, devolvendo também o perfil resolvido e as regras (a ponte de voz recalcula o humor a cada fala com eles). */
+export async function planPersonaVoz(deps: Pick<TutorDeps, "db" | "log">, input: PlanInput): Promise<{ directive: PersonaDirective; resolved: ResolvedProfile; rules: ReactionRule[] }> {
+  const { resolved, rules } = await resolvePersona(deps, input.userId, input.personality);
+  const directive = personaTurn({ resolved, memory: input.memory, facts: input.facts, studentText: input.studentText, rules, provider: input.provider, exam: input.exam });
+  return { directive, resolved, rules };
 }

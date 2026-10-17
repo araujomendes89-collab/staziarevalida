@@ -8,6 +8,7 @@
  * Nenhuma credencial do Google sai do servidor.
  */
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import type { HumorBilhete } from "../tutor/humorVoz";
 
 export interface FerramentaDeclarada { name: string; description: string; parameters: unknown }
 
@@ -26,6 +27,8 @@ export interface ConteudoBilhete {
   vad?: "padrao" | "rapido";
   /** MATERIAL DO TEMA (cérebro do Tutor): vai junto das instruções, num campo à parte para a ponte poder trocar só ele */
   material?: string;
+  /** HUMOR DA LIGAÇÃO (humorVoz.ts): perfil e memória iniciais para a ponte recalcular o estado do professor a cada fala */
+  humor?: HumorBilhete;
 }
 
 interface Selado extends ConteudoBilhete { v: 1; exp: number; n: string }
@@ -73,8 +76,8 @@ export function abrirBilhete(bilhete: string, segredo: string, usados: NoncesUsa
   }
   if (corpo.v !== 1 || typeof corpo.exp !== "number" || corpo.exp < agora) return { ok: false, motivo: "expirado" };
   if (!usados.marcar(corpo.n, corpo.exp, agora)) return { ok: false, motivo: "reusado" };
-  const { vc, u, modelo, voz, instrucoes, ferramentas, maxSegundos, vad, material } = corpo;
-  return { ok: true, conteudo: { vc, u, modelo, voz, instrucoes, ferramentas, maxSegundos, vad, ...(material ? { material } : {}) }, nonce: corpo.n, exp: corpo.exp };
+  const { vc, u, modelo, voz, instrucoes, ferramentas, maxSegundos, vad, material, humor } = corpo;
+  return { ok: true, conteudo: { vc, u, modelo, voz, instrucoes, ferramentas, maxSegundos, vad, ...(material ? { material } : {}), ...(humor ? { humor } : {}) }, nonce: corpo.n, exp: corpo.exp };
 }
 
 /** Assinatura do relatório de uso que a ponte manda ao app no fim da ligação. */

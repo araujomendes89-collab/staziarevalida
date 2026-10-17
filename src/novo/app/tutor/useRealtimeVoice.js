@@ -200,6 +200,11 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     const id = cur.voiceCallId;
     voiceApi.transcript(backend, id, role, text).then(
       (res) => {
+        // reserva da OpenAI: o humor do professor mudou com o que o aluno disse; entra na conversa como instrução, SEM pedir resposta
+        // (vale a partir da próxima fala; na ponte do Gemini isso é feito no servidor)
+        if (role === "student" && res?.humor && r.current.provider === "realtime" && r.current.voiceCallId === id) {
+          send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: `Atualização do seu estado agora (vale no lugar do estado anterior; não leia em voz alta, não comente):\n${res.humor}` }] } });
+        }
         // o servidor conferiu o que foi dito: se escapou algo, o professor corrige na hora
         if (role !== "tutor" || !res?.correction) return;
         if (r.current.provider === "gemini") r.current.gem?.sendText(`Instrução do sistema (não leia em voz alta; diga a correção agora, do seu jeito): ${res.correction}`);

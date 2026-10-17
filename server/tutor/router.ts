@@ -16,7 +16,7 @@ import { questionHint, questionHintEnabled } from "./questionHint";
 import { geminiVoiceConfig, planProviders, vertexPonteConfig } from "./voiceProviders";
 import { relatorioConfere } from "../vozPonte/bilhete";
 import { planPersonaTurn } from "./voiceReactions";
-import { personaPromptLayer } from "./personalityEngine";
+import { personaStateLayer } from "./personalityEngine";
 import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
 import { samplePath } from "./voicePreview";
 import { elevenAccessOf, nexusStatus, openNexus, type TtsQuota } from "./nexus";
@@ -395,7 +395,8 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       try {
         const correct = Boolean((output as { result?: { is_correct?: boolean } }).result?.is_correct);
         const d = await planPersonaTurn(deps!, { userId: req.user!.id, personality: persona?.personality.id ?? "acolhedor", provider: "gemini_live", memory: null, facts: [correct ? "correct" : "wrong"] });
-        (output as Record<string, unknown>).tom_do_professor = personaPromptLayer(d);
+        // só o ESTADO (a ficha e o jeito fixo já estão nas instruções da sessão); com o humor da ligação, a ponte troca por o dela
+        (output as Record<string, unknown>).tom_do_professor = personaStateLayer(d);
       } catch {
         // sem o motor no banco: fica o "tone" de sempre
       }

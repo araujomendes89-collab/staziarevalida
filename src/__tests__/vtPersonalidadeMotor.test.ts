@@ -414,12 +414,18 @@ describe("encaixe no prompt e no servidor", () => {
       expect(fs.readFileSync(path.join(ROOT, "server/tutor", f), "utf8")).not.toMatch(/personalityEngine|voiceReactionFilter/);
     }
     // realtime.ts e router.ts: só no caminho do Vertex (ponte do Cloud Run); GPT-Live, Realtime e a API direta do Gemini seguem iguais
+    // 17/10 (Tutor natural, voz ao vivo): a camada virou parte fixa (ficha) + estado (personaFixedLayer/personaStateLayer) e o humor da
+    // ligação vai no bilhete da ponte (humorParaBilhete); continua só no caminho do Vertex
     const rt = fs.readFileSync(path.join(ROOT, "server/tutor/realtime.ts"), "utf8");
-    expect(rt.match(/personaPromptLayer\(/g)).toHaveLength(1);
-    expect(rt.slice(rt.indexOf('gemini.via === "vertex"'), rt.indexOf("selarBilhete({"))).toMatch(/personaPromptLayer\(/);
+    const vertex = rt.slice(rt.indexOf('gemini.via === "vertex"'), rt.indexOf("selarBilhete({"));
+    for (const fn of ["personaPromptLayer(", "personaFixedLayer(", "personaStateLayer(", "planPersonaVoz(", "planPersonaTurn(", "humorParaBilhete("]) {
+      expect(rt.split(fn).length - 1).toBe(vertex.split(fn).length - 1);
+    }
+    expect(vertex).toMatch(/personaFixedLayer\(/);
+    expect(vertex).toMatch(/humorParaBilhete\(/);
     const ro = fs.readFileSync(path.join(ROOT, "server/tutor/router.ts"), "utf8");
-    expect(ro.match(/personaPromptLayer\(/g)).toHaveLength(1);
-    expect(ro).toMatch(/v\.provider === "gemini" && geminiVoiceConfig\(\)\.via === "vertex"[\s\S]{0,800}personaPromptLayer\(/);
+    expect(ro.match(/personaStateLayer\(|personaPromptLayer\(/g)).toHaveLength(1);
+    expect(ro).toMatch(/v\.provider === "gemini" && geminiVoiceConfig\(\)\.via === "vertex"[\s\S]{0,900}personaStateLayer\(/);
   });
 
   it("planPersonaTurn lê o banco (painel, regras, escolha do aluno); banco fora do ar = nenhuma reação e Explosiva desligada", async () => {

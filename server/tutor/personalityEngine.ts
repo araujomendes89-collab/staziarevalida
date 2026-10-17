@@ -24,7 +24,8 @@
  * 17/10/2026: o Tutor tem dois personagens e quatro personalidades. O Durão (Stazi) é a Durona no masculino: mesma mecânica de nível,
  * mesmo padrão N3, mesmo travamento por 18+ e médico, mesmas reações marcadas pelo dono. A Tranquila (Stazia) é o Tranquilo no feminino.
  */
-import { PERSONALITY_LIMITS, type ProfanityLevel } from "./personality";
+import { NO_REPEAT_RULE, PERSONALITY_LIMITS, type ProfanityLevel } from "./personality";
+import { fichaDe, fichaTexto } from "./fichas";
 import { characterOf } from "./emotion";
 import { lerRegistro, sinaisDoRegistro } from "./leituraDoAluno";
 import {
@@ -603,14 +604,14 @@ export function withReactionPolicy(basePrompt: string, policy: ExpressionPolicy)
   return basePrompt.includes(BASE_NO_TAGS_LINE) ? basePrompt.replace(BASE_NO_TAGS_LINE, reactionInstruction(policy)) : `${basePrompt}\n${reactionInstruction(policy)}`;
 }
 
-/** Camada de personalidade do turno (só ESTILO). Nunca recebe gabarito, explicação ou fonte. */
-export function personaPromptLayer(d: PersonaDirective): string {
+/**
+ * Parte da camada que MUDA a cada fala (voz ao vivo, item 5 do "Tutor natural" de 17/10): estado, palavrão, grito, zombaria,
+ * reações, simulado sem ajuda e calma/crise. A ponte de voz recalcula só esta parte a cada turno e troca nas instruções da sessão.
+ */
+export function personaStateLayer(d: PersonaDirective): string {
   const p = d.params;
   const pol = d.policy;
-  const lines = [
-    `QUEM VOCÊ É NESTA CONVERSA: ${d.profileName}. ${PROFILES[d.profileKey].style}`,
-    `Seu jeito (parâmetros fixos do perfil): formalidade ${level(p.formality)}; sarcasmo ${level(p.sarcasm)}; impaciência ${level(p.impatience)}; intensidade ${level(p.intensity)}; ` +
-      `provocação ${level(p.provocation)}; perguntar antes de explicar ${level(d.pedagogy.socratic)}; tamanho das falas ${p.length <= 30 ? "curto (1 a 3 frases)" : p.length <= 60 ? "médio" : "pode se estender quando pedirem"}.`,
+  return [
     `ESTADO AGORA (interno, nunca diga): ${STATE_PT[d.state]}, intensidade ${Math.round(d.intensity * 100)}/100, porque ${CAUSE_PT[d.cause] ?? "conversa"}.`,
     PROFANITY_TEXT[pol.profanity](p.profanity_frequency),
     pol.shouts
@@ -622,7 +623,6 @@ export function personaPromptLayer(d: PersonaDirective): string {
         ? "Pode ironizar o erro e a alternativa, com graça. Nunca a pessoa."
         : "Sem zombaria nesta fala.",
     reactionInstruction(pol),
-    "Contraste: não fique no mesmo humor o tempo todo; reconheça raciocínio bom do seu jeito.",
     d.pedagogy.help === "none"
       ? "SIMULADO SEM AJUDA: não dê dica, pista, eliminação de alternativa, letra nem resolução, em nenhum tom. Só fale da questão depois que a prova terminar."
       : "",
@@ -631,11 +631,34 @@ export function personaPromptLayer(d: PersonaDirective): string {
       : d.state === "empathetic" || d.state === "calm"
         ? "Agora é momento de calma: fale baixo, com respeito, acolha e só então volte ao conteúdo, sem bronca."
         : "",
-    `Como você soa (é só o tom: não copie): ${PROFILES[d.profileKey].examples.map((e) => `«${e}»`).join(" · ")}`,
+  ].filter(Boolean).join("\n");
+}
+
+/**
+ * Parte FIXA da camada (vale a conversa inteira). Com `personalityId` de uma das 4 personalidades (Durão, Tranquilo, Durona,
+ * Tranquila), entra a FICHA DO PERSONAGEM (fichas.ts) no lugar do resumo do perfil e as falas de tom passam a ser as `examples`
+ * dadas (sorteadas por conversa em quem chama, ou nenhuma); sem ficha, fica o resumo e as falas de referência do perfil.
+ */
+export function personaFixedLayer(d: PersonaDirective, opts: { personalityId?: string | null; examples?: string[] | null } = {}): string {
+  const p = d.params;
+  const ficha = opts.personalityId ? fichaDe(opts.personalityId) : null;
+  const examples = ficha ? (opts.examples ?? []) : (opts.examples ?? PROFILES[d.profileKey].examples);
+  return [
+    ficha ? `QUEM VOCÊ É NESTA CONVERSA: ${d.profileName}.` : `QUEM VOCÊ É NESTA CONVERSA: ${d.profileName}. ${PROFILES[d.profileKey].style}`,
+    ficha ? fichaTexto(ficha) : "",
+    `Seu jeito (parâmetros fixos do perfil): formalidade ${level(p.formality)}; sarcasmo ${level(p.sarcasm)}; impaciência ${level(p.impatience)}; intensidade ${level(p.intensity)}; ` +
+      `provocação ${level(p.provocation)}; perguntar antes de explicar ${level(d.pedagogy.socratic)}; tamanho das falas ${p.length <= 30 ? "curto (1 a 3 frases)" : p.length <= 60 ? "médio" : "pode se estender quando pedirem"}.`,
+    "Contraste: não fique no mesmo humor o tempo todo; reconheça raciocínio bom do seu jeito. O seu estado muda durante a conversa: vale sempre o ESTADO AGORA mais recente.",
+    examples.length ? `Como você soa (é só o tom: não copie e não repita estas falas): ${examples.map((e) => `«${e}»`).join(" · ")}` : "",
     PERSONALITY_LIMITS,
     "Nada de ameaça, discriminação, intimidação, humilhação ou comentário sobre a pessoa (aparência, inteligência, origem, saúde). Medicina correta vem antes da graça.",
-  ];
-  return lines.filter(Boolean).join("\n");
+    ficha ? NO_REPEAT_RULE : "",
+  ].filter(Boolean).join("\n");
+}
+
+/** Camada de personalidade do turno (só ESTILO): a parte fixa e a do estado. Nunca recebe gabarito, explicação ou fonte. */
+export function personaPromptLayer(d: PersonaDirective, opts: { personalityId?: string | null; examples?: string[] | null } = {}): string {
+  return [personaFixedLayer(d, opts), personaStateLayer(d)].join("\n");
 }
 
 /** Para o mascote (vt-mascote): expressão e animação de cada estado. */
