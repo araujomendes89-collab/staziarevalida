@@ -455,3 +455,80 @@ describe("mini tutor: revisão de 17/10 (pistas por questão, celular, computado
   });
 });
 
+
+describe("mini tutor: tamanho por largura da tela (ajuste de 17/10)", () => {
+  const largura = (w: number, h: number) => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: w });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: h });
+    (window as any).matchMedia = (q: string) => {
+      const max = /max-width:\s*(\d+)px/.exec(q);
+      const min = /min-width:\s*(\d+)px/.exec(q);
+      const ok = (!max || w <= +max[1]) && (!min || w >= +min[1]);
+      return { matches: ok, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} };
+    };
+  };
+  afterEach(() => {
+    delete (window as any).matchMedia;
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1024 });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 768 });
+    document.documentElement.classList.remove("mt-reserva");
+  });
+
+  it("decisões de tamanho: celular abre em ~1/3 da tela (3 alturas menores); tablet menor que o computador", async () => {
+    const { MINI_TUTOR } = await import("../novo/app/tutor/mini/config.js");
+    const { medidasDaJanela } = await import("../novo/app/tutor/mini/MiniTutor.jsx");
+    expect(MINI_TUTOR.folha).toMatchObject({ compacta: 0.25, media: 0.32, alta: 0.7, inicial: "media" });
+    const pc = medidasDaJanela({ tablet: false, vw: 1440, vh: 900 });
+    expect(pc.larguras[0]).toBe(360);
+    expect(pc.altura).toBe(520);
+    for (const [vw, vh] of [[820, 1180], [1180, 820], [744, 1133]]) {
+      const t = medidasDaJanela({ tablet: true, vw, vh });
+      expect(t.larguras[0]).toBeLessThan(pc.larguras[0]);
+      expect(t.larguras[0]).toBeGreaterThanOrEqual(320);
+      expect(t.larguras[0]).toBeLessThanOrEqual(360);
+      expect(t.altura).toBeLessThan(pc.altura);
+      expect(t.altura).toBeLessThanOrEqual(Math.round(vh * 0.55));
+    }
+    // tablet em pé não tem largura para abrir espaço na página; em paisagem tem
+    expect(medidasDaJanela({ tablet: true, vw: 820, vh: 1180 }).reservarMin).toBeGreaterThan(820);
+    expect(medidasDaJanela({ tablet: true, vw: 1180, vh: 820 }).reservarMin).toBeLessThanOrEqual(1180);
+  });
+
+  it("celular 390 × 844: folha de 32% da altura (dvh), sem mt--tablet; abrir não cobre mais que isso", async () => {
+    largura(390, 844);
+    const { contextoDaQuestao } = await import("../novo/app/tutor/mini");
+    await montar(contextoDaQuestao(QUESTAO));
+    const painel = await abrir();
+    expect(painel.closest(".mt")).toHaveClass("mt--celular");
+    expect(painel.closest(".mt")).not.toHaveClass("mt--tablet");
+    expect(painel.style.height).toBe("32dvh");
+    fireEvent.click(within(painel).getByRole("button", { name: "Aumentar o mini tutor" }));
+    expect(painel.style.height).toBe("70dvh");
+    fireEvent.click(within(painel).getByRole("button", { name: "Diminuir o mini tutor" }));
+    expect(painel.style.height).toBe("32dvh");
+  });
+
+  it.each([[820, 1180], [1180, 820]])("tablet %i × %i: janelinha flutuante e arrastável, menor que a do computador", async (w, h) => {
+    largura(w, h);
+    const { contextoDaQuestao } = await import("../novo/app/tutor/mini");
+    await montar(contextoDaQuestao(QUESTAO));
+    const painel = await abrir();
+    const raiz = painel.closest(".mt")!;
+    expect(raiz).toHaveClass("mt--tablet");
+    expect(raiz).not.toHaveClass("mt--celular");
+    expect(painel.style.width).toBe("340px");
+    expect(within(painel).getByRole("button", { name: /Mover o mini tutor/ })).toBeInTheDocument(); // arrastável como no computador
+    expect(within(painel).queryByRole("button", { name: "Aumentar o mini tutor" })).toBeNull(); // nada de folha
+    expect(parseInt(painel.style.height, 10)).toBeLessThanOrEqual(Math.round(h * 0.55));
+  });
+
+  it("computador 1440 × 900: tamanho cheio de sempre (360 px)", async () => {
+    largura(1440, 900);
+    const { contextoDaQuestao } = await import("../novo/app/tutor/mini");
+    await montar(contextoDaQuestao(QUESTAO));
+    const painel = await abrir();
+    expect(painel.closest(".mt")).not.toHaveClass("mt--tablet");
+    expect(painel.closest(".mt")).not.toHaveClass("mt--celular");
+    expect(painel.style.width).toBe("360px");
+  });
+});

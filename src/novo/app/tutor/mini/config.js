@@ -13,6 +13,14 @@ export const MINI_TUTOR = {
   avisoPoucasMensagens: 3,
   /** Celular: abaixo desta largura a janelinha vira uma folha que sobe de baixo. */
   larguraCelular: 720,
+  /** Computador: a partir desta largura vale o tamanho cheio da janelinha; entre larguraCelular e aqui é o tablet (menor). */
+  larguraComputador: 1200,
+  /**
+   * Tablet (744 a 1180 px, retrato e paisagem): janelinha flutuante e arrastável, menor que a do computador. A altura é
+   * a menor entre `altura` (px) e `fracAltura` da tela. Só em paisagem (a partir de `larguraReserva`) a página abre espaço à
+   * direita; no retrato não sobra largura, então a janelinha fica no canto que menos cobre (e dá para arrastar).
+   */
+  tablet: { larguras: [340, 320], altura: 340, fracAltura: 0.55, alturaMin: 260, larguraReserva: 1000 },
   /**
    * Janelinha no computador (px). Ela procura uma coluna livre ao lado da questão/aula (larguras em ordem de preferência).
    * Sem coluna livre (notebooks até ~1600 px), a página abre espaço à direita e a janelinha fica ali, sem cobrir o texto
@@ -28,7 +36,7 @@ export const MINI_TUTOR = {
    * Folha do celular (fração da altura da tela): três alturas, trocadas arrastando o puxador (para baixo menor/minimiza, para cima
    * maior) ou pelo botão de aumentar. Ela cobre o rodapé da questão; para responder, minimize (um toque).
    */
-  folha: { compacta: 0.34, media: 0.45, alta: 0.8, inicial: "media" },
+  folha: { compacta: 0.25, media: 0.32, alta: 0.7, inicial: "media" },
   /** Voz ao vivo dentro do mini tutor (gasta os minutos de voz do dia). false esconde o microfone. */
   vozLigada: true,
   /**

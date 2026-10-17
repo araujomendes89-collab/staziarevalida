@@ -105,9 +105,29 @@
 .mt-voz .mt-aviso { margin: 4px 0 0; }
 
 /* ------------------------------------------------ celular: folha que sobe de baixo */
-.mt--celular .mt-painel { left: 0; right: 0; width: auto; max-width: none; min-height: 260px; border-radius: var(--radius-2xl) var(--radius-2xl) 0 0; border-bottom: 0; animation: mt-sobe var(--dur-slow) var(--ease-out); transition: bottom var(--dur-base) var(--ease-standard), height var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-out); padding-bottom: env(safe-area-inset-bottom); }
-.mt--celular .mt-topo { cursor: default; padding-top: 4px; }
-.mt-puxador { display: grid; place-items: center; width: 100%; height: 22px; border: 0; background: transparent; cursor: grab; touch-action: none; }
+.mt--celular .mt-painel { left: 0; right: 0; width: auto; max-width: none; min-height: 0; border-radius: var(--radius-xl) var(--radius-2xl) 0 0; border-bottom: 0; animation: mt-sobe var(--dur-slow) var(--ease-out); transition: bottom var(--dur-base) var(--ease-standard), height var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-out); padding-bottom: env(safe-area-inset-bottom); }
+.mt--celular .mt-topo { cursor: default; padding: 0 6px 6px 12px; gap: 8px; }
+.mt--celular .mt-topo__nome { display: flex; align-items: baseline; gap: 0; font-size: 14px; }
+/* uma linha só: a fase ("só pistas…") continua para o leitor de tela, sem ocupar espaço */
+.mt--celular .mt-topo__fase { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.mt--celular .mt-icone--leve { width: 36px; height: 36px; }
+.mt--celular .mt-lista { min-height: 0; padding: 8px 12px; gap: 6px; }
+.mt--celular .mt-msg { padding: 7px 10px; }
+.mt--celular .mt-atalhos { flex-wrap: nowrap; overflow-x: auto; padding: 0 12px 6px; scrollbar-width: none; }
+.mt--celular .mt-atalho { flex: none; min-height: 32px; }
+.mt--celular .mt-escrever { padding: 6px 10px; }
+.mt--celular .mt-escrever textarea { min-height: 36px; padding: 7px 10px; }
+.mt--celular .mt-aviso { margin: 0 12px 6px; padding: 5px 8px; }
+.mt--celular .mt-saldo { padding: 4px 12px; gap: 3px; flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.mt--celular .mt-saldo__linha { flex: 1 1 auto; justify-content: flex-start; gap: 10px; }
+.mt--celular .mt-saldo__barra { flex: 0 0 100%; height: 3px; }
+.mt--celular .mt-acabou { margin: 0 12px 6px; padding: 8px 12px; gap: 2px; }
+.mt--celular .mt-acabou .mt-botao { min-height: 36px; }
+.mt--celular .mt-acabou__texto { margin: 0 0 2px; }
+.mt--celular .mt-trava { padding: 12px 18px; gap: 6px; }
+.mt--celular .mt-trava__icone { width: 32px; height: 32px; }
+.mt--celular .mt-voz__palco { width: 84px; height: 94px; }
+.mt-puxador { display: grid; place-items: center; width: 100%; height: 16px; border: 0; background: transparent; cursor: grab; touch-action: none; }
 .mt-puxador span { width: 40px; height: 4px; border-radius: var(--radius-pill); background: var(--border-strong); }
 .mt-espaco { height: 45dvh; }
 /* minimizada no celular: aba na borda direita, na margem ao lado das alternativas (não cobre o "riscar alternativa") */
@@ -115,6 +135,15 @@
 .mt--celular .mt-bolinha--aba:hover { transform: none; }
 .mt--celular .mt-bolinha--aba .mt-bolinha__selo { right: 2px; bottom: 2px; width: 18px; height: 18px; }
 .mt--celular .mt-bolinha--aba .mt-bolinha__ponto { right: 4px; top: 4px; width: 10px; height: 10px; }
+
+/* tablet (744 a 1180 px): janelinha flutuante menor que a do computador; mesmos arrastar e "Voltar ao canto" */
+.mt--tablet .mt-painel { border-radius: var(--radius-lg); }
+.mt--tablet .mt-topo { padding: 8px 6px 8px 12px; gap: 8px; }
+.mt--tablet .mt-lista { min-height: 72px; padding: 10px 12px; }
+.mt--tablet .mt-msg { padding: 8px 11px; }
+.mt--tablet .mt-atalhos { flex-wrap: nowrap; overflow-x: auto; padding: 0 12px 8px; scrollbar-width: none; }
+.mt--tablet .mt-atalho { flex: none; }
+.mt--tablet .mt-saldo { padding: 6px 12px 8px; gap: 4px; }
 
 /* computador sem coluna livre: a página abre espaço à direita para a janelinha (não cobre o texto) */
 html.mt-reserva body { padding-right: var(--mt-reserva, 400px); transition: padding-right var(--dur-base) var(--ease-standard); }

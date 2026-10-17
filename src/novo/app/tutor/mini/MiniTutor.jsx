@@ -66,6 +66,14 @@ function useMedia(q) {
   return v;
 }
 const useCelular = () => useMedia(`(max-width: ${MINI_TUTOR.larguraCelular - 1}px)`);
+const useTablet = () => useMedia(`(min-width: ${MINI_TUTOR.larguraCelular}px) and (max-width: ${MINI_TUTOR.larguraComputador - 1}px)`);
+
+/** Medidas da janelinha flutuante: tamanho cheio no computador, menor no tablet (altura limitada pela altura da tela). */
+export function medidasDaJanela({ tablet, vw = 1440, vh = 900 }) {
+  if (!tablet) return { ...MINI_TUTOR.janela, reservarMin: 0 };
+  const t = MINI_TUTOR.tablet;
+  return { larguras: t.larguras, altura: Math.min(t.altura, Math.round(vh * t.fracAltura)), alturaMin: t.alturaMin, reservarMin: t.larguraReserva };
+}
 
 const limitar = (p, w, h) => {
   const vw = window.innerWidth;
@@ -145,7 +153,7 @@ export function posicaoNoComputador({ vw, vh, topo, rs, larguras, h, hMin, reser
  * janelinha estiver aberta (a página mudou de largura; medir de novo faria a janelinha pular de um lado para o outro); muda ao
  * redimensionar a janela.
  */
-function usePosicaoAuto({ evitar, celular, aberto, ativo, chave }) {
+function usePosicaoAuto({ evitar, celular, tablet, aberto, ativo, chave }) {
   const [auto, setAuto] = React.useState({ x: null, y: null, w: null, h: null, folga: 0, reserva: 0 });
   const reservaFixa = React.useRef(0);
   React.useEffect(() => {
@@ -175,15 +183,16 @@ function usePosicaoAuto({ evitar, celular, aberto, ativo, chave }) {
       }
       let topo = MARGEM;
       for (const { r } of visiveis(MINI_TUTOR.cabecalhos)) if (r.top <= 8 && r.height < 200) topo = Math.max(topo, r.bottom + 12);
-      const larguras = aberto ? MINI_TUTOR.janela.larguras : [BOLINHA];
-      const h = aberto ? MINI_TUTOR.janela.altura : BOLINHA;
-      const hMin = aberto ? MINI_TUTOR.janela.alturaMin : BOLINHA;
+      const med = medidasDaJanela({ tablet, vw, vh });
+      const larguras = aberto ? med.larguras : [BOLINHA];
+      const h = aberto ? med.altura : BOLINHA;
+      const hMin = aberto ? med.alturaMin : BOLINHA;
       let c;
       if (aberto && reservaFixa.current) {
         const w = larguras[0];
         c = { x: vw - w - MARGEM, y: topo, w, h: Math.round(Math.max(hMin, Math.min(h, vh - MARGEM - topo))), reserva: reservaFixa.current };
       } else {
-        c = posicaoNoComputador({ vw, vh, topo, rs, larguras, h, hMin, reservar: aberto && MINI_TUTOR.abrirEspacoNaPagina });
+        c = posicaoNoComputador({ vw, vh, topo, rs, larguras, h, hMin, reservar: aberto && MINI_TUTOR.abrirEspacoNaPagina && vw >= med.reservarMin });
         if (c.reserva) reservaFixa.current = c.reserva;
       }
       setAuto((a) => (a.x === c.x && a.y === c.y && a.w === c.w && a.h === c.h && a.folga === folga && a.reserva === c.reserva ? a : { ...c, folga }));
@@ -201,7 +210,7 @@ function usePosicaoAuto({ evitar, celular, aberto, ativo, chave }) {
       clearInterval(vigia);
       if (quadro && window.cancelAnimationFrame) window.cancelAnimationFrame(quadro);
     };
-  }, [evitar, celular, aberto, ativo, chave]);
+  }, [evitar, celular, tablet, aberto, ativo, chave]);
   return auto;
 }
 
@@ -253,15 +262,16 @@ function Rosto({ personagem, estado = "idle", avatar = null, tamanho = 44, reduz
   return (
     <span className="mt-rosto" style={{ "--mt-rosto": `${tamanho}px` }} aria-hidden="true">
       <span className="mt-rosto__corpo">
-        <PersonagemTutor personagem={personagem} conversationState={estado} emotion={emo.emotion} emotionIntensity={emo.intensity} reduzido={reduzido} decorativo />
+        <PersonagemTutor personagem={personagem} conversationState={estado} emotion={emo.emotion} emotionIntensity={emo.intensity} reduzido={reduzido} decorativo preCarregar="provaveis" />
       </span>
     </span>
   );
 }
 
 /**
- * A cabeça do personagem PARADA (bolinha/aba fechada): só a imagem da pose de base, no mesmo enquadramento do Rosto animado. Não
- * liga laço de quadros, áudio nem baixa as outras poses (fica o tempo todo na tela, inclusive num simulado de horas).
+ * A cabeça do personagem PARADA (bolinha/aba fechada): só a imagem da pose de base (versão de meia resolução, ~20 KB), no mesmo
+ * enquadramento do Rosto animado. Não liga laço de quadros, áudio nem baixa as outras poses (fica o tempo todo na tela, inclusive
+ * num simulado de horas).
  */
 function RostoParado({ personagem, tamanho }) {
   const s = spritePose(personagem, "base");
@@ -271,7 +281,7 @@ function RostoParado({ personagem, tamanho }) {
         <span className="mt-rosto__caixa">
           {s?.url ? (
             <img
-              className="mt-rosto__img" src={s.url} alt="" draggable={false} decoding="async"
+              className="mt-rosto__img" src={s.urlMeia ?? s.url} alt="" draggable={false} decoding="async"
               style={{ left: `calc(${(300 - s.ax).toFixed(1)} * var(--mt-u))`, top: `calc(${(800 - s.ay).toFixed(1)} * var(--mt-u))`, width: `calc(${s.w.toFixed(1)} * var(--mt-u))`, height: `calc(${s.h.toFixed(1)} * var(--mt-u))` }}
             />
           ) : null}
@@ -361,6 +371,7 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
   const [tamanho, setTamanho] = React.useState(MINI_TUTOR.folha.inicial); // celular: compacta | media | alta
   const [puxando, setPuxando] = React.useState(0); // celular: quanto o aluno está arrastando a folha para baixo (px)
   const celular = useCelular();
+  const tablet = useTablet();
   const reduzido = useMovimentoReduzido();
   const abrirTutor = useTutorDock();
   const mt = useMiniTutor({ backend, contexto, aberto });
@@ -387,12 +398,12 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
 
   // posição: celular = folha embaixo e aba na borda; computador = coluna livre, espaço aberto na página, ou onde o aluno arrastou
   const chave = chaveDoContexto(contexto);
-  const auto = usePosicaoAuto({ evitar, celular, aberto, ativo: true, chave });
+  const auto = usePosicaoAuto({ evitar, celular, tablet, aberto, ativo: true, chave });
   useEspacoNaPagina(!celular && aberto && !manual ? auto.reserva : 0);
   const teclado = useTeclado(celular && aberto && digitando);
   // outra questão (ou respondeu): a janelinha volta ao lugar automático
   React.useEffect(() => setManual(null), [chave]);
-  const pos = !celular && manual && aberto ? { ...limitar(manual, auto.w ?? MINI_TUTOR.janela.larguras[0], manual.h), h: manual.h } : null;
+  const pos = !celular && manual && aberto ? { ...limitar(manual, auto.w ?? medidasDaJanela({ tablet }).larguras[0], manual.h), h: manual.h } : null;
 
   // nova resposta com a janelinha minimizada: a bolinha avisa
   const ultimas = mt.mensagens.length;
@@ -485,7 +496,7 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
 
   // ---------------------------------------------------------------- computador: arrastar pelo topo (mouse/caneta) ou setas no "Mover"
   const altAtual = () => painel.current?.getBoundingClientRect().height ?? auto.h ?? MINI_TUTOR.janela.alturaMin;
-  const larguraAtual = auto.w ?? MINI_TUTOR.janela.larguras[0];
+  const larguraAtual = auto.w ?? medidasDaJanela({ tablet }).larguras[0];
   const comecarArrasto = (e) => {
     if (celular || e.button > 0 || e.target.closest("button")) return;
     const r = painel.current?.getBoundingClientRect();
@@ -728,7 +739,7 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
         : { right: MARGEM, bottom: MARGEM, height: MINI_TUTOR.janela.alturaMin };
 
   const ui = (
-    <div className={`mt${celular ? " mt--celular" : ""}${reduzido ? " mt--quieto" : ""}`} data-personagem={personagem}>
+    <div className={`mt${celular ? " mt--celular" : ""}${tablet ? " mt--tablet" : ""}${reduzido ? " mt--quieto" : ""}`} data-personagem={personagem}>
       {!aberto && (
         <button
           ref={bolinha} type="button" className={`mt-bolinha${celular ? " mt-bolinha--aba" : ""}${mt.motivo ? " mt-bolinha--trava" : ""}`} style={estiloBolinha} onClick={abrir}
@@ -761,7 +772,7 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
             onPointerDown={celular ? gestoInicio : comecarArrasto} onPointerMove={celular ? gestoMove : moverArrasto}
             onPointerUp={celular ? gestoFim : soltarArrasto} onPointerCancel={celular ? gestoCancela : soltarArrasto}
           >
-            <Rosto personagem={personagem} estado={modo === "voz" ? "idle" : estado} avatar={mt.avatar} tamanho={celular ? 40 : 44} reduzido={reduzido} />
+            <Rosto personagem={personagem} estado={modo === "voz" ? "idle" : estado} avatar={mt.avatar} tamanho={celular ? 32 : tablet ? 40 : 44} reduzido={reduzido} />
             <div className="mt-topo__texto">
               <h2 id={tituloId} className="mt-topo__nome">
                 {nome}
