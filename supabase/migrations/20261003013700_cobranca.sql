@@ -68,7 +68,7 @@ create table if not exists public.billing_pedidos (
   tipo text not null check (tipo in ('plano', 'extra')),
   codigo text not null check (codigo ~ '^[a-z][a-z0-9_]{1,30}$'),
   ciclo text not null check (ciclo in ('mensal', 'trimestral', 'avulso')),
-  metodo text not null check (metodo in ('pix', 'cartao')),
+  metodo text not null check (metodo in ('pix', 'cartao', 'debito')),
   motivo text not null default 'compra' check (motivo in ('compra', 'renovacao')),
   nome text not null check (char_length(nome) between 1 and 120),
   valor_centavos integer not null check (valor_centavos > 0),
@@ -116,7 +116,7 @@ create table if not exists public.billing_cobrancas (
   tipo text not null check (tipo in ('plano', 'extra')),
   codigo text not null,
   ciclo text not null check (ciclo in ('mensal', 'trimestral', 'avulso')),
-  metodo text not null check (metodo in ('pix', 'cartao')),
+  metodo text not null check (metodo in ('pix', 'cartao', 'debito')),
   valor_centavos integer not null check (valor_centavos >= 0),
   status text not null default 'pendente' check (status in ('pendente', 'paga', 'falhou', 'devolvida', 'devolvida_parcial')),
   pago_em timestamptz,
@@ -518,9 +518,10 @@ begin
   select * into c from public.billing_contratos where user_id = p_user;
   insert into public.billing_contratos as k (user_id, plano, ciclo, metodo, valor_centavos, renova, provider, provider_subscription_id,
                                              contratado_em, periodo_inicio, periodo_fim, ultima_cobranca_id)
-  -- cobrança de uma assinatura do cartão paga por Pix (renovação que falhou): o contrato continua "cartão" (senão o Pix de
-  -- renovação também seria gerado e o aluno pagaria duas vezes)
-  values (p_user, p_codigo, p_ciclo, case when p_subscription is not null then 'cartao' else p_metodo end, p_valor, true, p_provider, p_subscription,
+  -- forma de RENOVAR (não a forma deste pagamento): com assinatura do cartão de crédito = 'cartao' (renova sozinho; vale também
+  -- quando a cobrança da assinatura foi paga por Pix, senão o Pix de renovação também sairia e o aluno pagaria duas vezes);
+  -- sem assinatura (Pix, ou cartão de DÉBITO, que não guarda o cartão) = 'pix': o Pix da renovação sai 7 dias antes
+  values (p_user, p_codigo, p_ciclo, case when p_subscription is not null then 'cartao' else 'pix' end, p_valor, true, p_provider, p_subscription,
           p_pago_em, p_pago_em, p_periodo_fim, x.id)
   on conflict (user_id) do update set
     contratado_em = case when k.plano = excluded.plano and k.ciclo = excluded.ciclo and k.periodo_fim > excluded.periodo_inicio - interval '45 days'

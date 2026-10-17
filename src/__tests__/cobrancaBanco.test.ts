@@ -25,7 +25,7 @@ import { BillingSignatureError, type PaymentProvider, type ProviderCharge } from
 const TOKEN = "token-do-aviso-simulado-com-mais-de-32-caracteres";
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "cobranca-"));
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL, FALHA] = [1, 2, 3, 4, 5, 6, 7, 8].map(id);
+const [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL, FALHA, DEBITO] = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(id);
 let dev: DevDatabase;
 let db: ContentDb;
 let base: string;
@@ -42,7 +42,7 @@ let seq = 0;
 const fake: PaymentProvider = {
   name: "asaas",
   mode: "test",
-  capabilities: { methods: { card: true, pix: true }, partialRefund: true },
+  capabilities: { methods: { card: true, pix: true, debit: true }, partialRefund: true },
   async ensureCustomer(i) {
     log.push(`cliente:${i.document}`);
     return `cus_${i.userId.slice(-2)}`;
@@ -167,7 +167,7 @@ end $$;`;
 beforeAll(async () => {
   dev = await openDevDatabaseForTests(path.join(tmp, "db"));
   db = devContentDb(async () => dev);
-  for (const [i, uid] of [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL, FALHA].entries()) {
+  for (const [i, uid] of [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL, FALHA, DEBITO].entries()) {
     await dev.db.query(`insert into auth.users (id, email) values ($1, $2)`, [uid, `c${i}@t.dev`]);
     tokens[uid] = await dev.createSession(uid);
     if (uid !== SEM_TERMO) await dev.db.query(`insert into public.legal_acceptances (user_id, document, version, origin, email_hash) select $1, document, version, 'tela_aceite', 'x' from public.legal_versions where document = 'termo_uso'`, [uid]);
@@ -460,6 +460,40 @@ describe("devolução pela regra do dono", () => {
     await dev.db.query(`update public.billing_cobrancas set pago_em = now() - interval '9 days' where id = $1`, [x.id]);
     await dev.db.query(`update public.billing_contratos set contratado_em = now() - interval '9 days' where user_id = $1`, [PIXREN]);
     expect((await api(base, PIXREN, "/refunds", { cobranca_id: x.id })).body.code).toBe("sem_devolucao");
+  });
+});
+
+describe("cartão de débito (decisão do dono 17/10): à vista, nunca renova sozinho", () => {
+  it("plano mensal no débito é recusado (renovação automática só no crédito)", async () => {
+    expect((await comprar(DEBITO, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "debito" })).body.code).toBe("debito_no_mensal");
+  });
+
+  it("trimestral no débito: cobrança de cartão avulsa (sem assinatura); pago como débito libera; renovação vira Pix 7 dias antes", async () => {
+    const assinaturas = log.filter((l) => l.startsWith("assinatura:")).length;
+    const r = await comprar(DEBITO, { tipo: "plano", codigo: "pro", ciclo: "trimestral", metodo: "debito" });
+    expect(r.status).toBe(200);
+    const cid = r.body.url.split("/").pop();
+    expect(log).toContain(`cobranca:${cid}:debit:26970:${charges.get(cid)!.dueDate}`);
+    expect(log.filter((l) => l.startsWith("assinatura:")).length).toBe(assinaturas); // débito não cria assinatura
+    pay(cid, clock, { method: "debit" });
+    expect((await hook(cid)).status).toBe(200);
+    expect(await q1(`select metodo from public.billing_cobrancas where provider_payment_id = $1`, [cid])).toEqual({ metodo: "debito" });
+    const c = await q1(`select metodo, renova, provider_subscription_id from public.billing_contratos where user_id = $1`, [DEBITO]);
+    expect(c).toEqual({ metodo: "pix", renova: true, provider_subscription_id: null });
+    expect(await q1(`select plan, status, current_period_end > now() + interval '80 days' as tres_meses from public.subscriptions where user_id = $1`, [DEBITO])).toEqual({ plan: "pro", status: "active", tres_meses: true });
+    const billing = createBilling({ db, provider: fake, baseUrl: "https://app.teste.dev", now: () => clock });
+    await dev.db.query(`update public.billing_contratos set periodo_fim = now() + interval '5 days' where user_id = $1`, [DEBITO]);
+    await billing.runScheduled();
+    expect(await q1(`select metodo, valor_centavos from public.billing_pedidos where user_id = $1 and motivo = 'renovacao'`, [DEBITO])).toEqual({ metodo: "pix", valor_centavos: 26970 });
+  });
+
+  it("extra no débito; e o aluno que escolhe crédito na mesma página também é aceito (à vista)", async () => {
+    const r = await comprar(DEBITO, { tipo: "extra", codigo: "boost", metodo: "debito" });
+    const cid = r.body.url.split("/").pop();
+    pay(cid, clock, { method: "card" });
+    expect((await hook(cid)).status).toBe(200);
+    expect(await q1(`select metodo, status from public.billing_cobrancas where provider_payment_id = $1`, [cid])).toEqual({ metodo: "cartao", status: "paga" });
+    expect(await q1(`select count(*)::int n from public.carteira_extras where user_id = $1`, [DEBITO])).toEqual({ n: 1 });
   });
 });
 

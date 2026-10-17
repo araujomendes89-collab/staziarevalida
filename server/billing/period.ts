@@ -30,7 +30,7 @@ export const cycleMonths = (c: Cycle | "mensal" | "trimestral") => (c === "quart
  *   - pago DEPOIS do vencimento (cartão que o fornecedor reprocessou dias depois, ou Pix atrasado; o acesso já tinha caído):
  *     o período conta da CONFIRMAÇÃO (decisão do dono 17/10): dia do pagamento + ciclo.
  */
-export function periodEndFor(opts: { method: "pix" | "card"; dueDate: string | null; paidAt: Date; cycle: Cycle | "mensal" | "trimestral" }): Date {
+export function periodEndFor(opts: { method: "pix" | "card" | "debit"; dueDate: string | null; paidAt: Date; cycle: Cycle | "mensal" | "trimestral" }): Date {
   const paidDay = brtDate(opts.paidAt);
   const due = opts.dueDate ?? paidDay;
   const base = paidDay > due ? paidDay : due;

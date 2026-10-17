@@ -15,6 +15,8 @@
  *     ASAAS_RETURN_URL=1 depois que o dono cadastrar app.staziamed.com.br;
  *   - QR Code do Pix continua pagável depois do vencimento (pagamento atrasado volta o acesso);
  *   - cobrança da assinatura do cartão que não foi paga pode virar Pix (PUT billingType=PIX): a assinatura continua no cartão;
+ *   - débito: não existe tipo próprio na criação; a página da cobrança de cartão oferece "Cartão de Débito" e o pagamento
+ *     volta como billingType DEBIT_CARD (só à vista, o cartão não fica guardado);
  *   - devolução de Pix fica "AWAITING_CRITICAL_ACTION_AUTHORIZATION" até alguém autorizar no painel (ou o dono liberar);
  *     devolução parcial de cartão só a partir do dia seguinte ao pagamento.
  */
@@ -106,7 +108,7 @@ function refundedCents(p: Obj): number {
 }
 
 export function toProviderCharge(p: Obj): ProviderCharge {
-  const method = p.billingType === "PIX" ? "pix" : p.billingType === "CREDIT_CARD" ? "card" : "other";
+  const method = p.billingType === "PIX" ? "pix" : p.billingType === "CREDIT_CARD" ? "card" : p.billingType === "DEBIT_CARD" ? "debit" : "other";
   const paid = p.clientPaymentDate || p.paymentDate || p.confirmedDate;
   return {
     id: String(p.id),
@@ -187,7 +189,7 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
   return {
     name: "asaas",
     mode,
-    capabilities: { methods: { card: true, pix: true }, partialRefund: true },
+    capabilities: { methods: { card: true, pix: true, debit: true }, partialRefund: true },
 
     async ensureCustomer(input: CustomerInput) {
       const found = await call<Obj>("GET", `/customers?externalReference=${encodeURIComponent(input.userId)}&limit=1`);
@@ -213,6 +215,8 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
     async createCharge(input: ChargeInput): Promise<ChargeCreated> {
       const p = await call<Obj>("POST", "/payments", {
         customer: input.customerId,
+        // débito: a API não tem tipo "débito" (DEBIT_CARD é recusado na criação); a cobrança é de cartão e o aluno escolhe
+        // "Cartão de Débito" na página do Asaas, que a paga como DEBIT_CARD (testado no sandbox 17/10)
         billingType: input.method === "pix" ? "PIX" : "CREDIT_CARD",
         value: reais(input.amountCents),
         dueDate: input.dueDate,

@@ -8,7 +8,8 @@
  *   - Pix: uma cobrança por período; a renovação é gerada pelo NOSSO servidor 7 dias antes do vencimento;
  *   - quem libera o acesso é o aviso conferido + a cobrança relida na API do fornecedor (nunca a tela, nunca só o aviso).
  */
-export type PayMethod = "pix" | "card";
+/** debit = cartão de débito: sempre à vista, NUNCA renova sozinho (não guarda o cartão; decisão do dono 17/10). */
+export type PayMethod = "pix" | "card" | "debit";
 export type Cycle = "monthly" | "quarterly";
 
 /** Situação de uma cobrança, traduzida do fornecedor. */
@@ -81,7 +82,7 @@ export interface ChargeCreated {
 }
 
 export interface ProviderCapabilities {
-  methods: { card: boolean; pix: boolean };
+  methods: { card: boolean; pix: boolean; debit: boolean };
   /** Devolução de parte do valor. */
   partialRefund: boolean;
 }

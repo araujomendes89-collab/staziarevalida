@@ -43,7 +43,7 @@ describe("ligar e desligar pelas chaves", () => {
 
   it("só Pix e cartão (sem boleto)", () => {
     const p = createAsaasProvider({ ASAAS_API_KEY: KEY, ASAAS_WEBHOOK_TOKEN: TOKEN })!;
-    expect(p.capabilities.methods).toEqual({ card: true, pix: true });
+    expect(p.capabilities.methods).toEqual({ card: true, pix: true, debit: true });
   });
 });
 
@@ -93,6 +93,12 @@ describe("situações reais do sandbox", () => {
     const parcial = { ...fx("83-estorno-parcial-pix").resposta, refunds: [{ status: "DONE", value: 80.91 }] };
     expect(asaasStatus(parcial)).toBe("partially_refunded");
     expect(toProviderCharge(parcial).refundedCents).toBe(8091);
+  });
+
+  it("débito: não há tipo próprio na criação; pago na página volta como DEBIT_CARD e é reconhecido", () => {
+    expect(fx("177-tipo-debit-card")).toMatchObject({ status: 400, resposta: { errors: [{ code: "invalid_billingType" }] } });
+    expect(toProviderCharge(fx("179-pago-no-debito").resposta)).toMatchObject({ status: "paid", method: "debit", amountCents: 9990 });
+    expect(createAsaasProvider({ ASAAS_API_KEY: KEY, ASAAS_WEBHOOK_TOKEN: TOKEN })!.capabilities.methods.debit).toBe(true);
   });
 
   it("assinatura trimestral é à vista (o Asaas ignora parcelas na assinatura)", () => {

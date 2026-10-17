@@ -124,7 +124,7 @@ begin
     if c.user_id is null then
       perform public.avisos_criar(new.user_id, 'acesso_liberado', 'liberado:' || new.provider || ':' || new.provider_payment_id,
         'Pagamento confirmado',
-        'Recebemos ' || public.avisos_brl(new.valor_centavos) || ' (' || case new.metodo when 'pix' then 'Pix' else 'cartão de crédito' end || '). '
+        'Recebemos ' || public.avisos_brl(new.valor_centavos) || ' (' || case new.metodo when 'pix' then 'Pix' when 'debito' then 'cartão de débito' else 'cartão de crédito' end || '). '
         || 'Seu ' || v_plano || ' está ativo' || coalesce(' até ' || to_char(public.avisos_dia(new.periodo_fim), 'DD/MM/YYYY'), '') || '. Bons estudos!');
       return new;
     end if;
