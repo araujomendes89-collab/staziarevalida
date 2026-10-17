@@ -15,6 +15,7 @@ import { tutorSettings } from "./settings";
 import { questionHint, questionHintEnabled } from "./questionHint";
 import { geminiVoiceConfig, planProviders, vertexPonteConfig } from "./voiceProviders";
 import { relatorioConfere } from "../vozPonte/bilhete";
+import { cronAutorizado } from "../seguranca/protecoes";
 import { planPersonaTurn } from "./voiceReactions";
 import { personaStateLayer } from "./personalityEngine";
 import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
@@ -42,8 +43,8 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
    * varre é o intervalo de startVoiceSweeper; na Vercel, além desta tarefa, toda rota de voz varre antes de responder.
    */
   router.get("/voice/sweep", async (req, res) => {
-    const secret = process.env.CRON_SECRET;
-    if (!deps || !secret || req.headers.authorization !== `Bearer ${secret}`) return fail(res, 401, "Não autorizado.");
+    // segredo do cron comparado em tempo constante (auditoria de 17/10)
+    if (!deps || !cronAutorizado(req.headers.authorization, process.env.CRON_SECRET)) return fail(res, 401, "Não autorizado.");
     try {
       // a tarefa diária também aplica a retenção das transcrições da voz (painel)
       res.json({ expired: await sweepVoice(deps), purged_transcripts: await purgeVoiceTranscripts(deps).catch(() => 0) });
