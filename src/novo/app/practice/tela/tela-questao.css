@@ -368,10 +368,18 @@
 
 /* tablet: painel da direita com 340 px, como no pacote */
 @media (min-width: 721px) and (max-width: 1180px) {
-  /* conferência final: com o painel ao lado, a alternativa ficava com ~120 px e quebrava palavras; no tablet o painel
-     da explicação desce para baixo do cartão, na largura toda */
-  .tq-main[data-revealed="true"] { flex-direction: column; }
-  .tq-main[data-revealed="true"] .tq-side { flex: 1 1 auto; width: 100%; min-width: 0; }
+  /* D6 (aprovada): a explicação fica no painel da direita, com 340 px */
+  .tq-main[data-revealed="true"] .tq-side { flex: 0 0 340px; min-width: 0; }
+  /* com o cartão estreito, o selo "Gabarito · Sua resposta" ao lado do texto deixava ~120 px e quebrava a palavra no meio
+     ("Encaminhame-nto"): no tablet o selo sobe para cima do texto e o texto usa a largura toda do cartão */
+  .tq-main[data-revealed="true"] .tq-alt__main:has(.tq-alt__badge) {
+    display: grid; grid-template-columns: 36px minmax(0, 1fr); grid-template-areas: "letra selo" "letra texto";
+    column-gap: 16px; row-gap: 2px; align-items: center;
+  }
+  .tq-main[data-revealed="true"] .tq-alt__main:has(.tq-alt__badge) .tq-alt__letter { grid-area: letra; }
+  .tq-main[data-revealed="true"] .tq-alt__main:has(.tq-alt__badge) .tq-alt__text { grid-area: texto; overflow-wrap: break-word; }
+  .tq-main[data-revealed="true"] .tq-alt__main:has(.tq-alt__badge) .tq-alt__badge { grid-area: selo; font-size: 12px; gap: 4px; }
+  .tq-main[data-revealed="true"] .tq-alt__main:has(.tq-alt__badge) .tq-alt__badge .sm-icon { width: 16px !important; height: 16px !important; }
   .tq-hint-solo { margin: 20px 24px 0; }
 }
 

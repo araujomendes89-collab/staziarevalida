@@ -54,6 +54,13 @@ fieldset.qb-set{margin:0;padding:0;border:0;min-width:0}
   .qb-areas{grid-template-columns:repeat(6,minmax(0,180px))}
   .qb-area{min-height:130px}
 }
+/* Ajuste 2 (16/10/2026): de 1181 a 1599 px, com o resumo de 388 px ao lado, 6 áreas numa linha ficavam com 95 a 99 px de
+   largura ("em pé"). Nessa faixa as áreas vão para 2 linhas de 3, como no pacote do tablet (~200 x 116); a partir de 1600 px
+   voltam a 6 numa linha (>= 120 px de largura). */
+@media (min-width:1181px) and (max-width:1599px){
+  .qb-areas{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .qb-area{min-height:108px}
+}
 /* G5.5: tablet largo (900 a 1180 px) também com 6 áreas numa linha; abaixo disso, 3 colunas como no pacote do tablet */
 @media (max-width:899px){.qb-areas{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (min-width:900px) and (max-width:1180px){

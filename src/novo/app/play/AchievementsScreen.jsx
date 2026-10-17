@@ -133,7 +133,8 @@ export function AchievementGrid({ items: brutos, bp = "wide", artes = null, resu
         <div className="cq-grid">
           {shown.map((item) => (
             <button key={item.slug} type="button" className="cq-card" onClick={() => setDetail(item)} aria-label={rotulo(item)}>
-              <Medalha item={item} size={54} artes={artes} />
+              {/* medalha de 46 (era 54), como no pacote: sobra mais largura para o texto e o cartão fica mais baixo */}
+              <Medalha item={item} size={46} artes={artes} />
               <span className="cq-card__body">
                 <span className="cq-name">{item.name}</span>
                 {item.description && <span className="cq-req">{item.description}</span>}
