@@ -111,7 +111,7 @@ describe("Migração 013410: grau de dificuldade da estação", () => {
     expect(linha).toMatchObject({ level: "facil", calibrated_level: null, calibrated_at: null, calibrated_n: null });
   });
 
-  it("colar a 013410 de novo dá o mesmo banco; funções com search_path vazio e fechadas ao visitante", async () => {
+  it("colar a 013410 (e as seguintes do Treino) de novo dá o mesmo banco; funções com search_path vazio e fechadas ao visitante", async () => {
     await definir(REV_CM, "medio", ["tarefas"]);
     const defs = () =>
       d.sql<{ id: string; def: string; acl: string | null }>(
@@ -119,7 +119,10 @@ describe("Migração 013410: grau de dificuldade da estação", () => {
            from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' order by 1`
       );
     const antes = await defs();
-    await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8"));
+    // as do Treino que vêm depois refazem funções desta (a 013425 refaz app_dupla_stations): coladas de novo na ordem
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.includes("treino_dupla") && f >= MIGRACAO).sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect(await defs()).toEqual(antes);
     expect((await naAba()).difficulty).toBe("medio"); // o dado continua
     const acl = Object.fromEntries(antes.map((f) => [f.id, f.acl]));
