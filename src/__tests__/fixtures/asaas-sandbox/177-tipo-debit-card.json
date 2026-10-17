@@ -1,0 +1,24 @@
+{
+ "quando": "2026-10-17T22:19:34.407Z",
+ "pedido": {
+  "method": "POST",
+  "path": "/payments",
+  "body": {
+   "customer": "cus_000009550161",
+   "billingType": "DEBIT_CARD",
+   "value": 99.9,
+   "dueDate": "2026-10-17",
+   "description": "TESTE tipo DEBIT_CARD"
+  }
+ },
+ "status": 400,
+ "resposta": {
+  "errors": [
+   {
+    "code": "invalid_billingType",
+    "description": "A forma de pagamento não é permitida para cobranças."
+   }
+  ]
+ },
+ "nota": "Resposta REAL do sandbox do Asaas (subconta de teste, 17/10/2026), dados fictícios; chaves ocultas."
+}

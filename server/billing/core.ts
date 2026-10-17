@@ -81,7 +81,7 @@ function dbError(e: unknown): BillingError | null {
   return m[1] in known ? new BillingError(m[2], known[m[1]], m[1]) : null;
 }
 
-const METODO = { pix: "pix", cartao: "card" } as const;
+const METODO = { pix: "pix", cartao: "card", debito: "debit" } as const;
 const SAFE_IDEM = /^[A-Za-z0-9_-]{8,100}$/;
 
 export function createBilling(deps: BillingDeps) {
@@ -187,9 +187,11 @@ export function createBilling(deps: BillingDeps) {
     const tipo = body.tipo === "extra" ? "extra" : body.tipo === "plano" ? "plano" : null;
     const codigo = typeof body.codigo === "string" && /^[a-z][a-z0-9_]{1,30}$/.test(body.codigo) ? body.codigo : null;
     const ciclo = tipo === "extra" ? "avulso" : body.ciclo === "trimestral" ? "trimestral" : body.ciclo === "mensal" ? "mensal" : null;
-    const metodo = body.metodo === "pix" || body.metodo === "cartao" ? body.metodo : null;
+    const metodo = body.metodo === "pix" || body.metodo === "cartao" || body.metodo === "debito" ? body.metodo : null;
     if (!tipo || !codigo || !ciclo) throw new BillingError("Escolha o que comprar.");
-    if (!metodo || !p.capabilities.methods[METODO[metodo]]) throw new BillingError("Forma de pagamento inválida. Use Pix ou cartão de crédito.");
+    if (!metodo || !p.capabilities.methods[METODO[metodo]]) throw new BillingError("Forma de pagamento inválida. Use Pix, cartão de crédito ou cartão de débito.");
+    // débito não guarda o cartão (não renova sozinho): só em compra à vista que não depende de renovação automática
+    if (metodo === "debito" && tipo === "plano" && ciclo === "mensal") throw new BillingError("No plano mensal, use Pix ou cartão de crédito. O débito vale para o trimestral e os extras.", 400, "debito_no_mensal");
     if (body.aceite !== true) throw new BillingError("Para contratar, marque que leu e aceita o Contrato de Assinatura e os Termos.", 422, "aceite_obrigatorio");
     const idem = typeof body.idem === "string" && SAFE_IDEM.test(body.idem) ? body.idem : null;
     if (!idem) throw new BillingError("Pedido inválido. Atualize a página e tente de novo.");
@@ -489,14 +491,14 @@ export function createBilling(deps: BillingDeps) {
     const tipo = pedido?.tipo ?? "plano";
     const codigo = pedido?.codigo ?? contrato!.plano;
     const ciclo = pedido?.ciclo ?? contrato!.ciclo;
-    const metodo = charge.method === "pix" ? "pix" : charge.method === "card" ? "cartao" : null;
+    const metodo = charge.method === "pix" ? "pix" : charge.method === "card" ? "cartao" : charge.method === "debit" ? "debito" : null;
     if (!metodo || charge.installments) {
       log(`[billing] cobrança ${charge.id} com forma não aceita (${charge.method}${charge.installments ? ", parcelada" : ""}): não liberada`);
       return userId;
     }
     if (charge.status === "paid") {
       const paidAt = charge.paidAt ?? now();
-      const periodEnd = tipo === "plano" ? periodEndFor({ method: charge.method as "pix" | "card", dueDate: charge.dueDate, paidAt, cycle: ciclo as "mensal" | "trimestral" }) : null;
+      const periodEnd = tipo === "plano" ? periodEndFor({ method: charge.method as "pix" | "card" | "debit", dueDate: charge.dueDate, paidAt, cycle: ciclo as "mensal" | "trimestral" }) : null;
       const r = await svc<{ repetido?: boolean }>("ch_worker_billing_pago", {
         p_provider: p.name, p_payment: charge.id, p_pedido: pedido?.id ?? null, p_user: userId, p_subscription: charge.subscriptionId,
         p_customer: charge.customerId, p_tipo: tipo, p_codigo: codigo, p_ciclo: ciclo, p_metodo: metodo, p_valor: charge.amountCents,

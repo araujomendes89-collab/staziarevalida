@@ -45,7 +45,7 @@ let atraso = 0; // fornecedor lento (para dois cliques chegarem juntos)
 const fake: PaymentProvider = {
   name: "asaas",
   mode: "test",
-  capabilities: { methods: { card: true, pix: true }, partialRefund: true },
+  capabilities: { methods: { card: true, pix: true, debit: true }, partialRefund: true },
   async ensureCustomer(i) {
     return `cus_${i.userId.slice(-2)}`;
   },
