@@ -1,5 +1,5 @@
 // "Quem fica com você na tela": o aluno escolhe UM personagem (Stazi ou Stazia) antes de começar, junto com o professor.
-// Botões com aria-pressed (o mesmo padrão dos cartões de professor). A escolha é guardada no aparelho por quem usa (NexusLobby).
+// Botões com aria-pressed (o mesmo padrão dos cartões de professor). Quem usa (NexusLobby) grava a escolha no perfil e no aparelho.
 import React from "react";
 import { PERSONAGENS, PERSONAGEM_IDS } from "./personagens.js";
 import { spritePose } from "./sprites.js";

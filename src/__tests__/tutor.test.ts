@@ -406,7 +406,7 @@ describe("Banco e motor (IA simulada)", () => {
       expect(st.personalities.map((p: any) => [p.id, p.name, p.character])).toEqual([["durao", "Durão", "stazi"], ["acolhedor", "Tranquilo", "stazi"], ["durona", "Durona", "stazia"], ["tranquila", "Tranquila", "stazia"]]);
       // o Durão e a Durona xingam; Tranquilo e Tranquila, não
       expect(st.personalities.filter((p: any) => p.swears).map((p: any) => p.id)).toEqual(["durao", "durona"]); // na ordem dos cartões
-      expect(st.preferences).toEqual({ personality_id: "acolhedor", profanity: "off", chosen: false });
+      expect(st.preferences).toEqual({ personality_id: "acolhedor", profanity: "off", chosen: false, character: null }); // personagem no perfil (…13610)
       expect(st.personalities.every((p: any) => p.voice.rate >= 0.5 && p.voice.pitch <= 2)).toBe(true);
       await expect(rpc(S1, "app_tutor_start", "livre", null, null)).rejects.toThrow(/ainda não está ligado/);
       await expect(rpc(S1, "app_admin_tutor_save_config", { enabled: true }, "quero ligar o tutor agora")).rejects.toThrow(/administradores/);
@@ -418,7 +418,7 @@ describe("Banco e motor (IA simulada)", () => {
     });
 
     it("preferências: o aluno escolhe só o professor; palavrão é da Durona, até o teto da plataforma", async () => {
-      expect(await rpc(S1, "app_tutor_save_preferences", { personality_id: "durao", intensity: 5, profanity: "moderate" })).toEqual({ personality_id: "durao", profanity: "moderate", chosen: true });
+      expect(await rpc(S1, "app_tutor_save_preferences", { personality_id: "durao", intensity: 5, profanity: "moderate" })).toEqual({ personality_id: "durao", profanity: "moderate", chosen: true, character: "stazi" });
       expect(await rpc(S1, "app_tutor_save_preferences", { personality_id: "acolhedor" })).toMatchObject({ profanity: "off" });
       expect(await rpc(S1, "app_tutor_save_preferences", { personality_id: "tranquila" })).toMatchObject({ profanity: "off" });
       await rpc(S1, "app_tutor_save_preferences", { personality_id: "durao" });

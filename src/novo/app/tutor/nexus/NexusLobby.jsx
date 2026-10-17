@@ -3,10 +3,12 @@
 // Com `request` (aberta por outra tela), o modo vem travado e só se escolhe o professor.
 // 17/10/2026: a esfera deu lugar ao personagem. O aluno escolhe PRIMEIRO o personagem (Stazi ou Stazia) e depois uma das 2
 // personalidades dele (Stazi: Durão e Tranquilo; Stazia: Durona e Tranquila). A voz vem do personagem, não é escolhida à parte.
+// O personagem fica no perfil do aluno (vale em qualquer aparelho): a tela abre com o do perfil e, ao tocar num personagem, grava no
+// perfil sem travar a tela (`onPersonagem`); se falhar, a escolha fica no aparelho e a tela tenta de novo na próxima vez.
 import React from "react";
 import { PersonagemTutor } from "../personagens/PersonagemTutor.jsx";
 import { EscolhaPersonagem } from "../personagens/EscolhaPersonagem.jsx";
-import { PERSONAGENS, PERSONALIDADES, artigoDe, gravarPersonagem, lerPersonagem, personagemDe, temPersonagemSalvo } from "../personagens/personagens.js";
+import { PERSONAGENS, PERSONALIDADES, artigoDe, gravarPersonagem, marcarNoPerfil, personagemDe, personagemInicial, personagemPendente, personagemValido } from "../personagens/personagens.js";
 import { modeLabel } from "../labels.js";
 import { TutorQuota } from "../TutorQuota.jsx";
 
@@ -32,11 +34,37 @@ export function voiceLine(nexus, personalityId) {
 // Personality Engine for ligada; até lá a entrada fica exatamente como está.
 const DURAS = new Set(Object.values(PERSONALIDADES).filter((p) => p.duro).map((p) => p.id));
 
-export function NexusLobby({ status, nexus, request = null, busy = false, error = null, onStart, onHistory, onListen, onClose = null, duronaSettings = null }) {
+// `onPersonagem(id)`: grava o personagem no perfil (app_tutor_set_character) e devolve as preferências; sem ele, fica só no aparelho.
+export function NexusLobby({ status, nexus, request = null, busy = false, error = null, onStart, onHistory, onListen, onClose = null, duronaSettings = null, onPersonagem = null }) {
   const professors = status.personalities ?? [];
-  const prefId = professors.some((p) => p.id === status.preferences?.personality_id) ? status.preferences.personality_id : null;
-  // sem escolha guardada, abre no personagem do professor que o aluno já usava (ou no Stazi); depois o personagem manda
-  const [pers, setPers] = React.useState(() => (temPersonagemSalvo() ? lerPersonagem() : null));
+  // o perfil pode trocar a personalidade preferida quando o aluno troca de personagem (vai para a calma do personagem novo)
+  const [prefPerfil, setPrefPerfil] = React.useState(null);
+  const prefBase = prefPerfil ?? status.preferences?.personality_id;
+  const prefId = professors.some((p) => p.id === prefBase) ? prefBase : null;
+  const doPerfil = personagemValido(status.preferences?.character);
+  // perfil > aparelho; sem nenhum dos dois, abre no personagem do professor que o aluno já usava (ou no Stazi)
+  const [pers, setPers] = React.useState(() => personagemInicial(doPerfil));
+  const envio = React.useRef(0);
+  const salvarNoPerfil = React.useCallback((id) => {
+    if (!onPersonagem) return;
+    const n = ++envio.current;
+    // sem travar a tela: falhou, a escolha fica no aparelho (pendente) e vai de novo na próxima vez que a entrada abrir
+    Promise.resolve()
+      .then(() => onPersonagem(id))
+      .then((r) => {
+        if (n !== envio.current) return; // o aluno já tocou em outro: vale o último toque
+        marcarNoPerfil(id);
+        if (r?.personality_id) setPrefPerfil(r.personality_id);
+      })
+      .catch(() => {});
+  }, [onPersonagem]);
+  React.useEffect(() => {
+    const pendente = personagemPendente();
+    if (pendente) salvarNoPerfil(pendente);
+    else if (doPerfil) marcarNoPerfil(doPerfil); // cópia no aparelho, para a próxima abrir sem piscar
+    // só ao abrir a entrada
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const personagem = pers ?? personagemDe(professors.find((p) => p.id === prefId)) ?? personagemDe(professors[0]) ?? "stazi";
   // as 2 personalidades do personagem escolhido (sem a ligação entre personalidade e personagem, como numa lista antiga, mostra todas)
   const doPersonagem = professors.filter((p) => personagemDe(p) === personagem);
@@ -50,6 +78,7 @@ export function NexusLobby({ status, nexus, request = null, busy = false, error 
     setPers(id);
     gravarPersonagem(id);
     setEscolhida(null);
+    salvarNoPerfil(id);
   };
   const chosen = professors.find((p) => p.id === choice);
   const line = voiceLine(nexus, choice);

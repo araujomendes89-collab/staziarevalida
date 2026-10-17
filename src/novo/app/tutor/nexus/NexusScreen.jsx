@@ -240,6 +240,9 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
     });
   };
 
+  // o personagem tocado na entrada vai para o perfil do aluno (vale em qualquer aparelho); a entrada não espera a resposta
+  const savePersonagem = React.useCallback((id) => backend.rpc("app_tutor_set_character", { p_character: id }), [backend]);
+
   const listen = async (personalityId) => {
     unlockAudio();
     try {
@@ -376,7 +379,7 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
   } else if (phase === "history") {
     body = <HistoryView sessions={sessions} onBack={toLobby} onOpen={fromHistory} onClose={overlay ? onClose : null} error={errorBox} />;
   } else {
-    body = <NexusLobby status={status} nexus={nexus} request={request} busy={busy} error={errorBox} onStart={begin} onHistory={showHistory} onListen={listen} onClose={overlay ? onClose : null} />;
+    body = <NexusLobby status={status} nexus={nexus} request={request} busy={busy} error={errorBox} onStart={begin} onHistory={showHistory} onListen={listen} onClose={overlay ? onClose : null} onPersonagem={savePersonagem} />;
   }
   return <div className={`nx${overlay ? " nx--overlay" : ""}`}>{body}</div>;
 }

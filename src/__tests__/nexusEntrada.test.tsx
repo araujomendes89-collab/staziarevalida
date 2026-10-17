@@ -149,6 +149,18 @@ describe("Nexus: entrada", () => {
     expect((navigator as any).mediaDevices.getUserMedia).not.toHaveBeenCalled();
   });
 
+  it("o personagem vem do perfil do aluno e o toque grava no perfil (app_tutor_set_character)", async () => {
+    rpcImpl.app_tutor_status = () => status({ preferences: { personality_id: "acolhedor", profanity: "off", chosen: true, character: "stazi" } });
+    rpcImpl.app_tutor_set_character = ({ p_character }: any) => ({ personality_id: p_character === "stazia" ? "tranquila" : "acolhedor", profanity: "off", chosen: true, character: p_character });
+    await mount();
+    expect(screen.getByRole("button", { name: /Stazi\b/ })).toHaveAttribute("aria-pressed", "true");
+    expect(rpcCalls.some((c) => c.fn === "app_tutor_set_character")).toBe(false); // abrir não grava nada
+    fireEvent.click(screen.getByRole("button", { name: /Stazia/ }));
+    await waitFor(() => expect(rpcCalls.filter((c) => c.fn === "app_tutor_set_character").map((c) => c.args)).toEqual([{ p_character: "stazia" }]));
+    await waitFor(() => expect(card("Tranquila")).toHaveAttribute("aria-pressed", "true"));
+    expect(rpcCalls.some((c) => c.fn === "app_tutor_start")).toBe(false); // gravar o personagem não começa conversa
+  });
+
   it("na tela do app o título não se repete (o topo do app já diz 'Stazia Tutor'); por cima de outra tela, o título aparece", async () => {
     await mount();
     expect(screen.queryByText("Seu professor particular para o Revalida")).toBeNull();

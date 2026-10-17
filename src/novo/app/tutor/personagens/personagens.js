@@ -3,7 +3,8 @@
 // - Stazia: lontra menina de moletom rosa e laço rosa, também com o S (personagem nova; poses geradas a partir da arte do dono).
 // Cada personagem tem 1 voz e 2 personalidades (decisão de 17/10/2026): Stazi = Durão e Tranquilo; Stazia = Durona e Tranquila.
 // O aluno escolhe PRIMEIRO o personagem, depois uma das 2 personalidades dele; a voz vem do personagem. A escolha do personagem
-// fica guardada no aparelho (localStorage); a personalidade é a do perfil do Tutor (tutor_preferences).
+// fica no PERFIL do aluno (tutor_preferences.character, decisão do dono de 17/10/2026; vale em qualquer aparelho), como a
+// personalidade. O aparelho (localStorage) guarda uma cópia para a tela abrir sem piscar e a escolha que o perfil ainda não confirmou.
 
 export const PERSONAGENS = {
   // `voz`: a voz ao vivo do personagem (decisão do dono, 17/10/2026). gemini = voz do Gemini Live; openai = reserva; semitons = quanto
@@ -25,6 +26,8 @@ export const PERSONALIDADES = {
   tranquila: { id: "tranquila", personagem: "stazia", artigo: "a", duro: false },
 };
 export const CHAVE_PERSONAGEM = "smn-tutor-personagem";
+/** O último personagem que o perfil confirmou neste aparelho: se for diferente do guardado, a escolha ainda não chegou ao perfil. */
+export const CHAVE_PERSONAGEM_PERFIL = "smn-tutor-personagem-perfil";
 
 export const personagemValido = (id) => (PERSONAGEM_IDS.includes(id) ? id : null);
 
@@ -78,6 +81,43 @@ export function gravarPersonagem(id) {
   } catch {
     // navegação privada: vale só nesta tela
   }
+}
+
+function lerChave(chave) {
+  try {
+    return personagemValido(window.localStorage.getItem(chave));
+  } catch {
+    return null; // navegação privada ou armazenamento bloqueado
+  }
+}
+
+/**
+ * A escolha feita neste aparelho que o perfil ainda não confirmou (a gravação falhou, foi feita sem rede, durante a conversa, ou
+ * antes de o perfil guardar o personagem). Sem isso, null.
+ */
+export function personagemPendente() {
+  const salvo = lerChave(CHAVE_PERSONAGEM);
+  return salvo && salvo !== lerChave(CHAVE_PERSONAGEM_PERFIL) ? salvo : null;
+}
+
+/** O perfil confirmou o personagem: vira também a cópia do aparelho. */
+export function marcarNoPerfil(id) {
+  if (!personagemValido(id)) return;
+  try {
+    window.localStorage.setItem(CHAVE_PERSONAGEM, id);
+    window.localStorage.setItem(CHAVE_PERSONAGEM_PERFIL, id);
+  } catch {
+    // navegação privada: vale o perfil, sem cópia
+  }
+}
+
+/**
+ * Com que personagem a entrada do Tutor abre. Regra: perfil > aparelho > (quem chama completa com o personagem da personalidade
+ * preferida e, por fim, o Stazi). A única exceção é a escolha deste aparelho que o perfil ainda não confirmou: ela é a mais nova,
+ * então vale ela, e a tela tenta gravar de novo. Sem nada escolhido, null.
+ */
+export function personagemInicial(doPerfil) {
+  return personagemPendente() ?? personagemValido(doPerfil) ?? lerChave(CHAVE_PERSONAGEM);
 }
 
 /**
