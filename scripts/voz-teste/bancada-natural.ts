@@ -25,9 +25,18 @@
 //   antes da conversa do perfil "volta depois de dias"), e o banco guarda a memória das aberturas desse aluno, como no app
 //   (tutor_recent_openings, conversa anterior, erros da última vez). --aluno-por-conversa: um aluno novo por conversa (como a base).
 // --so-medir refaz só as contas a partir dos .json já gravados (sem chamar IA); --so-faltantes roda de novo só as que faltam ou deram erro.
+// (17/10, abertura preparada e medição com o Claude)
+// --saguao-ms N: como a entrada do app, pede a abertura PREPARADA (prepararAbertura) com a escolha da conversa, espera N ms (o aluno
+//   escolhendo professor e modo) e só então cria a conversa; a abertura é pedida como a tela pede (3 s). Sem a opção: como antes.
+// --so-abertura: só a abertura (sem as falas do aluno nem juiz): mede quantas saem da IA e o tempo, barato.
+// --provedor anthropic [--modelo claude-sonnet-5-5]: o professor (texto) pelo Claude, como em produção (TUTOR_AI_PROVIDER padrão),
+//   com a chave de ~/.config/staziamed/anthropic.env (ANTHROPIC_API_KEY_NOVA, nunca impressa). Conta tokens sem cache, gravados e
+//   lidos do cache (cache_read_input_tokens) e o custo pelo preço oficial; --teto-usd X (padrão 2,30) para ANTES de passar do teto,
+//   somando todas as rodadas gravadas em <saida>/../gasto-anthropic.json. O aluno simulado e o juiz continuam no Gemini.
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import os from "node:os";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { lerEnv, VERTEX_ENV } from "./vertex.mjs";
 import { PRECOS } from "./precos.mjs";
@@ -71,8 +80,21 @@ for (const k of ["SUPABASE_URL", "VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY", 
 const venv = lerEnv(VERTEX_ENV) as Record<string, string>;
 if (!process.env.VERTEX_API_KEY && venv.VERTEX_API_KEY) process.env.VERTEX_API_KEY = venv.VERTEX_API_KEY;
 const API_BASE = process.env.VERTEX_API_BASE || venv.VERTEX_API_BASE || "https://aiplatform.googleapis.com/v1/publishers/google/models";
-process.env.TUTOR_AI_PROVIDER = "gemini";
-process.env.TUTOR_MODEL = MODELO;
+/** O provedor do PROFESSOR (texto): gemini (bancadas anteriores) ou anthropic (produção). */
+const PROVEDOR = (arg("provedor", "gemini") as string).toLowerCase() === "anthropic" ? "anthropic" : "gemini";
+const MODELO_PROF = PROVEDOR === "anthropic" ? (arg("modelo", "claude-sonnet-5-5") as string) : MODELO;
+const SAGUAO_MS = arg("saguao-ms") == null ? null : Math.max(0, Number(arg("saguao-ms")));
+const SO_ABERTURA = flag("so-abertura");
+const TETO_USD = Number(arg("teto-usd", "2.30"));
+process.env.TUTOR_AI_PROVIDER = PROVEDOR;
+process.env.TUTOR_MODEL = MODELO_PROF;
+if (PROVEDOR === "anthropic") {
+  const aenv = lerEnv(path.join(os.homedir(), ".config/staziamed/anthropic.env")) as Record<string, string>;
+  if (!aenv.ANTHROPIC_API_KEY_NOVA) throw new Error("ANTHROPIC_API_KEY_NOVA ausente em ~/.config/staziamed/anthropic.env");
+  process.env.ANTHROPIC_API_KEY = aenv.ANTHROPIC_API_KEY_NOVA;
+}
+// a abertura preparada liga (com a IA de verdade já ligaria sozinha; deixa explícito)
+if (SAGUAO_MS != null) process.env.TUTOR_ABERTURA_PRONTA = "1";
 process.env.TUTOR_AI_ALLOW_EXTERNAL = "1";
 process.env.TUTOR_ENABLED = "1";
 if (process.env.NODE_ENV === "production") throw new Error("A bancada não roda com NODE_ENV=production.");
@@ -82,7 +104,21 @@ const PRECO = PRECOS[MODELO as keyof typeof PRECOS] as { textoEntrada: number; t
 interface Conta { entrada: number; saida: number; chamadas: number }
 const novaConta = (): Conta => ({ entrada: 0, saida: 0, chamadas: 0 });
 const usd = (c: Conta) => (c.entrada * PRECO.textoEntrada + c.saida * PRECO.textoSaida) / 1e6;
-const contexto = new AsyncLocalStorage<{ professor: Conta; aluno: Conta; juiz: Conta }>();
+/** Preço oficial do Claude (US$ por 1 milhão de tokens; skill claude-api, tabela de 06/10/2026): leitura do cache 0,1×, gravação 1,25× (5 min). */
+const PRECO_CLAUDE: Record<string, { entrada: number; saida: number }> = { "claude-sonnet-5-5": { entrada: 2, saida: 10 }, "claude-haiku-5-5": { entrada: 0.1, saida: 0.5 }, "claude-opus-5-5": { entrada: 4, saida: 20 } };
+interface UsoClaude { chamadas: number; sem_cache: number; gravado: number; lido: number; saida: number; usd: number; ms: number[]; abertura: { chamadas: number; usd: number; ms: number[] } }
+const novoUsoClaude = (): UsoClaude => ({ chamadas: 0, sem_cache: 0, gravado: 0, lido: 0, saida: 0, usd: 0, ms: [], abertura: { chamadas: 0, usd: 0, ms: [] } });
+const usdClaude = (modelo: string, u: { input_tokens?: number; cache_creation_input_tokens?: number; cache_read_input_tokens?: number; output_tokens?: number }) => {
+  const p = PRECO_CLAUDE[modelo] ?? PRECO_CLAUDE["claude-sonnet-5-5"];
+  return ((u.input_tokens ?? 0) * p.entrada + (u.cache_creation_input_tokens ?? 0) * p.entrada * 1.25 + (u.cache_read_input_tokens ?? 0) * p.entrada * 0.1 + (u.output_tokens ?? 0) * p.saida) / 1e6;
+};
+/** A chamada da abertura/passagem (esquema só com "fala"). */
+const ehAbertura = (params: any) => { const pr = params?.output_config?.format?.schema?.properties; return Boolean(pr && Object.keys(pr).length === 1 && pr.fala); };
+/** Gasto com o Claude somado entre as rodadas (para o teto duro do dono). */
+const GASTO_ARQ = path.join(path.dirname(SAIDA), "gasto-anthropic.json");
+let gastoClaude = fs.existsSync(GASTO_ARQ) ? Number(JSON.parse(fs.readFileSync(GASTO_ARQ, "utf8")).usd ?? 0) : 0;
+const gravarGasto = () => fs.writeFileSync(GASTO_ARQ, JSON.stringify({ usd: Math.round(gastoClaude * 1e6) / 1e6, atualizado: new Date().toISOString() }, null, 2));
+const contexto = new AsyncLocalStorage<{ professor: Conta; aluno: Conta; juiz: Conta; claude?: UsoClaude }>();
 const somar = (alvo: "professor" | "aluno" | "juiz", entrada: number, saida: number) => {
   const c = contexto.getStore()?.[alvo];
   if (!c) return;
@@ -162,6 +198,8 @@ let cdb: import("../../server/contentHub/infra").ContentDb;
 let tutorTurn: typeof import("../../server/tutor/engine").tutorTurn;
 /** Abertura e passagem naturais (17/10): a IA troca a fala sorteada pelo banco, como o app faz (/voice/open, /opening). */
 let naturalOpening: typeof import("../../server/tutor/opening").naturalOpening;
+/** Abertura preparada na entrada (17/10). */
+let prepararAbertura: typeof import("../../server/tutor/opening").prepararAbertura;
 /** --abertura-fixa: mede como antes (sem a troca pela IA). */
 const ABERTURA_FIXA = flag("abertura-fixa");
 /** Quanto a bancada espera a abertura (padrão: o mesmo da tela que espera no app, OPENING_WAIT_MS = 3 s). */
@@ -183,7 +221,7 @@ async function prepararBanco() {
   const { devContentDb } = await import("../../server/contentHub/infra");
   const { aceitarTermos } = await import("../../src/__tests__/helpers/aceites");
   ({ tutorTurn } = await import("../../server/tutor/engine"));
-  ({ naturalOpening } = await import("../../server/tutor/opening"));
+  ({ naturalOpening, prepararAbertura } = await import("../../server/tutor/opening"));
   console.log(`[bancada] abrindo o banco local em ${DB_DIR} (a primeira vez aplica todas as migrações e a carga: alguns minutos)...`);
   dev = await openDevDatabaseForTests(DB_DIR);
   cdb = devContentDb(async () => dev);
@@ -224,6 +262,42 @@ async function prepararBanco() {
       throw e;
     }
   } as typeof original;
+
+  // o provedor de produção (Claude): os números crus de cada chamada (sem cache, gravado e lido do cache, saída) e o teto duro de gasto
+  const { AnthropicProvider } = await import("../../server/contentHub/ai/provider");
+  const originalA = AnthropicProvider.prototype.generate;
+  AnthropicProvider.prototype.generate = async function (this: any, req: any) {
+    if (!this.__bancada) {
+      this.__bancada = true;
+      const create = this.client.messages.create.bind(this.client.messages);
+      this.client.messages.create = async (params: any, options: any) => {
+        if (gastoClaude >= TETO_USD) throw new Error(`TETO: gasto com o Claude chegou a US$ ${gastoClaude.toFixed(4)} (teto ${TETO_USD})`);
+        const t0 = Date.now();
+        const res = await create(params, options);
+        const u = res?.usage ?? {};
+        const custo = usdClaude(this.model, u);
+        gastoClaude += custo;
+        gravarGasto();
+        const c = contexto.getStore()?.claude;
+        if (c) {
+          const ms = Date.now() - t0;
+          c.chamadas++; c.sem_cache += u.input_tokens ?? 0; c.gravado += u.cache_creation_input_tokens ?? 0; c.lido += u.cache_read_input_tokens ?? 0; c.saida += u.output_tokens ?? 0; c.usd += custo; c.ms.push(ms);
+          if (ehAbertura(params)) { c.abertura.chamadas++; c.abertura.usd += custo; c.abertura.ms.push(ms); }
+        }
+        if (process.env.BANCADA_LOG) console.error(`[bancada] claude ${Date.now() - t0} ms, sem cache ${u.input_tokens}, gravado ${u.cache_creation_input_tokens ?? 0}, lido ${u.cache_read_input_tokens ?? 0}, saída ${u.output_tokens}, US$ ${custo.toFixed(5)}`);
+        return res;
+      };
+    }
+    try {
+      const r = await originalA.call(this, req);
+      somar("professor", Number(r.inputTokens ?? 0), Number(r.outputTokens ?? 0));
+      return r;
+    } catch (e: any) {
+      const u = e?.usage ?? e?.details?.usage;
+      if (u) somar("professor", Number(u.inputTokens ?? 0), Number(u.outputTokens ?? 0));
+      throw e;
+    }
+  } as typeof originalA;
 
   return async (uid: string) => {
     await sql(`insert into auth.users (id, email) values ($1, $2) on conflict (id) do nothing`, [uid, `aluno-${uid.slice(-8)}@t.dev`]);
@@ -273,7 +347,14 @@ interface Registro {
   erro?: string; falhas_do_provedor?: string[]; juiz?: unknown; ms: number; custo_tentativas_anteriores_usd?: number;
   aluno_uid?: string; conversas_anteriores_do_aluno?: number; aberturas_ja_ouvidas?: string[];
   /** tempo de cada pedido de abertura/passagem (naturalOpening) como o app espera, e se a fala trocou */
-  aberturas_ms?: { tipo: "abertura" | "passagem"; ms: number; trocou: boolean }[];
+  aberturas_ms?: { tipo: "abertura" | "passagem"; ms: number; trocou: boolean; origem?: string | null }[];
+  /** --saguao-ms: quanto o aluno "ficou" na entrada (a abertura preparada começa no início desse tempo) */
+  saguao_ms?: number | null;
+  /** tempo de cada resposta do professor (tutorTurn), na ordem; a 1ª é a primeira resposta da conversa */
+  respostas_ms?: number[];
+  /** --provedor anthropic: tokens (sem cache, gravados e lidos do cache), custo e tempo de cada chamada ao Claude */
+  claude?: UsoClaude;
+  provedor?: string; modelo_professor?: string;
 }
 
 async function questaoDaSessao(uid: string, sid: string) {
@@ -306,7 +387,7 @@ async function passarDias(uid: string, dias: number) {
 
 async function conversa(pid: string, p: Plano, novoAluno: (uid: string) => Promise<void>): Promise<Registro> {
   const t0 = Date.now();
-  const conta = { professor: novaConta(), aluno: novaConta(), juiz: novaConta() };
+  const conta = { professor: novaConta(), aluno: novaConta(), juiz: novaConta(), claude: PROVEDOR === "anthropic" ? novoUsoClaude() : undefined };
   return contexto.run(conta, async () => {
     const uid = uidDoAluno(pid, p);
     await novoAluno(uid);
@@ -314,12 +395,18 @@ async function conversa(pid: string, p: Plano, novoAluno: (uid: string) => Promi
     const anteriores = Number((await sql<{ n: number }>(`select count(*)::int as n from public.tutor_sessions where user_id = $1`, [uid]))[0]?.n ?? 0);
     if (anteriores > 0) await passarDias(uid, p.perfil === "volta_dias" ? 5 : 1);
     const ouvidas = (await sql<{ content: string }>(`select content from public.tutor_recent_openings where user_id = $1 and personality_id = $2 and kind = 'abertura' order by created_at desc, id desc limit 5`, [uid, pid])).map((r) => r.content);
-    const reg: Registro = { personalidade: pid, nome: NOMES[pid], plano: p, sessao: "", turnos: [], custo: { ...conta, usd: 0 }, questao: [], ms: 0, aluno_uid: uid, conversas_anteriores_do_aluno: anteriores, aberturas_ja_ouvidas: ouvidas };
+    const reg: Registro = { personalidade: pid, nome: NOMES[pid], plano: p, sessao: "", turnos: [], custo: { professor: conta.professor, aluno: conta.aluno, juiz: conta.juiz, usd: 0 }, questao: [], ms: 0, aluno_uid: uid, conversas_anteriores_do_aluno: anteriores, aberturas_ja_ouvidas: ouvidas, saguao_ms: SAGUAO_MS, respostas_ms: [], claude: conta.claude, provedor: PROVEDOR, modelo_professor: MODELO_PROF };
     const falhas: string[] = [];
     let etapa = "início";
     try {
       const modo = p.modo === "perguntas" ? "perguntas" : p.modo === "questao" ? "questao" : "livre";
       const tema = p.modo === "livre_tema" || p.modo === "perguntas" ? p.tema : null;
+      // como a entrada do app (17/10): a abertura preparada começa enquanto o aluno escolhe; a conversa nasce SAGUAO_MS depois
+      let preparo: Promise<boolean> | null = null;
+      if (SAGUAO_MS != null && !ABERTURA_FIXA) {
+        preparo = prepararAbertura({ db: cdb, log: (m: string) => falhas.push(m.slice(0, 240)) }, uid, { personality: pid, mode: modo, topic: tema, question_id: null, context: null });
+        await new Promise((ok) => setTimeout(ok, SAGUAO_MS));
+      }
       const s = await rpc<any>(uid, "app_tutor_start", modo, tema, null, null, pid);
       reg.sessao = s.id;
       reg.aberturas_ms = [];
@@ -327,9 +414,13 @@ async function conversa(pid: string, p: Plano, novoAluno: (uid: string) => Promi
       const pedir = async (tipo: "abertura" | "passagem") => {
         const t1 = Date.now();
         const o = await naturalOpening({ db: cdb, log: (m: string) => falhas.push(m.slice(0, 240)) }, uid, s.id, ESPERA_ABERTURA_MS);
-        reg.aberturas_ms!.push({ tipo, ms: Date.now() - t1, trocou: Boolean(o) });
+        const meta = o ? (await sql<{ meta: any }>(`select meta from public.tutor_messages where id = $1`, [o.id]))[0]?.meta : null;
+        reg.aberturas_ms!.push({ tipo, ms: Date.now() - t1, trocou: Boolean(o), origem: meta?.origem ?? null });
       };
       if (!ABERTURA_FIXA) await pedir("abertura");
+      // a preparação que ainda corria termina (o custo dela entra nesta conversa, como custo da casa)
+      if (preparo) await preparo;
+      if (SO_ABERTURA) throw Object.assign(new Error("so-abertura"), { soAbertura: true });
       let q = p.modo === "questao" ? await questaoDaSessao(uid, s.id) : null;
       if (q) reg.questao!.push({ id: q.id, gabarito: q.gabarito, texto_gabarito: q.texto_gabarito });
       let turnosDesdeQuestao = 0;
@@ -357,7 +448,9 @@ async function conversa(pid: string, p: Plano, novoAluno: (uid: string) => Promi
         let ok = false;
         for (let tentativa = 0; tentativa < 3 && !ok; tentativa++) {
           try {
+            const tt = Date.now();
             await tutorTurn({ db: cdb, log: (m: string) => { falhas.push(m.slice(0, 240)); if (process.env.BANCADA_LOG) console.error(m); } }, uid, s.id, acao as any);
+            reg.respostas_ms!.push(Date.now() - tt);
             ok = true;
           } catch (e: any) {
             if (tentativa === 2) throw e;
@@ -376,7 +469,7 @@ async function conversa(pid: string, p: Plano, novoAluno: (uid: string) => Promi
         }
       }
     } catch (e: any) {
-      reg.erro = `${etapa}: ${String(e?.message ?? e)}`.slice(0, 300);
+      if (!e?.soAbertura) reg.erro = `${etapa}: ${String(e?.message ?? e)}`.slice(0, 300);
     }
     if (falhas.length) reg.falhas_do_provedor = falhas.slice(-4);
     // a conversa como ficou gravada (fonte da verdade), com o tipo de cada fala
@@ -656,9 +749,11 @@ async function main() {
     let feitas = 0;
     const trabalhador = async () => {
       for (let cadeia = filaCadeias.shift(); cadeia; cadeia = filaCadeias.shift()) for (const item of cadeia) {
+        // teto do dono para o Claude: perto dele, não começa conversa nova (a que está no meio termina)
+        if (PROVEDOR === "anthropic" && gastoClaude >= TETO_USD - 0.15) { console.log(`[bancada] perto do teto (US$ ${gastoClaude.toFixed(4)} de ${TETO_USD}): conversa #${item.p.idx + 1} de ${NOMES[item.pid]} não começa`); continue; }
         const reg = await conversa(item.pid, item.p, novoAluno);
-        if (!SEM_JUIZ) await julgar(reg);
-        reg.custo.usd = usd(reg.custo.professor) + usd(reg.custo.aluno) + usd(reg.custo.juiz);
+        if (!SEM_JUIZ && !SO_ABERTURA) await julgar(reg);
+        reg.custo.usd = (reg.claude ? reg.claude.usd : usd(reg.custo.professor)) + usd(reg.custo.aluno) + usd(reg.custo.juiz);
         // o que as tentativas que deram erro já gastaram continua na conta
         const antigo = fs.existsSync(arquivo(item.pid, item.p.idx)) ? JSON.parse(fs.readFileSync(arquivo(item.pid, item.p.idx), "utf8")) : null;
         if (antigo) { reg.custo_tentativas_anteriores_usd = Number(antigo.custo?.usd ?? 0) + Number(antigo.custo_tentativas_anteriores_usd ?? 0); reg.custo.usd += reg.custo_tentativas_anteriores_usd; }

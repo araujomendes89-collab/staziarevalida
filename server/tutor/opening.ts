@@ -370,7 +370,9 @@ async function gerarFala(deps: TutorDeps, seed: string, st: OpeningState, ctx: O
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), Math.min(left, porTentativaMs));
     const pedir = (signal: AbortSignal) => provider.generate<{ fala: string }>({
-      promptId: "tutor_abertura", promptVersion: OPENING_VERSION, system, input, schema: OPENING_SCHEMA, schemaName: "staziamed_tutor_abertura",
+      // cache de prompt da Anthropic: o sistema da abertura (ficha curta e regras) é o mesmo para todos os alunos do mesmo professor e
+      // nível de palavrão; o contexto do aluno vai à parte (input). Os outros provedores ignoram.
+      promptId: "tutor_abertura", promptVersion: OPENING_VERSION, system, systemCacheable: [system], input, schema: OPENING_SCHEMA, schemaName: "staziamed_tutor_abertura",
       maxOutputTokens: 300, effort: "low", care: "rapido", signal,
     });
     // reforço (só na preparação, onde ninguém espera e o custo é da casa): se a resposta não veio em `reforcoMs`, um segundo pedido
