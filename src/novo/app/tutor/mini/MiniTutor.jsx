@@ -1,89 +1,101 @@
 // Mini Tutor (pedido do dono, 17/10/2026): o Tutor numa janelinha flutuante dentro da tela de Questões, Simulados e Aulas, com o
-// personagem escolhido (Stazi ou Stazia) em miniatura e animado. Abre, minimiza para uma bolinha e fecha sem sair da tela.
-//  - computador: janelinha no canto que se arrasta pelo topo (mouse ou setas do teclado) e foge das alternativas e do botão de
-//    responder (`evitar`); celular: folha que sobe de baixo, acima do rodapé fixo da questão.
+// personagem escolhido (Stazi ou Stazia) em miniatura. Abre, minimiza para uma bolinha e fecha sem sair da tela.
+//  - computador: janelinha numa coluna livre ao lado do conteúdo; sem coluna livre (notebook), a página abre espaço à direita e a
+//    janelinha fica ali, sem cobrir enunciado, pergunta, alternativas nem o botão de responder (`evitar`). Arrasta pelo topo (mouse
+//    ou setas); a posição arrastada vale só nesta questão e o botão "Voltar ao canto" desfaz.
+//  - celular: folha que sobe de baixo (cobre o rodapé da questão; para responder, minimize), com 3 alturas trocadas arrastando o
+//    puxador; sobe junto com o teclado; minimizada, vira uma aba pequena na borda direita, acima do rodapé.
+//  - fechado, o personagem é uma imagem parada (sem animação, sem baixar as outras poses); animado só com a janelinha aberta.
 //  - contexto automático (a tela passa `contexto`, ver contexto.js); simulado em andamento: travado até a entrega.
 //  - saldo: cada mensagem gasta a cota do Tutor por texto de hoje; a voz gasta os minutos de voz de hoje. O saldo fica à vista e, quando
 //    acaba, aparece o aviso com o convite para ver os planos (nada é cobrado pelo app).
-// Uso: <MiniTutor contexto={contextoDaQuestao(q, {...})} evitar=".tq-alts, .tq-foot" go={go} />. Fora do app (sem servidor), não aparece.
+// Uso: <MiniTutor contexto={contextoDaQuestao(q, {...})} evitar=".tq-stem, .tq-ask, .tq-alts > *, .tq-foot, .tq-side" go={go} />.
+// Fora do app (sem servidor), não aparece.
 import React from "react";
 import { createPortal } from "react-dom";
 import { useInRouterContext, useNavigate } from "react-router-dom";
 import { Icon } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { tutorAvailable, tutorServerStatus } from "../api.js";
-import { useTutorDock } from "../TutorDrawer.jsx";
+import * as Gaveta from "../TutorDrawer.jsx";
 import { realtimeSupport } from "../useRealtimeVoice.js";
 import { unlockAudio } from "../voice/audioUnlock.js";
 import { orbEmotion } from "../voice/StaziaVoiceOrb.jsx";
 import { PersonagemTutor } from "../personagens/PersonagemTutor.jsx";
 import { PERSONAGENS, lerPersonagem, personagemDe, personagemValido } from "../personagens/personagens.js";
+import { spritePose } from "../personagens/sprites.js";
 import { useMovimentoReduzido } from "../personagens/useMovimentoReduzido.js";
 import { MINI_TUTOR, TEXTOS } from "./config.js";
-import { atalhos, faseDaQuestao } from "./contexto.js";
+import { atalhos, chaveDoContexto, faseDaQuestao } from "./contexto.js";
 import { useMiniTutor } from "./useMiniTutor.js";
-import { MiniVoz } from "./MiniVoz.jsx";
 import "./miniTutor.css";
 
-const CHAVE_POS = "smn-mini-tutor-pos";
-const MARGEM = 20;
-const TOPO = 76; // abaixo do cabeçalho fixo das telas
-const BOLINHA = 64;
+// a voz só baixa quando o aluno toca no microfone
+const MiniVoz = React.lazy(() => import("./MiniVoz.jsx").then((m) => ({ default: m.MiniVoz })));
 
-function useCelular() {
-  const q = `(max-width: ${MINI_TUTOR.larguraCelular - 1}px)`;
+// o atalho para o Tutor completo (aceite do termo). Lido com cuidado: telas e testes que trazem uma TutorDrawer sem useTutorDock
+// continuam de pé (o mini tutor só não mostra o botão do aceite).
+let usarGaveta;
+function useTutorDock() {
+  if (usarGaveta === undefined) {
+    try {
+      usarGaveta = typeof Gaveta.useTutorDock === "function" ? Gaveta.useTutorDock : null;
+    } catch {
+      usarGaveta = null;
+    }
+  }
+  return usarGaveta ? usarGaveta() : null;
+}
+
+const MARGEM = 20;
+const BOLINHA = 64;
+const ABA = { w: 36, h: 56 }; // celular: aba na borda direita (cabe na margem, ao lado do "riscar alternativa")
+const TAMANHOS_FOLHA = ["compacta", "media", "alta"];
+
+function useMedia(q) {
   const ler = () => (typeof window !== "undefined" && typeof window.matchMedia === "function" ? Boolean(window.matchMedia(q)?.matches) : false);
   const [v, setV] = React.useState(ler);
   React.useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
     const mq = window.matchMedia(q);
     const on = () => setV(Boolean(mq?.matches));
+    on();
     mq?.addEventListener?.("change", on);
     return () => mq?.removeEventListener?.("change", on);
   }, [q]);
   return v;
 }
+const useCelular = () => useMedia(`(max-width: ${MINI_TUTOR.larguraCelular - 1}px)`);
 
-const lerPos = () => {
-  try {
-    const p = JSON.parse(window.localStorage.getItem(CHAVE_POS) ?? "null");
-    return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? p : null;
-  } catch {
-    return null;
-  }
-};
-const gravarPos = (p) => {
-  try {
-    if (p) window.localStorage.setItem(CHAVE_POS, JSON.stringify(p));
-    else window.localStorage.removeItem(CHAVE_POS);
-  } catch {
-    // navegação privada: a posição vale só nesta tela
-  }
-};
 const limitar = (p, w, h) => {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   return { x: Math.min(Math.max(8, p.x), Math.max(8, vw - w - 8)), y: Math.min(Math.max(8, p.y), Math.max(8, vh - h - 8)) };
 };
 
-/** Retângulos (na tela) do que o mini tutor não pode cobrir: alternativas e botão de responder. */
-function retangulos(seletor) {
+/** Elementos (visíveis na tela) do que o mini tutor não pode cobrir, com o retângulo de cada um. */
+function visiveis(seletor) {
   if (!seletor || typeof document === "undefined") return [];
   const vh = window.innerHeight;
-  return [...document.querySelectorAll(seletor)].map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < vh);
+  const out = [];
+  for (const el of document.querySelectorAll(seletor)) {
+    if (el.closest?.(".mt")) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < vh) out.push({ el, r });
+  }
+  return out;
 }
 const sobreposicao = (a, rs) =>
   rs.reduce((soma, r) => soma + Math.max(0, Math.min(a.x + a.w, r.right) - Math.max(a.x, r.left)) * Math.max(0, Math.min(a.y + a.h, r.bottom) - Math.max(a.y, r.top)), 0);
 
 /**
  * Maior faixa vertical livre numa coluna da tela (x, x + w) entre `topo` e `base`, sem nada de `rs` na frente.
- * Devolve { y, h } (h = 0 quando não sobra nada).
+ * Devolve { y, h } (h = 0 quando não sobra nada). Empate: a de baixo (perto do canto).
  */
 export function faixaLivre(rs, x, w, topo, base) {
-  const cobre = rs.filter((r) => r.right > x && r.left < x + w).map((r) => [Math.max(topo, r.top - 10), Math.min(base, r.bottom + 10)]).filter(([a, b]) => b > a).sort((a, b) => a[0] - b[0]);
+  const cobre = rs.filter((r) => r.right > x - 10 && r.left < x + w + 10).map((r) => [Math.max(topo, r.top - 10), Math.min(base, r.bottom + 10)]).filter(([a, b]) => b > a).sort((a, b) => a[0] - b[0]);
   let melhor = { y: topo, h: 0 };
   let cursor = topo;
-  // de baixo para cima conta como preferência: o canto de baixo vence um empate
   const gaps = [];
   for (const [a, b] of cobre) {
     if (a > cursor) gaps.push({ y: cursor, h: a - cursor });
@@ -95,52 +107,86 @@ export function faixaLivre(rs, x, w, topo, base) {
 }
 
 /**
- * Onde a janelinha (ou a bolinha) fica sem cobrir o que importa. No celular: a "folga" de baixo é a altura do rodapé fixo da questão
- * (o botão de responder), e a folha/bolinha sobe acima dele. No computador: a maior faixa livre na coluna da direita (ou da esquerda)
- * ao lado das alternativas e do botão; a janelinha encolhe até `hMin` para caber. Sem faixa boa, o canto que menos cobre.
+ * Onde a janelinha fica no computador, sem cobrir o que importa (função pura, testável):
+ *  1) uma coluna livre à direita (ou à esquerda) do conteúdo, nas larguras de `larguras`, com altura de pelo menos `hMin`;
+ *  2) sem coluna livre: `reserva` (a página abre espaço à direita: a janelinha ocupa a coluna da direita, do topo até embaixo);
+ *  3) sem poder abrir espaço: o canto que menos cobre, na altura mínima.
+ * vw/vh: tamanho da tela; topo: abaixo das barras presas no topo; rs: retângulos a evitar.
  */
-function usePosicaoAuto({ evitar, celular, w, h, hMin = h, ativo, chave }) {
-  const [auto, setAuto] = React.useState({ x: null, y: null, h: null, folga: 0 });
+export function posicaoNoComputador({ vw, vh, topo, rs, larguras, h, hMin, reservar }) {
+  const base = vh - MARGEM;
+  const hMax = Math.max(hMin, Math.min(h, base - topo));
+  for (const w of larguras) {
+    for (const x of [vw - w - MARGEM, MARGEM]) {
+      const f = faixaLivre(rs, x, w, topo, base);
+      if (f.h >= Math.min(hMin, hMax)) {
+        const hh = Math.min(hMax, f.h);
+        return { x, y: Math.round(f.y + f.h - hh), w, h: Math.round(hh), reserva: 0 };
+      }
+    }
+  }
+  const w = larguras[0];
+  if (reservar) return { x: vw - w - MARGEM, y: Math.round(topo), w, h: Math.round(hMax), reserva: w + 2 * MARGEM };
+  const hh = Math.min(hMax, hMin);
+  const cantos = [
+    { x: vw - w - MARGEM, y: base - hh },
+    { x: vw - w - MARGEM, y: topo },
+    { x: MARGEM, y: base - hh },
+    { x: MARGEM, y: topo },
+  ];
+  const custos = cantos.map((k) => sobreposicao({ ...k, w, h: hh }, rs));
+  const c = cantos[custos.indexOf(Math.min(...custos))];
+  return { x: Math.round(c.x), y: Math.round(c.y), w, h: Math.round(hh), reserva: 0 };
+}
+
+/**
+ * Posição automática. Celular: só a "folga" de baixo (altura do rodapé PRESO da questão, onde fica o botão de responder), para a aba
+ * minimizada ficar acima dele. Computador: ver posicaoNoComputador. A decisão de abrir espaço na página fica valendo enquanto a
+ * janelinha estiver aberta (a página mudou de largura; medir de novo faria a janelinha pular de um lado para o outro); muda ao
+ * redimensionar a janela.
+ */
+function usePosicaoAuto({ evitar, celular, aberto, ativo, chave }) {
+  const [auto, setAuto] = React.useState({ x: null, y: null, w: null, h: null, folga: 0, reserva: 0 });
+  const reservaFixa = React.useRef(0);
+  React.useEffect(() => {
+    if (!aberto) reservaFixa.current = 0;
+  }, [aberto]);
   React.useEffect(() => {
     if (!ativo || typeof window === "undefined") return undefined;
     let quadro = 0;
+    let largura = window.innerWidth;
     const medir = () => {
       quadro = 0;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const rs = retangulos(evitar);
-      // rodapé preso embaixo da tela (o .tq-foot fica "sticky" no celular): a folha e a bolinha sobem acima dele
-      const folga = rs.reduce((f, r) => (r.bottom >= vh - 4 && r.top > vh * 0.45 ? Math.max(f, vh - r.top) : f), 0);
+      if (vw !== largura) {
+        largura = vw;
+        reservaFixa.current = 0; // mudou o tamanho da janela: decide de novo
+      }
+      const itens = visiveis(evitar);
+      const rs = itens.map((i) => i.r);
+      let folga = 0;
+      for (const { el, r } of itens) {
+        if (r.bottom >= vh - 4 && r.top > vh * 0.45 && /^(fixed|sticky)$/.test(window.getComputedStyle(el).position)) folga = Math.max(folga, vh - r.top);
+      }
       if (celular) {
-        setAuto((a) => (a.folga === folga && a.x === null ? a : { x: null, y: null, h: null, folga }));
+        setAuto((a) => (a.folga === folga && a.x === null && !a.reserva ? a : { x: null, y: null, w: null, h: null, folga, reserva: 0 }));
         return;
       }
-      const base = vh - MARGEM;
-      const colunas = [vw - w - MARGEM, MARGEM];
-      let escolha = null;
-      for (const x of colunas) {
-        const f = faixaLivre(rs, x, w, TOPO, base);
-        if (f.h >= hMin && (!escolha || f.h >= Math.min(h, escolha.f.h) + 1)) {
-          escolha = { x, f };
-          if (f.h >= h) break; // a da direita já cabe inteira
-        }
-      }
+      let topo = MARGEM;
+      for (const { r } of visiveis(MINI_TUTOR.cabecalhos)) if (r.top <= 8 && r.height < 200) topo = Math.max(topo, r.bottom + 12);
+      const larguras = aberto ? MINI_TUTOR.janela.larguras : [BOLINHA];
+      const h = aberto ? MINI_TUTOR.janela.altura : BOLINHA;
+      const hMin = aberto ? MINI_TUTOR.janela.alturaMin : BOLINHA;
       let c;
-      if (escolha) {
-        const hh = Math.min(h, escolha.f.h);
-        // encostada embaixo da faixa (perto do canto), como um chat
-        c = { x: escolha.x, y: Math.round(escolha.f.y + escolha.f.h - hh), h: Math.round(hh) };
+      if (aberto && reservaFixa.current) {
+        const w = larguras[0];
+        c = { x: vw - w - MARGEM, y: topo, w, h: Math.round(Math.max(hMin, Math.min(h, vh - MARGEM - topo))), reserva: reservaFixa.current };
       } else {
-        const cantos = [
-          { x: vw - w - MARGEM, y: vh - h - MARGEM },
-          { x: vw - w - MARGEM, y: TOPO },
-          { x: MARGEM, y: vh - h - MARGEM },
-          { x: MARGEM, y: TOPO },
-        ].map((k) => ({ ...k, y: Math.max(8, k.y), h }));
-        const custos = cantos.map((k) => sobreposicao({ ...k, w, h }, rs));
-        c = cantos[custos.indexOf(Math.min(...custos))];
+        c = posicaoNoComputador({ vw, vh, topo, rs, larguras, h, hMin, reservar: aberto && MINI_TUTOR.abrirEspacoNaPagina });
+        if (c.reserva) reservaFixa.current = c.reserva;
       }
-      setAuto((a) => (a.x === c.x && a.y === c.y && a.h === c.h && a.folga === folga ? a : { ...c, folga }));
+      setAuto((a) => (a.x === c.x && a.y === c.y && a.w === c.w && a.h === c.h && a.folga === folga && a.reserva === c.reserva ? a : { ...c, folga }));
     };
     const pedir = () => {
       if (!quadro) quadro = window.requestAnimationFrame ? window.requestAnimationFrame(medir) : (setTimeout(medir, 16), 1);
@@ -155,17 +201,81 @@ function usePosicaoAuto({ evitar, celular, w, h, hMin = h, ativo, chave }) {
       clearInterval(vigia);
       if (quadro && window.cancelAnimationFrame) window.cancelAnimationFrame(quadro);
     };
-  }, [evitar, celular, w, h, hMin, ativo, chave]);
+  }, [evitar, celular, aberto, ativo, chave]);
   return auto;
 }
 
-/** A cabeça do personagem num círculo (bolinha e topo da janelinha). */
+/** A página abre espaço à direita para a janelinha (computador sem coluna livre). Some quando a janelinha fecha. */
+function useEspacoNaPagina(px) {
+  React.useEffect(() => {
+    if (!px || typeof document === "undefined") return undefined;
+    const raiz = document.documentElement;
+    raiz.style.setProperty("--mt-reserva", `${px}px`);
+    raiz.classList.add("mt-reserva");
+    return () => {
+      raiz.classList.remove("mt-reserva");
+      raiz.style.removeProperty("--mt-reserva");
+    };
+  }, [px]);
+}
+
+/**
+ * Celular: quanto o teclado cobre embaixo (px), pela área visível da tela (visualViewport). A folha sobe por cima dele enquanto o
+ * aluno escreve. { baixo, altura } (altura = área visível); sem visualViewport, 0.
+ */
+function useTeclado(ativo) {
+  const [t, setT] = React.useState({ baixo: 0, altura: null });
+  React.useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!ativo || !vv) {
+      setT((a) => (a.baixo === 0 && a.altura === null ? a : { baixo: 0, altura: null }));
+      return undefined;
+    }
+    const medir = () => {
+      const baixo = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      const altura = Math.round(vv.height);
+      setT((a) => (a.baixo === baixo && a.altura === altura ? a : { baixo, altura }));
+    };
+    medir();
+    vv.addEventListener("resize", medir);
+    vv.addEventListener("scroll", medir);
+    return () => {
+      vv.removeEventListener("resize", medir);
+      vv.removeEventListener("scroll", medir);
+    };
+  }, [ativo]);
+  return t;
+}
+
+/** A cabeça do personagem num círculo, animada (topo da janelinha aberta). */
 function Rosto({ personagem, estado = "idle", avatar = null, tamanho = 44, reduzido }) {
   const emo = orbEmotion(avatar);
   return (
     <span className="mt-rosto" style={{ "--mt-rosto": `${tamanho}px` }} aria-hidden="true">
       <span className="mt-rosto__corpo">
         <PersonagemTutor personagem={personagem} conversationState={estado} emotion={emo.emotion} emotionIntensity={emo.intensity} reduzido={reduzido} decorativo />
+      </span>
+    </span>
+  );
+}
+
+/**
+ * A cabeça do personagem PARADA (bolinha/aba fechada): só a imagem da pose de base, no mesmo enquadramento do Rosto animado. Não
+ * liga laço de quadros, áudio nem baixa as outras poses (fica o tempo todo na tela, inclusive num simulado de horas).
+ */
+function RostoParado({ personagem, tamanho }) {
+  const s = spritePose(personagem, "base");
+  return (
+    <span className="mt-rosto" style={{ "--mt-rosto": `${tamanho}px` }} aria-hidden="true">
+      <span className="mt-rosto__corpo mt-rosto__corpo--parado">
+        <span className="mt-rosto__caixa">
+          {s?.url ? (
+            <img
+              className="mt-rosto__img" src={s.url} alt="" draggable={false} decoding="async"
+              style={{ left: `calc(${(300 - s.ax).toFixed(1)} * var(--mt-u))`, top: `calc(${(800 - s.ay).toFixed(1)} * var(--mt-u))`, width: `calc(${s.w.toFixed(1)} * var(--mt-u))`, height: `calc(${s.h.toFixed(1)} * var(--mt-u))` }}
+            />
+          ) : null}
+        </span>
       </span>
     </span>
   );
@@ -229,9 +339,10 @@ function Saldo({ saldo, voz }) {
 /**
  * <MiniTutor contexto evitar? go? />
  *  contexto: ver contexto.js (contextoDaQuestao, contextoDaRevisao, contextoDaAula). null = não aparece.
- *  evitar: seletor CSS do que a janelinha não pode cobrir (alternativas, botão de responder).
+ *  evitar: seletor CSS do que a janelinha não pode cobrir (enunciado, pergunta, alternativas, botão de responder; aula: a coluna de
+ *          leitura). Padrão: MINI_TUTOR.evitarPadrao.
  */
-export function MiniTutor({ contexto, evitar = null, go = null }) {
+export function MiniTutor({ contexto, evitar = MINI_TUTOR.evitarPadrao, go = null }) {
   const { backend } = useSession() ?? {};
   if (!contexto || !backend || !tutorAvailable(backend)) return null;
   return <MiniTutorJanela backend={backend} contexto={contexto} evitar={evitar} go={go} />;
@@ -246,7 +357,9 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
   const [texto, setTexto] = React.useState("");
   const [digitando, setDigitando] = React.useState(false);
   const [naoLida, setNaoLida] = React.useState(false);
-  const [manual, setManual] = React.useState(lerPos);
+  const [manual, setManual] = React.useState(null); // { x, y, h }: onde o aluno arrastou (só nesta questão; nada fica gravado)
+  const [tamanho, setTamanho] = React.useState(MINI_TUTOR.folha.inicial); // celular: compacta | media | alta
+  const [puxando, setPuxando] = React.useState(0); // celular: quanto o aluno está arrastando a folha para baixo (px)
   const celular = useCelular();
   const reduzido = useMovimentoReduzido();
   const abrirTutor = useTutorDock();
@@ -257,6 +370,7 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
   const campo = React.useRef(null);
   const lista = React.useRef(null);
   const arrasto = React.useRef(null);
+  const gesto = React.useRef(null);
   const focoAoAbrir = React.useRef(false);
 
   const st = mt.status;
@@ -271,11 +385,14 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
   const vozLiberadaAqui = fase !== "antes" || MINI_TUTOR.vozAntesDeResponder;
   const podeVoz = vozPossivel && ent?.can_voice !== false && vozLiberadaAqui;
 
-  // posição: celular = folha/bolinha acima do rodapé; computador = canto livre (ou onde o aluno arrastou)
-  const larg = aberto ? MINI_TUTOR.janela.largura : BOLINHA;
-  const alt = aberto ? Math.min(MINI_TUTOR.janela.altura, typeof window !== "undefined" ? window.innerHeight - TOPO - MARGEM : MINI_TUTOR.janela.altura) : BOLINHA;
-  const auto = usePosicaoAuto({ evitar, celular, w: larg, h: alt, hMin: aberto ? MINI_TUTOR.janela.alturaMin : BOLINHA, ativo: true, chave: `${aberto}:${contexto ? JSON.stringify([contexto.questao?.id, contexto.respondida]) : ""}` });
-  const pos = !celular && manual && aberto ? limitar(manual, larg, alt) : null;
+  // posição: celular = folha embaixo e aba na borda; computador = coluna livre, espaço aberto na página, ou onde o aluno arrastou
+  const chave = chaveDoContexto(contexto);
+  const auto = usePosicaoAuto({ evitar, celular, aberto, ativo: true, chave });
+  useEspacoNaPagina(!celular && aberto && !manual ? auto.reserva : 0);
+  const teclado = useTeclado(celular && aberto && digitando);
+  // outra questão (ou respondeu): a janelinha volta ao lugar automático
+  React.useEffect(() => setManual(null), [chave]);
+  const pos = !celular && manual && aberto ? { ...limitar(manual, auto.w ?? MINI_TUTOR.janela.larguras[0], manual.h), h: manual.h } : null;
 
   // nova resposta com a janelinha minimizada: a bolinha avisa
   const ultimas = mt.mensagens.length;
@@ -291,26 +408,33 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
   React.useEffect(() => {
     const el = lista.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [ultimas, mt.enviando, aberto]);
+  }, [ultimas, mt.enviando, aberto, teclado.baixo]);
 
-  // foco: abrir leva para o campo (ou o primeiro botão); minimizar volta para a bolinha
+  // foco: no computador, abrir leva para o campo; no celular, para a janelinha (o teclado só sobe quando o aluno toca no campo);
+  // minimizar volta para a bolinha
   React.useEffect(() => {
     if (!focoAoAbrir.current) return;
     if (aberto && !mt.motivo && !st && !mt.erroStatus) {
-      painel.current?.focus?.(); // carregando: o foco fica na janelinha e vai para o campo quando ele aparecer
+      painel.current?.focus?.({ preventScroll: true }); // carregando: o foco fica na janelinha
       return;
     }
     focoAoAbrir.current = false;
-    const alvo = aberto ? campo.current ?? painel.current?.querySelector(".mt-corpo button:not([disabled]), .mt-corpo a[href]") ?? painel.current : bolinha.current;
-    alvo?.focus?.();
+    const alvo = aberto
+      ? celular
+        ? painel.current
+        : campo.current ?? painel.current?.querySelector(".mt-corpo button:not([disabled]), .mt-corpo a[href]") ?? painel.current
+      : bolinha.current;
+    alvo?.focus?.({ preventScroll: true });
   });
 
   const abrir = () => {
     focoAoAbrir.current = true;
+    setTamanho(MINI_TUTOR.folha.inicial);
     setAberto(true);
   };
   const minimizar = React.useCallback(() => {
     focoAoAbrir.current = true;
+    setPuxando(0);
     setAberto(false);
   }, []);
   const sairDaVoz = () => {
@@ -322,6 +446,7 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
     if (modo === "voz") sairDaVoz();
     mt.reiniciar();
     setTexto("");
+    setManual(null);
     minimizar();
   };
 
@@ -358,23 +483,27 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
     }
   };
 
-  // arrastar pelo topo (computador): mouse/caneta; teclado: setas no botão "Mover"
+  // ---------------------------------------------------------------- computador: arrastar pelo topo (mouse/caneta) ou setas no "Mover"
+  const altAtual = () => painel.current?.getBoundingClientRect().height ?? auto.h ?? MINI_TUTOR.janela.alturaMin;
+  const larguraAtual = auto.w ?? MINI_TUTOR.janela.larguras[0];
   const comecarArrasto = (e) => {
     if (celular || e.button > 0 || e.target.closest("button")) return;
     const r = painel.current?.getBoundingClientRect();
     if (!r) return;
-    arrasto.current = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    arrasto.current = { dx: e.clientX - r.left, dy: e.clientY - r.top, h: Math.round(r.height) };
     e.currentTarget.setPointerCapture?.(e.pointerId);
   };
   const moverArrasto = (e) => {
     const a = arrasto.current;
     if (!a) return;
-    setManual(limitar({ x: e.clientX - a.dx, y: e.clientY - a.dy }, larg, alt));
+    setManual({ ...limitar({ x: e.clientX - a.dx, y: e.clientY - a.dy }, larguraAtual, a.h), h: a.h });
   };
   const soltarArrasto = () => {
-    if (!arrasto.current) return;
     arrasto.current = null;
-    setManual((p) => (gravarPos(p), p));
+  };
+  const voltarAoCanto = () => {
+    setManual(null);
+    painel.current?.focus?.({ preventScroll: true });
   };
   const moverTeclado = (e) => {
     const passo = e.shiftKey ? 64 : 24;
@@ -382,16 +511,43 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
     if (e.key === "Home") {
       e.preventDefault();
       setManual(null);
-      gravarPos(null);
       return;
     }
     if (!d) return;
     e.preventDefault();
     const r = painel.current?.getBoundingClientRect();
+    const h = manual?.h ?? Math.round(altAtual());
     const base = manual ?? { x: r?.left ?? auto.x ?? 0, y: r?.top ?? auto.y ?? 0 };
-    const p = limitar({ x: base.x + d[0], y: base.y + d[1] }, larg, alt);
-    setManual(p);
-    gravarPos(p);
+    setManual({ ...limitar({ x: base.x + d[0], y: base.y + d[1] }, larguraAtual, h), h });
+  };
+
+  // ---------------------------------------------------------------- celular: puxador da folha (toque minimiza; arrastar troca a altura)
+  const iTam = TAMANHOS_FOLHA.indexOf(tamanho);
+  const menor = () => (iTam <= 0 ? minimizar() : setTamanho(TAMANHOS_FOLHA[iTam - 1]));
+  const maior = () => setTamanho(TAMANHOS_FOLHA[Math.min(TAMANHOS_FOLHA.length - 1, iTam + 1)]);
+  const gestoInicio = (e) => {
+    if (!celular || e.button > 0 || (e.target.closest("button") && !e.target.closest(".mt-puxador"))) return;
+    gesto.current = { y: e.clientY, puxador: Boolean(e.target.closest(".mt-puxador")), id: e.pointerId };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const gestoMove = (e) => {
+    const g = gesto.current;
+    if (!g) return;
+    setPuxando(Math.max(0, e.clientY - g.y));
+  };
+  const gestoFim = (e) => {
+    const g = gesto.current;
+    if (!g) return;
+    gesto.current = null;
+    setPuxando(0);
+    const dy = e.clientY - g.y;
+    if (dy > 60) menor();
+    else if (dy < -40) maior();
+    else if (Math.abs(dy) < 8 && g.puxador && e.type === "pointerup") minimizar(); // toque no puxador
+  };
+  const gestoCancela = () => {
+    gesto.current = null;
+    setPuxando(0);
   };
 
   // ---------------------------------------------------------------- estado do personagem
@@ -470,10 +626,12 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
     corpo = (
       <>
         {modo === "voz" && vozSessao ? (
-          <MiniVoz
-            backend={backend} sessionId={vozSessao} personagem={personagemDe(personalidade?.id) ?? personagem} servidor={servidorVoz} minutosHoje={vozMin} reduzido={reduzido}
-            onTranscricao={(role, t) => mt.acrescentar({ role, texto: t, voz: true })} onSair={sairDaVoz}
-          />
+          <React.Suspense fallback={<p className="mt-carregando" role="status">Preparando a voz…</p>}>
+            <MiniVoz
+              backend={backend} sessionId={vozSessao} personagem={personagemDe(personalidade?.id) ?? personagem} servidor={servidorVoz} minutosHoje={vozMin} reduzido={reduzido}
+              onTranscricao={(role, t) => mt.acrescentar({ role, texto: t, voz: true })} onSair={sairDaVoz}
+            />
+          </React.Suspense>
         ) : null}
         <div className="mt-lista" ref={lista} role="log" aria-live="polite" aria-label="Conversa com o Tutor" tabIndex={0}>
           {mt.mensagens.map((m) => (
@@ -519,7 +677,7 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
                   Sua pergunta para {nomePersonagem}
                 </label>
                 <textarea
-                  id={`${tituloId}-campo`} ref={campo} rows={1} value={texto} maxLength={2000}
+                  id={`${tituloId}-campo`} ref={campo} rows={1} value={texto} maxLength={2000} enterKeyHint="send"
                   placeholder={fase === "antes" ? "Peça uma pista ou tire uma dúvida…" : "Escreva sua dúvida…"}
                   onChange={(e) => setTexto(e.target.value)} onFocus={() => setDigitando(true)} onBlur={() => setDigitando(false)}
                   onKeyDown={(e) => {
@@ -550,33 +708,37 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
     );
   }
 
-  // ---------------------------------------------------------------- bolinha (minimizado)
+  // ---------------------------------------------------------------- posição
   const nome = nomePersonagem;
   const estiloBolinha = celular
-    ? { right: 16, bottom: 16 + auto.folga }
+    ? { right: 0, bottom: 12 + auto.folga }
     : auto.x != null
       ? { left: auto.x, top: auto.y }
       : { right: MARGEM, bottom: MARGEM };
+  const fracFolha = MINI_TUTOR.folha[tamanho] ?? MINI_TUTOR.folha.media;
+  const alturaFolha = teclado.altura != null && teclado.baixo > 0
+    ? `min(${Math.round(fracFolha * 100)}dvh, ${Math.max(200, teclado.altura - 12)}px)` // teclado aberto: a folha cabe na área visível
+    : `${Math.round(fracFolha * 100)}dvh`;
   const estiloPainel = celular
-    ? { bottom: auto.folga, height: `min(${Math.round(MINI_TUTOR.folhaAlturaMax * 100)}dvh, calc(100dvh - ${auto.folga}px - 72px))` }
+    ? { bottom: teclado.baixo, height: alturaFolha, ...(puxando ? { transform: `translateY(${puxando}px)`, transition: "none" } : {}) }
     : pos
-      ? { left: pos.x, top: pos.y, height: alt }
+      ? { left: pos.x, top: pos.y, width: larguraAtual, height: pos.h }
       : auto.x != null
-        ? { left: auto.x, top: auto.y, height: auto.h ?? alt }
-        : { right: MARGEM, bottom: MARGEM, height: alt };
+        ? { left: auto.x, top: auto.y, width: auto.w, height: auto.h }
+        : { right: MARGEM, bottom: MARGEM, height: MINI_TUTOR.janela.alturaMin };
 
   const ui = (
     <div className={`mt${celular ? " mt--celular" : ""}${reduzido ? " mt--quieto" : ""}`} data-personagem={personagem}>
       {!aberto && (
         <button
-          ref={bolinha} type="button" className={`mt-bolinha${mt.motivo ? " mt-bolinha--trava" : ""}`} style={estiloBolinha} onClick={abrir}
+          ref={bolinha} type="button" className={`mt-bolinha${celular ? " mt-bolinha--aba" : ""}${mt.motivo ? " mt-bolinha--trava" : ""}`} style={estiloBolinha} onClick={abrir}
           aria-label={`${TEXTOS.rotuloBolinha(nome)}${mt.motivo === "simulado" ? ", travado até a entrega do simulado" : ""}${naoLida ? ", nova resposta" : ""}`}
           aria-haspopup="dialog" aria-expanded="false" title={`${nome}: tire dúvidas aqui`}
         >
-          <Rosto personagem={personagem} tamanho={BOLINHA - 8} reduzido={reduzido} />
+          <RostoParado personagem={personagem} tamanho={celular ? ABA.w - 6 : BOLINHA - 8} />
           {mt.motivo && (
             <span className="mt-bolinha__selo" aria-hidden="true">
-              <Icon name="lock" size={12} />
+              <Icon name="lock" size={celular ? 10 : 12} />
             </span>
           )}
           {!mt.motivo && naoLida && <span className="mt-bolinha__ponto" aria-hidden="true" />}
@@ -584,15 +746,22 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
       )}
       {aberto && (
         <section
-          ref={painel} className="mt-painel" role="dialog" aria-modal="false" aria-labelledby={tituloId} style={estiloPainel} onKeyDown={onKeyDown} tabIndex={-1}
+          ref={painel} className={`mt-painel${celular ? ` mt-painel--${tamanho}` : ""}`} role="dialog" aria-modal="false" aria-labelledby={tituloId} style={estiloPainel} onKeyDown={onKeyDown} tabIndex={-1}
         >
           {celular && (
-            <button type="button" className="mt-puxador" onClick={minimizar} aria-label="Minimizar o mini tutor">
+            <button
+              type="button" className="mt-puxador" onClick={(e) => e.detail === 0 && minimizar()} aria-label="Minimizar o mini tutor (arraste para mudar a altura)"
+              onPointerDown={gestoInicio} onPointerMove={gestoMove} onPointerUp={gestoFim} onPointerCancel={gestoCancela}
+            >
               <span aria-hidden="true" />
             </button>
           )}
-          <header className="mt-topo" onPointerDown={comecarArrasto} onPointerMove={moverArrasto} onPointerUp={soltarArrasto} onPointerCancel={soltarArrasto}>
-            <Rosto personagem={personagem} estado={modo === "voz" ? "idle" : estado} avatar={mt.avatar} tamanho={44} reduzido={reduzido} />
+          <header
+            className="mt-topo"
+            onPointerDown={celular ? gestoInicio : comecarArrasto} onPointerMove={celular ? gestoMove : moverArrasto}
+            onPointerUp={celular ? gestoFim : soltarArrasto} onPointerCancel={celular ? gestoCancela : soltarArrasto}
+          >
+            <Rosto personagem={personagem} estado={modo === "voz" ? "idle" : estado} avatar={mt.avatar} tamanho={celular ? 40 : 44} reduzido={reduzido} />
             <div className="mt-topo__texto">
               <h2 id={tituloId} className="mt-topo__nome">
                 {nome}
@@ -600,9 +769,22 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
               </h2>
               <span className="mt-topo__fase">{rotuloFase}</span>
             </div>
+            {!celular && manual && (
+              <button type="button" className="mt-icone mt-icone--leve" onClick={voltarAoCanto} aria-label="Voltar o mini tutor ao canto" title="Voltar ao canto">
+                <Icon name="arrow-down-right" size={16} />
+              </button>
+            )}
             {!celular && (
               <button type="button" className="mt-icone mt-icone--leve mt-mover" onKeyDown={moverTeclado} aria-label="Mover o mini tutor (use as setas; Home volta ao canto)" title="Arraste para mover">
                 <Icon name="grip-horizontal" size={16} />
+              </button>
+            )}
+            {celular && (
+              <button
+                type="button" className="mt-icone mt-icone--leve" onClick={tamanho === "alta" ? menor : maior}
+                aria-label={tamanho === "alta" ? "Diminuir o mini tutor" : "Aumentar o mini tutor"}
+              >
+                <Icon name={tamanho === "alta" ? "chevrons-down" : "chevrons-up"} size={18} />
               </button>
             )}
             <button type="button" className="mt-icone mt-icone--leve" onClick={minimizar} aria-label="Minimizar o mini tutor">
@@ -615,13 +797,9 @@ function MiniTutorJanela({ backend, contexto, evitar, go }) {
           <div className="mt-corpo">{corpo}</div>
         </section>
       )}
+      {/* celular com a folha aberta: espaço no FIM da página (aqui, no fim do body) para rolar o conteúdo para cima dela */}
+      {celular && aberto && <div className="mt-espaco" style={{ height: alturaFolha }} aria-hidden="true" />}
     </div>
   );
-  return (
-    <>
-      {/* celular com a folha aberta: espaço no fim da página para rolar o conteúdo para cima dela */}
-      {celular && aberto && <div className="mt-espaco" aria-hidden="true" />}
-      {typeof document !== "undefined" ? createPortal(ui, document.body) : ui}
-    </>
-  );
+  return typeof document !== "undefined" ? createPortal(ui, document.body) : ui;
 }

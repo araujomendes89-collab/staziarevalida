@@ -42,8 +42,9 @@ const rpcCalls: { fn: string; args: any }[] = [];
 const turnos: any[] = [];
 let turnoImpl: (body: any) => { status: number; body: any };
 
-beforeEach(() => {
+beforeEach(async () => {
   window.localStorage.clear();
+  (await import("../novo/app/tutor/mini/useMiniTutor.js")).esquecerPistasDaVisita();
   rpcCalls.length = 0;
   turnos.length = 0;
   voz.start.mockClear();
@@ -352,3 +353,105 @@ describe("mini tutor: abrir, minimizar e fechar", () => {
     }
   });
 });
+
+describe("mini tutor: revisão de 17/10 (pistas por questão, celular, computador, bolinha leve)", () => {
+  const celular = (sim: boolean) => {
+    (window as any).matchMedia = (q: string) => ({ matches: sim && /max-width/.test(q), media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} });
+  };
+  afterEach(() => {
+    delete (window as any).matchMedia;
+    document.documentElement.classList.remove("mt-reserva");
+  });
+
+  it("fechar e abrir de novo não devolve as pistas (contadas por questão); a conversa nova herda o nível do servidor", async () => {
+    const { contextoDaQuestao } = await import("../novo/app/tutor/mini");
+    await montar(contextoDaQuestao(QUESTAO));
+    let painel = await abrir();
+    for (let i = 1; i <= 4; i++) {
+      fireEvent.click(await within(painel).findByRole("button", { name: "Me dá uma pista" }));
+      await within(painel).findByText(`Pista ${i}`);
+    }
+    fireEvent.click(within(painel).getByRole("button", { name: /Fechar o mini tutor/ }));
+    painel = await abrir();
+    expect(await within(painel).findByRole("button", { name: "Me dá uma pista" })).toBeDisabled();
+    cleanup();
+    // outra visita (tela recarregada): o servidor devolve a conversa nova já com o nível herdado
+    (await import("../novo/app/tutor/mini/useMiniTutor.js")).esquecerPistasDaVisita();
+    rpcImpl.app_tutor_start = () => ({ id: SID, mode: "questao", hint_level: 4, personality: { id: "durona", name: "Durona" }, messages: [] });
+    await montar(contextoDaQuestao(QUESTAO));
+    painel = await abrir();
+    await escrever(painel, "Oi");
+    await within(painel).findByText("Resposta 5");
+    expect(within(painel).getByRole("button", { name: "Me dá uma pista" })).toBeDisabled();
+  });
+
+  it("fechado, o personagem é uma imagem parada (nada animado montado); animado só com a janelinha aberta", async () => {
+    const { contextoDaQuestao } = await import("../novo/app/tutor/mini");
+    await montar(contextoDaQuestao(QUESTAO));
+    const bolinha = screen.getByRole("button", { name: /Abrir o mini tutor/ });
+    expect(screen.queryByTestId("personagem")).toBeNull();
+    expect(bolinha.querySelector("img.mt-rosto__img")).not.toBeNull();
+    const painel = await abrir();
+    await waitFor(() => expect(within(painel).getAllByTestId("personagem").length).toBeGreaterThan(0));
+  });
+
+  it("celular: abrir não põe o foco no campo (o teclado não sobe sozinho); o espaço extra fica no FIM da página", async () => {
+    celular(true);
+    const { contextoDaAula, MiniTutor } = await import("../novo/app/tutor/mini");
+    render(
+      <div>
+        <header className="al-cover">Capa da aula</header>
+        <MiniTutor contexto={contextoDaAula({ id: "gt-1", title: "Asma" })} />
+        <p>Texto da aula</p>
+      </div>
+    );
+    const aba = screen.getByRole("button", { name: /Abrir o mini tutor/ });
+    expect(aba).toHaveClass("mt-bolinha--aba");
+    const painel = await abrir();
+    await waitFor(() => expect(within(painel).getByLabelText(/Sua pergunta para/)).toBeInTheDocument());
+    await waitFor(() => expect(painel).toHaveFocus());
+    expect(within(painel).getByLabelText(/Sua pergunta para/)).not.toHaveFocus();
+    const espaco = document.querySelector(".mt-espaco")!;
+    expect(espaco).not.toBeNull();
+    expect(document.body.lastElementChild!.contains(espaco)).toBe(true); // no fim do body, nunca antes da capa
+    expect(screen.getByText("Capa da aula").compareDocumentPosition(espaco) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // puxador: aumentar e diminuir a folha (botão), sem sair da tela
+    fireEvent.click(within(painel).getByRole("button", { name: "Aumentar o mini tutor" }));
+    expect(painel).toHaveClass("mt-painel--alta");
+    fireEvent.click(within(painel).getByRole("button", { name: "Diminuir o mini tutor" }));
+    expect(painel).toHaveClass("mt-painel--media");
+  });
+
+  it("computador sem coluna livre: a página abre espaço à direita; arrastar vale só nesta questão e 'Voltar ao canto' desfaz", async () => {
+    const { posicaoNoComputador } = await import("../novo/app/tutor/mini/MiniTutor.jsx");
+    // 1280 × 720 (medido): enunciado 217–1063, alternativas 218–1062
+    const rs = [{ left: 217, right: 1063, top: 225, bottom: 378 }, { left: 217, right: 1063, top: 406, bottom: 533 }, { left: 218, right: 1062, top: 554, bottom: 616 }] as any;
+    const p = posicaoNoComputador({ vw: 1280, vh: 720, topo: 99, rs, larguras: [360, 320], h: 520, hMin: 300, reservar: true });
+    expect(p).toMatchObject({ x: 900, y: 99, w: 360, reserva: 400 });
+    // 1920 × 1080: sobra coluna à direita, nada de mexer na página
+    const largo = posicaoNoComputador({ vw: 1920, vh: 1080, topo: 99, rs: [{ left: 477, right: 1433, top: 225, bottom: 900 }] as any, larguras: [360, 320], h: 520, hMin: 300, reservar: true });
+    expect(largo.reserva).toBe(0);
+    expect(largo.x).toBeGreaterThanOrEqual(1443);
+    // sem poder abrir espaço: o canto que menos cobre, na altura mínima
+    expect(posicaoNoComputador({ vw: 1280, vh: 720, topo: 99, rs, larguras: [360], h: 520, hMin: 300, reservar: false }).h).toBe(300);
+
+    const { contextoDaQuestao, MiniTutor } = await import("../novo/app/tutor/mini");
+    const { rerender } = render(<MiniTutor contexto={contextoDaQuestao(QUESTAO)} evitar=".tq-stem" />);
+    const painel = await abrir();
+    const topo = painel.querySelector(".mt-topo") as HTMLElement;
+    fireEvent.pointerDown(topo, { clientX: 10, clientY: 10, button: 0, pointerId: 1 });
+    fireEvent.pointerMove(topo, { clientX: 60, clientY: 80, pointerId: 1 });
+    fireEvent.pointerUp(topo, { clientX: 60, clientY: 80, pointerId: 1 });
+    const voltar = await within(painel).findByRole("button", { name: "Voltar o mini tutor ao canto" });
+    expect(window.localStorage.length).toBe(0); // a posição não fica gravada para as outras questões
+    fireEvent.click(voltar);
+    expect(within(painel).queryByRole("button", { name: "Voltar o mini tutor ao canto" })).toBeNull();
+    fireEvent.pointerDown(topo, { clientX: 10, clientY: 10, button: 0, pointerId: 1 });
+    fireEvent.pointerMove(topo, { clientX: 60, clientY: 80, pointerId: 1 });
+    fireEvent.pointerUp(topo, { clientX: 60, clientY: 80, pointerId: 1 });
+    expect(within(painel).getByRole("button", { name: "Voltar o mini tutor ao canto" })).toBeInTheDocument();
+    rerender(<MiniTutor contexto={contextoDaQuestao({ ...QUESTAO, id: "q-oficial-2" })} evitar=".tq-stem" />);
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Voltar o mini tutor ao canto" })).toBeNull());
+  });
+});
+

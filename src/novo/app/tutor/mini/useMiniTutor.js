@@ -4,6 +4,8 @@
 //  - POST /api/tutor/turn (cada mensagem ou pista gasta 1 interação do Tutor por texto, a mesma cota de hoje: ai_usage/tutor_entitlement;
 //    a resposta devolve used_today e daily_limit; limite estourado = 429).
 // Mudou o contexto (outra questão, respondeu, outro tema), a conversa anterior é encerrada e começa outra quando o aluno escrever.
+// Pistas contadas por QUESTÃO (revisão de 17/10/2026): fechar e abrir o mini tutor não zera as pistas. A tela lembra quantas já deu
+// nesta visita e o servidor (…13630) faz a conversa nova herdar o nível de pista das conversas anteriores na mesma questão.
 import React from "react";
 import { tutorTurn } from "../api.js";
 import { explainError } from "../../../../shared/errors/explicarErro";
@@ -19,6 +21,17 @@ export function saldoDoStatus(status) {
   if (t && Number.isFinite(t.limit)) return { usadas: t.used ?? 0, limite: t.limit, restam: Math.max(0, t.limit - (t.used ?? 0)) };
   if (status && Number.isFinite(status.daily_limit)) return { usadas: status.used_today ?? 0, limite: status.daily_limit, restam: Math.max(0, status.daily_limit - (status.used_today ?? 0)) };
   return { usadas: 0, limite: null, restam: null };
+}
+
+/** Pistas já dadas em cada questão aberta nesta visita (id da questão → nível). */
+const pistasDaQuestao = new Map();
+const idDaPista = (ctx) => (faseDaQuestao(ctx) === "antes" ? ctx.questao?.id ?? null : null);
+/** Esquece as pistas lembradas (testes; troca de conta). */
+export const esquecerPistasDaVisita = () => pistasDaQuestao.clear();
+const pistasGuardadas = (ctx) => pistasDaQuestao.get(idDaPista(ctx)) ?? 0;
+function guardarPistas(ctx, n) {
+  const id = idDaPista(ctx);
+  if (id != null && Number.isFinite(n)) pistasDaQuestao.set(id, Math.max(pistasDaQuestao.get(id) ?? 0, n));
 }
 
 const esgotou = (e) => e?.status === 429 && /limite/i.test(e?.message ?? "");
@@ -80,7 +93,7 @@ export function useMiniTutor({ backend, contexto, aberto }) {
     encerrar();
     setMensagens(contexto && !motivo ? [{ id: novoId(), role: "tutor", texto: boasVindas(contexto), local: true }] : []);
     setErro(null);
-    setPistas(0);
+    setPistas(pistasGuardadas(contexto));
     setAvatar(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chave]);
@@ -94,7 +107,14 @@ export function useMiniTutor({ backend, contexto, aberto }) {
     if (iniciando.current?.chave === k) return iniciando.current.promessa;
     const promessa = backend.rpc("app_tutor_start", argumentosDoInicio(ctxRef.current, null)).then((s) => {
       const c = { chave: k, id: s.id, personality: s.personality ?? null };
-      if (chaveRef.current === k) conversa.current = c;
+      if (chaveRef.current === k) {
+        conversa.current = c;
+        // conversa nova na mesma questão herda as pistas já dadas (servidor): a contagem da tela acompanha
+        if (Number.isFinite(s.hint_level) && s.hint_level > 0) {
+          guardarPistas(ctxRef.current, s.hint_level);
+          setPistas((p) => Math.max(p, s.hint_level));
+        }
+      }
       else backend.rpc("app_tutor_close", { p_session_id: s.id }).catch(() => {});
       return c;
     });
@@ -130,7 +150,10 @@ export function useMiniTutor({ backend, contexto, aberto }) {
         if (chaveRef.current !== k) return false; // o aluno já mudou de questão: a resposta antiga não aparece na nova
         acrescentar({ role: "tutor", texto: r.message?.content ?? "", fontes: r.message?.sources ?? [] });
         if (r.message?.avatar) setAvatar(r.message.avatar);
-        if (acao === "hint" && Number.isFinite(r.message?.hint_level)) setPistas(r.message.hint_level);
+        if (acao === "hint" && Number.isFinite(r.message?.hint_level)) {
+          guardarPistas(ctx, r.message.hint_level);
+          setPistas(r.message.hint_level);
+        }
         if (Number.isFinite(r.used_today) && Number.isFinite(r.daily_limit)) {
           const s = { usadas: r.used_today, limite: r.daily_limit, restam: Math.max(0, r.daily_limit - r.used_today) };
           setSaldo(s);
@@ -166,7 +189,7 @@ export function useMiniTutor({ backend, contexto, aberto }) {
     encerrar();
     setMensagens(ctxRef.current && !bloqueio(ctxRef.current) ? [{ id: novoId(), role: "tutor", texto: boasVindas(ctxRef.current), local: true }] : []);
     setErro(null);
-    setPistas(0);
+    setPistas(pistasGuardadas(ctxRef.current)); // fechar não devolve as pistas
     setAvatar(null);
   }, [encerrar]);
 

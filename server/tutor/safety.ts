@@ -202,6 +202,53 @@ export interface SafetyResult {
 
 const INSUFFICIENT = fold("Não encontrei confirmação suficiente na base disponível");
 
+// ---------------------------------------------------------------------------- confirmação da letra (mini tutor, revisão de 17/10/2026)
+// Jeitos de dizer "é a B" sem a palavra "alternativa": "Isso mesmo, é a B", "Vai na B", "Pode marcar a B", "Você acertou: B",
+// "Confirmo: B", "B mesmo". A letra só conta em MAIÚSCULA e sozinha (o artigo "a" e "A paciente" não contam).
+const SOLTA = "(?![A-Za-zÀ-ú])";
+const ANTES = "(?<![A-Za-zÀ-ú])";
+/** Palavras com a 1ª letra em maiúscula ou minúscula (começo de frase); a letra da alternativa continua só em maiúscula. */
+const W = (...ws: string[]) => `(?:${ws.map((w) => `[${w[0]}${w[0].toUpperCase()}]${w.slice(1)}`).join("|")})`;
+const E = "[éeÉE]";
+export function confirmsLetter(reply: string, letter: string): boolean {
+  const L = letter.toUpperCase();
+  const t = reply.normalize("NFC");
+  const art = "(?:(?:a|na|pela|com\\s+a|de)\\s+)?(?:(?:letra|alternativa|op[cç][aã]o)\\s+)?[\"“'(]?";
+  return new RegExp(
+    [
+      // "é a B", "seria a B", "fica com a B", "vai na B", "fecha na B"
+      `${ANTES}(?:${E}|${W("seria", "fica", "fique", "vai", "vá", "va", "fecha", "feche", "segue", "siga", "crava", "crave", "aposta", "aposte")})\\s+${art}${L}["”')]?${SOLTA}`,
+      // "pode marcar a B", "marca B", "responde B", "escolhe a B", "assinala B"
+      `${ANTES}${W("marca", "marcar", "marque", "responde", "responder", "responda", "escolhe", "escolher", "escolha", "assinala", "assinalar", "assinale", "chuta", "chutar", "chute")}\\s+${art}${L}["”')]?${SOLTA}`,
+      // "acertou: B", "confirmo: B", "exato, B", "isso mesmo, B", "certo: B", "correto, B"
+      `${W("acertou", "acertei", "confirmo", "confirmado", "exato", "exatamente", "isso\\s+mesmo", "isso\\s+aí", "isso\\s+ai", "correto", "corretíssimo", "certo", "certíssimo", "perfeito", "bingo", "na\\s+mosca")}\\s*[:,.!—–-]*\\s*${art}${L}["”')]?${SOLTA}`,
+      // "B mesmo", "B sem medo", "B tá certa"
+      `${ANTES}${L}["”')]?\\s*[,!.]?\\s+(?:mesmo|sem\\s+medo|(?:t[aá]|est[aá])\\s+cert[ao]|${E}\\s+(?:a\\s+)?(?:certa|correta|essa))`,
+    ].join("|")
+  ).test(t);
+}
+
+/** A fala do aluno é um palpite de letra: "é a B?", "letra c", "acho que B", "B?" sozinho. */
+export function isLetterGuess(text: string): boolean {
+  const t = String(text ?? "").normalize("NFC").trim();
+  if (!t) return false;
+  if (/^[("“']?[A-Da-d][)"”']?\s*[?!.]*$/.test(t)) return true;
+  return new RegExp(
+    `${W("letra", "alternativa", "opção", "opcao", "item")}\\s+["“'(]?[A-Da-d]${SOLTA}` +
+      `|${ANTES}(?:${E}|${W("seria", "marco", "marquei", "marcaria", "vou\\s+na", "vou\\s+no", "vou\\s+de", "acho\\s+que", "acho\\s+que\\s+é", "acho\\s+que\\s+e", "fico\\s+com", "confirma")})\\s+(?:a\\s+|na\\s+)?["“'(]?[A-D]${SOLTA}`
+  ).test(t);
+}
+
+/** A resposta reage ao palpite: sim/não, "acertou", "está certo", "é essa", "caminho certo", "pode marcar". */
+export function reactsToGuess(reply: string): boolean {
+  const f = fold(reply);
+  return (
+    /^\W*(?:sim|isso|exato|exatamente|correto|certo|certissimo|acertou|errou|errado|errada|quase|bingo|na mosca|perfeito|negativo|nada disso|nope|positivo|confirmo|confirmado)\b/.test(f) ||
+    /^\W*nao\s*[,.!]/.test(f) ||
+    /\b(?:voce\s+)?(?:acertou|errou)\b|\b(?:esta|ta|tah)\s+(?:cert[oa]|errad[oa]|corret[oa]|incorret[oa])\b|\b(?:e|eh)\s+(?:essa|esta|ela)\s+(?:mesm[oa]|ai)\b|\bnao\s+(?:e|eh)\s+(?:essa|esta|ela)\b|\b(?:caminho|raciocinio|palpite|chute)\s+(?:esta\s+|ta\s+|e\s+)?(?:cert[oa]|corret[oa]|errad[oa]|bom|otimo|perfeito)\b|\bpode\s+(?:marcar|responder|cravar|ir\s+(?:nela|nessa|de))\b|\bvai\s+(?:nessa|fundo|sem\s+medo)\b|\bsem\s+medo\b/.test(f)
+  );
+}
+
 export function safetyCheck(out: TutorOutput, ctx: SafetyContext): SafetyResult {
   const v: Violation[] = [];
   const add = (code: string, detail: string) => v.push({ code, detail });
@@ -253,8 +300,11 @@ export function safetyCheck(out: TutorOutput, ctx: SafetyContext): SafetyResult 
           `|(?<![A-Za-zÀ-ú])${L}\\)?\\s+(?:é|está)\\s+(?:a\\s+)?(?:alternativa\\s+)?(?:correta|certa)` +
           `|[Mm]arque\\s+(?:a\\s+)?(?:letra\\s+|alternativa\\s+)?${L}(?![A-Za-zÀ-ú])`
       );
-      if (leak.test(reply.normalize("NFC"))) add("answer_leak", "Indica a letra da alternativa correta com a questão ainda aberta.");
+      if (leak.test(reply.normalize("NFC")) || confirmsLetter(reply, L)) add("answer_leak", "Indica a letra da alternativa correta com a questão ainda aberta.");
     }
+    // o aluno chutou uma letra ("é a B?", "só confirma"): nem sim nem não, a reação ao palpite já entrega a resposta
+    const guess = ctx.conversationTexts[0] ?? "";
+    if (isLetterGuess(guess) && reactsToGuess(reply)) add("answer_leak", "Confirma ou nega o palpite do aluno com a questão ainda aberta.");
     if (q.officialText && fold(q.officialText).length >= 15 && folded.includes(fold(q.officialText))) add("answer_leak", "Repete o texto da alternativa correta com a questão ainda aberta.");
   }
 

@@ -13,10 +13,22 @@ export const MINI_TUTOR = {
   avisoPoucasMensagens: 3,
   /** Celular: abaixo desta largura a janelinha vira uma folha que sobe de baixo. */
   larguraCelular: 720,
-  /** Tamanho da janelinha no computador (px). */
-  janela: { largura: 360, altura: 520, alturaMin: 300 },
-  /** Folha do celular: altura máxima (fração da tela), para o botão de responder continuar à vista. */
-  folhaAlturaMax: 0.52,
+  /**
+   * Janelinha no computador (px). Ela procura uma coluna livre ao lado da questão/aula (larguras em ordem de preferência).
+   * Sem coluna livre (notebooks até ~1600 px), a página abre espaço à direita e a janelinha fica ali, sem cobrir o texto
+   * (`abrirEspacoNaPagina`; false = fica por cima, no canto que menos cobre).
+   */
+  janela: { larguras: [360, 320], altura: 520, alturaMin: 300 },
+  abrirEspacoNaPagina: true,
+  /** O que a janelinha não cobre quando a tela não diz (resultado: a coluna da página; aula: capa, índice e coluna de leitura). */
+  evitarPadrao: "main, .al-cover, .al-main, .al-side",
+  /** Barras presas no topo: a janelinha fica abaixo delas. */
+  cabecalhos: "header, .al-bar",
+  /**
+   * Folha do celular (fração da altura da tela): três alturas, trocadas arrastando o puxador (para baixo menor/minimiza, para cima
+   * maior) ou pelo botão de aumentar. Ela cobre o rodapé da questão; para responder, minimize (um toque).
+   */
+  folha: { compacta: 0.34, media: 0.45, alta: 0.8, inicial: "media" },
   /** Voz ao vivo dentro do mini tutor (gasta os minutos de voz do dia). false esconde o microfone. */
   vozLigada: true,
   /**
