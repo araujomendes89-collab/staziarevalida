@@ -15,6 +15,7 @@ import { WebSocketServer } from "ws";
 import { tokenGoogle } from "./googleToken";
 import { NoncesUsados } from "./bilhete";
 import { atenderPonte } from "./ponte";
+import { conhecimentoDoAmbiente } from "./conhecimento";
 
 const env = (k: string, p = "") => (process.env[k] ?? p).trim();
 const PORTA = Number(env("PORT", env("VOZ_PONTE_PORTA", "31997")));
@@ -24,9 +25,12 @@ const segredo = env("VOZ_PONTE_SEGREDO");
 if (segredo.length < 32) { log({ ponte: "sem VOZ_PONTE_SEGREDO (mínimo 32 caracteres): recusando subir" }); process.exit(1); }
 
 const usados = new NoncesUsados();
+// cérebro do Tutor (VOZ_PONTE_APP_URL): busca de conhecimento na ponte e POST /vetor para o Tutor por texto; sem a variável, desligado
+const conhecimento = conhecimentoDoAmbiente(process.env, { segredo, projeto: env("VOZ_PONTE_PROJETO", "staziamed-revalida-prod"), tokenGoogle, log });
 const wss = new WebSocketServer({ noServer: true, maxPayload: 256 * 1024 });
 const servidor = http.createServer((req, res) => {
   if (req.method === "GET" && (req.url === "/saude" || req.url === "/")) { res.writeHead(200, { "Content-Type": "application/json" }); return res.end('{"ok":true}'); }
+  if (conhecimento?.atenderHttp(req, res)) return;
   res.writeHead(404); res.end();
 });
 servidor.on("upgrade", (req, socket, head) => {
@@ -42,6 +46,7 @@ servidor.on("upgrade", (req, socket, head) => {
       projeto: env("VOZ_PONTE_PROJETO", "staziamed-revalida-prod"),
       regiao: env("VOZ_PONTE_REGIAO", "us-central1"),
       relatorio: env("VOZ_PONTE_RELATORIO_URL") ? { url: env("VOZ_PONTE_RELATORIO_URL") } : null,
+      conhecimento,
     }),
   );
 });

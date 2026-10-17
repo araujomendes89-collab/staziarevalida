@@ -8,7 +8,7 @@
 // tela passa para a voz reserva pelo onFallback, com a legenda mantida. O enunciado nunca vai para a voz. Sem chamada (a conversa
 // por voz desligada no painel), o turno vai pela rota de texto do Tutor e a questão pelo banco, como no Chat de antes.
 import React from "react";
-import { nexusApi, tutorSpeech, tutorTurn, voiceApi } from "../api.js";
+import { nexusApi, tutorOpening, tutorSpeech, tutorTurn, voiceApi } from "../api.js";
 import { realtimeErrorMessage } from "../useRealtimeVoice.js";
 import { AudioPlayer } from "../voice/audioPlayer.js";
 import { getAudioContext } from "../voice/audioUnlock.js";
@@ -207,6 +207,8 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     const fromTurn = (intent, t) => ({ intent, message: t?.message ?? null, phrase: null, marked: null, question_state: t?.question_state ?? null });
     if (body.command === "next") {
       const s = await c.backend.rpc("app_tutor_next_question", { p_session_id: id });
+      // a passagem fixa é só a reserva: a IA troca antes de a tela reler a conversa (sem ela, fica a reserva)
+      await tutorOpening(c.backend, id, { rapido: true });
       return { intent: "next", message: null, phrase: null, question_state: s?.question ? "open" : null };
     }
     if (body.command === "answer") {

@@ -42,6 +42,16 @@ export interface PersonaEngine {
   relief?: "relieved" | "celebrate";
 }
 
+/**
+ * Os quatro professores de hoje (17/10/2026) vêm de duas famílias de motor: Durão é a Durona no masculino e Tranquila é uma
+ * versão feminina do Tranquilo (id acolhedor). Tudo que olhava o id "durona" ou "acolhedor" olha a família.
+ */
+export const familyOf = (personaId: string): string => (personaId === "durao" ? "durona" : personaId === "tranquila" ? "acolhedor" : personaId);
+
+/** A que personagem cada personalidade pertence (espelho da coluna tutor_personalities.character). O Direto saiu: sem personagem. */
+export const characterOf = (personaId: string): "stazi" | "stazia" | null =>
+  personaId === "durao" || personaId === "acolhedor" || personaId === "preguicoso" ? "stazi" : personaId === "durona" || personaId === "tranquila" ? "stazia" : null;
+
 export const PERSONA_ENGINE: Record<string, PersonaEngine> = {
   acolhedor: { frustration_multiplier: 0.45, sarcasm_max: 40, aggression_max: 15, patience_base: 70, warmth_base: 60, language_max: 1, language_base: 1 },
   preguicoso: { frustration_multiplier: 0.45, sarcasm_max: 40, aggression_max: 15, patience_base: 70, warmth_base: 60, language_max: 1, language_base: 1 },
@@ -58,9 +68,9 @@ export const DURONA_LEVELS: Record<DuronaLevel, Partial<PersonaEngine>> = {
 };
 
 export const engineFor = (personaId: string, fromDb?: Partial<PersonaEngine> | null, duronaLevel?: DuronaLevel | null): PersonaEngine => ({
-  ...(PERSONA_ENGINE[personaId] ?? PERSONA_ENGINE.direto),
+  ...(PERSONA_ENGINE[familyOf(personaId)] ?? PERSONA_ENGINE.direto),
   ...Object.fromEntries(Object.entries(fromDb ?? {}).filter(([, v]) => typeof v === "number")),
-  ...(personaId === "durona" && duronaLevel ? DURONA_LEVELS[duronaLevel] ?? {} : {}),
+  ...(familyOf(personaId) === "durona" && duronaLevel ? DURONA_LEVELS[duronaLevel] ?? {} : {}),
 });
 
 export interface TutorState {
@@ -146,7 +156,24 @@ export interface Happening {
   explained?: boolean;                 // o aluno explicou o raciocínio pedido (destrava a próxima questão)
   /** Ajuste depois de uma resposta já contada (a voz registra a resposta e só depois avalia o raciocínio). */
   adjust?: { severity?: number; repeated?: boolean; forgotExplanation?: boolean; careless?: boolean; unsafe?: boolean } | null;
+  /**
+   * Como o aluno falou NESTA fala (leituraDoAluno.ts, por software, sem IA). Revisão de 17/10: no texto o humor só andava com a
+   * resposta da questão (a fala livre era um evento vazio): ~93% das respostas ficavam "neutral", até no «ISSO!». Agora a fala do
+   * aluno também mexe no humor, como a ponte da voz já faz.
+   */
+  leitura?: Leitura | null;
+  /** A resposta oral do aluno a uma pergunta do professor fora do "Me teste" (avaliação silenciosa): certa ou errada. */
+  oralLeve?: boolean | null;
 }
+
+/** Registro da fala do aluno reduzido ao que mexe no humor do professor. */
+export type Leitura = "brincando" | "aflito" | "serio" | "provocando" | "cansado";
+const LEITURA_DE: Record<string, Leitura | null> = {
+  brincando: "brincando", ironico: "brincando", abalado: "aflito", ansioso: "aflito", frustrado: "aflito", desanimado: "aflito",
+  serio: "serio", testando_limites: "provocando", cansado: "cansado", com_pressa: "cansado", neutro: null,
+};
+/** Do registro de leituraDoAluno (lerRegistro(...).registro) para a leitura do motor. */
+export const leituraDoRegistro = (registro: string | null | undefined): Leitura | null => LEITURA_DE[String(registro ?? "")] ?? null;
 
 const CARELESS = new Set(["attention_error", "command_word_error"]);
 const KNOWLEDGE = new Set(["knowledge_gap", "memory_failure", "outdated_guideline"]);
@@ -247,6 +274,23 @@ export function step(prev: TutorState, engine: PersonaEngine, h: Happening, rand
       ev.push("unsafe_answer");
     }
   }
+  // a fala do aluno (leitura) e a resposta oral fora do "Me teste": o humor anda na conversa, não só na questão
+  if (h.correct == null && h.oralLeve != null) {
+    if (h.oralLeve) {
+      down += 4;
+      s.enthusiasm += 6;
+      s.confidence += 3;
+    } else {
+      up += 4 * m;
+      s.confidence -= 3;
+    }
+  }
+  if (h.leitura === "brincando") {
+    s.enthusiasm += 8;
+    down += 3;
+  } else if (h.leitura === "aflito") down += 12;
+  else if (h.leitura === "cansado") down += 5;
+  else if (h.leitura === "provocando") up += 3 * m;
   if (h.seriousAttempt) down += 5;
   if (h.selfCorrected) {
     down += 10;
@@ -283,6 +327,8 @@ export function step(prev: TutorState, engine: PersonaEngine, h: Happening, rand
 }
 
 function moodOf(s: TutorState, h: Happening): Mood {
+  // aluno ansioso, frustrado ou mal: o professor acolhe antes de qualquer bronca (o rosto também)
+  if (h.leitura === "aflito" && h.correct == null) return "encouraged";
   if (s.frustration >= 81) return "angry";
   if (s.frustration >= 61) return "irritated";
   if (s.frustration >= 41) return "impatient";
@@ -291,6 +337,11 @@ function moodOf(s: TutorState, h: Happening): Mood {
   if (h.correct === true && s.consecutiveErrors === 0 && s.frustration >= 15) return "encouraged";
   if (h.correct === false && s.confidence < 30) return "disappointed";
   if (h.correct === true || h.selfCorrected) return "pleased";
+  if (h.correct == null) {
+    if (h.oralLeve === true) return "pleased";
+    if (h.leitura === "brincando") return "pleased";
+    if (h.leitura === "serio" || h.leitura === "provocando" || h.oralLeve === false) return "firm";
+  }
   return "neutral";
 }
 
@@ -347,6 +398,17 @@ const ESCALATION: Record<string, string[]> = {
   ],
 };
 
+/** Os mesmos degraus no masculino (Durão) e no feminino (Tranquila): só concordância, o tom é o da família. */
+ESCALATION.durao = ESCALATION.durona.map((l) => l.replace("irritada de verdade", "irritado de verdade"));
+// a Tranquila tem os degraus dela (revisão de 17/10: herdava o "eu podia explicar" do Tranquilo e os dois ficaram parecidos)
+ESCALATION.tranquila = [
+  "Tranquila: aponta com calma onde o raciocínio saiu do trilho e pede uma nova tentativa antes de explicar.",
+  "Se o aluno travar, reduz a uma pergunta menor e dá uma pista concreta, sem pressa.",
+  "Se repetir o erro, fica mais firme, com preocupação e nunca com raiva, e propõe olhar o ponto de novo até fixar.",
+  "Quando acertar, reconhece de verdade o que ele fez de certo, sem exagero.",
+  "Explica por inteiro quando houve tentativa real, bloqueio ou pedido explícito, com calma, um pedaço por vez.",
+];
+
 const MOOD_PT: Record<Mood, string> = {
   neutral: "neutro", pleased: "satisfeito", encouraged: "animado com a melhora", impatient: "impaciente", irritated: "irritado",
   angry: "muito irritado", impressed: "impressionado", disappointed: "decepcionado", firm: "firme", relieved: "aliviado",
@@ -380,12 +442,12 @@ const RELIEF_NOW: Record<"relieved" | "celebrate", { moderate: string; light: st
 /** Bloco de ESTADO do professor para o prompt (sistema). `profanity` é o teto de palavrão da conversa (painel e professor). */
 export function stateLayer(personaId: string, s: TutorState, engine: PersonaEngine, profanity: "off" | "mild" | "moderate" = "moderate"): string {
   const li = languageIntensity(s, engine);
-  const scale = ESCALATION[personaId] ?? ESCALATION.direto;
+  const scale = ESCALATION[personaId] ?? ESCALATION[familyOf(personaId)] ?? ESCALATION.direto;
   const now = (s.turnEvents ?? []).filter((e): e is "relieved" | "celebrate" => e === "relieved" || e === "celebrate");
   const eventText = (e: string) => (now.includes(e as "relieved") ? RELIEF_NOW[e as "relieved"][profanity === "moderate" ? "moderate" : "light"] : EVENT_PT[e] ?? e);
   const swearNow = now.length > 0 && profanity === "moderate";
   const lines = [
-    `ESTADO NESTA SESSÃO (interno, nunca diga números): humor ${MOOD_PT[s.mood]}; frustração ${s.frustration}/100 (faixa ${band(s.frustration) + 1} de 5); paciência ${s.patience}; calor ${s.warmth}; sarcasmo ${s.sarcasm}; confiança no aluno ${s.confidence}. Humor do dia: ${s.sessionMood === "good" ? "bom" : s.sessionMood === "impatient" ? "impaciente" : "neutro"}.`,
+    `ESTADO NESTA SESSÃO (interno, nunca diga números): humor ${MOOD_PT[s.mood]}; frustração ${s.frustration}/100 (faixa ${band(s.frustration) + 1} de 5); paciência ${s.patience}; calor ${s.warmth}; sarcasmo ${s.sarcasm}; confiança no aluno ${s.confidence}.${s.sessionMood === "good" ? " Hoje você está bem-disposto (mostre pelo jeito, nunca anuncie)." : s.sessionMood === "impatient" ? " Hoje você está com pouca paciência (mostre pelo jeito, nunca anuncie)." : ""}`,
     `Na sessão: ${s.sessionQuestions} questão(ões); ${s.consecutiveErrors} erro(s) seguido(s); ${s.consecutiveCorrect} acerto(s) seguido(s); erros repetidos ${s.repeatedErrors}; por desatenção ${s.carelessErrors}; de raciocínio ${s.reasoningErrors}; de conhecimento ${s.knowledgeErrors}.`,
     s.events.length ? `Acontecimentos recentes: ${s.events.map(eventText).join("; ")}.` : "",
     `INTENSIDADE DE LINGUAGEM AGORA: ${LANGUAGE_TEXT[li]}. Palavrão só se combinar com o professor e com esta intensidade, espontâneo, ${swearNow ? "obrigatório só no alívio ou na comemoração pedidos acima" : "nunca obrigatório"} e nunca como muleta.`,
@@ -396,7 +458,8 @@ export function stateLayer(personaId: string, s: TutorState, engine: PersonaEngi
 }
 
 /** Para o avatar (mascote) e a voz: o front mostra só a mensagem; isto anima e dá a prosódia. */
-export function avatarOf(personaId: string, s: TutorState) {
+export function avatarOf(rawPersonaId: string, s: TutorState) {
+  const personaId = familyOf(rawPersonaId);
   const intensity = s.mood === "impressed" || s.mood === "pleased" ? clamp(s.enthusiasm) : clamp(s.frustration);
   const animation: Record<Mood, string> = {
     neutral: "neutral", pleased: "happy", encouraged: "proud", impatient: personaId === "durona" ? "eye_roll" : "skeptical",
@@ -428,6 +491,42 @@ export function recentExpressions(tutorTexts: string[], max = 20): string[] {
     if (first && first.split(/\s+/).length <= 7) push(first);
     else push(text.split(/\s+/).slice(0, 4).join(" "));
     for (const m of text.matchAll(/\b(porra|caralho|merda|cacete|puta merda|pô|putz|de novo\??|presta atenção|eu acabei de explicar|finalmente|até que enfim|agora sim|olha só)\b/gi)) push(m[0]);
+    // bordões que a medição de 17/10 achou repetidos (bancada de naturalidade): uma vez na conversa, não voltam
+    for (const m of text.matchAll(/(?<![\p{L}])(na mosca|na veia|mandou bem|cravou bonito|matou a pau|matou a|isso aí|bora|com calma|respira fundo|sem pressa|vamos por partes|preguiça de|a banca|conduta imediata|destrinchar|chave de ouro|o que você faz|me conta|kkkk+|me poupou|me poupar|poupe|trabalho danado)(?![\p{L}])/giu)) push(m[0]);
   }
   return out.slice(0, max);
+}
+
+/**
+ * Jeito de PASSAR A VEZ para o aluno já usado nesta conversa (revisão de 17/10: «Agora me diz: …?» no fim de toda fala virou bordão
+ * no Durão e na Durona, mesmo com as palavras trocadas). A próxima fala passa a vez de outro jeito, ou nem passa.
+ */
+const TRANSICAO = /(?<![\p{L}])(agora,?\s+(?:me\s+)?(?:diz|diga|responde|responda|fala|fale|conta|conte|explica|explique|mostra|mostre|segura|para|pensa|fecha)|me\s+(?:diz|diga|conta|conte|fala|fale|responde|responda)(?:\s+(?:aí|ai|então|entao|uma coisa|o que|por que|como|qual|quais))?|fecha(?:r)?\s+com\s+chave\s+de\s+ouro|o\s+que\s+você\s+faz|e\s+aí,?\s+qual|bora\s+ver|vamos\s+ver)(?![\p{L}])/giu;
+export function transitionsUsed(tutorTexts: string[], max = 8): string[] {
+  const out: string[] = [];
+  for (const text of tutorTexts.slice(-10).reverse()) {
+    for (const m of text.matchAll(TRANSICAO)) {
+      const t = m[0].toLowerCase().replace(/\s+/g, " ").trim();
+      if (!out.includes(t)) out.push(t);
+    }
+  }
+  return out.slice(0, max);
+}
+
+/** Fração das falas que terminam passando a vez com «agora + verbo» (para a medição). */
+export const passaComAgora = (text: string): boolean => /(?<![\p{L}])agora,?\s+(?:me\s+)?(?:diz|diga|responde|responda|fala|fale|conta|conte|explica|explique|mostra|mostre)(?![\p{L}])/iu.test(text);
+
+/**
+ * Começos de fala já usados nesta conversa (as 2 primeiras palavras de cada fala do professor, sem pontuação): a próxima fala não
+ * começa igual a nenhuma delas (a medição de 17/10 achou muitas falas começando com o mesmo par de palavras).
+ */
+export function usedStarts(tutorTexts: string[], max = 12): string[] {
+  const out: string[] = [];
+  for (const text of tutorTexts.slice(-max).reverse()) {
+    const words = text.replace(/[^\p{L}\p{N}\s]/gu, " ").trim().split(/\s+/).filter(Boolean).slice(0, 2);
+    if (!words.length) continue;
+    const start = words.join(" ");
+    if (!out.some((o) => o.toLowerCase() === start.toLowerCase())) out.push(start);
+  }
+  return out;
 }

@@ -4,11 +4,12 @@
 // o professor escolhido e o servidor diz o jeito: voz do professor, voz reserva (a voz ao vivo de antes) ou por escrito.
 import React from "react";
 import { useSession } from "../../session.jsx";
-import { nexusApi, tutorServerStatus } from "../api.js";
+import { nexusApi, tutorOpening, tutorServerStatus, withOpening } from "../api.js";
 import { ERROR_CLASS, modeLabel } from "../labels.js";
 import { useRealtimeVoice } from "../useRealtimeVoice.js";
 import { StaziaVoiceMode } from "../voice/StaziaVoiceMode.jsx";
-import { StaziaVoiceOrb } from "../voice/StaziaVoiceOrb.jsx";
+import { PersonagemTutor } from "../personagens/PersonagemTutor.jsx";
+import { marcarNoPerfil, personagemDaConversa, personagemDe } from "../personagens/personagens.js";
 import { unlockAudio } from "../voice/audioUnlock.js";
 import { TutorGate } from "./TutorGate.jsx";
 import { NexusLobby, withArticle } from "./NexusLobby.jsx";
@@ -55,8 +56,22 @@ export function NexusScreen({ go, overlay = false, request = null, onClose }) {
   );
 }
 
-function Nexus({ status, refresh, overlay, request, onClose }) {
-  const { backend } = useSession();
+function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
+  const { backend, user } = useSession();
+  const conta = user?.id ?? null;
+  // O status do Tutor é lido ao abrir. O que o perfil confirmou depois (troca de personagem, conversa começada) fica aqui por cima
+  // dele, para a entrada não voltar ao personagem antigo quando o aluno sai dela e volta; o status relido em seguida substitui.
+  const [confirmado, setConfirmado] = React.useState(null); // { base: status a que vale, prefs }
+  const statusRef = React.useRef(statusLido);
+  statusRef.current = statusLido;
+  const status = confirmado?.base === statusLido ? { ...statusLido, preferences: { ...(statusLido.preferences ?? {}), ...confirmado.prefs } } : statusLido;
+  const confirmar = React.useCallback((prefs) => {
+    setConfirmado((c) => {
+      const base = statusRef.current;
+      return { base, prefs: { ...(c?.base === base ? c.prefs : {}), ...prefs } };
+    });
+    refresh().catch(() => {});
+  }, [refresh]);
   const [phase, setPhase] = React.useState("lobby"); // lobby | conversation | summary | history | readonly
   const [nexus, setNexus] = React.useState(null);
   const [server, setServer] = React.useState({ live: false, hint: null });
@@ -187,7 +202,8 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
       const o = await nexusApi.open(backend, s.id, force);
       pending.current = null;
       setError(null);
-      setSession(s);
+      // a abertura criada agora pela IA (o servidor já trocou a reserva no banco)
+      setSession(withOpening(s, o.opening));
       setOpened(o);
       setFallback(null);
       setPicked(null);
@@ -215,6 +231,12 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
     void (async () => {
       try {
         const s = await backend.rpc("app_tutor_start", startArgs(personalityId, mode, request));
+        // a conversa grava a personalidade (e o personagem dela) no perfil
+        const quem = personagemDe(s?.personality);
+        if (quem) {
+          marcarNoPerfil(conta, quem);
+          confirmar({ personality_id: s.personality.id, character: quem });
+        }
         releaseMic();
         mic.current = await micP;
         await openSession(s);
@@ -238,6 +260,16 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
       setBusy(false);
     });
   };
+
+  // o personagem tocado na entrada vai para o perfil do aluno (vale em qualquer aparelho); a entrada não espera a resposta
+  // depois que o perfil confirma, a Nexus guarda a resposta e relê o status (sem "Carregando"), para valer ao voltar à entrada
+  const envioPersonagem = React.useRef(0);
+  const savePersonagem = React.useCallback(async (id) => {
+    const n = ++envioPersonagem.current;
+    const r = await backend.rpc("app_tutor_set_character", { p_character: id });
+    if (n === envioPersonagem.current && r && typeof r === "object") confirmar({ ...r, character: r.character ?? id });
+    return r;
+  }, [backend, confirmar]);
 
   const listen = async (personalityId) => {
     unlockAudio();
@@ -312,6 +344,7 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
     setError(null);
     setSession(null);
     setPhase("lobby");
+    refresh().catch(() => {}); // a conversa pode ter trocado a personalidade preferida e o uso do dia
   };
 
   const errorBox = error && (
@@ -344,9 +377,12 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
           onReveal={() => live.sendText("Me mostra a resolução.")}
           onNext={async () => {
             try {
-              setSession(await backend.rpc("app_tutor_next_question", { p_session_id: session.id }));
+              const s2 = await backend.rpc("app_tutor_next_question", { p_session_id: session.id });
+              setSession(s2);
               setPicked(null);
               live.sendText("Vamos para a próxima.");
+              // a passagem fixa é só a reserva: a criada agora pela IA aparece quando chegar
+              void tutorOpening(backend, s2?.id ?? session.id).then((op) => op && setSession((cur) => (cur?.id === s2?.id ? withOpening(cur, op) : cur)));
             } catch (e) {
               setFallback((f) => ({ ...(f ?? {}), note: messageOf(e) }));
             }
@@ -375,7 +411,7 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
   } else if (phase === "history") {
     body = <HistoryView sessions={sessions} onBack={toLobby} onOpen={fromHistory} onClose={overlay ? onClose : null} error={errorBox} />;
   } else {
-    body = <NexusLobby status={status} nexus={nexus} request={request} busy={busy} error={errorBox} onStart={begin} onHistory={showHistory} onListen={listen} onClose={overlay ? onClose : null} />;
+    body = <NexusLobby status={status} nexus={nexus} request={request} busy={busy} error={errorBox} onStart={begin} onHistory={showHistory} onListen={listen} onClose={overlay ? onClose : null} onPersonagem={savePersonagem} conta={conta} />;
   }
   return <div className={`nx${overlay ? " nx--overlay" : ""}`}>{body}</div>;
 }
@@ -409,7 +445,7 @@ function SummaryView({ session, onAgain, busy, onLobby, onHistory, onClose = nul
         </div>
       )}
       <div className="nx-summary__orb" aria-hidden="true">
-        <StaziaVoiceOrb conversationState="idle" emotion="neutral" emotionIntensity={0.3} />
+        <PersonagemTutor personagem={personagemDaConversa(p.id)} conversationState={closed ? "ended" : "idle"} emotion="neutral" emotionIntensity={0.3} decorativo />
       </div>
       <div className="nx-summary__head">
         <span className="nx-overline">{readOnly ? "Só leitura" : closed ? "Conversa encerrada" : "Conversa"}</span>

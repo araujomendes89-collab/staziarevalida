@@ -222,7 +222,7 @@ beforeAll(async () => {
   podcasts = await listen("/api/podcasts", createPodcastsRouter({ db, storage: { async put() { return ""; }, async get() { return Buffer.alloc(0); }, async exists() { return false; } }, log: (m) => logs.push(m), mockScript: () => ({ title_suggestion: "T", lines: [{ speaker: "ANA", text: "Oi.", style: "", sources: [] }], missing: [] }) }));
   tAluna = await dev.createSession(ALUNA);
   tEditor = await dev.createSession(EDITOR);
-  sessao = (await rpc(ALUNA, "app_tutor_start", "livre", "Hepatite perinatal", null, { type: "free" }, "direto")).id;
+  sessao = (await rpc(ALUNA, "app_tutor_start", "livre", "Hepatite perinatal", null, { type: "free" }, "durao")).id;
   podcastId = (await rpc(EDITOR, "app_admin_save_podcast", { title: "Episódio", topic: "Hepatite", area: "PEDIATRIA", target_minutes: 5 })).id;
   await sql(`insert into public.podcast_sources (podcast_id, kind, title, position) values ($1, 'text', 'Texto', 0)`, [podcastId]);
   await sql(`insert into public.podcast_chunks (podcast_id, source_id, ord, page, text) select $1, id, 0, null, 'Hepatite B perinatal: vacina e imunoglobulina nas primeiras horas.' from public.podcast_sources where podcast_id = $1`, [podcastId]);

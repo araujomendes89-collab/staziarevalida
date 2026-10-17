@@ -169,7 +169,7 @@ describe("Motor do Nexus: escalada e alívio", () => {
       expect(sys).toContain("- Nunca escreva marcações entre colchetes nem indicações de som ou de tom (risada, suspiro, grito): a atuação da voz é decidida pelo sistema.");
       expect(sys).not.toMatch(/\[(angry|laughs|sighs|frustrated|encouraging|risos)\]/i);
     }
-    expect(TUTOR_VERSION).toBe("2.7.0");
+    expect(TUTOR_VERSION).toBe("2.8.0");
   });
 });
 
@@ -222,7 +222,7 @@ describe("Motor do Nexus: o turno", () => {
   });
 
   it("turno com chargeText gasta 1 interação mesmo com voiceCallId; a delegação do GPT-Live continua sem gastar", async () => {
-    const s = (await rpc(ALUNA, "app_tutor_start", "livre", null, null, null, "direto")).id;
+    const s = (await rpc(ALUNA, "app_tutor_start", "livre", null, null, null, "durao")).id;
     const call = "00000000-0000-4000-8000-00000000c0de";
     const deps = { db, mockRespond: () => reply("Isso. Segue.") };
     const n0 = await requests();

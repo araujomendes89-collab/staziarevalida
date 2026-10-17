@@ -3,13 +3,19 @@
 // quiser (o sistema percebe sozinho quando ele começa e termina) → o professor responde e a esfera reage à voz dele → o aluno pode
 // interromper falando por cima. Microfone liga e desliga sem encerrar; o chat abre por cima sem desligar a voz; fechar encerra a
 // ligação, para microfone e alto-falante e libera o áudio do navegador.
+// 17/10/2026: no lugar da esfera fica o personagem escolhido pelo aluno (Stazi ou Stazia), com as mesmas entradas da esfera
+// (estado, emoção do servidor, nível do microfone e da voz). A animação só lê; nada aqui muda a lógica da voz.
 import React from "react";
 import { createPortal } from "react-dom";
 import { StaziaVoiceOrb, orbEmotion } from "./StaziaVoiceOrb.jsx";
+import { PersonagemTutor } from "../personagens/PersonagemTutor.jsx";
+import { PERSONAGENS, gravarPersonagem, personagemDaConversa, personagemDe } from "../personagens/personagens.js";
+import "../personagens/escolha.css";
 import { VoiceControls } from "./VoiceControls.jsx";
 import { VoiceStatus } from "./VoiceStatus.jsx";
 import { VoiceCaptions, VoiceChatSheet } from "./VoiceTranscript.jsx";
 import { releaseAudioContext } from "./audioUnlock.js";
+import { definirSemitonsDaVoz } from "./pitchShift.js";
 import { realtimeErrorMessage } from "../useRealtimeVoice.js";
 import "./voiceMode.css";
 
@@ -46,6 +52,20 @@ export function voiceQuotaText(entitlement, remaining = null) {
   return `${minutesOf(left)} min de voz hoje`;
 }
 
+// Se o personagem falhar ao carregar ou desenhar, a esfera de sempre assume (a conversa por voz não depende dele).
+class PersonagemSeguro extends React.Component {
+  state = { falhou: false };
+  static getDerivedStateFromError() {
+    return { falhou: true };
+  }
+  componentDidCatch() {
+    this.props.onFalha?.();
+  }
+  render() {
+    return this.state.falhou ? this.props.fallback : this.props.children;
+  }
+}
+
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 
 /**
@@ -53,7 +73,7 @@ const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabin
  * card: o que fica abaixo da esfera (o cartão da questão). Para escrever, o Chat abre por cima, na mesma conversa.
  * onWrite: quando a voz não abriu, "Escrever pelo Chat" pede antes à tela um jeito em que o Chat manda (a Nexus passa para por escrito).
  */
-export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, entitlement = null, note = null, onClose, jeitoLabel = null, card = null, onWrite = null }) {
+export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, entitlement = null, note = null, onClose, jeitoLabel = null, card = null, onWrite = null, personagem = null, motor = "2d", semitons = null }) {
   const [chatOpen, setChatOpen] = React.useState(false);
   const [showCaptions, setShowCaptionsState] = React.useState(() => readPref("smn-voice-captions", true));
   const [volume, setVolumeState] = React.useState(() => readPref("smn-voice-volume", 1));
@@ -61,6 +81,27 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
   const dialog = React.useRef(null);
   const mic = React.useRef(null);
   const emo = orbEmotion(avatar);
+  const [quem, setQuem] = React.useState(() => personagem ?? personagemDaConversa(persona?.id));
+  const [semPersonagem, setSemPersonagem] = React.useState(false);
+  const outro = quem === "stazia" ? "stazi" : "stazia";
+  // 17/10/2026: a voz e a personalidade são do personagem. Com uma personalidade conhecida (Durão, Tranquilo, Durona, Tranquila) o
+  // personagem fica fixo na conversa; a troca no meio só existe para conversa antiga, de professor aposentado, e só muda o desenho
+  // (a ligação, o microfone e a conversa seguem como estão).
+  const personagemFixo = Boolean(personagemDe(persona?.id));
+  // 17/10/2026: a voz ao vivo do personagem vem afinada pelo manifest (`voz.semitons`: Stazi +3, efeito de desenho; Stazia 0, sem
+  // afinar). Vale o personagem DONO da voz (o da personalidade), nunca o desenho trocado de conversa antiga (essa voz não é dele).
+  // A prop `semitons` passa por cima. A tela avisa o tocador da voz ao vivo (geminiLive/geminiPonte seguem definirSemitonsDaVoz);
+  // quem abrir a ligação também pode passar `semitons` direto a openGeminiLive/openGeminiPonte.
+  const donoDaVoz = personagemDe(persona?.id);
+  const semitonsDaVoz = semitons ?? PERSONAGENS[donoDaVoz]?.voz?.semitons ?? 0;
+  React.useEffect(() => {
+    definirSemitonsDaVoz(semitonsDaVoz);
+    return () => definirSemitonsDaVoz(0);
+  }, [semitonsDaVoz]);
+  const trocarPersonagem = () => {
+    setQuem(outro);
+    gravarPersonagem(outro);
+  };
 
   const setShowCaptions = (v) => {
     setShowCaptionsState(v);
@@ -127,14 +168,32 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
   const quota = voiceQuotaText(entitlement, rt.remaining);
   const hasCaption = Boolean((rt.captions?.tutor ?? "").trim() || (rt.captions?.student ?? "").trim());
 
+  const onFrame = (l) => mic.current?.style.setProperty("--mic-level", (rt.muted ? 0 : l.input).toFixed(3));
+  const esfera = (
+    <StaziaVoiceOrb
+      conversationState={rt.state}
+      emotion={emo.emotion}
+      emotionIntensity={emo.intensity}
+      inputStream={rt.muted ? null : rt.streams?.input ?? null}
+      outputStream={rt.streams?.output ?? null}
+      personality={persona}
+      onFrame={onFrame}
+    />
+  );
+
   return createPortal(
-    <div className={`svm${card ? " svm--with-card" : ""}`} role="dialog" aria-modal="true" aria-labelledby="svm-title" aria-describedby="svm-desc" ref={dialog} onKeyDown={onKey}>
+    <div className={`svm${card ? " svm--with-card" : ""}`} data-emo={semPersonagem ? undefined : emo.emotion} style={{ "--svm-emo-i": emo.intensity.toFixed(2) }} role="dialog" aria-modal="true" aria-labelledby="svm-title" aria-describedby="svm-desc" ref={dialog} onKeyDown={onKey}>
       <div className="svm__top">
         <span className="svm__persona">
           <span aria-hidden="true">{persona?.emoji ?? "🎙️"}</span>
           {persona?.name ?? "Professor"}
         </span>
         {jeitoLabel && <span className="svm__jeito">{jeitoLabel}</span>}
+        {!semPersonagem && !personagemFixo && (
+          <button type="button" className="svm__troca" onClick={trocarPersonagem} aria-label={`Trocar para ${PERSONAGENS[outro].genero === "a" ? "a" : "o"} ${PERSONAGENS[outro].nome}, ${PERSONAGENS[outro].papel}`}>
+            Trocar para {PERSONAGENS[outro].nome}
+          </button>
+        )}
         {quota && <span className="svm__quota">{quota}</span>}
       </div>
       <div className="svm__head">
@@ -144,15 +203,19 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
       <p id="svm-desc" className="svm-sr">Conversa por voz com o professor. Fale quando quiser; para interromper, é só falar. O microfone liga e desliga sem encerrar a conversa.</p>
 
       <div className="svm__stage">
-        <StaziaVoiceOrb
-          conversationState={rt.state}
-          emotion={emo.emotion}
-          emotionIntensity={emo.intensity}
-          inputStream={rt.muted ? null : rt.streams?.input ?? null}
-          outputStream={rt.streams?.output ?? null}
-          personality={persona}
-          onFrame={(l) => mic.current?.style.setProperty("--mic-level", (rt.muted ? 0 : l.input).toFixed(3))}
-        />
+        <PersonagemSeguro onFalha={() => setSemPersonagem(true)} fallback={esfera}>
+          <PersonagemTutor
+            personagem={quem}
+            motor={motor}
+            conversationState={rt.state}
+            emotion={emo.emotion}
+            emotionIntensity={emo.intensity}
+            inputStream={rt.muted ? null : rt.streams?.input ?? null}
+            outputStream={rt.streams?.output ?? null}
+            personality={persona}
+            onFrame={onFrame}
+          />
+        </PersonagemSeguro>
       </div>
       {card && <div className="svm__card">{card}</div>}
 
@@ -186,6 +249,8 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
       )}
 
       {rt.micError && <p className="svm__hint" role="status">{rt.micError}</p>}
+      {/* frase de espera: a busca no material passou de ~600 ms (frasesEspera.ts, decisão do dono de 17/10) */}
+      {rt.conferindo && <p className="svm__hint svm__conferindo" role="status">{rt.conferindo}</p>}
 
       {rt.tapToTalk && connected && rt.state === "ready" && !rt.muted && rt.streams?.input && (
         <div className="svm__actions">

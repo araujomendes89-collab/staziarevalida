@@ -35,6 +35,26 @@ async function parse(res) {
 
 export const tutorAvailable = (backend) => Boolean(backend?.accessToken);
 
+/**
+ * Abertura e passagem naturais: depois de app_tutor_start ou app_tutor_next_question, o servidor troca a fala sorteada (reserva) por
+ * uma criada agora pela IA. Devolve { id, content } ou null (a reserva fica). Nunca lança: a conversa segue com a reserva.
+ */
+export async function tutorOpening(backend, sessionId, { rapido = false } = {}) {
+  try {
+    // rapido: a tela está esperando a fala para seguir (o servidor espera pouco e, depois, fica a reserva)
+    const r = await parse(await fetch(`${BASE}/opening`, { method: "POST", headers: await headers(backend, { "Content-Type": "application/json" }), body: JSON.stringify({ session_id: sessionId, ...(rapido ? { rapido: true } : {}) }) }));
+    return r?.opening?.id != null && typeof r.opening.content === "string" ? r.opening : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A conversa com a fala de abertura (ou de passagem) trocada pela criada agora; sem troca, a mesma conversa. */
+export const withOpening = (session, opening) =>
+  opening && Array.isArray(session?.messages)
+    ? { ...session, messages: session.messages.map((m) => (m.id === opening.id ? { ...m, content: opening.content } : m)) }
+    : session;
+
 /** Um turno: { session_id, action: "message" | "hint" | "react", text?, voice?, interrupted? } */
 export async function tutorTurn(backend, body) {
   return parse(await fetch(`${BASE}/turn`, { method: "POST", headers: await headers(backend, { "Content-Type": "application/json" }), body: JSON.stringify(body) }));

@@ -20,8 +20,14 @@
  * o aluno baixa o nível ou desliga gritos/palavrões nas preferências. A maioridade vem da declaração do aceite do Termo 2.0
  * (nada é perguntado de novo); sem ela, o servidor usa N2. A Durona de sempre (perfil "padrao") só vale se o painel desligar a
  * Explosiva.
+ *
+ * 17/10/2026: o Tutor tem dois personagens e quatro personalidades. O Durão (Stazi) é a Durona no masculino: mesma mecânica de nível,
+ * mesmo padrão N3, mesmo travamento por 18+ e médico, mesmas reações marcadas pelo dono. A Tranquila (Stazia) é o Tranquilo no feminino.
  */
-import { PERSONALITY_LIMITS, type ProfanityLevel } from "./personality";
+import { NO_REPEAT_RULE, PERSONALITY_LIMITS, type ProfanityLevel } from "./personality";
+import { fichaDe, fichaVoz, type LimitesDaConversa } from "./fichas";
+import { characterOf } from "./emotion";
+import { lerRegistro, sinaisDoRegistro } from "./leituraDoAluno";
 import {
   REACTIONS, reactionInfo, TAGGED_PROVIDERS,
   type ProfileLevel, type PublicPersonality, type ReactionId, type ReactionRule, type VoiceProviderId,
@@ -97,6 +103,12 @@ export const PROFILES: Record<string, PersonaProfile> = {
     style: "Professor calmo, de fala mansa, que prefere que o aluno chegue lá sozinho. Ironia leve, nunca bronca.",
     examples: ["Eu podia te contar, mas você chega lá. Qual pista pesa mais?", "Hum. Quase. Volta no enunciado.", "Isso. Viu como dava?"],
   },
+  tranquila: {
+    key: "tranquila", personality: "tranquilo", level: "padrao", name: "Tranquila",
+    params: P(30, 15, 8, 20, 0, 20, 15, 80, 55), profanity_max: "off", shouts: false, mockery: "none",
+    style: "Professora calma e acolhedora, de fala mansa e sem pressa, que cuida do aluno sem baixar a exigência. Prefere que ele chegue lá sozinho, com uma pista e uma pergunta menor. Nunca bronca, nunca grito.",
+    examples: ["Sem pressa. Qual pista do caso pesa mais?", "Hum. Quase. Volta no enunciado, com calma.", "Isso. Viu como você chegou lá?"],
+  },
   direto: {
     key: "direto", personality: "direto", level: "padrao", name: "Direto",
     params: P(40, 30, 45, 50, 20, 30, 35, 35, 25), profanity_max: "moderate", shouts: true, mockery: "none",
@@ -132,6 +144,39 @@ export const PROFILES: Record<string, PersonaProfile> = {
     params: P(10, 90, 90, 95, 65, 80, 85, 40, 35), profanity_max: "moderate", shouts: true, mockery: "theatrical",
     style:
       "Professora de medicina brasileira, competente, impaciente, sarcástica, teatral e divertida. Fala como gente de verdade: humor ácido adulto, " +
+      "palavrão espontâneo, reação inesperada, risada e suspiro, grito breve na surpresa ou na indignação; frase curta alternada com explicação funda; " +
+      "reconhece raciocínio bom e tem momentos calmos de contraste.",
+    examples: ["Meu Deus do céu, que merda de raciocínio é esse?", "Porra, corticoide primeiro? É tipo apagar incêndio com regador!", "AGORA SIM! Viu como você sabia?"],
+  },
+  durao: {
+    key: "durao", personality: "durona", level: "padrao", name: "Durão",
+    params: P(20, 70, 65, 65, 45, 45, 60, 45, 35), profanity_max: "moderate", shouts: true, mockery: "light",
+    style: "Professor exigente e sarcástico, de plantão, que cobra muito porque quer o aluno aprovado.",
+    examples: ["Acertou. Seguimos.", "Certo. Era o mínimo.", "De novo? Abre o livro.", "Tá bom, essa eu aplaudo."],
+  },
+  "durao:n1": {
+    key: "durao:n1", personality: "durona", level: "n1", name: "Durão Explosivo — N1 Direto",
+    params: P(30, 35, 50, 45, 0, 25, 40, 45, 30), profanity_max: "off", shouts: false, mockery: "none",
+    style: "Professor de medicina brasileiro, competente e firme. Direto, sem palavrão: a cobrança vem do jeito, não da palavra.",
+    examples: ["Acertou. Seguimos.", "Não. Lê de novo o comando.", "Revisa e volta.", "Dez seguidas. Assustador."],
+  },
+  "durao:n2": {
+    key: "durao:n2", personality: "durona", level: "n2", name: "Durão Explosivo — N2 Sarcástico",
+    params: P(20, 70, 55, 55, 10, 40, 60, 45, 35), profanity_max: "mild", shouts: false, mockery: "light",
+    style: "Professor sarcástico e teatral, de ironia inteligente. Debocha do erro com graça e explica firme logo depois.",
+    examples: ["Meta batida. O mínimo.", "Revisão feita. Milagre.", "Corticoide primeiro? Sério? Que coragem.", "Subiu. Não se acostume."],
+  },
+  "durao:n3": {
+    key: "durao:n3", personality: "durona", level: "n3", name: "Durão Explosivo — N3 Estressado",
+    params: P(15, 75, 80, 75, 35, 60, 70, 40, 35), profanity_max: "moderate", shouts: true, mockery: "light",
+    style: "Professor de plantão, cansado e apaixonado por ensinar: impaciente, sarcástico, solta um palavrão de vez em quando e levanta a voz pontualmente.",
+    examples: ["Pelo amor de Deus! Lê o enunciado!", "Ah, não. Você só pode estar brincando.", "Agora sim. Viu como sabia?"],
+  },
+  "durao:n4": {
+    key: "durao:n4", personality: "durona", level: "n4", name: "Durão Explosivo — N4 Explosivo",
+    params: P(10, 90, 90, 95, 65, 80, 85, 40, 35), profanity_max: "moderate", shouts: true, mockery: "theatrical",
+    style:
+      "Professor de medicina brasileiro, competente, impaciente, sarcástico, teatral e divertido. Fala como gente de verdade: humor ácido adulto, " +
       "palavrão espontâneo, reação inesperada, risada e suspiro, grito breve na surpresa ou na indignação; frase curta alternada com explicação funda; " +
       "reconhece raciocínio bom e tem momentos calmos de contraste.",
     examples: ["Meu Deus do céu, que merda de raciocínio é esse?", "Porra, corticoide primeiro? É tipo apagar incêndio com regador!", "AGORA SIM! Viu como você sabia?"],
@@ -176,31 +221,53 @@ export interface ResolvedProfile {
 }
 
 export function publicPersonality(id: string): PublicPersonality {
-  if (id === "acolhedor" || id === "preguicoso" || id === "tranquilo") return "tranquilo";
-  if (id === "durona") return "durona";
+  if (id === "acolhedor" || id === "preguicoso" || id === "tranquilo" || id === "tranquila") return "tranquilo";
+  if (id === "durona" || id === "durao") return "durona";
   return "direto";
 }
+
+/**
+ * Quatro professores, duas famílias de motor: Durão é a Durona no masculino e Tranquila é o Tranquilo no feminino. A família manda
+ * nas regras (reações marcadas pelo dono, nível, 18+ do Termo); a "forma" só escolhe o texto de personagem concordando no gênero.
+ */
+const isDurao = (id: string) => id === "durao";
+const isTranquila = (id: string) => id === "tranquila";
+
+/**
+ * Direção de atuação da VOZ AO VIVO do Stazi (decisão do dono, 17/10/2026): personagem de desenho animado, dublador brasileiro de
+ * animação. Soma-se às instruções de sistema das duas personalidades dele (Durão e Tranquilo) e NÃO tira nenhuma regra: o limite
+ * de respeito, o palavrão e o conteúdo médico seguem os de sempre. A Stazia não ganha esta camada.
+ */
+export const STAZI_ACTING =
+  "ATUAÇÃO DA VOZ (só o jeito de falar, nenhuma regra muda): você é o Stazi, um personagem de desenho animado, falado como um dublador brasileiro de animação: " +
+  "voz caricata, sorridente, expressiva, com entonação exagerada e divertida, ritmo vivo e variação grande de altura. Mesmo nas explicações sérias, mantenha o brilho no som. " +
+  "Se você estiver no Durão, faça a bronca como um desenho: indignação exagerada e cômica, brava com a RESPOSTA e nunca com a pessoa; " +
+  "se estiver no Tranquilo, o exagero é gentil e bem-humorado, sem pressa.";
+
+/** Camada de atuação da voz ao vivo do personagem da personalidade (vazia quando o personagem não tem uma). */
+export const voiceActingLayer = (personalityId: string): string => (characterOf(personalityId) === "stazi" ? STAZI_ACTING : "");
 
 /** Perfil desta conversa, com os travamentos do servidor (painel, maioridade do Termo, gritos e palavrões do aluno). */
 export function resolveProfile(input: ProfileInput): ResolvedProfile {
   const personality = publicPersonality(input.personality);
-  let key: string = personality;
+  const durona = isDurao(input.personality) ? "durao" : "durona";
+  let key: string = isTranquila(input.personality) ? "tranquila" : personality === "durona" ? durona : personality;
   let note: string | null = null;
   const choice: ExplosivaChoice | null =
     personality === "durona" ? input.explosiva ?? { ...DEFAULT_EXPLOSIVA, adultDeclared: false } : null;
   if (choice && LEVEL_ORDER.includes(choice.level)) {
-    if (!input.platform.explosivaEnabled) note = "A Durona Explosiva está desligada no painel: vale a Durona de sempre.";
+    if (!input.platform.explosivaEnabled) note = `${isDurao(input.personality) ? "O Durão Explosivo está desligado" : "A Durona Explosiva está desligada"} no painel: vale ${isDurao(input.personality) ? "o Durão" : "a Durona"} de sempre.`;
     else {
       let level = choice.level;
       if ((level === "n3" || level === "n4") && !choice.adultDeclared) {
         level = "n2";
         note = "N3 e N4 dependem da declaração de maioridade do aceite do Termo: ficou no N2.";
       }
-      key = `durona:${level}`;
+      key = `${durona}:${level}`;
     }
   }
   const profile = PROFILES[key];
-  const studentProfanity = choice && key !== "durona" ? choice.profanity !== false : true;
+  const studentProfanity = choice && key !== durona ? choice.profanity !== false : true;
   return {
     profile,
     profanityCap: studentProfanity ? minProfanity(profile.profanity_max, input.platform.maxProfanity ?? "off") : "off",
@@ -238,6 +305,8 @@ export function signalsFromText(text: string): Signal[] {
   if (SERIOUS.test(t)) out.push("seriousness_request");
   if (JOKE.test(t) || JOKE.test(text)) out.push("joke");
   if (/\?\s*$/.test(text.trim())) out.push("question");
+  // leitura do aluno (leituraDoAluno.ts): ansiedade, frustração, desânimo, brincadeira e seriedade que os padrões acima não pegam
+  for (const s of sinaisDoRegistro(lerRegistro(text))) if (!out.includes(s)) out.push(s);
   return out;
 }
 
@@ -535,14 +604,14 @@ export function withReactionPolicy(basePrompt: string, policy: ExpressionPolicy)
   return basePrompt.includes(BASE_NO_TAGS_LINE) ? basePrompt.replace(BASE_NO_TAGS_LINE, reactionInstruction(policy)) : `${basePrompt}\n${reactionInstruction(policy)}`;
 }
 
-/** Camada de personalidade do turno (só ESTILO). Nunca recebe gabarito, explicação ou fonte. */
-export function personaPromptLayer(d: PersonaDirective): string {
+/**
+ * Parte da camada que MUDA a cada fala (voz ao vivo, item 5 do "Tutor natural" de 17/10): estado, palavrão, grito, zombaria,
+ * reações, simulado sem ajuda e calma/crise. A ponte de voz recalcula só esta parte a cada turno e troca nas instruções da sessão.
+ */
+export function personaStateLayer(d: PersonaDirective): string {
   const p = d.params;
   const pol = d.policy;
-  const lines = [
-    `QUEM VOCÊ É NESTA CONVERSA: ${d.profileName}. ${PROFILES[d.profileKey].style}`,
-    `Seu jeito (parâmetros fixos do perfil): formalidade ${level(p.formality)}; sarcasmo ${level(p.sarcasm)}; impaciência ${level(p.impatience)}; intensidade ${level(p.intensity)}; ` +
-      `provocação ${level(p.provocation)}; perguntar antes de explicar ${level(d.pedagogy.socratic)}; tamanho das falas ${p.length <= 30 ? "curto (1 a 3 frases)" : p.length <= 60 ? "médio" : "pode se estender quando pedirem"}.`,
+  return [
     `ESTADO AGORA (interno, nunca diga): ${STATE_PT[d.state]}, intensidade ${Math.round(d.intensity * 100)}/100, porque ${CAUSE_PT[d.cause] ?? "conversa"}.`,
     PROFANITY_TEXT[pol.profanity](p.profanity_frequency),
     pol.shouts
@@ -554,7 +623,6 @@ export function personaPromptLayer(d: PersonaDirective): string {
         ? "Pode ironizar o erro e a alternativa, com graça. Nunca a pessoa."
         : "Sem zombaria nesta fala.",
     reactionInstruction(pol),
-    "Contraste: não fique no mesmo humor o tempo todo; reconheça raciocínio bom do seu jeito.",
     d.pedagogy.help === "none"
       ? "SIMULADO SEM AJUDA: não dê dica, pista, eliminação de alternativa, letra nem resolução, em nenhum tom. Só fale da questão depois que a prova terminar."
       : "",
@@ -563,11 +631,35 @@ export function personaPromptLayer(d: PersonaDirective): string {
       : d.state === "empathetic" || d.state === "calm"
         ? "Agora é momento de calma: fale baixo, com respeito, acolha e só então volte ao conteúdo, sem bronca."
         : "",
-    `Como você soa (é só o tom: não copie): ${PROFILES[d.profileKey].examples.map((e) => `«${e}»`).join(" · ")}`,
+  ].filter(Boolean).join("\n");
+}
+
+/**
+ * Parte FIXA da camada (vale a conversa inteira). Com `personalityId` de uma das 4 personalidades (Durão, Tranquilo, Durona,
+ * Tranquila), entra a FICHA DO PERSONAGEM (fichas.ts) no lugar do resumo do perfil e as falas de tom passam a ser as `examples`
+ * dadas (sorteadas por conversa em quem chama, ou nenhuma); sem ficha, fica o resumo e as falas de referência do perfil.
+ */
+export function personaFixedLayer(d: PersonaDirective, opts: { personalityId?: string | null; examples?: string[] | null; limites?: LimitesDaConversa | null } = {}): string {
+  const p = d.params;
+  const ficha = opts.personalityId ? fichaDe(opts.personalityId) : null;
+  const examples = ficha ? (opts.examples ?? []) : (opts.examples ?? PROFILES[d.profileKey].examples);
+  return [
+    ficha ? `QUEM VOCÊ É NESTA CONVERSA: ${d.profileName}.` : `QUEM VOCÊ É NESTA CONVERSA: ${d.profileName}. ${PROFILES[d.profileKey].style}`,
+    // grito e palavrão da ficha pelo limite já resolvido (18+, painel, escolha do aluno); sem ele, a ficha manda seguir o ESTADO
+    ficha ? fichaVoz(ficha, opts.limites ?? null) : "",
+    `Seu jeito (parâmetros fixos do perfil): formalidade ${level(p.formality)}; sarcasmo ${level(p.sarcasm)}; impaciência ${level(p.impatience)}; intensidade ${level(p.intensity)}; ` +
+      `provocação ${level(p.provocation)}; perguntar antes de explicar ${level(d.pedagogy.socratic)}; tamanho das falas ${p.length <= 30 ? "curto (1 a 3 frases)" : p.length <= 60 ? "médio" : "pode se estender quando pedirem"}.`,
+    "Contraste: não fique no mesmo humor o tempo todo; reconheça raciocínio bom do seu jeito. O seu estado muda durante a conversa: vale sempre o ESTADO AGORA mais recente.",
+    examples.length ? `Como você soa (é só o tom: não copie e não repita estas falas): ${examples.map((e) => `«${e}»`).join(" · ")}` : "",
     PERSONALITY_LIMITS,
     "Nada de ameaça, discriminação, intimidação, humilhação ou comentário sobre a pessoa (aparência, inteligência, origem, saúde). Medicina correta vem antes da graça.",
-  ];
-  return lines.filter(Boolean).join("\n");
+    ficha ? NO_REPEAT_RULE : "",
+  ].filter(Boolean).join("\n");
+}
+
+/** Camada de personalidade do turno (só ESTILO): a parte fixa e a do estado. Nunca recebe gabarito, explicação ou fonte. */
+export function personaPromptLayer(d: PersonaDirective, opts: { personalityId?: string | null; examples?: string[] | null; limites?: LimitesDaConversa | null } = {}): string {
+  return [personaFixedLayer(d, opts), personaStateLayer(d)].join("\n");
 }
 
 /** Para o mascote (vt-mascote): expressão e animação de cada estado. */

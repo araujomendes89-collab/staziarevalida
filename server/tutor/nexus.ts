@@ -12,6 +12,7 @@ import { elevenLabsReadiness, officialVoiceForPersonality, type Approval, type R
 import { hangup, reasonError, voiceReady } from "./realtime";
 import { sttConfig, studentMicOpen } from "./stt";
 import { tutorSettings } from "./settings";
+import { naturalOpening, OPENING_WAIT_MS } from "./opening";
 import type { OfficialVoice } from "../../src/shared/tutor/officialVoices";
 
 export type ElevenBlock = "voice_off" | "not_configured" | "not_approved" | "team_only" | "student_limit" | "account_day" | "account_month";
@@ -73,8 +74,8 @@ export const minutesOf = (chars: number) => Math.floor(Math.max(0, chars) / CHAR
  * "Voz reserva" ou "Por escrito", sem nomear fornecedor. */
 export type Jeito = "eleven" | "reserva" | "escrito";
 
-/** Os três professores, na ordem dos cartões. */
-export const NEXUS_PROFESSORS = ["acolhedor", "durona", "direto"] as const;
+/** Os quatro professores, na ordem dos cartões: Stazi (Durão, Tranquilo) e Stazia (Durona, Tranquila). */
+export const NEXUS_PROFESSORS = ["durao", "acolhedor", "durona", "tranquila"] as const;
 
 export interface NexusStatus {
   voice_enabled: boolean;
@@ -92,6 +93,8 @@ export interface NexusOpen {
   reason: ElevenBlock | null;
   minutes_today: number;
   reserve_minutes: number;
+  /** A abertura criada agora pela IA, quando trocou a reserva (a tela troca o texto da fala de abertura por este). */
+  opening?: { id: number; content: string };
 }
 
 const quotaOf = (deps: TutorDeps, userId: string) => deps.db.service<TtsQuota>("ch_worker_tutor_tts_quota", { p_user: userId });
@@ -138,6 +141,21 @@ const SPOKEN_LIMITS = new Set(["student_limit", "account_day", "account_month"])
  */
 export type NexusSkip = "eleven" | "voice";
 export async function openNexus(deps: TutorDeps, userId: string, sessionId: string, force: boolean, skip: NexusSkip | null = null): Promise<NexusOpen> {
+  // conversa nova: a abertura natural (IA) é pedida junto com a escolha do jeito; só troca a reserva se ela ainda for a última fala
+  // da conversa e não tiver sido trocada (no meio da conversa, "skip", nada é pedido). Nunca falha: sem ela, fica a reserva.
+  // a tela espera a abertura para começar: espera curta (OPENING_WAIT_MS), depois fica a reserva
+  const opening = skip ? Promise.resolve(null) : naturalOpening(deps, userId, sessionId, OPENING_WAIT_MS);
+  try {
+    const r = await openNexusWay(deps, userId, sessionId, force, skip);
+    const o = await opening;
+    return o ? { ...r, opening: o } : r;
+  } catch (error) {
+    await opening;
+    throw error;
+  }
+}
+
+async function openNexusWay(deps: TutorDeps, userId: string, sessionId: string, force: boolean, skip: NexusSkip | null): Promise<NexusOpen> {
   const ctx = await deps.db.service<{ consent_pending?: boolean; session: { read_only?: boolean }; personality: { id: string } } | null>(
     "ch_worker_tutor_context", { p_user: userId, p_session_id: sessionId });
   if (!ctx) throw new TutorError("Conversa não encontrada.", 404);

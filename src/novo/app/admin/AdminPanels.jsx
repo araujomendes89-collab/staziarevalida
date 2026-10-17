@@ -745,7 +745,7 @@ const pronList = (text) =>
 const PROFANITY_CAP = [
   { value: "off", label: "Desativados para todos" },
   { value: "mild", label: "Até leves" },
-  { value: "moderate", label: "Até liberados (Durona: contra a resposta, nunca contra o aluno)" },
+  { value: "moderate", label: "Até liberados (Durona e Durão: contra a resposta, nunca contra o aluno)" },
 ];
 
 /** Mesma mensagem da trava do banco (…9550_correcoes_acesso.sql): Tutor ligado exige "Planos pagos + teste grátis". */
@@ -908,7 +908,7 @@ export function AdminTutor() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
             <TextField label="Interações de texto por dia (plano pago)" value={form.daily_message_limit} inputMode="numeric" maxLength={3} onChange={(e) => set({ daily_message_limit: e.target.value })} hint="De 1 a 500. É o teto de gasto por aluno." />
             <TextField label="Voz por dia (plano pago, minutos)" value={form.paid_voice_daily_min} inputMode="numeric" maxLength={4} onChange={(e) => set({ paid_voice_daily_min: e.target.value })} />
-            <SelectField label="Palavrões (teto para a Durona)" value={form.max_profanity} onChange={(e) => set({ max_profanity: e.target.value })} options={PROFANITY_CAP} />
+            <SelectField label="Palavrões (teto para a Durona e o Durão)" value={form.max_profanity} onChange={(e) => set({ max_profanity: e.target.value })} options={PROFANITY_CAP} />
           </div>
           <div className="sm-overline">Voz do professor (Nexus)</div>
           <Switch label="Voz do professor só para a equipe" description="Ligado: só administrador e editor ouvem a voz do professor; alunos seguem na voz reserva." checked={form.tts_team_only} onChange={(e) => set({ tts_team_only: e.target.checked })} />
@@ -974,7 +974,7 @@ export function AdminTutor() {
             <SelectField label="Voz" value={form.voice_choice} onChange={(e) => set({ voice_choice: e.target.value })} options={VOICE_NAMES} hint="Trocar a voz vale a partir da próxima ligação. Avalie com ouvido humano em português antes de fixar." />
             {form.voice_choice === "__outra" && <TextField label="Nome da voz" value={form.voice_other} maxLength={30} onChange={(e) => set({ voice_other: e.target.value })} hint="Só letras minúsculas, como aparece na OpenAI." />}
             <TextField label="Limite de cada conversa por voz (minutos)" value={form.voice_session_max_min} inputMode="numeric" maxLength={3} onChange={(e) => set({ voice_session_max_min: e.target.value })} hint="O professor termina a frase e a ligação encerra." />
-            <SelectField label="Nível da Durona" value={form.durona_level} onChange={(e) => set({ durona_level: e.target.value })} options={DURONA_LEVELS} />
+            <SelectField label="Nível da Durona e do Durão" value={form.durona_level} onChange={(e) => set({ durona_level: e.target.value })} options={DURONA_LEVELS} />
           </div>
           <Switch label="Motor emocional" description="Ligado: o humor do professor muda com os acertos e erros (frustração, paciência, inércia). Desligado: tom de base o tempo todo." checked={form.emotion_engine} onChange={(e) => set({ emotion_engine: e.target.checked })} />
           <Switch label="Piadas internas" description="O professor pode lembrar, com leveza, do assunto que mais derruba o aluno." checked={form.inside_jokes} onChange={(e) => set({ inside_jokes: e.target.checked })} />
@@ -994,7 +994,7 @@ export function AdminTutor() {
               )}
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                 {personas.data.map((p) => (
-                  <Switch key={p.id} label={`${p.emoji} ${p.name}`} description={p.default ? "Padrão: fica sempre ligado." : p.voice ? `Voz: ${p.voice}` : p.tagline} checked={p.active} disabled={p.default || personaState.busy === p.id || reason.trim().length < 10} onChange={(e) => togglePersona(p.id, e.target.checked)} />
+                  <Switch key={p.id} label={`${p.emoji} ${p.name}`} description={`${p.character === "stazia" ? "Stazia" : p.character === "stazi" ? "Stazi" : ""}${p.character ? " · " : ""}${p.default ? "Padrão: fica sempre ligado." : p.voice ? `Voz: ${p.voice}` : p.tagline}`} checked={p.active} disabled={p.default || personaState.busy === p.id || reason.trim().length < 10} onChange={(e) => togglePersona(p.id, e.target.checked)} />
                 ))}
               </div>
               {personaState.error && <div style={{ marginTop: 8 }}><Banner tone="danger">{personaState.error}</Banner></div>}

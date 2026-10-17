@@ -21,6 +21,20 @@ import { unlockAudio } from "./voice/audioUnlock.js";
 import { openGeminiLive } from "./voice/geminiLive.js";
 import { openGeminiPonte } from "./voice/geminiPonte.js";
 import { refreshVoiceLanguage, TUTOR_SPOKEN_LANGUAGE } from "../../../shared/tutor/voiceLanguage";
+import { comEspera, personaDeEspera, RodizioDeEspera, VINHETAS } from "../../../../server/tutor/conhecimento/frasesEspera";
+import { FalaDeEspera, preCarregarVinhetas } from "./voice/falaDeEspera.js";
+
+// Frases de espera (decisão do dono de 17/10): um rodízio por conversa, para não repetir frase na mesma conversa nem quando a
+// ligação cai e volta.
+const rodizios = new Map();
+const rodizioDe = (sessionId) => {
+  let x = rodizios.get(sessionId);
+  if (!x) {
+    x = new RodizioDeEspera();
+    rodizios.set(sessionId, x);
+  }
+  return x;
+};
 
 const CALLS_URL = "https://api.openai.com/v1/realtime/calls";
 const CONNECT_TIMEOUT_MS = 20_000;
@@ -104,8 +118,35 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   const [streams, setStreams] = React.useState({ input: null, output: null });
   const [provider, setProvider] = React.useState(null);
   const [playbackBlocked, setPlaybackBlocked] = React.useState(false);
+  // frase de espera mostrada enquanto a busca no material passa de ~600 ms (null: nada a mostrar)
+  const [conferindo, setConferindo] = React.useState(null);
   const r = React.useRef({ handled: new Set(), transcript: [] });
   const stateRef = React.useRef("idle");
+  // frase de espera FALADA (voice/falaDeEspera.js): gravação já afinada, pelo tocador da voz do Gemini; enquanto toca, o personagem
+  // fica "falando" (a boca mexe) e depois volta ao estado de antes; o texto da frase só some quando a gravação acaba
+  const falaEspera = React.useRef(null);
+  falaEspera.current ??= new FalaDeEspera({
+    controle: () => r.current.gem ?? null,
+    podeFalar: () => {
+      const cur = r.current;
+      // ninguém falando: nem o professor (tocador ocupado), nem o aluno (microfone ouviu voz há pouco; interrompendo; pausado)
+      return cur.provider === "gemini" && !cur.gem?.speaking && !cur.gem?.alunoFalando && ["listening", "thinking", "ready"].includes(stateRef.current);
+    },
+    aoComecar: () => {
+      r.current.esperaEstadoAntes = stateRef.current;
+      setState("speaking");
+    },
+    aoTerminar: () => {
+      const cur = r.current;
+      const antes = cur.esperaEstadoAntes;
+      cur.esperaEstadoAntes = null;
+      if (stateRef.current === "speaking" && !cur.gem?.speaking) setState(antes === "thinking" ? "thinking" : "listening");
+      if (cur.esperaApagar) {
+        cur.esperaApagar = false;
+        setConferindo(null);
+      }
+    },
+  });
   const cb = React.useRef({});
   cb.current = { onTranscript, onWarning, onAvatar };
   const setState = (next) => {
@@ -131,6 +172,8 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   const teardown = (keep = false) => {
     const cur = r.current;
     clearTimers();
+    falaEspera.current?.parar(false);
+    setConferindo(null);
     try {
       cur.gem?.close();
     } catch {
@@ -200,6 +243,11 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     const id = cur.voiceCallId;
     voiceApi.transcript(backend, id, role, text).then(
       (res) => {
+        // reserva da OpenAI: o humor do professor mudou com o que o aluno disse; entra na conversa como instrução, SEM pedir resposta
+        // (vale a partir da próxima fala; na ponte do Gemini isso é feito no servidor)
+        if (role === "student" && res?.humor && r.current.provider === "realtime" && r.current.voiceCallId === id) {
+          send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: `Atualização do seu estado agora (vale no lugar do estado anterior; não leia em voz alta, não comente):\n${res.humor}` }] } });
+        }
         // o servidor conferiu o que foi dito: se escapou algo, o professor corrige na hora
         if (role !== "tutor" || !res?.correction) return;
         if (r.current.provider === "gemini") r.current.gem?.sendText(`Instrução do sistema (não leia em voz alta; diga a correção agora, do seu jeito): ${res.correction}`);
@@ -340,7 +388,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
         setState("thinking");
         for (const c of calls) {
           const t0 = Date.now();
-          const out = await voiceApi.tool(backend, id, c.name, c.arguments ?? "{}").catch((e) => ({ output: { error: e.message } }));
+          const out = await comFraseDeEspera(c.name, voiceApi.tool(backend, id, c.name, c.arguments ?? "{}").catch((e) => ({ output: { error: e.message } })));
           const m = metrics();
           m.tools++;
           m.toolSum += Date.now() - t0;
@@ -465,6 +513,23 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     }
   };
 
+  // frase de espera (frasesEspera.ts): sem a personalidade (servidor antigo), nada aparece
+  const mostrarEspera = () => {
+    const p = r.current.personaEspera;
+    if (!p) return;
+    const { frase, vinheta } = rodizioDe(sessionId).proxima(p);
+    r.current.esperaApagar = false;
+    setConferindo(frase);
+    if (vinheta) void falaEspera.current.tocar(vinheta);
+  };
+  // a busca terminou: o texto some (se a gravação ainda estiver tocando, some quando ela acabar ou for cortada)
+  const apagarEspera = () => {
+    if (falaEspera.current.ativa) r.current.esperaApagar = true;
+    else setConferindo(null);
+  };
+  /** Busca no material pelo navegador: passou de ~600 ms, a frase aparece até a resposta voltar. */
+  const comFraseDeEspera = (nome, trabalho) => (nome === "get_topic_context" ? comEspera(trabalho, mostrarEspera, apagarEspera) : trabalho);
+
   /** O professor pediu ferramentas: o servidor executa; o resultado volta para ele continuar falando. */
   const geminiTools = async (calls) => {
     const cur = r.current;
@@ -474,7 +539,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     for (const c of calls) {
       if (!c?.name) continue;
       const t0 = Date.now();
-      const out = await voiceApi.tool(backend, id, c.name, JSON.stringify(c.args ?? {})).catch((e) => ({ output: { error: e.message } }));
+      const out = await comFraseDeEspera(c.name, voiceApi.tool(backend, id, c.name, JSON.stringify(c.args ?? {})).catch((e) => ({ output: { error: e.message } })));
       const m = metrics();
       m.tools++;
       m.toolSum += Date.now() - t0;
@@ -648,6 +713,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
       }
     }
     r.current.voiceCallId = data.voice_call_id;
+    r.current.personaEspera = data.persona_espera ? personaDeEspera(data.persona_espera) : null;
     r.current.provider = "realtime";
     metrics().provider = "realtime";
     setProvider("realtime");
@@ -713,6 +779,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
       return;
     }
     r.current.voiceCallId = data.voice_call_id;
+    r.current.personaEspera = data.persona_espera ? personaDeEspera(data.persona_espera) : null;
     r.current.provider = data.provider === "live" ? "live" : "realtime";
     metrics().provider = r.current.provider;
     setProvider(r.current.provider);
@@ -768,7 +835,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
       return;
     }
     const cur = r.current;
-    Object.assign(cur, { voiceCallId: data.voice_call_id, provider: "gemini", stream, track: stream.getAudioTracks?.()[0] ?? null });
+    Object.assign(cur, { voiceCallId: data.voice_call_id, provider: "gemini", stream, track: stream.getAudioTracks?.()[0] ?? null, personaEspera: data.persona_espera ? personaDeEspera(data.persona_espera) : null });
     metrics().provider = "gemini";
     setProvider("gemini");
     setStreams({ input: stream, output: null });
@@ -804,14 +871,24 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
             cur.gem?.sendText("O aluno acabou de abrir a conversa por voz. Abra do seu jeito, numa frase curta.");
           },
           onAudio: () => {
-            if (stateRef.current !== "speaking" && stateRef.current !== "paused") speakingStarted();
+            // a resposta chegou: a frase de espera falada já foi cortada pelo tocador; o professor começa a falar de verdade
+            const cortou = falaEspera.current.parar(false);
+            r.current.esperaEstadoAntes = null;
+            apagarEspera();
+            if (cortou || (stateRef.current !== "speaking" && stateRef.current !== "paused")) speakingStarted();
           },
+          // ponte: a busca no material passou de ~600 ms (frase de espera) e terminou (as fontes chegaram)
+          onWaiting: () => mostrarEspera(),
+          onWaitingEnd: () => apagarEspera(),
           onIdle: () => speakingStopped(),
           onInterrupted: () => {
+            falaEspera.current.parar(false);
             metrics().interruptions++;
             setState((s) => (s === "paused" ? s : "listening"));
           },
           onTranscript: (role, text, finished) => geminiDelta(role, text, finished),
+          // o microfone ouviu o aluno começar a falar: a frase de espera falada para na hora (a transcrição chega atrasada)
+          onVozDoAluno: () => falaEspera.current.parar(),
           onTurnComplete: () => {
             if (r.current.utter?.role === "tutor") finalizeUtterance();
           },
@@ -840,6 +917,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
       }
       cur.gem = gem;
       setStreams({ input: stream, output: gem.outputStream });
+      if (cur.personaEspera) preCarregarVinhetas(VINHETAS[cur.personaEspera]); // frases de espera faladas: prontas antes de precisar
     } catch (e) {
       await giveUp(e?.message ?? "connect");
     }
@@ -1042,7 +1120,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   return {
     state, error, remaining, start, stop, interrupt, pause, resume, setVolume, enablePlayback, playbackBlocked,
     muted, mute: () => setMuted(true), unmute: () => setMuted(false), toggleMute: () => setMuted(!r.current.muted),
-    sendText, captions, streams, provider,
+    sendText, captions, streams, provider, conferindo,
     active: !["idle", "ended", "error"].includes(state),
   };
 }

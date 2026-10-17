@@ -5,6 +5,7 @@
  * professores. Esta camada só decide o JEITO de falar (tom, humor, cobrança, tamanho). Ela é montada depois do conteúdo e
  * nunca toca em fato médico, gabarito ou segurança.
  */
+import { fichaDe, fichaTexto, type LimitesDaConversa } from "./fichas";
 
 export interface PersonalityParams {
   humor: number;
@@ -147,27 +148,70 @@ export function swearingNote(profanity: ProfanityLevel, eff: PersonalityParams, 
   );
 }
 
+/** Quantas falas de referência de tom entram por conversa (decisão de 17/10: 2 a 3, sorteadas, não sempre as mesmas). */
+export const TONE_EXAMPLES = 3;
+/** TUTOR_TOM_EXEMPLOS (0 a 6) muda a quantidade sem publicar código; 0 tira as falas de referência (fica só a ficha). */
+export const toneExamples = (env: NodeJS.ProcessEnv = process.env): number => {
+  const n = Number.parseInt((env.TUTOR_TOM_EXEMPLOS ?? "").trim(), 10);
+  return Number.isFinite(n) && n >= 0 && n <= 6 ? n : TONE_EXAMPLES;
+};
+
+/**
+ * Sorteia `k` falas de referência pela conversa (`seed`): a mesma conversa vê sempre as mesmas (o tom não pula entre turnos),
+ * conversas diferentes veem outras. A ordem original é mantida. Sem semente, as primeiras.
+ */
+export function sampleExamples(list: string[], k = TONE_EXAMPLES, seed: string | null = null): string[] {
+  if (list.length <= k) return list.slice();
+  if (!seed) return list.slice(0, k);
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  const score = (i: number) => {
+    let x = Math.imul(h ^ (i + 1) * 0x9e3779b1, 0x85ebca6b);
+    x ^= x >>> 13;
+    x = Math.imul(x, 0xc2b2ae35);
+    return (x ^ (x >>> 16)) >>> 0;
+  };
+  const chosen = new Set(list.map((_, i) => i).sort((a, b) => score(a) - score(b)).slice(0, k));
+  return list.filter((_, i) => chosen.has(i));
+}
+
+/**
+ * Fala nova a cada vez (decisão de 17/10: proibir repetição). Vale para todo personagem; a lista do que já foi dito nesta conversa
+ * chega como dado (evite_repetir e comecos_ja_usados em <estado_do_professor>).
+ */
+export const NO_REPEAT_RULE =
+  "Toda fala é criada agora, para este aluno e este momento. Não repita frase, bordão nem começo de fala que já apareceu nesta conversa, " +
+  "nem as falas de referência; a mesma emoção, dita de outro jeito. Varie também o FIM da fala, o jeito de passar a vez: às vezes uma pergunta direta sem " +
+  "transição, às vezes devolve sem perguntar, às vezes só reage e para. Nenhuma forma de passar a vez se repete na conversa (no texto, as já usadas vêm em " +
+  "transicoes_ja_usadas), e estas nunca viram fórmula: «agora me diz», «agora me responde», «me conta», «mandou bem», «fecha com chave de ouro», «o que você faz».";
+
 /**
  * Texto da camada de personalidade (só ESTILO): quem é o personagem, como ele está agora e como ele soa.
  * `mood` é o estado da sessão já em texto (emotion.ts) e `swearing` a frequência de palavrão que ele pede.
+ * As 4 personalidades do Stazi e da Stazia usam a FICHA DO PERSONAGEM (fichas.ts) no lugar do style_notes do banco.
+ * `opts.seed` (o id da conversa) sorteia as falas de referência de tom.
  */
 export function personalityLayer(
   p: Personality, eff: PersonalityParams, profanity: ProfanityLevel, intensity: number, extra: string | null = null,
   mood: { text: string; swearing: string; label: string; strong?: boolean } | null = null,
+  opts: { seed?: string | null; limites?: LimitesDaConversa | null } = {},
 ): string {
   // falas de referência com palavrão só quando o estado pede (a Durona calma não xinga)
   const strong = profanity === "moderate" && (p.examples_strong?.length ?? 0) > 0 && (!mood || Boolean(mood.strong));
-  const examples = (strong ? p.examples_strong! : (p.examples ?? [])).slice(0, 6);
+  const k = toneExamples();
+  const examples = k > 0 ? sampleExamples(strong ? p.examples_strong! : (p.examples ?? []), k, opts.seed ?? null) : [];
   const level = Math.max(1, Math.min(5, Math.round(intensity)));
+  const ficha = fichaDe(p.id);
   return [
     `QUEM VOCÊ É NESTA CONVERSA: ${p.name}${mood ? "" : ` (intensidade ${level} de 5)`}.`,
-    p.style_notes,
+    ficha ? fichaTexto(ficha, opts.limites ?? { palavrao: profanity, gritos: true }) : p.style_notes,
     `Seu jeito: ${traits(eff).join("; ")}.`,
     mood ? mood.text : "",
     `${mood ? "" : `${INTENSITY_NOTE[level]} `}Você é esse personagem do começo ao fim: não saia dele, não peça desculpa pelo jeito e não explique que é brincadeira. O aluno escolheu este professor porque quer exatamente esse tratamento.`,
     examples.length ? `Como você soa (é só o tom: não copie e não repita estas falas): ${examples.map((e) => `«${e}»`).join(" · ")}` : "",
     swearingNote(profanity, eff, p.params.profanity >= 20, mood?.swearing ?? null),
     PERSONALITY_LIMITS,
+    NO_REPEAT_RULE,
     extra ? `Só nesta resposta: ${extra}` : "",
   ]
     .filter(Boolean)

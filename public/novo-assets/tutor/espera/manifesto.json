@@ -1,0 +1,365 @@
+{
+  "gerado_em": "2026-10-17T20:28:41.600Z",
+  "modelo": "gemini-3.8-flash-tts",
+  "formato": "mp3 mono 24 kHz 64kbps",
+  "observacao": "Stazi já vem afinado (+3 semitons, o mesmo AfinadorStream da voz ao vivo): o app toca com semitons 0.",
+  "alvo_lufs": {
+    "stazi": -11.2,
+    "stazia": -12.4
+  },
+  "personas": {
+    "durao": {
+      "personagem": "Stazi",
+      "personalidade": "Durão",
+      "voz": "Zubenelgenubi",
+      "semitons_aplicados": 3,
+      "frases": [
+        {
+          "n": 1,
+          "texto": "Segura aí que eu vou checar a fonte, não vou chutar número.",
+          "url": "/novo-assets/tutor/espera/stazi-durao-1.mp3",
+          "segundos": 3.7,
+          "bytes": 30336,
+          "lufs": -12.7,
+          "pico_db": -0.4,
+          "sha256": "8d7d5dc06a2fd375"
+        },
+        {
+          "n": 2,
+          "texto": "Peraí, deixa eu abrir o material antes de falar qualquer coisa.",
+          "url": "/novo-assets/tutor/espera/stazi-durao-2.mp3",
+          "segundos": 3.1,
+          "bytes": 25536,
+          "lufs": -13.1,
+          "pico_db": -1.9,
+          "sha256": "e18518652ff67de8"
+        },
+        {
+          "n": 3,
+          "texto": "Um segundo. Resposta no chute aqui não sai.",
+          "url": "/novo-assets/tutor/espera/stazi-durao-3.mp3",
+          "segundos": 3.24,
+          "bytes": 26688,
+          "lufs": -12.9,
+          "pico_db": -1.4,
+          "sha256": "c6c1d1ed522b55ce"
+        },
+        {
+          "n": 4,
+          "texto": "Aguenta aí, tô conferindo direitinho.",
+          "url": "/novo-assets/tutor/espera/stazi-durao-4.mp3",
+          "segundos": 2.32,
+          "bytes": 19200,
+          "lufs": -12.7,
+          "pico_db": -1.3,
+          "sha256": "cd6cf96b48c18440"
+        },
+        {
+          "n": 5,
+          "texto": "Deixa eu olhar isso com cuidado, que prova não perdoa achismo.",
+          "url": "/novo-assets/tutor/espera/stazi-durao-5.mp3",
+          "segundos": 4.3,
+          "bytes": 35136,
+          "lufs": -13.1,
+          "pico_db": -2.2,
+          "sha256": "2977addd95d4fe72"
+        },
+        {
+          "n": 6,
+          "texto": "Pera, vou conferir na fonte. De cabeça é que a gente erra.",
+          "url": "/novo-assets/tutor/espera/stazi-durao-6.mp3",
+          "segundos": 4.1,
+          "bytes": 33408,
+          "lufs": -13.6,
+          "pico_db": -1.3,
+          "sha256": "fbd2417a653fc8a2"
+        },
+        {
+          "n": 7,
+          "texto": "Calma que eu tô checando. Melhor certo do que rápido.",
+          "url": "/novo-assets/tutor/espera/stazi-durao-7.mp3",
+          "segundos": 3.42,
+          "bytes": 28032,
+          "lufs": -13.2,
+          "pico_db": -1.5,
+          "sha256": "5d2af30fdb0d48e7"
+        },
+        {
+          "n": 8,
+          "texto": "Dá um segundinho, tô indo atrás do que está escrito.",
+          "url": "/novo-assets/tutor/espera/stazi-durao-8.mp3",
+          "segundos": 2.56,
+          "bytes": 21120,
+          "lufs": -13.1,
+          "pico_db": -1.9,
+          "sha256": "c12dbd1c2e683374"
+        }
+      ]
+    },
+    "acolhedor": {
+      "personagem": "Stazi",
+      "personalidade": "Tranquilo",
+      "voz": "Zubenelgenubi",
+      "semitons_aplicados": 3,
+      "frases": [
+        {
+          "n": 1,
+          "texto": "Deixa eu dar uma olhada no material, rapidinho.",
+          "url": "/novo-assets/tutor/espera/stazi-tranquilo-1.mp3",
+          "segundos": 2.24,
+          "bytes": 18624,
+          "lufs": -13.7,
+          "pico_db": -2.2,
+          "sha256": "729a3c277172b7b5"
+        },
+        {
+          "n": 2,
+          "texto": "Pera, vou conferir isso com calma.",
+          "url": "/novo-assets/tutor/espera/stazi-tranquilo-2.mp3",
+          "segundos": 2.66,
+          "bytes": 21888,
+          "lufs": -13.7,
+          "pico_db": -0.8,
+          "sha256": "d37f5f8780cd0b46"
+        },
+        {
+          "n": 3,
+          "texto": "Dá uma preguicinha, mas eu confiro na fonte antes.",
+          "url": "/novo-assets/tutor/espera/stazi-tranquilo-3.mp3",
+          "segundos": 3.7,
+          "bytes": 30336,
+          "lufs": -12.9,
+          "pico_db": -2.1,
+          "sha256": "3147359dde05e016"
+        },
+        {
+          "n": 4,
+          "texto": "Segura um pouquinho que eu tô olhando aqui.",
+          "url": "/novo-assets/tutor/espera/stazi-tranquilo-4.mp3",
+          "segundos": 2.04,
+          "bytes": 17088,
+          "lufs": -13.3,
+          "pico_db": -1.8,
+          "sha256": "30598b41bc18611e"
+        },
+        {
+          "n": 5,
+          "texto": "Vou dar uma conferida e já a gente segue.",
+          "url": "/novo-assets/tutor/espera/stazi-tranquilo-5.mp3",
+          "segundos": 2.84,
+          "bytes": 23424,
+          "lufs": -12.7,
+          "pico_db": -2.2,
+          "sha256": "4924cf8695d395b0"
+        },
+        {
+          "n": 6,
+          "texto": "Um instante, tô procurando no material com calma.",
+          "url": "/novo-assets/tutor/espera/stazi-tranquilo-6.mp3",
+          "segundos": 3.14,
+          "bytes": 25728,
+          "lufs": -13.3,
+          "pico_db": -1.3,
+          "sha256": "bdfc8a608e8e38af"
+        },
+        {
+          "n": 7,
+          "texto": "Deixa eu ver direitinho aqui, que de cabeça não vale.",
+          "url": "/novo-assets/tutor/espera/stazi-tranquilo-7.mp3",
+          "segundos": 3.04,
+          "bytes": 24960,
+          "lufs": -13,
+          "pico_db": -1.8,
+          "sha256": "4ec3f43b02fffa4e"
+        },
+        {
+          "n": 8,
+          "texto": "Calma aí, vou confirmar isso antes de falar.",
+          "url": "/novo-assets/tutor/espera/stazi-tranquilo-8.mp3",
+          "segundos": 2.62,
+          "bytes": 21696,
+          "lufs": -13,
+          "pico_db": -2.5,
+          "sha256": "990080a4e0707c6f"
+        }
+      ]
+    },
+    "durona": {
+      "personagem": "Stazia",
+      "personalidade": "Durona",
+      "voz": "Kore",
+      "semitons_aplicados": 0,
+      "frases": [
+        {
+          "n": 1,
+          "texto": "Segura aí, vou conferir na fonte. Chute não é comigo.",
+          "url": "/novo-assets/tutor/espera/stazia-durona-1.mp3",
+          "segundos": 4.48,
+          "bytes": 36480,
+          "lufs": -13.8,
+          "pico_db": -1.5,
+          "sha256": "062b7bd70527c486"
+        },
+        {
+          "n": 2,
+          "texto": "Peraí que eu vou abrir a diretriz antes de te responder.",
+          "url": "/novo-assets/tutor/espera/stazia-durona-2.mp3",
+          "segundos": 3.2,
+          "bytes": 26304,
+          "lufs": -13.9,
+          "pico_db": -1.6,
+          "sha256": "94c64fe414d8ec18"
+        },
+        {
+          "n": 3,
+          "texto": "Um instante. Isso eu confiro antes de falar.",
+          "url": "/novo-assets/tutor/espera/stazia-durona-3.mp3",
+          "segundos": 3.16,
+          "bytes": 25920,
+          "lufs": -13.7,
+          "pico_db": -1.3,
+          "sha256": "4f7381742e78e80d"
+        },
+        {
+          "n": 4,
+          "texto": "Calma, tô checando. Responder de cabeça é pedir pra errar.",
+          "url": "/novo-assets/tutor/espera/stazia-durona-4.mp3",
+          "segundos": 3.84,
+          "bytes": 31488,
+          "lufs": -13.9,
+          "pico_db": -1.1,
+          "sha256": "b148c7534df5203b"
+        },
+        {
+          "n": 5,
+          "texto": "Pera aí, deixa eu olhar o que está escrito de verdade.",
+          "url": "/novo-assets/tutor/espera/stazia-durona-5.mp3",
+          "segundos": 2.84,
+          "bytes": 23424,
+          "lufs": -14.1,
+          "pico_db": -1.2,
+          "sha256": "d7b0c9f1b1765339"
+        },
+        {
+          "n": 6,
+          "texto": "Só um segundo, tô conferindo aqui no material.",
+          "url": "/novo-assets/tutor/espera/stazia-durona-6.mp3",
+          "segundos": 3.16,
+          "bytes": 25920,
+          "lufs": -13.3,
+          "pico_db": -1.6,
+          "sha256": "4957912ab5da205c"
+        },
+        {
+          "n": 7,
+          "texto": "Deixa eu checar direito, que achismo eu deixo pros outros.",
+          "url": "/novo-assets/tutor/espera/stazia-durona-7.mp3",
+          "segundos": 4.16,
+          "bytes": 33984,
+          "lufs": -13.3,
+          "pico_db": -1.2,
+          "sha256": "6190839ca6771706"
+        },
+        {
+          "n": 8,
+          "texto": "Rapidinho: vou confirmar isso na fonte.",
+          "url": "/novo-assets/tutor/espera/stazia-durona-8.mp3",
+          "segundos": 2.68,
+          "bytes": 22080,
+          "lufs": -14.1,
+          "pico_db": 0.1,
+          "sha256": "aa0def81b3d51782"
+        }
+      ]
+    },
+    "tranquila": {
+      "personagem": "Stazia",
+      "personalidade": "Tranquila",
+      "voz": "Kore",
+      "semitons_aplicados": 0,
+      "frases": [
+        {
+          "n": 1,
+          "texto": "Deixa eu conferir isso com calma na diretriz…",
+          "url": "/novo-assets/tutor/espera/stazia-tranquila-1.mp3",
+          "segundos": 3.76,
+          "bytes": 30720,
+          "lufs": -13.7,
+          "pico_db": -0.2,
+          "sha256": "8f062b8f567ebb54"
+        },
+        {
+          "n": 2,
+          "texto": "Só um instante, tô olhando no material com cuidado.",
+          "url": "/novo-assets/tutor/espera/stazia-tranquila-2.mp3",
+          "segundos": 3.72,
+          "bytes": 30528,
+          "lufs": -13.6,
+          "pico_db": -0.3,
+          "sha256": "1bf0a8eea1b3f093"
+        },
+        {
+          "n": 3,
+          "texto": "Vou confirmar na fonte antes, tá bom?",
+          "url": "/novo-assets/tutor/espera/stazia-tranquila-3.mp3",
+          "segundos": 3.04,
+          "bytes": 24960,
+          "lufs": -13.6,
+          "pico_db": -1.9,
+          "sha256": "98354b87ecdf026b"
+        },
+        {
+          "n": 4,
+          "texto": "Calma, deixa eu checar direitinho aqui.",
+          "url": "/novo-assets/tutor/espera/stazia-tranquila-4.mp3",
+          "segundos": 2.72,
+          "bytes": 22464,
+          "lufs": -13.6,
+          "pico_db": -1.5,
+          "sha256": "68e53778aeeeb9ec"
+        },
+        {
+          "n": 5,
+          "texto": "Um momentinho, tô conferindo com atenção.",
+          "url": "/novo-assets/tutor/espera/stazia-tranquila-5.mp3",
+          "segundos": 3.16,
+          "bytes": 25920,
+          "lufs": -13.7,
+          "pico_db": -0.6,
+          "sha256": "1036a44357b1add4"
+        },
+        {
+          "n": 6,
+          "texto": "Deixa eu ver o que a fonte diz, sem pressa.",
+          "url": "/novo-assets/tutor/espera/stazia-tranquila-6.mp3",
+          "segundos": 3.32,
+          "bytes": 27264,
+          "lufs": -13.5,
+          "pico_db": -1.8,
+          "sha256": "39ba1396fc2358a6"
+        },
+        {
+          "n": 7,
+          "texto": "Um minutinho, já te conto o que a fonte diz.",
+          "url": "/novo-assets/tutor/espera/stazia-tranquila-7.mp3",
+          "segundos": 2.8,
+          "bytes": 23040,
+          "lufs": -13.6,
+          "pico_db": -1.6,
+          "sha256": "6bcfded7e3146f8d"
+        },
+        {
+          "n": 8,
+          "texto": "Vou dar uma olhada cuidadosa aqui antes, tá?",
+          "url": "/novo-assets/tutor/espera/stazia-tranquila-8.mp3",
+          "segundos": 3.36,
+          "bytes": 27648,
+          "lufs": -14.1,
+          "pico_db": -1.2,
+          "sha256": "eae36dea08b66090"
+        }
+      ]
+    }
+  },
+  "custo_gravacao_usd": 0.02592
+}

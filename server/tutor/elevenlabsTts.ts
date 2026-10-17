@@ -3,11 +3,12 @@ import type { SpeechAudio, SpeechProvider, VoiceProfile } from "./speech";
 import type { TutorDeps } from "./engine";
 import { elevenLabsVoiceSettings, SPEED_RANGE, TAG_RULES, type SpeechDirection } from "./speechDirector";
 import { OFFICIAL_VOICES, type OfficialVoice } from "../../src/shared/tutor/officialVoices";
+import { familyOf } from "./emotion";
 import { elevenLabsConfiguration, elevenLabsReadiness, officialVoiceForPersonality, voiceFingerprint } from "./officialVoices";
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 /** Tags escolhidas pelo Stazia, nunca interpretadas de prompts ou histórico pelo provedor. */
-export function officialSpeechDirection(id: OfficialVoice, direction: SpeechDirection = {}, model = "eleven_v3") {
+export function officialSpeechDirection(id: OfficialVoice, direction: SpeechDirection = {}, model = "eleven_v3", personality = "") {
   const intensity = Number.isFinite(direction.intensity) ? clamp(Number(direction.intensity), 0, 1) : 0;
   const base = OFFICIAL_VOICES[id];
   const settings = elevenLabsVoiceSettings({ ...direction, intensity, speed: base.speed });
@@ -17,7 +18,9 @@ export function officialSpeechDirection(id: OfficialVoice, direction: SpeechDire
     // v3 usa estabilidade discreta; não aceita os valores contínuos do diretor v2.
     settings.stability = 0.5;
     const emotion = direction.emotion ?? "";
-    const own: Record<string, string> = id === "durona" ? TAG_RULES.durona : id === "tranquilo" ? TAG_RULES.tranquilo : {};
+    // a marcação vem da personalidade (Durão/Durona e Tranquilo/Tranquila), não do personagem: a voz é a mesma nas duas
+    const family = familyOf(personality);
+    const own: Record<string, string> = family === "durona" ? TAG_RULES.durona : family === "acolhedor" || family === "tranquilo" ? TAG_RULES.tranquilo : {};
     if (intensity >= TAG_RULES.minIntensity && Object.hasOwn(own, emotion)) tag = own[emotion];
     if (!tag && Object.hasOwn(TAG_RULES.good, emotion)) tag = TAG_RULES.good[emotion as keyof typeof TAG_RULES.good];
     const { use_speaker_boost: _unused, ...v3Settings } = settings;
@@ -51,7 +54,7 @@ export class OfficialElevenLabsSpeech implements SpeechProvider {
     // o aviso é em português simples; o detalhe técnico (nome da variável) segue no erro, que só vai para o registro do servidor
     if (!row.ready) throw new Error([row.pending || readiness.pending || "Voz oficial não configurada.", row.detail || readiness.detail].filter(Boolean).join(" "));
     if (!text.trim() || text.length > 4000) throw new Error("Texto de voz vazio ou acima de 4.000 caracteres.");
-    const { tag, settings } = officialSpeechDirection(id, voice.direction, this.model);
+    const { tag, settings } = officialSpeechDirection(id, voice.direction, this.model, voice.personality);
     // Colchetes vindos do texto não podem virar instruções de áudio do provedor. Preserva as palavras.
     const literal = text.replaceAll("[", "(").replaceAll("]", ")");
     let response: Response;

@@ -106,8 +106,8 @@ export function VoiceReactionsPanel() {
 
       <div className="voice-reactions__explosiva">
         <Switch
-          label="Durona Explosiva disponível para os alunos"
-          description="Ligada para todos (todos são médicos maiores de 18). Quem escolhe a Durona começa no N3 Estressada, com gritos e palavrões; N3 e N4 dependem da declaração de 18+ no aceite do Termo. O aluno pode baixar o nível e desligar gritos e palavrões nas preferências."
+          label="Durona Explosiva (e Durão) disponível para os alunos"
+          description="Ligada para todos (todos são médicos maiores de 18). Quem escolhe a Durona ou o Durão começa no N3 Estressada, com gritos e palavrões; N3 e N4 dependem da declaração de 18+ no aceite do Termo. O aluno pode baixar o nível e desligar gritos e palavrões nas preferências."
           checked={explosiva}
           onChange={(e) => { setExplosiva(e.target.checked); setState({ saving: false, error: null, done: false }); }}
         />
@@ -116,7 +116,7 @@ export function VoiceReactionsPanel() {
       <Tabs wrap label="Professor e nível" value={profile} onChange={setProfile} tabs={REACTION_PROFILES.map((p) => ({ value: p.key, label: p.label, count: countOf(p.key) || undefined }))} />
       <p className="voice-reactions__note" role="note">
         <strong>{current.label}</strong>: {current.note}.
-        {current.level !== "padrao" && !explosiva ? " A Durona Explosiva está desligada: estas escolhas ficam guardadas e só valem depois de ligar." : ""}
+        {current.level !== "padrao" && !explosiva ? " A Durona Explosiva está desligada (vale também para o Durão): estas escolhas ficam guardadas e só valem depois de ligar." : ""}
       </p>
 
       <ul className="voice-reactions__list" aria-label={`Reações de ${current.label}`}>

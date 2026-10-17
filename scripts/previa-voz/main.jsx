@@ -1,19 +1,37 @@
-// Prévia do Voice Tutor (Fase 2, só teste): conversa por voz com a Durona Explosiva sobre uma questão de TESTE (anafilaxia),
-// pelo caminho escolhido pelo dono: Gemini Live no VERTEX, pela ponte (a mesma do Cloud Run) e com o cliente de voz do app.
+// Prévia do Voice Tutor (só teste): conversa por voz com o Stazi ou a Stazia sobre uma questão de TESTE (anafilaxia), pelo
+// caminho escolhido pelo dono: Gemini Live no VERTEX, pela ponte (a mesma do Cloud Run) e com o cliente de voz do app.
+// 17/10/2026: seletor de personagem (Stazi / Stazia) e personalidade (Stazi: Durão, Tranquilo; Stazia: Durona, Tranquila). A voz e a
+// afinação vêm do personagem (o servidor de teste decide); no lugar da esfera, o personagem animado do app (PersonagemTutor).
 import { createRoot } from "react-dom/client";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { inicial, proximo, estadoVisivel, NOMES } from "./estados.js";
 import { criarMotorGemini } from "./motorGemini.js";
+import { PersonagemTutor } from "../../src/novo/app/tutor/personagens/PersonagemTutor.jsx";
+import { PERSONAGENS } from "../../src/novo/app/tutor/personagens/personagens.js";
+import { AudioPlayer } from "../../src/novo/app/tutor/voice/audioPlayer.js";
 import "./previa.css";
 
-const VOZES = ["Kore", "Aoede", "Leda", "Zephyr", "Charon", "Puck"];
-const NIVEIS = [["n1", "N1 Direta"], ["n2", "N2 Sarcástica"], ["n3", "N3 Estressada (padrão)"], ["n4", "N4 Explosiva"]];
+// para o teste automático conferir que a voz passa pelo afinador (o mesmo módulo que o geminiPonte usa)
+window.__AudioPlayer = AudioPlayer;
+
+const PERSONALIDADES = {
+  stazi: [["durao", "Durão"], ["acolhedor", "Tranquilo"]],
+  stazia: [["durona", "Durona"], ["tranquila", "Tranquila"]],
+};
+const DURO = new Set(["durao", "durona"]);
+const NIVEIS = [["n1", "N1 Direto(a)"], ["n2", "N2 Sarcástico(a)"], ["n3", "N3 Estressado(a) (padrão)"], ["n4", "N4 Explosivo(a)"]];
+// estado da conversa da prévia → estado do desenho (as mesmas palavras da esfera do app)
+const ESTADO_DESENHO = {
+  idle: "idle", connecting: "connecting", listening: "listening", user_speaking: "listening", processing: "thinking", tutor_speaking: "speaking",
+  interrupted: "interrupted", reconnecting: "reconnecting", muted: "paused", error: "error", ended: "ended",
+};
 
 const mediana = (xs) => { if (!xs.length) return null; const s = [...xs].sort((a, b) => a - b); return s[Math.floor((s.length - 1) / 2)]; };
 
 function App() {
   const [estado, despachar] = useReducer(proximo, inicial);
-  const [voz, setVoz] = useState("Kore");
+  const [personagem, setPersonagem] = useState("stazi");
+  const [personalidade, setPersonalidade] = useState("durao");
   const [nivel, setNivel] = useState("n3");
   const [gritos, setGritos] = useState(true);
   const [palavroes, setPalavroes] = useState(true);
@@ -24,6 +42,9 @@ function App() {
   const [lat, setLat] = useState([]);
   const [interr, setInterr] = useState([]);
   const [uso, setUso] = useState(null);
+  const [sessao, setSessao] = useState(null);
+  const [fluxos, setFluxos] = useState({ entrada: null, saida: null });
+  const [emocao, setEmocao] = useState("neutral");
   const motorRef = useRef(null);
   const inicio = useRef(0);
 
@@ -40,6 +61,9 @@ function App() {
       return;
     }
     if (ev.tipo === "log") return anotar(ev.texto);
+    if (ev.tipo === "sessao") return setSessao(ev);
+    if (ev.tipo === "fluxos") return setFluxos({ entrada: ev.entrada, saida: ev.saida });
+    if (ev.tipo === "emocao") { anotar(`emoção do personagem: ${ev.valor}`); return setEmocao(ev.valor); }
     anotar(`evento: ${ev.tipo}${ev.mensagem ? ` (${ev.mensagem})` : ""}${ev.motivo ? ` (${ev.motivo})` : ""}`);
     despachar(ev);
   }, []);
@@ -54,13 +78,20 @@ function App() {
 
   const atual = () => motorRef.current;
 
+  function trocarPersonagem(id) {
+    setPersonagem(id);
+    setPersonalidade(PERSONALIDADES[id][0][0]);
+    setEmocao("neutral");
+  }
+
   async function iniciar() {
-    setFalas([]); setLat([]); setInterr([]); setUso(null);
+    setFalas([]); setLat([]); setInterr([]); setUso(null); setSessao(null); setEmocao("neutral"); setFluxos({ entrada: null, saida: null });
     despachar({ tipo: "iniciar" });
     inicio.current = Date.now();
     try {
       motorRef.current = criarMotorGemini({ emitir, metrica });
-      await motorRef.current.iniciar({ voz, nivel, gritos, palavroes, vad });
+      window.__previaMotor = motorRef.current;
+      await motorRef.current.iniciar({ personalidade, nivel, gritos, palavroes, vad });
     } catch (e) {
       emitir({ tipo: "erro", mensagem: String(e.message || e) });
     }
@@ -68,38 +99,71 @@ function App() {
 
   const vis = estadoVisivel(estado);
   const ativo = !["idle", "ended", "error"].includes(estado.fase);
-  // minutos desde o início da conversa até o último relatório de uso (a ponte manda o uso a cada turno)
   const minutos = uso ? Math.max((uso.recebidoEm - inicio.current) / 60000, 1 / 60) : null;
+  const p = PERSONAGENS[personagem];
+  const nomeProf = PERSONALIDADES[personagem].find(([id]) => id === personalidade)?.[1] ?? "";
+  const duro = DURO.has(personalidade);
 
   return (
     <main>
       <header>
-        <h1>Prévia do tutor de voz <small>Durona Explosiva · Gemini Live pelo Vertex · questão de teste (anafilaxia)</small></h1>
-        <p className="aviso">Só teste: dados fictícios, sem aluno, sem banco. Fale no microfone; pode interromper a professora falando por cima.</p>
+        <h1>Converse com {p.genero === "a" ? "a" : "o"} {p.nome} <small>Prévia do tutor de voz · Gemini Live pelo Vertex · questão de teste (anafilaxia)</small></h1>
       </header>
 
+      <section className="seletor" aria-label="Escolha do professor">
+        <div className="personagens" role="radiogroup" aria-label="Personagem">
+          {["stazi", "stazia"].map((id) => (
+            <button key={id} role="radio" aria-checked={personagem === id} className={`escolha${personagem === id ? " ativa" : ""}`} onClick={() => trocarPersonagem(id)} disabled={ativo}>
+              <b>{PERSONAGENS[id].nome}</b><span>{PERSONAGENS[id].descricao}</span>
+            </button>
+          ))}
+        </div>
+        <div className="personagens" role="radiogroup" aria-label="Personalidade">
+          {PERSONALIDADES[personagem].map(([id, nome]) => (
+            <button key={id} role="radio" aria-checked={personalidade === id} className={`escolha${personalidade === id ? " ativa" : ""}`} onClick={() => setPersonalidade(id)} disabled={ativo}>
+              <b>{nome}</b><span>{DURO.has(id) ? "cobra, bronca, palavrão" : "calm" + p.genero + ", sem bronca"}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
       <section className="config">
-        <label>Voz
-          <select value={voz} onChange={(e) => setVoz(e.target.value)} disabled={ativo}>{VOZES.map((v) => <option key={v}>{v}</option>)}</select>
-        </label>
-        <label>Nível da Durona
-          <select value={nivel} onChange={(e) => setNivel(e.target.value)} disabled={ativo}>{NIVEIS.map(([v, n]) => <option key={v} value={v}>{n}</option>)}</select>
-        </label>
+        {duro && (
+          <>
+            <label>Nível
+              <select value={nivel} onChange={(e) => setNivel(e.target.value)} disabled={ativo}>{NIVEIS.map(([v, n]) => <option key={v} value={v}>{n}</option>)}</select>
+            </label>
+            <label className="caixa"><input type="checkbox" checked={gritos} onChange={(e) => setGritos(e.target.checked)} disabled={ativo} /> Gritos</label>
+            <label className="caixa"><input type="checkbox" checked={palavroes} onChange={(e) => setPalavroes(e.target.checked)} disabled={ativo} /> Palavrões</label>
+          </>
+        )}
         <label>Detector de fala
           <select value={vad} onChange={(e) => setVad(e.target.value)} disabled={ativo}>
             <option value="padrao">Padrão do Google</option>
             <option value="rapido">Rápido (silêncio curto)</option>
           </select>
         </label>
-        <label className="caixa"><input type="checkbox" checked={gritos} onChange={(e) => setGritos(e.target.checked)} disabled={ativo} /> Gritos</label>
-        <label className="caixa"><input type="checkbox" checked={palavroes} onChange={(e) => setPalavroes(e.target.checked)} disabled={ativo} /> Palavrões</label>
         <label>Volume <input type="range" min="0" max="1" step="0.05" value={vol} onChange={(e) => setVol(Number(e.target.value))} /></label>
+      </section>
+
+      <section className="palco">
+        <PersonagemTutor
+          key={personagem}
+          personagem={personagem}
+          conversationState={ESTADO_DESENHO[vis] ?? "idle"}
+          emotion={emocao}
+          emotionIntensity={emocao === "neutral" ? 0.3 : 0.75}
+          inputStream={fluxos.entrada}
+          outputStream={fluxos.saida}
+          personality={{ id: personalidade }}
+        />
       </section>
 
       <section className={`estado e-${vis}`} aria-live="polite">
         <span className="bolinha" />
-        <strong>{NOMES[vis]}</strong>
+        <strong>{NOMES[vis].replace("Professora", p.nome)}</strong>
         <code>{vis}</code>
+        <span className="voz">{nomeProf} · voz {p.voz.gemini}{p.voz.semitons ? ` afinada +${p.voz.semitons}` : ""}</span>
         {estado.erro ? <em>{estado.erro}</em> : null}
       </section>
 
@@ -109,25 +173,24 @@ function App() {
         <button onClick={() => atual()?.silenciar(!estado.mudo)} disabled={!ativo}>{estado.mudo ? "Ligar microfone" : "Silenciar microfone"}</button>
         <button onClick={() => atual()?.encerrar()} disabled={!ativo}>Encerrar</button>
       </section>
-
-      <section className="metricas">
-        <div><span>1º áudio (último)</span><b>{lat.length ? `${lat.at(-1)} ms` : "—"}</b></div>
-        <div><span>1º áudio (mediana, {lat.length})</span><b>{lat.length ? `${mediana(lat)} ms` : "—"}</b></div>
-        <div><span>Interrupção até parar</span><b>{interr.length ? `${interr.at(-1)} ms` : "—"}</b></div>
-        <div><span>Custo da sessão (tokens do Google)</span><b>{uso ? `US$ ${uso.custo_usd.toFixed(4)}` : "—"}</b></div>
-        <div><span>Custo por minuto</span><b>{uso && minutos ? `US$ ${(uso.custo_usd / minutos).toFixed(4)}` : "—"}</b></div>
-      </section>
-      <p className="nota">1º áudio = do fim da sua fala (medido pelo microfone, 0,6 s de silêncio) até chegar o som da professora; inclui a espera do detector do Google. Interrupção = do começo da sua fala por cima até o servidor avisar e o som parar.</p>
+      <p className="aviso">Só teste: dados fictícios, sem aluno, sem banco. Permita o microfone, fale normalmente e pode interromper falando por cima. Use fone de ouvido para o som não voltar no microfone.</p>
 
       <section className="conversa">
-        {falas.map((f, i) => <p key={i} className={f.quem}><b>{f.quem === "aluno" ? "Você" : "Durona"}:</b> {f.texto}</p>)}
+        {falas.map((f, i) => <p key={i} className={f.quem}><b>{f.quem === "aluno" ? "Você" : p.nome}:</b> {f.texto}</p>)}
       </section>
 
       <details>
-        <summary>Eventos ({log.length})</summary>
+        <summary>Medidas e eventos ({log.length})</summary>
+        <section className="metricas">
+          <div><span>1º áudio (último)</span><b>{lat.length ? `${lat.at(-1)} ms` : "—"}</b></div>
+          <div><span>1º áudio (mediana, {lat.length})</span><b>{lat.length ? `${mediana(lat)} ms` : "—"}</b></div>
+          <div><span>Interrupção até parar</span><b>{interr.length ? `${interr.at(-1)} ms` : "—"}</b></div>
+          <div><span>Custo da sessão (tokens do Google)</span><b>{uso ? `US$ ${uso.custo_usd.toFixed(4)}` : "—"}</b></div>
+          <div><span>Custo por minuto</span><b>{uso && minutos ? `US$ ${(uso.custo_usd / minutos).toFixed(4)}` : "—"}</b></div>
+        </section>
+        {sessao && <p className="nota">Sessão: {sessao.perfil} · voz {sessao.voz} · afinação {sessao.semitons} semitons · emoção: {emocao}</p>}
         <ul className="log">{log.map((l, i) => <li key={i}>{l}</li>)}</ul>
       </details>
-
     </main>
   );
 }

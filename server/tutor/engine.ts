@@ -17,13 +17,21 @@ import { asDocument } from "../contentHub/ai/prompts";
 import { AiInvalidOutput, resolveProviderKind, withFallback, type StructuredRequest } from "../contentHub/ai/provider";
 import { aiAllowed, registerPrompts, type PromptEntry } from "../contentHub/ai/registry";
 import type { ContentDb } from "../contentHub/infra";
-import { avatarOf, engineFor, languageIntensity, normalize, profanityForIntensity, recentExpressions, stateLayer, step, type Happening, type PersonaEngine, type TutorState } from "./emotion";
+import { avatarOf, engineFor, languageIntensity, leituraDoRegistro, normalize, profanityForIntensity, recentExpressions, stateLayer, step, transitionsUsed, usedStarts, type Happening, type PersonaEngine, type TutorState } from "./emotion";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
 import { NO_EVALUATION, TUTOR_PROMPT_LAYERS, TUTOR_SCHEMA, TUTOR_VERSION, composeSystem, taskInstruction, type TutorMode, type TutorOutput, type TutorTask } from "./prompts";
 import { ComplementarTermsUnavailable, labelIsSupportMaterial, loadComplementarTerms } from "../contentHub/complementarGuard";
-import { fallbackReply, safetyCheck, spokenText, type BaseBlock, type SafetyResult, type Violation } from "./safety";
+import { fallbackReply, pedeCaso, safetyCheck, spokenText, type BaseBlock, type SafetyResult, type Violation } from "./safety";
+import { protegerFala, sugestoesSemSigilo, violacoesDeSigilo } from "./escudo";
+import { lerRegistro, notaDoRegistro, palavraoContido } from "./leituraDoAluno";
+import { nomeSeguro } from "./sigilo";
 import { deterministicTutor, tutorSettings } from "./settings";
 import { reservarCarteira, type ReservaCarteira } from "../planos/carteira";
+import { buscarOuReserva, vetorEmParalelo } from "./conhecimento/buscar";
+import { prepararPassagem } from "./opening";
+
+/** Quanto a reação à resposta ainda espera a passagem preparada terminar (ela roda junto; quase sempre já terminou). */
+const PREP_EXTRA_WAIT_MS = 1000;
 
 export interface TutorDeps {
   db: ContentDb;
@@ -136,6 +144,8 @@ interface Context {
 
 export interface Passage {
   source: string; organ: string; version: string | null; page: number | null; section: string | null; text: string;
+  /** cérebro do Tutor: citação pronta (título, ano, seção, página) */
+  citacao?: string;
 }
 
 /**
@@ -216,7 +226,7 @@ export function buildBlocks(ctx: Context, passages: Passage[], includeAnswer: bo
     }
   }
   passages.forEach((p, i) =>
-    blocks.push({ ref: `F${i + 1}`, kind: "source", label: `${p.source} · ${p.organ}${p.version ? ` · versão ${p.version}` : ""}${p.page != null ? ` · p. ${p.page}` : ""}`, text: p.text })
+    blocks.push({ ref: `F${i + 1}`, kind: "source", label: p.citacao ?? `${p.source} · ${p.organ}${p.version ? ` · versão ${p.version}` : ""}${p.page != null ? ` · p. ${p.page}` : ""}`, text: p.text })
   );
   return blocks;
 }
@@ -246,10 +256,15 @@ export async function termsOrFail(deps: TutorDeps): Promise<string[]> {
   }
 }
 
+/**
+ * Reserva do Tutor (cérebro sem índice ou fora do ar): só fontes oficiais, por palavras, e só as COM aprovação editorial (decisão do
+ * dono de 17/10/2026; ch_worker_tutor_kb_fontes_reserva, migração 013620). A busca da Central (ch_worker_search_official_passages)
+ * não muda. Sem a função nova no banco, nenhuma fonte sai (lado seguro): a busca antiga deixaria passar fonte sem aprovação.
+ */
 export async function searchSources(deps: TutorDeps, query: string): Promise<Passage[]> {
   if (!query) return [];
   try {
-    const rows = (await deps.db.service<Passage[]>("ch_worker_search_official_passages", { p_query: query, p_limit: 3 })) ?? [];
+    const rows = (await deps.db.service<Passage[]>("ch_worker_tutor_kb_fontes_reserva", { p_query: query, p_limit: 3 })) ?? [];
     // fonte complementar (apostila) nunca vai ao aluno: o banco já só devolve fonte oficial, e aqui confere de novo pelo nome
     const terms = await loadComplementarTerms(deps.db, undefined, deps.log); // sem a lista, cai no catch abaixo: nenhuma fonte é devolvida
     return rows.filter((p) => !labelIsSupportMaterial(`${p.source} ${p.organ}`, terms));
@@ -348,7 +363,18 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       if (studentText.length > 2000) throw new TutorError("Mensagem longa demais (até 2.000 caracteres).", 400);
       const a = q?.last_answer;
       task = a && a.is_correct && a.lucky_guess && !a.justification && ctx.session.question_state === "answered" ? { type: "justify" } : { type: "message", interrupted: action.interrupted?.slice(0, 300) || null };
+      // revisão de 17/10: a fala do aluno mexe no humor (brincando, aflito, sério, provocando, cansado), como na voz pela ponte
+      happening = { kind: "message", leitura: leituraDoRegistro(lerRegistro(studentText).registro) };
     }
+
+    // passagem preparada (revisão de 17/10): logo depois da resposta, a fala de passagem para a próxima questão é pedida JUNTO com a
+    // reação (não soma tempo); quando o aluno pedir a próxima, ela entra na hora (opening.ts). Só nos modos com sequência de questões.
+    const prep = task.type === "react" && (ctx.session.mode === "questao" || ctx.session.mode === "erros") ? prepararPassagem(deps, userId, sessionId) : null;
+
+    // cérebro do Tutor: o vetor da pergunta (só com TUTOR_CONHECIMENTO_VETOR=1) começa já, junto com o resto do preparo do turno
+    const weak = ctx.session.context?.type === "weak_points" ? (ctx.memory?.weak_subareas ?? []).slice(0, 3).map((w) => w.subarea).join(" ") : "";
+    const termosBusca = [q?.topic, q?.subtopic, ctx.session.topic, ctx.session.context?.label, weak, task.type === "message" && !q ? studentText : ""];
+    const vetorCedo = vetorEmParalelo(termosBusca.filter(Boolean).join(" "));
 
     const { provider, status } = resolveTutorProvider(deps.mockRespond);
     if (!provider) {
@@ -362,10 +388,11 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
 
     // ---- base conferida
     const includeAnswer = Boolean(q) && (!open || task.type === "hint" || task.type === "reveal");
-    const weak = ctx.session.context?.type === "weak_points" ? (ctx.memory?.weak_subareas ?? []).slice(0, 3).map((w) => w.subarea).join(" ") : "";
     // lista de fontes que o aluno não pode ver: sem ela o Tutor não responde (nada é publicado nem gravado); o aluno tenta de novo
     const supportTerms = await termsOrFail(deps);
-    const passages = await searchSources(deps, sourceQuery(q?.topic, q?.subtopic, ctx.session.topic, ctx.session.context?.label, weak, task.type === "message" && !q ? studentText : ""));
+    // cérebro do Tutor: busca no conhecimento aprovado (aulas, atualizações, fontes, flashcards, explicações já liberadas), travas no banco;
+    // sem o índice, a busca de antes
+    const passages = (await buscarOuReserva(deps, { userId, sessionId, pergunta: termosBusca.filter(Boolean).join(" "), vetor: vetorCedo, via: "texto" }, () => searchSources(deps, sourceQuery(...termosBusca)))).passagens as Passage[];
     const blocks = buildBlocks(ctx, passages, includeAnswer);
 
     // ---- personalidade (sempre depois do conteúdo): estilo do professor + estado da sessão
@@ -383,15 +410,26 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const li = languageIntensity(before, engine);
     const RANK = { off: 0, mild: 1, moderate: 2 } as const;
     const byIntensity = profanityForIntensity(li);
-    const profanity = RANK[byIntensity] < RANK[personaMax] ? byIntensity : personaMax;
+    // leitura do aluno (leituraDoAluno.ts): aluno ansioso, frustrado, desanimado ou abalado não ouve palavrão nesta fala
+    const lido = task.type === "message" ? lerRegistro(studentText) : null;
+    const contido = Boolean(lido && palavraoContido(lido));
+    const profanity = contido ? "off" : RANK[byIntensity] < RANK[personaMax] ? byIntensity : personaMax;
     // a conferência aceita um degrau acima do pedido (a reação à gravidade real do erro pode subir o tom)
-    const checkLevel = RANK[profanityForIntensity(Math.min(5, li + 1))] < RANK[personaMax] ? profanityForIntensity(Math.min(5, li + 1)) : personaMax;
+    const checkLevel = contido ? (RANK[personaMax] > 0 ? "mild" : "off") : RANK[profanityForIntensity(Math.min(5, li + 1))] < RANK[personaMax] ? profanityForIntensity(Math.min(5, li + 1)) : personaMax;
     const mood = { label: before.mood, text: stateLayer(ctx.personality.id, before, engine, profanity), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado", strong: li >= 3 };
-    const system = composeSystem({ mode: ctx.session.mode, browserVoice: Boolean(action.voice), persona: personalityLayer(ctx.personality, eff, profanity, 3, null, mood) });
+    // a ficha diz o grito e o palavrão que valem na conversa (teto do painel, do professor e do aluno; aluno mal: nenhum)
+    const limites = { palavrao: contido ? ("off" as const) : personaMax, gritos: !contido };
+    const persona = personalityLayer(ctx.personality, eff, profanity, 3, null, mood, { seed: sessionId, limites });
+    const system = composeSystem({ mode: ctx.session.mode, browserVoice: Boolean(action.voice), persona, personaId: ctx.personality.id });
+    // cache de prompt (Anthropic, revisão de 17/10): o núcleo + modo + leitura é igual para todo aluno; até o fim da ficha, igual na
+    // conversa inteira. O estado (humor) e o que vem depois mudam a cada fala e ficam fora do cache.
+    const iPersona = system.indexOf(persona);
+    const iEstado = iPersona >= 0 ? system.indexOf(mood.text, iPersona) : -1;
+    const systemCacheable = [iPersona > 0 ? system.slice(0, iPersona) : "", iEstado > 0 ? system.slice(0, iEstado) : ""].filter(Boolean);
 
     const mem = ctx.memory;
     const studentCtx = {
-      nome: ctx.student?.first_name ?? null,
+      nome: nomeSeguro(ctx.student?.first_name),
       dias_para_a_prova: ctx.student?.days_to_exam ?? null,
       dominio_por_area: (ctx.mastery?.areas ?? []).filter((a) => a.level !== "SEM_DADOS").map((a) => ({ area: a.area, nivel: a.level })),
       pontos_fracos: (mem?.weak_subareas ?? []).slice(0, 5).map((w) => `${w.subarea} (${w.accuracy}%)`),
@@ -412,12 +450,17 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       erros_repetidos: (mem?.recurrent_errors ?? []).filter((r) => r.times >= 2).map((r) => `${r.error_type}${r.knowledge_gap ? ` (${r.knowledge_gap})` : ""} ×${r.times}`),
       piadas_internas: (settings.inside_jokes ? mem?.inside_jokes ?? [] : []).map((j) => (j.beaten ? `${j.topic}: já foi o "inimigo" dele (${j.strength} erros) e ele superou` : `${j.topic}: o assunto que mais o derruba (${j.strength} erros); dá para virar uma referência recorrente, com leveza e de vez em quando`)),
       evite_repetir: recentExpressions(ctx.history.filter((h) => h.role === "tutor").map((h) => h.content)),
+      comecos_ja_usados: usedStarts(ctx.history.filter((h) => h.role === "tutor").map((h) => h.content)),
+      // revisão de 17/10: como você já passou a vez nesta conversa («agora me diz», «me conta»…): não repita a forma
+      transicoes_ja_usadas: transitionsUsed(ctx.history.filter((h) => h.role === "tutor").map((h) => h.content)),
     };
+    // leitura do aluno por software (sem IA): uma linha interna na tarefa quando há sinal claro (leituraDoAluno.ts)
+    const leitura = lido ? notaDoRegistro(lido) : "";
     const conversation = ctx.history.map((h) => `${h.role === "student" ? "Aluno" : "Tutor"}: ${h.content.slice(0, 600)}`).join("\n");
     const baseInput =
       `Responda no formato "tutor".\n<base>\n${JSON.stringify(blocks.map((b) => ({ ref: b.ref, tipo: b.kind, rotulo: b.label, texto: b.text })))}\n</base>\n` +
       `<contexto_do_aluno>\n${JSON.stringify(studentCtx)}\n</contexto_do_aluno>\n<estado_do_professor>\n${JSON.stringify(teacher)}\n</estado_do_professor>\n<conversa>\n${conversation}\n</conversa>\n<aluno>\n${asDocument(studentText)}\n</aluno>\n` +
-      `<tarefa>\n${taskInstruction(task)}\n</tarefa>`;
+      `<tarefa>\n${taskInstruction(task)}${leitura ? `\n${leitura}` : ""}\n</tarefa>`;
 
     const safetyCtx = {
       blocks,
@@ -454,11 +497,17 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     let violations: Violation[] = [];
     let model = provider.model;
     let providerName = provider.name;
+    // sigilo (escudo.ts): o que pode ser repetido sem ser vazamento é o que o aluno disse, a conversa e a base
+    const sigiloCtx = { instrucoes: system, permitidos: [studentText, ...ctx.history.map((h) => h.content), ...blocks.map((b) => b.text)], base: blocks.map((b) => b.text), pergunta: studentText };
+    let ultima: { out: TutorOutput; check: SafetyResult } | null = null;
     for (let attempt = 0; attempt < 2; attempt++) {
-      const input = attempt === 0 ? baseInput : `${baseInput}\n<correcao_obrigatoria>\nSua resposta anterior foi barrada. Refaça sem estes problemas:\n${violations.map((x) => `- ${x.detail}`).join("\n")}\n</correcao_obrigatoria>`;
+      // revisão de 17/10: barrada por número sem base, a segunda tentativa recebe o COMO (sem o número, ou só os da base), não só o quê
+      const comoCorrigir = violations.some((x) => x.code === "ungrounded_number")
+        ? "\n- Como corrigir: tire esses valores e fale sem número (\"febre alta\", \"pressão baixa\", \"dose de ataque\"), ou use só os valores que estão em <base> com a citação. Caso de exemplo: descreva sinais e sintomas em palavras, sem número." : "";
+      const input = attempt === 0 ? baseInput : `${baseInput}\n<correcao_obrigatoria>\nSua resposta anterior foi barrada. Refaça sem estes problemas:\n${violations.map((x) => `- ${x.detail}`).join("\n")}${comoCorrigir}\n</correcao_obrigatoria>`;
       let r;
       try {
-        r = await provider.generate<TutorOutput>({ promptId: "tutor", promptVersion: TUTOR_VERSION, system, input, schema: TUTOR_SCHEMA, schemaName: "staziamed_tutor", maxOutputTokens: 2000, effort: EFFORT });
+        r = await provider.generate<TutorOutput>({ promptId: "tutor", promptVersion: TUTOR_VERSION, system, systemCacheable, input, schema: TUTOR_SCHEMA, schemaName: "staziamed_tutor", maxOutputTokens: 2000, effort: EFFORT });
       } catch (error) {
         // resposta fora do formato: conta como barrada e ganha uma nova tentativa (nunca é "consertada")
         if (error instanceof AiInvalidOutput) {
@@ -483,7 +532,8 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       usage.model = r.model;
       usage.provider = r.provider;
       const c = safetyCheck(r.output, safetyCtx);
-      violations = c.violations;
+      violations = [...c.violations, ...violacoesDeSigilo(r.output, sigiloCtx)];
+      ultima = { out: r.output, check: c };
       if (!violations.length) {
         out = r.output;
         check = c;
@@ -491,8 +541,17 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       }
     }
 
+    // barrada só por sigilo nas duas tentativas: a resposta fica, reescrita no personagem (não vira a resposta fixa)
+    if (!out && ultima && violations.length && violations.every((x) => x.code === "sigilo")) ({ out, check } = ultima);
     const replaced = !out;
-    const reply = out ? out.reply.trim() : fallbackReply(violations);
+    // reserva fixa por situação (revisão de 17/10): reação à letra marcada, pedido de caso sem questão aberta ou dado sem fonte
+    const situacao = {
+      reacao: task.type === "react" ? { letra: task.selected, acertou: task.correct } : null,
+      pedidoDeCaso: task.type === "message" && !(q && open) && pedeCaso(studentText),
+      tema: q?.topic ?? ctx.session.topic ?? ctx.session.context?.label ?? null,
+      semente: ctx.history.length,
+    };
+    const reply = protegerFala(out ? out.reply.trim() : fallbackReply(violations, situacao), ctx.personality.id, sigiloCtx).texto;
     // a resolução (dica 5 ou pedido explícito) revela a resposta mesmo se a IA esquecer de marcar
     const reveals = hintLevel === 5 && (Boolean(out?.reveals_answer) || task.type === "reveal" || replaced);
     const ev = out?.evaluation ?? NO_EVALUATION;
@@ -511,9 +570,12 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const repeatedType = sessionTypes.includes(ev.error_type) || (ctx.memory?.recurrent_errors ?? []).some((r) => r.error_type === ev.error_type);
     const forgot = Boolean(gap) && (ctx.session_errors ?? []).some((e) => (e.knowledge_gap ?? "").trim().toLowerCase() === gap);
     const oral = ctx.session.mode === "perguntas" && !q && ev.answer_correct !== "na" ? { correct: ev.answer_correct === "yes" ? true : ev.answer_correct === "no" ? false : null } : {};
+    // fora do "Me teste" (conversa livre, discussão depois da questão): a resposta oral só mexe no humor, sem contar como questão
+    const oralLeve = !("correct" in oral) && task.type === "message" && (!q || !open) && (ev.answer_correct === "yes" || ev.answer_correct === "no") ? { oralLeve: ev.answer_correct === "yes" } : {};
     const full: Happening = {
       ...happening,
       ...oral,
+      ...oralLeve,
       ...(happening.correct === false || oral.correct === false
         ? { severity: ev.error_type !== "none" ? ev.severity : happening.severity ?? 3, errorType: ev.error_type !== "none" ? ev.error_type : null, repeated: Boolean(happening.repeated) || (ev.error_type !== "none" && repeatedType), forgotExplanation: forgot, unsafe: ev.unsafe }
         : {}),
@@ -533,7 +595,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const meta: Record<string, unknown> = {
       grounding: replaced ? "insufficient" : check!.grounding,
       sources: replaced ? [] : check!.sources,
-      suggested: replaced ? [] : out!.suggested_replies,
+      suggested: replaced ? [] : sugestoesSemSigilo(out!.suggested_replies),
       notice: replaced ? "Resposta substituída: a primeira versão trazia informação que não pôde ser conferida." : null,
       model, provider: providerName, prompt_version: TUTOR_VERSION, simulated: provider.isMock,
       personality: { id: ctx.personality.id, profanity, mood: before.mood, language_intensity: li, frustration: before.frustration, enthusiasm: before.enthusiasm },
@@ -562,6 +624,8 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     // acerta a carteira pelo custo real (nunca derruba a resposta já gravada)
     const conta = wallet ? await wallet.confirmar(custoConhecido ? usage.cost_usd : null) : null;
     const pelaCarteira = wallet?.modo === "ligado" && conta?.ok === true && conta.usado_hoje != null;
+    // a passagem preparada quase sempre já terminou; se não, espera no máximo um pouco (na Vercel, trabalho depois da resposta pode parar)
+    if (prep) await Promise.race([prep, new Promise((r) => setTimeout(r, PREP_EXTRA_WAIT_MS))]);
     return {
       message: {
         id: saved.id, role: "tutor", content: reply, spoken: spokenText(reply), grounding: String(meta.grounding), sources: meta.sources as { ref: string; label: string }[], hint_level: hintLevel,

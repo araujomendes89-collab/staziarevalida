@@ -2,6 +2,7 @@
 
 > **Tutor Nexus (2026-10-08) — estado atual; o resto deste documento é, em parte, histórico.**
 > - **Professores:** três — **Tranquilo** (id técnico `acolhedor`, com o jeito do antigo Preguiçoso, nunca xinga), **Durona** e **Direto**.
+> - **Atualização de 17/10/2026 (ramo `tutor-personagens`, ainda não publicada):** o Tutor passa a ter **dois personagens e quatro personalidades**. **Stazi** (voz masculina): **Durão** (id `durao`, a Durona no masculino, mesma mecânica de nível e 18+) e **Tranquilo** (id `acolhedor`). **Stazia** (voz feminina): **Durona** (id `durona`) e **Tranquila** (id `tranquila`, texto novo a aprovar pelo dono). O **Direto saiu** (inativo; conversas antigas só leitura; preferências foram para o Tranquilo). A voz oficial é por personagem: `ELEVENLABS_VOICE_STAZI` e `ELEVENLABS_VOICE_STAZIA` (as antigas `_TRANQUILO` e `_DURONA` valem como reserva). Migração `20261003013590`.
 >   Questionador e os demais ficam desligados. Conversas antigas do Acolhedor e de perfis desligados ficam só para leitura
 >   ("Este professor mudou. Comece uma conversa nova."). Uma conversa nunca troca de professor.
 > - **Tela:** `/tutor` é a Nexus (`src/novo/app/tutor/nexus/`): escolher o professor e o modo, "Começar", conversa em tela cheia (igual no

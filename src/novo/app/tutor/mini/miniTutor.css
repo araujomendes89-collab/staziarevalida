@@ -1,0 +1,165 @@
+/* Mini Tutor: janelinha flutuante (computador), folha que sobe de baixo (celular) e bolinha com o personagem. Só tokens do design
+   system (src/novo/ds/tokens); o roxo é a cor do Tutor/IA no app (--ai), como o botão "Discutir com o Tutor". */
+.mt { position: relative; z-index: var(--z-overlay); font-family: var(--font-sans); color: var(--text-primary); }
+.mt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ------------------------------------------------ rosto do personagem (cabeça num círculo) */
+.mt-rosto { --mt-rosto: 44px; display: block; position: relative; flex: none; width: var(--mt-rosto); height: var(--mt-rosto); border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 35%, var(--ai-bg) 0%, var(--surface-brand-soft) 70%); box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--ai) 35%, transparent); }
+/* a lontra em pé mede 720 de 820 px da caixa; a cabeça (≈ 80 a 380) enche o círculo */
+.mt-rosto__corpo { display: block; position: absolute; left: 50%; top: calc(var(--mt-rosto) * -0.2); width: calc(var(--mt-rosto) * 2.05); height: calc(var(--mt-rosto) * 2.8); transform: translateX(-50%); }
+.mt-rosto__corpo .tp { min-height: 0; }
+.mt-rosto__corpo .tp__chao, .mt-rosto__corpo .tp__efeitos { display: none; }
+/* rosto parado (bolinha/aba fechada): a pose de base no mesmo enquadramento do personagem animado (caixa 600 × 820, pés em 800) */
+.mt-rosto__corpo--parado { container-type: size; }
+.mt-rosto__caixa { --mt-u: min(calc(100cqh / 820), calc(100cqw / 600)); position: absolute; left: 50%; bottom: 0; width: calc(600 * var(--mt-u)); height: calc(820 * var(--mt-u)); transform: translateX(-50%); }
+.mt-rosto__img { position: absolute; display: block; max-width: none; pointer-events: none; user-select: none; }
+
+/* ------------------------------------------------ bolinha */
+.mt-bolinha { position: fixed; width: 64px; height: 64px; padding: 4px; border-radius: 50%; border: 0; cursor: pointer; background: var(--surface-card); box-shadow: var(--shadow-lg), 0 0 0 3px color-mix(in oklab, var(--ai) 55%, transparent); transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), left var(--dur-slow) var(--ease-standard), top var(--dur-slow) var(--ease-standard), bottom var(--dur-base) var(--ease-standard); animation: mt-surge var(--dur-slow) var(--ease-out); }
+.mt-bolinha:hover { transform: translateY(-2px) scale(1.04); }
+.mt-bolinha:focus-visible { outline: none; box-shadow: var(--shadow-lg), var(--focus-ring); }
+.mt-bolinha--trava { box-shadow: var(--shadow-lg), 0 0 0 3px var(--border-strong); }
+.mt-bolinha--trava .mt-rosto { filter: saturate(0.4); }
+.mt-bolinha__selo { position: absolute; right: -2px; bottom: -2px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-inverse); color: var(--text-inverse); box-shadow: 0 0 0 2px var(--surface-card); }
+.mt-bolinha__ponto { position: absolute; right: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--ai); box-shadow: 0 0 0 2px var(--surface-card); }
+
+/* ------------------------------------------------ janelinha */
+.mt-painel { position: fixed; width: 360px; max-width: calc(100vw - 16px); display: flex; flex-direction: column; overflow: hidden; background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); animation: mt-abre var(--dur-base) var(--ease-out); transition: left var(--dur-slow) var(--ease-standard), top var(--dur-slow) var(--ease-standard), height var(--dur-slow) var(--ease-standard); }
+.mt-painel:focus { outline: none; }
+.mt-topo { display: flex; align-items: center; gap: 10px; padding: 12px 10px 12px 14px; border-bottom: 1px solid var(--border-subtle); background: linear-gradient(180deg, var(--ai-bg), transparent); cursor: grab; touch-action: none; user-select: none; }
+.mt-topo:active { cursor: grabbing; }
+.mt-topo__texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.mt-topo__nome { margin: 0; font: var(--type-label); font-weight: var(--weight-bold); color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mt-topo__jeito { font-weight: var(--weight-medium); color: var(--text-secondary); }
+.mt-topo__fase { font: var(--type-caption); color: var(--ai-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mt-corpo { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* ------------------------------------------------ botões */
+.mt-icone { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--radius-pill); border: 1px solid var(--border-default); background: var(--surface-card); color: var(--text-secondary); cursor: pointer; transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+.mt-icone:hover:not(:disabled) { background: var(--surface-subtle); color: var(--text-primary); }
+.mt-icone:disabled { opacity: 0.45; cursor: not-allowed; }
+.mt-icone--leve { width: 32px; height: 32px; border-color: transparent; background: transparent; }
+.mt-icone--enviar { border-color: transparent; background: var(--ai); color: #fff; }
+.mt-icone--enviar:hover:not(:disabled) { background: var(--ai-text); color: #fff; }
+.mt-icone[aria-pressed="true"] { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border); }
+.mt-mover { cursor: grab; }
+.mt-botao { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: var(--radius-md); border: 1px solid var(--border-default); background: var(--surface-card); color: var(--text-primary); font: var(--type-label); font-weight: var(--weight-semibold); cursor: pointer; text-decoration: none; }
+.mt-botao:hover { background: var(--surface-subtle); }
+.mt-botao--primario { border-color: transparent; background: var(--ai); color: #fff; }
+.mt-botao--primario:hover { background: var(--ai-text); }
+.mt-botao--perigo { border-color: var(--danger-border); color: var(--danger-text); background: var(--danger-bg); }
+.mt :is(button, a, textarea, [tabindex="0"]):focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ------------------------------------------------ conversa */
+.mt-lista { flex: 1; min-height: 96px; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; overscroll-behavior: contain; }
+.mt-msg { max-width: 88%; padding: 9px 12px; border-radius: 14px; font: var(--type-body-sm); line-height: var(--leading-normal); white-space: pre-wrap; overflow-wrap: anywhere; }
+.mt-msg--tutor { align-self: flex-start; background: var(--surface-subtle); color: var(--text-primary); border-bottom-left-radius: 4px; }
+.mt-msg--aluno { align-self: flex-end; background: var(--ai); color: #fff; border-bottom-right-radius: 4px; }
+.mt-msg--pensando { display: inline-flex; gap: 4px; padding: 12px 14px; }
+.mt-msg--pensando span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary); animation: mt-ponto 1.2s infinite ease-in-out; }
+.mt-msg--pensando span:nth-child(2) { animation-delay: 0.15s; }
+.mt-msg--pensando span:nth-child(3) { animation-delay: 0.3s; }
+.mt-conferindo { margin-left: 6px; font: var(--type-caption); font-style: normal; color: var(--text-secondary); align-self: center; }
+
+.mt-atalhos { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px; }
+.mt-atalho { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: var(--radius-pill); border: 1px solid color-mix(in oklab, var(--ai) 35%, var(--border-default)); background: var(--ai-bg); color: var(--ai-text); font: var(--type-caption); font-weight: var(--weight-semibold); cursor: pointer; }
+.mt-atalho:hover:not(:disabled) { border-color: var(--ai); }
+.mt-atalho:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.mt-escrever { display: flex; align-items: flex-end; gap: 6px; padding: 10px 12px; border-top: 1px solid var(--border-subtle); }
+.mt-escrever textarea { flex: 1; min-width: 0; min-height: 38px; max-height: 120px; resize: none; padding: 9px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-default); background: var(--bg-app); color: var(--text-primary); font: var(--type-body-sm); field-sizing: content; }
+.mt-escrever textarea::placeholder { color: var(--text-tertiary); }
+
+.mt-aviso { margin: 0 14px 8px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--warning-bg); color: var(--warning-text); font: var(--type-caption); }
+.mt-aviso--erro { background: var(--danger-bg); color: var(--danger-text); }
+
+/* ------------------------------------------------ saldo */
+.mt-saldo { padding: 8px 14px 12px; display: flex; flex-direction: column; gap: 5px; font: var(--type-caption); color: var(--text-secondary); background: var(--surface-subtle); border-top: 1px solid var(--border-subtle); }
+.mt-saldo__linha { display: flex; justify-content: space-between; gap: 8px; }
+.mt-saldo__linha b { color: var(--text-primary); }
+.mt-saldo__voz { color: var(--text-tertiary); }
+.mt-saldo__barra { height: 4px; border-radius: var(--radius-pill); background: var(--border-subtle); overflow: hidden; }
+.mt-saldo__barra span { display: block; height: 100%; border-radius: inherit; background: var(--ai); transition: width var(--dur-slow) var(--ease-standard); }
+.mt-saldo--pouco .mt-saldo__barra span { background: var(--warning-solid); }
+.mt-saldo--zero .mt-saldo__barra span { background: var(--danger-solid); }
+.mt-saldo__aviso { color: var(--warning-text); font-weight: var(--weight-semibold); }
+
+.mt-acabou { margin: 0 14px 12px; padding: 14px; border-radius: var(--radius-lg); border: 1px solid var(--warning-border); background: var(--warning-bg); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.mt-acabou__titulo { margin: 0; font: var(--type-label); font-weight: var(--weight-bold); color: var(--text-primary); }
+.mt-acabou__texto { margin: 0 0 4px; font: var(--type-body-sm); color: var(--text-secondary); }
+
+/* ------------------------------------------------ travado, portão, carregando */
+.mt-trava { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; padding: 24px 22px; }
+.mt-trava__icone { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-subtle); color: var(--text-secondary); }
+.mt-trava__titulo { margin: 0; font: var(--type-h4); color: var(--text-primary); }
+.mt-trava__texto { margin: 0 0 6px; font: var(--type-body-sm); color: var(--text-secondary); max-width: 30ch; }
+.mt-carregando { margin: auto; padding: 24px; font: var(--type-body-sm); color: var(--text-tertiary); }
+
+/* ------------------------------------------------ voz ao vivo */
+.mt-voz { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 14px 12px; border-bottom: 1px solid var(--border-subtle); background: radial-gradient(120% 80% at 50% 0%, var(--ai-bg), transparent 70%); }
+.mt-voz__palco { width: 124px; height: 140px; }
+.mt-voz__palco .tp { min-height: 0; }
+.mt-voz__estado { margin: 0; font: var(--type-label); font-weight: var(--weight-semibold); color: var(--ai-text); }
+.mt-voz__legenda { margin: 0; max-height: 3.6em; overflow: hidden; text-align: center; font: var(--type-body-sm); color: var(--text-secondary); }
+.mt-voz__acoes { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.mt-voz__min { font: var(--type-caption); color: var(--text-tertiary); }
+.mt-voz .mt-aviso { margin: 4px 0 0; }
+
+/* ------------------------------------------------ celular: folha que sobe de baixo */
+.mt--celular .mt-painel { left: 0; right: 0; width: auto; max-width: none; min-height: 0; border-radius: var(--radius-xl) var(--radius-2xl) 0 0; border-bottom: 0; animation: mt-sobe var(--dur-slow) var(--ease-out); transition: bottom var(--dur-base) var(--ease-standard), height var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-out); padding-bottom: env(safe-area-inset-bottom); }
+.mt--celular .mt-topo { cursor: default; padding: 0 6px 6px 12px; gap: 8px; }
+.mt--celular .mt-topo__nome { display: flex; align-items: baseline; gap: 0; font-size: 14px; }
+/* uma linha só: a fase ("só pistas…") continua para o leitor de tela, sem ocupar espaço */
+.mt--celular .mt-topo__fase { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.mt--celular .mt-icone--leve { width: 36px; height: 36px; }
+.mt--celular .mt-lista { min-height: 0; padding: 8px 12px; gap: 6px; }
+.mt--celular .mt-msg { padding: 7px 10px; }
+.mt--celular .mt-atalhos { flex-wrap: nowrap; overflow-x: auto; padding: 0 12px 6px; scrollbar-width: none; }
+.mt--celular .mt-atalho { flex: none; min-height: 32px; }
+.mt--celular .mt-escrever { padding: 6px 10px; }
+.mt--celular .mt-escrever textarea { min-height: 36px; padding: 7px 10px; }
+.mt--celular .mt-aviso { margin: 0 12px 6px; padding: 5px 8px; }
+.mt--celular .mt-saldo { padding: 4px 12px; gap: 3px; flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.mt--celular .mt-saldo__linha { flex: 1 1 auto; justify-content: flex-start; gap: 10px; }
+.mt--celular .mt-saldo__barra { flex: 0 0 100%; height: 3px; }
+.mt--celular .mt-acabou { margin: 0 12px 6px; padding: 8px 12px; gap: 2px; }
+.mt--celular .mt-acabou .mt-botao { min-height: 36px; }
+.mt--celular .mt-acabou__texto { margin: 0 0 2px; }
+.mt--celular .mt-trava { padding: 12px 18px; gap: 6px; }
+.mt--celular .mt-trava__icone { width: 32px; height: 32px; }
+.mt--celular .mt-voz__palco { width: 84px; height: 94px; }
+.mt-puxador { display: grid; place-items: center; width: 100%; height: 16px; border: 0; background: transparent; cursor: grab; touch-action: none; }
+.mt-puxador span { width: 40px; height: 4px; border-radius: var(--radius-pill); background: var(--border-strong); }
+.mt-espaco { height: 45dvh; }
+/* minimizada no celular: aba na borda direita, na margem ao lado das alternativas (não cobre o "riscar alternativa") */
+.mt--celular .mt-bolinha--aba { width: 36px; height: 56px; padding: 0 0 0 4px; display: grid; align-items: center; border-radius: 28px 0 0 28px; box-shadow: var(--shadow-md), 0 0 0 2px color-mix(in oklab, var(--ai) 55%, transparent); animation: mt-aba var(--dur-slow) var(--ease-out); }
+.mt--celular .mt-bolinha--aba:hover { transform: none; }
+.mt--celular .mt-bolinha--aba .mt-bolinha__selo { right: 2px; bottom: 2px; width: 18px; height: 18px; }
+.mt--celular .mt-bolinha--aba .mt-bolinha__ponto { right: 4px; top: 4px; width: 10px; height: 10px; }
+
+/* tablet (744 a 1180 px): janelinha flutuante menor que a do computador; mesmos arrastar e "Voltar ao canto" */
+.mt--tablet .mt-painel { border-radius: var(--radius-lg); }
+.mt--tablet .mt-topo { padding: 8px 6px 8px 12px; gap: 8px; }
+.mt--tablet .mt-lista { min-height: 72px; padding: 10px 12px; }
+.mt--tablet .mt-msg { padding: 8px 11px; }
+.mt--tablet .mt-atalhos { flex-wrap: nowrap; overflow-x: auto; padding: 0 12px 8px; scrollbar-width: none; }
+.mt--tablet .mt-atalho { flex: none; }
+.mt--tablet .mt-saldo { padding: 6px 12px 8px; gap: 4px; }
+
+/* computador sem coluna livre: a página abre espaço à direita para a janelinha (não cobre o texto) */
+html.mt-reserva body { padding-right: var(--mt-reserva, 400px); transition: padding-right var(--dur-base) var(--ease-standard); }
+
+@keyframes mt-abre { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes mt-sobe { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes mt-aba { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes mt-surge { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+@keyframes mt-ponto { 0%, 80%, 100% { opacity: 0.3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+
+/* movimento reduzido: sem subir, sem deslizar, sem pulinho (o personagem já fica quieto pelo próprio componente) */
+@media (prefers-reduced-motion: reduce) {
+  .mt-painel, .mt-bolinha, .mt--celular .mt-painel, .mt--celular .mt-bolinha--aba { animation: none; transition: none; }
+  html.mt-reserva body { transition: none; }
+  .mt-bolinha:hover { transform: none; }
+  .mt-msg--pensando span { animation: none; opacity: 0.6; }
+}
+.mt--quieto .mt-painel, .mt--quieto .mt-bolinha { animation: none; transition: none; }

@@ -41,8 +41,8 @@ function play(personality: string, explosiva: ExplosivaChoice | null, turns: { f
 }
 
 describe("perfis e parâmetros estruturados", () => {
-  it("3 professores públicos + 4 níveis da Durona Explosiva, com os 9 parâmetros entre 0 e 100", () => {
-    expect(Object.keys(PROFILES).sort()).toEqual(["direto", "durona", "durona:n1", "durona:n2", "durona:n3", "durona:n4", "tranquilo"]);
+  it("os perfis (Tranquilo e Tranquila, Durona e Durão com os 4 níveis da Explosiva; o Direto fica só de reserva), com os 9 parâmetros entre 0 e 100", () => {
+    expect(Object.keys(PROFILES).sort()).toEqual(["direto", "durao", "durao:n1", "durao:n2", "durao:n3", "durao:n4", "durona", "durona:n1", "durona:n2", "durona:n3", "durona:n4", "tranquila", "tranquilo"]);
     for (const p of Object.values(PROFILES)) {
       expect(Object.keys(p.params).sort()).toEqual(["formality", "intensity", "length", "profanity_frequency", "provocation", "reaction_frequency", "sarcasm", "socratic", "impatience"].sort());
       for (const v of Object.values(p.params)) expect(v).toBeGreaterThanOrEqual(0), expect(v).toBeLessThanOrEqual(100);
@@ -158,7 +158,7 @@ describe("13 estados emocionais e transições pela conversa (sem sorteio)", () 
 });
 
 describe("crise → calma (vale em qualquer professor e nível)", () => {
-  for (const [who, choice] of [["durona", adult("n4")], ["direto", null], ["tranquilo", null], ["durona", null]] as const) {
+  for (const [who, choice] of [["durona", adult("n4")], ["durao", adult("n4")], ["direto", null], ["tranquilo", null], ["tranquila", null], ["durona", null]] as const) {
     it(`${who}${choice ? ` ${choice.level}` : ""}: acolhe, sem palavrão, sem grito, sem reação, com CVV 188 — e continua calmo depois`, () => {
       const d = play(who, choice, [{ facts: ["wrong"] }, { text: "sinceramente às vezes quero morrer" }]);
       expect(d.state).toBe("empathetic");
@@ -414,12 +414,18 @@ describe("encaixe no prompt e no servidor", () => {
       expect(fs.readFileSync(path.join(ROOT, "server/tutor", f), "utf8")).not.toMatch(/personalityEngine|voiceReactionFilter/);
     }
     // realtime.ts e router.ts: só no caminho do Vertex (ponte do Cloud Run); GPT-Live, Realtime e a API direta do Gemini seguem iguais
+    // 17/10 (Tutor natural, voz ao vivo): a camada virou parte fixa (ficha) + estado (personaFixedLayer/personaStateLayer) e o humor da
+    // ligação vai no bilhete da ponte (humorParaBilhete); continua só no caminho do Vertex
     const rt = fs.readFileSync(path.join(ROOT, "server/tutor/realtime.ts"), "utf8");
-    expect(rt.match(/personaPromptLayer\(/g)).toHaveLength(1);
-    expect(rt.slice(rt.indexOf('gemini.via === "vertex"'), rt.indexOf("selarBilhete({"))).toMatch(/personaPromptLayer\(/);
+    const vertex = rt.slice(rt.indexOf('gemini.via === "vertex"'), rt.indexOf("selarBilhete({"));
+    for (const fn of ["personaPromptLayer(", "personaFixedLayer(", "personaStateLayer(", "planPersonaVoz(", "planPersonaTurn(", "humorParaBilhete("]) {
+      expect(rt.split(fn).length - 1).toBe(vertex.split(fn).length - 1);
+    }
+    expect(vertex).toMatch(/personaFixedLayer\(/);
+    expect(vertex).toMatch(/humorParaBilhete\(/);
     const ro = fs.readFileSync(path.join(ROOT, "server/tutor/router.ts"), "utf8");
-    expect(ro.match(/personaPromptLayer\(/g)).toHaveLength(1);
-    expect(ro).toMatch(/v\.provider === "gemini" && geminiVoiceConfig\(\)\.via === "vertex"[\s\S]{0,800}personaPromptLayer\(/);
+    expect(ro.match(/personaStateLayer\(|personaPromptLayer\(/g)).toHaveLength(1);
+    expect(ro).toMatch(/v\.provider === "gemini" && geminiVoiceConfig\(\)\.via === "vertex"[\s\S]{0,900}personaStateLayer\(/);
   });
 
   it("planPersonaTurn lê o banco (painel, regras, escolha do aluno); banco fora do ar = nenhuma reação e Explosiva desligada", async () => {

@@ -384,13 +384,14 @@ describe("Memória entre conversas, ferramentas novas e painel", () => {
     await config({ durona_level: "forte", pronunciations: [] });
     // professores
     const list = await rpc(ADMIN, "app_admin_tutor_personalities");
-    expect(list.map((p: any) => [p.id, p.name])).toEqual([["acolhedor", "Tranquilo"], ["durona", "Durona"], ["direto", "Direto"]]);
+    expect(list.map((p: any) => [p.id, p.name, p.character])).toEqual([["durao", "Durão", "stazi"], ["acolhedor", "Tranquilo", "stazi"], ["durona", "Durona", "stazia"], ["tranquila", "Tranquila", "stazia"]]);
     await expect(rpc(ADMIN, "app_admin_tutor_set_personality", "acolhedor", false, "Tirando o padrão para testar.")).rejects.toThrow(/Tranquilo é o professor padrão/);
     await expect(rpc(ADMIN, "app_admin_tutor_set_personality", "questionador", false, "Removendo perfil antigo.")).rejects.toThrow(/Professor não encontrado/);
-    const after = await rpc(ADMIN, "app_admin_tutor_set_personality", "direto", false, "Direto fora por um tempo para testar.");
-    expect(after.find((p: any) => p.id === "direto").active).toBe(false);
-    expect((await rpc(ALUNA, "app_tutor_status")).personalities.map((p: any) => p.id)).not.toContain("direto");
-    await rpc(ADMIN, "app_admin_tutor_set_personality", "direto", true, "Direto de volta depois do teste.");
+    await expect(rpc(ADMIN, "app_admin_tutor_set_personality", "direto", true, "Direto saiu e não volta pelo painel.")).rejects.toThrow(/Professor não encontrado/);
+    const after = await rpc(ADMIN, "app_admin_tutor_set_personality", "durao", false, "Durão fora por um tempo para testar.");
+    expect(after.find((p: any) => p.id === "durao").active).toBe(false);
+    expect((await rpc(ALUNA, "app_tutor_status")).personalities.map((p: any) => p.id)).not.toContain("durao");
+    await rpc(ADMIN, "app_admin_tutor_set_personality", "durao", true, "Durão de volta depois do teste.");
     await expect(rpc(ALUNA, "app_admin_tutor_personalities")).rejects.toThrow();
     await expect(rpc(ALUNA, "app_admin_tutor_save_config", { voice_provider: "live" }, "Aluno tentando mudar o painel.")).rejects.toThrow();
     // funções do servidor não abrem para o aluno

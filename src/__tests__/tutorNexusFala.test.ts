@@ -23,7 +23,7 @@ import { aceitarTermos } from "./helpers/aceites";
 
 const ENV = {
   ELEVENLABS_API_KEY: "chave-falsa-de-teste-" + "x".repeat(40), TUTOR_VOICE_ALLOW_EXTERNAL: "1",
-  ELEVENLABS_VOICE_TRANQUILO: "vozTranquiloTeste01", ELEVENLABS_VOICE_DURONA: "vozDuronaTeste0001", ELEVENLABS_VOICE_DIRETO: "vozDiretoTeste0001",
+  ELEVENLABS_VOICE_STAZI: "vozStaziTeste000001", ELEVENLABS_VOICE_STAZIA: "vozStaziaTeste00001",
 };
 const ADMIN = "00000000-0000-4000-8000-0000000000a1";
 const TESTE = "00000000-0000-4000-8000-0000000000f1";
@@ -106,7 +106,7 @@ beforeEach(async () => {
   await sql(`delete from public.tutor_voice_approvals`);
   await config({ enabled: true, requires_pro: true, voice_enabled: true, tts_team_only: false, tts_trial_daily_chars: 4500, tts_paid_daily_chars: 4500,
                  tts_account_daily_chars: 4500, tts_account_monthly_chars: 30000, tts_price_per_1k_chars_usd: 0.3 });
-  for (const v of ["tranquilo", "durona", "direto"]) await approve(v);
+  for (const v of ["stazi", "stazia"]) await approve(v);
 });
 
 describe("Voz do professor pela rota", () => {
@@ -134,11 +134,11 @@ describe("Voz do professor pela rota", () => {
   it("limite por plano: pago usa tts_paid_daily_chars; equipe conta como pago", async () => {
     await config({ tts_paid_daily_chars: UNMARKED + 10, tts_trial_daily_chars: 4500 });
     for (const uid of [PAGO, ADMIN]) {
-      expect((await phrase(uid, "unmarked", "direto")).status, uid).toBe(200);
-      expect(await phrase(uid, "marked", "direto"), uid).toMatchObject({ status: 429, json: { code: "voice_student_limit" } });
+      expect((await phrase(uid, "unmarked", "durao")).status, uid).toBe(200);
+      expect(await phrase(uid, "marked", "durao"), uid).toMatchObject({ status: 429, json: { code: "voice_student_limit" } });
     }
     // o teste grátis segue o próprio limite
-    expect((await phrase(TESTE, "marked", "direto")).status).toBe(200);
+    expect((await phrase(TESTE, "marked", "durao")).status).toBe(200);
   });
 
   it("tetos da conta: 'A voz da plataforma acabou por hoje' e 'A voz da plataforma acabou neste mês'", async () => {
@@ -151,28 +151,28 @@ describe("Voz do professor pela rota", () => {
   });
 
   it("sem aprovação o aluno recebe 409 voice_unavailable e nada é gerado; a equipe ouve a voz não aprovada; 'só equipe' barra aluno mesmo com voz aprovada", async () => {
-    await sql(`delete from public.tutor_voice_approvals where voice = 'durona'`);
+    await sql(`delete from public.tutor_voice_approvals where voice = 'stazia'`);
     expect(await phrase(PAGO, "unmarked", "durona")).toMatchObject({ status: 409, json: { error: "A voz do professor não está disponível agora.", code: "voice_unavailable" } });
     expect(sent).toHaveLength(0);
     expect(await used(PAGO)).toBe(0);
     // as outras vozes, aprovadas, seguem
-    expect((await phrase(PAGO, "unmarked", "direto")).status).toBe(200);
+    expect((await phrase(PAGO, "unmarked", "durao")).status).toBe(200);
     // a equipe ouve a voz ainda não aprovada (para medir os tempos antes de aprovar)
     expect((await phrase(ADMIN, "unmarked", "durona")).status).toBe(200);
     // só equipe: aluno fica de fora mesmo com a voz aprovada; a equipe segue
     await config({ tts_team_only: true });
-    expect(await phrase(PAGO, "marked", "direto")).toMatchObject({ status: 409, json: { code: "voice_unavailable" } });
-    expect((await phrase(ADMIN, "marked", "direto")).status).toBe(200);
+    expect(await phrase(PAGO, "marked", "durao")).toMatchObject({ status: 409, json: { code: "voice_unavailable" } });
+    expect((await phrase(ADMIN, "marked", "durao")).status).toBe(200);
   });
 
   it("aprovação revogada ou versão mudada: a próxima fala recusa na hora", async () => {
     expect((await phrase(PAGO, "unmarked", "durona")).status).toBe(200);
-    await sql(`select public.ch_worker_tutor_voice_revoke($1, 'durona')`, [ADMIN]);
+    await sql(`select public.ch_worker_tutor_voice_revoke($1, 'stazia')`, [ADMIN]);
     expect(await phrase(PAGO, "marked", "durona")).toMatchObject({ status: 409, json: { code: "voice_unavailable" } });
-    await approve("durona");
+    await approve("stazia");
     expect((await phrase(PAGO, "marked", "durona")).status).toBe(200);
     // trocou o voice_id no servidor: a versão aprovada não vale mais
-    deps.elevenEnv = { ...ENV, ELEVENLABS_VOICE_DURONA: "outraVozDurona0001" };
+    deps.elevenEnv = { ...ENV, ELEVENLABS_VOICE_STAZIA: "outraVozDurona0001" };
     const n = sent.length;
     expect(await phrase(PAGO, "marked", "durona", "C")).toMatchObject({ status: 409, json: { code: "voice_unavailable" } });
     expect(sent).toHaveLength(n);
@@ -182,7 +182,7 @@ describe("Voz do professor pela rota", () => {
     const ledger = async () => (await sql(`select count(*)::int n from public.ai_usage_ledger where user_id = $1 and feature = 'tutor_tts'`, [PAGO]))[0].n as number;
     const before = await ledger();
     failVoice = true;
-    expect(await phrase(PAGO, "marked", "direto", "D")).toMatchObject({ status: 502, json: { error: "A voz natural falhou agora.", code: "voice_failed" } });
+    expect(await phrase(PAGO, "marked", "durao", "D")).toMatchObject({ status: 502, json: { error: "A voz natural falhou agora.", code: "voice_failed" } });
     expect(await used(PAGO)).toBe(0);
     expect((await sql(`select status from public.tutor_tts_usage where user_id = $1`, [PAGO])).map((r) => r.status)).toEqual(["refunded"]);
     expect(await ledger()).toBe(before);
@@ -194,7 +194,7 @@ describe("Voz do professor pela rota", () => {
     const m = await tutorMessage(PAGO, s, "De novo? Lê o comando da questão.", { personality: { id: "durona", mood: "irritated", frustration: 70, enthusiasm: 30 } });
     expect((await speak(PAGO, { kind: "message", session_id: s, message_id: m })).status).toBe(200);
     expect(sent.at(-1)!.body.text).toBe("[frustrated] De novo? Lê o comando da questão.");
-    expect(sent.at(-1)!.url).toContain(ENV.ELEVENLABS_VOICE_DURONA);
+    expect(sent.at(-1)!.url).toContain(ENV.ELEVENLABS_VOICE_STAZIA);
     expect((await phrase(PAGO, "marked", "durona", "E")).status).toBe(200);
     expect(sent.at(-1)!.body.text).toBe("Marquei a E. Diga confirmo para responder, ou fale outra alternativa.");
   });
@@ -210,7 +210,7 @@ describe("Voz do professor pela rota", () => {
     expect(cut.endsWith("palavra")).toBe(true);
     expect(speechCut("Curta.")).toBe("Curta.");
     // pela rota: a voz recebe o pedaço, a conversa guarda o texto inteiro
-    const s = await session(PAGO, "direto");
+    const s = await session(PAGO, "durao");
     const m = await tutorMessage(PAGO, s, long);
     expect((await speak(PAGO, { kind: "message", session_id: s, message_id: m })).status).toBe(200);
     expect(sent.at(-1)!.body.text).toBe(sentence.repeat(7).trim());
@@ -227,7 +227,7 @@ describe("Voz do professor pela rota", () => {
   });
 
   it("ouvir de novo sai do cache, sem gerar nem cobrar", async () => {
-    const s = await session(PAGO, "direto");
+    const s = await session(PAGO, "durao");
     const m = await tutorMessage(PAGO, s, "Isso. Diagnóstico e conduta certos.");
     expect((await speak(PAGO, { kind: "message", session_id: s, message_id: m })).cache).toBe("miss");
     const n = await used(PAGO);
@@ -237,17 +237,17 @@ describe("Voz do professor pela rota", () => {
   });
 
   it("teste terminado: 403 com a mensagem do teste antes de qualquer voz; mensagens sem nome de fornecedor", async () => {
-    expect(await phrase(BLOQ, "unmarked", "direto")).toMatchObject({ status: 403, json: { error: TRIAL_OVER } });
+    expect(await phrase(BLOQ, "unmarked", "durao")).toMatchObject({ status: 403, json: { error: TRIAL_OVER } });
     expect(sent).toHaveLength(0);
     expect(await used(BLOQ)).toBe(0);
     for (const e of Object.values(VOICE_BLOCK_ERROR)) expect(e.message).not.toMatch(/elevenlabs|openai|google|gemini|aparelho/i);
     // a regra, isolada: voz desligada vem antes de tudo; equipe passa por "não aprovada" e "só equipe"
-    const row = { id: "durona" as const, label: "Durona", configured: true, unique: true, ready: true, approved: false, fingerprint: "f".repeat(64), pending: null };
+    const row = { id: "stazia" as const, label: "Stazia", configured: true, unique: true, ready: true, approved: false, fingerprint: "f".repeat(64), pending: null };
     const quota: any = { voice_enabled: true, team_only: true, staff: false, remaining_today: 10, account_day_left: 10, account_month_left: 10, approvals: {} };
     expect(elevenAccessOf({ quota: { ...quota, voice_enabled: false }, row })).toEqual({ ok: false, reason: "voice_off" });
     expect(elevenAccessOf({ quota, row: null })).toEqual({ ok: false, reason: "not_configured" });
     expect(elevenAccessOf({ quota, row })).toEqual({ ok: false, reason: "not_approved" });
-    expect(elevenAccessOf({ quota: { ...quota, approvals: { durona: { fingerprint: "f".repeat(64) } } }, row })).toEqual({ ok: false, reason: "team_only" });
+    expect(elevenAccessOf({ quota: { ...quota, approvals: { stazia: { fingerprint: "f".repeat(64) } } }, row })).toEqual({ ok: false, reason: "team_only" });
     expect(elevenAccessOf({ quota: { ...quota, staff: true }, row, need: 11 })).toEqual({ ok: false, reason: "student_limit" });
     expect(elevenAccessOf({ quota: { ...quota, staff: true }, row, need: 10 })).toEqual({ ok: true, reason: null });
     expect([0, 899, 900, 4500].map(minutesOf)).toEqual([0, 0, 1, 5]);

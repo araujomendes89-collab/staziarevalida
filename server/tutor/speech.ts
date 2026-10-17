@@ -4,7 +4,7 @@
  *
  * A voz do professor é sempre a oficial (ElevenLabs, uma voz por professor; TUTOR_VOICE_PROVIDER não decide mais):
  *   TUTOR_VOICE_ALLOW_EXTERNAL=1  consentimento próprio: o texto da resposta vai para o serviço de voz
- *   ELEVENLABS_API_KEY, ELEVENLABS_VOICE_TRANQUILO / _DURONA / _DIRETO, ELEVENLABS_MODEL_ID (eleven_v3), ELEVENLABS_OUTPUT_FORMAT
+ *   ELEVENLABS_API_KEY, ELEVENLABS_VOICE_STAZI / _STAZIA (reserva: _TRANQUILO / _DURONA), ELEVENLABS_MODEL_ID (eleven_v3), ELEVENLABS_OUTPUT_FORMAT
  *   TUTOR_VOICE_DAILY_CHARS       teto de caracteres falados por aluno por dia (padrão 30.000, cerca de meia hora de fala)
  *
  * A voz é sempre a mesma resposta validada: só muda o som. Quem pode ouvir, quanto e com qual voz decide nexus.ts (direito do
@@ -14,6 +14,7 @@
 import { createHash } from "crypto";
 import { TRIAL_OVER, TutorError, consentError, type TutorDeps } from "./engine";
 import { spokenText } from "./safety";
+import { protegerFala } from "./escudo";
 import { TUTOR_SPOKEN_LANGUAGE } from "../../src/shared/tutor/voiceLanguage";
 import { speechDirectionFromState, type SpeechDirection } from "./speechDirector";
 import { elevenSynth } from "./elevenlabsTts";
@@ -234,7 +235,8 @@ export async function tutorSpeech(deps: TutorDeps, userId: string, req: SpeechRe
   if (quota.mode === "blocked") throw new TutorError(TRIAL_OVER, 403);
   const raw = req.kind === "phrase" ? phraseText(req.phrase ?? "", req.letter, src.sample ?? null) : src.text;
   if (!raw) throw new TutorError("Frase inválida.", 400);
-  const text = req.kind === "message" ? speechCut(speechInput(raw)) : speechInput(raw);
+  // voz do professor: a fala passa pelo escudo do sigilo antes de virar áudio (a do texto já passou; a da voz ao vivo gravada também)
+  const text = req.kind === "message" ? speechCut(speechInput(protegerFala(raw, src.personality).texto)) : speechInput(raw);
   if (!text) throw new TutorError("Frase inválida.", 400);
 
   const id = officialVoiceForPersonality(src.personality);

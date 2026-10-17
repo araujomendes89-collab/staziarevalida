@@ -25,3 +25,13 @@ button { cursor: pointer; font-weight: 600; } button:disabled { opacity: .45; cu
 .falta { color: var(--laranja); font-size: .88rem; }
 .log { font: 12px/1.5 ui-monospace, monospace; color: var(--suave); padding-left: 16px; }
 .config .caixa { flex-direction: row; align-items: center; gap: 6px; color: var(--texto); font-size: .9rem; }
+/* seletor de personagem e personalidade (17/10/2026) */
+.seletor { display: grid; gap: 10px; margin: 14px 0 6px; }
+.personagens { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.escolha { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 14px; text-align: left; border-width: 2px; }
+.escolha b { font-size: 1.1rem; } .escolha span { font-size: .8rem; color: var(--suave); font-weight: 500; }
+.escolha.ativa { border-color: var(--azul); box-shadow: 0 0 0 3px color-mix(in srgb, var(--azul) 22%, transparent); }
+.escolha:disabled:not(.ativa) { opacity: .4; } .escolha.ativa:disabled { opacity: 1; }
+.palco { height: min(56vh, 440px); min-height: 260px; border-radius: 18px; margin: 10px 0 12px; overflow: hidden;
+  background: radial-gradient(90% 60% at 50% 38%, rgba(70, 90, 220, .28) 0%, transparent 60%), radial-gradient(120% 80% at 50% 30%, #16205a 0%, #0b1033 55%, #05071a 100%); padding-top: 12px; }
+.estado .voz { margin-left: auto; font-size: .82rem; color: var(--suave); }

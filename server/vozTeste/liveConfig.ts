@@ -6,7 +6,8 @@
 export type ConfigVad = "padrao" | "rapido";
 
 export const MODELO_LIVE = "gemini-3.8-live";
-export const VOZES_LIVE = ["Kore", "Aoede", "Leda", "Zephyr", "Charon", "Puck"] as const;
+/** Vozes da prévia; Zubenelgenubi é a do Stazi e Kore a da Stazia (manifest do app, personagens.js). */
+export const VOZES_LIVE = ["Kore", "Aoede", "Leda", "Zephyr", "Charon", "Puck", "Zubenelgenubi"] as const;
 export type VozLive = (typeof VOZES_LIVE)[number];
 export const vozValida = (v: unknown): VozLive => (VOZES_LIVE.includes(v as VozLive) ? (v as VozLive) : "Kore");
 

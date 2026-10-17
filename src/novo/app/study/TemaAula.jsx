@@ -15,6 +15,7 @@ import { TextoRico } from "../textoRico/TextoRico.jsx";
 import { ricoValido } from "../../../shared/docRico";
 import ParagrafoRico from "../editorPro/leitor/ParagrafoRico.jsx";
 import { ricoDoMaterial, ricoDoPonto } from "../../../shared/aulas/camposRicos";
+import { MiniTutor, contextoDaAula } from "../tutor/mini";
 
 export { boxOf };
 
@@ -477,6 +478,8 @@ function Conteudo({ data, tema, go, notes, onBack, onProgresso }) {
   return (
     <>
       <Barra tema={tema} onBack={onBack} atual={atual} toc={toc} tocOpen={tocOpen} setTocOpen={setTocOpen} toggleRef={toggleRef} />
+      {/* mini tutor: dúvidas da aula, com o tema e a seção que está na tela */}
+      <MiniTutor contexto={contextoDaAula(tema, toc.find((t) => t.id === atual)?.label)} />
 
       <header className="al-cover" id="al-topo" tabIndex={-1}>
         <div className="al-pills">

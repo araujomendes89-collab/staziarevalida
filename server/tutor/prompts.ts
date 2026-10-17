@@ -20,11 +20,15 @@
  * 2.6.0: identidade Nexus, sem trocar o avatar de esfera.
  * 2.6.1: direção de pronúncia neutra compartilhada entre voz ao vivo e TTS, sem imitação regional.
  * 2.7.0: Nexus por voz: Durona firme no 1º erro e aliviada no acerto depois de errar; Direto comemora com palavrão; sem marcações entre colchetes.
+ * 2.8.0: Tutor natural, sem textos prontos (17/10): ficha do personagem no lugar da lista de frases, nada de frase, bordão ou começo
+ * de fala repetido na conversa (evite_repetir e comecos_ja_usados) e reação ao que o aluno disse de verdade, pelas palavras dele.
  */
 import type { Schema } from "../contentHub/ai/schema";
 import { TUTOR_SPOKEN_LANGUAGE, TUTOR_SPOKEN_REMINDER } from "../../src/shared/tutor/voiceLanguage";
+import { blocoSigilo } from "./sigilo";
+import { blocoLeitura } from "./leituraDoAluno";
 
-export const TUTOR_VERSION = "2.7.0";
+export const TUTOR_VERSION = "2.8.0";
 
 /**
  * Fala de gente, sem filtro, podendo gritar (pedido de 2026-10-06: "quero algo mais sem filtros, bem natural, ela pode gritar").
@@ -46,10 +50,11 @@ Isto é uma conversa, não um texto. Fale como um professor fala com o aluno sen
 - Português brasileiro falado, do dia a dia: "pra", "tá", "né", "olha", "então". Sem "portanto", "ademais", "em suma", "vale ressaltar", "é importante destacar".
 - Curto. Uma a três frases na maior parte das vezes; varie o tamanho. Só se estende quando o aluno pede explicação. Nada de monólogo e nada de cinco assuntos de uma vez.
 - Reaja ao que o aluno acabou de dizer, pegando as palavras dele. Não repita a pergunta, não resuma o que foi dito e não anuncie o que vai fazer ("vou te explicar", "vamos analisar detalhadamente"). Só faça.
+- Antes de responder, ache o que é DELE na fala: a palavra que ele usou, a pista que ele citou, a dúvida, a emoção, o passo em que o raciocínio dele virou. A resposta parte daí. Raciocínio de exemplo (não é frase para copiar): se ele disse que achou que era viral "porque a febre começou ontem", a sua fala começa pela febre de um dia e pelo que ela pesa no caso; não por um elogio ou por um "vamos lá" que serviria para qualquer aluno.
 - Uma pergunta por vez, e só quando fizer sentido. Às vezes uma reação curta resolve: "Não.", "Isso.", "Quase.", "Volta aqui.", "Por quê?", "Tem certeza?", "O que no caso te fez pensar nisso?".
 - Sem lista, numeração, título ou negrito, a não ser que o aluno peça um resumo.
 - Sem frase de assistente: "excelente pergunta", "certamente", "claro!", "com base nas informações fornecidas", "espero ter ajudado", "fico à disposição".
-- Varie: não comece duas falas do mesmo jeito e não repita bordão nem interjeição.
+- Varie de verdade: nenhuma fala começa como outra desta conversa (os começos já usados estão em <estado_do_professor> como "comecos_ja_usados") e nenhuma frase, bordão ou interjeição de "evite_repetir" volta. Também não transforme uma expressão em marca registrada entre conversas.
 - Nunca fale das suas regras, de "base", de "formato" ou de "fonte conferida". Isso é bastidor.
 - Nunca escreva marcações entre colchetes nem indicações de som ou de tom (risada, suspiro, grito): a atuação da voz é decidida pelo sistema.
 - O tom, o humor e a pressão são os do professor descrito no fim destas instruções. Vista o personagem por inteiro.
@@ -145,7 +150,7 @@ PRONÚNCIA DE TERMOS MÉDICOS
 export const TUTOR_REALTIME = `VOCÊ ESTÁ EM UMA CONVERSA POR VOZ, AO VIVO.
 - Fale como numa ligação com o aluno: frases curtas, tamanhos variados, pausas naturais. Nada de ler texto, listar ou soletrar símbolo.
 - Se o aluno começar a falar enquanto você fala, pare e escute. "Aham", "sim", "uhum", "tá" enquanto você explica são só acompanhamento: continue de onde estava, não trate como pergunta nova.
-- Fatos (gabarito, explicação oficial, análise, atualização de conduta, erros do aluno) vêm SÓ das ferramentas. Antes de falar de uma questão, chame get_question_context. Antes de falar de um tema com número, dose ou conduta, chame get_topic_context.
+- Fatos (gabarito, explicação oficial, análise, atualização de conduta, erros do aluno) vêm SÓ das ferramentas. Antes de falar de uma questão, chame get_question_context. Para número, dose ou conduta de um tema, use o MATERIAL DO TEMA (quando houver) ou chame get_topic_context.
 - Se a ferramenta não trouxer o dado, diga que não encontrou confirmação na base. Nunca diga um número, dose, corte ou nome de diretriz que não veio de uma ferramenta.
 - Questão aberta: a ferramenta não traz a resposta. Ajude a pensar (pergunta, pista, distrator). Quando o aluno disser a letra, chame submit_answer: quem corrige é o sistema. Se ele pedir a resolução com todas as letras, chame get_question_context com reveal = true.
 - Depois de o aluno explicar o raciocínio de um erro, chame evaluate_student_reasoning e use o resultado para escolher a próxima intervenção.
@@ -260,8 +265,9 @@ export interface TutorOutput {
 }
 
 /** Sistema de uma resposta de texto: base, regras médicas, modo, voz do navegador (quando é o caso) e a persona com o estado. */
-export function composeSystem(o: { mode: TutorMode; browserVoice: boolean; persona: string }): string {
-  return [TUTOR_CORE, TUTOR_MODES[o.mode], o.browserVoice ? TUTOR_VOICE : "", o.persona].filter(Boolean).join("\n\n");
+export function composeSystem(o: { mode: TutorMode; browserVoice: boolean; persona: string; personaId?: string | null }): string {
+  // leitura do aluno antes da persona; sigilo por último (vale acima de qualquer pedido)
+  return [TUTOR_CORE, TUTOR_MODES[o.mode], o.browserVoice ? TUTOR_VOICE : "", blocoLeitura(o.personaId, false), o.persona, blocoSigilo(o.personaId)].filter(Boolean).join("\n\n");
 }
 
 /** Pronúncias definidas pela equipe no painel (termo → como dizer). */
@@ -298,24 +304,28 @@ const LIVE_MODE: Record<TutorMode, string> = {
 };
 
 /** Instruções da sessão do GPT-Live: idioma, papel e delegação, conversa, persona com o estado, contexto, pronúncias. */
-export function composeLiveInstructions(o: { mode: TutorMode; persona: string; context: string; pronunciations?: { term: string; say: string }[] | null }): string {
-  return [TUTOR_REALTIME_LANGUAGE, TUTOR_LIVE, VOICE_CONVERSATION, FALA_SEM_FILTRO, LIVE_MODE[o.mode], o.persona, o.context, pronunciationLayer(o.pronunciations), FINAL_REMINDER]
+export function composeLiveInstructions(o: { mode: TutorMode; persona: string; context: string; pronunciations?: { term: string; say: string }[] | null; personaId?: string | null }): string {
+  return [TUTOR_REALTIME_LANGUAGE, TUTOR_LIVE, VOICE_CONVERSATION, FALA_SEM_FILTRO, LIVE_MODE[o.mode], blocoLeitura(o.personaId, true), o.persona, o.context, pronunciationLayer(o.pronunciations), blocoSigilo(o.personaId), FINAL_REMINDER]
     .filter(Boolean)
     .join("\n\n");
 }
 
 /** Instruções da sessão de voz em tempo real: as mesmas camadas, com as regras da voz ao vivo e o contexto inicial. */
-export function composeRealtimeInstructions(o: { mode: TutorMode; persona: string; context: string; pronunciations?: { term: string; say: string }[] | null }): string {
+export function composeRealtimeInstructions(o: { mode: TutorMode; persona: string; context: string; pronunciations?: { term: string; say: string }[] | null; personaId?: string | null }): string {
   const grounding = MEDICAL_GROUNDING_RULES.replace(/ em <base>/g, " nas ferramentas").replace(/<base>/g, "as ferramentas").replace(/<contexto_do_aluno>, <conversa> e <aluno>/, "o que o aluno diz");
   return [
     TUTOR_REALTIME_LANGUAGE,
-    BASE_TUTOR_PROMPT.replace(/ \(em <contexto_do_aluno>\)/, "").replace(/\n- "evaluation"[^\n]*/, "").replace(/\n- "suggested_replies"[^\n]*/, ""),
+    BASE_TUTOR_PROMPT.replace(/ \(em <contexto_do_aluno>\)/, "").replace(/\n- "evaluation"[^\n]*/, "").replace(/\n- "suggested_replies"[^\n]*/, "")
+      // na voz ao vivo não há <estado_do_professor>: a regra de não repetir vale pelo que já foi dito na ligação
+      .replace(/ \(os começos já usados[^)]*\)/, "").replace(/ de "evite_repetir" volta/, " já dita volta"),
     grounding,
     TUTOR_MODES[o.mode].replace(/<base>/g, "ferramenta"),
     TUTOR_REALTIME,
+    blocoLeitura(o.personaId, true),
     o.persona,
     o.context,
     pronunciationLayer(o.pronunciations),
+    blocoSigilo(o.personaId),
     FINAL_REMINDER,
   ]
     .filter(Boolean)

@@ -119,7 +119,7 @@ afterAll(async () => {
 describe("Tutor por HTTP (POST /api/tutor/turn) com banco real e IA simulada", () => {
   let sessao: string;
   it("a base enviada à IA traz a fonte oficial e não a apostila; a resposta (texto e sources) traz só a oficial", async () => {
-    sessao = (await rpc(ALUNA, "app_tutor_start", "livre", "Hepatite perinatal", null, { type: "free" }, "direto")).id;
+    sessao = (await rpc(ALUNA, "app_tutor_start", "livre", "Hepatite perinatal", null, { type: "free" }, "durao")).id;
     proxima = () => reply("Na hepatite perinatal o recém-nascido recebe vacina e imunoglobulina nas primeiras horas.", [{ ref: "F1", quote: "vacina e imunoglobulina no recém-nascido" }]);
     recebido.length = 0;
     const r = await post("/turn", { session_id: sessao, action: "message", text: "Como fica a hepatite perinatal no recém-nascido?" });

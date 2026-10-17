@@ -6,6 +6,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts --no-audit --no-fund
 COPY server ./server
+# humor da ligação (server/tutor/humorVoz.ts → personalityEngine.ts) usa o catálogo de reações em src/shared
+COPY src/shared ./src/shared
 RUN npx esbuild server/vozPonte/main.ts --bundle --platform=node --format=cjs --target=node22 --external:ws --external:bufferutil --external:utf-8-validate \
       --outfile=dist-ponte/ponte.cjs \
  && node -e "const p=require('./package-lock.json').packages['node_modules/ws'];require('fs').writeFileSync('dist-ponte/package.json',JSON.stringify({name:'stazia-voz-ponte',private:true,dependencies:{ws:p.version}}))"

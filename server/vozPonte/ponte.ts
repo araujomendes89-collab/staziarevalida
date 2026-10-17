@@ -20,6 +20,9 @@
  */
 import WebSocket from "ws";
 import { abrirBilhete, assinarRelatorio, type ConteudoBilhete, type FerramentaDeclarada, type NoncesUsados } from "./bilhete";
+import type { ConhecimentoPonte } from "./conhecimento";
+import { ATRASO_ESPERA_MS } from "../tutor/conhecimento/frasesEspera";
+import { acertoDaFerramenta, HumorDaLigacao, humorValido, instrucoesComEstado } from "../tutor/humorVoz";
 
 export const PRECO_LIVE_USD_POR_MILHAO = { textoEntrada: 0.75, audioEntrada: 3.0, textoSaida: 4.5, audioSaida: 12.0 };
 export interface Uso { textoEntrada: number; audioEntrada: number; textoSaida: number; audioSaida: number; total: number }
@@ -58,7 +61,8 @@ export function esquemaVertex(s: unknown): unknown {
   return out;
 }
 
-export function setupVertex(c: ConteudoBilhete, projeto: string, regiao: string, contexto?: string) {
+/** `texto`: as instruções inteiras já montadas (com o estado do momento); sem ele, instruções + material + contexto. */
+export function setupVertex(c: ConteudoBilhete, projeto: string, regiao: string, contexto?: string, texto?: string) {
   const ferramentas = (c.ferramentas ?? []) as FerramentaDeclarada[];
   return {
     setup: {
@@ -67,7 +71,7 @@ export function setupVertex(c: ConteudoBilhete, projeto: string, regiao: string,
         responseModalities: ["AUDIO"],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: c.voz } }, languageCode: "pt-BR" },
       },
-      systemInstruction: { parts: [{ text: contexto ? `${c.instrucoes}\n\n${contexto}` : c.instrucoes }] },
+      systemInstruction: { parts: [{ text: texto ?? [c.instrucoes, c.material, contexto].filter(Boolean).join("\n\n") }] },
       ...(ferramentas.length ? { tools: [{ functionDeclarations: ferramentas.map((f) => ({ name: f.name, description: f.description, parameters: esquemaVertex(f.parameters) })) }] } : {}),
       inputAudioTranscription: {},
       outputAudioTranscription: {},
@@ -93,6 +97,8 @@ export interface DepsPonte {
   abrirGoogle?: (url: string, headers: Record<string, string>) => WebSocket;
   /** Quantas vezes reabrir a sessão do Google numa ligação (queda/goAway). */
   maxReaberturas?: number;
+  /** Cérebro do Tutor (conhecimento.ts): busca de conhecimento feita na ponte, sem passar pelo navegador. Sem ele, tudo como antes. */
+  conhecimento?: ConhecimentoPonte | null;
 }
 
 const URL_LIVE = (regiao: string) => `wss://${regiao}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1.LlmBidiService/BidiGenerateContent`;
@@ -111,8 +117,14 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
   let uso: Uso = { ...ZERO };
   const recebidas: Record<string, number> = {}; // mensagens do navegador por tipo (telemetria do fim)
   const pendentes = new Set<string>(); // ids de ferramenta pedidos pelo Google e ainda sem resposta
+  const daPonte = new Set<string>(); // ids que a própria ponte responde (cérebro do Tutor): o navegador não responde por eles
   const historia: { quem: "aluno" | "tutor"; texto: string }[] = []; // só em memória, enquanto a ligação dura
   let limite: NodeJS.Timeout | null = null;
+  // humor da ligação (humorVoz.ts): recalculado a cada fala; só o bloco do estado muda nas instruções (contextUpdate)
+  let humor: HumorDaLigacao | null = null;
+  let falaAluno = ""; // o que o aluno disse na fala em andamento (a transcrição chega em pedaços)
+  let estadoPendente = false; // o humor mudou: troca quando o professor terminar a fala (ou for interrompido)
+  let contextoReaberta: string | undefined; // depois de uma queda, a conversa até ali (fica nas instruções desta conexão)
   const enviar = (o: Record<string, unknown>) => { if (cliente.readyState === WebSocket.OPEN) cliente.send(JSON.stringify(o)); };
   const anotar = (quem: "aluno" | "tutor", texto: string) => {
     const ult = historia.at(-1);
@@ -132,7 +144,7 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
     historia.length = 0;
     const duracao_s = Math.round((Date.now() - t0) / 1000);
     const custo = +custoUsd(uso).toFixed(6);
-    deps.log({ ponte: "fim", vc: c?.vc ?? null, motivo, duracao_s, turnos, reaberturas, uso, custo_usd: custo, modelo: c?.modelo, recebidas });
+    deps.log({ ponte: "fim", vc: c?.vc ?? null, motivo, duracao_s, turnos, reaberturas, uso, custo_usd: custo, modelo: c?.modelo, recebidas, ...(humor ? { humor_trocas: humor.trocas, humor_final: humor.estadoAtual } : {}) });
     if (c && deps.relatorio?.url) {
       const corpo = JSON.stringify({ vc: c.vc, u: c.u, modelo: c.modelo, duracao_s, turnos, uso, custo_usd: custo, motivo, t: Date.now() });
       void (deps.relatorio.fetchFn ?? fetch)(deps.relatorio.url, {
@@ -142,6 +154,25 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
         signal: AbortSignal.timeout(8000),
       }).catch((e) => deps.log({ ponte: "relatorio_falhou", vc: c?.vc, erro: String(e).slice(0, 120) }));
     }
+  };
+
+  // abertura da ligação (revisão de 17/10): a 1ª fala do professor, como o Google transcreveu, vai assinada ao app para a memória das
+  // aberturas (a próxima ligação não começa igual). Só daqui: o texto que o navegador manda não entra nessa memória.
+  let aberturaRelatada = false;
+  const relatarAbertura = () => {
+    if (aberturaRelatada || !c || !deps.relatorio?.url) return;
+    const fala = historia.find((h) => h.quem === "tutor")?.texto?.replace(/\s+/g, " ").trim();
+    if (!fala) return;
+    aberturaRelatada = true;
+    const url = deps.relatorio.url.replace(/\/ponte-uso$/, "/ponte-abertura");
+    if (url === deps.relatorio.url) return;
+    const corpo = JSON.stringify({ vc: c.vc, u: c.u, texto: fala.slice(0, 600), t: Date.now() });
+    void (deps.relatorio.fetchFn ?? fetch)(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Stazia-Ponte-Assinatura": assinarRelatorio(corpo, deps.segredo) },
+      body: corpo,
+      signal: AbortSignal.timeout(8000),
+    }).catch((e) => deps.log({ ponte: "abertura_falhou", vc: c?.vc, erro: String(e).slice(0, 120) }));
   };
 
   // sem bilhete em 5 s, fecha
@@ -156,10 +187,12 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
     pendentes.clear();
     const contexto = motivo === "inicio" || !historia.length ? undefined
       : `A CONVERSA CAIU E FOI REABERTA. Até aqui (não repita; continue de onde parou, sem anunciar a queda):\n${historia.map((h) => `${h.quem === "aluno" ? "Aluno" : "Você"}: ${h.texto}`).join("\n").slice(-6000)}`;
+    contextoReaberta = contexto;
+    falaAluno = "";
     const headers = { Authorization: `Bearer ${token}` };
     const g = deps.abrirGoogle ? deps.abrirGoogle(URL_LIVE(deps.regiao), headers) : new WebSocket(URL_LIVE(deps.regiao), { headers });
     google = g;
-    g.on("open", () => g.send(JSON.stringify(setupVertex(c!, deps.projeto, deps.regiao, contexto))));
+    g.on("open", () => g.send(JSON.stringify(setupVertex(c!, deps.projeto, deps.regiao, contexto, sistema()))));
     g.on("message", (raw) => {
       if (google !== g || fim) return;
       let m: Record<string, any>;
@@ -172,20 +205,24 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
         enviar({ t: "uso", turno, sessao: uso, custo_usd: +custoUsd(uso).toFixed(6) });
       }
       if (m.toolCall?.functionCalls?.length) {
-        const chamadas = (m.toolCall.functionCalls as { id: string; name: string; args?: unknown }[]).slice(0, 8).map((f) => ({ id: String(f.id), name: String(f.name), args: f.args ?? {} }));
-        for (const f of chamadas) pendentes.add(f.id);
-        enviar({ t: "ferramentas", chamadas });
+        const todas = (m.toolCall.functionCalls as { id: string; name: string; args?: unknown }[]).slice(0, 8).map((f) => ({ id: String(f.id), name: String(f.name), args: f.args ?? {} }));
+        for (const f of todas) pendentes.add(f.id);
+        // cérebro do Tutor: a busca de conhecimento roda aqui; o navegador só ouve "buscando" e recebe os rótulos das fontes
+        const naPonte = deps.conhecimento ? todas.filter((f) => deps.conhecimento!.intercepta(f.name)) : [];
+        const chamadas = todas.filter((f) => !naPonte.includes(f));
+        if (chamadas.length) enviar({ t: "ferramentas", chamadas });
+        for (const f of naPonte) { daPonte.add(f.id); void responderNaPonte(f); }
       }
       if (m.toolCallCancellation?.ids) for (const id of m.toolCallCancellation.ids) pendentes.delete(String(id));
       if (m.goAway) { deps.log({ ponte: "goaway", vc: c?.vc }); reabrir("goaway"); return; }
       const sc = m.serverContent;
       if (!sc) { if (m.error) enviar({ t: "erro", mensagem: String(m.error.message ?? "erro do Google").slice(0, 200) }); return; }
-      if (sc.inputTranscription?.text) { anotar("aluno", sc.inputTranscription.text); enviar({ t: "transcricao", quem: "aluno", texto: sc.inputTranscription.text, fim: Boolean(sc.inputTranscription.finished) }); }
+      if (sc.inputTranscription?.text) { anotar("aluno", sc.inputTranscription.text); enviar({ t: "transcricao", quem: "aluno", texto: sc.inputTranscription.text, fim: Boolean(sc.inputTranscription.finished) }); ouvirAluno(sc.inputTranscription.text); }
       if (sc.outputTranscription?.text) { anotar("tutor", sc.outputTranscription.text); enviar({ t: "transcricao", quem: "tutor", texto: sc.outputTranscription.text, fim: Boolean(sc.outputTranscription.finished) }); }
-      if (sc.interrupted) enviar({ t: "interrompido" });
+      if (sc.interrupted) { enviar({ t: "interrompido" }); if (estadoPendente) mandarEstado(); }
       for (const p of sc.modelTurn?.parts ?? []) if (p.inlineData?.data) enviar({ t: "audio", d: p.inlineData.data });
       if (sc.generationComplete) enviar({ t: "geracao_completa" });
-      if (sc.turnComplete) enviar({ t: "turno_completo" });
+      if (sc.turnComplete) { enviar({ t: "turno_completo" }); relatarAbertura(); professorTerminou(); }
     });
     g.on("close", (codigo, porque) => {
       if (google !== g || fim) return;
@@ -208,6 +245,48 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
   };
 
   const paraGoogle = (o: Record<string, unknown>) => { if (google?.readyState === WebSocket.OPEN && pronto) google.send(JSON.stringify(o)); };
+  /** Instruções da sessão como estão agora: as do bilhete com o estado do momento, o material do tema e, depois de queda, a conversa. */
+  const sistema = () => [humor && c?.humor ? instrucoesComEstado(c.instrucoes, c.humor.estado, humor.bloco) : c!.instrucoes, c!.material, contextoReaberta].filter(Boolean).join("\n\n");
+  /** Troca as instruções da sessão (sem pedir resposta): o Google usa o texto novo a partir da próxima geração. */
+  const mandarEstado = () => {
+    estadoPendente = false;
+    paraGoogle({ contextUpdate: { systemInstruction: { parts: [{ text: sistema() }] } } });
+  };
+  // humor a cada fala: o Google devolve a transcrição do aluno junto com o começo da resposta (medido em 17/10: chega no mesmo instante
+  // do 1º áudio), então a troca nunca alcança a resposta em andamento; ela vai quando o professor termina (ou é interrompido), antes
+  // da próxima fala do aluno, e não mexe na geração em andamento nem na latência. Na própria fala o professor já reage pelo que ouviu
+  // (ficha e leitura do aluno); o estado carrega o humor para as falas seguintes. A fala do aluno (com o finzinho que a transcrição
+  // traz atrasado e o que ele disser ao interromper) é um turno só, fechado quando o professor termina.
+  const ouvirAluno = (pedaco: string) => {
+    if (!humor) return;
+    falaAluno = (falaAluno + pedaco).slice(-1500);
+    if (humor.ouvirAluno(falaAluno)) estadoPendente = true;
+  };
+  const professorTerminou = () => {
+    if (!humor) return;
+    humor.fecharFalaDoAluno();
+    falaAluno = "";
+    const mudou = humor.falasDoProfessor(historia.filter((h) => h.quem === "tutor").map((h) => h.texto));
+    if (mudou || estadoPendente) mandarEstado();
+  };
+  const responderNaPonte = async (f: { id: string; name: string; args: unknown }) => {
+    enviar({ t: "buscando" });
+    // frase de espera (decisão do dono de 17/10): só se a busca passar de ~600 ms; a tela escolhe a frase do personagem (rodízio
+    // por conversa, frasesEspera.ts). O modelo não fala enquanto a ferramenta roda (cerebro/gemini-live.md), por isso vai à tela.
+    const espera = setTimeout(() => { if (!fim && pendentes.has(f.id)) enviar({ t: "espera" }); }, ATRASO_ESPERA_MS);
+    const r = await deps.conhecimento!.buscar({ vc: c!.vc, u: c!.u }, (f.args ?? {}) as Record<string, unknown>).finally(() => clearTimeout(espera));
+    if (fim || !pendentes.delete(f.id)) return; // cancelada pelo Google ou sessão reaberta
+    paraGoogle({ toolResponse: { functionResponses: [{ id: f.id, name: f.name, response: r.response }] } });
+    enviar({ t: "fontes", rotulos: r.rotulos });
+    deps.log({ ponte: "conhecimento", vc: c?.vc, ms: r.ms, vetor: r.vetor, trechos: r.rotulos.length });
+  };
+  // depois de next_question: material do tema novo, trocado só ele nas instruções da sessão (contextUpdate)
+  const trocarMaterial = async () => {
+    const novo = await deps.conhecimento!.pacote({ vc: c!.vc, u: c!.u });
+    if (fim || !c || !novo || novo === c.material) return;
+    c = { ...c, material: novo };
+    mandarEstado();
+  };
 
   cliente.on("message", (raw, binario) => {
     if (fim || binario) return;
@@ -219,6 +298,7 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
       const a = abrirBilhete(String(m.bilhete ?? ""), deps.segredo, deps.usados);
       if (!a.ok) { deps.log({ ponte: "bilhete_recusado", motivo: a.motivo }); enviar({ t: "erro", mensagem: `bilhete ${a.motivo}` }); return encerrar(`bilhete ${a.motivo}`); }
       c = a.conteudo;
+      humor = humorValido(c.humor) ? new HumorDaLigacao(c.humor) : null;
       clearTimeout(espera);
       limite = setTimeout(() => encerrar("limite de tempo da ligação"), Math.max(30, Math.min(c.maxSegundos, 2 * 3600)) * 1000);
       deps.log({ ponte: "inicio", vc: c.vc, modelo: c.modelo, voz: c.voz, max_s: c.maxSegundos });
@@ -235,9 +315,21 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
         break;
       case "ferramentas": {
         const respostas = (Array.isArray(m.respostas) ? m.respostas : [])
-          .filter((r: any) => r && pendentes.has(String(r.id)))
+          .filter((r: any) => r && pendentes.has(String(r.id)) && !daPonte.has(String(r.id)))
           .map((r: any) => { pendentes.delete(String(r.id)); return { id: String(r.id), name: String(r.name ?? ""), response: r.response && typeof r.response === "object" ? r.response : { output: r.response ?? null } }; });
+        // correção da questão: o humor da ligação anda com acerto/erro (memória da ligação: erro repetido, alívio) e o tom que vai junto
+        // da resposta é o desta ligação (o do servidor não sabe o que já aconteceu nela); a troca nas instruções vem quando ele terminar
+        if (humor) for (const r of respostas) {
+          if (r.name !== "submit_answer") continue;
+          const certo = acertoDaFerramenta(r.response);
+          if (certo == null) continue;
+          const tom = humor.fatos([certo ? "correct" : "wrong"]);
+          const out = (r.response as { output?: unknown }).output;
+          if (out && typeof out === "object") (out as Record<string, unknown>).tom_do_professor = tom;
+          estadoPendente = true;
+        }
         if (respostas.length) paraGoogle({ toolResponse: { functionResponses: respostas } });
+        if (deps.conhecimento && respostas.some((r: { name: string }) => r.name === "next_question")) void trocarMaterial();
         break;
       }
       case "mudo":

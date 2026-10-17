@@ -8,7 +8,7 @@ import { validVoiceId } from "../../server/tutor/officialVoices";
 async function main() {
   const [command, personality, choice, consent] = process.argv.slice(2);
   if (!["design", "save"].includes(command) || !Object.hasOwn(OFFICIAL_VOICES, personality ?? "")) {
-    throw new Error("Uso: npx tsx scripts/tutor/elevenlabs-design.ts design <tranquilo|durona|direto> OU save <perfil> <1|2|3> --approve-design");
+    throw new Error("Uso: npx tsx scripts/tutor/elevenlabs-design.ts design <stazi|stazia> OU save <perfil> <1|2|3> --approve-design");
   }
   const id = personality as OfficialVoice;
   const env = { ...readEnv(".env"), ...readEnv(".env.local"), ...process.env };
@@ -54,7 +54,7 @@ async function main() {
       if (!validVoiceId(result.voice_id)) throw new Error("Resposta sem voice_id válido; confira o painel antes de repetir.");
       fs.writeFileSync(saved, JSON.stringify({ personality: id, voice_id: result.voice_id, createdAt: new Date().toISOString(), releaseApproved: false }, null, 2), { flag: "wx", mode: 0o600 });
       completed = true;
-      const variable = { direto: "DIRETO", durona: "DURONA", tranquilo: "TRANQUILO" }[id];
+      const variable = { stazi: "STAZI", stazia: "STAZIA" }[id];
       // voice_id não é credencial. A API Key nunca é impressa nem gravada nestes arquivos.
       console.log(`Voz salva. Configure no servidor: ELEVENLABS_VOICE_${variable}=${result.voice_id}\nAinda é necessário testar os cenários no painel interno e aprovar a liberação.`);
     }

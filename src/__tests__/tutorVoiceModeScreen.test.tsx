@@ -165,9 +165,11 @@ describe("Stazia Voice Mode com GPT-Live", () => {
     await emit({ type: "session.output_transcript.delta", delta: "Pré-eclâmpsia é " });
     expect(await screen.findByText("Falando...")).toBeTruthy();
     expect(screen.getByText(/Pré-eclâmpsia é/)).toBeTruthy();
-    const orb = document.querySelector(".svm-orb")!;
+    // 17/10/2026: no lugar da esfera fica o personagem escolhido (Stazi/Stazia), com o mesmo estado e a mesma emoção
+    const orb = document.querySelector(".svm .tp")!;
     expect(orb.getAttribute("data-emotion")).toBe("annoyed");
     expect(orb.getAttribute("data-state")).toBe("speaking");
+    expect(["stazi", "stazia"]).toContain(orb.getAttribute("data-personagem"));
     // GPT-Live é full-duplex: não há botão de interromper (falar por cima basta)
     expect(screen.queryByText("Interromper")).toBeNull();
   });
@@ -306,7 +308,7 @@ describe("Painel de administração da voz", () => {
     fireEvent.change(screen.getByLabelText("Provedor da voz"), { target: { value: "live" } });
     fireEvent.change(screen.getByLabelText("Voz"), { target: { value: "cedar" } });
     fireEvent.change(screen.getByLabelText("Limite de cada conversa por voz (minutos)"), { target: { value: "20" } });
-    fireEvent.change(screen.getByLabelText("Nível da Durona"), { target: { value: "moderada" } });
+    fireEvent.change(screen.getByLabelText("Nível da Durona e do Durão"), { target: { value: "moderada" } });
     fireEvent.change(screen.getByLabelText("Pronúncias (uma por linha: termo = como falar)"), { target: { value: "INEP = inépi\nlixo sem igual" } });
     fireEvent.click(screen.getByRole("switch", { name: /^Piadas internas/ }));
     // professores usam o mesmo motivo (sem motivo, ficam travados)

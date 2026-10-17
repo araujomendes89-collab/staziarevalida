@@ -175,6 +175,49 @@ const FORBIDDEN = ["burro", "burra", "idiota", "imbecil", "estupido", "estupida"
 const DIRECTED =
   /(?:voce|vc|tu)\s+(?:e|es|esta|parece|foi|continua)\s+(?:um\s+|uma\s+|muito\s+|bem\s+|tao\s+)?(?:retardad[oa]|incompetente|inutil|lixo|vagabund[oa]|louc[oa]|maluc[oa]|gord[oa]|fei[oa]|doente\s+mental|fracassad[oa]|preguicos[oa]|lerd[oa]|tapad[oa]|jumento|anta|besta|mula|lento\s+demais)(?![a-z])|(?<![a-z])seu\s+(?:lixo|inutil|incompetente|vagabundo|retardado|fracassado|corno|preguicoso|lerdo|tapado|jumento|anta|besta|mula)(?![a-z])|(?<![a-z])sua\s+(?:inutil|incompetente|vagabunda|retardada|fracassada|preguicosa|lerda|tapada|anta|besta|mula)(?![a-z])/;
 
+/**
+ * APELIDO PARA O ALUNO (bancada de 17/10/2026: com o aluno brincalhão, Durão e Durona chamaram de «palhaço», «engraçadinho»,
+ * «valentão»; nada barrava). A regra do dono: a bronca e a zoeira vão para a resposta e para a situação, nunca para a pessoa,
+ * nem de brincadeira nem de carinho.
+ *   - APELIDO_SEMPRE: palavras sem uso clínico nem outro sentido numa aula: barradas em qualquer ponto da fala;
+ *   - APELIDO_DIRIGIDO: palavras com outro uso ("mala direta", "curativo folgado", "um moleque de 12 anos" é paciente de exemplo):
+ *     barradas só quando chamam o aluno (vocativo «, palhaço!», «Folgado, …», «X você», «você é X», «seu/sua X», «que X!»).
+ */
+const APELIDO_SEMPRE = [
+  "palhaco", "palhaca", "engracadinho", "engracadinha", "sabichao", "sabichona", "sabidinho", "sabidinha", "mane", "valentao", "valentona",
+  "espertinho", "espertinha", "espertalhao", "espertalhona", "folgadinho", "folgadinha", "ze ruela", "ze mane", "boco",
+];
+const APELIDO_DIRIGIDO = [
+  "mala", "desgracado", "desgracada", "moleque", "moleca", "folgado", "folgada", "abusado", "abusada", "safado", "safada", "malandro", "malandra",
+  "pilantra", "marrento", "marrenta", "metido", "metida", "bobao", "bobona", "bobinho", "bobinha", "fanfarrao", "fanfarrona",
+  "atrevido", "atrevida", "cara de pau", "sem vergonha", "sem-vergonha", "vagabundo", "vagabunda", "preguicoso", "preguicosa",
+  // de carinho também não (a ficha proíbe; a voz ao vivo da Durona disse «rapaz» na medição de 17/10): só como vocativo
+  "rapaz", "moca", "meu filho", "minha filha", "querido", "querida", "meu querido", "minha querida",
+];
+const ESC = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+");
+const NICK = `(?:${[...APELIDO_SEMPRE, ...APELIDO_DIRIGIDO].map(ESC).join("|")})`;
+const APELIDO_VOCATIVO = new RegExp(
+  [
+    // «, palhaço!», «Engraçadinho, …», «… marra toda, palhaço?»: o apelido sozinho entre pontuação (ou no começo/fim da fala)
+    `(?:^|[,!?.;:…—–(-]\\s*)(?:(?:seu|sua|meu|minha|o|a|oh)\\s+)?${NICK}(?![a-z])\\s*(?=[,!?.;:…)]|$)`,
+    // «Que folgado!», «Mas que abusado, hein»
+    `(?<![a-z])que\\s+${NICK}(?![a-z])\\s*(?=[,!?.…]|$)`,
+    // «Engraçadinho você, né?», «folgado tu»
+    `(?<![a-z])${NICK}\\s+(?:voce|vc|ce|tu)(?![a-z])`,
+    // «você é um folgado», «tu tá muito abusado», «cê é engraçadinho»
+    `(?<![a-z])(?:voce|vc|ce|tu)\\s+(?:e|eh|es|ta|tah|esta|tava|estava|continua|parece|virou|ficou|se acha)\\s+(?:um\\s+|uma\\s+|muito\\s+|bem\\s+|mo\\s+|tao\\s+|meio\\s+|o\\s+|a\\s+)*${NICK}(?![a-z])`,
+    // «seu folgado», «sua abusada»
+    `(?<![a-z])(?:seu|sua)\\s+${NICK}(?![a-z])`,
+  ].join("|"),
+);
+
+/** Apelido dirigido ao aluno numa fala já sem acento e em minúsculas (null quando não há). */
+export function apelidoDirigido(folded: string): string | null {
+  for (const w of APELIDO_SEMPRE) if (new RegExp(`(?<![a-z])${ESC(w)}(?![a-z])`).test(folded)) return w;
+  const m = folded.match(APELIDO_VOCATIVO);
+  return m ? m[0].replace(/^[\s,!?.;:…—–(-]+/, "").trim() : null;
+}
+
 const hasWord = (text: string, word: string) => new RegExp(`(?<![a-z])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z])`).test(text);
 
 /**
@@ -188,6 +231,8 @@ export function languageViolations(text: string, level: ProfanityLevel): Violati
   for (const w of PROFANITY_HEAVY) if (hasWord(folded, w)) v.push({ code: "personal_attack", detail: `Xingamento pesado demais, mesmo com palavrão liberado: "${w}".` });
   const directed = folded.match(DIRECTED);
   if (directed) v.push({ code: "personal_attack", detail: `Ataque dirigido ao aluno: "${directed[0]}".` });
+  const apelido = directed ? null : apelidoDirigido(folded);
+  if (apelido) v.push({ code: "personal_attack", detail: `Apelido para o aluno: "${apelido}". Nada de apelido, nem de brincadeira nem de carinho: zoe a situação ou a resposta, sem dar nome a ele.` });
   if (level !== "moderate") for (const w of PROFANITY_MODERATE) if (hasWord(folded, w)) v.push({ code: "profanity", detail: `Palavrão acima do nível liberado: "${w}".` });
   if (level === "off") for (const w of PROFANITY_MILD) if (hasWord(folded, w)) v.push({ code: "profanity", detail: `Palavrão com palavrões desligados: "${w}".` });
   return v;
@@ -201,6 +246,53 @@ export interface SafetyResult {
 }
 
 const INSUFFICIENT = fold("Não encontrei confirmação suficiente na base disponível");
+
+// ---------------------------------------------------------------------------- confirmação da letra (mini tutor, revisão de 17/10/2026)
+// Jeitos de dizer "é a B" sem a palavra "alternativa": "Isso mesmo, é a B", "Vai na B", "Pode marcar a B", "Você acertou: B",
+// "Confirmo: B", "B mesmo". A letra só conta em MAIÚSCULA e sozinha (o artigo "a" e "A paciente" não contam).
+const SOLTA = "(?![A-Za-zÀ-ú])";
+const ANTES = "(?<![A-Za-zÀ-ú])";
+/** Palavras com a 1ª letra em maiúscula ou minúscula (começo de frase); a letra da alternativa continua só em maiúscula. */
+const W = (...ws: string[]) => `(?:${ws.map((w) => `[${w[0]}${w[0].toUpperCase()}]${w.slice(1)}`).join("|")})`;
+const E = "[éeÉE]";
+export function confirmsLetter(reply: string, letter: string): boolean {
+  const L = letter.toUpperCase();
+  const t = reply.normalize("NFC");
+  const art = "(?:(?:a|na|pela|com\\s+a|de)\\s+)?(?:(?:letra|alternativa|op[cç][aã]o)\\s+)?[\"“'(]?";
+  return new RegExp(
+    [
+      // "é a B", "seria a B", "fica com a B", "vai na B", "fecha na B"
+      `${ANTES}(?:${E}|${W("seria", "fica", "fique", "vai", "vá", "va", "fecha", "feche", "segue", "siga", "crava", "crave", "aposta", "aposte")})\\s+${art}${L}["”')]?${SOLTA}`,
+      // "pode marcar a B", "marca B", "responde B", "escolhe a B", "assinala B"
+      `${ANTES}${W("marca", "marcar", "marque", "responde", "responder", "responda", "escolhe", "escolher", "escolha", "assinala", "assinalar", "assinale", "chuta", "chutar", "chute")}\\s+${art}${L}["”')]?${SOLTA}`,
+      // "acertou: B", "confirmo: B", "exato, B", "isso mesmo, B", "certo: B", "correto, B"
+      `${W("acertou", "acertei", "confirmo", "confirmado", "exato", "exatamente", "isso\\s+mesmo", "isso\\s+aí", "isso\\s+ai", "correto", "corretíssimo", "certo", "certíssimo", "perfeito", "bingo", "na\\s+mosca")}\\s*[:,.!—–-]*\\s*${art}${L}["”')]?${SOLTA}`,
+      // "B mesmo", "B sem medo", "B tá certa"
+      `${ANTES}${L}["”')]?\\s*[,!.]?\\s+(?:mesmo|sem\\s+medo|(?:t[aá]|est[aá])\\s+cert[ao]|${E}\\s+(?:a\\s+)?(?:certa|correta|essa))`,
+    ].join("|")
+  ).test(t);
+}
+
+/** A fala do aluno é um palpite de letra: "é a B?", "letra c", "acho que B", "B?" sozinho. */
+export function isLetterGuess(text: string): boolean {
+  const t = String(text ?? "").normalize("NFC").trim();
+  if (!t) return false;
+  if (/^[("“']?[A-Da-d][)"”']?\s*[?!.]*$/.test(t)) return true;
+  return new RegExp(
+    `${W("letra", "alternativa", "opção", "opcao", "item")}\\s+["“'(]?[A-Da-d]${SOLTA}` +
+      `|${ANTES}(?:${E}|${W("seria", "marco", "marquei", "marcaria", "vou\\s+na", "vou\\s+no", "vou\\s+de", "acho\\s+que", "acho\\s+que\\s+é", "acho\\s+que\\s+e", "fico\\s+com", "confirma")})\\s+(?:a\\s+|na\\s+)?["“'(]?[A-D]${SOLTA}`
+  ).test(t);
+}
+
+/** A resposta reage ao palpite: sim/não, "acertou", "está certo", "é essa", "caminho certo", "pode marcar". */
+export function reactsToGuess(reply: string): boolean {
+  const f = fold(reply);
+  return (
+    /^\W*(?:sim|isso|exato|exatamente|correto|certo|certissimo|acertou|errou|errado|errada|quase|bingo|na mosca|perfeito|negativo|nada disso|nope|positivo|confirmo|confirmado)\b/.test(f) ||
+    /^\W*nao\s*[,.!]/.test(f) ||
+    /\b(?:voce\s+)?(?:acertou|errou)\b|\b(?:esta|ta|tah)\s+(?:cert[oa]|errad[oa]|corret[oa]|incorret[oa])\b|\b(?:e|eh)\s+(?:essa|esta|ela)\s+(?:mesm[oa]|ai)\b|\bnao\s+(?:e|eh)\s+(?:essa|esta|ela)\b|\b(?:caminho|raciocinio|palpite|chute)\s+(?:esta\s+|ta\s+|e\s+)?(?:cert[oa]|corret[oa]|errad[oa]|bom|otimo|perfeito)\b|\bpode\s+(?:marcar|responder|cravar|ir\s+(?:nela|nessa|de))\b|\bvai\s+(?:nessa|fundo|sem\s+medo)\b|\bsem\s+medo\b/.test(f)
+  );
+}
 
 export function safetyCheck(out: TutorOutput, ctx: SafetyContext): SafetyResult {
   const v: Violation[] = [];
@@ -253,8 +345,11 @@ export function safetyCheck(out: TutorOutput, ctx: SafetyContext): SafetyResult 
           `|(?<![A-Za-zÀ-ú])${L}\\)?\\s+(?:é|está)\\s+(?:a\\s+)?(?:alternativa\\s+)?(?:correta|certa)` +
           `|[Mm]arque\\s+(?:a\\s+)?(?:letra\\s+|alternativa\\s+)?${L}(?![A-Za-zÀ-ú])`
       );
-      if (leak.test(reply.normalize("NFC"))) add("answer_leak", "Indica a letra da alternativa correta com a questão ainda aberta.");
+      if (leak.test(reply.normalize("NFC")) || confirmsLetter(reply, L)) add("answer_leak", "Indica a letra da alternativa correta com a questão ainda aberta.");
     }
+    // o aluno chutou uma letra ("é a B?", "só confirma"): nem sim nem não, a reação ao palpite já entrega a resposta
+    const guess = ctx.conversationTexts[0] ?? "";
+    if (isLetterGuess(guess) && reactsToGuess(reply)) add("answer_leak", "Confirma ou nega o palpite do aluno com a questão ainda aberta.");
     if (q.officialText && fold(q.officialText).length >= 15 && folded.includes(fold(q.officialText))) add("answer_leak", "Repete o texto da alternativa correta com a questão ainda aberta.");
   }
 
@@ -273,18 +368,59 @@ export function safetyCheck(out: TutorOutput, ctx: SafetyContext): SafetyResult 
   return { violations: v, grounding, sources: valid.filter((b) => b.kind !== "question" && !labelIsSupportMaterial(b.label, ctx.supportTerms ?? [])).map((b) => ({ ref: b.ref, label: b.label })) };
 }
 
+/**
+ * Em que situação a resposta fixa entra (revisão de 17/10: a mesma frase «Esse dado eu não tenho confirmado aqui… me conta o que
+ * você já sabe do caso» aparecia como resposta a «manda uma questão» e logo depois de o aluno marcar uma letra, sem combinar com nada).
+ */
+export interface SituacaoReserva {
+  /** o aluno pediu um caso ou uma questão e não há questão aberta */
+  pedidoDeCaso?: boolean;
+  /** reação à letra que o aluno acabou de marcar (a questão já foi corrigida pelo banco) */
+  reacao?: { letra: string; acertou: boolean } | null;
+  /** o tema da conversa, se houver */
+  tema?: string | null;
+  /** muda a frase escolhida (a mesma conversa não ouve a mesma reserva duas vezes seguidas) */
+  semente?: number;
+}
+
+/** O aluno está pedindo um caso clínico ou uma questão ("manda uma questão", "solta o caso", "me dá um caso de dengue"). */
+export function pedeCaso(texto: string | null | undefined): boolean {
+  return /\b(?:manda|mande|solta|solte|traz|traga|me da|me de|bora|quero|faz|faca|monta|monte|passa|joga|pode soltar|pode mandar)\b[^.?!]{0,40}\b(?:questao|questoes|caso|casos|caso clinico|pergunta)\b/.test(fold(String(texto ?? "")));
+}
+
+const pick = (list: string[], semente = 0) => list[Math.abs(Math.trunc(semente)) % list.length];
+
 /** Resposta fixa quando a IA insiste em algo que a validação barra. Honesta, sem personagem e sem cara de aviso de sistema. */
-export function fallbackReply(violations: Violation[]): string {
+export function fallbackReply(violations: Violation[], situacao: SituacaoReserva = {}): string {
+  const s = situacao.semente ?? 0;
+  const tema = situacao.tema ? String(situacao.tema).replace(/\s+/g, " ").trim().slice(0, 60) : null;
   if (violations.some((x) => x.code === "answer_leak")) {
-    return "Calma, essa eu ainda não vou te entregar. Me diz o que você tá pensando, ou pede mais uma ajuda.";
+    return pick(["Calma, essa eu ainda não vou te entregar. Me diz o que você tá pensando, ou pede mais uma ajuda.",
+      "Ainda não: primeiro o seu raciocínio. O que no caso pesa mais pra você?"], s);
   }
   if (violations.length > 0 && violations.every((x) => x.code === "invalid_format")) {
-    return "Travei aqui. Pergunta de novo, de outro jeito?";
+    return pick(["Travei aqui. Pergunta de novo, de outro jeito?", "Me perdi nessa. Repete com outras palavras?"], s);
   }
   if (violations.some((x) => x.code === "personal_attack" || x.code === "profanity")) {
-    return "Vamos direto ao ponto: me conta o que você entendeu até aqui.";
+    return pick(["Vamos direto ao ponto: me conta o que você entendeu até aqui.", "Voltando ao caso: o que você já tem firme até aqui?"], s);
   }
-  return "Esse dado eu não tenho confirmado aqui, então prefiro não te passar de cabeça. Me conta o que você já sabe do caso e a gente segue pelo raciocínio.";
+  if (situacao.reacao) {
+    const { letra, acertou } = situacao.reacao;
+    return acertou
+      ? pick([`Marcou a ${letra} e acertou. Agora me mostra o porquê: qual pista do caso te levou até ela?`, `${letra}, certa. Qual dado do enunciado te fez fechar nela?`], s)
+      : pick([`Marcou a ${letra}, e não é essa. O que no caso te puxou pra ela? A gente acha o desvio juntos.`, `A ${letra} não é a certa. Me conta o raciocínio que te levou até ela.`], s);
+  }
+  if (situacao.pedidoDeCaso) {
+    return pick([
+      `Caso inventado com número eu não monto de cabeça. Abre uma questão oficial${tema ? ` de ${tema}` : ""} e a gente resolve junto, ou me diz o que você já sabe e eu te testo pelo raciocínio.`,
+      `Questão boa é a oficial: pega uma${tema ? ` de ${tema}` : ""} na aba de questões que a gente destrincha. Enquanto isso, qual parte do tema mais te pega?`,
+    ], s);
+  }
+  return pick([
+    "Esse dado eu não tenho confirmado aqui, então prefiro não te passar de cabeça. Me conta o que você já sabe do caso e a gente segue pelo raciocínio.",
+    "Esse número eu não vou chutar: não tenho confirmado aqui. Vamos pelo raciocínio, que é o que decide a questão.",
+    "Isso eu não tenho conferido na base, então fica de fora. O que mais você quer entender desse ponto?",
+  ], s);
 }
 
 /** Texto para falar em voz alta: sem marcação, sem símbolos soltos, em frases. */

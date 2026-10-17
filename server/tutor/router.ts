@@ -6,15 +6,17 @@ import express, { type NextFunction, type Request, type Response } from "express
 import type { Identity } from "../contentHub/infra";
 import { TUTOR_CONSENT_PENDING, TutorError, consentError, resolveTutorProvider, tutorTurn, type TutorDeps } from "./engine";
 import { speechProviderFor, tutorSpeech } from "./speech";
-import { endVoice, purgeVoiceTranscripts, recordVoiceMetrics, recordVoiceUsage, rememberEvidence, renewVoice, startVoice, sweepVoice, voiceCall, voiceReady, voiceTranscript, type EndReason } from "./realtime";
+import { endVoice, guardarAberturaDaPonte, purgeVoiceTranscripts, recordVoiceMetrics, recordVoiceUsage, rememberEvidence, renewVoice, startVoice, sweepVoice, voiceCall, voiceReady, voiceTranscript, type EndReason } from "./realtime";
 import { runTutorTool, TOOL_NAMES } from "./tools";
+import { limparRetornoFerramenta } from "./sigilo";
 import { delegateVoice, sayVoice, type Letter } from "./delegate";
+import { naturalOpening, OPENING_TIMEOUT_MS, OPENING_WAIT_MS } from "./opening";
 import { tutorSettings } from "./settings";
 import { questionHint, questionHintEnabled } from "./questionHint";
 import { geminiVoiceConfig, planProviders, vertexPonteConfig } from "./voiceProviders";
 import { relatorioConfere } from "../vozPonte/bilhete";
 import { planPersonaTurn } from "./voiceReactions";
-import { personaPromptLayer } from "./personalityEngine";
+import { personaStateLayer } from "./personalityEngine";
 import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
 import { samplePath } from "./voicePreview";
 import { elevenAccessOf, nexusStatus, openNexus, type TtsQuota } from "./nexus";
@@ -22,6 +24,7 @@ import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, STT_BLOCK, STT_BUSY, STT_PER_MINUTE
 import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 import { rateHit } from "./limits";
 import { SESSAO_DERRUBADA_CODIGO, SESSAO_DERRUBADA_MENSAGEM, sessaoDerrubada } from "../auth/sessaoUnica";
+import { rotasConhecimentoPonte } from "./conhecimento/rotaPonte";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -72,6 +75,26 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       fail(res, 500, shown(error));
     }
   });
+
+  /**
+   * Abertura da ligação relatada pela PONTE (revisão de 17/10): a 1ª fala do professor como o Google transcreveu, assinada com
+   * VOZ_PONTE_SEGREDO. Só por aqui a abertura da voz pelo Vertex entra na memória (o texto do navegador não entra).
+   */
+  router.post("/voice/ponte-abertura", async (req, res) => {
+    const ponte = vertexPonteConfig();
+    const corpo = typeof (req as Request & { rawBody?: string }).rawBody === "string" ? (req as Request & { rawBody?: string }).rawBody! : JSON.stringify(req.body ?? {});
+    if (!deps || !ponte || !relatorioConfere(corpo, String(req.headers["x-stazia-ponte-assinatura"] ?? ""), ponte.segredo)) return fail(res, 401, "Não autorizado.");
+    try {
+      const b = JSON.parse(corpo) as { vc?: string; u?: string; texto?: string; t?: number };
+      if (!uuid.test(String(b.vc ?? "")) || !uuid.test(String(b.u ?? "")) || typeof b.texto !== "string" || Math.abs(Date.now() - Number(b.t ?? 0)) > 10 * 60_000) return fail(res, 400, "Relatório inválido.");
+      res.json({ ok: await guardarAberturaDaPonte(deps, String(b.u), String(b.vc), b.texto.slice(0, 600)) });
+    } catch (error) {
+      fail(res, 500, shown(error));
+    }
+  });
+
+  // cérebro do Tutor: busca de conhecimento e material do tema pedidos pela PONTE de voz (assinados, sem login de aluno)
+  router.use(rotasConhecimentoPonte(deps));
 
   router.use(async (req: Authed, res: Response, next: NextFunction) => {
     if (!deps) return fail(res, 503, pending ?? "Tutor não configurado no servidor.");
@@ -248,6 +271,19 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
   });
 
   /**
+   * Abertura e passagem naturais (17/10): depois de app_tutor_start ou app_tutor_next_question chamados direto pelo aplicativo, a
+   * fala sorteada pelo banco é só a reserva; aqui a IA cria a fala do momento e troca o texto. body: { session_id }.
+   * Devolve { opening: { id, content } } ou { opening: null } (a reserva fica). Só troca a última fala da conversa, uma vez: o banco
+   * reserva a fala antes de chamar a IA e conta no limite de frequência do aluno ('tutor_opening'), então pedidos repetidos ou juntos
+   * não geram custo. rapido: true = a tela está esperando (espera curta, depois fica a reserva).
+   */
+  router.post("/opening", async (req: Authed, res) => {
+    const sessionId = String(req.body?.session_id ?? "");
+    if (!/^[0-9a-f-]{36}$/i.test(sessionId)) return fail(res, 400, "Conversa inválida.");
+    res.json({ opening: await naturalOpening(deps!, req.user!.id, sessionId, req.body?.rapido === true ? OPENING_WAIT_MS : OPENING_TIMEOUT_MS) });
+  });
+
+  /**
    * Dica ANTES de responder (só treino; nasce desligada: interruptor do painel ou TUTOR_QUESTION_HINT=1). body: { question_id }. Nunca traz gabarito, explicação nem fontes.
    */
   router.post("/question-hint", async (req: Authed, res) => {
@@ -377,18 +413,20 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       args = {};
     }
     const persona = await deps!.db.service<{ personality: { id: string } } | null>("ch_worker_tutor_context", { p_user: req.user!.id, p_session_id: v.session_id });
-    const output = await runTutorTool({ deps: deps!, userId: req.user!.id, sessionId: v.session_id, personaId: persona?.personality.id ?? "direto", remember: (t) => rememberEvidence(id, t) }, name, args);
+    const output = await runTutorTool({ deps: deps!, userId: req.user!.id, sessionId: v.session_id, personaId: persona?.personality.id ?? "acolhedor", remember: (t) => rememberEvidence(id, t) }, name, args);
     // voz do Gemini pelo Vertex: depois da correção, o tom novo do professor vem do Personality Engine (acerto ou erro)
     if (name === "submit_answer" && v.provider === "gemini" && geminiVoiceConfig().via === "vertex" && output && typeof output === "object" && "result" in output) {
       try {
         const correct = Boolean((output as { result?: { is_correct?: boolean } }).result?.is_correct);
-        const d = await planPersonaTurn(deps!, { userId: req.user!.id, personality: persona?.personality.id ?? "direto", provider: "gemini_live", memory: null, facts: [correct ? "correct" : "wrong"] });
-        (output as Record<string, unknown>).tom_do_professor = personaPromptLayer(d);
+        const d = await planPersonaTurn(deps!, { userId: req.user!.id, personality: persona?.personality.id ?? "acolhedor", provider: "gemini_live", memory: null, facts: [correct ? "correct" : "wrong"] });
+        // só o ESTADO (a ficha e o jeito fixo já estão nas instruções da sessão); com o humor da ligação, a ponte troca por o dela
+        (output as Record<string, unknown>).tom_do_professor = personaStateLayer(d);
       } catch {
         // sem o motor no banco: fica o "tone" de sempre
       }
     }
-    return { output };
+    // o que a ferramenta devolve é dado para a voz: sai sem chave, endereço ou nome interno do banco (sigilo.ts)
+    return { output: limparRetornoFerramenta(output) };
   }));
 
   // corpo grande demais no express.raw da transcrição: o mesmo aviso, em JSON

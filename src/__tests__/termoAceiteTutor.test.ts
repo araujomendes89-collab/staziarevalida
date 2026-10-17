@@ -33,13 +33,13 @@ const SEM_LOGIN = "Entre na sua conta.";
 const SEM_ACEITE_CODE = "42501";
 
 const sql = async <T = any>(q: string, p: unknown[] = []) => (await dev.db.query<T>(q, p)).rows;
-/** Voz do professor nos testes: ambiente falso (sem rede) e as três vozes aprovadas nesta versão. */
+/** Voz do professor nos testes: ambiente falso (sem rede) e as duas vozes aprovadas nesta versão. */
 const VOZ_ENV = {
   ELEVENLABS_API_KEY: "chave-falsa-de-teste-" + "x".repeat(40), TUTOR_VOICE_ALLOW_EXTERNAL: "1",
-  ELEVENLABS_VOICE_TRANQUILO: "vozTranquiloTeste01", ELEVENLABS_VOICE_DURONA: "vozDuronaTeste0001", ELEVENLABS_VOICE_DIRETO: "vozDiretoTeste0001",
+  ELEVENLABS_VOICE_STAZI: "vozStaziTeste000001", ELEVENLABS_VOICE_STAZIA: "vozStaziaTeste00001",
 };
 const aprovarVozes = (q: (s: string, p?: unknown[]) => Promise<unknown>) =>
-  Promise.all((["tranquilo", "durona", "direto"] as const).map((v) => q(`insert into public.tutor_voice_approvals (voice, fingerprint) values ($1, $2) on conflict (voice) do update set fingerprint = excluded.fingerprint, revoked_at = null`, [v, voiceFingerprint(v, VOZ_ENV)])));
+  Promise.all((["stazi", "stazia"] as const).map((v) => q(`insert into public.tutor_voice_approvals (voice, fingerprint) values ($1, $2) on conflict (voice) do update set fingerprint = excluded.fingerprint, revoked_at = null`, [v, voiceFingerprint(v, VOZ_ENV)])));
 /** Roda como o navegador (papel authenticated) de um aluno logado, ou sem sessão (uid nulo, como um token sem usuário). */
 const as = <T>(uid: string | null, fn: (q: (s: string, p?: unknown[]) => Promise<any[]>) => Promise<T>) =>
   dev.db.transaction(async (tx) => {
