@@ -17,7 +17,7 @@ import { asDocument } from "../contentHub/ai/prompts";
 import { AiInvalidOutput, resolveProviderKind, withFallback, type StructuredRequest } from "../contentHub/ai/provider";
 import { aiAllowed, registerPrompts, type PromptEntry } from "../contentHub/ai/registry";
 import type { ContentDb } from "../contentHub/infra";
-import { avatarOf, engineFor, languageIntensity, normalize, profanityForIntensity, recentExpressions, stateLayer, step, usedStarts, type Happening, type PersonaEngine, type TutorState } from "./emotion";
+import { avatarOf, engineFor, languageIntensity, leituraDoRegistro, normalize, profanityForIntensity, recentExpressions, stateLayer, step, usedStarts, type Happening, type PersonaEngine, type TutorState } from "./emotion";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
 import { NO_EVALUATION, TUTOR_PROMPT_LAYERS, TUTOR_SCHEMA, TUTOR_VERSION, composeSystem, taskInstruction, type TutorMode, type TutorOutput, type TutorTask } from "./prompts";
 import { ComplementarTermsUnavailable, labelIsSupportMaterial, loadComplementarTerms } from "../contentHub/complementarGuard";
@@ -360,6 +360,8 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       if (studentText.length > 2000) throw new TutorError("Mensagem longa demais (até 2.000 caracteres).", 400);
       const a = q?.last_answer;
       task = a && a.is_correct && a.lucky_guess && !a.justification && ctx.session.question_state === "answered" ? { type: "justify" } : { type: "message", interrupted: action.interrupted?.slice(0, 300) || null };
+      // revisão de 17/10: a fala do aluno mexe no humor (brincando, aflito, sério, provocando, cansado), como na voz pela ponte
+      happening = { kind: "message", leitura: leituraDoRegistro(lerRegistro(studentText).registro) };
     }
 
     // passagem preparada (revisão de 17/10): logo depois da resposta, a fala de passagem para a próxima questão é pedida JUNTO com a
@@ -541,9 +543,12 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const repeatedType = sessionTypes.includes(ev.error_type) || (ctx.memory?.recurrent_errors ?? []).some((r) => r.error_type === ev.error_type);
     const forgot = Boolean(gap) && (ctx.session_errors ?? []).some((e) => (e.knowledge_gap ?? "").trim().toLowerCase() === gap);
     const oral = ctx.session.mode === "perguntas" && !q && ev.answer_correct !== "na" ? { correct: ev.answer_correct === "yes" ? true : ev.answer_correct === "no" ? false : null } : {};
+    // fora do "Me teste" (conversa livre, discussão depois da questão): a resposta oral só mexe no humor, sem contar como questão
+    const oralLeve = !("correct" in oral) && task.type === "message" && (!q || !open) && (ev.answer_correct === "yes" || ev.answer_correct === "no") ? { oralLeve: ev.answer_correct === "yes" } : {};
     const full: Happening = {
       ...happening,
       ...oral,
+      ...oralLeve,
       ...(happening.correct === false || oral.correct === false
         ? { severity: ev.error_type !== "none" ? ev.severity : happening.severity ?? 3, errorType: ev.error_type !== "none" ? ev.error_type : null, repeated: Boolean(happening.repeated) || (ev.error_type !== "none" && repeatedType), forgotExplanation: forgot, unsafe: ev.unsafe }
         : {}),

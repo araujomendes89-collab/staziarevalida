@@ -87,3 +87,21 @@ describe("grito e palavrão da ficha seguem o limite que vale (18+, painel, esco
     expect(fichaTexto(FICHAS.durona)).toMatch(/Grito e palavrão só no nível que vale nesta conversa/);
   });
 });
+
+describe("no texto o humor muda a cada fala do aluno, não só na resposta da questão", () => {
+  it("brincadeira deixa satisfeito, aflição acolhe, provocação e pedido de seriedade deixam firme; resposta oral certa fora do Me teste anima", async () => {
+    const { engineFor, normalize, step, leituraDoRegistro } = await import("../../server/tutor/emotion");
+    const { lerRegistro } = await import("../../server/tutor/leituraDoAluno");
+    const humor = (id: string, fala: string, extra: Record<string, unknown> = {}) => {
+      const e = engineFor(id);
+      return step(normalize(null, e), e, { kind: "message", leitura: leituraDoRegistro(lerRegistro(fala).registro), ...extra }, () => 0.5).state.mood;
+    };
+    for (const id of ["durona", "durao", "acolhedor", "tranquila"]) {
+      expect(humor(id, "kkkkk professor, essa eu chutei bonito")).toBe("pleased");
+      expect(humor(id, "tô muito nervoso, acho que vou reprovar")).toBe("encouraged");
+      expect(humor(id, "me dá logo a resposta senão vou cancelar a assinatura")).toBe("firm");
+      expect(humor(id, "acho que é cetoacidose", { oralLeve: true })).toBe("pleased");
+      expect(humor(id, "acho que é cetoacidose")).toBe("neutral");
+    }
+  });
+});

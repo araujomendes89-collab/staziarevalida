@@ -156,7 +156,24 @@ export interface Happening {
   explained?: boolean;                 // o aluno explicou o raciocínio pedido (destrava a próxima questão)
   /** Ajuste depois de uma resposta já contada (a voz registra a resposta e só depois avalia o raciocínio). */
   adjust?: { severity?: number; repeated?: boolean; forgotExplanation?: boolean; careless?: boolean; unsafe?: boolean } | null;
+  /**
+   * Como o aluno falou NESTA fala (leituraDoAluno.ts, por software, sem IA). Revisão de 17/10: no texto o humor só andava com a
+   * resposta da questão (a fala livre era um evento vazio): ~93% das respostas ficavam "neutral", até no «ISSO!». Agora a fala do
+   * aluno também mexe no humor, como a ponte da voz já faz.
+   */
+  leitura?: Leitura | null;
+  /** A resposta oral do aluno a uma pergunta do professor fora do "Me teste" (avaliação silenciosa): certa ou errada. */
+  oralLeve?: boolean | null;
 }
+
+/** Registro da fala do aluno reduzido ao que mexe no humor do professor. */
+export type Leitura = "brincando" | "aflito" | "serio" | "provocando" | "cansado";
+const LEITURA_DE: Record<string, Leitura | null> = {
+  brincando: "brincando", ironico: "brincando", abalado: "aflito", ansioso: "aflito", frustrado: "aflito", desanimado: "aflito",
+  serio: "serio", testando_limites: "provocando", cansado: "cansado", com_pressa: "cansado", neutro: null,
+};
+/** Do registro de leituraDoAluno (lerRegistro(...).registro) para a leitura do motor. */
+export const leituraDoRegistro = (registro: string | null | undefined): Leitura | null => LEITURA_DE[String(registro ?? "")] ?? null;
 
 const CARELESS = new Set(["attention_error", "command_word_error"]);
 const KNOWLEDGE = new Set(["knowledge_gap", "memory_failure", "outdated_guideline"]);
@@ -257,6 +274,23 @@ export function step(prev: TutorState, engine: PersonaEngine, h: Happening, rand
       ev.push("unsafe_answer");
     }
   }
+  // a fala do aluno (leitura) e a resposta oral fora do "Me teste": o humor anda na conversa, não só na questão
+  if (h.correct == null && h.oralLeve != null) {
+    if (h.oralLeve) {
+      down += 4;
+      s.enthusiasm += 6;
+      s.confidence += 3;
+    } else {
+      up += 4 * m;
+      s.confidence -= 3;
+    }
+  }
+  if (h.leitura === "brincando") {
+    s.enthusiasm += 8;
+    down += 3;
+  } else if (h.leitura === "aflito") down += 12;
+  else if (h.leitura === "cansado") down += 5;
+  else if (h.leitura === "provocando") up += 3 * m;
   if (h.seriousAttempt) down += 5;
   if (h.selfCorrected) {
     down += 10;
@@ -293,6 +327,8 @@ export function step(prev: TutorState, engine: PersonaEngine, h: Happening, rand
 }
 
 function moodOf(s: TutorState, h: Happening): Mood {
+  // aluno ansioso, frustrado ou mal: o professor acolhe antes de qualquer bronca (o rosto também)
+  if (h.leitura === "aflito" && h.correct == null) return "encouraged";
   if (s.frustration >= 81) return "angry";
   if (s.frustration >= 61) return "irritated";
   if (s.frustration >= 41) return "impatient";
@@ -301,6 +337,11 @@ function moodOf(s: TutorState, h: Happening): Mood {
   if (h.correct === true && s.consecutiveErrors === 0 && s.frustration >= 15) return "encouraged";
   if (h.correct === false && s.confidence < 30) return "disappointed";
   if (h.correct === true || h.selfCorrected) return "pleased";
+  if (h.correct == null) {
+    if (h.oralLeve === true) return "pleased";
+    if (h.leitura === "brincando") return "pleased";
+    if (h.leitura === "serio" || h.leitura === "provocando" || h.oralLeve === false) return "firm";
+  }
   return "neutral";
 }
 
