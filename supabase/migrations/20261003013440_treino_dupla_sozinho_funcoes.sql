@@ -304,6 +304,8 @@ begin
   if s.is_pro_only and not public.has_pro() then
     raise exception 'Esta estação é do plano Pro.' using errcode = '42501';
   end if;
+  -- duas chamadas juntas (duplo clique, duas abas) não criam duas tentativas: uma de cada vez por pessoa
+  perform pg_advisory_xact_lock(hashtextextended('solo:' || v_uid::text, 0));
   perform public.solo_sweep(t.id) from public.station_attempts t where t.user_id = v_uid and t.status = 'evaluating';
   if exists (select 1 from public.station_attempts t where t.user_id = v_uid and t.status = 'evaluating' and t.station_id <> p_station_id) then
     raise exception 'Espere a avaliação em andamento terminar.' using errcode = '55000';

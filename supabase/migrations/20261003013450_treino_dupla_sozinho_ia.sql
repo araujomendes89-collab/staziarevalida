@@ -162,7 +162,7 @@ begin
   v_ia := jsonb_build_object(
     'note', left(coalesce(case when jsonb_typeof(p_eval -> 'note') = 'string' then p_eval ->> 'note' end, ''), 300),
     'diverged', coalesce(case when jsonb_typeof(p_eval -> 'diverged') = 'number' then (p_eval ->> 'diverged')::numeric::integer end, 0),
-    'members', coalesce(p_eval -> 'members', '[]'::jsonb),
+    'members', case when jsonb_typeof(p_eval -> 'members') = 'array' then p_eval -> 'members' else '[]'::jsonb end,
     'cost_usd', coalesce(case when jsonb_typeof(p_eval -> 'cost_usd') = 'number' then (p_eval ->> 'cost_usd')::numeric end, 0));
   a := public.solo_finalize(a.id, v_calc, 'ia', v_ia);
   return jsonb_build_object('ok', true, 'attempt_id', a.id);
@@ -194,3 +194,7 @@ revoke execute on function public.ch_worker_solo_prepare(uuid, uuid) from public
 revoke execute on function public.ch_worker_solo_save_eval(uuid, uuid, jsonb) from public, anon, authenticated;
 revoke execute on function public.ch_worker_solo_fail(uuid, uuid, text) from public, anon, authenticated;
 revoke execute on function public.solo_ia_month_cost(timestamptz, timestamptz) from public, anon, authenticated;
+grant execute on function public.ch_worker_solo_prepare(uuid, uuid) to service_role;
+grant execute on function public.ch_worker_solo_save_eval(uuid, uuid, jsonb) to service_role;
+grant execute on function public.ch_worker_solo_fail(uuid, uuid, text) to service_role;
+grant execute on function public.solo_ia_month_cost(timestamptz, timestamptz) to service_role;
