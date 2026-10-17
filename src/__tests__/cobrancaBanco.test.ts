@@ -6,8 +6,8 @@
  * renovação automática, sem tolerância, Pix de renovação 7 dias antes, cancelamento da renovação e devolução pela regra do dono
  * (7 dias integral; trimestral = meses não iniciados − 10%; extra = créditos não usados − 10%).
  *
- * O catálogo e a carteira são do ramo planos-acesso (013640/013680), que ainda não está no main: aqui entram cópias mínimas
- * das tabelas e das duas funções de cálculo da devolução (mesma regra), só para exercitar os pontos de ligação.
+ * O catálogo e a carteira são os de verdade (migrações 013640/013680 do ramo planos-acesso, juntado no ramo fase1-compra).
+ * A cópia mínima que existia aqui (CATALOGO) ficou só como referência e não é mais aplicada.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
@@ -192,13 +192,13 @@ describe("desligada", () => {
     expect(r.status).toBe(503);
   });
 
-  it("com chave mas vendas desligadas no banco (2ª trava) e sem catálogo: nada à venda", async () => {
+  it("com chave mas vendas desligadas no banco (2ª trava): nada à venda; ligada, só o que está à venda", async () => {
     const r = await comprar(ALUNO, { tipo: "extra", codigo: "boost", metodo: "pix" });
     expect(r).toMatchObject({ status: 503, body: { code: "vendas_desligadas" } });
     await dev.db.query(`update public.billing_config set vendas_ligadas = true`);
-    const r2 = await comprar(ALUNO, { tipo: "extra", codigo: "boost", metodo: "pix" });
-    expect(r2).toMatchObject({ status: 409, body: { code: "fora_de_venda" } }); // carteira ainda não instalada
-    await dev.db.exec(CATALOGO);
+    const r2 = await comprar(ALUNO, { tipo: "extra", codigo: "nao_existe", metodo: "pix" });
+    expect(r2).toMatchObject({ status: 409, body: { code: "fora_de_venda" } });
+    void CATALOGO;
   });
 });
 
