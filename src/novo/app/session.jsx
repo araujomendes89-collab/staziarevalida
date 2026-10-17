@@ -34,7 +34,8 @@ export function SessionProvider({ children }) {
   // status: loading | signed-out | ready | error
   // recovery: a pessoa abriu o link de recuperar senha e ainda não criou a nova senha (a tela "Criar nova senha" vem antes do app)
   const recoveryRef = React.useRef(initialAuthLink.kind === "recovery");
-  const [state, setState] = React.useState({ status: "loading", backend: null, user: null, boot: null, error: null, recovery: recoveryRef.current });
+  // dupla: o que o Treinamento em Dupla diz sobre o acesso ({ aberto, permitido, planos, equipe }), ou null se não foi possível ler
+  const [state, setState] = React.useState({ status: "loading", backend: null, user: null, boot: null, dupla: null, error: null, recovery: recoveryRef.current });
 
   React.useEffect(() => {
     let alive = true;
@@ -48,18 +49,25 @@ export function SessionProvider({ children }) {
           if (event === "PASSWORD_RECOVERY") recoveryRef.current = true;
           if (!user) {
             recoveryRef.current = false;
-            setState({ status: "signed-out", backend, user: null, boot: null, error: null, recovery: false });
+            setState({ status: "signed-out", backend, user: null, boot: null, dupla: null, error: null, recovery: false });
             return;
           }
           try {
-            const [boot, nivelamento] = await Promise.all([
+            // Os dados de abertura vêm primeiro; o nivelamento e o acesso ao Treinamento em Dupla são lidos junto e, se falharem (ou não
+            // responderem), viram null: o módulo fica fechado, mas o app abre do mesmo jeito.
+            const [boot, nivelamento, dupla] = await Promise.all([
               backend.rpc("app_bootstrap"),
-              backend.rpc("app_nivelamento_estado").catch(() => null)
+              Promise.resolve()
+                .then(() => backend.rpc("app_nivelamento_estado"))
+                .catch(() => null),
+              Promise.resolve()
+                .then(() => backend.rpc("app_dupla_access"))
+                .catch(() => null),
             ]);
             boot.nivelamento = nivelamento;
-            if (alive) setState({ status: "ready", backend, user, boot, error: null, recovery: recoveryRef.current });
+            if (alive) setState({ status: "ready", backend, user, boot, dupla: dupla ?? null, error: null, recovery: recoveryRef.current });
           } catch (error) {
-            if (alive) setState({ status: "error", backend, user, boot: null, error, recovery: recoveryRef.current });
+            if (alive) setState({ status: "error", backend, user, boot: null, dupla: null, error, recovery: recoveryRef.current });
           }
         };
 

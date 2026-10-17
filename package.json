@@ -18,7 +18,9 @@
     "ds:icons": "node scripts/design-system/sync-icons.mjs",
     "predev": "npm run ds:icons",
     "prebuild": "npm run ds:icons",
-    "supabase:seed": "tsx scripts/supabase/build-seed.ts"
+    "supabase:seed": "tsx scripts/supabase/build-seed.ts",
+    "dupla:sala-teste": "tsx scripts/dupla/sala-teste.ts",
+    "dupla:folhas": "tsx scripts/dupla/gerar-folhas.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",

@@ -83,6 +83,9 @@ export function mobileTabs(phase) {
 /** Telas sem menu (tela cheia). */
 export const FULL = ["sessao", "estacao"];
 
+/** Telas do Treinamento em Dupla que pertencem a um item do menu: o item "Praticar" fica marcado. */
+export const NAV_ALIAS = { "dupla-perfil": "dupla", "dupla-sala": "dupla" };
+
 /**
  * Seções da página "Mais" (celular e tablet), no desenho do pacote: Estudar, Aprender, Stazia Arena, Minha evolução.
  * Cada item: [rota, ícone, nome, selo-chave]; o selo-chave ("hoje", "missoes", "flash") diz qual contagem real mostrar (ou nenhuma).

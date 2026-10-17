@@ -72,7 +72,7 @@ A chave `anon` é pública; o que protege os dados são as políticas (RLS) e as
 
 - **Questões**: enunciado, área, tema e figuras. A resposta correta, a explicação das alternativas e a conduta esperada **não** são legíveis; a correção sai pelas funções `app_*`, só depois de responder a questão ou de finalizar a sessão (`…1900_answer_key_lockdown.sql`).
 - **Classificação detalhada, rascunhos inéditos, Central de Conteúdo**: só equipe e revisores.
-- **Estações**: o catálogo das estações aprovadas (`checklist_stations`) e o conteúdo delas (o das estações Pro, só com acesso Pro). O registro da revisão médica (nota do que foi conferido, quem e quando) **não** é legível: fica em `checklist_station_reviews`, sem permissão e sem política para aluno e visitante, e só sai pelas funções da aba Estações da Administração (`…8000_estacoes_revisao_medica.sql`). Não crie coluna interna em `checklist_stations`: o aluno lê todas as colunas dela.
+- **Estações**: o catálogo das estações aprovadas (`checklist_stations`) e **não** o conteúdo delas (roteiro do ator, impressos e PEP): esse é só da equipe (`…9750_treino_dupla_dados.sql`); o aluno só o recebe pelo papel que tem na sala do Treino em Dupla (`app_dupla_room_content`). O registro da revisão médica (nota do que foi conferido, quem e quando) **não** é legível: fica em `checklist_station_reviews`, sem permissão e sem política para aluno e visitante, e só sai pelas funções da aba Estações da Administração (`…8000_estacoes_revisao_medica.sql`). Não crie coluna interna em `checklist_stations`: o aluno lê todas as colunas dela.
 - **Dados de estudo** (sessões, respostas, flashcards, plano): cada aluno só os próprios.
 
 ## Aprovar estações (revisão médica)

@@ -25,6 +25,22 @@ export interface SignUpExtra {
   declaresPhysician?: boolean;
 }
 
+/** Quem está no canal de Presença (Treino em Dupla): `status` é o que a pessoa mandou no `track()`. */
+export interface PresenceMember {
+  user_id: string;
+  status?: "livre" | "em_estacao";
+}
+
+/** Estado do canal de tempo real, como o Supabase informa no `subscribe()`. */
+export type RealtimeStatus = "SUBSCRIBED" | "CHANNEL_ERROR" | "TIMED_OUT" | "CLOSED";
+
+/** Canal de tempo real aberto: `track`/`untrack` marcam a Presença da pessoa; `close` encerra o canal. */
+export interface RealtimeHandle {
+  track(payload: Record<string, unknown>): void;
+  untrack(): void;
+  close(): void;
+}
+
 export interface Backend {
   readonly mode: "supabase" | "local";
   getUser(): Promise<AuthUser | null>;
@@ -51,6 +67,34 @@ export interface Backend {
    * (XP, posição, sequência). Só existe no Supabase (Realtime); devolve a função para cancelar.
    */
   readonly subscribeStats?: (userId: string, onChange: () => void) => () => void;
+  /**
+   * Treino em Dupla, Praticar: canal privado `dupla:online` com a Presença de quem está procurando dupla e o aviso de convite
+   * novo (INSERT em `study_invites` para `userId`). Só existe no Supabase; sem ele (banco local) as telas consultam as funções
+   * de tempos em tempos. O `joinPresence` da spec é o `track()`/`untrack()` do canal devolvido: o mesmo tópico só aceita `.on()`
+   * antes do `subscribe()`, então um método só abre o canal inteiro.
+   */
+  readonly subscribeInvites?: (
+    userId: string,
+    h: { onInvite(): void; onPresence(members: PresenceMember[]): void; onStatus?(s: RealtimeStatus): void },
+  ) => RealtimeHandle;
+  /**
+   * Treino em Dupla, sala: canal privado `room:${roomId}` com a Presença dos dois (chave = `userId`) e o aviso de que a sala
+   * mudou (broadcast `sala` com `{ rev }`, mandado pelo gatilho da migração 013350; a leitura direta da tabela das salas foi
+   * fechada na 013340, então `postgres_changes` não chegaria). Só avisa: o estado vem sempre de `app_dupla_room`.
+   * Só existe no Supabase; sem ele (banco local) a sala consulta de tempos em tempos.
+   */
+  readonly subscribeRoom?: (
+    roomId: string,
+    userId: string,
+    h: { onChange(): void; onPresence(members: PresenceMember[]): void; onStatus?(s: RealtimeStatus): void },
+  ) => RealtimeHandle;
+  /**
+   * Treino em Dupla, chat entre os dois do match: avisa quando chega mensagem nova na conversa `chatId` (INSERT em
+   * `study_messages` com `chat_id` igual). Quem recebe o aviso é decidido pela RLS da tabela (só os dois do par); a tela relê
+   * as mensagens pela função (`app_dupla_chat_messages`). Só existe no Supabase; sem ele (banco local) a tela consulta a cada 5 s.
+   * Devolve a função para fechar o canal.
+   */
+  readonly subscribeChat?: (chatId: string, h: { onMessage(): void; onStatus?(s: RealtimeStatus): void }) => () => void;
   /**
    * Envio direto de um arquivo ao depósito do Supabase com o token de envio assinado que o servidor gerou
    * (aulas: slides e áudios). Com onProgress (0 a 100) o envio é por XMLHttpRequest, para mostrar a porcentagem. Só existe no Supabase; no banco local o arquivo passa pelo servidor.

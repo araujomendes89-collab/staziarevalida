@@ -6,8 +6,12 @@ import { DEFAULT_ERROR_MESSAGE, explainError } from "../../../shared/errors/expl
 export const ROLE_LABEL = { student: "Aluno", editor: "Editor", admin: "Administrador" };
 /** Equipe: administrador ou editor (acesso completo do app, sem período de teste). */
 export const isStaffRole = (role) => role === "admin" || role === "editor";
-/** 2ª fase · prática "em breve": por enquanto só a equipe entra (aluno e revisor médico não). Para liberar aos alunos, devolva `false` aqui. */
-export const isPhase2Locked = (role) => !isStaffRole(role);
+/**
+ * 2ª fase · prática "em breve": a equipe sempre entra. Os demais só com a chave do Treinamento em Dupla ligada
+ * (`access` = `useSession().dupla`, lido de app_dupla_access) ou quando o banco já os libera (`permitido`, ex.: revisor médico).
+ * Chave ligada não quer dizer plano: quem não tem o plano vê o convite dentro das telas (DuplaGate).
+ */
+export const isPhase2Locked = (role, access) => !isStaffRole(role) && access?.aberto !== true && access?.permitido !== true;
 export const PLAN_LABEL = { trial: "Teste grátis", pro: "Pro", elite: "Elite" };
 export const SUB_STATUS_LABEL = { trialing: "Em teste", active: "Ativo", past_due: "Pagamento pendente", canceled: "Cancelado", expired: "Expirado" };
 /** Com pagamento pendente, o acesso pago continua por estes dias depois de "Plano pago até" (igual ao banco: …9550, subscription_is_paid). */

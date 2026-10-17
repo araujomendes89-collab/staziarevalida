@@ -5,6 +5,7 @@ import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { dateTimeBR, LoadError, Loading, messageOf, PLAN_LABEL, ROLE_LABEL, SUB_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
 import { auditActor, auditLabel, auditSummary } from "./auditLog.js";
+import { FolhaBadge, FolhaCandidato } from "./FolhaCandidato.jsx";
 
 // ---------------------------------------------------------------- visão geral
 /** O que espera conferência, por aba (chaves de pending_review em app_admin_overview). */
@@ -414,6 +415,142 @@ function StationContent({ content }) {
   );
 }
 
+/** "Resumo dos temas" que veio no conteúdo da estação (Montagem), como texto, para a equipe copiar ao rascunho. */
+export function legacySummaryText(content) {
+  const v = content?.summary;
+  if (typeof v === "string") return v.trim();
+  if (!Array.isArray(v)) return "";
+  return v
+    .map((t) => (typeof t === "string" ? t : [t?.topic ?? t?.title, t?.summary ?? t?.text].filter((x) => x && String(x).trim()).join("\n")))
+    .filter((x) => x && x.trim())
+    .join("\n\n")
+    .trim();
+}
+
+const SUMMARY_MAX = 8000;
+const SUMMARY_BADGE = { draft: ["warning", "Resumo em rascunho"], approved: ["success", "Resumo aprovado"] };
+
+/**
+ * "Resumo sobre o tema" da estação (D9; pedido do dono de 16/10): o texto que o avaliador lê em "Materiais" na sala do
+ * Treino em Dupla. A equipe (ou o revisor médico) escreve o rascunho; só vai à sala depois de aprovado por revisor médico da
+ * área ou administrador, com quem e quando. Texto novo volta a rascunho (o banco garante). O candidato nunca vê.
+ * Conteúdo médico só da equipe: nada aqui é escrito por IA.
+ * Ponto preparado e DESLIGADO para a Central de IAs: `suggestDraft` (função que devolve um texto). Sem ela, o botão
+ * "Sugerir rascunho com a IA" não aparece; quando existir, a sugestão entra só no campo, como rascunho, e passa pela mesma
+ * revisão médica (o banco já aceita a origem 'ia_sugestao' na tabela checklist_station_summaries).
+ */
+export function StationSummary({ station, legacy = "", onStatus, suggestDraft = null }) {
+  const { backend } = useSession();
+  const [data, setData] = React.useState(undefined);
+  const [text, setText] = React.useState("");
+  // nota do que foi conferido ao aprovar (decisão do dono de 17/10: como a aprovação da estação, 10 caracteres ou mais)
+  const [note, setNote] = React.useState("");
+  const [state, setState] = React.useState({ busy: false, error: null });
+  const apply = React.useCallback(
+    (res) => {
+      setData(res ?? null);
+      setText(res?.body ?? "");
+      setNote("");
+      onStatus?.(res?.status ?? null);
+    },
+    [onStatus]
+  );
+  React.useEffect(() => {
+    let alive = true;
+    backend.rpc("app_admin_station_summary", { p_station_id: station.id }).then(
+      (res) => alive && apply(res),
+      (err) => alive && (setData(null), setState({ busy: false, error: messageOf(err) }))
+    );
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backend, station.id]);
+  const run = async (fn, args) => {
+    setState({ busy: true, error: null });
+    try {
+      apply(await backend.rpc(fn, { p_station_id: station.id, ...args }));
+      setState({ busy: false, error: null });
+    } catch (err) {
+      setState({ busy: false, error: messageOf(err) });
+    }
+  };
+  if (data === undefined && !state.error) return <Loading />;
+  const status = data?.status ?? null;
+  const saved = (data?.body ?? "").trim();
+  const changed = text.trim() !== saved;
+  const badge = SUMMARY_BADGE[status];
+  const record =
+    status === "approved"
+      ? `Aprovado${data.approved_by ? ` por ${data.approved_by}` : ""} em ${dateTimeBR(data.approved_at)}${data.approval_note ? `: “${data.approval_note}”` : "."}`
+      : status === "draft"
+        ? `Rascunho salvo${data.updated_by ? ` por ${data.updated_by}` : ""} em ${dateTimeBR(data.updated_at)}. Ainda não aparece na sala.`
+        : null;
+
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ font: "var(--type-label)" }}>Resumo sobre o tema</div>
+        <Badge size="sm" tone={badge ? badge[0] : undefined}>
+          {badge ? badge[1] : "Sem resumo"}
+        </Badge>
+      </div>
+      <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+        Aparece ao avaliador em Materiais, na sala do Treino em Dupla, só depois de aprovado pela revisão médica. O candidato nunca vê. Se o texto mudar, volta a rascunho.
+      </p>
+      {record && <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{record}</div>}
+      {state.error && <Banner tone="danger">{state.error}</Banner>}
+      <TextArea label="Texto do resumo" value={text} rows={6} maxLength={SUMMARY_MAX} onChange={setText} hint="Até 8.000 caracteres. Parágrafos separados por uma linha em branco." />
+      {status === "draft" && !changed && data?.can_approve && (
+        <TextArea
+          label="O que foi conferido no resumo"
+          value={note}
+          rows={2}
+          maxLength={2000}
+          onChange={setNote}
+          hint="Pelo menos 10 caracteres. Fica registrado com seu nome e a data."
+        />
+      )}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Button size="sm" variant="secondary" icon="save" disabled={!changed} loading={state.busy} onClick={() => run("app_admin_save_station_summary", { p_body: text })}>
+          {text.trim() || !saved ? "Salvar rascunho" : "Apagar resumo"}
+        </Button>
+        {legacy && !text.trim() && (
+          <Button size="sm" variant="ghost" icon="copy" onClick={() => setText(legacy)}>
+            Copiar o Resumo dos temas para o rascunho
+          </Button>
+        )}
+        {typeof suggestDraft === "function" && !text.trim() && (
+          <Button size="sm" variant="ghost" icon="sparkles" onClick={async () => setText(String((await suggestDraft(station)) ?? ""))}>
+            Sugerir rascunho com a IA
+          </Button>
+        )}
+        {status === "draft" && !changed && data?.can_approve && (
+          <Button
+            size="sm"
+            icon="check"
+            disabled={note.trim().length < MIN_NOTE}
+            loading={state.busy}
+            onClick={() => run("app_admin_review_station_summary", { p_status: "approved", p_note: note.trim() })}
+          >
+            Aprovar resumo
+          </Button>
+        )}
+        {status === "approved" && !changed && (
+          <Button size="sm" variant="ghost" icon="undo-2" loading={state.busy} onClick={() => run("app_admin_review_station_summary", { p_status: "draft" })}>
+            Voltar a rascunho
+          </Button>
+        )}
+      </div>
+      {status === "draft" && !data?.can_approve && (
+        <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>
+          Só um revisor médico cadastrado em {station.area} ou um administrador aprova este resumo.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function reviewRecord(s) {
   if (s.reviewed_at) {
     const what = s.medical_review === "approved" ? "Aprovada" : "Devolvida para revisão";
@@ -424,7 +561,7 @@ function reviewRecord(s) {
   return null;
 }
 
-function StationCard({ station: s, onSaved }) {
+function StationCard({ station: s, onSaved, folha, onFolha }) {
   const { backend } = useSession();
   const [open, setOpen] = React.useState(false);
   const [content, setContent] = React.useState({ loading: false, data: undefined, error: null });
@@ -432,6 +569,9 @@ function StationCard({ station: s, onSaved }) {
   const [state, setState] = React.useState({ busy: false, error: null });
   const approved = s.medical_review === "approved";
   const record = reviewRecord(s);
+  const [summaryStatus, setSummaryStatus] = React.useState(s.summary_status ?? null);
+  React.useEffect(() => setSummaryStatus(s.summary_status ?? null), [s.summary_status]);
+  const summaryBadge = SUMMARY_BADGE[summaryStatus];
 
   const toggle = async () => {
     const next = !open;
@@ -471,6 +611,12 @@ function StationCard({ station: s, onSaved }) {
               </Badge>
             )}
             {s.institution === "INEP" && <Badge size="sm">INEP</Badge>}
+            {summaryBadge && (
+              <Badge size="sm" tone={summaryBadge[0]}>
+                {summaryBadge[1]}
+              </Badge>
+            )}
+            <FolhaBadge situacao={folha} />
           </div>
           <div style={{ font: "600 16px var(--font-sans)", marginTop: 8 }}>{s.name}</div>
           <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{s.topic}</div>
@@ -499,6 +645,8 @@ function StationCard({ station: s, onSaved }) {
           {content.loading && <Loading />}
           {content.error && <Banner tone="danger">{content.error}</Banner>}
           {content.data !== undefined && <StationContent content={content.data} />}
+          <StationSummary station={s} legacy={legacySummaryText(content.data)} onStatus={setSummaryStatus} />
+          <FolhaCandidato stationId={s.id} onSituacao={onFolha} />
           <div style={{ display: "grid", gap: 8 }}>
             <div style={{ font: "var(--type-label)" }}>Revisão médica</div>
             {state.error && <Banner tone="danger">{state.error}</Banner>}
@@ -535,6 +683,19 @@ function StationCard({ station: s, onSaved }) {
 export function AdminStations() {
   const { backend } = useSession();
   const { data, error, reload, setData } = useLoad(() => backend.rpc("app_admin_stations"), [backend]);
+  // situação da folha do candidato de cada estação (migração 013390); sem a função, os cartões ficam sem o selo
+  const [folhas, setFolhas] = React.useState({});
+  React.useEffect(() => {
+    let vivo = true;
+    Promise.resolve(backend.rpc("app_admin_dupla_folhas")).then(
+      (m) => vivo && setFolhas(m && typeof m === "object" ? m : {}),
+      () => undefined
+    );
+    return () => {
+      vivo = false;
+    };
+  }, [backend]);
+  const folhaDe = React.useCallback((id) => (situacao) => setFolhas((m) => ({ ...m, [id]: situacao })), []);
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
   return (
@@ -547,7 +708,7 @@ export function AdminStations() {
       </Banner>
       {data.length === 0 && <EmptyState icon="clipboard-list" title="Nenhuma estação cadastrada" />}
       {data.map((s) => (
-        <StationCard key={s.id} station={s} onSaved={setData} />
+        <StationCard key={s.id} station={s} onSaved={setData} folha={folhas[s.id]} onFolha={folhaDe(s.id)} />
       ))}
     </div>
   );

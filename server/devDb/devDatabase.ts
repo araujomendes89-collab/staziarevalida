@@ -40,6 +40,8 @@ async function open(dir: string): Promise<DevDatabase> {
     ...(await import("../../scripts/supabase/seed-builder")).buildSeedStatements(),
     // pacote do motor: imagens, classificação detalhada e questões equivalentes
     ...(await import("../../scripts/supabase/engine-seed")).buildEngineStatements(),
+    // Treino em Dupla: 10 estações de teste (teste-inep2020-eNN), só aqui no banco local; a carga do Supabase as recusa
+    ...(await import("../dupla/testStations")).buildDuplaTestStatements(),
   ];
   let db = new PGlite(dir);
   if ((await migrateDatabase(db, bootstrap, readMigrations(), seed)) === "drift") {
