@@ -298,8 +298,11 @@ const ouvidas = (st: OpeningState) => [...(st.recent ?? []), ...(st.message?.con
 const comecosDaConversa = (st: OpeningState, ctx: OpeningContext) =>
   st.message!.kind === "passagem" ? usedStarts((ctx.history ?? []).filter((h) => h.role === "tutor" && h.content !== st.message!.content).map((h) => h.content)) : [];
 
-/** Pede a fala à IA e confere (até 2 tentativas dentro de `timeoutMs`, contado de `t0`). Nunca lança. Sem provedor: null. */
-async function gerarFala(deps: TutorDeps, sessionId: string, st: OpeningState, ctx: OpeningContext, timeoutMs: number, t0: number): Promise<Gerada | null> {
+/**
+ * O pedido da fala (sistema e contexto) e a conferência dela, sem chamar a IA: a mesma regra para a fala criada agora e para a
+ * fala preparada na entrada do Tutor (conferida de novo contra a conversa de verdade antes de entrar). Sem provedor: null.
+ */
+async function montarFala(deps: TutorDeps, seed: string, st: OpeningState, ctx: OpeningContext) {
   const { provider } = resolveTutorProvider(deps.mockRespond);
   if (!provider) return null;
   const settings = await tutorSettings(deps);
@@ -321,7 +324,7 @@ async function gerarFala(deps: TutorDeps, sessionId: string, st: OpeningState, c
   const persona = ficha
     ? [`QUEM VOCÊ É NESTA CONVERSA: ${ctx.personality.name}.`, fichaResumo(ficha, { palavrao: personaMax, gritos: true }),
       swearingNote(profanity, eff, ctx.personality.params.profanity >= 20, mood.swearing), PERSONALITY_LIMITS, NO_REPEAT_RULE].join("\n")
-    : personalityLayer(ctx.personality, eff, profanity, 3, null, mood, { seed: sessionId, limites: { palavrao: personaMax, gritos: true } });
+    : personalityLayer(ctx.personality, eff, profanity, 3, null, mood, { seed, limites: { palavrao: personaMax, gritos: true } });
   const kind = st.message!.kind;
   const system = openingSystem(persona, kind, ctx.personality.id);
   const baseInput = openingInput(st, ctx);
@@ -335,11 +338,27 @@ async function gerarFala(deps: TutorDeps, sessionId: string, st: OpeningState, c
     blocks: [], conversationTexts: [], hintLevel: null, hasUpdateCard: false, profanity: checkLevel,
     question: q ? { open, officialLetter: q.official_answer, officialText: q.options.find((o) => o.id === q.official_answer)?.text ?? null } : null,
   };
+  const topic = st.session!.topic ?? st.session!.context_label ?? ctx.question?.topic ?? null;
+  /** Confere a fala: a lista do que barrou e, sem nada, o texto como o aluno vai ver (depois da última palavra do sigilo). */
+  const conferir = (bruta: string): { violations: Violation[]; text: string | null } => {
+    const fala = String(bruta ?? "").replace(/\s+/g, " ").trim();
+    const out = { reply: fala, grounding: "GENERAL" as const, citations: [], evaluation: NO_EVALUATION, justification: "NONE" as const, reveals_answer: false, suggested_replies: [] };
+    const violations = [...openingViolations(fala, heard, starts, topic, { semHistorico }), ...safetyCheck(out, safetyCtx).violations, ...violacoesDeSigilo(out, { instrucoes: system })];
+    // última palavra do sigilo (escudo.ts) antes de o aluno ver
+    return { violations, text: violations.length ? null : protegerFala(fala, ctx.personality.id, { instrucoes: system }).texto };
+  };
+  return { provider, system, baseInput, conferir };
+}
 
+/** Pede a fala à IA e confere (até `tentativas` dentro de `timeoutMs`, contado de `t0`). Nunca lança. Sem provedor: null. */
+async function gerarFala(deps: TutorDeps, seed: string, st: OpeningState, ctx: OpeningContext, timeoutMs: number, t0: number, tentativas = 2): Promise<Gerada | null> {
+  const m = await montarFala(deps, seed, st, ctx);
+  if (!m) return null;
+  const { provider, system, baseInput, conferir } = m;
   const usage: Uso = { calls: 0, input_tokens: 0, output_tokens: 0, cost_usd: 0, provider: provider.name, model: provider.model };
   let violations: Violation[] = [];
   let text: string | null = null;
-  for (let attempt = 0; attempt < 2 && !text; attempt++) {
+  for (let attempt = 0; attempt < tentativas && !text; attempt++) {
     const left = timeoutMs - (Date.now() - t0);
     if (left < 600) break;
     const input = attempt === 0 ? baseInput : `${baseInput}\n<correcao_obrigatoria>\nSua fala anterior foi barrada. Faça outra sem estes problemas:\n${violations.map((x) => `- ${x.detail}`).join("\n")}\n</correcao_obrigatoria>`;
@@ -356,12 +375,7 @@ async function gerarFala(deps: TutorDeps, sessionId: string, st: OpeningState, c
       usage.cost_usd += r.costUsd ?? 0;
       usage.provider = r.provider;
       usage.model = r.model;
-      const fala = String(r.output?.fala ?? "").replace(/\s+/g, " ").trim();
-      const out = { reply: fala, grounding: "GENERAL" as const, citations: [], evaluation: NO_EVALUATION, justification: "NONE" as const, reveals_answer: false, suggested_replies: [] };
-      violations = [...openingViolations(fala, heard, starts, st.session!.topic ?? st.session!.context_label ?? ctx.question?.topic ?? null, { semHistorico }), ...safetyCheck(out, safetyCtx).violations,
-        ...violacoesDeSigilo(out, { instrucoes: system })];
-      // última palavra do sigilo (escudo.ts) antes de o aluno ver
-      if (!violations.length) text = protegerFala(fala, ctx.personality.id, { instrucoes: system }).texto;
+      ({ violations, text } = conferir(String(r.output?.fala ?? "")));
     } catch (error) {
       usage.calls++;
       deps.log?.(`[tutor] abertura natural: ${(error as Error).message.slice(0, 160)}`);
@@ -418,6 +432,12 @@ export async function naturalOpening(deps: TutorDeps, userId: string, sessionId:
       return await salvar(pronta, { calls: 0 }, { origem: "preparada" });
     }
 
+    // abertura PREPARADA na entrada do Tutor (17/10): pronta, entra na hora; em preparo, espera por ela dentro do mesmo tempo
+    if (msg.kind === "abertura") {
+      const r = await usarPronta(deps, userId, sessionId, st, ctx, timeoutMs, t0);
+      if (r !== undefined) return r;
+    }
+
     if (!(await aiAllowed(deps.db)).ok) return null;
     if (!resolveTutorProvider(deps.mockRespond).provider) return null;
     // reserva atômica (e limite de frequência) antes de qualquer custo
@@ -429,6 +449,91 @@ export async function naturalOpening(deps: TutorDeps, userId: string, sessionId:
   } catch (error) {
     deps.log?.(`[tutor] abertura natural falhou: ${(error as Error).message.slice(0, 160)}`);
     return null;
+  }
+}
+
+interface Pronta { id: number; status: "pronta" | "preparando"; content: string | null; emotion: Record<string, unknown> | null }
+const dormir = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
+/** De quanto em quanto tempo quem espera olha se a fala em preparo ficou pronta. */
+const OLHAR_PRONTA_MS = 200;
+
+/**
+ * Usa a abertura preparada na entrada do Tutor (prepararAbertura) quando ela serve a esta conversa. Devolve a fala ({ id, content }),
+ * null quando a reserva fica (esperou a preparação o tempo todo e ela não ficou pronta) ou undefined quando não há fala preparada
+ * que sirva (o caminho de sempre continua: pede à IA agora). A fala pronta é conferida de novo contra a conversa de verdade (o que
+ * o aluno já ouviu, a reserva, a questão aberta) com o humor do dia da preparação, que a conversa adota.
+ */
+async function usarPronta(deps: TutorDeps, userId: string, sessionId: string, st: OpeningState, ctx: OpeningContext, timeoutMs: number, t0: number): Promise<{ id: number; content: string } | null | undefined> {
+  if (/^(false|0|off|no)$/i.test((process.env.TUTOR_ABERTURA_PRONTA ?? "").trim())) return undefined;
+  let r = await deps.db.service<Pronta | null>("ch_worker_tutor_ready_opening", { p_user: userId, p_session_id: sessionId }).catch(() => null);
+  if (!r) return undefined;
+  // em preparo: espera dentro do tempo de sempre (a preparação começou antes, na entrada, e costuma terminar antes da IA de agora)
+  while (r?.status === "preparando") {
+    if (timeoutMs - (Date.now() - t0) < OLHAR_PRONTA_MS + 50) {
+      deps.log?.("[tutor] abertura preparada não ficou pronta a tempo: fica a reserva");
+      return null;
+    }
+    await dormir(OLHAR_PRONTA_MS);
+    r = await deps.db.service<Pronta | null>("ch_worker_tutor_ready_opening", { p_user: userId, p_session_id: sessionId }).catch(() => null);
+  }
+  // a preparação terminou sem fala (barrada ou sem resposta): segue o caminho de sempre com o tempo que sobra
+  if (!r || r.status !== "pronta" || !r.content) return undefined;
+  const m = await montarFala(deps, sessionId, st, { ...ctx, session: { ...ctx.session, emotion: { ...(ctx.session.emotion ?? {}), ...(r.emotion ?? {}) } } });
+  const conferida = m ? m.conferir(r.content) : { violations: [], text: r.content };
+  if (!conferida.text) {
+    deps.log?.(`[tutor] abertura preparada barrada na conversa (${conferida.violations.map((v) => v.code).join(", ")}): pede outra agora`);
+    return undefined;
+  }
+  // o texto que entra é o que foi preparado e conferido (o banco confere que é a mesma preparação e que ela serve a esta conversa)
+  if (conferida.text !== r.content) return undefined;
+  const saved = await deps.db.service<{ ok: boolean; id: number | null; content: string | null }>("ch_worker_tutor_use_ready_opening", {
+    p_user: userId, p_session_id: sessionId, p_message_id: st.message!.id, p_ready_id: r.id, p_meta: { prompt_version: OPENING_VERSION, ms: Date.now() - t0 },
+  });
+  return saved?.ok && saved.id != null && saved.content ? { id: saved.id, content: saved.content } : undefined;
+}
+
+/** A escolha na entrada do Tutor (os mesmos argumentos de app_tutor_start). */
+export interface EscolhaDaEntrada {
+  personality: string;
+  mode: string;
+  topic?: string | null;
+  question_id?: string | null;
+  context?: { type?: string | null; id?: string | null; label?: string | null; area?: string | null } | null;
+}
+/** Tempo da preparação na entrada: ninguém espera por ela (o app não aguarda a resposta); 3 tentativas cabem. */
+export const PREP_ABERTURA_TIMEOUT_MS = 9000;
+
+/**
+ * ABERTURA PREPARADA (pedido do dono de 17/10: "mais de 90% das aberturas vindas da IA, sem o aluno esperar mais"). Enquanto o
+ * aluno escolhe o professor e o modo na entrada do Tutor, o app pede a abertura daquela escolha; o servidor reserva no banco
+ * (ch_worker_tutor_opening_prep_claim: mesmo limite 'tutor_opening', uma por escolha, teto de 40 por dia e 15 sem uso), cria a fala
+ * com as mesmas regras e conferências da abertura de sempre e guarda pronta. Quando a conversa nasce com a mesma escolha,
+ * naturalOpening usa a fala pronta na hora. O custo é da casa (interactions = 0; não gasta cota nem crédito do aluno). Nunca lança;
+ * devolve se ficou pronta.
+ */
+export async function prepararAbertura(deps: TutorDeps, userId: string, escolha: EscolhaDaEntrada, timeoutMs = PREP_ABERTURA_TIMEOUT_MS): Promise<boolean> {
+  const t0 = Date.now();
+  try {
+    if (desligada()) return false;
+    // TUTOR_ABERTURA_PRONTA=0 desliga; com a IA simulada (testes), só liga com =1 (a sequência de pedidos dos testes não muda)
+    const env = (process.env.TUTOR_ABERTURA_PRONTA ?? "").trim();
+    if (/^(false|0|off|no)$/i.test(env)) return false;
+    if (!(await aiAllowed(deps.db)).ok) return false;
+    const { provider } = resolveTutorProvider(deps.mockRespond);
+    if (!provider || (provider.isMock && !/^(1|true|on|yes)$/i.test(env))) return false;
+    const c = escolha.context ?? null;
+    const lido = await deps.db.service<{ id: number; state: OpeningState; ctx: OpeningContext } | null>("ch_worker_tutor_opening_prep_claim", {
+      p_user: userId, p_personality: escolha.personality, p_mode: escolha.mode, p_topic: escolha.topic ?? null, p_question_id: escolha.question_id ?? null,
+      p_context: c ? { type: c.type ?? null, id: c.id ?? null, label: c.label ?? null, area: c.area ?? null } : null,
+    });
+    if (!lido?.id || !lido.state?.message || !lido.state.session || !lido.ctx) return false;
+    const g = await gerarFala(deps, `pronta:${lido.id}`, lido.state, lido.ctx, timeoutMs, t0, 3);
+    const ok = await deps.db.service<boolean | null>("ch_worker_tutor_opening_prep_save", { p_user: userId, p_id: lido.id, p_text: g?.text ?? null, p_usage: g?.usage ?? { calls: 0 } });
+    if (!g?.text && g?.violations.length) deps.log?.(`[tutor] abertura preparada barrada (${g.violations.map((v) => v.code).join(", ")})`);
+    return Boolean(ok);
+  } catch (error) {
+    deps.log?.(`[tutor] abertura preparada falhou: ${(error as Error).message.slice(0, 160)}`);
+    return false;
   }
 }
 

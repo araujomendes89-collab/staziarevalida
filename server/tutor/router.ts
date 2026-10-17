@@ -11,7 +11,7 @@ import { endVoice, guardarAberturaDaPonte, purgeVoiceTranscripts, recordVoiceMet
 import { runTutorTool, TOOL_NAMES } from "./tools";
 import { limparRetornoFerramenta } from "./sigilo";
 import { delegateVoice, sayVoice, type Letter } from "./delegate";
-import { naturalOpening, OPENING_TIMEOUT_MS, OPENING_WAIT_MS } from "./opening";
+import { naturalOpening, OPENING_TIMEOUT_MS, OPENING_WAIT_MS, prepararAbertura } from "./opening";
 import { tutorSettings } from "./settings";
 import { questionHint, questionHintEnabled } from "./questionHint";
 import { geminiVoiceConfig, planProviders, vertexPonteConfig } from "./voiceProviders";
@@ -288,6 +288,28 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     const sessionId = String(req.body?.session_id ?? "");
     if (!/^[0-9a-f-]{36}$/i.test(sessionId)) return fail(res, 400, "Conversa inválida.");
     res.json({ opening: await naturalOpening(deps!, req.user!.id, sessionId, req.body?.rapido === true ? OPENING_WAIT_MS : OPENING_TIMEOUT_MS) });
+  });
+
+  /**
+   * Abertura PREPARADA (17/10): a entrada do Tutor pede a abertura da escolha do aluno (professor e modo, e o tema/questão quando
+   * outra tela abriu o Tutor) antes de ele tocar em "Começar". body: os argumentos de app_tutor_start sem o "p_" ({ personality,
+   * mode, topic?, question_id?, context? }). O banco reserva (limite 'tutor_opening', uma por escolha, teto do dia) e o custo é da
+   * casa. Devolve { ok } (true = ficou pronta); o app não espera a resposta.
+   */
+  router.post("/opening/prepare", async (req: Authed, res) => {
+    const b = req.body ?? {};
+    const texto = (x: unknown, max: number) => (typeof x === "string" && x.trim() ? x.trim().slice(0, max) : null);
+    const personality = texto(b.personality, 40);
+    const mode = texto(b.mode, 20);
+    if (!personality || !mode || !/^[a-z_]+$/.test(personality) || !/^[a-z_]+$/.test(mode)) return fail(res, 400, "Escolha inválida.");
+    const questionId = texto(b.question_id, 80);
+    if (questionId && !/^[A-Za-z0-9_.:-]{3,80}$/.test(questionId)) return fail(res, 400, "Questão inválida.");
+    const c = b.context && typeof b.context === "object" ? b.context : null;
+    const ok = await prepararAbertura(deps!, req.user!.id, {
+      personality, mode, topic: texto(b.topic, 160), question_id: questionId,
+      context: c ? { type: texto(c.type, 20), id: texto(c.id, 200), label: texto(c.label, 160), area: texto(c.area, 40) } : null,
+    });
+    res.json({ ok });
   });
 
   /**
