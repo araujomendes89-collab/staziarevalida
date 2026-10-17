@@ -95,14 +95,15 @@ describe("sigilo: reescrita no personagem", () => {
   });
 
   it("desvio é do personagem certo e varia com a semente", () => {
-    expect(desvioNoPersonagem("durao", "a")).toMatch(/Stazi\b|caso|questão/);
+    for (const s of ["a", "b", "c", "d", "e"]) expect(desvioNoPersonagem("durao", s)).toMatch(/Stazi\b|estud|prova/);
     expect(new Set(["a", "b", "c", "d", "e", "f", "g"].map((s) => desvioNoPersonagem("tranquila", s))).size).toBeGreaterThan(1);
     expect(desvioNoPersonagem("tranquila", "x")).not.toMatch(/\bStazi\b(?!a)/);
-    expect(desvioNoPersonagem(null, "x")).toMatch(/professor|caso/);
+    expect(desvioNoPersonagem(null, "x")).toMatch(/professor|estudo/);
   });
 
   it("troca o nome antigo pelo nome do personagem", () => {
-    expect(nomeDoPersonagem("Eu sou o Nexus, teu professor.", "durona")).toBe("Eu sou a Stazia, teu professor.");
+    expect(nomeDoPersonagem("Eu sou o Nexus, teu professor.", "durona")).toBe("Eu sou a Stazia, tua professora.");
+    expect(nomeDoPersonagem("Sou o Nexus, seu professor aqui.", "tranquila")).toBe("Sou a Stazia, sua professora aqui.");
     expect(nomeDoPersonagem("O Nexus aqui.", "acolhedor")).toBe("O Stazi aqui.");
     expect(nomeDoPersonagem("Eu sou o Nexus.", null)).toBe("Eu sou o Nexus.");
   });

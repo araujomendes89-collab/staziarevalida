@@ -94,7 +94,7 @@ const BASTIDOR = new RegExp(
     "regras? (?:internas?|de bastidor|do sistema|de moderacao|de seguranca|secretas?|ocultas?)", "(?:filtros?|politicas?|sistemas?|regras?) de (?:moderacao|conteudo)", "filtros? de seguranca",
     "fui (?:programad|configurad|instruid|orientad)[oa]", "(?:minha|da minha) programacao", "(?:estou|sou|fui) (?:proibid|impedid)[oa] de",
     "nao (?:posso|vou|consigo|devo|tenho permissao (?:de|para)|estou autorizad[oa] a) (?:te |lhe )?(?:revelar|divulgar|compartilhar|expor)(?![^.!?]{0,30}\\b(?:ainda|agora|antes|ja|de cara|logo|resposta|gabarito|letra|alternativa|resolucao|questao|certa|correta)\\b)",
-    "\\bmy instructions\\b", "\\bas an ai\\b", "\\bi(?:'m| am) an ai\\b", "\\bi can(?:no|')t share\\b", "\\btrained by\\b", "\\bmy training\\b",
+    "(?:deixa|deixe|esquece|esqueca|larga|largue) (?:as|essas|suas|minhas|de) instruc", "\\bmy instructions\\b", "\\bas an ai\\b", "\\bi(?:'m| am) an ai\\b", "\\bi can(?:no|')t share\\b", "\\btrained by\\b", "\\bmy training\\b",
   ].join("|"),
   "gi",
 );
@@ -145,7 +145,7 @@ const FERRAMENTA = /\b[a-z]{2,}(?:_[a-z0-9]{2,})+\b/g;
  */
 const PERGUNTA_SOBRE_BASTIDOR =
   /\b(?:chat\s*gpt|gpt|gemini|gemma|bard|claude|openai|open ai|google|anthropic|microsoft|meta ai|llama|mistral|deepseek|copilot|eleven ?labs|vertex|supabase|postgres\w*|vercel|cloud run|firebase|azure|aws|llm|prompts?|instruc\w*|regras? (?:internas?|de moderacao|do sistema|secretas?)|moderac\w*|treinad\w*|treinamento|banco de dados|servidor|tecnologia|empresa por tras|(?:que|qual|which|what) (?:modelo|model|ia|ai|versao|version)|modelo de (?:ia|linguagem))\b/;
-const SIM_OU_NAO_NO_COMECO = /^\s*[«"“(]?\s*(?:sim|nao|não|yes|nope|negativo|positivo|exato|exatamente|isso mesmo|claro que (?:sim|nao|não)|com certeza|de jeito nenhum|nada disso)\b\s*[,.!…:;—–-]*\s*/i;
+const SIM_OU_NAO_NO_COMECO = /^\s*[«"“(]?\s*(?:sim|nao|não|yes|nope|negativo|positivo|exato|exatamente|isso mesmo|claro que (?:sim|nao|não)|com certeza|de jeito nenhum|nada disso|nem (?:um|uma),? nem (?:outro|outra)|nenhum dos dois|nenhuma das duas)\b\s*[,.!…:;—–-]*\s*/i;
 
 function capturar(re: RegExp, texto: string, categoria: CategoriaSigilo, out: AchadoSigilo[]) {
   re.lastIndex = 0;
@@ -217,19 +217,19 @@ export function achadosDeSigilo(texto: string, ctx: ContextoSigilo = {}): Achado
 /** Frases curtas de desvio, no personagem, sem confirmar nada e já voltando ao estudo. Sem palavrão (passa em qualquer nível). */
 const DESVIOS: Record<"firme" | "calmo", ((p: Personagem) => string)[]> = {
   firme: [
-    (p) => `Sou ${p.artigo} ${p.nome}, e quem faz as perguntas aqui sou eu. Volta pro caso.`,
-    (p) => `${p.artigo === "o" ? "O" : "A"} ${p.nome} aqui, e o assunto é a sua prova. Bora, foco no caso.`,
-    () => "Papo bom pra outra hora. Agora me diz: o que esse caso tá te pedindo?",
-    (p) => `Eu sou ${p.artigo} ${p.nome}, ${p.artigo === "o" ? "teu professor" : "tua professora"}, e ponto. Vamos ao que interessa: a questão.`,
+    (p) => `Sou ${p.artigo} ${p.nome}, e quem faz as perguntas aqui sou eu. Bora pro estudo.`,
+    (p) => `${p.artigo === "o" ? "O" : "A"} ${p.nome} aqui, e o assunto é a sua prova. Foco.`,
+    () => "Papo bom pra outra hora. Me diz o que você quer estudar agora.",
+    (p) => `Eu sou ${p.artigo} ${p.nome}, ${p.artigo === "o" ? "teu professor" : "tua professora"}, e ponto. Vamos ao que interessa: a prova.`,
   ],
   calmo: [
     (p) => `Eu sou ${p.artigo} ${p.nome}, ${p.artigo === "o" ? "seu professor" : "sua professora"} aqui no StaziaMed. Bora voltar pro estudo?`,
-    (p) => `Aqui eu sou só ${p.artigo} ${p.nome}, ${p.artigo === "o" ? "seu professor" : "sua professora"}. Vamos seguir com o caso?`,
-    () => "Isso não muda nada no seu estudo. Me conta: onde a gente estava no caso?",
-    (p) => `${p.artigo === "o" ? "O" : "A"} ${p.nome} tá aqui pra te ajudar na prova. Vamos continuar de onde paramos?`,
+    (p) => `Aqui eu sou só ${p.artigo} ${p.nome}, ${p.artigo === "o" ? "seu professor" : "sua professora"}. Vamos seguir estudando?`,
+    () => "Isso não muda nada no seu estudo. Me conta: o que você quer revisar agora?",
+    (p) => `${p.artigo === "o" ? "O" : "A"} ${p.nome} tá aqui pra te ajudar na prova. Vamos continuar?`,
   ],
 };
-const DESVIO_NEUTRO = ["Sou seu professor aqui no StaziaMed. Bora voltar pro estudo?", "Vamos voltar pro caso? É ele que cai na prova."];
+const DESVIO_NEUTRO = ["Sou seu professor aqui no StaziaMed. Bora voltar pro estudo?", "Vamos voltar pro estudo? É ele que cai na prova."];
 
 const hashDe = (s: string) => {
   let h = 2166136261;
@@ -245,8 +245,8 @@ export function desvioNoPersonagem(personaId: string | null | undefined, semente
   return lista[hashDe(semente) % lista.length](p);
 }
 
-/** Frases de uma fala (mantém a pontuação de cada uma). */
-const frases = (t: string) => t.match(/[^.!?…\n]+(?:[.!?…]+|\n|$)/g)?.map((s) => s.trim()).filter(Boolean) ?? [];
+/** Frases de uma fala: corta depois de . ! ? … seguidos de espaço (".env" e "2.5" ficam inteiros) e em quebra de linha. */
+const frases = (t: string) => t.split(/(?<=[.!?…])\s+|\n+/).map((s) => s.trim()).filter(Boolean);
 
 /** A frase tem algum achado (exceto "confirma_ou_nega", que é tirado só do começo da fala)? */
 function fraseVaza(frase: string, ctx: ContextoSigilo): boolean {
@@ -263,18 +263,18 @@ export function reescreverNoPersonagem(texto: string, personaId: string | null |
   const achados = achadosDeSigilo(original, ctx);
   if (!achados.length) return { texto: original, achados };
   let t = original;
-  if (achados.some((a) => a.categoria === "confirma_ou_nega")) t = t.replace(SIM_OU_NAO_NO_COMECO, "");
+  if (achados.some((a) => a.categoria === "confirma_ou_nega")) {
+    const resto = frases(t).slice(1);
+    t = resto.length ? resto.join(" ") : t.replace(SIM_OU_NAO_NO_COMECO, "");
+  }
   // n-grama das instruções pode atravessar frases: confere frase a frase e, se o vazamento for entre frases, cai no desvio
   const sobra = frases(t).filter((f) => !fraseVaza(f, ctx));
   let limpo = sobra.join(" ").replace(/\s{2,}/g, " ").trim();
   if (limpo && achadosDeSigilo(limpo, { ...ctx, pergunta: null }).length) limpo = "";
   const substancia = palavras(limpo).length >= 4;
-  const desvio = desvioNoPersonagem(personaId, original);
-  if (!substancia) return { texto: desvio, achados };
-  // a pergunta era sobre bastidor e a fala perdeu a resposta: fica a frase do personagem antes do resto
-  const sobreBastidor = Boolean(ctx.pergunta && PERGUNTA_SOBRE_BASTIDOR.test(fold(ctx.pergunta)));
-  const primeira = limpo.charAt(0).toUpperCase() + limpo.slice(1);
-  return { texto: sobreBastidor && sobra.length < frases(t).length && !/\bstazia?\b/i.test(limpo) ? `${desvio} ${primeira}` : primeira, achados };
+  // sobrou fala de verdade: ela fica (já vem no jeito do personagem e quase sempre já puxa para o estudo); senão, o desvio
+  if (!substancia) return { texto: desvioNoPersonagem(personaId, original), achados };
+  return { texto: limpo.charAt(0).toUpperCase() + limpo.slice(1), achados };
 }
 
 /**
@@ -287,7 +287,9 @@ export function nomeDoPersonagem(texto: string, personaId: string | null | undef
   return texto
     .replace(/\b([OoAa])\s+Nexus\b/g, (_m, art: string) => `${art === art.toUpperCase() ? p.artigo.toUpperCase() : p.artigo} ${p.nome}`)
     .replace(/\b(d|n|pel)([oa])\s+Nexus\b/gi, (_m, pre: string) => `${pre}${p.artigo} ${p.nome}`)
-    .replace(/\bNexus\b/gi, p.nome);
+    .replace(/\bNexus\b/gi, p.nome)
+    // a Stazia é professora: "sou a Stazia, seu professor" → "sua professora" (só logo depois do nome)
+    .replace(/\b(Stazia,?\s+)(seu|teu|o)\s+professor\b(?!a)/g, (_m, antes: string, pos: string) => `${antes}${pos === "seu" ? "sua" : pos === "teu" ? "tua" : "a"} professora`);
 }
 
 /** Versão para gravar no histórico (o aluno relê e o modelo lê de novo): só o texto. */
