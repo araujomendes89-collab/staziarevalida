@@ -1,20 +1,5 @@
 -- Desfaz a 20261003013760_compra_avisos.sql (etapa 4: avisos de renovação/pagamento, troca da forma de pagamento, histórico,
 -- aceite do contrato na compra, amostra de hoje). ATENÇÃO: apaga os avisos já gravados. Não mexe na cobrança (013700) nem nos planos.
--- volta a versão da 013700 do Pix de renovação (comparação por horas)
-create or replace function public.ch_worker_billing_renovacoes_pix() returns jsonb
-  language sql stable security definer set search_path = ''
-as $$
-  select coalesce(jsonb_agg(jsonb_build_object('user_id', c.user_id, 'plano', c.plano, 'ciclo', c.ciclo, 'periodo_fim', c.periodo_fim,
-                                               'provider', c.provider, 'customer_id', k.customer_id) order by c.periodo_fim), '[]'::jsonb)
-  from public.billing_contratos c
-  join public.billing_clientes k on k.user_id = c.user_id and k.provider = c.provider
-  where c.metodo = 'pix' and c.renova
-    and c.periodo_fim > now() - interval '1 day'
-    and c.periodo_fim <= now() + make_interval(days => (select b.renovacao_pix_dias from public.billing_config b))
-    and not exists (select 1 from public.billing_pedidos p where p.user_id = c.user_id and p.motivo = 'renovacao'
-                    and p.renova_ate = c.periodo_fim and p.status in ('aberto', 'pago'))
-$$;
-revoke execute on function public.ch_worker_billing_renovacoes_pix() from public, anon, authenticated;
 drop trigger if exists avisos_da_cobranca on public.billing_cobrancas;
 drop function if exists public.avisos_da_cobranca();
 drop function if exists public.app_amostra_hoje();
