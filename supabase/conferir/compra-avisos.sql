@@ -13,7 +13,7 @@ with falta (ordem, item) as (
    where not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'billing_cobrancas' and column_name = 'recibo_url')
   union all select 6, 'função ' || f from unnest(array['ch_worker_avisos_cobranca()', 'ch_worker_avisos_email_pegar(integer,integer)',
       'ch_worker_aviso_email_marcar(bigint,boolean,text)', 'app_meus_avisos()', 'app_avisos_vistos(bigint[])', 'app_billing_historico()',
-      'ch_worker_billing_troca_cartao_abrir(uuid,text)', 'ch_worker_billing_para_pix(uuid,text)', 'app_amostra_hoje()']) f
+      'ch_worker_billing_troca_cartao_abrir(uuid,text)', 'ch_worker_billing_para_pix(uuid,text)', 'ch_worker_billing_para_pix_desfazer(uuid,text)', 'ch_worker_billing_cartao_sem_aceite()', 'billing_termo_vigente_ok(uuid)', 'app_amostra_hoje()']) f
    where to_regprocedure('public.' || f) is null
   union all select 7, 'gatilho avisos_da_cobranca'
    where not exists (select 1 from pg_trigger where tgname = 'avisos_da_cobranca' and not tgisinternal)

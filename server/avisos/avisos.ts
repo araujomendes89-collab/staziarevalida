@@ -32,10 +32,10 @@ const LOGO = "https://app.staziamed.com.br/brand/horizontal-480w.png";
 /** Assunto, texto e HTML do e-mail de um aviso (o texto é o MESMO do aviso na tela). */
 export function renderAviso(a: Pick<AvisoEmail, "titulo" | "texto" | "rota" | "nome">, baseUrl: string | null) {
   const base = (baseUrl || "https://app.staziamed.com.br").replace(/\/+$/, "");
-  const link = `${base}/novo/${a.rota === "perfil" ? "perfil" : "planos"}`;
+  const link = `${base}/novo/${a.rota === "perfil" ? "perfil" : a.rota === "aceite" ? "aceite" : "planos"}`;
   const primeiro = (a.nome ?? "").trim().split(/\s+/)[0] ?? "";
   const ola = primeiro ? `Olá, ${primeiro}!` : "Olá!";
-  const botao = a.rota === "perfil" ? "Abrir Minha conta" : "Abrir Meu plano";
+  const botao = a.rota === "perfil" ? "Abrir Minha conta" : a.rota === "aceite" ? "Ler e aceitar o contrato" : "Abrir Meu plano";
   const rodape = "Você recebe este e-mail porque tem uma assinatura no StaziaMed Revalida. Não responda: esta caixa não é lida. Dúvidas: suporte@staziamed.com.br.";
   const text = `${ola}\n\n${a.titulo}\n\n${a.texto}\n\n${botao}: ${link}\n\n—\nStaziaMed Revalida\n${rodape}\n`;
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(a.titulo)}</title></head>

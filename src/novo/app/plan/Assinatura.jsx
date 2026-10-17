@@ -96,6 +96,9 @@ export function AssinaturaSection({ go, Cabecalho }) {
   const aberto = pedido ?? pedidoDoResumo(ov);
   const pagamentos = hist?.pagamentos ?? [];
   const contratoUrl = hist?.contrato_url ?? ov.contrato_doc?.url ?? "/novo/termos";
+  // Contrato 3.0: "Desistir da compra" nos 7 dias (CDC art. 49) = devolução integral do plano, pela mesma forma de pagamento
+  const desistencia = (ov.devolucoes ?? []).find((d) => d.tipo === "plano" && d.regra === "integral_7_dias") ?? null;
+  const outrasDevolucoes = (ov.devolucoes ?? []).filter((d) => d !== desistencia);
 
   const agir = async (fn) => {
     setBusy(true);
@@ -183,14 +186,29 @@ export function AssinaturaSection({ go, Cabecalho }) {
               }
             />
           )}
+          {pergunta === "desistir" && desistencia && (
+            <Confirmar
+              perigo
+              titulo="Desistir da compra?"
+              texto={`Você está dentro dos 7 dias: devolvemos ${brl(desistencia.valor_centavos)} inteiros, pela mesma forma de pagamento (no Pix, a devolução pode levar alguns dias para ser autorizada). O acesso pago termina agora e a renovação é cancelada. Seus dados ficam guardados.`}
+              sim={`Desistir e receber ${brl(desistencia.valor_centavos)}`}
+              busy={busy}
+              onNao={() => setPergunta(null)}
+              onSim={() =>
+                agir(async () => {
+                  const r = await requestRefund(backend, desistencia.cobranca_id);
+                  setMsg(r.mensagem ?? "Desistência registrada. O valor volta pela mesma forma de pagamento.");
+                  recarregar();
+                })
+              }
+            />
+          )}
           {pergunta === "cancelar" && (
             <Confirmar
               perigo
               titulo="Cancelar a assinatura?"
-              texto={`Sem multa. A renovação é cancelada agora e o acesso pago continua até ${dateBR(c.periodo_fim)}. Seus dados ficam guardados. ${
-                (ov.devolucoes ?? []).some((d) => d.tipo === "plano" && d.regra === "integral_7_dias")
-                  ? "Você ainda está nos 7 dias: se quiser o dinheiro de volta, use “Pedir devolução” abaixo (volta pela mesma forma de pagamento)."
-                  : ""
+              texto={`Sem multa. A renovação é cancelada agora e o acesso pago continua até ${dateBR(c.periodo_fim)}. Seus dados ficam guardados.${
+                desistencia ? " Ainda está nos 7 dias? Use “Desistir da compra” para receber o valor inteiro de volta." : ""
               }`}
               sim="Cancelar a renovação"
               busy={busy}
@@ -211,6 +229,18 @@ export function AssinaturaSection({ go, Cabecalho }) {
               </Button>
               <Button variant="ghost" onClick={() => setPergunta("cancelar")}>
                 Cancelar assinatura
+              </Button>
+              {desistencia && (
+                <Button variant="ghost" icon="rotate-ccw" onClick={() => setPergunta("desistir")}>
+                  Desistir da compra (7 dias)
+                </Button>
+              )}
+            </div>
+          )}
+          {!pergunta && !c.renova && desistencia && (
+            <div className="bl-acoes">
+              <Button variant="ghost" icon="rotate-ccw" onClick={() => setPergunta("desistir")}>
+                Desistir da compra (7 dias)
               </Button>
             </div>
           )}
@@ -283,11 +313,11 @@ export function AssinaturaSection({ go, Cabecalho }) {
         </p>
       )}
 
-      {(ov.devolucoes ?? []).length > 0 && (
+      {outrasDevolucoes.length > 0 && (
         <div className="as-bloco">
           <h3 className="as-h">Devolução</h3>
           <ul className="bl-lista">
-            {ov.devolucoes.map((d) => (
+            {outrasDevolucoes.map((d) => (
               <li key={d.cobranca_id} className="ev-panel bl-extra">
                 <span>
                   {d.tipo === "plano" ? `Plano ${String(d.codigo).toUpperCase()} ${d.ciclo}` : `Extra ${d.codigo}`} · você recebe <b>{brl(d.valor_centavos)}</b>

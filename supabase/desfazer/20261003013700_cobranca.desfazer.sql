@@ -1,6 +1,8 @@
 -- Desfaz a 20261003013700_cobranca.sql (cobrança). ATENÇÃO: apaga pedidos, cobranças, contratos e devoluções registrados.
 -- Não mexe em subscriptions, billing_events nem nas tabelas da carteira (ramo planos-acesso).
 drop function if exists public.app_billing_resumo();
+drop function if exists public.billing_termo_vigente_ok(uuid);
+drop function if exists public.billing_contrato_vigente();
 drop function if exists public.ch_worker_billing_devolucao_falhou(bigint, text);
 drop function if exists public.ch_worker_billing_devolucao_pedir(uuid, bigint);
 drop function if exists public.ch_worker_billing_devolucoes(uuid);

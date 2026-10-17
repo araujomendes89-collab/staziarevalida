@@ -166,7 +166,7 @@ export function createBilling(deps: BillingDeps) {
       db.asUser<Record<string, unknown>>(user, "app_billing_resumo", {}),
       svc<Ctx | null>("ch_worker_billing_contexto", { p_user: user.id }),
       // documento do Contrato de Assinatura vigente (013760); sem a migração, o link aponta para os Termos
-      svc<{ versao: string | null; url: string } | null>("ch_worker_billing_contrato_doc", {}).catch(() => null),
+      svc<{ versao: string | null; sha256: string | null; url: string } | null>("ch_worker_billing_contrato_doc", {}).catch(() => null),
     ]);
     return {
       enabled: true,
@@ -175,7 +175,7 @@ export function createBilling(deps: BillingDeps) {
       methods: provider.capabilities.methods,
       // CPF só é pedido quando ainda não há cliente no fornecedor (primeira compra)
       precisa_documento: !ctx?.clientes?.[provider.name],
-      contrato_doc: { versao: doc?.versao ?? null, url: doc?.url ?? "/novo/termos" },
+      contrato_doc: { versao: doc?.versao ?? null, sha256: doc?.sha256 ?? null, url: doc?.url ?? "/novo/termos" },
       ...(resumo ?? {}),
     };
   }
@@ -199,7 +199,7 @@ export function createBilling(deps: BillingDeps) {
     const ctx = await svc<Ctx | null>("ch_worker_billing_contexto", { p_user: user.id });
     if (!ctx) throw new BillingError("Conta não encontrada.", 404);
     if (ctx.full_access) throw new BillingError("Sua conta já tem acesso completo; não há o que comprar.", 403);
-    if (!ctx.terms_ok) throw new BillingError("Aceite o Termo de uso antes de pagar.", 403);
+    if (!ctx.terms_ok) throw new BillingError("Para contratar, aceite antes a versão vigente do Contrato de Assinatura.", 403, "aceite_contrato_vigente");
     if (!ctx.vendas_ligadas) throw new BillingError("As vendas ainda não estão abertas.", 503, "vendas_desligadas");
     // aceite na contratação (clickwrap): sem a versão do Contrato de Assinatura vigente no banco, ninguém contrata
     const doc = await svc<{ versao: string | null } | null>("ch_worker_billing_contrato_doc", {}).catch(() => null);
@@ -532,7 +532,25 @@ export function createBilling(deps: BillingDeps) {
   async function runScheduled() {
     const p = need();
     const v = await encerrarVencidos(null);
-    const out = { expirados: v.expirados, renovacoes: 0, entregues: 0, erros: v.erros };
+    const out = { expirados: v.expirados, renovacoes: 0, entregues: 0, erros: v.erros, sem_aceite: 0 };
+    // Contrato 3.0, cláusula 6.5-A: cartão que renovaria em até 1 dia sem o aceite da versão vigente deixa de renovar sozinho e passa a
+    // Pix (o Pix só sai depois do aceite). Banco primeiro, depois o fornecedor; falhou = desfaz (como na troca pelo aluno).
+    for (const c of await svc<{ user_id: string; provider: string; subscription_id: string }[]>("ch_worker_billing_cartao_sem_aceite", {}).catch(() => [])) {
+      if (c.provider !== p.name) continue;
+      try {
+        await svc("ch_worker_billing_para_pix", { p_user: c.user_id, p_sub: c.subscription_id });
+        try {
+          await p.cancelSubscription(c.subscription_id);
+        } catch (e) {
+          await svc("ch_worker_billing_para_pix_desfazer", { p_user: c.user_id, p_sub: c.subscription_id }).catch(() => undefined);
+          throw e;
+        }
+        out.sem_aceite++;
+      } catch (e) {
+        out.erros++;
+        log(`[billing] renovação sem aceite de ${c.user_id.slice(0, 8)}: ${(e as Error).message}`);
+      }
+    }
     for (const r of await svc<{ user_id: string; plano: string; ciclo: "mensal" | "trimestral"; periodo_fim: string; provider: string; customer_id: string }[]>("ch_worker_billing_renovacoes_pix", {})) {
       if (r.provider !== p.name) continue;
       try {

@@ -28,7 +28,7 @@ create table if not exists public.avisos_aluno (
   titulo text not null check (char_length(titulo) between 3 and 140),
   texto text not null check (char_length(texto) between 3 and 600),
   -- botão do aviso: rota do app (só rotas conhecidas)
-  rota text not null default 'planos' check (rota in ('planos', 'perfil')),
+  rota text not null default 'planos' check (rota in ('planos', 'perfil', 'aceite')),
   criado_em timestamptz not null default now(),
   visto_em timestamptz,
   email_status text not null default 'pendente' check (email_status in ('pendente', 'enviando', 'enviado', 'falhou', 'expirado', 'sem_email')),
@@ -170,6 +170,17 @@ begin
     v_nivel := case when v_dias <= 1 then 1 when v_dias <= 3 then 3 when v_dias <= 7 then 7 end;
     continue when v_nivel is null;
     v_plano := upper(x.plano);
+    if x.renova and not public.billing_termo_vigente_ok(x.user_id) then
+      -- Contrato 3.0, cláusula 6.5-A: sem o aceite da versão vigente, a renovação não acontece (o cartão deixa de renovar sozinho 1 dia
+      -- antes e o Pix não sai); o aviso leva direto à tela de aceite. Chave própria: depois de aceitar, sai o aviso normal.
+      if public.avisos_criar(x.user_id, 'renovacao', 'renovacao-aceite:' || x.dia_fim::text || ':' || v_nivel,
+           'Para renovar o seu ' || v_plano || ', aceite o contrato novo',
+           'O Contrato de Assinatura mudou. Para a renovação de ' || to_char(x.dia_fim, 'DD/MM/YYYY') || ' acontecer, leia e aceite a versão vigente. '
+           || 'Sem o aceite, o acesso pago vai até essa data e depois pausa (seus dados ficam guardados).', 'aceite') then
+        n := n + 1;
+      end if;
+      continue;
+    end if;
     if not x.renova then
       v_titulo := 'Seu ' || v_plano || ' termina ' || case v_dias when 0 then 'hoje' when 1 then 'amanhã' else 'em ' || v_dias || ' dias' end;
       v_texto := 'A renovação está cancelada: o acesso pago vai até ' || to_char(x.dia_fim, 'DD/MM/YYYY') || '. Para continuar, é só assinar de novo em Meu plano. Seus dados ficam guardados.';
@@ -293,24 +304,31 @@ as $$
   where provider = p_provider and provider_payment_id = p_payment and p_url ~ '^https://' and char_length(p_url) <= 500
 $$;
 
+-- O Contrato vigente para a caixa de aceite: versão e código do banco (Termo 3.0, 013740); link /novo/termos (o Contrato com os
+-- Termos de Uso integrados) ou o que o dono puser em billing_config.contrato_url.
 create or replace function public.ch_worker_billing_contrato_doc() returns jsonb
   language sql stable security definer set search_path = ''
 as $$
-  select jsonb_build_object('versao', b.contrato_versao, 'url', coalesce(b.contrato_url, '/novo/termos')) from public.billing_config b
+  select jsonb_build_object('versao', coalesce(public.billing_contrato_vigente() ->> 'versao', b.contrato_versao),
+                            'sha256', coalesce(public.billing_contrato_vigente() ->> 'sha256', b.contrato_sha256),
+                            'url', coalesce(b.contrato_url, '/novo/termos'))
+  from public.billing_config b
 $$;
 
--- O aceite da compra também vira prova em legal_acceptances (como o aceite do cadastro) QUANDO o documento do Contrato de
--- Assinatura existir no banco (ramo termo-v3: documento 'contrato_assinatura', origem 'contratacao'). Até lá, a prova fica no
--- pedido (billing_pedidos.aceite: versão, SHA-256, hora do banco, IP, navegador e retrato da oferta). Nunca impede a compra.
+-- O aceite da compra também é prova em legal_acceptances, como o aceite do cadastro (documento 'termo_uso', versão vigente lida do
+-- banco). Além disso, o pedido guarda o carimbo da compra (billing_pedidos.aceite: versão, SHA-256, hora do banco, IP, navegador e
+-- retrato da oferta). Nunca impede a compra.
 create or replace function public.ch_worker_billing_aceite_registrar(p_user uuid, p_user_agent text) returns boolean
   language plpgsql security definer set search_path = ''
 as $$
 declare v_versao text;
 begin
-  select v.version into v_versao from public.legal_versions v where v.document = 'contrato_assinatura';
+  -- o Contrato de Assinatura é o 'termo_uso' 3.0 (Contrato com Termos de Uso integrados). Quem já aceitou esta versão no cadastro
+  -- ou na tela de aceite já tem a prova (a primeira é a que vale); a caixa da compra fica carimbada no pedido.
+  select v.version into v_versao from public.legal_versions v where v.document = 'termo_uso';
   if v_versao is null then return false; end if;
   begin
-    perform public.legal_record(p_user, 'contrato_assinatura', v_versao, 'contratacao', p_user_agent);
+    perform public.legal_record(p_user, 'termo_uso', v_versao, 'tela_aceite', p_user_agent);
     return true;
   exception when others then
     return false;
@@ -413,6 +431,18 @@ begin
 end
 $$;
 
+-- Cartões que renovariam em até 1 dia SEM o aceite da versão vigente do Contrato (cláusula 6.5-A): o servidor desliga a renovação
+-- automática no fornecedor e passa o contrato a Pix (ch_worker_billing_para_pix); o Pix só sai depois do aceite.
+create or replace function public.ch_worker_billing_cartao_sem_aceite() returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object('user_id', c.user_id, 'provider', c.provider, 'subscription_id', c.provider_subscription_id)), '[]'::jsonb)
+  from public.billing_contratos c
+  where c.metodo = 'cartao' and c.renova and c.provider_subscription_id is not null and c.periodo_fim > now()
+    and public.avisos_dia(c.periodo_fim) - public.avisos_dia(now()) <= 1
+    and not public.billing_termo_vigente_ok(c.user_id)
+$$;
+
 -- ---------------------------------------------------------------- amostra de hoje (telas de cadeado)
 -- O que sobra hoje da amostra (questões, simulados e flashcards), com as mesmas contas dos cadeados (013690). Só vale com os
 -- cadeados ligados; desligados, devolve {"ligado": false} e as telas ficam como hoje.
@@ -466,6 +496,7 @@ revoke execute on function public.ch_worker_billing_troca_situacao(uuid) from pu
 revoke execute on function public.ch_worker_billing_para_pix(uuid, text) from public, anon, authenticated;
 revoke execute on function public.ch_worker_billing_para_pix_desfazer(uuid, text) from public, anon, authenticated;
 revoke execute on function public.ch_worker_billing_troca_cartao_abrir(uuid, text) from public, anon, authenticated;
+revoke execute on function public.ch_worker_billing_cartao_sem_aceite() from public, anon, authenticated;
 revoke execute on function public.app_meus_avisos() from public, anon;
 grant execute on function public.app_meus_avisos() to authenticated;
 revoke execute on function public.app_avisos_vistos(bigint[]) from public, anon;

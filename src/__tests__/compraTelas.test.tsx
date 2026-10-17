@@ -257,3 +257,15 @@ describe("pagamento em aberto ao voltar para o app", () => {
     expect((await screen.findByTestId("cobranca-aberta")).textContent).toContain("000201REN7");
   });
 });
+
+describe("Desistir da compra (7 dias), prometido no Contrato 3.0", () => {
+  it("aparece nos 7 dias, explica a devolução integral e pede a devolução daquela compra", async () => {
+    backend.rpc.mockResolvedValue({ pagamentos: [], novos: [], recentes: [] });
+    mockFetch({ "/overview": OV_ASSINATURA, "/refunds": { ok: true, status: "feito", valor_centavos: 9990 } });
+    render(<AssinaturaSection go={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Desistir da compra (7 dias)" }));
+    expect(screen.getByRole("alertdialog").textContent).toMatch(/R\$ 99,90 inteiros/);
+    fireEvent.click(screen.getByRole("button", { name: /Desistir e receber R\$ 99,90/ }));
+    await waitFor(() => expect(calls.find((c) => c.url.endsWith("/refunds"))?.body).toEqual({ cobranca_id: 5 }));
+  });
+});

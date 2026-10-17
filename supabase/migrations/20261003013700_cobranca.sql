@@ -266,6 +266,41 @@ end
 $$;
 revoke execute on function public.billing_entregar_plano(uuid, text, timestamptz, text, text, text) from public, anon, authenticated;
 
+-- ---------------------------------------------------------------- Contrato vigente (Termo 3.0, migração 013740; dono 17/10)
+-- O Contrato de Assinatura é o documento 'termo_uso' (Contrato com Termos de Uso integrados). Versão e código (SHA-256) vêm do
+-- banco (legal_versions / legal_texts), nunca do código. Sem a 013740 (legal_texts), usa só a versão e o que estiver em billing_config.
+create or replace function public.billing_contrato_vigente() returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare v text; h text; g text;
+begin
+  select lv.version into v from public.legal_versions lv where lv.document = 'termo_uso';
+  if to_regclass('public.legal_texts') is not null and v is not null then
+    execute 'select t.sha256, t.acceptance_group from public.legal_texts t where t.document = $1 and t.version = $2' into h, g using 'termo_uso', v;
+  end if;
+  return jsonb_build_object('versao', v, 'sha256', h, 'grupo', g);
+end
+$$;
+
+-- O aluno aceitou a versão vigente do Contrato (ou outra do mesmo grupo de aceite)? Equipe e revisores: sempre sim.
+-- Mesma regra de app_legal_state (013740). Usada para contratar e para RENOVAR (Contrato 3.0, cláusula 6.5-A).
+create or replace function public.billing_termo_vigente_ok(p_user uuid) returns boolean
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare c jsonb := public.billing_contrato_vigente(); ok boolean;
+begin
+  if p_user is null then return false; end if;
+  if not public.legal_is_student(p_user) then return true; end if;
+  if exists (select 1 from public.legal_acceptances a where a.user_id = p_user and a.document = 'termo_uso' and a.version = c ->> 'versao') then
+    return true;
+  end if;
+  if c ->> 'grupo' is null or to_regclass('public.legal_texts') is null then return false; end if;
+  execute 'select exists (select 1 from public.legal_acceptances a join public.legal_texts t on t.document = a.document and t.version = a.version
+           where a.user_id = $1 and a.document = $2 and t.acceptance_group = $3)' into ok using p_user, 'termo_uso', c ->> 'grupo';
+  return coalesce(ok, false);
+end
+$$;
+
 -- ---------------------------------------------------------------- funções do servidor (só a chave de serviço)
 
 -- Situação da pessoa para comprar.
@@ -282,9 +317,7 @@ begin
   if v_email is null then return null; end if;
   select * into v_sub from public.subscriptions where user_id = p_user;
   select * into c from public.billing_contratos where user_id = p_user;
-  v_terms := not public.legal_is_student(p_user) or exists (
-    select 1 from public.legal_acceptances a join public.legal_versions v on v.document = a.document and v.version = a.version
-    where a.user_id = p_user and a.document = 'termo_uso');
+  v_terms := public.billing_termo_vigente_ok(p_user);
   return jsonb_build_object(
     'email', v_email,
     'full_access', public.user_has_full_access(p_user),
@@ -360,8 +393,10 @@ begin
           case when p_motivo = 'renovacao' then coalesce(p_renova_ate, now()) + interval '30 days'
                else now() + make_interval(mins => cfg.pedido_validade_minutos) end,
           -- aceite na contratação: o servidor carimba a versão do contrato, a hora do banco e o retrato da oferta
-          case when p_aceite is null then null else p_aceite || jsonb_build_object('contrato_versao', cfg.contrato_versao,
-               'contrato_sha256', cfg.contrato_sha256, 'registrado_em', now(), 'oferta', o) end,
+          case when p_aceite is null then null else p_aceite || jsonb_build_object(
+               'contrato_versao', coalesce(public.billing_contrato_vigente() ->> 'versao', cfg.contrato_versao),
+               'contrato_sha256', coalesce(public.billing_contrato_vigente() ->> 'sha256', cfg.contrato_sha256),
+               'registrado_em', now(), 'oferta', o) end,
           p_renova_ate)
   returning * into p;
   return to_jsonb(p);
@@ -672,6 +707,8 @@ as $$
     -- conta em DIAS de Brasília (o período acaba às 23:59 do vencimento; comparar horas daria um dia a menos)
     and (c.periodo_fim at time zone 'America/Sao_Paulo')::date - (now() at time zone 'America/Sao_Paulo')::date
         <= (select b.renovacao_pix_dias from public.billing_config b)
+    -- Contrato 3.0, cláusula 6.5-A: renovar exige o aceite da versão vigente do Contrato (sem ele, o Pix não sai; o aviso pede o aceite)
+    and public.billing_termo_vigente_ok(c.user_id)
     and not exists (select 1 from public.billing_pedidos p where p.user_id = c.user_id and p.motivo = 'renovacao'
                     and p.renova_ate = c.periodo_fim and p.status in ('aberto', 'pago'))
 $$;

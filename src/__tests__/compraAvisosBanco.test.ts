@@ -26,8 +26,8 @@ import type { MailMessage } from "../../server/avisos/smtp";
 const TOKEN = "token-do-aviso-simulado-com-mais-de-32-caracteres";
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "compra-avisos-"));
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const [CARTAO, PIX, TROCA_PIX, TROCA_CARTAO, AMOSTRA, OUTRO, EQUIPE, VENCIDO, DUPLO] = [21, 22, 23, 24, 25, 26, 27, 28, 29].map(id);
-const TODOS = [CARTAO, PIX, TROCA_PIX, TROCA_CARTAO, AMOSTRA, OUTRO, EQUIPE, VENCIDO, DUPLO];
+const [CARTAO, PIX, TROCA_PIX, TROCA_CARTAO, AMOSTRA, OUTRO, EQUIPE, VENCIDO, DUPLO, ACEITE] = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30].map(id);
+const TODOS = [CARTAO, PIX, TROCA_PIX, TROCA_CARTAO, AMOSTRA, OUTRO, EQUIPE, VENCIDO, DUPLO, ACEITE];
 let dev: DevDatabase;
 let db: ContentDb;
 let base: string;
@@ -146,13 +146,21 @@ afterAll(async () => {
 });
 
 describe("aceite do contrato na contratação", () => {
-  it("sem a versão do Contrato de Assinatura no banco, ninguém contrata; o resumo leva o link do contrato", async () => {
-    const r = await comprar(CARTAO, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "cartao" });
-    expect(r).toMatchObject({ status: 503, body: { code: "contrato_pendente" } });
-    expect(await q1(`select count(*)::int n from public.billing_pedidos where user_id = $1`, [CARTAO])).toEqual({ n: 0 });
-    await dev.db.query(`update public.billing_config set contrato_versao = '3.0', contrato_url = '/novo/contrato'`);
+  it("a versão e o código do Contrato vêm do banco (Termo 3.0), não do código; o resumo leva o link do contrato", async () => {
+    const vig = await q1(`select v.version, t.sha256 from public.legal_versions v left join public.legal_texts t on t.document = v.document and t.version = v.version where v.document = 'termo_uso'`);
+    await dev.db.query(`update public.billing_config set contrato_url = '/novo/contrato'`);
     const ov = await api(CARTAO, "/overview");
-    expect(ov.body.contrato_doc).toEqual({ versao: "3.0", url: "/novo/contrato" });
+    expect(ov.body.contrato_doc).toEqual({ versao: vig.version, sha256: vig.sha256, url: "/novo/contrato" });
+  });
+
+  it("quem não aceitou a versão vigente do Contrato não contrata (e, sem o aceite, a renovação não acontece)", async () => {
+    const vig = (await q1(`select version from public.legal_versions where document = 'termo_uso'`)).version;
+    await dev.db.query(`update public.legal_versions set version = '9.9' where document = 'termo_uso'`);
+    try {
+      expect((await comprar(CARTAO, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "cartao" })).body.code).toBe("aceite_contrato_vigente");
+    } finally {
+      await dev.db.query(`update public.legal_versions set version = $1 where document = 'termo_uso'`, [vig]);
+    }
   });
 
   it("a caixa de aceite é obrigatória e o aceite fica carimbado no pedido (versão, hora do banco, navegador, oferta)", async () => {
@@ -160,10 +168,11 @@ describe("aceite do contrato na contratação", () => {
     const r = await comprar(CARTAO, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "cartao" });
     expect(r.status).toBe(200);
     const p = await q1(`select aceite from public.billing_pedidos where id = $1`, [r.body.id]);
-    expect(p.aceite).toMatchObject({ aceito: true, contrato_versao: "3.0", oferta: { valor_centavos: 9990 } });
+    const vigente = (await q1(`select version from public.legal_versions where document = 'termo_uso'`)).version;
+    expect(p.aceite).toMatchObject({ aceito: true, contrato_versao: vigente, oferta: { valor_centavos: 9990 } });
     expect(p.aceite.registrado_em).toBeTruthy();
-    // sem o documento 'contrato_assinatura' em legal_versions (ramo termo-v3), a prova fica só no pedido, sem erro
-    expect(await q1(`select count(*)::int n from public.legal_acceptances where user_id = $1 and document <> 'termo_uso'`, [CARTAO])).toEqual({ n: 0 });
+    // o aceite do cadastro (mesma versão) continua sendo a prova em legal_acceptances; a compra fica carimbada no pedido
+    expect((await q1(`select count(*)::int n from public.legal_acceptances where user_id = $1 and document = 'termo_uso'`, [CARTAO])).n).toBeGreaterThanOrEqual(1);
     // primeira compra paga: aviso "pagamento confirmado", e o recibo do fornecedor no histórico
     const cid = r.body.url.split("/").pop();
     pay(cid);
@@ -174,7 +183,7 @@ describe("aceite do contrato na contratação", () => {
     expect(av[0].texto).toContain("R$ 99,90");
     const h = await comoAluno<any>(CARTAO, "app_billing_historico");
     expect(h.pagamentos[0]).toMatchObject({ status: "paga", valor_centavos: 9990, recibo_url: `https://recibo.teste/${cid}` });
-    expect(h.aceite).toMatchObject({ versao: "3.0" });
+    expect(h.aceite.versao).toBe(vigente);
     expect(h.contrato_url).toBe("/novo/contrato");
   });
 });
@@ -516,5 +525,35 @@ describe("revisão de segurança (17/10): nada de cobrança em dobro", () => {
     const depois = (await avisosDe(DUPLO)).filter((a: any) => a.tipo === "acesso_bloqueado");
     expect(depois.length).toBe(0);
     expect((await avisosDe(DUPLO)).length).toBeGreaterThanOrEqual(antes);
+  });
+});
+
+describe("Contrato 3.0, cláusula 6.5-A: renovar exige o aceite da versão vigente", () => {
+  it("sem o aceite: aviso para aceitar, cartão deixa de renovar sozinho 1 dia antes e o Pix não sai; depois do aceite, o Pix sai", async () => {
+    const r = await comprar(ACEITE, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "cartao" });
+    const cid = r.body.url.split("/").pop();
+    pay(cid);
+    await hook(cid);
+    const sid = (await q1(`select provider_subscription_id s from public.billing_contratos where user_id = $1`, [ACEITE])).s;
+    const vig = (await q1(`select version from public.legal_versions where document = 'termo_uso'`)).version;
+    // o contrato mudou (versão nova) e o aluno ainda não aceitou
+    await dev.db.query(`update public.legal_versions set version = '9.9' where document = 'termo_uso'`);
+    try {
+      await dev.db.query(`update public.billing_contratos set periodo_fim = $2 where user_id = $1`, [ACEITE, fimDoDia(1)]);
+      await avisos.gerar();
+      const av = (await avisosDe(ACEITE)).filter((a: any) => a.tipo === "renovacao");
+      expect(av.at(-1).titulo).toMatch(/aceite o contrato novo/);
+      expect((await q("select rota from public.avisos_aluno where user_id = $1 and chave like 'renovacao-aceite:%'", [ACEITE]))[0].rota).toBe("aceite");
+      const out = await billing.runScheduled();
+      expect(out.sem_aceite).toBe(1);
+      expect(log).toContain(`cancelou-assinatura:${sid}`);
+      expect(await q1(`select metodo, renova, provider_subscription_id from public.billing_contratos where user_id = $1`, [ACEITE])).toEqual({ metodo: "pix", renova: true, provider_subscription_id: null });
+      expect(await q1(`select count(*)::int n from public.billing_pedidos where user_id = $1 and motivo = 'renovacao'`, [ACEITE])).toEqual({ n: 0 });
+      // aceitou a versão nova: o Pix da renovação sai na próxima rodada
+      await dev.db.query(`insert into public.legal_acceptances (user_id, document, version, origin, email_hash) values ($1, 'termo_uso', '9.9', 'tela_aceite', 'x')`, [ACEITE]);
+      expect((await billing.runScheduled()).renovacoes).toBe(1);
+    } finally {
+      await dev.db.query(`update public.legal_versions set version = $1 where document = 'termo_uso'`, [vig]);
+    }
   });
 });

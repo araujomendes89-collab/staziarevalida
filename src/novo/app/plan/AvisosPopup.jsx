@@ -12,7 +12,7 @@ const ARTE = {
   acesso_bloqueado: ["lock", "warning"],
   acesso_liberado: ["circle-check", "success"],
 };
-const BOTAO = { planos: "Abrir Meu plano", perfil: "Abrir Minha conta" };
+const BOTAO = { planos: "Abrir Meu plano", perfil: "Abrir Minha conta", aceite: "Ler e aceitar o contrato" };
 
 export function AvisosPopup({ go, ativo = true }) {
   const { backend } = useSession();
@@ -57,7 +57,7 @@ export function AvisosPopup({ go, ativo = true }) {
     } catch {
       // aparece de novo na próxima vez; nada se perde
     }
-    if (abrir) go(a.rota === "perfil" ? "perfil" : "planos", a.rota === "perfil" ? { secao: "assinatura" } : undefined);
+    if (abrir) go(a.rota === "perfil" ? "perfil" : a.rota === "aceite" ? "aceite" : "planos", a.rota === "perfil" ? { secao: "assinatura" } : undefined);
   };
   return (
     <div className="cdz-overlay" role="dialog" aria-modal="true" aria-labelledby="avp-t" data-testid="avisos-popup">
