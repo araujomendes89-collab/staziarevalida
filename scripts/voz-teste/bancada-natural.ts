@@ -19,6 +19,10 @@
 // Uso (na raiz do projeto):
 //   npx tsx scripts/voz-teste/bancada-natural.ts [--n 20] [--personalidade durao,acolhedor,durona,tranquila]
 //        [--saida <pasta>] [--paralelo 6] [--so-medir] [--sem-juiz] [--so-faltantes] [--abertura-fixa] [--db <pasta>]
+//        [--alunos 5] [--aluno-por-conversa]
+// --alunos K: cada personalidade tem K alunos simulados; as conversas do mesmo aluno rodam em sequência, com 1 dia entre elas (5 dias
+//   antes da conversa do perfil "volta depois de dias"), e o banco guarda a memória das aberturas desse aluno, como no app
+//   (tutor_recent_openings, conversa anterior, erros da última vez). --aluno-por-conversa: um aluno novo por conversa (como a base).
 // --so-medir refaz só as contas a partir dos .json já gravados (sem chamar IA); --so-faltantes roda de novo só as que faltam ou deram erro.
 import fs from "node:fs";
 import path from "node:path";
@@ -48,7 +52,16 @@ const SEM_JUIZ = flag("sem-juiz");
 /** Só as conversas que faltam ou que terminaram em erro (as boas ficam como estão). */
 const SO_FALTANTES = flag("so-faltantes");
 const MODELO = "gemini-3.8-flash";
+/** Um aluno novo por conversa (como a linha de base), sem memória entre conversas. */
+const ALUNO_POR_CONVERSA = flag("aluno-por-conversa");
+const ALUNOS = ALUNO_POR_CONVERSA ? N : Math.max(1, Math.min(N, Number(arg("alunos", "5"))));
 fs.mkdirSync(SAIDA, { recursive: true });
+/** Semente da rodada: o mesmo aluno (uid) para as conversas dele, também quando --so-faltantes refaz uma. */
+const SEMENTE = (() => {
+  const f = path.join(SAIDA, "semente.txt");
+  if (!fs.existsSync(f)) fs.writeFileSync(f, crypto.randomUUID());
+  return fs.readFileSync(f, "utf8").trim();
+})();
 
 // ------------------------------------------------------------------------------------------------ ambiente (antes de carregar o servidor)
 for (const k of ["SUPABASE_URL", "VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_DB_URL", "CONTENT_HUB_AI_FALLBACK_PROVIDER", "DETERMINISTIC_TUTOR"]) delete process.env[k];
@@ -128,9 +141,11 @@ const PERFIS: Record<string, string> = {
 };
 const NOMES_PERFIS = Object.keys(PERFIS);
 
-interface Plano { idx: number; perfil: string; modo: Modo; tema: string; turnos: number }
+interface Plano { idx: number; perfil: string; modo: Modo; tema: string; turnos: number; aluno: number; vez_do_aluno: number }
 const plano = (idx: number): Plano => ({
   idx,
+  aluno: idx % ALUNOS,
+  vez_do_aluno: Math.floor(idx / ALUNOS),
   perfil: NOMES_PERFIS[idx % NOMES_PERFIS.length],
   modo: MODOS[idx % MODOS.length],
   tema: TEMAS[Math.floor(idx / 3) % TEMAS.length],
@@ -171,6 +186,8 @@ async function prepararBanco() {
   await sql(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await sql(`update public.ch_flags set value = true where key in ('enabled', 'ai_enabled')`);
   await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, requires_pro: true, max_profanity: "moderate" }, "Bancada de naturalidade local (sem IA no ar).");
+  // o mesmo aluno faz várias conversas no mesmo dia da bancada: limite diário de mensagens maior, só no banco local
+  await sql(`update public.tutor_config set daily_message_limit = 500`);
   console.log(`[bancada] banco pronto em ${Math.round((Date.now() - t0) / 1000)} s`);
 
   // O Vertex recusa "enum" com números no esquema de resposta (evaluation.severity = 1..5): erro 400 em todo turno. Só na bancada,
@@ -247,6 +264,7 @@ interface Registro {
   custo: { professor: Conta; aluno: Conta; juiz: Conta; usd: number };
   questao?: { id: string; gabarito: string; texto_gabarito: string }[];
   erro?: string; falhas_do_provedor?: string[]; juiz?: unknown; ms: number; custo_tentativas_anteriores_usd?: number;
+  aluno_uid?: string; conversas_anteriores_do_aluno?: number; aberturas_ja_ouvidas?: string[];
 }
 
 async function questaoDaSessao(uid: string, sid: string) {
@@ -261,13 +279,33 @@ async function questaoDaSessao(uid: string, sid: string) {
   };
 }
 
+/** O aluno simulado (uid) desta personalidade: o mesmo em todas as conversas dele nesta rodada. */
+function uidDoAluno(pid: string, p: Plano): string {
+  const h = crypto.createHash("sha256").update(`${SEMENTE}:${pid}:${ALUNO_POR_CONVERSA ? `c${p.idx}` : `a${p.aluno}`}`).digest("hex");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+
+/**
+ * Passa o tempo para o aluno: tudo o que ele já fez com o Tutor fica `dias` mais antigo (conversas, aberturas já ouvidas). Assim a
+ * próxima conversa vê "a última conversa foi há N dias", como no app.
+ */
+async function passarDias(uid: string, dias: number) {
+  const intervalo = `${dias} days`;
+  await sql(`update public.tutor_sessions set created_at = created_at - $2::interval, last_message_at = last_message_at - $2::interval where user_id = $1`, [uid, intervalo]);
+  await sql(`update public.tutor_recent_openings set created_at = created_at - $2::interval where user_id = $1`, [uid, intervalo]);
+}
+
 async function conversa(pid: string, p: Plano, novoAluno: (uid: string) => Promise<void>): Promise<Registro> {
   const t0 = Date.now();
   const conta = { professor: novaConta(), aluno: novaConta(), juiz: novaConta() };
   return contexto.run(conta, async () => {
-    const uid = crypto.randomUUID();
+    const uid = uidDoAluno(pid, p);
     await novoAluno(uid);
-    const reg: Registro = { personalidade: pid, nome: NOMES[pid], plano: p, sessao: "", turnos: [], custo: { ...conta, usd: 0 }, questao: [], ms: 0 };
+    // conversa de antes do mesmo aluno: 1 dia atrás (5 dias para o perfil que volta depois de dias)
+    const anteriores = Number((await sql<{ n: number }>(`select count(*)::int as n from public.tutor_sessions where user_id = $1`, [uid]))[0]?.n ?? 0);
+    if (anteriores > 0) await passarDias(uid, p.perfil === "volta_dias" ? 5 : 1);
+    const ouvidas = (await sql<{ content: string }>(`select content from public.tutor_recent_openings where user_id = $1 and personality_id = $2 and kind = 'abertura' order by created_at desc, id desc limit 5`, [uid, pid])).map((r) => r.content);
+    const reg: Registro = { personalidade: pid, nome: NOMES[pid], plano: p, sessao: "", turnos: [], custo: { ...conta, usd: 0 }, questao: [], ms: 0, aluno_uid: uid, conversas_anteriores_do_aluno: anteriores, aberturas_ja_ouvidas: ouvidas };
     const falhas: string[] = [];
     let etapa = "início";
     try {
@@ -524,11 +562,32 @@ async function medir(regs: Registro[], pid: string) {
     }
   }
   const custo = convs.reduce((s, c) => s + c.custo.usd, 0);
+  // o MESMO aluno ouvindo abertura igual ou parecida com uma que já ouviu desse professor (mesmo começo de 3 palavras ou parecida demais)
+  const { tooSimilar } = await import("../../server/tutor/opening");
+  const ini3 = (t: string) => palavras(t).slice(0, 3).join(" ");
+  const porAluno = new Map<string, Registro[]>();
+  for (const c of convs) { const k = c.aluno_uid ?? `c${c.plano.idx}`; (porAluno.get(k) ?? porAluno.set(k, []).get(k)!).push(c); }
+  let abAluno = 0, abAlunoRep = 0;
+  const abAlunoEx: string[] = [];
+  for (const lista of porAluno.values()) {
+    const ouvidas: { texto: string; tema: string }[] = [];
+    for (const c of lista.sort((a, b) => a.plano.idx - b.plano.idx)) {
+      const ab = c.turnos.find((t) => t.tipo === "abertura")?.texto;
+      if (!ab) continue;
+      if (ouvidas.length) {
+        abAluno++;
+        const igual = ouvidas.find((o) => ini3(o.texto) === ini3(ab) || tooSimilar(o.texto, ab, c.plano.tema) || tooSimilar(o.texto, ab, o.tema));
+        if (igual) { abAlunoRep++; abAlunoEx.push(`conversa ${c.plano.idx + 1}: «${ab.slice(0, 90)}» ~ «${igual.texto.slice(0, 90)}»`); }
+      }
+      ouvidas.push({ texto: ab, tema: c.plano.tema });
+    }
+  }
   // aberturas e passagens criadas pela IA (meta.generated) e as que ficaram na reserva sorteada
   const fixasTurnos = convs.flatMap((c) => c.turnos.filter(FIXA));
   const criadas = fixasTurnos.filter((t) => (t.meta as any)?.generated).length;
   return {
-    id: pid, nome: NOMES[pid], conversas: nConv, conversas_com_erro: erros,
+    id: pid, nome: NOMES[pid], conversas: nConv, conversas_com_erro: erros, alunos: porAluno.size,
+    mesmo_aluno_abertura_parecida_com_ja_ouvida: `${abAlunoRep}/${abAluno}`, mesmo_aluno_abertura_parecida_pct: pct(abAlunoRep, abAluno), mesmo_aluno_exemplos: abAlunoEx.slice(0, 5),
     aberturas_e_passagens_criadas_pela_ia: `${criadas}/${fixasTurnos.length}`, aberturas_e_passagens_criadas_pela_ia_pct: pct(criadas, fixasTurnos.length),
     falas_professor: convs.reduce((s, c) => s + c.turnos.filter((t) => t.papel === "professor").length, 0),
     aberturas_distintas_pct: pct(aberturasDistintas, aberturas.length), aberturas_distintas: `${aberturasDistintas}/${aberturas.length}`,
@@ -568,13 +627,19 @@ async function main() {
   if (!SO_MEDIR) {
     const novoAluno = await prepararBanco();
     inventario = await inventarioFixo();
-    const fila = PERSONALIDADES.flatMap((pid) => Array.from({ length: N }, (_, i) => ({ pid, p: plano(i) }))).filter(({ pid, p }) => {
+    const itens = PERSONALIDADES.flatMap((pid) => Array.from({ length: N }, (_, i) => ({ pid, p: plano(i) }))).filter(({ pid, p }) => {
       if (!SO_FALTANTES || !fs.existsSync(arquivo(pid, p.idx))) return true;
       return Boolean(JSON.parse(fs.readFileSync(arquivo(pid, p.idx), "utf8")).erro);
     });
+    // as conversas do mesmo aluno vão juntas e em ordem (a memória dele passa de uma para a outra)
+    const cadeias = new Map<string, typeof itens>();
+    for (const it of itens) { const k = `${it.pid}:${ALUNO_POR_CONVERSA ? it.p.idx : it.p.aluno}`; (cadeias.get(k) ?? cadeias.set(k, []).get(k)!).push(it); }
+    const filaCadeias = [...cadeias.values()].map((c) => c.sort((a, b) => a.p.idx - b.p.idx));
+    // intercala as personalidades para a carga ficar parelha
+    filaCadeias.sort((a, b) => a[0].p.aluno - b[0].p.aluno || PERSONALIDADES.indexOf(a[0].pid) - PERSONALIDADES.indexOf(b[0].pid));
     let feitas = 0;
     const trabalhador = async () => {
-      for (let item = fila.shift(); item; item = fila.shift()) {
+      for (let cadeia = filaCadeias.shift(); cadeia; cadeia = filaCadeias.shift()) for (const item of cadeia) {
         const reg = await conversa(item.pid, item.p, novoAluno);
         if (!SEM_JUIZ) await julgar(reg);
         reg.custo.usd = usd(reg.custo.professor) + usd(reg.custo.aluno) + usd(reg.custo.juiz);
@@ -583,7 +648,7 @@ async function main() {
         if (antigo) { reg.custo_tentativas_anteriores_usd = Number(antigo.custo?.usd ?? 0) + Number(antigo.custo_tentativas_anteriores_usd ?? 0); reg.custo.usd += reg.custo_tentativas_anteriores_usd; }
         fs.writeFileSync(arquivo(item.pid, item.p.idx), JSON.stringify(reg, null, 2));
         feitas++;
-        console.log(`[bancada] ${NOMES[item.pid]} #${item.p.idx + 1} (${item.p.perfil}, ${item.p.modo}, ${item.p.tema}): ${reg.turnos.filter((t) => t.papel === "professor").length} falas do professor, US$ ${reg.custo.usd.toFixed(4)}${reg.erro ? `, ERRO: ${reg.erro}` : ""} [${feitas}]`);
+        console.log(`[bancada] ${NOMES[item.pid]} #${item.p.idx + 1} (aluno ${item.p.aluno + 1}, vez ${item.p.vez_do_aluno + 1}; ${item.p.perfil}, ${item.p.modo}, ${item.p.tema}): ${reg.turnos.filter((t) => t.papel === "professor").length} falas do professor, US$ ${reg.custo.usd.toFixed(4)}${reg.erro ? `, ERRO: ${reg.erro}` : ""} [${feitas}]`);
       }
     };
     await Promise.all(Array.from({ length: PARALELO }, trabalhador));
@@ -609,7 +674,8 @@ async function main() {
   const [aDurao, aDurona] = [ab("durao"), ab("durona")];
   const resumo = {
     quando: new Date().toISOString(), modelo: MODELO, n_por_personalidade: N, personalidades: PERSONALIDADES,
-    desenho: "perfil = idx % 6 (ansioso, brincalhao, discorda, erra_repetido, volta_dias, objetivo); modo = idx % 4 (livre com tema, livre sem tema, me teste, questão); tema = idx/3 % 6; 6 a 8 falas do aluno",
+    alunos_por_personalidade: ALUNO_POR_CONVERSA ? "um por conversa" : ALUNOS,
+    desenho: "aluno = idx % alunos (conversas do mesmo aluno em sequência, 1 dia entre elas, 5 antes do perfil volta_dias); perfil = idx % 6 (ansioso, brincalhao, discorda, erra_repetido, volta_dias, objetivo); modo = idx % 4 (livre com tema, livre sem tema, me teste, questão); tema = idx/3 % 6; 6 a 8 falas do aluno",
     inventario_listas_fixas: inventario ?? (fs.existsSync(path.join(SAIDA, "resumo.json")) ? JSON.parse(fs.readFileSync(path.join(SAIDA, "resumo.json"), "utf8")).inventario_listas_fixas : null),
     aberturas_do_durao_iguais_a_da_durona: `${[...aDurao].filter((x) => aDurona.has(x)).length}/${aDurao.size}`,
     custo_usd: Math.round(custo * 10000) / 10000, tokens,
@@ -618,7 +684,8 @@ async function main() {
   fs.writeFileSync(path.join(SAIDA, "resumo.json"), JSON.stringify(resumo, null, 2));
   for (const r of por) {
     console.log(`\n== ${r.nome} (${r.conversas} conversas, ${r.falas_professor} falas do professor, US$ ${r.custo_usd})`);
-    console.log(`aberturas distintas: ${r.aberturas_distintas} (${r.aberturas_distintas_pct}%) · sem contar o tema: ${r.modelos_de_abertura_distintos} (${r.modelos_de_abertura_distintos_pct}%)`);
+    console.log(`aberturas distintas: ${r.aberturas_distintas} (${r.aberturas_distintas_pct}%) · sem contar o tema: ${r.modelos_de_abertura_distintos} (${r.modelos_de_abertura_distintos_pct}%) · criadas pela IA: ${r.aberturas_e_passagens_criadas_pela_ia}`);
+    console.log(`mesmo aluno (${r.alunos} alunos): abertura parecida com uma já ouvida ${r.mesmo_aluno_abertura_parecida_com_ja_ouvida}`);
     console.log(`frases (4+ palavras) repetidas entre conversas: todas ${r.repeticao_entre_conversas.todas.frases_repetidas_pct}% · aberturas/passagens ${r.repeticao_entre_conversas.aberturas_e_passagens.frases_repetidas_pct}% · respostas da IA ${r.repeticao_entre_conversas.respostas_da_ia.frases_repetidas_pct}%`);
     console.log(`5-gramas repetidos entre conversas: todas ${r.repeticao_entre_conversas.todas.ngramas5_repetidos_pct}% · respostas da IA ${r.repeticao_entre_conversas.respostas_da_ia.ngramas5_repetidos_pct}%`);
     console.log(`dentro da conversa (média): frases repetidas ${r.repeticao_dentro_da_conversa.frases_repetidas_media} · inícios repetidos ${r.repeticao_dentro_da_conversa.inicios_de_fala_repetidos_media} · 5-gramas ${r.repeticao_dentro_da_conversa.ngramas5_repetidos_media}`);
