@@ -1,7 +1,7 @@
 // Montar treino (Questões) e simulado, com dados do banco.
 // Mesma marcação do Builder do protótipo (prototype/Session.jsx); muda de onde vêm os números.
 import React from "react";
-import { lockHintOf } from "../../data";
+import { lockHintOf } from "../../data/backend";
 import { useSearchParams } from "react-router-dom";
 import { Badge, Banner, Button, Card, Chip, EmptyState, Icon, SegmentedControl, SelectField, TextField } from "../../ds";
 import { AreaArtTile } from "../../ds/area-icons/AreaArtTile.jsx";

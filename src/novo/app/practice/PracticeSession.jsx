@@ -8,7 +8,7 @@
 // Visual: modelo "Tela de Questão" (15/10/2026), em ./tela. A dica do Tutor antes de responder não existe no app (só o Tutor depois de
 // responder, que vem com a correção); dificuldade e fontes das Questões Inéditas não aparecem (ver docs/tela-questao-modelo.md).
 import React from "react";
-import { lockHintOf } from "../../data";
+import { lockHintOf } from "../../data/backend";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { Banner, Button, Card, EmptyState, Icon } from "../../ds";
 import { useMQ } from "../Shell.jsx";

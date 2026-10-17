@@ -337,33 +337,39 @@ as $$
   from public.billing_contratos c where c.user_id = p_user
 $$;
 
--- Cartão -> Pix (o servidor já cancelou a assinatura no fornecedor). O Pix da renovação sai 7 dias antes pela tarefa diária.
--- p_sub: a assinatura que o servidor acabou de cancelar. Se o aviso "assinatura apagada" do fornecedor chegou antes (e desligou a
--- renovação), a troca segue mesmo assim: foi a própria troca que apagou a assinatura.
+-- Cartão -> Pix, PASSO 1 (antes de cancelar no fornecedor): o contrato passa a Pix e larga a assinatura p_sub (precisa ser a do
+-- contrato). Assim o aviso "assinatura apagada" do fornecedor não acha mais o contrato (não desliga a renovação) e um "cancelar
+-- renovação" feito ao mesmo tempo continua valendo (esta função nunca LIGA a renovação). O Pix sai 7 dias antes pela tarefa.
 drop function if exists public.ch_worker_billing_para_pix(uuid);
+drop function if exists public.ch_worker_billing_para_pix(uuid, text);
 create or replace function public.ch_worker_billing_para_pix(p_user uuid, p_sub text default null) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
-declare c public.billing_contratos; v_sub text;
+declare c public.billing_contratos;
 begin
   perform pg_advisory_xact_lock(hashtextextended('billing:' || p_user::text, 0));
   select * into c from public.billing_contratos where user_id = p_user for update;
-  if c.user_id is not null and not c.renova and c.metodo = 'cartao' and c.provider_subscription_id is null and p_sub is not null
-     and c.periodo_fim > now() then
-    update public.billing_contratos set renova = true, metodo = 'pix', atualizado_em = now() where user_id = p_user;
-    return jsonb_build_object('metodo', 'pix', 'periodo_fim', c.periodo_fim);
-  end if;
   if c.user_id is null or not c.renova or c.periodo_fim <= now() then
     raise exception 'sem_renovacao: Você não tem uma assinatura que renova para trocar a forma de pagamento.';
   end if;
   if c.metodo = 'pix' then return jsonb_build_object('metodo', 'pix', 'periodo_fim', c.periodo_fim); end if;
-  v_sub := c.provider_subscription_id;
+  if c.provider_subscription_id is distinct from p_sub then
+    raise exception 'sem_renovacao: A assinatura mudou. Atualize a página e tente de novo.';
+  end if;
   update public.billing_contratos set metodo = 'pix', provider_subscription_id = null, atualizado_em = now() where user_id = p_user;
-  if v_sub is not null then
-    update public.subscriptions set provider_subscription_id = null, updated_at = now() where user_id = p_user and provider_subscription_id = v_sub;
+  if p_sub is not null then
+    update public.subscriptions set provider_subscription_id = null, updated_at = now() where user_id = p_user and provider_subscription_id = p_sub;
   end if;
   return jsonb_build_object('metodo', 'pix', 'periodo_fim', c.periodo_fim);
 end
+$$;
+
+-- Cartão -> Pix, desfazer (o fornecedor não cancelou a assinatura): volta ao cartão com a mesma assinatura, se nada mudou depois.
+create or replace function public.ch_worker_billing_para_pix_desfazer(p_user uuid, p_sub text) returns void
+  language sql security definer set search_path = ''
+as $$
+  update public.billing_contratos set metodo = 'cartao', provider_subscription_id = p_sub, atualizado_em = now()
+  where user_id = p_user and metodo = 'pix' and provider_subscription_id is null and p_sub is not null
 $$;
 
 -- Pix -> cartão: abre um pedido de RENOVAÇÃO no cartão (assinatura cuja 1ª cobrança vence no fim do período atual). O aluno digita o
@@ -458,6 +464,7 @@ revoke execute on function public.ch_worker_billing_contrato_doc() from public, 
 revoke execute on function public.ch_worker_billing_aceite_registrar(uuid, text) from public, anon, authenticated;
 revoke execute on function public.ch_worker_billing_troca_situacao(uuid) from public, anon, authenticated;
 revoke execute on function public.ch_worker_billing_para_pix(uuid, text) from public, anon, authenticated;
+revoke execute on function public.ch_worker_billing_para_pix_desfazer(uuid, text) from public, anon, authenticated;
 revoke execute on function public.ch_worker_billing_troca_cartao_abrir(uuid, text) from public, anon, authenticated;
 revoke execute on function public.app_meus_avisos() from public, anon;
 grant execute on function public.app_meus_avisos() to authenticated;

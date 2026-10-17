@@ -2,7 +2,7 @@
 // Mesma marcação da FlashcardsScreen do kit (prototype/ReviewScreens.jsx). O "Modo áudio"
 // do protótipo deu lugar a "Novo flashcard": não existe modo áudio no produto.
 import React from "react";
-import { lockHintOf } from "../../data";
+import { lockHintOf } from "../../data/backend";
 import { Badge, Banner, Button, Card, EmptyState, StatCard } from "../../ds";
 import { useSession } from "../session.jsx";
 import { diaLocal, useCelebracoesApp } from "../play/celebracoes/CelebracoesProvider.jsx";

@@ -643,7 +643,9 @@ create or replace function public.ch_worker_billing_cancelar_renovacao(p_user uu
 as $$
 declare c public.billing_contratos; v_abertos jsonb;
 begin
-  select * into c from public.billing_contratos where user_id = p_user and renova and periodo_fim > now();
+  -- também depois do vencimento sem pagamento (acesso pausado): quem quer parar consegue parar, e a cobrança da renovação em aberto
+  -- (Pix ou o cartão que o fornecedor ainda tentaria) é cancelada (revisão 17/10)
+  select * into c from public.billing_contratos where user_id = p_user and renova and periodo_fim > now() - interval '40 days';
   if not found then return null; end if;
   update public.billing_contratos set renova = false, atualizado_em = now() where user_id = p_user;
   -- Pix de renovação já gerado e não pago: cancelar também

@@ -198,7 +198,7 @@ export function AssinaturaSection({ go, Cabecalho }) {
               onSim={() =>
                 agir(async () => {
                   const r = await cancelRenewal(backend);
-                  setMsg(`Renovação cancelada. Seu acesso vai até ${dateBR(r.acesso_ate)}.`);
+                  setMsg(new Date(r.acesso_ate) > new Date() ? `Renovação cancelada. Seu acesso vai até ${dateBR(r.acesso_ate)}.` : "Assinatura cancelada. Nada mais será cobrado.");
                   recarregar();
                 })
               }
@@ -218,6 +218,44 @@ export function AssinaturaSection({ go, Cabecalho }) {
             <div className="bl-acoes">
               <Button iconRight="arrow-right" onClick={() => go("planos")}>
                 Assinar de novo
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : c?.renova ? (
+        // venceu sem pagamento confirmado: acesso pausado; pagar (acima) devolve na hora, ou parar de vez sem multa
+        <div className="ev-panel as-plano" data-testid="assinatura-pausada">
+          <div className="as-plano__top">
+            <IconTile name="lock" tone="warning" size={48} />
+            <div className="as-plano__t">
+              <span className="as-k">Seu plano</span>
+              <b className="as-nome">
+                {c.plano.toUpperCase()} {CICLO[c.ciclo]}
+              </b>
+              <span className="bl-fina">Acesso pago pausado desde {dateBR(c.periodo_fim)}: a renovação ainda não foi paga. Seus dados estão guardados.</span>
+            </div>
+            <Badge tone="warning">Pausada</Badge>
+          </div>
+          {pergunta === "cancelar" ? (
+            <Confirmar
+              perigo
+              titulo="Cancelar a assinatura?"
+              texto="Sem multa. A cobrança da renovação em aberto é cancelada e nada mais é cobrado. Para voltar depois, é só assinar de novo."
+              sim="Cancelar a assinatura"
+              busy={busy}
+              onNao={() => setPergunta(null)}
+              onSim={() =>
+                agir(async () => {
+                  await cancelRenewal(backend);
+                  setMsg("Assinatura cancelada. Nada mais será cobrado.");
+                  recarregar();
+                })
+              }
+            />
+          ) : (
+            <div className="bl-acoes">
+              <Button variant="ghost" onClick={() => setPergunta("cancelar")}>
+                Cancelar assinatura
               </Button>
             </div>
           )}

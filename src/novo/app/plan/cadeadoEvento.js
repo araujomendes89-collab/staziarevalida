@@ -1,6 +1,6 @@
 // Aviso de cadeado (planos etapa 4), sem React: o backend embrulhado avisa a tela quando o banco recusa por plano (dica
 // "cadeado:<recurso>" / "amostra:<recurso>"). O erro segue igual para quem chamou. Usado pela sessão (session.jsx) e pelas telas.
-import { lockHintOf } from "../../data";
+import { lockHintOf } from "../../data/backend";
 
 export const EVENTO_CADEADO = "staziamed:cadeado";
 export const EVENTO_AMOSTRA = "staziamed:amostra-mudou";

@@ -485,11 +485,23 @@ describe("revisão de segurança (17/10): nada de cobrança em dobro", () => {
     expect(again.body.url).toBe((r1.status === 200 ? r1 : r2).body.url);
   });
 
-  it("o Pix da renovação não se cancela pela tela (apagaria a cobrança da renovação)", async () => {
-    const ren = await q1(`select id from public.billing_pedidos where user_id = $1 and motivo = 'renovacao' and metodo = 'pix' and status = 'aberto'`, [TROCA_PIX]);
-    if (ren) expect((await api(TROCA_PIX, `/orders/${ren.id}/cancel`, {})).body.code).toBe("renovacao_nao_cancela");
-    const ped = await q1(`select id from public.billing_pedidos where motivo = 'renovacao' and metodo = 'pix' and status = 'aberto' limit 1`);
-    expect(ped).toBeTruthy();
+  it("Pix da renovação não se cancela avulso; vencido sem pagar, 'Cancelar assinatura' ainda funciona e libera comprar de novo", async () => {
+    await dev.db.query(`insert into public.billing_clientes (user_id, provider, customer_id) values ($1, 'asaas', 'cus_26') on conflict do nothing`, [OUTRO]);
+    await dev.db.query(`insert into public.billing_contratos (user_id, plano, ciclo, metodo, valor_centavos, renova, provider, contratado_em, periodo_inicio, periodo_fim)
+      values ($1, 'pro', 'mensal', 'pix', 9990, true, 'asaas', now() - interval '25 days', now() - interval '25 days', $2)
+      on conflict (user_id) do update set metodo = 'pix', renova = true, provider_subscription_id = null, periodo_fim = excluded.periodo_fim`, [OUTRO, fimDoDia(5)]);
+    await billing.runScheduled();
+    const ren = await q1(`select id, provider_payment_id p from public.billing_pedidos where user_id = $1 and motivo = 'renovacao' and status = 'aberto'`, [OUTRO]);
+    expect((await api(OUTRO, `/orders/${ren.id}`)).body.cancelavel).toBe(false);
+    expect((await api(OUTRO, `/orders/${ren.id}/cancel`, {})).body.code).toBe("renovacao_nao_cancela");
+    // venceu sem pagar: o acesso pausou; o aluno decide parar
+    await dev.db.query(`update public.billing_contratos set periodo_fim = now() - interval '2 days' where user_id = $1`, [OUTRO]);
+    const c = await api(OUTRO, "/cancel-renewal", {});
+    expect(c.status).toBe(200);
+    expect(log).toContain(`cancelou:${ren.p}`);
+    expect(await q1(`select status from public.billing_pedidos where id = $1`, [ren.id])).toEqual({ status: "cancelado" });
+    // pode comprar de novo (no cartão, por exemplo)
+    expect((await comprar(OUTRO, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "cartao" })).status).toBe(200);
   });
 
   it("Pix velho de outro pedido que venceu não vira aviso falso de 'acesso pausado'", async () => {

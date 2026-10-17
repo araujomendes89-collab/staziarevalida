@@ -105,14 +105,17 @@ export function createBilling(deps: BillingDeps) {
     const out = { expirados: 0, erros: 0 };
     for (const v of await svc<{ id: string; provider: string | null; payment_id: string | null; subscription_id: string | null }[]>("ch_worker_billing_pedidos_vencidos", { p_user: userId })) {
       try {
-        if (v.payment_id && v.provider === p.name) {
-          await processCharge(v.payment_id, v.subscription_id);
-          const c = await p.getCharge(v.payment_id);
-          if (c && c.status !== "paid") {
-            await p.cancelCharge(v.payment_id);
+        if (v.provider === p.name) {
+          const c = v.payment_id ? await p.getCharge(v.payment_id) : null;
+          if (c?.status === "paid") {
+            // pago no último minuto: vale o pagamento (erro aqui deixa o pedido aberto e vai para o registro: caso da equipe)
+            await processCharge(c.id, v.subscription_id);
+          } else {
+            if (c) await p.cancelCharge(c.id);
+            // a assinatura é cancelada mesmo se a cobrança não existir mais no fornecedor
             if (v.subscription_id) await p.cancelSubscription(v.subscription_id);
-            const depois = await p.getCharge(v.payment_id);
-            if (depois?.status === "paid") await processCharge(v.payment_id, v.subscription_id);
+            const depois = c ? await p.getCharge(c.id) : null;
+            if (depois?.status === "paid") await processCharge(depois.id, v.subscription_id);
           }
         }
         await svc("ch_worker_billing_pedido_encerrar", { p_pedido: v.id, p_status: "expirado", p_erro: "Tempo para pagar acabou", p_user: null });
@@ -250,8 +253,14 @@ export function createBilling(deps: BillingDeps) {
     }
   }
 
+  /** O Pix que é a PRÓPRIA cobrança da renovação do cartão que falhou (payRenewalByPix): cancelar apagaria a cobrança da assinatura. */
+  // O Pix da RENOVAÇÃO (o de 7 dias antes, ou a cobrança do cartão recusado que virou Pix) não se cancela como pagamento avulso:
+  // cancelar o segundo apagaria a cobrança da assinatura, e o primeiro não voltaria (a chave da renovação é a mesma). Para não renovar,
+  // o caminho é "Cancelar assinatura", que vale também depois do vencimento (revisão 17/10).
+  const pixDaCobrancaDoCartao = (p: Pedido) => p.motivo === "renovacao" && p.metodo === "pix";
+
   function publicOrder(p: Pedido) {
-    return { id: p.id, status: p.status, nome: p.nome, tipo: p.tipo, metodo: p.metodo, motivo: p.motivo, valor_centavos: p.valor_centavos, url: p.url, pix: p.pix ?? null, expira_em: p.expira_em };
+    return { id: p.id, status: p.status, nome: p.nome, tipo: p.tipo, metodo: p.metodo, motivo: p.motivo, valor_centavos: p.valor_centavos, url: p.url, pix: p.pix ?? null, expira_em: p.expira_em, cancelavel: !pixDaCobrancaDoCartao(p) };
   }
 
   /** Situação do pedido para a tela que espera o pagamento. Se o fornecedor já diz "pago", confere e processa na hora. */
@@ -275,7 +284,7 @@ export function createBilling(deps: BillingDeps) {
     const antes = await svc<Pedido | null>("ch_worker_billing_pedido", { p_pedido: id, p_user: user.id });
     // o Pix da RENOVAÇÃO (o de 7 dias antes, ou a renovação do cartão que virou Pix) não se cancela por aqui: cancelar apagaria a
     // própria cobrança da renovação no fornecedor. Para não renovar, o caminho é "Cancelar assinatura" (revisão 17/10).
-    if (antes?.motivo === "renovacao" && antes.metodo === "pix") {
+    if (antes && pixDaCobrancaDoCartao(antes)) {
       throw new BillingError("Este é o Pix da sua renovação: ele fica disponível até ser pago. Para não renovar, use Cancelar assinatura em Minha conta.", 409, "renovacao_nao_cancela");
     }
     const pedido = await svc<Pedido | null>("ch_worker_billing_pedido_encerrar", { p_pedido: id, p_status: "cancelado", p_erro: "Cancelado pelo aluno", p_user: user.id });
@@ -359,20 +368,24 @@ export function createBilling(deps: BillingDeps) {
 
     if (metodo === "pix") {
       if (s.metodo === "pix") return { ok: true, metodo: "pix", periodo_fim: s.periodo_fim };
+      // 1) o banco primeiro: o contrato passa a Pix e larga a assinatura (assim o aviso "assinatura apagada" do fornecedor não
+      //    desliga a renovação, e um "cancelar renovação" ao mesmo tempo continua valendo); 2) cancela no fornecedor; 3) se falhar, desfaz
+      let r: { metodo: string; periodo_fim: string };
+      try {
+        r = await svc<{ metodo: string; periodo_fim: string }>("ch_worker_billing_para_pix", { p_user: user.id, p_sub: s.subscription_id });
+      } catch (e) {
+        throw dbError(e) ?? e;
+      }
       if (s.subscription_id) {
         try {
           await p.cancelSubscription(s.subscription_id);
         } catch (e) {
           log(`[billing] troca para Pix: cancelar assinatura falhou: ${(e as Error).message}`);
+          await svc("ch_worker_billing_para_pix_desfazer", { p_user: user.id, p_sub: s.subscription_id }).catch(() => undefined);
           throw new BillingError("Não foi possível trocar agora. Tente de novo.", 502);
         }
       }
-      try {
-        const r = await svc<{ metodo: string; periodo_fim: string }>("ch_worker_billing_para_pix", { p_user: user.id, p_sub: s.subscription_id });
-        return { ok: true, metodo: "pix", periodo_fim: r.periodo_fim };
-      } catch (e) {
-        throw dbError(e) ?? e;
-      }
+      return { ok: true, metodo: "pix", periodo_fim: r.periodo_fim };
     }
 
     // Pix -> cartão
