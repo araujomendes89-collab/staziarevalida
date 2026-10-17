@@ -22,7 +22,7 @@ import { deterministicTutor, tutorSettings } from "./settings";
 
 export const OPENING_VERSION = "1.1.0";
 /** Tempo máximo esperando a IA (a tela espera junto). Passou disso, a reserva fica. */
-export const OPENING_TIMEOUT_MS = 4500;
+export const OPENING_TIMEOUT_MS = 6000; // bancada de 17/10: com 4,5 s, 9 de ~40 aberturas ficaram na reserva por tempo
 const MAX_CHARS = 280;
 
 export type OpeningKind = "abertura" | "passagem";

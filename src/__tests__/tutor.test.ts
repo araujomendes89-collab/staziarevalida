@@ -853,7 +853,9 @@ describe("Banco e motor (IA simulada)", () => {
       expect(gated).toBeGreaterThan(0);
       const angry = seen.filter((r) => /humor (irritado|muito irritado)/.test(r.system)).at(-1)!;
       expect(angry.system).toMatch(/INTENSIDADE DE LINGUAGEM AGORA: [45]/);
-      expect(angry.system).toContain("«PORRA, de novo?! Você caiu EXATAMENTE no mesmo ponto!»"); // falas fortes, com grito
+      // falas fortes, com grito: 3 das falas de referência com palavrão, sorteadas pela conversa (17/10)
+      const fortes = (await sql(`select examples_strong from public.tutor_personalities where id = 'durona'`))[0].examples_strong as string[];
+      expect(fortes.filter((f) => angry.system.includes(`«${f}»`))).toHaveLength(3);
       expect(angry.system).toMatch(/marcou a certa e trocou pela errada|respondeu rápido demais/); // a primeira marcada era a certa; 5 s
       expect(angry.input).toMatch(/"erros_nesta_sessao":\[\{"tipo":"distractor_trap"/);
       // o Truth Engine é o mesmo para qualquer humor: o bloco da questão não depende do estado
