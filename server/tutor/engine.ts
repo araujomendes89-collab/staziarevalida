@@ -26,6 +26,7 @@ import { protegerFala, sugestoesSemSigilo, violacoesDeSigilo } from "./escudo";
 import { lerRegistro, notaDoRegistro } from "./leituraDoAluno";
 import { nomeSeguro } from "./sigilo";
 import { deterministicTutor, tutorSettings } from "./settings";
+import { buscarOuReserva } from "./conhecimento/buscar";
 
 export interface TutorDeps {
   db: ContentDb;
@@ -136,6 +137,8 @@ interface Context {
 
 export interface Passage {
   source: string; organ: string; version: string | null; page: number | null; section: string | null; text: string;
+  /** cérebro do Tutor: citação pronta (título, ano, seção, página) */
+  citacao?: string;
 }
 
 /**
@@ -216,7 +219,7 @@ export function buildBlocks(ctx: Context, passages: Passage[], includeAnswer: bo
     }
   }
   passages.forEach((p, i) =>
-    blocks.push({ ref: `F${i + 1}`, kind: "source", label: `${p.source} · ${p.organ}${p.version ? ` · versão ${p.version}` : ""}${p.page != null ? ` · p. ${p.page}` : ""}`, text: p.text })
+    blocks.push({ ref: `F${i + 1}`, kind: "source", label: p.citacao ?? `${p.source} · ${p.organ}${p.version ? ` · versão ${p.version}` : ""}${p.page != null ? ` · p. ${p.page}` : ""}`, text: p.text })
   );
   return blocks;
 }
@@ -365,7 +368,10 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const weak = ctx.session.context?.type === "weak_points" ? (ctx.memory?.weak_subareas ?? []).slice(0, 3).map((w) => w.subarea).join(" ") : "";
     // lista de fontes que o aluno não pode ver: sem ela o Tutor não responde (nada é publicado nem gravado); o aluno tenta de novo
     const supportTerms = await termsOrFail(deps);
-    const passages = await searchSources(deps, sourceQuery(q?.topic, q?.subtopic, ctx.session.topic, ctx.session.context?.label, weak, task.type === "message" && !q ? studentText : ""));
+    // cérebro do Tutor: busca no conhecimento aprovado (aulas, atualizações, fontes, flashcards, explicações já liberadas), travas no banco;
+    // sem o índice, a busca de antes
+    const termosBusca = [q?.topic, q?.subtopic, ctx.session.topic, ctx.session.context?.label, weak, task.type === "message" && !q ? studentText : ""];
+    const passages = (await buscarOuReserva(deps, { userId, sessionId, pergunta: termosBusca.filter(Boolean).join(" "), vetor: "ponte", via: "texto" }, () => searchSources(deps, sourceQuery(...termosBusca)))).passagens as Passage[];
     const blocks = buildBlocks(ctx, passages, includeAnswer);
 
     // ---- personalidade (sempre depois do conteúdo): estilo do professor + estado da sessão

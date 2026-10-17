@@ -21,6 +21,7 @@ import { profanityLevel, type PersonalityParams, type ProfanityLevel } from "./p
 import { evaluateReasoning } from "./evaluation";
 import { ERROR_TYPES } from "./prompts";
 import { redactSupportMaterial } from "../contentHub/complementarGuard";
+import { buscarOuReserva, ferramentaOuReserva } from "./conhecimento/buscar";
 
 const obj = (properties: Record<string, unknown>, required: string[] = []) => ({ type: "object", properties, required, additionalProperties: false });
 
@@ -45,8 +46,8 @@ export const REALTIME_TOOLS = [
   { type: "function", name: "get_student_errors", description: "Erros recentes e recorrentes do aluno (caderno de erros do Tutor).", parameters: obj({ area: { type: "string" } }) },
   {
     type: "function", name: "get_topic_context",
-    description: "Trechos de fontes oficiais conferidas sobre um tema. Use antes de falar de número, dose, corte ou conduta de um tema.",
-    parameters: obj({ topic: { type: "string" } }, ["topic"]),
+    description: "Busca no material APROVADO do StaziaMed (aulas, atualizações, fontes oficiais, flashcards e explicações de questões já respondidas). Use quando o número, a dose, o corte ou a conduta não estiver no MATERIAL DO TEMA. Devolve trechos com a fonte (título e ano) para citar.",
+    parameters: obj({ topic: { type: "string" }, pergunta: { type: "string", description: "a dúvida do aluno, com as palavras dele" } }, ["topic"]),
   },
   {
     type: "function", name: "evaluate_student_reasoning",
@@ -143,11 +144,9 @@ export async function runTutorTool(t: ToolCtx, name: string, args: Record<string
         return { recurrent_errors: m.recurrent_errors, recent_errors: m.recent_errors };
       }
       case "get_topic_context": {
-        const passages = await searchSources(t.deps, sourceQuery(str(args.topic, 160)));
-        t.remember?.(passages.map((p) => p.text));
-        return passages.length
-          ? { passages: passages.map((p) => ({ fonte: `${p.source} · ${p.organ}${p.version ? ` · versão ${p.version}` : ""}${p.page != null ? ` · p. ${p.page}` : ""}`, texto: p.text })) }
-          : { passages: [], note: "Nada encontrado na base conferida para este tema. Diga ao aluno que não encontrou confirmação e não cite número, dose ou diretriz." };
+        const r = await buscarOuReserva(t.deps, { userId: t.userId, sessionId: t.sessionId, pergunta: [str(args.pergunta, 300), str(args.topic, 160)].filter(Boolean).join(" "), vetor: "ponte", via: "voz" }, () => searchSources(t.deps, sourceQuery(str(args.topic, 160))));
+        t.remember?.(r.passagens.map((p) => p.text));
+        return ferramentaOuReserva(r);
       }
       case "evaluate_student_reasoning": {
         const q = await svc<Record<string, unknown> & { state?: string; last_answer?: { is_correct: boolean } | null } | null>("ch_worker_tutor_tool_question", { p_session_id: t.sessionId, p_reveal: false });
@@ -164,7 +163,7 @@ export async function runTutorTool(t: ToolCtx, name: string, args: Record<string
         const topic = str(args.answer, 200);
         let ev: Awaited<ReturnType<typeof evaluateReasoning>>;
         try {
-          const passages = q ? [] : (await searchSources(t.deps, sourceQuery(topic))).map((p) => ({ label: p.source, text: p.text }));
+          const passages = q ? [] : (await buscarOuReserva(t.deps, { userId: t.userId, sessionId: t.sessionId, pergunta: topic, via: "avaliacao" }, () => searchSources(t.deps, sourceQuery(topic)))).passagens.map((p) => ({ label: p.citacao ?? p.source, text: p.text }));
           ev = await evaluateReasoning(t.deps, { question: q, correct: q ? (q.last_answer?.is_correct ?? null) : null, answer: topic, reasoning: str(args.reasoning, 1500), topicPassages: passages });
         } catch (error) {
           await svc("ch_worker_tutor_text_release", { p_reservation: reserved.reservation }).catch(() => undefined); // erro da IA não gasta a cota

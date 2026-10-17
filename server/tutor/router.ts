@@ -23,6 +23,7 @@ import { elevenAccessOf, nexusStatus, openNexus, type TtsQuota } from "./nexus";
 import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, STT_BLOCK, STT_BUSY, STT_PER_MINUTE, audioFitsSeconds, sttAccessOf, sttConfig, transcribe } from "./stt";
 import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 import { rateHit } from "./limits";
+import { rotasConhecimentoPonte } from "./conhecimento/rotaPonte";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -73,6 +74,9 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       fail(res, 500, shown(error));
     }
   });
+
+  // cérebro do Tutor: busca de conhecimento e material do tema pedidos pela PONTE de voz (assinados, sem login de aluno)
+  router.use(rotasConhecimentoPonte(deps));
 
   router.use(async (req: Authed, res: Response, next: NextFunction) => {
     if (!deps) return fail(res, 503, pending ?? "Tutor não configurado no servidor.");

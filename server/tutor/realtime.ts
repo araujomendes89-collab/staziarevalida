@@ -41,6 +41,7 @@ import { AI_OFF, assertAiAllowed, rateHit } from "./limits";
 import { aiAllowed } from "../contentHub/ai/registry";
 import { estimateCost, voiceTimeCost } from "./costs";
 import { deterministicTutor, tutorSettings, type TutorSettings } from "./settings";
+import { pacoteDoTema } from "./conhecimento/pacote";
 import {
   closeLiveSession, createGeminiVoiceToken, createLiveSession, geminiVoiceConfig, geminiVoiceName, GeminiVoiceError, liveConfig, LiveSessionError,
   liveVoiceLockPending, markGeminiUnavailable, markLiveUnavailable, planProviders, type GeminiVoiceConfig, type LiveConfig, type VoiceProviderId,
@@ -234,7 +235,12 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
   // sem o aceite dos Tutores a voz não abre: antes de reservar o tempo (o banco não confere isso na reserva) e de falar com qualquer provedor
   if (ctx.consent_pending) throw consentError();
   if (ctx.session.read_only) throw new TutorError(PROFESSOR_CHANGED, 409);
-  const extras = await deps.db.service<VoiceExtras | null>("ch_worker_tutor_voice_context", { p_user: userId, p_session_id: sessionId }).catch(() => null);
+  // cérebro do Tutor: o MATERIAL DO TEMA vem junto (em paralelo) e entra nas instruções; na ponte, num campo à parte do bilhete
+  const [extras, material] = await Promise.all([
+    deps.db.service<VoiceExtras | null>("ch_worker_tutor_voice_context", { p_user: userId, p_session_id: sessionId }).catch(() => null),
+    pacoteDoTema(deps, { userId, sessionId }),
+  ]);
+  const contexto = (live: boolean) => [sessionContext(ctx, extras, { live, continuity }), material.texto].filter(Boolean).join("\n\n");
 
   const engine = engineFor(ctx.personality.id, ctx.personality.engine, settings.durona_level);
   const state = normalize(ctx.session.emotion, engine);
@@ -261,7 +267,7 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
   const tryLive = async (): Promise<VoiceStart> => {
     const r = await reserve(live.model!);
     try {
-      const instructions = composeLiveInstructions({ mode: ctx.session.mode, persona, context: sessionContext(ctx, extras, { live: true, continuity }), pronunciations: settings.pronunciations, personaId: ctx.personality.id });
+      const instructions = composeLiveInstructions({ mode: ctx.session.mode, persona, context: contexto(true), pronunciations: settings.pronunciations, personaId: ctx.personality.id });
       const s = await createLiveSession({ key: live.key!, model: live.model!, instructions, voice, sdp: sdp!, userId, fetchImpl });
       await deps.db.service("ch_worker_tutor_voice_attach", { p_user: userId, p_voice_call: r.voice_call_id, p_call_id: s.sessionId, p_provider: "live" });
       return { provider: "live", voice_call_id: r.voice_call_id, sdp: s.sdp, live_session_id: s.sessionId, model: live.model!, lease_seconds: r.lease_seconds, entitlement: r.entitlement, ...base };
@@ -273,7 +279,7 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
 
   const tryRealtime = async (): Promise<VoiceStart> => {
     const r = await reserve(rt.model!);
-    const instructions = composeRealtimeInstructions({ mode: ctx.session.mode, persona, context: sessionContext(ctx, extras, { live: false, continuity }), pronunciations: settings.pronunciations, personaId: ctx.personality.id });
+    const instructions = composeRealtimeInstructions({ mode: ctx.session.mode, persona, context: contexto(false), pronunciations: settings.pronunciations, personaId: ctx.personality.id });
     const session = {
       type: "realtime",
       model: rt.model,
@@ -316,7 +322,7 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
   const tryGemini = async (): Promise<VoiceStart> => {
     const r = await reserve(gemini.model);
     try {
-      const instructions = composeRealtimeInstructions({ mode: ctx.session.mode, persona, context: sessionContext(ctx, extras, { live: false, continuity }), pronunciations: settings.pronunciations, personaId: ctx.personality.id });
+      const instructions = composeRealtimeInstructions({ mode: ctx.session.mode, persona, context: contexto(false), pronunciations: settings.pronunciations, personaId: ctx.personality.id });
       const gVoice = geminiVoiceFor(settings, ctx.personality as { voice?: { gemini?: string } });
       // a chave vence junto com o que a ligação pode durar: limite da conversa ou o tempo de voz que o aluno ainda tem hoje
       const left = Number((r.entitlement as { voice?: { remaining_s?: number } } | null)?.voice?.remaining_s);
@@ -334,6 +340,7 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
         const b = selarBilhete({
           vc: r.voice_call_id, u: userId, modelo: gemini.model, voz: gVoice, instrucoes,
           ferramentas: REALTIME_TOOLS.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })), maxSegundos: maxSeconds,
+          ...(material.texto ? { material: material.texto } : {}),
         }, gemini.ponte.segredo);
         await deps.db.service("ch_worker_tutor_voice_attach", { p_user: userId, p_voice_call: r.voice_call_id, p_call_id: `vertex-${r.voice_call_id.slice(0, 8)}`, p_provider: "gemini" });
         return {
@@ -500,7 +507,10 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
     ...(q
       ? [{ ref: "Q", kind: "question" as const, label: "Questão oficial", text: [q.statement, ...(q.options ?? []).map((o: any) => `${o.id}) ${o.text}`), ...(open ? [] : [...(q.options ?? []).map((o: any) => o.explanation ?? ""), q.expected_conduct ?? "", JSON.stringify(q.analysis ?? ""), JSON.stringify(q.update_card ?? "")])].join("\n") }]
       : []),
-    ...(evidence.get(voiceCallId) ?? []).map((text, i) => ({ ref: `F${i + 1}`, kind: "source" as const, label: "Fonte trazida pela ferramenta", text })),
+    // evidência: o que as ferramentas trouxeram nesta instância e o que o banco registrou como entregue a esta conversa (material
+    // do tema e buscas, em qualquer instância e pela ponte)
+    ...[...(evidence.get(voiceCallId) ?? []), ...((await deps.db.service<{ texto: string }[] | null>("ch_worker_tutor_kb_evidencias", { p_user: userId, p_sessao: v.session_id }).catch(() => null)) ?? []).map((e) => e.texto)]
+      .map((text, i) => ({ ref: `F${i + 1}`, kind: "source" as const, label: "Fonte trazida pela ferramenta", text })),
   ];
   // palavrão: no máximo o do professor, e um degrau acima do que o estado da sessão pede agora (a voz não é conferida antes)
   let profanity: ProfanityLevel = "off";

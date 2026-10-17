@@ -24,6 +24,8 @@ export interface ConteudoBilhete {
   maxSegundos: number;
   /** "padrao" ou "rapido" (detector de fim de fala) */
   vad?: "padrao" | "rapido";
+  /** MATERIAL DO TEMA (cérebro do Tutor): vai junto das instruções, num campo à parte para a ponte poder trocar só ele */
+  material?: string;
 }
 
 interface Selado extends ConteudoBilhete { v: 1; exp: number; n: string }
@@ -71,8 +73,8 @@ export function abrirBilhete(bilhete: string, segredo: string, usados: NoncesUsa
   }
   if (corpo.v !== 1 || typeof corpo.exp !== "number" || corpo.exp < agora) return { ok: false, motivo: "expirado" };
   if (!usados.marcar(corpo.n, corpo.exp, agora)) return { ok: false, motivo: "reusado" };
-  const { vc, u, modelo, voz, instrucoes, ferramentas, maxSegundos, vad } = corpo;
-  return { ok: true, conteudo: { vc, u, modelo, voz, instrucoes, ferramentas, maxSegundos, vad }, nonce: corpo.n, exp: corpo.exp };
+  const { vc, u, modelo, voz, instrucoes, ferramentas, maxSegundos, vad, material } = corpo;
+  return { ok: true, conteudo: { vc, u, modelo, voz, instrucoes, ferramentas, maxSegundos, vad, ...(material ? { material } : {}) }, nonce: corpo.n, exp: corpo.exp };
 }
 
 /** Assinatura do relatório de uso que a ponte manda ao app no fim da ligação. */

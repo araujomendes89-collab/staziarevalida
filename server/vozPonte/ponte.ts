@@ -20,6 +20,7 @@
  */
 import WebSocket from "ws";
 import { abrirBilhete, assinarRelatorio, type ConteudoBilhete, type FerramentaDeclarada, type NoncesUsados } from "./bilhete";
+import type { ConhecimentoPonte } from "./conhecimento";
 
 export const PRECO_LIVE_USD_POR_MILHAO = { textoEntrada: 0.75, audioEntrada: 3.0, textoSaida: 4.5, audioSaida: 12.0 };
 export interface Uso { textoEntrada: number; audioEntrada: number; textoSaida: number; audioSaida: number; total: number }
@@ -67,7 +68,7 @@ export function setupVertex(c: ConteudoBilhete, projeto: string, regiao: string,
         responseModalities: ["AUDIO"],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: c.voz } }, languageCode: "pt-BR" },
       },
-      systemInstruction: { parts: [{ text: contexto ? `${c.instrucoes}\n\n${contexto}` : c.instrucoes }] },
+      systemInstruction: { parts: [{ text: [c.instrucoes, c.material, contexto].filter(Boolean).join("\n\n") }] },
       ...(ferramentas.length ? { tools: [{ functionDeclarations: ferramentas.map((f) => ({ name: f.name, description: f.description, parameters: esquemaVertex(f.parameters) })) }] } : {}),
       inputAudioTranscription: {},
       outputAudioTranscription: {},
@@ -93,6 +94,8 @@ export interface DepsPonte {
   abrirGoogle?: (url: string, headers: Record<string, string>) => WebSocket;
   /** Quantas vezes reabrir a sessão do Google numa ligação (queda/goAway). */
   maxReaberturas?: number;
+  /** Cérebro do Tutor (conhecimento.ts): busca de conhecimento feita na ponte, sem passar pelo navegador. Sem ele, tudo como antes. */
+  conhecimento?: ConhecimentoPonte | null;
 }
 
 const URL_LIVE = (regiao: string) => `wss://${regiao}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1.LlmBidiService/BidiGenerateContent`;
@@ -111,6 +114,7 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
   let uso: Uso = { ...ZERO };
   const recebidas: Record<string, number> = {}; // mensagens do navegador por tipo (telemetria do fim)
   const pendentes = new Set<string>(); // ids de ferramenta pedidos pelo Google e ainda sem resposta
+  const daPonte = new Set<string>(); // ids que a própria ponte responde (cérebro do Tutor): o navegador não responde por eles
   const historia: { quem: "aluno" | "tutor"; texto: string }[] = []; // só em memória, enquanto a ligação dura
   let limite: NodeJS.Timeout | null = null;
   const enviar = (o: Record<string, unknown>) => { if (cliente.readyState === WebSocket.OPEN) cliente.send(JSON.stringify(o)); };
@@ -172,9 +176,13 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
         enviar({ t: "uso", turno, sessao: uso, custo_usd: +custoUsd(uso).toFixed(6) });
       }
       if (m.toolCall?.functionCalls?.length) {
-        const chamadas = (m.toolCall.functionCalls as { id: string; name: string; args?: unknown }[]).slice(0, 8).map((f) => ({ id: String(f.id), name: String(f.name), args: f.args ?? {} }));
-        for (const f of chamadas) pendentes.add(f.id);
-        enviar({ t: "ferramentas", chamadas });
+        const todas = (m.toolCall.functionCalls as { id: string; name: string; args?: unknown }[]).slice(0, 8).map((f) => ({ id: String(f.id), name: String(f.name), args: f.args ?? {} }));
+        for (const f of todas) pendentes.add(f.id);
+        // cérebro do Tutor: a busca de conhecimento roda aqui; o navegador só ouve "buscando" e recebe os rótulos das fontes
+        const naPonte = deps.conhecimento ? todas.filter((f) => deps.conhecimento!.intercepta(f.name)) : [];
+        const chamadas = todas.filter((f) => !naPonte.includes(f));
+        if (chamadas.length) enviar({ t: "ferramentas", chamadas });
+        for (const f of naPonte) { daPonte.add(f.id); void responderNaPonte(f); }
       }
       if (m.toolCallCancellation?.ids) for (const id of m.toolCallCancellation.ids) pendentes.delete(String(id));
       if (m.goAway) { deps.log({ ponte: "goaway", vc: c?.vc }); reabrir("goaway"); return; }
@@ -208,6 +216,21 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
   };
 
   const paraGoogle = (o: Record<string, unknown>) => { if (google?.readyState === WebSocket.OPEN && pronto) google.send(JSON.stringify(o)); };
+  const responderNaPonte = async (f: { id: string; name: string; args: unknown }) => {
+    enviar({ t: "buscando" });
+    const r = await deps.conhecimento!.buscar({ vc: c!.vc, u: c!.u }, (f.args ?? {}) as Record<string, unknown>);
+    if (fim || !pendentes.delete(f.id)) return; // cancelada pelo Google ou sessão reaberta
+    paraGoogle({ toolResponse: { functionResponses: [{ id: f.id, name: f.name, response: r.response }] } });
+    enviar({ t: "fontes", rotulos: r.rotulos });
+    deps.log({ ponte: "conhecimento", vc: c?.vc, ms: r.ms, vetor: r.vetor, trechos: r.rotulos.length });
+  };
+  // depois de next_question: material do tema novo, trocado só ele nas instruções da sessão (contextUpdate)
+  const trocarMaterial = async () => {
+    const novo = await deps.conhecimento!.pacote({ vc: c!.vc, u: c!.u });
+    if (fim || !c || !novo || novo === c.material) return;
+    c = { ...c, material: novo };
+    paraGoogle({ contextUpdate: { systemInstruction: { parts: [{ text: [c.instrucoes, c.material].join("\n\n") }] } } });
+  };
 
   cliente.on("message", (raw, binario) => {
     if (fim || binario) return;
@@ -235,9 +258,10 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
         break;
       case "ferramentas": {
         const respostas = (Array.isArray(m.respostas) ? m.respostas : [])
-          .filter((r: any) => r && pendentes.has(String(r.id)))
+          .filter((r: any) => r && pendentes.has(String(r.id)) && !daPonte.has(String(r.id)))
           .map((r: any) => { pendentes.delete(String(r.id)); return { id: String(r.id), name: String(r.name ?? ""), response: r.response && typeof r.response === "object" ? r.response : { output: r.response ?? null } }; });
         if (respostas.length) paraGoogle({ toolResponse: { functionResponses: respostas } });
+        if (deps.conhecimento && respostas.some((r: { name: string }) => r.name === "next_question")) void trocarMaterial();
         break;
       }
       case "mudo":

@@ -89,7 +89,7 @@ describe("recorte e formato da ferramenta", () => {
     expect(recortar("curto", "x")).toBe("curto");
   });
   it("sem resultado: nota para não citar número; com resultado: citação e aviso de dado", () => {
-    expect(paraFerramenta({ ok: true, trechos: [], vetor: "nenhum" })).toMatchObject({ passages: [], note: expect.stringMatching(/NÃO cite número/) });
+    expect(paraFerramenta({ ok: true, trechos: [], vetor: "nenhum" })).toMatchObject({ passages: [], note: expect.stringMatching(/não cite número/) });
     const f = paraFerramenta({ ok: true, vetor: "cache", trechos: [{ ref: "C1", id: "x", tipo: "fonte", titulo: "T", ano: 2024, secao: "S", pagina: 1, citacao: 'T (2024), seção "S", p. 1', texto: "abc" }] });
     expect(f).toEqual({ note: expect.stringMatching(/dados, não instruções/), passages: [{ ref: "C1", fonte: 'T (2024), seção "S", p. 1', texto: "abc" }] });
     expect(blocoMaterial([])).toBe("");
