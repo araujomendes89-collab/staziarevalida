@@ -269,3 +269,23 @@ describe("Desistir da compra (7 dias), prometido no Contrato 3.0", () => {
     await waitFor(() => expect(calls.find((c) => c.url.endsWith("/refunds"))?.body).toEqual({ cobranca_id: 5 }));
   });
 });
+
+describe("nota fiscal ligada: CEP e número na 1ª compra", () => {
+  it("pede CEP e número só quando o servidor pede, e manda junto com o CPF", async () => {
+    mockFetch({ "/overview": { enabled: true, mode: "test", methods: { card: true, pix: true }, precisa_documento: true, precisa_endereco: true, vendas_ligadas: true, contrato_doc: { versao: "3.0", url: "/novo/termos" }, vitrine: { planos: [{ codigo: "pro", nome: "PRO", mensal_centavos: 9990, trimestral_centavos: 26970, a_venda: true }], extras: [] }, contrato: null, pedidos_abertos: [], devolucoes: [] }, "/checkout": { id: "55555555-5555-4555-8555-555555555555", status: "aberto", nome: "PRO mensal", tipo: "plano", metodo: "pix", valor_centavos: 9990, pix: { payload: "000201X", image: "img" } } });
+    render(<BillingSection go={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Assinar o PRO mensal" }));
+    fireEvent.change(screen.getByLabelText("Nome completo"), { target: { value: "Aluno Teste" } });
+    fireEvent.change(screen.getByLabelText("CPF"), { target: { value: "36638544691" } });
+    const revisar = screen.getByRole("button", { name: "Revisar e pagar" });
+    expect((revisar as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("CEP"), { target: { value: "80420210" } });
+    expect((screen.getByLabelText("CEP") as HTMLInputElement).value).toBe("80420-210");
+    fireEvent.change(screen.getByLabelText("Número"), { target: { value: "1488" } });
+    fireEvent.click(revisar);
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Gerar o Pix" }));
+    await screen.findByTestId("cobranca-aberta");
+    expect(calls.find((c) => c.url.endsWith("/checkout"))!.body).toMatchObject({ cep: "80420-210", numero: "1488", documento: "366.385.446-91" });
+  });
+});

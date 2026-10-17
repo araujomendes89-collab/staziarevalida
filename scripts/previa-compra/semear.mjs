@@ -11,6 +11,9 @@ const post = async (url, body, token) => {
   return j;
 };
 const get = async (url, token) => (await fetch(`${BASE}${url}`, { headers: { authorization: `Bearer ${token}` } })).json();
+// versão vigente do Contrato/Termo (lida do banco, como o cadastro faz)
+let _versao = null;
+const versaoDoTermo = async () => (_versao ??= ((await (await fetch(`${BASE}/api/dev-db/rpc`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fn: "app_legal_current", args: {} }) })).json()).data?.termo_uso?.version ?? "3.0"));
 const rpc = async (token, fn, args = {}) => (await post("/api/dev-db/rpc", { fn, args }, token)).data;
 
 async function conta(email, nome) {
@@ -18,7 +21,7 @@ async function conta(email, nome) {
     return (await post("/api/dev-db/auth/signin", { email, password: "Senha-forte-123" })).token;
   } catch {
     const { token } = await post("/api/dev-db/auth/signup", {
-      name: nome, email, password: "Senha-forte-123", terms_version: "2.0", user_agent: "previa", declares_adult: "true", declares_physician: "true",
+      name: nome, email, password: "Senha-forte-123", terms_version: await versaoDoTermo(), user_agent: "previa", declares_adult: "true", declares_physician: "true",
     });
     await post("/api/planos/teste/ativar", {}, token).catch((e) => console.log("ativar:", e.message));
     await rpc(token, "app_onboarding_salvar", { p_passo: "pular", p_dados: {} }).catch((e) => console.log("onboarding:", e.message));

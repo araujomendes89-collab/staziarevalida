@@ -90,11 +90,16 @@ function Compra({ alvo, overview, onDone, onCancel }) {
   const [metodo, setMetodo] = React.useState("pix");
   const [nome, setNome] = React.useState("");
   const [cpf, setCpf] = React.useState("");
+  const [cep, setCep] = React.useState("");
+  const [numero, setNumero] = React.useState("");
   const [aceite, setAceite] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [erro, setErro] = React.useState(null);
   const idem = React.useMemo(() => newIdem(), [alvo.tipo, alvo.codigo, alvo.ciclo, metodo]);
   const precisaDoc = Boolean(overview.precisa_documento);
+  // nota fiscal ligada (servidor): a 1ª compra também pede CEP e número, que vão só para a instituição de pagamento
+  const precisaEnd = precisaDoc && Boolean(overview.precisa_endereco);
+  const endOk = !precisaEnd || (cep.replace(/\D/g, "").length === 8 && numero.trim().length > 0 && numero.trim().length <= 10);
   const cpfOk = !precisaDoc || cpfValido(cpf);
   const nomeOk = !precisaDoc || nome.trim().replace(/\s+/g, " ").length >= 3;
   const contrato = overview.contrato_doc ?? { url: "/novo/termos", versao: null };
@@ -107,6 +112,7 @@ function Compra({ alvo, overview, onDone, onCancel }) {
     try {
       const body = { tipo: alvo.tipo, codigo: alvo.codigo, ciclo: alvo.ciclo, metodo, aceite: true, idem };
       if (precisaDoc) Object.assign(body, { nome: nome.trim().replace(/\s+/g, " "), documento: cpf });
+      if (precisaEnd) Object.assign(body, { cep, numero: numero.trim() });
       const pedido = await startCheckout(backend, body);
       if (aba && pedido?.url) aba.location.href = pedido.url;
       else aba?.close();
@@ -114,7 +120,7 @@ function Compra({ alvo, overview, onDone, onCancel }) {
     } catch (e) {
       aba?.close();
       setErro(e.message);
-      if (e.code === "documento_invalido" || e.code === "documento_obrigatorio" || e.code === "nome_obrigatorio") setEtapa(1);
+      if (["documento_invalido", "documento_obrigatorio", "nome_obrigatorio", "cep_obrigatorio", "numero_obrigatorio"].includes(e.code)) setEtapa(1);
     } finally {
       setBusy(false);
     }
@@ -156,6 +162,19 @@ function Compra({ alvo, overview, onDone, onCancel }) {
                 error={cpf.replace(/\D/g, "").length >= 11 && !cpfValido(cpf) ? "CPF inválido. Confira os números." : undefined}
                 hint="Pedimos só agora: vai para a instituição de pagamento (cobrança e nota fiscal). Não fica guardado no StaziaMed."
               />
+              {precisaEnd && (
+                <>
+                  <TextField
+                    label="CEP"
+                    value={cep}
+                    onChange={(e) => setCep(e.target.value.replace(/\D/g, "").slice(0, 8).replace(/^(\d{5})(\d)/, "$1-$2"))}
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    hint="CEP e número: vão na nota fiscal; enviados só à instituição de pagamento."
+                  />
+                  <TextField label="Número" value={numero} onChange={(e) => setNumero(e.target.value.slice(0, 10))} autoComplete="off" hint='Sem número? Escreva "S/N".' />
+                </>
+              )}
             </div>
           )}
           {erro && (
@@ -164,7 +183,7 @@ function Compra({ alvo, overview, onDone, onCancel }) {
             </p>
           )}
           <div className="bl-acoes">
-            <Button iconRight="arrow-right" onClick={() => setEtapa(2)} disabled={!cpfOk || !nomeOk}>
+            <Button iconRight="arrow-right" onClick={() => setEtapa(2)} disabled={!cpfOk || !nomeOk || !endOk}>
               Revisar e pagar
             </Button>
           </div>
