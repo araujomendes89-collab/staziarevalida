@@ -45,9 +45,11 @@
 
 -- ---------------------------------------------------------------- 1) chave do módulo
 -- A lista de chaves aceitas: a união de todas as que existem (hoje as duas de …1300) mais a do Treino.
+-- 2026-10-17: já inclui 'treino_dupla_chat' (gravada pela 013370) para que colar esta migração de novo DEPOIS da 013370
+-- não esbarre na linha do chat (antes dava "app_settings_key_check is violated by some row").
 alter table public.app_settings drop constraint if exists app_settings_key_check;
 alter table public.app_settings
-  add constraint app_settings_key_check check (key in ('trial_days', 'announcement', 'simulado_ineditas_pct', 'treino_dupla'));
+  add constraint app_settings_key_check check (key in ('trial_days', 'announcement', 'simulado_ineditas_pct', 'treino_dupla', 'treino_dupla_chat'));
 
 insert into public.app_settings (key, value)
 values ('treino_dupla', '{"aberto": false, "planos": ["pro", "elite"]}'::jsonb)

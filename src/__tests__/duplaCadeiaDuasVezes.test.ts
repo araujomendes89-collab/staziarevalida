@@ -1,0 +1,54 @@
+// @vitest-environment node
+/**
+ * Publicação da 2ª fase (2026-10-17): a cadeia inteira 013300 → 013400 colada DUAS vezes seguidas no banco (como o dono
+ * pode fazer no editor SQL). No ensaio em produção a 2ª colagem da 013300 esbarrava na linha 'treino_dupla_chat' gravada
+ * pela 013370 (app_settings_key_check). Aqui: a 2ª colagem passa, as chaves e a chave desligada ficam, e o aluno segue sem
+ * ler station_id do match.
+ */
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import fs from "fs";
+import path from "path";
+import { MIGRATIONS_DIR, openDuplaDb, type DuplaDb } from "./helpers/duplaDb";
+
+const CADEIA = [
+  "20261003013300_treino_dupla_dados.sql",
+  "20261003013310_treino_dupla_telas.sql",
+  "20261003013320_treino_dupla_match.sql",
+  "20261003013330_fase2_telas_reais.sql",
+  "20261003013340_treino_dupla_pacote.sql",
+  "20261003013350_treino_dupla_sala.sql",
+  "20261003013360_treino_dupla_resultado.sql",
+  "20261003013370_treino_dupla_chat.sql",
+  "20261003013380_treino_dupla_ajustes_1610.sql",
+  "20261003013390_treino_dupla_folha_candidato.sql",
+  "20261003013400_treino_dupla_decisoes_1710.sql",
+];
+
+describe("2ª fase: cadeia 013300–013400 colada duas vezes", () => {
+  let d: DuplaDb;
+  beforeAll(async () => {
+    d = await openDuplaDb(); // 1ª colagem: todas as migrações, em ordem
+  }, 120_000);
+  afterAll(async () => {
+    await d?.db.close();
+  });
+
+  it("a 2ª colagem da cadeia inteira não dá erro", async () => {
+    for (const f of CADEIA) {
+      await expect(d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8")), f).resolves.toBeDefined();
+    }
+  }, 120_000);
+
+  it("depois da 2ª colagem: as chaves seguem as mesmas, o Treino segue desligado e o aluno não lê station_id do match", async () => {
+    expect(await d.sql(`select key from public.app_settings order by key`)).toEqual([
+      { key: "announcement" }, { key: "simulado_ineditas_pct" }, { key: "treino_dupla" }, { key: "treino_dupla_chat" }, { key: "trial_days" },
+    ]);
+    expect((await d.sql<{ v: unknown }>(`select value->'aberto' as v from public.app_settings where key = 'treino_dupla'`))[0].v).toBe(false);
+    await expect(d.sql(`insert into public.app_settings (key, value) values ('outra', '1')`)).rejects.toThrow(/check constraint/);
+    const [p] = await d.sql<{ anon: boolean; aut: boolean }>(
+      `select has_column_privilege('anon', 'public.study_matches', 'station_id', 'SELECT') as anon,
+              has_column_privilege('authenticated', 'public.study_matches', 'station_id', 'SELECT') as aut`
+    );
+    expect(p).toEqual({ anon: false, aut: false });
+  });
+});
