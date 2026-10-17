@@ -7,6 +7,7 @@
  * (o banco recusa valor diferente do pedido) e só então libera o plano ou o extra.
  */
 import type { ContentDb, Identity } from "../contentHub/infra";
+import { descricaoDaNota } from "./nota";
 import { brtDate, cleanDocument, endOfBrtDay, periodEndFor } from "./period";
 import { ProviderError, type PaymentProvider, type ProviderCharge, type ProviderNotice } from "./provider";
 
@@ -31,6 +32,8 @@ export interface CheckoutBody {
   ciclo?: unknown;
   metodo?: unknown;
   documento?: unknown;
+  cep?: unknown;
+  numero?: unknown;
   nome?: unknown;
   aceite?: unknown;
   idem?: unknown;
@@ -175,6 +178,8 @@ export function createBilling(deps: BillingDeps) {
       methods: provider.capabilities.methods,
       // CPF só é pedido quando ainda não há cliente no fornecedor (primeira compra)
       precisa_documento: !ctx?.clientes?.[provider.name],
+      // nota fiscal ligada: a 1ª compra também pede CEP e número (vão para o fornecedor, não ficam no nosso banco)
+      precisa_endereco: !ctx?.clientes?.[provider.name] && provider.capabilities.requiresAddress,
       contrato_doc: { versao: doc?.versao ?? null, sha256: doc?.sha256 ?? null, url: doc?.url ?? "/novo/termos" },
       ...(resumo ?? {}),
     };
@@ -207,7 +212,7 @@ export function createBilling(deps: BillingDeps) {
 
     // CPF/CNPJ só agora (na hora de pagar) e só se ainda não houver cliente no fornecedor. Vai para o fornecedor; não é gravado aqui.
     let customerId = ctx.clientes?.[p.name] ?? null;
-    let customerInput: { document: string; name: string } | null = null;
+    let customerInput: { document: string; name: string; postalCode?: string; addressNumber?: string } | null = null;
     if (!customerId) {
       const document = cleanDocument(body.documento);
       if (!body.documento) throw new BillingError("Informe seu CPF para continuar.", 422, "documento_obrigatorio");
@@ -215,6 +220,13 @@ export function createBilling(deps: BillingDeps) {
       const name = typeof body.nome === "string" ? body.nome.trim().replace(/\s+/g, " ") : "";
       if (name.length < 3 || name.length > 120) throw new BillingError("Informe seu nome completo, como no documento.", 422, "nome_obrigatorio");
       customerInput = { document, name };
+      if (p.capabilities.requiresAddress) {
+        const cep = String(body.cep ?? "").replace(/\D/g, "");
+        const numero = typeof body.numero === "string" ? body.numero.trim() : String(body.numero ?? "").trim();
+        if (!/^\d{8}$/.test(cep) || /^0+$/.test(cep)) throw new BillingError("Informe o CEP do seu endereço (8 números). Ele vai na nota fiscal.", 422, "cep_obrigatorio");
+        if (!numero || numero.length > 10) throw new BillingError("Informe o número do endereço (ou \"S/N\").", 422, "numero_obrigatorio");
+        Object.assign(customerInput, { postalCode: cep, addressNumber: numero });
+      }
     }
 
     const pedido = await abrirPedido("ch_worker_billing_pedido_abrir", {
@@ -508,7 +520,7 @@ export function createBilling(deps: BillingDeps) {
         await svc("ch_worker_billing_recibo_salvar", { p_provider: p.name, p_payment: charge.id, p_url: charge.receiptUrl }).catch((e) => log(`[billing] recibo não salvo (${charge.id}): ${(e as Error).message}`));
       }
       if (!r?.repetido && p.afterPaid) {
-        await p.afterPaid(charge, tipo === "plano" ? `Acesso à plataforma StaziaMed Revalida - plano ${codigo.toUpperCase()} ${ciclo}` : `StaziaMed Revalida - pacote extra de IA (${codigo})`)
+        await p.afterPaid(charge, descricaoDaNota({ tipo, codigo, ciclo, nome: pedido?.nome }))
           .catch((e) => log(`[billing] nota fiscal não pedida (${charge.id}): ${(e as Error).message}`));
       }
     } else if (charge.status === "failed" || charge.status === "overdue" || (attemptFailed && charge.status === "pending")) {
@@ -522,6 +534,7 @@ export function createBilling(deps: BillingDeps) {
       });
     } else if (charge.status === "refunded" || charge.status === "partially_refunded") {
       await svc("ch_worker_billing_devolvido", { p_provider: p.name, p_payment: charge.id, p_devolvido: charge.refundedCents || charge.amountCents });
+      if (charge.status === "refunded" && p.afterRefunded) await p.afterRefunded(charge).catch((e) => log(`[billing] nota não cancelada (${charge.id}): ${(e as Error).message}`));
     } else if (charge.status === "canceled" && pedido?.status === "aberto") {
       await svc("ch_worker_billing_pedido_encerrar", { p_pedido: pedido.id, p_status: "cancelado", p_erro: "Cobrança removida no fornecedor", p_user: null });
     }

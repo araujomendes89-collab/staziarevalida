@@ -21,6 +21,7 @@
  *     devolução parcial de cartão só a partir do dia seguinte ao pagamento.
  */
 import crypto from "crypto";
+import { OBSERVACAO_PADRAO } from "./nota";
 import {
   BillingSignatureError,
   ProviderError,
@@ -49,6 +50,8 @@ export interface AsaasNfseConfig {
   serviceCode?: string;
   serviceName?: string;
   nbsCode?: string;
+  /** Observação impressa na nota (padrão: OBSERVACAO_PADRAO). */
+  observations?: string;
   iss?: number;
   retainIss?: boolean;
 }
@@ -154,7 +157,7 @@ export function createAsaasProvider(env: NodeJS.ProcessEnv = process.env, fetchI
       webhookToken,
       returnUrls: env.ASAAS_RETURN_URL === "1",
       nfse: (serviceId || serviceCode) && serviceName
-        ? { serviceId, serviceCode, serviceName, nbsCode, iss: Number(env.ASAAS_NFSE_ISS || 0), retainIss: env.ASAAS_NFSE_RETAIN_ISS === "1" }
+        ? { serviceId, serviceCode, serviceName, nbsCode, observations: env.ASAAS_NFSE_OBS?.trim() || undefined, iss: Number(env.ASAAS_NFSE_ISS || 0), retainIss: env.ASAAS_NFSE_RETAIN_ISS === "1" }
         : undefined,
       fetchImpl,
     },
@@ -200,14 +203,15 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
   return {
     name: "asaas",
     mode,
-    capabilities: { methods: { card: true, pix: true, debit: true }, partialRefund: true },
+    capabilities: { methods: { card: true, pix: true, debit: true }, partialRefund: true, requiresAddress: Boolean(opts.nfse) },
 
     async ensureCustomer(input: CustomerInput) {
       const found = await call<Obj>("GET", `/customers?externalReference=${encodeURIComponent(input.userId)}&limit=1`);
       const c = Array.isArray(found?.data) ? found!.data.find((x: Obj) => !x.deleted) : null;
       if (c?.id) {
-        if (String(c.cpfCnpj ?? "") !== input.document || c.name !== input.name) {
-          await call("PUT", `/customers/${c.id}`, { name: input.name, cpfCnpj: input.document });
+        const novoEndereco = input.postalCode && (String(c.postalCode ?? "") !== input.postalCode || String(c.addressNumber ?? "") !== input.addressNumber);
+        if (String(c.cpfCnpj ?? "") !== input.document || c.name !== input.name || novoEndereco) {
+          await call("PUT", `/customers/${c.id}`, { name: input.name, cpfCnpj: input.document, ...(novoEndereco ? { postalCode: input.postalCode, addressNumber: input.addressNumber } : {}) });
         }
         return String(c.id);
       }
@@ -216,6 +220,8 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
         cpfCnpj: input.document,
         email: input.email,
         externalReference: input.userId,
+        // nota fiscal: o Asaas completa rua, bairro e cidade pelo CEP (testado no sandbox 17/10)
+        ...(input.postalCode ? { postalCode: input.postalCode, addressNumber: input.addressNumber } : {}),
         // os avisos ao aluno são NOSSOS (e-mail + aviso no app 7/3/1 dia): os do Asaas ficam desligados para não duplicar
         notificationDisabled: true,
       });
@@ -317,6 +323,17 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
       return { kind: "ignored", eventId, event };
     },
 
+    async afterRefunded(charge) {
+      // devolução total: a nota fiscal daquele pagamento é cancelada (testado no sandbox: AUTHORIZED → PROCESSING_CANCELLATION)
+      if (!opts.nfse || charge.status !== "refunded") return;
+      const list = await call<Obj>("GET", `/invoices?payment=${encodeURIComponent(charge.id)}`);
+      for (const inv of Array.isArray(list?.data) ? list!.data : []) {
+        if (["SCHEDULED", "SYNCHRONIZED", "AUTHORIZED"].includes(String(inv.status)) && ID.test(String(inv.id))) {
+          await call("POST", `/invoices/${encodeURIComponent(String(inv.id))}/cancel`, {});
+        }
+      }
+    },
+
     async afterPaid(charge, description) {
       // NFS-e: só com o serviço configurado (ASAAS_NFSE_SERVICE_CODE ou _ID, e _NAME); sem isso, nenhuma nota é pedida por aqui
       const nfse = opts.nfse;
@@ -326,7 +343,7 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
       await call("POST", "/invoices", {
         payment: charge.id,
         serviceDescription: description.slice(0, 250),
-        observations: description.slice(0, 250),
+        observations: (nfse.observations || OBSERVACAO_PADRAO).slice(0, 250),
         value: reais(charge.amountCents),
         deductions: 0,
         effectiveDate: charge.paidAt ? charge.paidAt.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
