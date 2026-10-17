@@ -102,8 +102,9 @@ export async function createLocalBackend(options: LocalBackendOptions = {}): Pro
       setUser(await core.verify(email, password));
     },
     async signUp(name, email, password, extra) {
-      setUser(await core.createAccount(name, email, password, false, signUpMetadata(extra)));
-      return { needsEmailConfirmation: false };
+      const user = await core.createAccount(name, email, password, false, signUpMetadata(extra));
+      setUser(user);
+      return { needsEmailConfirmation: false, userId: user.id };
     },
     masterSetup: {
       async needed() {

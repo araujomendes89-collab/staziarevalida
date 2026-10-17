@@ -55,3 +55,40 @@
 .lga-text.lgl-paper h1 { font-size: 24px; }
 .lga-text.lgl-paper h2 { font-size: 19px; margin-top: 22px; }
 .lga-text:focus-visible { outline: 2px solid var(--aqua-soft); outline-offset: 2px; }
+
+/* Páginas públicas: navegação entre Contrato, Política e Regulamento */
+.lgl-nav { width: 100%; max-width: 760px; display: flex; flex-wrap: wrap; gap: 8px; }
+.lgl-nav a {
+  min-height: 40px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; font-size: 15px; font-weight: 600;
+  border: 1px solid var(--line-soft); color: var(--text); text-decoration: none; background: rgba(255, 255, 255, .04);
+}
+.lgl-nav a[aria-current="page"] { background: var(--aqua-soft); border-color: var(--aqua-soft); color: #04121f; }
+
+/* Tabelas dos textos (Contrato, Política, Regulamento): rolam para o lado no celular */
+.lgl-tabela { width: 100%; overflow-x: auto; margin: 0 0 16px; border-radius: 10px; border: 1px solid var(--line-soft, rgba(127, 127, 127, .3)); }
+.lgl-tabela:focus-visible { outline: 2px solid var(--aqua-soft, #5fb2ff); outline-offset: 2px; }
+.lgl-tabela table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: .92em; line-height: 1.5; }
+.lgl-tabela th, .lgl-tabela td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line-soft, rgba(127, 127, 127, .3)); }
+.lgl-tabela th { font-weight: 700; background: rgba(127, 127, 127, .10); }
+.lgl-tabela tr:last-child td { border-bottom: 0; }
+.lgl-text em { font-style: italic; }
+
+/* Carregando / erro de um texto */
+.lgd-carregando { padding: 24px 0; color: var(--muted, inherit); }
+.lgd-aviso { padding: 16px; border-radius: 12px; border: 1px solid var(--line-soft, rgba(127, 127, 127, .3)); }
+.lgd-aviso p { margin: 0 0 8px; }
+.lgd-tentar { min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid currentColor; background: none; color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+
+/* Tela de aceite 3.0 (dentro do cartão das telas de acesso; cores ln- já resolvem claro e escuro) */
+.ac3-form { gap: 18px; }
+.ac3-mudou { padding: 14px 16px; border-radius: 14px; background: #f1f7ff; border: 1px solid #d6e6fa; }
+:root[data-theme="dark"] .ac3-mudou { background: rgba(95, 178, 255, .08); border-color: rgba(95, 178, 255, .25); }
+.ac3-h2 { margin: 0 0 8px; font: 700 20px/1.15 var(--ln-title); letter-spacing: .01em; color: var(--ln-ink); text-transform: uppercase; }
+.ac3-lista { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; color: var(--ln-body); }
+.ac3-docs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 14px; color: var(--ln-body); }
+.ac3-docs-t { width: 100%; font-weight: 700; color: var(--ln-ink); }
+.ac3-docs .cc-inline-link { min-height: 32px; }
+.ac3-aviso { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--ln-muted); }
+.ac3-acoes { gap: 2px; }
+.ac3-link { min-height: 44px; text-decoration: none; }
+.ln-root--m .ac3-docs .cc-inline-link { min-height: 44px; }

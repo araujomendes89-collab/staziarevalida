@@ -271,10 +271,11 @@ function Root() {
   const session = useSession();
   const { pathname } = useLocation();
 
-  // Termo e Política são públicas: abrem com ou sem login, também carregando ou com erro.
+  // Contrato/Termo, Política e Regulamento são públicos: abrem com ou sem login, também carregando ou com erro.
   const publicPath = pathname.replace(/\/+$/, "");
   if (publicPath === "/termos") return <LegalPage doc="termos" />;
   if (publicPath === "/privacidade") return <LegalPage doc="privacidade" />;
+  if (publicPath === "/regulamento") return <LegalPage doc="regulamento" />;
 
   if (session.status === "loading") {
     return (

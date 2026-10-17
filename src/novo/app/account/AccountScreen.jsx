@@ -16,6 +16,7 @@ import { Panel, RichIcon, Tile, useBreakpoint } from "../evolucao/ui.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
 import { CelebracoesPreferencias } from "../play/celebracoes/CelebracoesPreferencias.jsx";
 import { COUNTRIES, normalizePhone, phoneError, splitPhone } from "../legal/phone.js";
+import { DocumentosSection, nomeDoTermo } from "./DocumentosSection.jsx";
 import "./account.css";
 
 // icon = ícone ilustrado do pacote (RichIcon); tone = cor do azulejo. "Ajuda e suporte" fica fora do bloco "Sua conta" (vem depois, junto de "Sair da conta").
@@ -26,6 +27,7 @@ const SECTIONS = [
   { id: "estudo", label: "Estudo e prova", sub: "Fase, prova-alvo e rotina", icon: "calendar", tone: "blue" },
   { id: "seg", label: "Segurança", sub: "Senha e sessão", icon: "lock", tone: "blue" },
   { id: "priv", label: "Privacidade e dados", sub: "Exportação e exclusão (LGPD)", icon: "privacy", tone: "green" },
+  { id: "docs", label: "Documentos", sub: "Contrato aceito, Política e Regulamento", icon: "clipboard", tone: "violet" },
   { id: "ajuda", label: "Ajuda e suporte", sub: "Fale com a equipe ou relate um problema", icon: "question", tone: "blue" },
 ];
 // No celular a seção abre dentro da lista, que já mostra o nome dela: o título interno some (o texto de apoio fica).
@@ -387,11 +389,12 @@ function PrivacySection() {
       {legal && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 20, borderTop: "1px solid var(--border-subtle)" }}>
           <div style={{ font: "var(--type-label)" }}>Meus aceites</div>
-          <AcceptanceLine title="Termo de Aceite e Uso" doc={legal.termo_uso} />
+          <AcceptanceLine title={nomeDoTermo(legal.termo_uso?.accepted ?? legal.termo_uso?.current)} doc={legal.termo_uso} />
           <AcceptanceLine title="Aceite dos Tutores de IA" doc={legal.tutor_ia} />
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", font: "var(--type-body-sm)" }}>
-            <a href="/novo/termos">Termo de Aceite e Uso</a>
+            <a href="/novo/termos">{nomeDoTermo(legal.termo_uso?.current)}</a>
             <a href="/novo/privacidade">Política de Privacidade</a>
+            <a href="/novo/regulamento">Regulamento de Coins e Ligas</a>
           </div>
         </div>
       )}
@@ -551,6 +554,7 @@ export function AccountScreen({ go }) {
       {id === "estudo" && <StudySection />}
       {id === "seg" && <SecuritySection />}
       {id === "priv" && <PrivacySection />}
+      {id === "docs" && <DocumentosSection Cabecalho={SectionHeader} />}
       {id === "ajuda" && <HelpSection email={supportEmail} />}
     </>
   );

@@ -1,23 +1,40 @@
-// Tela de aceite: fica antes de todas as telas do app novo para o aluno (boot.legal.gate_required, calculado pelo servidor) que ainda não
-// aceitou a versão vigente do Termo. Desde 17/10/2026 (decisão do dono) não pede mais o WhatsApp: o banco deixou de exigir o telefone
-// (migração …13660_cadastro_sem_whatsapp) e o aceite vai sem p_phone (o WhatsApp continua opcional em Minha conta).
-// Uma caixa só (17/10/2026): "Li e aceito os Termos de Uso e a Política de Privacidade e declaro ter 18 anos ou mais." (ACEITE_TEXTO).
-// Quando a versão vigente pede a declaração (boot.legal.declarations_required), a maioridade vai junto do aceite
-// (app_accept_terms_declared, adult = true); a de formação em Medicina não é mais pedida (migração …13661_aceite_com_maioridade).
-// O texto mostrado é o da versão que o banco diz que está vigente.
+// Tela de aceite: fica antes de todas as telas do app novo para o ALUNO (boot.legal.gate_required, calculado pelo servidor) que ainda não
+// aceitou a versão vigente do Contrato/Termo (ou outra do mesmo grupo de aceite: termo_uso.valid, migração …13740). Equipe e revisores
+// médicos não passam por aqui (regra do servidor, legal_is_student).
+//
+// Desde a versão 3.0 (17/10/2026), no mesmo padrão das telas de acesso (RecoveryLayout: claro/escuro, celular e computador):
+//   * quem já tinha aceitado uma versão anterior vê "Atualizamos nosso Contrato" e o resumo do que mudou (legal_texts.changes, tirado
+//     dos próprios textos); quem nunca aceitou vê "Antes de começar";
+//   * os textos completos abrem por cima (Contrato, Política e Regulamento), sempre a versão que o banco diz que está vigente;
+//   * uma caixa só (ACEITE_TEXTO_V3), com a maioridade, e o aviso de que o aceite guarda data, hora, IP e navegador;
+//   * sem aceitar, a pessoa não entra no app, mas pode baixar os próprios dados, pedir o cancelamento ao suporte ou sair da conta
+//     (Contrato 3.0, cláusula 6.5-A).
+// Com o Termo 1.0/2.0 vigente (banco sem a 013740), a mesma tela vale com a caixa e os textos de antes.
 import React from "react";
-import "../auth/login.css";
+import "../auth/criar-conta.css";
 import "./legal.css";
 import { useSession } from "../session.jsx";
 import { DocumentModal } from "./DocumentModal.jsx";
-import { LegalText } from "./LegalText.jsx";
 import { takeGoogleAcceptanceFull } from "./googleAcceptance.js";
-import { ACEITE_TEXTO, documentosDa } from "./documentos.js";
+import { ACEITE_ERRO_V3, ACEITE_TEXTO, ACEITE_TEXTO_V3, AVISO_ACEITE_V3, temNoSite } from "./documentos.js";
 import { AceiteFrase } from "./AceiteFrase.jsx";
+import { useVigentes } from "./vigente.js";
+import { FieldError, RecoveryButton, RecoveryLayout, RecoveryLink, RecoveryMessage } from "../auth/RecoveryLayout.jsx";
+import { useSupportEmail } from "../support/supportContact.jsx";
+import { baixarArquivo } from "./baixar.js";
 
 const OUTDATED = "Versão desatualizada do termo.";
-const OUTDATED_NOTICE = "O termo foi atualizado. Leia a nova versão e aceite de novo.";
+const OUTDATED_NOTICE = "O contrato foi atualizado agora há pouco. Leia a nova versão e aceite de novo.";
 const FAILED_NOTICE = "Não foi possível registrar o aceite agora. Tente de novo.";
+const ERRO_ANTIGO = "Para continuar, aceite os Termos de Uso e a Política de Privacidade e declare ter 18 anos ou mais.";
+
+/** O Contrato/Termo vigente já está aceito (a mesma versão ou outra do mesmo grupo de aceite)? */
+export function termoAceito(legal) {
+  const t = legal?.termo_uso;
+  if (!t?.current) return false;
+  if (typeof t.valid === "boolean") return t.valid;
+  return t.accepted === t.current;
+}
 
 /**
  * A tela de aceite vale para esta abertura do app? Quem decide é o servidor (gate_required). Única exceção, de segurança: se o Termo
@@ -26,21 +43,26 @@ const FAILED_NOTICE = "Não foi possível registrar o aceite agora. Tente de nov
  */
 export function precisaTelaDeAceite(legal) {
   if (!legal?.gate_required) return false;
-  const termoAceito = legal.termo_uso?.current != null && legal.termo_uso?.accepted === legal.termo_uso?.current;
-  return !(termoAceito && legal.phone_missing);
+  return !(termoAceito(legal) && legal.phone_missing);
 }
 
 export function AcceptanceScreen() {
   const session = useSession();
+  const supportEmail = useSupportEmail();
   const legal = session.boot?.legal;
   const current = legal?.termo_uso?.current;
-  const needsTerms = legal?.termo_uso?.accepted !== current;
+  const needsTerms = !termoAceito(legal);
   const needsDecl = needsTerms && Boolean(legal?.declarations_required);
-  const termoFonte = documentosDa(current).termo;
+  const novo = Boolean(current) && !temNoSite(current); // 3.0 em diante: textos do banco
+  const atualizacao = Boolean(legal?.termo_uso?.accepted); // já tinha aceitado uma versão anterior
+  const vig = useVigentes();
+  const mudancas = atualizacao && vig.vigentes?.termo_uso?.version === current ? (vig.vigentes.termo_uso.changes ?? []) : [];
 
   const [checked, setChecked] = React.useState(false);
+  const [erroCaixa, setErroCaixa] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   const [notice, setNotice] = React.useState(null);
+  const [exportando, setExportando] = React.useState(false);
   const [doc, setDoc] = React.useState(null);
   const closeDoc = React.useCallback(() => setDoc(null), []);
   // takeGoogleAcceptance apaga o registro ao ler: lê uma vez só (o StrictMode roda o efeito duas vezes em desenvolvimento)
@@ -61,13 +83,14 @@ export function AcceptanceScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // o botão vale assim que cada caixa exigida está marcada
-  const filled = !needsTerms || checked;
-
   const submit = async (e) => {
     e.preventDefault();
     if (busy) return;
-    if (!filled) return;
+    if (needsTerms && !checked) {
+      setErroCaixa(novo ? ACEITE_ERRO_V3 : ERRO_ANTIGO);
+      document.getElementById("aceite-accept")?.focus();
+      return;
+    }
     setBusy(true);
     setNotice(null);
     try {
@@ -91,42 +114,106 @@ export function AcceptanceScreen() {
     setBusy(false);
   };
 
+  const baixarDados = async () => {
+    setExportando(true);
+    try {
+      const data = await session.backend.rpc("app_export_my_data");
+      baixarArquivo(`staziamed-meus-dados-${new Date().toLocaleDateString("en-CA")}.json`, JSON.stringify(data, null, 2), "application/json");
+    } catch {
+      setNotice("Não foi possível gerar o arquivo dos seus dados. Tente de novo.");
+    }
+    setExportando(false);
+  };
+
+  const cancelamento = `mailto:${supportEmail}?subject=${encodeURIComponent("Pedido de cancelamento da assinatura")}&body=${encodeURIComponent(
+    `Olá. Não aceitei a versão ${current ?? ""} do Contrato e quero pedir o cancelamento da minha assinatura.\nE-mail da conta: ${session.user?.email ?? ""}\n`,
+  )}`;
+
+  const titulo = atualizacao ? "Atualizamos nosso Contrato" : "Antes de começar";
+  const sub = atualizacao
+    ? `Versão ${current}. Veja o que mudou, leia os textos completos e aceite para continuar.`
+    : "Leia e aceite os Termos de Uso e o Contrato de Assinatura para usar o StaziaMed.";
+
   return (
-    <div className="lg-root">
-      <div className="lg-shell lg-shell--auth">
-        <header className="lg-top"><img className="lg-logo" src="/brand/horizontal-escuro-480w.png" alt="StaziaMed Revalida" width="200" height="62" /></header>
-        <section className="lg-card lga-card" aria-label="Termo de Aceite e Uso">
-          <form onSubmit={submit} className="lg-auth-fields" noValidate>
-            <div>
-              <h1 className="lg-h2">Termo de Aceite e Uso</h1>
-              <p className="lg-sub">Versão {current}</p>
+    <RecoveryLayout
+      label="Aceite do contrato"
+      title={titulo}
+      sub={sub}
+      aside={{
+        title: "Por que estou vendo isto?",
+        copy: atualizacao
+          ? "As regras do serviço mudaram. Sem o novo aceite, não dá para usar o app. Se não quiser aceitar, você pode baixar seus dados, pedir o cancelamento ou sair da conta."
+          : "Precisamos do seu aceite antes do primeiro uso. Se não quiser aceitar, você pode sair da conta.",
+      }}
+    >
+      <form onSubmit={submit} className="rc-fields cc-fields ac3-form" noValidate>
+        {notice && <RecoveryMessage tone="danger">{notice}</RecoveryMessage>}
+
+        {mudancas.length > 0 && (
+          <section className="ac3-mudou" aria-labelledby="ac3-mudou-t">
+            <h2 id="ac3-mudou-t" className="ac3-h2">O que mudou</h2>
+            <ul className="ac3-lista">
+              {mudancas.map((m) => (
+                <li key={m}>{m}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <div className="ac3-docs">
+          <span className="ac3-docs-t">Leia os textos completos:</span>
+          <button type="button" className="cc-inline-link" onClick={() => setDoc("termos")}>
+            {novo ? "Termos de Uso e Contrato" : "Termo de Aceite e Uso"}
+          </button>
+          <button type="button" className="cc-inline-link" onClick={() => setDoc("privacidade")}>Política de Privacidade</button>
+          {novo && (
+            <button type="button" className="cc-inline-link" onClick={() => setDoc("regulamento")}>Regulamento de Coins e Ligas</button>
+          )}
+        </div>
+
+        {needsTerms && (
+          <div className={`cc-consent${erroCaixa ? " is-error" : ""}`}>
+            <div className="cc-item">
+              <label className="cc-check">
+                <input
+                  id="aceite-accept"
+                  aria-label={novo ? ACEITE_TEXTO_V3 : ACEITE_TEXTO}
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => {
+                    setChecked(e.target.checked);
+                    if (e.target.checked) setErroCaixa(null);
+                  }}
+                  aria-invalid={erroCaixa ? "true" : "false"}
+                  aria-describedby={erroCaixa ? "aceite-accept-error" : novo ? "aceite-aviso" : undefined}
+                />
+                <AceiteFrase onDoc={setDoc} linkClassName="cc-inline-link" novo={novo} />
+              </label>
+              {erroCaixa ? <FieldError id="aceite-accept-error">{erroCaixa}</FieldError> : null}
             </div>
-            {notice && <div className="lg-msg lg-msg--error" role="alert">{notice}</div>}
-            <div className="lga-text lgl-paper" tabIndex={0} role="region" aria-label="Texto do Termo de Aceite e Uso">
-              <LegalText source={termoFonte} />
-            </div>
-            {needsTerms && (
-              <div className="lg-field">
-                <label className="lg-accept">
-                  <input
-                    id="aceite-accept"
-                    aria-label={ACEITE_TEXTO}
-                    type="checkbox"
-                    className="lg-check"
-                    checked={checked}
-                    onChange={(e) => setChecked(e.target.checked)}
-                    aria-invalid="false"
-                  />
-                  <AceiteFrase onDoc={setDoc} linkClassName="lg-link-btn" />
-                </label>
-              </div>
+            {novo && (
+              <p id="aceite-aviso" className="ac3-aviso">
+                {AVISO_ACEITE_V3}
+              </p>
             )}
-            <button type="submit" className="lg-btn lg-btn-primary" disabled={busy || !filled}>{busy ? <><span className="lg-spin" />SALVANDO…</> : "Aceitar e continuar"}</button>
-            <button type="button" className="lg-btn lg-btn-ghost" onClick={() => session.signOut()}>Sair</button>
-          </form>
-        </section>
-      </div>
+          </div>
+        )}
+
+        <RecoveryButton type="submit" loading={busy} loadingText="SALVANDO…">ACEITAR E CONTINUAR</RecoveryButton>
+
+        <div className="rc-actions ac3-acoes">
+          {atualizacao && (
+            <>
+              <RecoveryLink onClick={baixarDados}>{exportando ? "Gerando o arquivo…" : "Baixar meus dados"}</RecoveryLink>
+              <a className="ln-link rc-back ac3-link" href={cancelamento}>
+                <span>Não aceito: pedir o cancelamento</span>
+              </a>
+            </>
+          )}
+          <RecoveryLink onClick={() => session.signOut()}>Sair da conta</RecoveryLink>
+        </div>
+      </form>
       {doc && <DocumentModal doc={doc} onClose={closeDoc} versao={current} />}
-    </div>
+    </RecoveryLayout>
   );
 }

@@ -1,6 +1,9 @@
 /**
  * Tela de aceite antes de todas as telas (spec 2026-10-07-termo-aceite-cadastro, seção 7).
  * Aparece quando boot.legal.gate_required (o servidor decide); sem `legal` no boot, nunca aparece. Sem WhatsApp desde 17/10/2026.
+ * Desde a 3.0 (17/10/2026) no padrão das telas de acesso: "Antes de começar" (nunca aceitou) ou "Atualizamos nosso Contrato", os
+ * textos completos por cima e a caixa conferida ao tocar em ACEITAR E CONTINUAR. Aqui com o Termo 1.0 vigente (banco sem a 013740:
+ * o banco responde que app_legal_current não existe); a 3.0 está em termoV3Telas.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -25,6 +28,13 @@ vi.mock("../novo/app/admin/AdminScreen.jsx", async () => ({
 }));
 vi.mock("../novo/app/tutor/nexus/NexusScreen.jsx", () => ({ NexusScreen: () => <div data-testid="tela-sessao" /> }));
 vi.mock("../novo/app/tutor/ReportScreen.jsx", () => ({ ReportScreen: () => <div data-testid="tela-sessao" /> }));
+vi.mock("../novo/data", async (importOriginal) => {
+  const actual: any = await importOriginal();
+  const semFuncao = async () => {
+    throw new Error("Could not find the function public.app_legal_current without parameters in the schema cache");
+  };
+  return { ...actual, getBackend: async () => ({ rpc: semFuncao }) };
+});
 
 import { App } from "../novo/app/App.jsx";
 
@@ -62,9 +72,10 @@ function open(path: string, boot: any, extra: Record<string, unknown> = {}) {
   return fns;
 }
 
-const TITLE = "Termo de Aceite e Uso";
+const TITLE = "Antes de começar";
 const checkbox = () => screen.getByRole("checkbox", { name: "Li e aceito os Termos de Uso e a Política de Privacidade e declaro ter 18 anos ou mais." });
-const accept = () => screen.getByRole("button", { name: "Aceitar e continuar" });
+const accept = () => screen.getByRole("button", { name: "ACEITAR E CONTINUAR" });
+const ERRO_CAIXA = "Para continuar, aceite os Termos de Uso e a Política de Privacidade e declare ter 18 anos ou mais.";
 
 beforeEach(() => {
   window.scrollTo = vi.fn() as any;
@@ -80,7 +91,6 @@ describe("tela de aceite", () => {
     for (const path of ["/", "/sessao", "/admin"]) {
       const { acceptTerms } = open(path, bootOf(legalOf()));
       expect(screen.getByRole("heading", { name: TITLE })).toBeTruthy();
-      expect(screen.getByText("Versão 1.0")).toBeTruthy();
       expect(screen.queryByTestId("tela-home")).toBeNull();
       expect(screen.queryByTestId("tela-admin")).toBeNull();
       expect(screen.queryByTestId("tela-sessao")).toBeNull();
@@ -103,16 +113,14 @@ describe("tela de aceite", () => {
 
   it("as páginas públicas continuam abertas com a tela exigida", () => {
     open("/termos", bootOf(legalOf()));
-    expect(screen.queryByRole("button", { name: "Aceitar e continuar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "ACEITAR E CONTINUAR" })).toBeNull();
   });
 
   it("sem WhatsApp (17/10/2026): a tela não pede o número, mesmo com phone_missing, e aceitar não manda telefone", async () => {
     const { acceptTerms } = open("/", bootOf(legalOf({ phone_missing: true })));
     expect(screen.queryByLabelText("WhatsApp")).toBeNull();
     expect(screen.queryByLabelText("País do WhatsApp")).toBeNull();
-    expect((accept() as HTMLButtonElement).disabled).toBe(true); // falta a caixa
     fireEvent.click(checkbox());
-    expect((accept() as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(accept());
     await waitFor(() => expect(acceptTerms).toHaveBeenCalledTimes(1));
     expect(acceptTerms).toHaveBeenCalledWith({ document: "termo_uso", version: "1.0", origin: "tela_aceite", declarations: undefined });
@@ -124,13 +132,14 @@ describe("tela de aceite", () => {
     expect(screen.getByTestId("tela-home")).toBeTruthy();
   });
 
-  it("o botão fica desabilitado enquanto falta a caixa", () => {
-    open("/", bootOf(legalOf()));
-    expect((accept() as HTMLButtonElement).disabled).toBe(true);
+  it("sem a caixa marcada, ACEITAR E CONTINUAR mostra o erro na caixa e não grava; marcar tira o erro", () => {
+    const { acceptTerms } = open("/", bootOf(legalOf()));
+    fireEvent.click(accept());
+    expect(screen.getByText(ERRO_CAIXA)).toBeTruthy();
+    expect(checkbox().getAttribute("aria-invalid")).toBe("true");
+    expect(acceptTerms).not.toHaveBeenCalled();
     fireEvent.click(checkbox());
-    expect((accept() as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(checkbox());
-    expect((accept() as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByText(ERRO_CAIXA)).toBeNull();
   });
 
   it("sem WhatsApp faltando, aceitar não manda telefone", async () => {
@@ -166,7 +175,7 @@ describe("tela de aceite", () => {
     const { refresh } = open("/", bootOf(legalOf()), { acceptTerms });
     fireEvent.click(checkbox());
     fireEvent.click(accept());
-    expect(await screen.findByText("O termo foi atualizado. Leia a nova versão e aceite de novo.")).toBeTruthy();
+    expect(await screen.findByText("O contrato foi atualizado agora há pouco. Leia a nova versão e aceite de novo.")).toBeTruthy();
     expect(refresh).toHaveBeenCalledTimes(1);
     expect((checkbox() as HTMLInputElement).checked).toBe(false);
 
@@ -174,23 +183,27 @@ describe("tela de aceite", () => {
     fireEvent.click(accept());
     expect(await screen.findByText("Não foi possível registrar o aceite agora. Tente de novo.")).toBeTruthy();
     expect(screen.getByRole("heading", { name: TITLE })).toBeTruthy();
-    expect((accept() as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(accept());
     await waitFor(() => expect(acceptTerms).toHaveBeenCalledTimes(3));
   });
 
-  it("Sair encerra a sessão", () => {
+  it("Sair da conta encerra a sessão", () => {
     const { signOut } = open("/", bootOf(legalOf()));
-    fireEvent.click(screen.getByRole("button", { name: "Sair" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sair da conta" }));
     expect(signOut).toHaveBeenCalledTimes(1);
   });
 
-  it("o texto do termo é navegável por teclado e os campos têm rótulo", () => {
+  it("os textos completos abrem por cima, antes do aceite, e a caixa tem rótulo", async () => {
     open("/", bootOf(legalOf({ phone_missing: true })));
-    const text = screen.getByRole("region", { name: "Texto do Termo de Aceite e Uso" });
-    expect(text.getAttribute("tabindex")).toBe("0");
-    expect(text.textContent).toContain("Termo");
+    fireEvent.click(screen.getByRole("button", { name: "Termo de Aceite e Uso" }));
+    const janela = await screen.findByRole("dialog", { name: "Termos de Uso e Contrato" });
+    expect(await screen.findByText("Versão 1.0")).toBeTruthy();
+    expect(janela.textContent).toContain("Termo");
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.queryByLabelText("WhatsApp")).toBeNull();
     expect(checkbox()).toBeTruthy();
+    // quem nunca aceitou não vê "baixar dados" nem "pedir cancelamento" (não há o que cancelar); vê "Sair da conta"
+    expect(screen.queryByRole("button", { name: "Baixar meus dados" })).toBeNull();
   });
 });

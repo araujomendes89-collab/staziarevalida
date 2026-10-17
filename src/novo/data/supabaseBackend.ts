@@ -61,7 +61,7 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
       if (!data.session && Array.isArray(data.user?.identities) && data.user.identities.length === 0) {
         throw new BackendError("email_taken", "User already registered");
       }
-      return { needsEmailConfirmation: !data.session };
+      return { needsEmailConfirmation: !data.session, userId: data.user?.id };
     },
     async resendConfirmation(email) {
       const { error } = await client.auth.resend({ type: "signup", email, options: { emailRedirectTo: confirmRedirect(redirectTo) } });
