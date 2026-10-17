@@ -95,7 +95,8 @@ beforeAll(async () => {
   await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, requires_pro: true }, "Tutor ligado para o teste adversarial das fontes complementares.");
   // biblioteca: apostila (nível E → complementar) e a oficial, as duas com trecho sobre hepatite B
   const comp = (await sql(`insert into public.ch_sources (title, organ, kind, version, authority_level) values ($1, $2, 'final', '2026', 'E') returning id`, [COMP_TITLE, COMP_ORGAN]))[0].id;
-  const ofi = (await sql(`insert into public.ch_sources (title, organ, kind, version, authority_level) values ($1, $2, 'final', '1', 'A') returning id`, [OFI_TITLE, OFI_ORGAN]))[0].id;
+  // a oficial com aprovação editorial: sem ela, a fonte nunca entra no Tutor (decisão 1 do dono, 17/10; migração 013620)
+  const ofi = (await sql(`insert into public.ch_sources (title, organ, kind, version, authority_level, editorial_approved) values ($1, $2, 'final', '1', 'A', true) returning id`, [OFI_TITLE, OFI_ORGAN]))[0].id;
   await sql(`insert into public.ch_source_passages (source_id, page, section, text) values ($1, 123, 'Hepatite', $2), ($3, 12, 'Hepatite', 'Hepatite perinatal: vacina e imunoglobulina no recém-nascido nas primeiras horas.')`,
     [comp, `${FRASE} hepatite perinatal vacina imunoglobulina recém-nascido`, ofi]);
   deps.db = db;
