@@ -181,7 +181,19 @@ begin
                   'days', floor(extract(epoch from (now() - coalesce(v_prev.last_message_at, v_prev.created_at))) / 86400)::int,
                   'topic', coalesce(v_prev.topic, v_prev.context_label, v_prev.title)) end,
       'local_hour', extract(hour from (now() at time zone 'America/Sao_Paulo'))::int,
-      'prepared', null),
+      'prepared', null,
+      -- as falas de reserva que app_tutor_start pode sortear para esta escolha (qualquer humor): a fala preparada não pode copiá-las
+      -- (na conversa, a reserva sorteada conta como "já ouvida"; sem isto a fala pronta era barrada lá)
+      'reservas', coalesce((select jsonb_agg(distinct replace(x.l, '{tema}', coalesce(v_topic_col, v_clabel, ''))) from (
+                  select jsonb_array_elements_text(case when jsonb_typeof(src -> k) = 'array' then src -> k else '[]'::jsonb end) as l
+                  from (select t.lines as src union all select t.lines_strong) fontes,
+                       unnest(case when p_mode = 'erros' then array['review'] when p_mode = 'questao' then array['question']
+                                   when v_state = 'answered' then array['discuss']
+                                   when v_topic_col is not null or (v_clabel is not null and v_ctype is distinct from 'weak_points') then array['topic']
+                                   else array['opening_good', 'opening_neutral', 'opening_impatient', 'opening'] end) k
+                  union all
+                  select o from unnest(case when p_mode in ('livre', 'aula', 'revisao', 'perguntas') and v_state <> 'answered' then t.openings else '{}'::text[] end) o) x
+                  where x.l is not null and x.l <> ''), '[]'::jsonb)),
     'ctx', jsonb_build_object(
       'consent_pending', false,
       'config', jsonb_build_object('max_profanity', c.max_profanity),

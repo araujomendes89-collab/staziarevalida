@@ -96,6 +96,9 @@ describe("abertura preparada na entrada do Tutor", () => {
     // a IA da preparação recebe a ficha e o contexto, como a abertura de sempre (sem enunciado nem alternativas)
     expect(calls[0].promptId).toBe("tutor_abertura");
     expect(calls[0].input).toMatch(/"tema":"Sepse"/);
+    // as reservas que o banco pode sortear para essa escolha vão como "já ouvidas" (a fala pronta não pode copiá-las)
+    expect(calls[0].input).toContain("Vamos com calma em Sepse. Por onde você quer começar?");
+    expect(calls[0].input).toContain("Sepse. Me conta o que você já sabe, e a gente continua dali.");
     const pronta = (await sql(`select id, content, emotion, ledger_id from public.tutor_opening_ready where user_id = $1`, [ANA]))[0];
     expect(pronta.content).toBe("Sepse na pauta. Diagnóstico ou conduta primeiro, você decide.");
 

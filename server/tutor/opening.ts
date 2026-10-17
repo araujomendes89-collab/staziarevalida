@@ -60,6 +60,8 @@ export interface OpeningState {
   prepared?: string | null;
   /** preparação: a questão respondida a que a passagem se refere */
   question_id?: string;
+  /** abertura preparada na entrada: as reservas que o banco pode sortear para a escolha (a fala não pode copiá-las) */
+  reservas?: string[];
 }
 
 interface OpeningContext {
@@ -211,7 +213,7 @@ export function openingInput(st: OpeningState, ctx: OpeningContext): string {
     // o humor só vai quando o jeito sorteado pede, e nunca o rótulo "neutro" (ele era dito em voz alta)
     ...(angulo.includes("humor") && s.session_mood && s.session_mood !== "neutral" ? { humor_de_hoje: s.session_mood === "good" ? "bem-disposto" : "com pouca paciência" } : {}),
   };
-  const ja = [...(st.recent ?? []), st.message!.content].filter((t) => String(t ?? "").trim());
+  const ja = [...(st.recent ?? []), st.message!.content, ...(st.reservas ?? [])].filter((t) => String(t ?? "").trim());
   return `<contexto>\n${JSON.stringify(dados)}\n</contexto>\n<ja_ouviu>\n${JSON.stringify(ja)}\n</ja_ouviu>`;
 }
 
@@ -292,7 +294,7 @@ const desligada = () =>
   deterministicTutor();
 
 /** As falas que contam como "já ouvida" (a memória do aluno e a reserva, que não pode ser copiada). */
-const ouvidas = (st: OpeningState) => [...(st.recent ?? []), ...(st.message?.content ? [st.message.content] : [])];
+const ouvidas = (st: OpeningState) => [...(st.recent ?? []), ...(st.message?.content ? [st.message.content] : []), ...(st.reservas ?? [])];
 
 /** Começos já usados na conversa (passagem): a nova não começa como nenhuma fala do professor. */
 const comecosDaConversa = (st: OpeningState, ctx: OpeningContext) =>
@@ -354,7 +356,7 @@ async function montarFala(deps: TutorDeps, seed: string, st: OpeningState, ctx: 
  * Pede a fala à IA e confere (até `tentativas` dentro de `timeoutMs`, contado de `t0`; cada tentativa leva no máximo `porTentativaMs`,
  * para uma resposta presa não gastar o tempo todo). Nunca lança. Sem provedor: null.
  */
-async function gerarFala(deps: TutorDeps, seed: string, st: OpeningState, ctx: OpeningContext, timeoutMs: number, t0: number, tentativas = 2, porTentativaMs = Infinity): Promise<Gerada | null> {
+async function gerarFala(deps: TutorDeps, seed: string, st: OpeningState, ctx: OpeningContext, timeoutMs: number, t0: number, tentativas = 2, porTentativaMs = Infinity, reforcoMs = Infinity): Promise<Gerada | null> {
   const m = await montarFala(deps, seed, st, ctx);
   if (!m) return null;
   const { provider, system, baseInput, conferir } = m;
@@ -367,10 +369,25 @@ async function gerarFala(deps: TutorDeps, seed: string, st: OpeningState, ctx: O
     const input = attempt === 0 ? baseInput : `${baseInput}\n<correcao_obrigatoria>\nSua fala anterior foi barrada. Faça outra sem estes problemas:\n${violations.map((x) => `- ${x.detail}`).join("\n")}\n</correcao_obrigatoria>`;
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), Math.min(left, porTentativaMs));
+    const pedir = (signal: AbortSignal) => provider.generate<{ fala: string }>({
+      promptId: "tutor_abertura", promptVersion: OPENING_VERSION, system, input, schema: OPENING_SCHEMA, schemaName: "staziamed_tutor_abertura",
+      maxOutputTokens: 300, effort: "low", care: "rapido", signal,
+    });
+    // reforço (só na preparação, onde ninguém espera e o custo é da casa): se a resposta não veio em `reforcoMs`, um segundo pedido
+    // igual sai junto e vale o que chegar primeiro (o outro é cancelado). A bancada de 17/10 mostrou respostas presas por 3,5 s ou mais.
+    let reforco: ReturnType<typeof setTimeout> | null = null;
+    const ac2 = new AbortController();
     try {
-      const r = await provider.generate<{ fala: string }>({
-        promptId: "tutor_abertura", promptVersion: OPENING_VERSION, system, input, schema: OPENING_SCHEMA, schemaName: "staziamed_tutor_abertura",
-        maxOutputTokens: 300, effort: "low", care: "rapido", signal: ac.signal,
+      const r = !Number.isFinite(reforcoMs) || reforcoMs >= Math.min(left, porTentativaMs) ? await pedir(ac.signal) : await new Promise<Awaited<ReturnType<typeof pedir>>>((ok, falha) => {
+        let erros = 0, saiu = 1;
+        const fim = (e: unknown) => { if (++erros >= saiu) falha(e); };
+        pedir(ac.signal).then((x) => { ac2.abort(); ok(x); }, fim);
+        reforco = setTimeout(() => {
+          saiu = 2;
+          usage.calls++; // o pedido de reforço também conta (pode ser cobrado mesmo cancelado)
+          pedir(ac2.signal).then((x) => { ac.abort(); ok(x); }, fim);
+        }, reforcoMs);
+        ac.signal.addEventListener("abort", () => { if (reforco) clearTimeout(reforco); ac2.abort(); }, { once: true });
       });
       usage.calls++;
       usage.input_tokens += r.inputTokens ?? 0;
@@ -385,6 +402,7 @@ async function gerarFala(deps: TutorDeps, seed: string, st: OpeningState, ctx: O
       violations = [{ code: "provider", detail: "A fala anterior não veio no formato pedido." }];
     } finally {
       clearTimeout(timer);
+      if (reforco) clearTimeout(reforco);
     }
   }
   return { text, violations, usage, system };
@@ -505,8 +523,10 @@ export interface EscolhaDaEntrada {
 }
 /** Tempo da preparação na entrada: ninguém espera por ela (o app não aguarda a resposta); 3 tentativas cabem. */
 export const PREP_ABERTURA_TIMEOUT_MS = 9000;
-/** Cada tentativa da preparação (a IA responde em ~2,2 s na mediana; acima disto costuma ser resposta presa). */
-export const PREP_TENTATIVA_MS = 3500;
+/** Cada tentativa da preparação, com o reforço dentro dela (a IA responde em ~2,3 s na mediana; acima de 6 s é resposta presa). */
+export const PREP_TENTATIVA_MS = 6000;
+/** Sem resposta neste tempo, a preparação manda um pedido de reforço (vale o que chegar primeiro): 9 de cada 10 chegam antes. */
+export const PREP_REFORCO_MS = 2600;
 
 /**
  * ABERTURA PREPARADA (pedido do dono de 17/10: "mais de 90% das aberturas vindas da IA, sem o aluno esperar mais"). Enquanto o
@@ -532,8 +552,8 @@ export async function prepararAbertura(deps: TutorDeps, userId: string, escolha:
       p_context: c ? { type: c.type ?? null, id: c.id ?? null, label: c.label ?? null, area: c.area ?? null } : null,
     });
     if (!lido?.id || !lido.state?.message || !lido.state.session || !lido.ctx) return false;
-    // bancada de 17/10: às vezes a IA demora mais de 9 s numa resposta; com 3,5 s por tentativa, a seguinte ainda chega a tempo
-    const g = await gerarFala(deps, `pronta:${lido.id}`, lido.state, lido.ctx, timeoutMs, t0, 3, PREP_TENTATIVA_MS);
+    // bancada de 17/10: às vezes a resposta da IA fica presa; o reforço aos 2,6 s e o limite de 6 s por tentativa resolvem
+    const g = await gerarFala(deps, `pronta:${lido.id}`, lido.state, lido.ctx, timeoutMs, t0, 3, PREP_TENTATIVA_MS, PREP_REFORCO_MS);
     const ok = await deps.db.service<boolean | null>("ch_worker_tutor_opening_prep_save", { p_user: userId, p_id: lido.id, p_text: g?.text ?? null, p_usage: g?.usage ?? { calls: 0 } });
     if (!g?.text && g?.violations.length) deps.log?.(`[tutor] abertura preparada barrada (${g.violations.map((v) => v.code).join(", ")})`);
     return Boolean(ok);
