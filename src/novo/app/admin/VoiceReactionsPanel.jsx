@@ -1,4 +1,4 @@
-// Reações de voz do Tutor (administração, aba "Vozes do Nexus"). Regra do dono (15/10): "EU ESCOLHO". Para cada professor e
+// Reações de voz do Tutor (administração, aba Configurações, junto das personalidades). Regra do dono (15/10): "EU ESCOLHO". Para cada professor e
 // cada nível da Durona Explosiva, o dono marca quais reações (risada, suspiro, grito…) podem ser usadas e com que frequência
 // máxima. O servidor só deixa passar o que está marcado aqui E o que o provedor de voz ativo entende; o resto é tirado do texto
 // antes de virar voz. Nada nasce marcado. O banco confere o administrador e exige o motivo (app_admin_tutor_save_voice_reactions).

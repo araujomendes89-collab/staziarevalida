@@ -35,7 +35,6 @@ const TABS = [
   { value: "ias", label: "Central de IAs", icon: "bot" },
   { value: "play", label: "Stazia Arena", icon: "trophy" },
   { value: "config", label: "Configurações", icon: "settings" },
-  { value: "vozes", label: "Vozes do Nexus", icon: "volume-2", admin: true },
   { value: "registro", label: "Registro", icon: "history" },
 ];
 
@@ -49,11 +48,13 @@ export function AdminScreen() {
   // revisor médico sem papel de equipe: só o que tem revisão médica (Questões: fila de comentários a revisar, Atualizações, Estações e Central de Conteúdo)
   const tabs = TABS.filter((t) => t.admin ? isAdmin : isAdmin || (isStaff && t.staff) || (!isStaff && t.reviewer));
   const [params, setParams] = useSearchParams();
-  const tab = tabs.some((t) => t.value === params.get("aba")) ? params.get("aba") : tabs[0].value;
+  // a antiga aba "Vozes do Nexus" agora fica dentro de Configurações (decisão do dono de 17/10): links antigos continuam chegando lá
+  const pedida = params.get("aba") === "vozes" ? "config" : params.get("aba");
+  const tab = tabs.some((t) => t.value === pedida) ? pedida : tabs[0].value;
 
   return (
     <>
-      {/* 14 abas não cabem numa linha: a barra quebra linha para todas aparecerem */}
+      {/* 13 abas não cabem numa linha: a barra quebra linha para todas aparecerem */}
       <Tabs wrap label="Administração" value={tab} onChange={(aba) => setParams({ aba }, { replace: true })} tabs={tabs.map(({ value, label, icon }) => ({ value, label, icon, ...(value === "radar" && radar.graves > 0 ? { count: radar.graves } : {}) }))} />
       {tab === "geral" && <AdminOverview isAdmin={isAdmin} />}
       {tab === "usuarios" && <AdminUsers />}
@@ -73,13 +74,13 @@ export function AdminScreen() {
           <AdminSupportContact />
           <AdminReports />
           <AdminTutor />
+          {/* Tutor: as 4 personalidades (ligar e desligar ficam no painel acima), aprovação das vozes de cada personagem e
+              linguagem forte (Durona e Durão). Só administrador, como toda a aba Configurações. */}
+          <section aria-label="Personagens e vozes do Tutor" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <OfficialVoicesPanel />
+            <VoiceReactionsPanel />
+          </section>
         </div>
-      )}
-      {tab === "vozes" && (
-        <>
-          <OfficialVoicesPanel />
-          <VoiceReactionsPanel />
-        </>
       )}
       {tab === "registro" && <AdminAudit />}
     </>
