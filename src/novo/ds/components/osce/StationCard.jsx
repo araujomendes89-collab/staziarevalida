@@ -6,6 +6,7 @@ import { formatDecimal } from '../../format.js';
 // "Sua última nota" e "Média geral". Sem número e sem as queixas/temas pequenos.
 // Dificuldade: 'facil' | 'medio' | 'dificil', definida pela revisão médica; sem grau gravado, nenhum selo (nada inventado).
 // Notas em % de 0 a 100; sem nota fica "—", nunca zero inventado.
+// awaitingContent: selo "Aguardando conteúdo" (cartão do catálogo ainda sem conteúdo; quem chama só liga para a equipe).
 const LEVELS={facil:['Fácil',1],medio:['Médio',2],dificil:['Difícil',3]};
 export function StationLevel({level}){
   const l=LEVELS[level]; if(!l) return null;
@@ -13,7 +14,7 @@ export function StationLevel({level}){
     <span className="osce-level__bars" aria-hidden="true">{[1,2,3].map(i=><span key={i} data-on={i<=l[1]}/>)}</span>{l[0]}
   </span>;
 }
-export function StationCard({areaCode,title,difficulty,source,myScorePct,averagePct,onClick}){
+export function StationCard({areaCode,title,difficulty,source,awaitingContent=false,myScorePct,averagePct,onClick}){
   const area=areaByCode(areaCode); const v=areaVars(areaCode);
   const mine=typeof myScorePct==='number'&&Number.isFinite(myScorePct)?myScorePct:null;
   const avg=typeof averagePct==='number'&&Number.isFinite(averagePct)?averagePct:null;
@@ -23,6 +24,7 @@ export function StationCard({areaCode,title,difficulty,source,myScorePct,average
     <div className="osce-station__top">
       <div className="osce-station__head">
         <div className="osce-station__area"><span className="osce-station__dot" aria-hidden="true"/>{area?area.card:''}</div>
+        {awaitingContent&&<span className="osce-station__wait">Aguardando conteúdo</span>}
         {mine!=null&&<span className="osce-station__done" title="Já realizada"><Icon name="check" size={16}/></span>}
       </div>
       <h3 className="osce-station__title">{title}</h3>

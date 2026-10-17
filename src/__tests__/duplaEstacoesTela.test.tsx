@@ -16,7 +16,7 @@ import testStations from "../../server/dupla/data/teste-inep2020.json";
 
 const state: { rpc: (...args: any[]) => Promise<any> } = { rpc: async () => null };
 // o `backend` do app é sempre o mesmo objeto: um novo a cada render faria a tela recarregar sem parar
-const session = { backend: { rpc: (...args: unknown[]) => state.rpc(...args) } };
+const session: { backend: any; boot?: { role: string } } = { backend: { rpc: (...args: unknown[]) => state.rpc(...args) } };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => session }));
 
 import { StationsScreen } from "../novo/app/dupla/StationsScreen.jsx";
@@ -48,6 +48,8 @@ type Row = {
   average_pct: number | null;
   evaluations: number;
   difficulty?: "facil" | "medio" | "dificil" | null;
+  origin_label?: string | null;
+  content_status?: "awaiting_content" | "content_ready";
 };
 
 /** Linhas no formato de app_dupla_stations(), na ordem da prova que o servidor entrega (aqui, a numeração 1 a 10). */
@@ -91,7 +93,10 @@ const ready = () => screen.findByPlaceholderText("Buscar por estação, tema ou 
 beforeEach(() => {
   state.rpc = async () => null;
 });
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  delete session.boot;
+});
 
 describe("Banco de estações: cartões", () => {
   it("cartões com área, nome, 'Revalida 2020 · INEP', 'Sua última nota' e 'Média geral' (— sem dado); sem número e sem temas pequenos", async () => {
@@ -169,6 +174,72 @@ describe("Banco de estações: cartões", () => {
     expect(texto).not.toMatch(/Cansaço|Febre|Sangramento gengival/); // styles da estação 1 de teste
     expect(rows[0].querySelector(".dst__num")).toBeNull();
     expect(rows[1].querySelector(".osce-level")).toBeNull(); // sem grau, sem selo
+  });
+});
+
+describe("Banco de estações: origem do catálogo e cartões aguardando conteúdo (013420/013425)", () => {
+  it("usa a origem gravada no catálogo; sem ela, o cálculo pela edição (2011 a 2017: 'Revalida 2013', não 'Estação inédita')", async () => {
+    const rows = bankRows();
+    rows[0] = { ...rows[0], edition: null, institution: null, origin_label: "Revalida 2013" };
+    rows[1] = { ...rows[1], origin_label: "Revalida 2022/2 · INEP (também reaplicação da 2022/1)" };
+    rows[2] = { ...rows[2], origin_label: "   " }; // vazio: volta ao cálculo
+    setup(rows);
+    await ready();
+    expect(within(cardOf(rows[0].name)).getByText("Revalida 2013")).toBeTruthy();
+    expect(within(cardOf(rows[0].name)).queryByText("Estação inédita")).toBeNull();
+    expect(within(cardOf(rows[1].name)).getByText("Revalida 2022/2 · INEP (também reaplicação da 2022/1)")).toBeTruthy();
+    expect(within(cardOf(rows[2].name)).getByText("Revalida 2020 · INEP")).toBeTruthy();
+  });
+
+  const comCatalogo = () => {
+    const rows = bankRows();
+    rows[0] = { ...rows[0], content_status: "awaiting_content" }; // Leucemia (CM)
+    rows[6] = { ...rows[6], content_status: "awaiting_content" }; // Apendicite (CR)
+    return rows;
+  };
+
+  it("equipe: 'Só com conteúdo' ligado por padrão esconde os cartões sem conteúdo; desligado, eles aparecem com o selo na grade e na lista", async () => {
+    session.boot = { role: "admin" };
+    setup(comCatalogo());
+    await ready();
+    const filtro = screen.getByRole("switch", { name: /Só com conteúdo/ }) as HTMLInputElement;
+    expect(filtro.checked).toBe(true);
+    expect(screen.getByText("Escondidos: 2 aguardando conteúdo")).toBeTruthy();
+    expect(cardTitles()).toHaveLength(8);
+    expect(cardTitles()).not.toContain("Apendicite aguda");
+    expect(screen.queryByText("Aguardando conteúdo")).toBeNull();
+    // contagens seguem o filtro
+    expect(within(screen.getByRole("group", { name: "Área" })).getByRole("button", { name: /Todas/ }).textContent).toBe("Todas8");
+
+    fireEvent.click(filtro);
+    expect(cardTitles()).toHaveLength(10);
+    expect(within(cardOf("Apendicite aguda")).getByText("Aguardando conteúdo")).toBeTruthy();
+    expect(within(cardOf("Leucemia aguda: palpação de fígado e baço")).getByText("Aguardando conteúdo")).toBeTruthy();
+    expect(within(cardOf("Coqueluche no lactente")).queryByText("Aguardando conteúdo")).toBeNull();
+    expect(screen.getAllByText("Aguardando conteúdo")).toHaveLength(2);
+
+    fireEvent.click(within(screen.getByRole("radiogroup", { name: "Visualização" })).getByRole("radio", { name: "Lista" }));
+    const linhas = screen.getAllByRole("button").filter((b) => b.textContent?.includes("Sua última nota"));
+    expect(linhas).toHaveLength(10);
+    expect(linhas.find((b) => b.textContent?.includes("Apendicite aguda"))!.textContent).toContain("Aguardando conteúdo");
+    expect(linhas.filter((b) => b.textContent?.includes("Aguardando conteúdo"))).toHaveLength(2);
+  });
+
+  it("equipe com tudo escondido pelo filtro: a tela diz para desligar 'Só com conteúdo'", async () => {
+    session.boot = { role: "editor" };
+    setup(bankRows().map((r) => ({ ...r, content_status: "awaiting_content" as const })));
+    await ready();
+    expect(screen.getByText("Nenhuma estação encontrada")).toBeTruthy();
+    expect(screen.getByText(/Desligue “Só com conteúdo” para ver os cartões aguardando conteúdo/)).toBeTruthy();
+  });
+
+  it("aluno: sem o filtro e sem o selo, mesmo que um cartão viesse marcado", async () => {
+    session.boot = { role: "student" };
+    setup(comCatalogo());
+    await ready();
+    expect(screen.queryByRole("switch", { name: /Só com conteúdo/ })).toBeNull();
+    expect(screen.queryByText("Aguardando conteúdo")).toBeNull();
+    expect(cardTitles()).toHaveLength(10);
   });
 });
 

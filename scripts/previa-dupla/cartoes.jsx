@@ -66,8 +66,8 @@ function App() {
               <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>
                 {doArea.map((c) => (
                   <div key={c.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <StationCard areaCode={c.area_code} title={c.tema} difficulty={null} source={c.origem_rotulo} myScorePct={null} averagePct={null} />
-                    {equipe && (
+                    <StationCard areaCode={c.area_code} title={c.tema} difficulty={null} source={c.origem_rotulo} awaitingContent={equipe && c.situacao !== "conteúdo pronto"} myScorePct={null} averagePct={null} />
+                    {equipe && c.situacao === "conteúdo pronto" && (
                       <span
                         style={{ alignSelf: "flex-start", font: "700 12px var(--font-sans)", padding: "3px 10px", borderRadius: 999,
                           background: c.situacao === "conteúdo pronto" ? "var(--surface-sunken)" : "#fff3cd", color: c.situacao === "conteúdo pronto" ? "var(--text-secondary)" : "#5c4400" }}

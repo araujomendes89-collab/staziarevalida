@@ -7,6 +7,8 @@ export interface StationCardProps {
   difficulty?: StationDifficulty | null;
   /** Origem: "Revalida 2020 · INEP" ou "Estação inédita" */
   source?: string | null;
+  /** Selo "Aguardando conteúdo" (cartão do catálogo sem conteúdo). Quem chama liga só para a equipe. */
+  awaitingContent?: boolean;
   /** Última nota da pessoa, em % (0 a 100); sem nota: omitir ou null ("—") */
   myScorePct?: number | null;
   /** Média geral da estação, em %; sem dado: omitir ou null ("—") */

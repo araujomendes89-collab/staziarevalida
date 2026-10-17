@@ -2,6 +2,7 @@
 // TUDO é DADO DE TESTE: colegas fictícios, notas fictícias. As 10 estações do INEP 2020 vêm do pacote de design (só locais).
 import React from "react";
 import ESTACOES from "./estacoes-inep2020-teste.json";
+import CATALOGO from "./catalogo-cartoes.json";
 
 const NOW = () => new Date().toISOString();
 const EM = (ms) => new Date(Date.now() + ms).toISOString();
@@ -17,8 +18,15 @@ const resumo = (s) => ({
   difficulty: (dificuldades[`teste-inep2020-e${String(s.n).padStart(2, "0")}`] ?? { level: DIFICULDADE_TESTE[s.n - 1] }).level,
   my_last_pct: s.n === 1 ? 74 : s.n === 4 ? 52 : null, average_pct: [61, 55, 70, 58, 49, 66, 72, 45, 60, 53][s.n - 1],
 });
-const banco = () => ESTACOES.map(resumo);
-const BANCO = banco();
+// Cartões do catálogo (013420/013425): só o título, a área e a origem; sem conteúdo, sem nota. A equipe os recebe (a prévia
+// entra como administrador) e o filtro "Só com conteúdo" os esconde por padrão. Não é conteúdo médico.
+const doCatalogo = (c) => ({
+  id: c.id, name: c.tema, topic: c.tema, area: c.area, area_code: c.area_code, styles: [], number: null, edition: null,
+  reapplication: false, institution: c.fonte_oficial ? "INEP" : null, origin_label: c.origem_rotulo, difficulty: null,
+  content_status: c.situacao === "conteúdo pronto" ? "content_ready" : "awaiting_content", my_last_pct: null, average_pct: null,
+});
+const banco = () => [...ESTACOES.map(resumo).map((e) => ({ ...e, content_status: "content_ready" })), ...CATALOGO.map(doCatalogo)];
+const BANCO = ESTACOES.map(resumo); // Administração › Estações da prévia: só as 10 de teste
 const porId = (id) => ESTACOES.find((s) => resumo(s).id === id) ?? ESTACOES[0];
 
 let perfil = {

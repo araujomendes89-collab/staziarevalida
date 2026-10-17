@@ -138,6 +138,14 @@ describe("StationCard", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  it("selo 'Aguardando conteúdo' só quando pedido (quem chama liga só para a equipe)", () => {
+    const { container, rerender } = render(<StationCard areaCode="CM" title="X" source="Revalida 2013" />);
+    expect(container.querySelector(".osce-station__wait")).toBeNull();
+    rerender(<StationCard areaCode="CM" title="X" source="Revalida 2013" awaitingContent />);
+    expect(screen.getByText("Aguardando conteúdo")).toBeTruthy();
+    expect(screen.getByText("Revalida 2013")).toBeTruthy();
+  });
+
   it("sem grau e sem origem não desenha a linha; nomes das cinco áreas", () => {
     const { container, rerender } = render(<StationCard areaCode="MFC" title="Pré-natal" />);
     expect(container.querySelector(".osce-station__meta")).toBeNull();

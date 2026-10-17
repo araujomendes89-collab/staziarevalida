@@ -71,6 +71,7 @@
 .osce-station__head{display:flex;align-items:center;gap:10px}
 .osce-station__area{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font:700 12px var(--font-sans);color:var(--osce-ink);text-transform:uppercase;letter-spacing:.04em}
 .osce-station__dot{flex-shrink:0;width:10px;height:10px;border-radius:3px;background:var(--osce-solid)}
+.osce-station__wait{flex-shrink:0;display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:var(--radius-pill);background:var(--warning-bg);border:1px solid var(--warning-border);color:var(--warning-text);font:700 11px var(--font-sans);white-space:nowrap}
 .osce-station__done{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--surface-card);color:var(--osce-base)}
 .osce-station__title{margin:0;font:800 18px/1.3 var(--font-sans);letter-spacing:-.01em;color:var(--text-primary);text-wrap:pretty}
 .osce-station__meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:auto}

@@ -33,11 +33,13 @@ export function sourceLabel(station) {
 }
 
 /**
- * Origem no cartão e na linha do Banco de estações (pedido do dono de 17/10): a edição do Revalida
- * ("Revalida 2020 · INEP", "Revalida 2022/1 (reaplicação) · INEP") ou, sem instituição, "Estação inédita".
- * @param {{ edition?: string | null, reapplication?: boolean, institution?: string | null } | null} [station]
+ * Origem no cartão e na linha do Banco de estações (pedido do dono de 17/10). Primeiro a origem gravada no catálogo
+ * (`origin_label`, migrações 013420/013425: "Revalida 2020 · INEP"; de 2011 a 2017, só "Revalida 2013"). Sem ela, a edição do
+ * Revalida ("Revalida 2020 · INEP", "Revalida 2022/1 (reaplicação) · INEP") ou, sem instituição, "Estação inédita".
+ * @param {{ origin_label?: string | null, edition?: string | null, reapplication?: boolean, institution?: string | null } | null} [station]
  * @returns {string}
  */
 export function originLabel(station) {
-  return sourceLabel(station) ?? "Estação inédita";
+  const gravada = typeof station?.origin_label === "string" ? station.origin_label.trim() : "";
+  return gravada || sourceLabel(station) || "Estação inédita";
 }
