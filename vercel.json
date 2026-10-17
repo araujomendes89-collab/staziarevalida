@@ -62,6 +62,14 @@
     {
       "path": "/api/play/cron",
       "schedule": "5 3 * * *"
+    },
+    {
+      "path": "/api/legal/email",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/legal/diaria",
+      "schedule": "20 4 * * *"
     }
   ]
 }
