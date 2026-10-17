@@ -4,7 +4,7 @@
 // o professor escolhido e o servidor diz o jeito: voz do professor, voz reserva (a voz ao vivo de antes) ou por escrito.
 import React from "react";
 import { useSession } from "../../session.jsx";
-import { nexusApi, tutorOpening, tutorServerStatus, withOpening } from "../api.js";
+import { nexusApi, tutorOpening, tutorPrepareOpening, tutorServerStatus, withOpening } from "../api.js";
 import { ERROR_CLASS, modeLabel } from "../labels.js";
 import { useRealtimeVoice } from "../useRealtimeVoice.js";
 import { StaziaVoiceMode } from "../voice/StaziaVoiceMode.jsx";
@@ -250,6 +250,11 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
     })();
   };
 
+  // abertura preparada (17/10): a escolha atual da entrada, para a abertura já estar pronta quando o aluno tocar em "Começar"
+  const prepareOpening = React.useCallback((personalityId, mode) => {
+    void tutorPrepareOpening(backend, startArgs(personalityId, mode, request));
+  }, [backend, request]);
+
   const takeOver = () => {
     const s = pending.current;
     if (!s || starting.current) return;
@@ -411,7 +416,7 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
   } else if (phase === "history") {
     body = <HistoryView sessions={sessions} onBack={toLobby} onOpen={fromHistory} onClose={overlay ? onClose : null} error={errorBox} />;
   } else {
-    body = <NexusLobby status={status} nexus={nexus} request={request} busy={busy} error={errorBox} onStart={begin} onHistory={showHistory} onListen={listen} onClose={overlay ? onClose : null} onPersonagem={savePersonagem} conta={conta} />;
+    body = <NexusLobby status={status} nexus={nexus} request={request} busy={busy} error={errorBox} onStart={begin} onHistory={showHistory} onListen={listen} onClose={overlay ? onClose : null} onPersonagem={savePersonagem} conta={conta} onPrepare={prepareOpening} />;
   }
   return <div className={`nx${overlay ? " nx--overlay" : ""}`}>{body}</div>;
 }

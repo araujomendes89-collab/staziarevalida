@@ -230,6 +230,18 @@ describe("Nexus: entrada", () => {
     expect(modes[0]).toHaveAttribute("aria-pressed", "false");
   });
 
+  it("abertura preparada (17/10): a escolha parada por um instante vai ao servidor; toques seguidos pedem só a última", async () => {
+    await mount();
+    const preparos = () => calls.filter((c) => c.url === "/api/tutor/opening/prepare").map((c) => c.body);
+    // a escolha com que a entrada abre (Durona, Perguntar ao Tutor)
+    await waitFor(() => expect(preparos()).toEqual([{ personality: "durona", mode: "livre", topic: null, question_id: null, context: { type: "free" } }]));
+    const modes = within(screen.getByRole("group", { name: "Modo" })).getAllByRole("button");
+    fireEvent.click(card("Tranquila"));
+    fireEvent.click(modes[3]);
+    await waitFor(() => expect(preparos()).toHaveLength(2));
+    expect(preparos()[1]).toEqual({ personality: "tranquila", mode: "perguntas", topic: null, question_id: null, context: { type: "weak_points" } });
+  });
+
   it("'Ouvir' só com amostra aprovada; toca a amostra guardada (nenhum /speech)", async () => {
     await mount();
     // a voz é do personagem: um só "Ouvir", com a voz da Stazia; o Stazi não tem amostra aprovada
