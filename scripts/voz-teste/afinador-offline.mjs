@@ -4,10 +4,15 @@
 // (src/novo/app/tutor/voice/pitchShift.js) e grava WAV para comparar de ouvido com a referência aprovada pelo dono (ffmpeg:
 // asetrate=24000*2^(3/12),aresample=24000,atempo=1/2^(3/12)). Não chama nenhuma API.
 //
+// Também passa a voz pelo TOCADOR de verdade (audioPlayer.js) com relógio simulado e os pedaços chegando no ritmo da fala (40 e
+// 100 ms), sem afinar e afinado: conta os buracos entre os pedaços agendados e grava a linha do tempo tocada
+// (zubenelgenubi-<jeito>-tocador-<ms>ms.wav), para ouvir o que o aluno ouviria.
+//
 // Uso: node scripts/voz-teste/afinador-offline.mjs [--semitons 3] [--entrada pasta] [--saida pasta]
 import fs from "node:fs";
 import path from "node:path";
 import { AfinadorStream } from "../../src/novo/app/tutor/voice/pitchShift.js";
+import { AudioPlayer } from "../../src/novo/app/tutor/voice/audioPlayer.js";
 
 const arg = (nome, padrao) => {
   const i = process.argv.indexOf(`--${nome}`);
@@ -107,4 +112,85 @@ for (const jeito of JEITOS) {
   let dif = 0;
   for (let i = 0; i < Math.min(saidas[0].length, saidas[1].length); i++) dif = Math.max(dif, Math.abs(saidas[0][i] - saidas[1][i]));
   console.log(`  ${jeito}: diferença máxima entre 100 ms e 40 ms = ${dif}`);
+}
+
+// ---- tocador com relógio simulado: pedaços chegando no ritmo da fala, fim da geração logo depois do último ----
+function tocadorTempoReal(amostras, taxa, ms, semitons) {
+  let agora = 0;
+  const relogios = new Map();
+  let id = 0;
+  const [st, ct] = [globalThis.setTimeout, globalThis.clearTimeout];
+  globalThis.setTimeout = (f, espera) => (relogios.set(++id, { em: agora + espera / 1000, f }), id);
+  globalThis.clearTimeout = (i) => relogios.delete(i);
+  const avancar = (t) => {
+    for (;;) {
+      let prox = null;
+      for (const [i, r] of relogios) if (r.em <= t && (!prox || r.em < prox[1].em)) prox = [i, r];
+      if (!prox) break;
+      relogios.delete(prox[0]);
+      agora = prox[1].em;
+      prox[1].f();
+    }
+    agora = t;
+  };
+  const agendados = [];
+  const ctx = {
+    state: "running",
+    get currentTime() {
+      return agora;
+    },
+    destination: {},
+    createGain: () => ({ gain: { value: 1 }, connect() {}, disconnect() {} }),
+    createBuffer: (_c, n, r) => {
+      const d = new Float32Array(n);
+      return { duration: n / r, getChannelData: () => d };
+    },
+    createBufferSource: () => ({ connect() {}, start(at) { agendados.push({ at, buffer: this.buffer }); }, stop() {} }),
+  };
+  try {
+    const p = new AudioPlayer(ctx, 1, null, { semitons });
+    let flushes = 0;
+    const flush = p.flush.bind(p);
+    p.flush = () => (flushes++, flush());
+    const tam = Math.round((taxa * ms) / 1000);
+    for (let i = 0; i < amostras.length; i += tam) {
+      avancar(i / taxa);
+      const pedaco = amostras.subarray(i, i + tam);
+      const b = Buffer.alloc(pedaco.length * 2);
+      for (let k = 0; k < pedaco.length; k++) b.writeInt16LE(Math.max(-32768, Math.min(32767, Math.round(pedaco[k] * 0x8000))), k * 2);
+      p.play(b.toString("base64"), taxa);
+    }
+    const doRelogio = flushes;
+    avancar(amostras.length / taxa);
+    p.flush();
+    avancar(agora + 5);
+    let buracos = 0;
+    let somaBuracos = 0;
+    for (let i = 1; i < agendados.length; i++) {
+      const g = agendados[i].at - (agendados[i - 1].at + agendados[i - 1].buffer.duration);
+      if (g > 1e-9) (buracos++, (somaBuracos += g));
+    }
+    const fim = agendados.at(-1).at + agendados.at(-1).buffer.duration;
+    const linha = new Float32Array(Math.ceil(fim * taxa) + 1);
+    for (const a of agendados) linha.set(a.buffer.getChannelData(0), Math.round(a.at * taxa));
+    return { buracos, somaBuracos, doRelogio, primeiro: agendados[0].at, fim, linha };
+  } finally {
+    globalThis.setTimeout = st;
+    globalThis.clearTimeout = ct;
+  }
+}
+
+console.log("\nTocador (audioPlayer.js) com os pedaços chegando no ritmo da fala:");
+for (const jeito of JEITOS) {
+  const { taxa, amostras } = lerWav(path.join(ENTRADA, `live-zubenelgenubi-${jeito}.wav`));
+  for (const ms of PEDACOS_MS) {
+    const sem0 = tocadorTempoReal(amostras, taxa, ms, 0);
+    const afin = tocadorTempoReal(amostras, taxa, ms, SEMITONS);
+    const destino = path.join(SAIDA, `zubenelgenubi-${jeito}-tocador-${ms}ms.wav`);
+    gravarWav(destino, afin.linha, taxa);
+    const f = (r) =>
+      `buracos ${r.buracos} (${(r.somaBuracos * 1000).toFixed(1)} ms), 1º som ${(r.primeiro * 1000).toFixed(1)} ms, fim ${r.fim.toFixed(3)} s, ` +
+      `fim solto pelo relógio no meio da fala ${r.doRelogio}`;
+    console.log(`  ${jeito} ${ms} ms | sem afinar: ${f(sem0)}\n  ${jeito} ${ms} ms | ${SEMITONS > 0 ? "+" : ""}${SEMITONS}: ${f(afin)} → ${path.basename(destino)}`);
+  }
 }

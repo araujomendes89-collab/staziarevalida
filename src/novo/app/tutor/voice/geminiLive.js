@@ -124,8 +124,11 @@ export async function openGeminiLive({ token, model, stream, volume = 1, handler
       }
       if (sc.inputTranscription?.text) h.onTranscript?.("student", sc.inputTranscription.text, Boolean(sc.inputTranscription.finished));
       if (sc.outputTranscription?.text) h.onTranscript?.("tutor", sc.outputTranscription.text, Boolean(sc.outputTranscription.finished));
+      // voz afinada: solta o finzinho que o afinador guardava assim que o modelo termina de gerar (o turno completo pode vir só
+      // quando o Google acha que a fala já tocou, tarde demais para emendar); no turno completo, de novo, sem efeito se já saiu
+      if (sc.generationComplete) player.flush();
       if (sc.turnComplete) {
-        player.flush(); // voz afinada: solta o finzinho que o afinador guardava
+        player.flush();
         h.onTurnComplete?.();
       }
     }

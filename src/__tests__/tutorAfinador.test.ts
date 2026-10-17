@@ -3,7 +3,9 @@
  * +3 semitons no mesmo ritmo (decisão do dono, 17/10/2026); a Stazia (0 semitons) segue bit a bit no caminho de antes.
  * Confere: 0 = devolve a entrada; duração igual; tom sobe 3 semitons; mesmo resultado com pedaços de 40 ms, 100 ms ou inteiro;
  * reiniciar zera; sem NaN e sem saturar; tocador afina antes de agendar, solta o fim no turno completo, cala na hora no stop();
- * geminiLive afina e solta o fim no turno completo.
+ * geminiLive afina e solta o fim no fim da geração. Tocador com relógio falso e pedaços chegando no ritmo da fala (40 e 100 ms, com
+ * e sem atraso de rede): a voz afinada tem os mesmos buracos da voz sem afinar (nenhum, sem atraso), o afinador não recomeça no
+ * meio da fala e o que ele segura vira só ~34 ms de atraso no começo.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AfinadorStream, afinarTudo, definirSemitonsDaVoz, normalizarSemitons, semitonsDaVoz } from "../novo/app/tutor/voice/pitchShift.js";
@@ -125,6 +127,24 @@ describe("AfinadorStream", () => {
     expect(fatiar(x, 1).maxRetidas / TAXA).toBeLessThanOrEqual(0.034);
   });
 
+  it("latenciaMax: retidas nunca passa dela, com qualquer pedaço e afinação (o tocador usa como folga)", () => {
+    const x = vozFalsa(1);
+    for (const sem of [3, -3, 7, 12]) {
+      for (const tam of [1, 37, 960, 2400]) {
+        const a = new AfinadorStream({ semitons: sem, taxa: TAXA });
+        let max = 0;
+        for (let i = 0; i < x.length; i += tam) {
+          a.processar(x.subarray(i, i + tam));
+          max = Math.max(max, a.retidas);
+        }
+        expect(max).toBeLessThanOrEqual(a.latenciaMax);
+        if (tam === 1) expect(a.latenciaMax - max).toBeLessThan(0.001 * TAXA); // e é justa (amostra a amostra chega a menos de 1 ms dela)
+      }
+    }
+    expect(new AfinadorStream({ semitons: 3, taxa: TAXA }).latenciaMax / TAXA).toBeLessThan(0.035);
+    expect(new AfinadorStream({ semitons: 0, taxa: TAXA }).latenciaMax).toBe(0);
+  });
+
   it("reiniciar() zera o estado: depois dele, o pedaço sai igual ao de um afinador novo", () => {
     const x = vozFalsa(0.4);
     const a = new AfinadorStream({ semitons: 3, taxa: TAXA });
@@ -193,6 +213,12 @@ class FakeCtx {
     return Promise.resolve();
   }
 }
+/** O relógio do contexto acompanha o relógio falso do vitest (Date.now), como no navegador. */
+const comRelogio = (ctx: FakeCtx) => {
+  const t0 = Date.now();
+  Object.defineProperty(ctx, "currentTime", { get: () => (Date.now() - t0) / 1000 });
+  return Object.assign(ctx, { t0 });
+};
 const tocado = (ctx: FakeCtx) => juntar(ctx.sources.map((s) => s.buffer.getChannelData(0)));
 const pedacosB64 = (x: Float32Array, tam: number) => {
   const out: string[] = [];
@@ -236,16 +262,102 @@ describe("AudioPlayer com afinação", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("+3: sem pedaço novo, o relógio solta o fim antes de a fila acabar", () => {
+  it("+3: sem fim de geração nem turno completo, o relógio de reserva só solta o fim depois de a fila acabar e passar 100 ms", () => {
     vi.useFakeTimers();
-    const ctx = new FakeCtx();
+    const ctx = comRelogio(new FakeCtx());
     const p = new AudioPlayer(ctx as any, 1, null, { semitons: 3 });
     p.play(pcm16Base64(vozFalsa(0.2)));
     const antes = ctx.sources.length;
     expect(vi.getTimerCount()).toBe(1);
-    vi.advanceTimersByTime(1000);
+    const fimDaFila = p.next * 1000;
+    vi.advanceTimersByTime(fimDaFila + 90);
+    expect(ctx.sources.length).toBe(antes); // a fila acabou há menos de 100 ms: ainda segura (pode vir pedaço)
+    vi.advanceTimersByTime(20);
     expect(ctx.sources.length).toBe(antes + 1);
     expect(tocado(ctx).length).toBe(Math.round(0.2 * TAXA));
+  });
+
+  // Pedaços chegando no ritmo da fala (relógio falso), como na ligação de verdade. A voz afinada tem que ter exatamente os mesmos
+  // buracos da voz sem afinar (nenhum, sem atraso de rede), o afinador não pode recomeçar no meio da fala, e o que ele segura vira
+  // só um atraso fixo no começo (latenciaMax ≈ 34 ms).
+  const tempoReal = (sem: number, x: Float32Array, tam: number, veloc = 1, tremorMs = 0) => {
+    vi.useFakeTimers();
+    const ctx = comRelogio(new FakeCtx());
+    const p = new AudioPlayer(ctx as any, 1, null, { semitons: sem });
+    let flushes = 0;
+    const flushOriginal = p.flush.bind(p);
+    p.flush = () => {
+      flushes++;
+      flushOriginal();
+    };
+    let semente = 11;
+    let t = 0;
+    const b64 = pedacosB64(x, tam);
+    for (const b of b64) {
+      semente = (semente * 16807) % 2147483647;
+      const tremor = ((semente / 2147483647) * 2 - 1) * tremorMs;
+      const alvo = Math.max(Date.now() - ctx.t0, Math.round(t + tremor));
+      vi.advanceTimersByTime(alvo - (Date.now() - ctx.t0));
+      p.play(b);
+      t += (base64ToFloat32(b).length / TAXA / veloc) * 1000;
+    }
+    const doRelogio = flushes;
+    p.flush(); // turno completo
+    const buracos: number[] = [];
+    for (let i = 1; i < ctx.sources.length; i++) {
+      const g = ctx.sources[i].at - (ctx.sources[i - 1].at + ctx.sources[i - 1].buffer.duration);
+      if (g > 1e-9) buracos.push(g);
+      expect(g).toBeGreaterThan(-1e-9); // nunca sobrepõe
+    }
+    return { ctx, p, buracos, doRelogio, entrada: juntar(b64.map(base64ToFloat32)), primeiro: ctx.sources[0].at };
+  };
+
+  it("+3 com pedaços de 40 e 100 ms chegando no ritmo da fala: zero buracos, sem recomeçar o afinador, só ~34 ms de atraso", () => {
+    const x = vozFalsa(1.5);
+    for (const tam of [960, 2400]) {
+      for (const veloc of [1, 1.25, 1.5]) {
+        const sem0 = tempoReal(0, x, tam, veloc);
+        const mais3 = tempoReal(3, x, tam, veloc);
+        expect(sem0.buracos).toEqual([]);
+        expect(mais3.buracos).toEqual([]);
+        expect(mais3.doRelogio).toBe(0);
+        // o afinador correu a fala inteira sem recomeçar: o som é igual ao do áudio inteiro afinado de uma vez
+        expect(Array.from(tocado(mais3.ctx))).toEqual(Array.from(afinarTudo(mais3.entrada, { semitons: 3, taxa: TAXA })));
+        const atraso = mais3.primeiro - sem0.primeiro;
+        expect(atraso).toBeCloseTo(mais3.p.afinador.latenciaMax / TAXA, 6);
+        expect(atraso).toBeLessThan(0.035);
+        // e a fala termina o mesmo atraso depois (o ritmo é o mesmo)
+        expect(mais3.p.next - sem0.p.next).toBeCloseTo(atraso, 6);
+      }
+    }
+  });
+
+  it("+3 com atraso de rede (tremor de ±15 ms): os mesmos buracos da voz sem afinar, nenhum a mais", () => {
+    const x = vozFalsa(2);
+    for (const tam of [960, 2400]) {
+      const sem0 = tempoReal(0, x, tam, 1, 15);
+      const mais3 = tempoReal(3, x, tam, 1, 15);
+      expect(sem0.buracos.length).toBeGreaterThan(0); // o cenário tem buraco de verdade
+      expect(mais3.buracos.length).toBe(sem0.buracos.length);
+      mais3.buracos.forEach((g, i) => expect(g).toBeCloseTo(sem0.buracos[i], 6));
+      expect(mais3.doRelogio).toBe(0);
+    }
+  });
+
+  it("+3: rede para menos que a reserva no meio da fala → o afinador não recomeça e o resto emenda (o buraco é só o da rede)", () => {
+    vi.useFakeTimers();
+    const ctx = comRelogio(new FakeCtx());
+    const p = new AudioPlayer(ctx as any, 1, null, { semitons: 3 });
+    const x = vozFalsa(0.6);
+    const b64 = pedacosB64(x, 2400);
+    for (const b of b64.slice(0, 3)) p.play(b);
+    const fimDaFila = p.next * 1000;
+    vi.advanceTimersByTime(fimDaFila + 60); // a fila acabou há 60 ms
+    expect(p.afinador.retidas).toBeGreaterThan(0);
+    for (const b of b64.slice(3)) p.play(b);
+    p.flush();
+    const entrada = juntar(b64.map(base64ToFloat32));
+    expect(Array.from(tocado(ctx))).toEqual(Array.from(afinarTudo(entrada, { semitons: 3, taxa: TAXA })));
   });
 
   it("stop() cala na hora e descarta o que o afinador guardava (nada da fala cortada sai depois)", () => {
@@ -311,9 +423,13 @@ describe("geminiLive com a voz afinada", () => {
     const msg = (b: string) => ({ serverContent: { modelTurn: { parts: [{ inlineData: { data: b, mimeType: "audio/pcm;rate=24000" } }] } } });
     const b64 = pedacosB64(x, 2400);
     for (const b of b64) conns[0].cb.onmessage(msg(b));
+    const entrada = juntar(b64.map(base64ToFloat32));
+    expect(tocado(ctx).length).toBeLessThan(entrada.length);
+    // o fim sai já no fim da geração (o turno completo pode chegar tarde); o turno completo depois não acrescenta nada
+    conns[0].cb.onmessage({ serverContent: { generationComplete: true } });
+    expect(tocado(ctx).length).toBe(entrada.length);
     conns[0].cb.onmessage({ serverContent: { turnComplete: true } });
     expect(onTurnComplete).toHaveBeenCalled();
-    const entrada = juntar(b64.map(base64ToFloat32));
     expect(Array.from(tocado(ctx))).toEqual(Array.from(afinarTudo(entrada, { semitons: 3, taxa: TAXA })));
     // interrupção no meio da próxima fala
     for (const b of b64.slice(0, 2)) conns[0].cb.onmessage(msg(b));

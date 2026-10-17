@@ -13,8 +13,10 @@
 // estalo na emenda e o resultado é IGUAL qualquer que seja o tamanho dos pedaços (100 ms, 40 ms ou o áudio inteiro).
 //
 // Latência: o afinador segura o fim do que já recebeu até ter amostras para a próxima janela. Com +3 semitons a 24 kHz, ele segura
-// no máximo ~33 ms (no começo de cada fala é o que a voz demora a mais para sair; depois, o ritmo é o mesmo). `finalizar()` solta
-// esse fim (completando com silêncio) e deixa a duração total exatamente igual à da entrada; o tocador chama no fim do turno.
+// no máximo `latenciaMax` (~34 ms). Quanto ele segura varia de um pedaço para o outro (de ~10 a ~34 ms); por isso o tocador agenda
+// a fala afinada com essa folga fixa a mais (audioPlayer.js): a voz sai ~34 ms depois e, a partir daí, os pedaços emendam sem
+// buraco mesmo chegando no ritmo da fala. `finalizar()` solta o fim (completando com silêncio) e deixa a duração total exatamente
+// igual à da entrada; o tocador chama no fim da geração/turno.
 // semitons = 0: `processar` devolve a própria entrada, sem tocar em nada (a Stazia segue bit a bit igual ao caminho de hoje).
 
 const ZEROS_SINC = 16;
@@ -127,6 +129,16 @@ export class AfinadorStream {
   /** Quantas amostras de entrada ainda estão seguras aqui dentro (entrada recebida − saída entregue). */
   get retidas() {
     return this.ativo ? this.totalEntrada - this.totalSaida : 0;
+  }
+
+  /**
+   * O máximo que `retidas` pode chegar, em amostras de entrada (qualquer tamanho de pedaço). Conta: a próxima janela do WSOLA só
+   * sai quando a reamostragem tem até a + busca + max(Hs, Hs/r) + N amostras; isso pede r·(…) + W de entrada, e Hs já saíram.
+   */
+  get latenciaMax() {
+    if (!this.ativo) return 0;
+    const { r, busca, Hs, N, W } = this;
+    return Math.ceil(r * (busca + Math.max(Hs, Hs / r) + N + 1)) + W - Hs + 2;
   }
 
   /** Pedaço de voz (Float32, −1..1) → pedaço afinado (pode vir mais curto: o fim fica guardado até o próximo). */

@@ -5,6 +5,12 @@
 // o caminho é exatamente o de antes. O mp3 do professor (playEncoded) nunca é afinado.
 import { AfinadorStream, normalizarSemitons, seguirSemitonsDaVoz, semitonsDaVoz } from "./pitchShift.js";
 
+// Folga para agendar o primeiro pedaço de uma fala (como sempre foi).
+const FOLGA_S = 0.03;
+// Relógio de reserva da voz afinada: se nem o fim da geração nem o turno completo chegarem, solta o fim guardado no afinador só
+// depois de a fila de som acabar e passar este tempo sem pedaço novo (fala acabou de verdade). Nunca no meio da fala.
+const ESPERA_RESERVA_MS = 100;
+
 /** base64 de PCM 16 bits → Float32. */
 export function base64ToFloat32(b64) {
   const bin = atob(b64);
@@ -74,17 +80,29 @@ export class AudioPlayer {
     if (this.ctx.state === "suspended") this.ctx.resume?.()?.catch?.(() => {});
     let data = base64ToFloat32(b64);
     if (this.semitons) {
-      // afinada: o afinador devolve o pedaço já afinado (o finzinho, ~30 ms, fica guardado para emendar com o próximo)
-      if (!this.afinador || this.afinador.taxa !== rate) this.afinador = new AfinadorStream({ semitons: this.semitons, taxa: rate });
-      data = this.afinador.processar(data);
-      this._agendar(data, rate);
+      // afinada: o afinador devolve o pedaço já afinado (o finzinho, de ~10 a ~34 ms, fica guardado para emendar com o próximo).
+      // Taxa nova no meio: o que o afinador antigo guardava sai antes.
+      if (this.afinador && this.afinador.taxa !== rate) {
+        this.flush();
+        this.afinador = null;
+      }
+      if (!this.afinador) this.afinador = new AfinadorStream({ semitons: this.semitons, taxa: rate });
+      const a = this.afinador;
+      // Quando a fila está vazia (começo da fala, ou a rede atrasou), agenda com a folga de sempre MAIS o que o afinador ainda pode
+      // vir a segurar (latenciaMax − retidas). Assim a fala afinada sai ~34 ms depois e, dali em diante, tem exatamente os mesmos
+      // buracos da voz sem afinar (nenhum, se os pedaços chegam no ritmo da fala): o que fica retido vira atraso, não buraco.
+      const extra = (a.latenciaMax - a.retidas) / rate;
+      data = a.processar(data);
+      // nada saiu ainda (pedaço miúdo no começo): marca onde a fala vai começar, para o próximo pedaço contar a folga certa
+      if (data.length) this._agendar(data, rate, extra);
+      else this.next = Math.max(this.ctx.currentTime + FOLGA_S + extra, this.next);
       this._armarRelogio();
       return;
     }
     this._agendar(data, rate);
   }
   /**
-   * Fim da fala (turno completo) ou fila de som acabando sem pedaço novo: solta o que o afinador guardou, logo depois do último
+   * Fim da fala (geração ou turno completo; ou o relógio de reserva): solta o que o afinador guardou, logo depois do último
    * pedaço, e o afinador recomeça do zero. Sem afinação, não faz nada.
    */
   flush() {
@@ -97,15 +115,16 @@ export class AudioPlayer {
   _armarRelogio() {
     this._pararRelogio();
     if (!this.afinador?.retidas) return;
-    // solta o fim um pouco antes de a fila acabar (se chegar pedaço novo antes, o relógio recomeça); nunca antes de 50 ms, para
-    // um pedaço miúdo no começo da fala não fazer o afinador recomeçar a cada pedaço
-    const ms = Math.max(50, (this.next - this.ctx.currentTime - 0.02) * 1000);
+    // reserva: só depois de a fila acabar E passar ESPERA_RESERVA_MS sem pedaço novo (cada pedaço novo recomeça o relógio). Se a
+    // rede atrasar menos que isso, o afinador NÃO recomeça: o pedaço seguinte emenda pela folga do play().
+    const ms = Math.max(0, this.next - this.ctx.currentTime) * 1000 + ESPERA_RESERVA_MS;
     this.esvaziar = setTimeout(() => {
       this.esvaziar = null;
       this.flush();
     }, ms);
   }
-  _agendar(data, rate) {
+  /** `extra` (s): folga a mais quando a fila está vazia (só a voz afinada usa; 0 = caminho original). */
+  _agendar(data, rate, extra = 0) {
     if (!data.length) return;
     // o pedaço vem na taxa dele; o contexto toca na taxa dele (o navegador converte)
     const buf = this.ctx.createBuffer(1, data.length, rate);
@@ -113,7 +132,7 @@ export class AudioPlayer {
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
     src.connect(this.gain);
-    const at = Math.max(this.ctx.currentTime + 0.03, this.next);
+    const at = Math.max(this.ctx.currentTime + FOLGA_S + extra, this.next);
     src.start(at);
     this.next = at + buf.duration;
     this._track(src);

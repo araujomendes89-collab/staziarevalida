@@ -68,8 +68,11 @@ export async function openGeminiPonte({ ponte, stream, volume = 1, handlers = {}
         player.stop();
         h.onInterrupted?.();
         break;
+      case "geracao_completa":
+        player.flush(); // voz afinada: solta o finzinho que o afinador guardava assim que o modelo termina de gerar
+        break;
       case "turno_completo":
-        player.flush(); // voz afinada: solta o finzinho que o afinador guardava
+        player.flush(); // e de novo no turno completo (sem efeito se já saiu)
         h.onTurnComplete?.();
         break;
       case "ferramentas":
