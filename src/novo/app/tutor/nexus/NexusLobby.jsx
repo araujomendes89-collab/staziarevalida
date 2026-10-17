@@ -4,11 +4,12 @@
 // 17/10/2026: a esfera deu lugar ao personagem. O aluno escolhe PRIMEIRO o personagem (Stazi ou Stazia) e depois uma das 2
 // personalidades dele (Stazi: Durão e Tranquilo; Stazia: Durona e Tranquila). A voz vem do personagem, não é escolhida à parte.
 // O personagem fica no perfil do aluno (vale em qualquer aparelho): a tela abre com o do perfil e, ao tocar num personagem, grava no
-// perfil sem travar a tela (`onPersonagem`); se falhar, a escolha fica no aparelho e a tela tenta de novo na próxima vez.
+// perfil sem travar a tela (`onPersonagem`); se falhar, o toque fica pendente no aparelho, separado por conta (`conta`), e a tela
+// tenta de novo na próxima vez, só pela mesma conta. A cópia do aparelho (ou a chave da versão antiga) nunca passa por cima do perfil.
 import React from "react";
 import { PersonagemTutor } from "../personagens/PersonagemTutor.jsx";
 import { EscolhaPersonagem } from "../personagens/EscolhaPersonagem.jsx";
-import { PERSONAGENS, PERSONALIDADES, artigoDe, gravarPersonagem, marcarNoPerfil, personagemDe, personagemInicial, personagemPendente, personagemValido } from "../personagens/personagens.js";
+import { PERSONAGENS, PERSONALIDADES, artigoDe, gravarPersonagem, marcarNoPerfil, marcarPendente, personagemDe, personagemInicial, personagemPendente, personagemValido } from "../personagens/personagens.js";
 import { modeLabel } from "../labels.js";
 import { TutorQuota } from "../TutorQuota.jsx";
 
@@ -35,7 +36,8 @@ export function voiceLine(nexus, personalityId) {
 const DURAS = new Set(Object.values(PERSONALIDADES).filter((p) => p.duro).map((p) => p.id));
 
 // `onPersonagem(id)`: grava o personagem no perfil (app_tutor_set_character) e devolve as preferências; sem ele, fica só no aparelho.
-export function NexusLobby({ status, nexus, request = null, busy = false, error = null, onStart, onHistory, onListen, onClose = null, duronaSettings = null, onPersonagem = null }) {
+// `conta`: o id da conta logada; o toque que o perfil ainda não confirmou fica guardado só para ela (sem conta, nada fica pendente).
+export function NexusLobby({ status, nexus, request = null, busy = false, error = null, onStart, onHistory, onListen, onClose = null, duronaSettings = null, onPersonagem = null, conta = null }) {
   const professors = status.personalities ?? [];
   // o perfil pode trocar a personalidade preferida quando o aluno troca de personagem (vai para a calma do personagem novo)
   const [prefPerfil, setPrefPerfil] = React.useState(null);
@@ -43,25 +45,27 @@ export function NexusLobby({ status, nexus, request = null, busy = false, error 
   const prefId = professors.some((p) => p.id === prefBase) ? prefBase : null;
   const doPerfil = personagemValido(status.preferences?.character);
   // perfil > aparelho; sem nenhum dos dois, abre no personagem do professor que o aluno já usava (ou no Stazi)
-  const [pers, setPers] = React.useState(() => personagemInicial(doPerfil));
+  const [pers, setPers] = React.useState(() => personagemInicial(conta, doPerfil));
   const envio = React.useRef(0);
   const salvarNoPerfil = React.useCallback((id) => {
     if (!onPersonagem) return;
     const n = ++envio.current;
-    // sem travar a tela: falhou, a escolha fica no aparelho (pendente) e vai de novo na próxima vez que a entrada abrir
+    // sem travar a tela: falhou, o toque fica pendente para esta conta e vai de novo na próxima vez que a entrada abrir
+    marcarPendente(conta, id);
     Promise.resolve()
       .then(() => onPersonagem(id))
       .then((r) => {
         if (n !== envio.current) return; // o aluno já tocou em outro: vale o último toque
-        marcarNoPerfil(id);
+        marcarNoPerfil(conta, id);
         if (r?.personality_id) setPrefPerfil(r.personality_id);
       })
       .catch(() => {});
-  }, [onPersonagem]);
+  }, [onPersonagem, conta]);
   React.useEffect(() => {
-    const pendente = personagemPendente();
-    if (pendente) salvarNoPerfil(pendente);
-    else if (doPerfil) marcarNoPerfil(doPerfil); // cópia no aparelho, para a próxima abrir sem piscar
+    const pendente = personagemPendente(conta);
+    // o toque pendente desta conta que o perfil já tem (a conversa começou com ele, por exemplo) só deixa de ser pendente
+    if (pendente && pendente !== doPerfil) salvarNoPerfil(pendente);
+    else if (doPerfil) marcarNoPerfil(conta, doPerfil); // cópia no aparelho, para a próxima abrir sem piscar
     // só ao abrir a entrada
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

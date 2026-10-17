@@ -9,7 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const backend: any = { rpc: vi.fn(), accessToken: async () => "token-de-teste" };
-vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot: { role: "student" } }) }));
+const ALUNO = "55555555-5555-4555-8555-555555555555";
+vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, user: { id: ALUNO }, boot: { role: "student" } }) }));
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
 const audio = vi.hoisted(() => ({ unlock: vi.fn(() => null), order: [] as string[] }));
 vi.mock("../novo/app/tutor/voice/audioUnlock.js", () => ({
@@ -159,6 +160,51 @@ describe("Nexus: entrada", () => {
     await waitFor(() => expect(rpcCalls.filter((c) => c.fn === "app_tutor_set_character").map((c) => c.args)).toEqual([{ p_character: "stazia" }]));
     await waitFor(() => expect(card("Tranquila")).toHaveAttribute("aria-pressed", "true"));
     expect(rpcCalls.some((c) => c.fn === "app_tutor_start")).toBe(false); // gravar o personagem não começa conversa
+  });
+
+  it("o personagem gravado continua marcado depois de sair da entrada e voltar (Histórico e Voltar), e o status é relido", async () => {
+    let perfil: any = { personality_id: "acolhedor", profanity: "off", chosen: true, character: "stazi" };
+    rpcImpl.app_tutor_status = () => status({ preferences: { ...perfil } });
+    rpcImpl.app_tutor_set_character = ({ p_character }: any) => (perfil = { personality_id: p_character === "stazia" ? "tranquila" : "acolhedor", profanity: "off", chosen: true, character: p_character });
+    await mount();
+    expect(screen.getByRole("button", { name: /^Stazi\b(?!a)/ })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: /Stazia/ }));
+    await waitFor(() => expect(rpcCalls.filter((c) => c.fn === "app_tutor_status")).toHaveLength(2)); // relido depois de gravar
+    fireEvent.click(screen.getByRole("button", { name: "Histórico" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Voltar para a entrada" }));
+    await screen.findByRole("heading", { name: "Escolha seu professor" });
+    expect(screen.getByRole("button", { name: /^Stazia\b/ })).toHaveAttribute("aria-pressed", "true");
+    expect(card("Tranquila")).toHaveAttribute("aria-pressed", "true");
+    expect(window.localStorage.getItem("smn-tutor-personagem")).toBe("stazia");
+    expect(rpcCalls.filter((c) => c.fn === "app_tutor_set_character")).toHaveLength(1);
+  });
+
+  it("mesmo antes de o status relido chegar, voltar à entrada mostra o personagem que o perfil confirmou", async () => {
+    rpcImpl.app_tutor_status = () => status({ preferences: { personality_id: "acolhedor", profanity: "off", chosen: true, character: "stazi" } });
+    rpcImpl.app_tutor_set_character = () => ({ personality_id: "tranquila", profanity: "off", chosen: true, character: "stazia" });
+    await mount();
+    rpcImpl.app_tutor_status = () => new Promise(() => {}); // a releitura não volta
+    fireEvent.click(screen.getByRole("button", { name: /Stazia/ }));
+    await waitFor(() => expect(rpcCalls.filter((c) => c.fn === "app_tutor_status")).toHaveLength(2));
+    fireEvent.click(screen.getByRole("button", { name: "Histórico" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Voltar para a entrada" }));
+    await screen.findByRole("heading", { name: "Escolha seu professor" });
+    expect(screen.getByRole("button", { name: /^Stazia\b/ })).toHaveAttribute("aria-pressed", "true");
+    expect(card("Tranquila")).toHaveAttribute("aria-pressed", "true");
+    expect(window.localStorage.getItem("smn-tutor-personagem")).toBe("stazia");
+  });
+
+  it("a gravação do personagem falhou, mas a conversa começou com ele: o toque deixa de ser pendente", async () => {
+    rpcImpl.app_tutor_status = () => status({ preferences: { personality_id: "acolhedor", profanity: "off", chosen: true, character: "stazi" } });
+    rpcImpl.app_tutor_set_character = () => { throw new Error("sem rede"); };
+    rpcImpl.app_tutor_start = () => session({ personality: { id: "tranquila", name: "Tranquila", emoji: "😌", voice: {}, character: "stazia" } });
+    await mount();
+    fireEvent.click(screen.getByRole("button", { name: /Stazia/ }));
+    await waitFor(() => expect(window.localStorage.getItem(`smn-tutor-personagem-pendente:${ALUNO}`)).toBe("stazia"));
+    fireEvent.click(startButton());
+    await waitFor(() => expect(rpcCalls.some((c) => c.fn === "app_tutor_start")).toBe(true));
+    await waitFor(() => expect(window.localStorage.getItem(`smn-tutor-personagem-pendente:${ALUNO}`)).toBeNull());
+    expect(window.localStorage.getItem("smn-tutor-personagem")).toBe("stazia");
   });
 
   it("na tela do app o título não se repete (o topo do app já diz 'Stazia Tutor'); por cima de outra tela, o título aparece", async () => {
