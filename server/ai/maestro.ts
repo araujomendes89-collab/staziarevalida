@@ -60,7 +60,7 @@ export interface MaestroDeps {
 }
 
 export interface MaestroOrigin {
-  source: "central" | "analise" | "conferencia" | "aula" | "podcast" | "assistente" | "fontes" | "questoes_staziamed" | "similaridade" | "vigilancia";
+  source: "central" | "analise" | "conferencia" | "aula" | "podcast" | "assistente" | "fontes" | "questoes_staziamed" | "similaridade" | "vigilancia" | "treino";
   itemId?: string | null;
   actorId?: string | null;
 }
