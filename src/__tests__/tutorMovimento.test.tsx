@@ -1,7 +1,7 @@
 // Movimento natural dos personagens do Tutor: função pura do tempo, com semente. Testa troca de pose, vida contínua (respiração,
 // balanço, piscar irregular), boca (ataque rápido, queda lenta, histerese), amplitude por intensidade e emoção, e movimento reduzido.
 import { describe, expect, it } from "vitest";
-import { quadro, piscada, seguidorVoz, dinamicaPose, TROCA_MS, PERMANENCIA_MS, BOCA_SEGURA_MS, opacidadesTroca, aparenciaBoca, geometriaBoca, posicaoNaBoca } from "../novo/app/tutor/personagens/movimento.js";
+import { quadro, piscada, seguidorVoz, dinamicaPose, TROCA_MS, PERMANENCIA_MS, BOCA_SEGURA_MS, opacidadesTroca, aparenciaBoca, geometriaBoca, posicaoNaBoca, zonasOlhos, NUCLEO_OLHOS } from "../novo/app/tutor/personagens/movimento.js";
 import { ADIANTO_BOCA_S } from "../novo/app/tutor/personagens/usePersonagemAnimacao.js";
 import { spritePose } from "../novo/app/tutor/personagens/sprites.js";
 import { AudioPlayer, nivelDoFluxo, rmsPorBloco } from "../novo/app/tutor/voice/audioPlayer.js";
@@ -257,6 +257,44 @@ describe("desenho da boca (sem imagem nova, sem desencaixe)", () => {
       }
       expect(posicaoNaBoca(g, s.boca!.h, 1)).toBeCloseTo(s.boca!.h, 5); // aberta = recorte inteiro, no lugar
     }
+  });
+
+  // 17/10/2026, "agora os olhos estão com o mesmo problema": o recorte da piscada trazia as sobrancelhas (3 a 6 px lógicos mais
+  // baixas no quadro de olhos fechados) e, na pose base, a boca de outro jeito; ao piscar, tudo isso pulava. A piscada agora só
+  // aparece nas zonas dos olhos (manifest olhos.zonas), medido no navegador por scripts/olhos-alinhamento/medir.mjs.
+  const COM_PISCADA = ["stazi", "stazia"].flatMap((id) => ["base", "falando", "ouvindo"].map((pose) => [id, pose] as const));
+
+  it("piscada: toda pose com olhos tem uma zona por olho, dentro do recorte e longe da faixa das sobrancelhas", () => {
+    expect(NUCLEO_OLHOS).toBeGreaterThan(0.6);
+    expect(NUCLEO_OLHOS).toBeLessThan(1);
+    for (const [id, pose] of COM_PISCADA) {
+      const s = spritePose(id, pose)!;
+      const o = s.olhos!;
+      const zonas = zonasOlhos(o);
+      expect(zonas, `${id} ${pose}: manifest sem olhos.zonas`).toBeTruthy();
+      expect(zonas!.length, `${id} ${pose}`).toBe(2);
+      const [esq, dir] = [...zonas!].sort((a, b) => a.cx - b.cx);
+      expect(dir.cx - esq.cx, `${id} ${pose}: dois olhos separados`).toBeGreaterThan(esq.rx + dir.rx);
+      for (const z of zonas!) {
+        expect(z.cx - z.rx, `${id} ${pose}`).toBeGreaterThan(-z.rx * 0.5);
+        expect(z.cx + z.rx).toBeLessThan(o.w + z.rx * 0.5);
+        // o topo do recorte é a sobrancelha (que muda de lugar no quadro de olhos fechados): fica fora da zona
+        expect(z.cy - z.ry, `${id} ${pose}: a zona pega o topo do recorte (sobrancelha)`).toBeGreaterThan(o.h * 0.1);
+        // olho acima do meio do focinho (a boca, que muda na pose base, fica de fora)
+        expect(z.cy, `${id} ${pose}`).toBeLessThan(s.ny - o.y);
+        expect(o.y + z.cy + z.ry, `${id} ${pose}: a zona desce até a boca`).toBeLessThan(s.ny + 25);
+      }
+      // a piscada cobre bem menos que o recorte inteiro (o recorte antigo aparecia inteiro)
+      const area = zonas!.reduce((t, z) => t + Math.PI * z.rx * z.ry, 0);
+      expect(area / (o.w * o.h), `${id} ${pose}`).toBeLessThan(0.6);
+    }
+  });
+
+  it("piscada sem zonas no manifesto: recorte inteiro, como antes (sem quebrar)", () => {
+    expect(zonasOlhos(undefined)).toBeNull();
+    expect(zonasOlhos({ zonas: [] })).toBeNull();
+    expect(zonasOlhos({ zonas: [{ cx: 1, cy: 2, rx: 0, ry: 3 }] })).toBeNull();
+    expect(zonasOlhos({ zonas: [{ cx: 1, cy: 2, rx: 3, ry: 3 }] })).toHaveLength(1);
   });
 
   it("sem a linha da boca no manifesto, cai no jeito antigo (dobra no focinho) sem quebrar", () => {

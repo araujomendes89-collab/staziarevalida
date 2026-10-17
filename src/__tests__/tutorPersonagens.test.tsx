@@ -326,6 +326,51 @@ describe("componentes", () => {
     }
   });
 
+  // 17/10/2026, "agora os olhos estão com o mesmo problema": a piscada só pode aparecer nos olhos (as sobrancelhas e a boca do
+  // quadro de olhos fechados estão em outro lugar), no lugar exato da pose, na versão cheia e na "meia".
+  it("2D: piscada no lugar da pose (cheia e meia) e só nas zonas dos olhos (sem sobrancelha nem boca)", async () => {
+    const { PersonagemTutor2D } = await import("../novo/app/tutor/personagens/PersonagemTutor2D.jsx");
+    const { NUCLEO_OLHOS } = await import("../novo/app/tutor/personagens/movimento.js");
+    const num = (v: string) => (/^0(px)?$/.test(v) ? 0 : Number(/calc\((-?[\d.]+) \* var\(--tp-u\)\)/.exec(v)?.[1]));
+    const dpr = window.devicePixelRatio;
+    try {
+      for (const [densidade, meia] of [[2, false], [1, true]] as const) {
+        Object.defineProperty(window, "devicePixelRatio", { value: densidade, configurable: true });
+        for (const id of ["stazi", "stazia"]) {
+          for (const [estado, chave] of [["idle", "base"], ["speaking", "falando"], ["listening", "ouvindo"]]) {
+            const s = spritePose(id, chave)!;
+            const o = s.olhos!;
+            const { container, unmount } = render(<PersonagemTutor2D personagem={id} conversationState={estado} emotion="neutral" emotionIntensity={0.3} time={4000} />);
+            const caso = `${id} ${chave} ${meia ? "meia" : "cheia"}`;
+            const pose = container.querySelector(".tp__pose--atual .tp__img") as HTMLImageElement;
+            fireEvent.load(pose);
+            expect(container.querySelector(".tp__pose--atual")?.getAttribute("data-pose"), caso).toBe(chave);
+            const olhos = [...container.querySelectorAll(".tp__pose--atual img")].find((i) => /olhos/.test(i.getAttribute("src") ?? "")) as HTMLImageElement;
+            expect(olhos, caso).toBeTruthy();
+            expect(olhos.getAttribute("src")?.includes(".meia."), caso).toBe(meia);
+            expect(pose.getAttribute("src")?.includes(".meia."), caso).toBe(meia);
+            expect(num(olhos.style.left), caso).toBeCloseTo(o.x, 1);
+            expect(num(olhos.style.top), caso).toBeCloseTo(o.y, 1);
+            expect(num(olhos.style.width), caso).toBeCloseTo(o.w, 1);
+            expect(num(olhos.style.height), caso).toBeCloseTo(o.h, 1);
+            // máscara: uma elipse por olho, nos números do manifest (sem ela, a sobrancelha e a boca do quadro fechado aparecem)
+            const mascara = olhos.style.maskImage || (olhos.style as any).webkitMaskImage || olhos.getAttribute("style") || "";
+            const elipses = [...mascara.matchAll(/radial-gradient\(ellipse calc\(([\d.]+) \* var\(--tp-u\)\) calc\(([\d.]+) \* var\(--tp-u\)\) at calc\(([\d.]+) \* var\(--tp-u\)\) calc\(([\d.]+) \* var\(--tp-u\)\), (?:#000|rgb\(0, 0, 0\)) (\d+)%/g)];
+            expect(elipses.length, `${caso}: sem a máscara dos olhos`).toBe(2);
+            elipses.forEach((m, i) => {
+              const z = o.zonas[i];
+              expect([Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])], caso).toEqual([z.rx, z.ry, z.cx, z.cy].map((v: number) => Number(v.toFixed(2))));
+              expect(Number(m[5])).toBe(Math.round(NUCLEO_OLHOS * 100));
+            });
+            unmount();
+          }
+        }
+      }
+    } finally {
+      Object.defineProperty(window, "devicePixelRatio", { value: dpr, configurable: true });
+    }
+  });
+
   it("2D com preCarregar=\"nada\" não baixa as outras poses", async () => {
     const criadas: string[] = [];
     const ImagemReal = window.Image;

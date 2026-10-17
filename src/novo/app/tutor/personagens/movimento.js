@@ -300,6 +300,21 @@ export function geometriaBoca(sprite) {
   return { corte, h, dobra, hCima: dobra - corte, hBaixo: b.h - dobra, cx: clamp((sprite.nx ?? b.x + b.w / 2) - b.x, 0, b.w), rx: 0.4 * b.w, ry: 0.8 * h };
 }
 
+/** Até onde (fração do raio) a zona de cada olho é opaca na piscada; daí até a borda ela apaga (o mesmo número do zonas-dos-olhos.py). */
+export const NUCLEO_OLHOS = 0.82;
+
+/**
+ * Zonas dos olhos do recorte de piscada (manifest olhos.zonas: elipses {cx, cy, rx, ry} em px lógicos dentro do recorte, em volta
+ * do olho aberto da pose). A piscada só aparece nelas: as sobrancelhas e a boca do quadro de olhos fechados ficam de fora (elas
+ * estão em outro lugar nesse quadro e pulavam a cada piscada). Sem zonas válidas: null (recorte inteiro, como antes).
+ */
+export function zonasOlhos(olhos) {
+  const z = olhos?.zonas;
+  if (!Array.isArray(z) || !z.length) return null;
+  const ok = z.filter((e) => [e?.cx, e?.cy, e?.rx, e?.ry].every(Number.isFinite) && e.rx > 0 && e.ry > 0);
+  return ok.length ? ok : null;
+}
+
 /**
  * Onde fica, em px lógicos do recorte, a linha que estava em `y` na boca aberta original, com a abertura `escala` (aparenciaBoca):
  * acima da dobra nada mexe; abaixo, encolhe em direção à dobra. Serve aos testes e à bancada (a mesma conta que o CSS faz).

@@ -4,7 +4,7 @@
 // voz (lip flap pelo nível da voz do professor), inclinação ao ouvir (nível do microfone), tremor curto de raiva, aura por emoção.
 import React from "react";
 import { usePersonagemAnimacao } from "./usePersonagemAnimacao.js";
-import { opacidadesTroca, aparenciaBoca, geometriaBoca } from "./movimento.js";
+import { opacidadesTroca, aparenciaBoca, geometriaBoca, zonasOlhos, NUCLEO_OLHOS } from "./movimento.js";
 import { spritePose, urlsDoPersonagem, ALTURA_EM_PE, POSES_PROVAVEIS } from "./sprites.js";
 import { rotuloPersonagem, personagemValido } from "./personagens.js";
 import "./personagem.css";
@@ -74,10 +74,23 @@ function Camada({ id, chave, papel, refs, escondida = false, meia = false, onPro
       style={{ left: `calc((${CAIXA_W / 2} - ${s.ax}) * var(--tp-u))`, top: `calc((${PE_Y} - ${s.ay}) * var(--tp-u))`, width: `calc(${s.w} * var(--tp-u))`, height: `calc(${s.h} * var(--tp-u))`, opacity: escondida ? 0 : 1 }}
     >
       <img className="tp__img" src={src(s)} alt="" draggable={false} decoding="async" fetchPriority={papel === "atual" ? "high" : undefined} onLoad={onPronta ?? undefined} onError={onPronta ?? undefined} />
-      {extras && s.olhos && <img ref={(el) => (refs.current[`${papel}-olhos`] = el)} className="tp__extra" src={src(s.olhos)} alt="" draggable={false} style={{ ...pos(s.olhos), opacity: 0 }} />}
+      {extras && s.olhos && <img ref={(el) => (refs.current[`${papel}-olhos`] = el)} className="tp__extra" src={src(s.olhos)} alt="" draggable={false} style={{ ...pos(s.olhos), opacity: 0, ...mascaraOlhos(s.olhos) }} />}
       {extras && s.boca && <Boca s={s} refs={refs} papel={papel} src={src(s.boca)} />}
     </div>
   );
+}
+
+/**
+ * A piscada só nas pálpebras (17/10/2026): o recorte de olhos fechados traz também as sobrancelhas (3 a 6 px mais baixas) e, na
+ * pose "base", a boca de outro jeito; sem esta máscara elas pulavam a cada piscada. Uma elipse por olho (manifest olhos.zonas, em
+ * volta do olho aberto da pose): opaca até NUCLEO_OLHOS do raio (o olho aberto some por inteiro) e apagando até a borda.
+ */
+function mascaraOlhos(olhos) {
+  const zonas = zonasOlhos(olhos);
+  if (!zonas) return {};
+  const u = (n) => `calc(${n.toFixed(2)} * var(--tp-u))`;
+  const m = zonas.map((z) => `radial-gradient(ellipse ${u(z.rx)} ${u(z.ry)} at ${u(z.cx)} ${u(z.cy)}, #000 ${Math.round(NUCLEO_OLHOS * 100)}%, transparent 100%)`).join(", ");
+  return { maskImage: m, WebkitMaskImage: m, maskRepeat: "no-repeat", WebkitMaskRepeat: "no-repeat" };
 }
 
 /**
