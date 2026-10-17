@@ -9,6 +9,11 @@ Base: ramo `treino-pacote-1011` (a partir de `a49bfd9`, Etapas 1 a 4 do Treino e
 19 partes, 1.099 linhas, com prompt mestre para agente). Ela está analisada no **§12** deste texto e **vale sobre o documento curto** onde os dois
 divergem; os pontos que mudaram em relação ao que está escrito nos §3, §4 e §8 estão marcados com "REVISTO no §12". Leia o §12 primeiro.
 
+**Atualização (2026-10-17):** o grupo "Stazia Match completo" construiu as Etapas M0, M1, M2, M4 e M5 no ramo `stazia-match` (migrações
+013490 a 013530; a cota nasce DESLIGADA e a Stripe segue parada). Onde este texto cita "9960 a 9980", leia 013490 a 013530. O que ficou
+esperando o dono está na lista do §12.7 e no relatório `RELATORIO-stazia-match.md`; o mapa do que existe agora está em
+`docs/architecture/STAZIA_MATCH_CREDITOS.md`.
+
 O primeiro documento analisado ("STAZIA MATCH — Engenharia completa", versão 1.0, origem externa, colado pelo dono em 2026-10-12) foi escrito
 para outra stack (Next.js, Supabase Cron, Stripe, Google Meet externo). Este texto **não adota a stack dele**: traduz as ideias para a
 nossa (Vite/React em `/novo`, regras no Postgres do Supabase como funções `app_*`, Express na Vercel e Cloud Run só quando precisa de

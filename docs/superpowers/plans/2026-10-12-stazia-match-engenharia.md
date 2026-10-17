@@ -2,6 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Andamento (2026-10-17, grupo "Stazia Match completo", ramo `stazia-match`).** Construídas M0, M1, M2, M4 e M5 (a cota segue DESLIGADA
+> por padrão; nada ligado em produção; Stripe parada). **Os números de migração deste plano (9960 a 10000) foram trocados pelos
+> reservados em `.tmp-aulas/NUMEROS-MIGRACAO.md`:** `013490` (M1a tabelas), `013500` (M1b+M1c funções, estado do aluno, exportação),
+> `013510` (M2c reservas por pessoa + M2e par canônico), `013520` (M2a débito no início + M2b pré-checagem), `013530` (M4a administração),
+> `013540` (preparação da M3: moeda `ia` com janelas dia/semana/mês e estorno por referência; a ligação ao treino sozinho NÃO foi feita, espera o ramo `dupla-sozinho-ia` e os números do dono). Desvios deste texto: (1) `study_room_charges` ganhou a coluna `round` e a chave
+> `(room_id, user_id, round)` por causa de "Treinar outra estação" (013380); (2) `app_dupla_answer_invite` só foi refeita na 013520
+> (a 013510 não precisa); (3) `dupla_room_state` NÃO foi refeita (nada de `charged` no estado da sala); (4) o `p_now` das funções internas
+> serve só aos testes; (5) o ponta a ponta no navegador (M5c) depende de `scripts/e2e/dupla.mjs` (Tarefa 20 do plano de 11/10), que
+> não existe: a jornada foi conferida no banco (`duplaCreditosSeguranca`); (6) M5b: o roteiro está pronto
+> (`scripts/dupla/concorrencia-creditos.mjs`), falta um Postgres de teste e autorização para o pacote `pg`. **Aguardando o dono:** Etapa R,
+> Etapa N, Etapa G e "Fora deste plano"; **M3 (ligação)** espera juntar o ramo `dupla-sozinho-ia`. Mapa: `docs/architecture/STAZIA_MATCH_CREDITOS.md`.
+
 **Goal:** Dar ao Treino em Dupla (e à IA do aluno) **um só livro de créditos**: cota diária por plano calculada no banco, saldo de **bônus** e
 **comprados** (ordem do débito: diária, bônus, comprados), extrato auditável, **débito dos dois alunos numa transação no início confirmado da sala**
 (um não paga se o outro não tem), pré-checagem ao formar o par, **uma sala aberta por pessoa garantida no banco**, **par canônico único**, painel
