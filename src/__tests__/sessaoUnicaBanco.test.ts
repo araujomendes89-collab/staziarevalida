@@ -59,7 +59,7 @@ async function novaConta(role: "student" | "admin" | "editor" = "student") {
 const aparelho = (uid: string, sessao: string): Claims => ({ sub: uid, session_id: sessao });
 
 async function regra(cfg: Record<string, boolean>) {
-  await db.query(`update public.app_settings set value = value || $1::jsonb where key = 'sessao_unica'`, [JSON.stringify(cfg)]);
+  await db.query(`update public.app_sessao_unica_config set ativa = coalesce(($1::jsonb ->> 'ativa')::boolean, ativa), incluir_equipe = coalesce(($1::jsonb ->> 'incluir_equipe')::boolean, incluir_equipe), incluir_revisores = coalesce(($1::jsonb ->> 'incluir_revisores')::boolean, incluir_revisores)`, [JSON.stringify(cfg)]);
 }
 
 const vigente = async (uid: string) => (await db.query<any>(`select * from public.app_sessao_vigente where user_id = $1`, [uid])).rows[0] ?? null;
@@ -71,11 +71,11 @@ beforeAll(async () => {
   for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
-  chaveInicial = (await db.query<any>(`select value from public.app_settings where key = 'sessao_unica'`)).rows[0].value;
+  chaveInicial = (await db.query<any>(`select ativa, incluir_equipe, incluir_revisores from public.app_sessao_unica_config`)).rows[0];
 }, 240_000);
 
 beforeEach(async () => {
-  await db.query(`update public.app_settings set value = '{"ativa": true, "incluir_equipe": false, "incluir_revisores": false}'::jsonb where key = 'sessao_unica'`);
+  await db.query(`update public.app_sessao_unica_config set ativa = true, incluir_equipe = false, incluir_revisores = false`);
 });
 
 describe("Sessão única — chave e estrutura", () => {
@@ -83,7 +83,7 @@ describe("Sessão única — chave e estrutura", () => {
     expect(chaveInicial).toEqual({ ativa: false, incluir_equipe: false, incluir_revisores: false });
     // colar duas vezes não quebra nem muda a chave já gravada
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, "20261003013670_sessao_unica.sql"), "utf8"));
-    expect((await db.query<any>(`select value from public.app_settings where key = 'sessao_unica'`)).rows[0].value).toMatchObject({ ativa: true });
+    expect((await db.query<any>(`select ativa, incluir_equipe, incluir_revisores from public.app_sessao_unica_config`)).rows[0]).toMatchObject({ ativa: true });
   });
 
   it("as tabelas têm RLS, não guardam IP e as funções são SECURITY DEFINER com search_path vazio", async () => {
@@ -230,6 +230,8 @@ describe("Sessão única — segurança", () => {
     const lidas = await asUser(minha, `select user_id from public.app_sessao_vigente`);
     expect(lidas.rows).toEqual([{ user_id: eu }]);
     expect(await recusa(asUser(minha, `select * from public.app_sessao_derrubada`))).toMatch(/permission denied/i);
+    expect(await recusa(asUser(minha, `select * from public.app_sessao_unica_config`))).toMatch(/permission denied/i);
+    expect(await recusa(asUser(minha, `update public.app_sessao_unica_config set ativa = false`))).toMatch(/permission denied/i);
     expect(await recusa(asUser(minha, `update public.app_sessao_vigente set sessao = md5('x') where user_id = $1`, [outro]))).toMatch(/permission denied/i);
     expect(await recusa(asUser(minha, `insert into public.app_sessao_vigente (user_id, sessao) values ($1, md5('x'))`, [outro]))).toMatch(/permission denied/i);
     expect(await recusa(asUser(minha, `delete from public.app_sessao_vigente where user_id = $1`, [eu]))).toMatch(/permission denied/i);

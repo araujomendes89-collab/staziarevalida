@@ -20,14 +20,16 @@
 --    por exemplo aberta antes de a regra ser ligada, passa a valer e derruba a outra; a derrubada nunca volta).
 --  - Nenhum IP é guardado. Nada de nome, e-mail ou localização: só o aparelho resumido e os horários.
 --
--- CHAVE (app_settings 'sessao_unica'), nasce DESLIGADA:
---   { "ativa": false, "incluir_equipe": false, "incluir_revisores": false }
+-- CHAVE: tabela própria de uma linha, public.app_sessao_unica_config. Nasce DESLIGADA:
 --   ativa             = liga a regra para os alunos. Desligada: claim e check respondem vigente = true e não gravam nada.
 --   incluir_equipe    = a regra vale também para administrador e editor (padrão: não, para trabalhar em vários aparelhos).
 --   incluir_revisores = a regra vale também para revisor médico (quem tem área em ch_reviewer_areas). Padrão: não.
---   Ligar:    update public.app_settings set value = jsonb_set(value, '{ativa}', 'true'), updated_at = now() where key = 'sessao_unica';
---   Desligar: update public.app_settings set value = jsonb_set(value, '{ativa}', 'false'), updated_at = now() where key = 'sessao_unica';
+--   Ligar:    update public.app_sessao_unica_config set ativa = true,  updated_at = now();
+--   Desligar: update public.app_sessao_unica_config set ativa = false, updated_at = now();
 --   (ou, como administrador logado: select public.app_admin_sessao_unica('{"ativa": true}'::jsonb);)
+--   Por que não em app_settings: a constraint app_settings_key_check é refeita com LISTA FIXA por migrações antigas
+--   (012200) e por outras ainda não publicadas (treino em dupla 013300/013370); com uma linha 'sessao_unica' gravada, colar
+--   de novo qualquer uma delas falharia. Uma tabela própria não mexe na constraint de ninguém.
 --
 -- SEGURANÇA
 --  - Funções SECURITY DEFINER com search_path vazio; só gravam a linha de auth.uid() (não há parâmetro de usuário).
@@ -36,8 +38,7 @@
 --    pelo navegador.
 --  - Funções internas (sessao_unica_*) sem execute para o navegador.
 --
--- FUNÇÕES REDEFINIDAS: nenhuma. Só a constraint app_settings_key_check, refeita como a UNIÃO das chaves conhecidas com as
--- que já estão gravadas (padrão da 013490): colar esta migração nunca recusa uma chave já existente.
+-- FUNÇÕES REDEFINIDAS: nenhuma. Nenhuma tabela existente é alterada.
 -- Pode ser colada duas vezes (if not exists / create or replace / on conflict do nothing).
 --
 -- COMO DESFAZER (nesta ordem):
@@ -50,30 +51,24 @@
 --   drop function if exists public.sessao_unica_id(text);
 --   drop table if exists public.app_sessao_derrubada;
 --   drop table if exists public.app_sessao_vigente;
---   delete from public.app_settings where key = 'sessao_unica';   -- a constraint pode ficar (só aceita a chave a mais)
+--   drop table if exists public.app_sessao_unica_config;
 --   O site antigo não chama nada disto; o site novo, sem as funções, segue funcionando (o app ignora a falha e não derruba).
 -- =============================================================================
 
--- ---------------------------------------------------------------- 1) chave de configuração
-do $$
-declare
-  v_keys text[];
-begin
-  select coalesce(array_agg(distinct k order by k), '{}') into v_keys
-    from (
-      select unnest(array['trial_days', 'announcement', 'simulado_ineditas_pct', 'sessao_unica']) as k
-      union
-      select key from public.app_settings
-    ) x;
-  alter table public.app_settings drop constraint if exists app_settings_key_check;
-  execute format('alter table public.app_settings add constraint app_settings_key_check check (key in (%s))',
-                 (select string_agg(quote_literal(k), ', ') from unnest(v_keys) k));
-end
-$$;
-
-insert into public.app_settings (key, value)
-values ('sessao_unica', '{"ativa": false, "incluir_equipe": false, "incluir_revisores": false}'::jsonb)
-on conflict (key) do nothing;
+-- ---------------------------------------------------------------- 1) chave de configuração (uma linha só)
+create table if not exists public.app_sessao_unica_config (
+  id boolean primary key default true check (id),
+  ativa boolean not null default false,
+  incluir_equipe boolean not null default false,
+  incluir_revisores boolean not null default false,
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users (id) on delete set null
+);
+comment on table public.app_sessao_unica_config is
+  'Sessão única: liga/desliga a regra de uma sessão por vez e diz se vale para a equipe e para os revisores médicos. Uma linha só.';
+insert into public.app_sessao_unica_config (id) values (true) on conflict (id) do nothing;
+alter table public.app_sessao_unica_config enable row level security;
+revoke all on table public.app_sessao_unica_config from public, anon, authenticated;
 
 -- ---------------------------------------------------------------- 2) tabelas
 create table if not exists public.app_sessao_vigente (
@@ -137,18 +132,18 @@ create or replace function public.sessao_unica_vale(p_uid uuid) returns boolean
   language plpgsql stable security definer set search_path = ''
 as $$
 declare
-  v_cfg jsonb;
+  v_cfg public.app_sessao_unica_config;
   v_role text;
 begin
-  select s.value into v_cfg from public.app_settings s where s.key = 'sessao_unica';
-  if v_cfg is null or jsonb_typeof(v_cfg) <> 'object' or coalesce(v_cfg ->> 'ativa', 'false') <> 'true' then
+  select * into v_cfg from public.app_sessao_unica_config c where c.id;
+  if not found or not v_cfg.ativa then
     return false;
   end if;
   select r.role::text into v_role from public.user_roles r where r.user_id = p_uid;
-  if v_role in ('admin', 'editor') and coalesce(v_cfg ->> 'incluir_equipe', 'false') <> 'true' then
+  if v_role in ('admin', 'editor') and not v_cfg.incluir_equipe then
     return false;
   end if;
-  if coalesce(v_cfg ->> 'incluir_revisores', 'false') <> 'true'
+  if not v_cfg.incluir_revisores
      and to_regclass('public.ch_reviewer_areas') is not null
      and exists (select 1 from public.ch_reviewer_areas ra where ra.user_id = p_uid) then
     return false;
@@ -231,12 +226,11 @@ create or replace function public.app_admin_sessao_unica(p_patch jsonb default n
   language plpgsql security definer set search_path = ''
 as $$
 declare
-  v_cfg jsonb;
   v_key text;
+  v_cfg public.app_sessao_unica_config;
 begin
   perform public.assert_admin();
-  select s.value into v_cfg from public.app_settings s where s.key = 'sessao_unica';
-  v_cfg := coalesce(v_cfg, '{"ativa": false, "incluir_equipe": false, "incluir_revisores": false}'::jsonb);
+  insert into public.app_sessao_unica_config (id) values (true) on conflict (id) do nothing;
   if p_patch is not null then
     if jsonb_typeof(p_patch) <> 'object' then
       raise exception 'Configuração inválida.' using errcode = '22023';
@@ -246,13 +240,16 @@ begin
         raise exception 'Configuração inválida: %.', v_key using errcode = '22023';
       end if;
     end loop;
-    v_cfg := v_cfg || p_patch;
-    insert into public.app_settings (key, value, updated_at, updated_by)
-    values ('sessao_unica', v_cfg, now(), (select auth.uid()))
-    on conflict (key) do update set value = excluded.value, updated_at = now(), updated_by = excluded.updated_by;
+    update public.app_sessao_unica_config c set
+      ativa = coalesce((p_patch ->> 'ativa')::boolean, c.ativa),
+      incluir_equipe = coalesce((p_patch ->> 'incluir_equipe')::boolean, c.incluir_equipe),
+      incluir_revisores = coalesce((p_patch ->> 'incluir_revisores')::boolean, c.incluir_revisores),
+      updated_at = now(), updated_by = (select auth.uid())
+    where c.id;
     perform public.admin_log('settings.sessao_unica', null, p_patch);
   end if;
-  return v_cfg;
+  select * into v_cfg from public.app_sessao_unica_config c where c.id;
+  return jsonb_build_object('ativa', v_cfg.ativa, 'incluir_equipe', v_cfg.incluir_equipe, 'incluir_revisores', v_cfg.incluir_revisores);
 end
 $$;
 

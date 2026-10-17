@@ -35,6 +35,7 @@ export const ACTION_LABEL = {
   "plan.benefits": "Benefícios do Elite alterados",
   "plan.ineditas_limits": "Limite de Questões Inéditas por plano alterado", // 010300
   "settings.save": "Configurações salvas",
+  "settings.sessao_unica": "Sessão única (uma conta, um aparelho por vez) alterada",
   "support.contact": "Contato de suporte alterado",
   "report.resolve": "Relato de aluno atendido",
   // questões

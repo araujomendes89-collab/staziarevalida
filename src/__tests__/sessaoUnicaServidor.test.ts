@@ -28,7 +28,7 @@ let base: string;
 
 const aluna: Identity = { id: ALUNA, email: "aluna@t.dev" };
 const req = (sessao?: string) => ({ headers: sessao ? { "x-stazia-sessao": sessao } : {} });
-const regra = (ativa: boolean) => pg.query(`update public.app_settings set value = jsonb_set(value, '{ativa}', $1::jsonb) where key = 'sessao_unica'`, [JSON.stringify(ativa)]);
+const regra = (ativa: boolean) => pg.query(`update public.app_sessao_unica_config set ativa = $1`, [ativa]);
 
 beforeAll(async () => {
   pg = new PGlite();

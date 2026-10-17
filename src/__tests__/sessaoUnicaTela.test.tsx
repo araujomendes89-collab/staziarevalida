@@ -67,7 +67,7 @@ async function abrir(nome: string, backend: any) {
   );
   await waitFor(() => expect(sessoes[nome].status).toBe("ready"), { timeout: 15_000 });
 }
-const regra = (cfg: Record<string, boolean>) => pg.query(`update public.app_settings set value = value || $1::jsonb where key = 'sessao_unica'`, [JSON.stringify(cfg)]);
+const regra = (cfg: Record<string, boolean>) => pg.query(`update public.app_sessao_unica_config set ativa = coalesce(($1::jsonb ->> 'ativa')::boolean, ativa), incluir_equipe = coalesce(($1::jsonb ->> 'incluir_equipe')::boolean, incluir_equipe), incluir_revisores = coalesce(($1::jsonb ->> 'incluir_revisores')::boolean, incluir_revisores)`, [JSON.stringify(cfg)]);
 
 beforeAll(async () => {
   pg = new PGlite();
@@ -81,7 +81,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   localStorage.clear();
   sessionStorage.clear();
-  await pg.query(`update public.app_settings set value = '{"ativa": true, "incluir_equipe": false, "incluir_revisores": false}'::jsonb where key = 'sessao_unica'`);
+  await pg.query(`update public.app_sessao_unica_config set ativa = true, incluir_equipe = false, incluir_revisores = false`);
 });
 afterEach(() => {
   cleanup();
