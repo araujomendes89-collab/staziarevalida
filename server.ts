@@ -1442,8 +1442,10 @@ async function startServer() {
     app.get(["/novo", "/novo/*"], (_req: Request, res: Response) => {
       res.sendFile(path.join(distPath, "novo.html"));
     });
+    // Endereço que não existe: página "não encontrada" com 404 (antes devolvia o app antigo). A raiz (/) é a página inicial,
+    // servida pelo express.static acima (dist/index.html).
     app.get("*", (_req: Request, res: Response) => {
-      res.sendFile(path.join(distPath, "index.html"));
+      res.status(404).sendFile(path.join(distPath, "404.html"));
     });
   }
 
