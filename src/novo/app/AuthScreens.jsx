@@ -13,7 +13,7 @@ import { DocumentModal } from "./legal/DocumentModal.jsx";
 import { TERMO_VERSAO } from "./legal/versions.js";
 import { rememberGoogleAcceptance } from "./legal/googleAcceptance.js";
 import { ACEITE_ERRO_CADASTRO_V3, ACEITE_TEXTO, ACEITE_TEXTO_V3, AVISO_ACEITE_V3, aceiteNovo } from "./legal/documentos.js";
-import { carregarVigentes, useVigentes } from "./legal/vigente.js";
+import { VIGENTES_DO_SITE, useVigentes } from "./legal/vigente.js";
 import { AceiteFrase } from "./legal/AceiteFrase.jsx";
 import { clearAuthLinkFromUrl, initialAuthLink } from "./auth/authLink.js";
 import { FieldError, RecoveryButton, RecoveryField, RecoveryLayout, RecoveryLink, RecoveryMessage } from "./auth/RecoveryLayout.jsx";
@@ -114,9 +114,10 @@ function Signup({ go }) {
     setLoading(true);
     try {
       rememberChoice(true);
-      // a versão que vai é a vigente lida agora (o banco só grava o aceite da vigente; outra cai na tela de aceite depois)
-      const vigentes = await carregarVigentes(backend).catch(() => null);
-      const termsVersion = vigentes?.termo_uso?.version ?? TERMO_VERSAO;
+      // a versão que vai é sempre a da caixa que a pessoa viu: a vigente lida do banco ou, se ainda não chegou (ou falhou), a do
+      // próprio site com a caixa de antes. O banco só grava o aceite da versão vigente; outra versão cai na tela de aceite depois.
+      const vigentes = vig.vigentes ?? VIGENTES_DO_SITE;
+      const termsVersion = vigentes.termo_uso?.version ?? TERMO_VERSAO;
       const result = await backend.signUp(name, email, password, {
         termsVersion,
         userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
@@ -166,8 +167,7 @@ function Signup({ go }) {
     setErrors({});
     try {
       // guarda o aceite (com a maioridade, que está na mesma caixa) para gravar na volta do Google
-      const vigentes = await carregarVigentes(backend).catch(() => null);
-      rememberGoogleAcceptance(vigentes?.termo_uso?.version ?? TERMO_VERSAO, { adult: true });
+      rememberGoogleAcceptance((vig.vigentes ?? VIGENTES_DO_SITE).termo_uso?.version ?? TERMO_VERSAO, { adult: true });
       await backend.signInWithGoogle();
     } catch (err) {
       setError(messageFor(err));
