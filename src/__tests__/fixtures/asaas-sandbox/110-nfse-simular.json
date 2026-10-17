@@ -1,0 +1,36 @@
+{
+ "quando": "2026-10-17T20:33:03.200Z",
+ "pedido": {
+  "method": "POST",
+  "path": "/invoices",
+  "body": {
+   "payment": "pay_0z4t2997qg6rqgre",
+   "serviceDescription": "Acesso à plataforma de estudos StaziaMed Revalida - plano PRO mensal (TESTE)",
+   "observations": "TESTE sandbox",
+   "value": 99.9,
+   "deductions": 0,
+   "effectiveDate": "2026-10-17",
+   "municipalServiceId": "477796",
+   "municipalServiceName": "Instrução, treinamento, orientação pedagógica e educacional, avaliação de conhecimentos de qualquer natureza",
+   "taxes": {
+    "retainIss": false,
+    "iss": 0,
+    "cofins": 0,
+    "csll": 0,
+    "inss": 0,
+    "ir": 0,
+    "pis": 0
+   }
+  }
+ },
+ "status": 400,
+ "resposta": {
+  "errors": [
+   {
+    "code": "invalid_fiscal_info",
+    "description": "Você precisa informar suas informações fiscais antes de emitir notas fiscais de serviço"
+   }
+  ]
+ },
+ "nota": "Resposta REAL do sandbox do Asaas (17/10/2026), dados fictícios; chaves e tokens ocultos."
+}

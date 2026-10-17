@@ -1,0 +1,16 @@
+{
+ "quando": "2026-10-17T20:26:52.365Z",
+ "pedido": {
+  "method": "GET",
+  "path": "/payments/pay_a83tjrw20pc5c5xf/pixQrCode"
+ },
+ "status": 200,
+ "resposta": {
+  "success": true,
+  "encodedImage": "<imagem PNG em base64 cortada>",
+  "payload": "00020101021226820014br.gov.bcb.pix2560pi...<cortado>",
+  "expirationDate": "2027-10-18 23:59:59",
+  "description": "IA Boost (TESTE sandbox StaziaMed)"
+ },
+ "nota": "Resposta REAL do sandbox do Asaas (17/10/2026), dados fictícios; chaves e tokens ocultos."
+}

@@ -1,0 +1,76 @@
+{
+ "quando": "2026-10-17T20:27:47.213Z",
+ "pedido": {
+  "method": "GET",
+  "path": "/subscriptions/sub_zc5uce7paghqe07z/payments"
+ },
+ "status": 200,
+ "resposta": {
+  "object": "list",
+  "hasMore": false,
+  "totalCount": 1,
+  "limit": 10,
+  "offset": 0,
+  "data": [
+   {
+    "object": "payment",
+    "id": "pay_mmbxv2omeefe7cyp",
+    "dateCreated": "2026-10-17",
+    "customer": "cus_000009547247",
+    "subscription": "sub_zc5uce7paghqe07z",
+    "checkoutSession": null,
+    "paymentLink": null,
+    "value": 269.7,
+    "netValue": 263.85,
+    "originalValue": null,
+    "interestValue": null,
+    "description": "TESTE assinatura trimestral parcelada",
+    "billingType": "CREDIT_CARD",
+    "confirmedDate": "2026-10-17",
+    "creditCard": {
+     "creditCardNumber": "4444",
+     "creditCardBrand": "VISA",
+     "creditCardToken": "<oculto>"
+    },
+    "pixTransaction": null,
+    "status": "CONFIRMED",
+    "dueDate": "2026-10-17",
+    "originalDueDate": "2026-10-17",
+    "paymentDate": null,
+    "clientPaymentDate": "2026-10-17",
+    "installmentNumber": null,
+    "invoiceUrl": "https://sandbox.asaas.com/i/mmbxv2omeefe7cyp",
+    "invoiceNumber": "19037454",
+    "externalReference": "staziamed-teste:sub-tri-parcelada",
+    "deleted": false,
+    "anticipated": false,
+    "anticipable": false,
+    "creditDate": "2026-11-18",
+    "estimatedCreditDate": "2026-11-18",
+    "transactionReceiptUrl": "https://sandbox.asaas.com/000/comprovantes/0499291951296503",
+    "nossoNumero": null,
+    "bankSlipUrl": null,
+    "lastInvoiceViewedDate": null,
+    "lastBankSlipViewedDate": null,
+    "discount": {
+     "value": 0,
+     "limitDate": null,
+     "dueDateLimitDays": 0,
+     "type": "FIXED"
+    },
+    "fine": {
+     "value": 0,
+     "type": "FIXED"
+    },
+    "interest": {
+     "value": 0,
+     "type": "PERCENTAGE"
+    },
+    "postalService": false,
+    "escrow": null,
+    "refunds": null
+   }
+  ]
+ },
+ "nota": "Resposta REAL do sandbox do Asaas (17/10/2026), dados fictícios; chaves e tokens ocultos."
+}

@@ -1,11 +1,13 @@
 // Planos (PL01): tela do ALUNO, SÓ INFORMATIVA. Mostra o nome, a descrição e o que cada plano inclui, do jeito que o administrador
 // escreveu em Administração > Planos (função app_plans_info), e a situação da própria pessoa. NÃO tem preço, NÃO tem botão de assinar
-// e não leva a pagamento nenhum: a assinatura pelo app ainda não está disponível (a Stripe está parada) e os preços só entram depois.
+// e não leva a pagamento nenhum: a assinatura pelo app ainda não está disponível e os preços só entram depois.
+// EXCEÇÃO (cobrança, 013700): com o fornecedor ligado no servidor, a BillingSection mostra preços, compra e "Minha assinatura".
 import React from "react";
 import { Badge, Button, EmptyState, Icon } from "../../ds";
 import { useSession } from "../session.jsx";
 import { currentPlanCode, hasFullAccess, planStatusLabel, usePlanLock } from "./planAccess.js";
 import { Panel, RichIcon, Tile, useNarrow } from "../evolucao/ui.jsx";
+import { BillingSection } from "./BillingSection.jsx";
 import "./planos.css";
 
 const PLAN_NAME = { trial: "Teste grátis", pro: "Pro", elite: "Elite" };
@@ -97,8 +99,11 @@ export function PlansScreen({ go }) {
   const paidParts = info?.tutor_paid ? "Os simulados completos, o Tutor e as estações Pro" : "Os simulados completos e as estações Pro";
 
   const narrow = useNarrow();
+  // cobrança ligada no servidor (013700): a nota "ainda não disponível" sai e entra a seção de assinatura/extras
+  const [billingOn, setBillingOn] = React.useState(false);
+  const onBilling = React.useCallback((on) => setBillingOn(on), []);
   // nota curta do pacote (G9.7): os mesmos textos do aviso, numa linha com ícone pequeno
-  const notice = (
+  const notice = billingOn ? null : (
     <p className="pn-notice" role="note">
       <Icon name="info" size={16} />
       <span>
@@ -136,6 +141,7 @@ export function PlansScreen({ go }) {
           {situation}
         </>
       )}
+      {!hasFullAccess(boot) && <BillingSection onEnabled={onBilling} />}
       {state.status === "loading" && <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Carregando os planos…</p>}
       {state.status === "error" && (
         <EmptyState

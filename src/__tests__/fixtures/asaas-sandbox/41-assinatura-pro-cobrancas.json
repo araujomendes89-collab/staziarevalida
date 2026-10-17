@@ -1,0 +1,76 @@
+{
+ "quando": "2026-10-17T20:27:24.687Z",
+ "pedido": {
+  "method": "GET",
+  "path": "/subscriptions/sub_kcjrcccayp7mfz68/payments"
+ },
+ "status": 200,
+ "resposta": {
+  "object": "list",
+  "hasMore": false,
+  "totalCount": 1,
+  "limit": 10,
+  "offset": 0,
+  "data": [
+   {
+    "object": "payment",
+    "id": "pay_jdm7q88423fwlj55",
+    "dateCreated": "2026-10-17",
+    "customer": "cus_000009547247",
+    "subscription": "sub_kcjrcccayp7mfz68",
+    "checkoutSession": null,
+    "paymentLink": null,
+    "value": 99.9,
+    "netValue": 97.43,
+    "originalValue": null,
+    "interestValue": null,
+    "description": "StaziaMed PRO mensal (TESTE sandbox)",
+    "billingType": "CREDIT_CARD",
+    "confirmedDate": "2026-10-17",
+    "creditCard": {
+     "creditCardNumber": "4444",
+     "creditCardBrand": "VISA",
+     "creditCardToken": "<oculto>"
+    },
+    "pixTransaction": null,
+    "status": "CONFIRMED",
+    "dueDate": "2026-10-17",
+    "originalDueDate": "2026-10-17",
+    "paymentDate": null,
+    "clientPaymentDate": "2026-10-17",
+    "installmentNumber": null,
+    "invoiceUrl": "https://sandbox.asaas.com/i/jdm7q88423fwlj55",
+    "invoiceNumber": "19037438",
+    "externalReference": "staziamed-teste:pro-mensal-1",
+    "deleted": false,
+    "anticipated": false,
+    "anticipable": true,
+    "creditDate": "2026-11-18",
+    "estimatedCreditDate": "2026-11-18",
+    "transactionReceiptUrl": "https://sandbox.asaas.com/000/comprovantes/0822707514418883",
+    "nossoNumero": null,
+    "bankSlipUrl": null,
+    "lastInvoiceViewedDate": null,
+    "lastBankSlipViewedDate": null,
+    "discount": {
+     "value": 0,
+     "limitDate": null,
+     "dueDateLimitDays": 0,
+     "type": "FIXED"
+    },
+    "fine": {
+     "value": 0,
+     "type": "PERCENTAGE"
+    },
+    "interest": {
+     "value": 0,
+     "type": "PERCENTAGE"
+    },
+    "postalService": false,
+    "escrow": null,
+    "refunds": null
+   }
+  ]
+ },
+ "nota": "Resposta REAL do sandbox do Asaas (17/10/2026), dados fictícios; chaves e tokens ocultos."
+}
