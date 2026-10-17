@@ -25,10 +25,14 @@ export interface ModelPrice {
  *   modelo. O web_search_preview antigo (US$ 25 por 1.000) não é usado. developers.openai.com/api/docs/pricing
  * - Gemini 3 e mais novos: US$ 14 por 1.000 CONSULTAS de busca (0,014 cada; um pedido pode fazer várias), com 5.000 consultas
  *   grátis por mês compartilhadas entre os modelos Gemini 3+ (a franquia não é descontada aqui: a estimativa é o pior caso).
- * - Gemini 2.5: US$ 35 por 1.000 PROMPTS com busca (0,035 por prompt, não por consulta). Aqui conta por busca, então a
- *   estimativa de um pedido com várias buscas fica acima do que o Google cobra (erra para o lado seguro). ai.google.dev/gemini-api/docs/pricing
- * Preços iniciais de todos os modelos. Conferidos em 2026-10-07 (por busca: 2026-10-11).
- * Nota: gemini-3.6/3.7/3.8-flash custam 0.75/3.75 até 31/12/2026 e passam a 1.50/7.50 em 01/01/2027.
+ * - Gemini 2.5 (Pro, Flash e Flash-Lite): SAIU DO CATÁLOGO em 2026-10-17 porque o Google tira a família do ar em 20/10/2026
+ *   (página "Model versions" do Vertex AI). Cobrava US$ 35 por 1.000 PROMPTS com busca (0,035 por prompt). Os preços já gravados
+ *   no banco ficam (a lista antiga de gastos continua legível); a migração 013580 troca os modelos das funções.
+ * Preços iniciais de todos os modelos. Conferidos em 2026-10-07 (por busca: 2026-10-11). Os Gemini 3 foram conferidos de novo na
+ * página oficial de preços do Vertex AI (cloud.google.com/vertex-ai/generative-ai/pricing) em 2026-10-17: os valores abaixo são os
+ * do endpoint "global"; os endpoints regionais (não globais) custam 10% a mais (3.8 Flash: 0,825 / 4,125 até 31/12/2026).
+ * Nota: gemini-3.6/3.7/3.8-flash custam 0.75/3.75 até 31/12/2026 e passam a 1.50/7.50 em 01/01/2027 (o preço abaixo é o de hoje:
+ * atualizar na Central de IAs em janeiro). gemini-3.6-flash sai do ar em 19/11/2026 e gemini-3.7-flash em 28/01/2027.
  */
 export const PRICE_SEED: ModelPrice[] = [
   // Claude
@@ -56,16 +60,13 @@ export const PRICE_SEED: ModelPrice[] = [
   { provider: "openai", model: "gpt-5-mini", input_per_mtok: 0.25, output_per_mtok: 2, per_search_usd: 0.01, source_url: "https://developers.openai.com/api/docs/pricing", checked_on: "2026-10-07" },
 
   // Gemini
-  { provider: "gemini", model: "gemini-3.8-flash", input_per_mtok: 0.75, output_per_mtok: 3.75, per_search_usd: 0.014, source_url: "https://ai.google.dev/gemini-api/docs/pricing", checked_on: "2026-10-07" },
-  { provider: "gemini", model: "gemini-3.7-flash", input_per_mtok: 0.75, output_per_mtok: 3.75, per_search_usd: 0.014, source_url: "https://ai.google.dev/gemini-api/docs/pricing", checked_on: "2026-10-07" },
-  { provider: "gemini", model: "gemini-3.6-flash", input_per_mtok: 0.75, output_per_mtok: 3.75, per_search_usd: 0.014, source_url: "https://ai.google.dev/gemini-api/docs/pricing", checked_on: "2026-10-07" },
-  { provider: "gemini", model: "gemini-3.5-flash", input_per_mtok: 1.5, output_per_mtok: 9, per_search_usd: 0.014, source_url: "https://ai.google.dev/gemini-api/docs/pricing", checked_on: "2026-10-07" },
-  { provider: "gemini", model: "gemini-3.5-flash-lite", input_per_mtok: 0.3, output_per_mtok: 2.5, per_search_usd: 0.014, source_url: "https://ai.google.dev/gemini-api/docs/pricing", checked_on: "2026-10-07" },
-  { provider: "gemini", model: "gemini-3.1-flash-lite", input_per_mtok: 0.25, output_per_mtok: 1.5, per_search_usd: 0.014, source_url: "https://ai.google.dev/gemini-api/docs/pricing", checked_on: "2026-10-07" },
-  { provider: "gemini", model: "gemini-3.1-pro-preview", input_per_mtok: 2, output_per_mtok: 12, per_search_usd: 0.014, source_url: "https://ai.google.dev/gemini-api/docs/pricing", checked_on: "2026-10-07" },
-  { provider: "gemini", model: "gemini-2.5-pro", input_per_mtok: 1.25, output_per_mtok: 10, per_search_usd: 0.035, source_url: "https://ai.google.dev/gemini-api/docs/pricing", checked_on: "2026-10-07" },
-  { provider: "gemini", model: "gemini-2.5-flash", input_per_mtok: 0.3, output_per_mtok: 2.5, per_search_usd: 0.035, source_url: "https://ai.google.dev/gemini-api/docs/pricing", checked_on: "2026-10-07" },
-  { provider: "gemini", model: "gemini-2.5-flash-lite", input_per_mtok: 0.1, output_per_mtok: 0.4, per_search_usd: 0.035, source_url: "https://ai.google.dev/gemini-api/docs/pricing", checked_on: "2026-10-07" },
+  { provider: "gemini", model: "gemini-3.8-flash", input_per_mtok: 0.75, output_per_mtok: 3.75, per_search_usd: 0.014, source_url: "https://cloud.google.com/vertex-ai/generative-ai/pricing", checked_on: "2026-10-17" },
+  { provider: "gemini", model: "gemini-3.7-flash", input_per_mtok: 0.75, output_per_mtok: 3.75, per_search_usd: 0.014, source_url: "https://cloud.google.com/vertex-ai/generative-ai/pricing", checked_on: "2026-10-17" },
+  { provider: "gemini", model: "gemini-3.6-flash", input_per_mtok: 0.75, output_per_mtok: 3.75, per_search_usd: 0.014, source_url: "https://cloud.google.com/vertex-ai/generative-ai/pricing", checked_on: "2026-10-17" },
+  { provider: "gemini", model: "gemini-3.5-flash", input_per_mtok: 1.5, output_per_mtok: 9, per_search_usd: 0.014, source_url: "https://cloud.google.com/vertex-ai/generative-ai/pricing", checked_on: "2026-10-17" },
+  { provider: "gemini", model: "gemini-3.5-flash-lite", input_per_mtok: 0.3, output_per_mtok: 2.5, per_search_usd: 0.014, source_url: "https://cloud.google.com/vertex-ai/generative-ai/pricing", checked_on: "2026-10-17" },
+  { provider: "gemini", model: "gemini-3.1-flash-lite", input_per_mtok: 0.25, output_per_mtok: 1.5, per_search_usd: 0.014, source_url: "https://cloud.google.com/vertex-ai/generative-ai/pricing", checked_on: "2026-10-17" },
+  { provider: "gemini", model: "gemini-3.1-pro-preview", input_per_mtok: 2, output_per_mtok: 12, per_search_usd: 0.014, source_url: "https://cloud.google.com/vertex-ai/generative-ai/pricing", checked_on: "2026-10-17" },
 ];
 
 /**

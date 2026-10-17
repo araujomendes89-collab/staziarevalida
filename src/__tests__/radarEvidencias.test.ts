@@ -178,7 +178,9 @@ describe("mapa fonte → usos", () => {
 
 describe("IA: custo e sanitização", () => {
   it("custo estimado", () => {
-    expect(radar.custoEstimadoUsd("gemini-2.5-flash", 1_000_000, 1_000_000)).toBe(2.8);
+    expect(radar.custoEstimadoUsd("gemini-3.5-flash-lite", 1_000_000, 1_000_000)).toBe(2.8);
+    expect(radar.custoEstimadoUsd("gemini-3.1-flash-lite", 1_000_000, 1_000_000)).toBe(1.75);
+    expect(radar.custoEstimadoUsd("gemini-2.5-flash", 1, 1)).toBeNull(); // família 2.5 fora do ar desde 20/10/2026
     expect(radar.custoEstimadoUsd("modelo-desconhecido", 1, 1)).toBeNull();
   });
   it("a resposta da IA sempre exige revisão médica e é cortada", () => {

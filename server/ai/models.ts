@@ -20,21 +20,26 @@ import { PRICE_SEED } from "./prices";
 const TIMEOUT_MS = 10_000;
 
 /**
- * Modelos que a chave do Vertex AI no modo expresso aceita (página oficial do Google, "Only the models listed in the preceding
- * table are supported in express mode", conferida em 2026-10-10). Correção IA05: a Central oferecia modelos que dariam erro.
+ * Modelos que a chave do Vertex AI no modo expresso aceita. A página oficial do Google (conferida em 2026-10-10) lista só os de
+ * texto gemini-3.1-pro-preview, gemini-3-flash-preview e a família 2.5, mas a mesma página usa o gemini-3.5-flash no exemplo, e em
+ * 2026-10-17 a chave de produção aceitou (contagem de tokens, sem custo) o 3.8 Flash, o 3.5 Flash, o 3.5 Flash-Lite e o 3.1
+ * Flash-Lite, além do 3.1 Pro Preview. A família 2.5 (Pro, Flash e Flash-Lite) SAI DO AR em 20/10/2026 (página "Model versions"
+ * do Vertex AI): fora da lista, a Central nem a oferece. O gemini-2.5-flash-image segue até 15/03/2027.
+ * Correção IA05: a Central oferecia modelos que dariam erro.
  */
 export const VERTEX_EXPRESS_MODELS = [
   "gemini-3-pro-image",
   "gemini-3.1-flash-image",
+  "gemini-2.5-flash-image",
   "gemini-3.1-pro-preview",
   "gemini-3-flash-preview",
-  "gemini-2.5-pro",
-  "gemini-2.5-flash-image",
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
+  "gemini-3.8-flash",
+  "gemini-3.5-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
 ];
 /** Modelo do teste real ao atualizar a lista: contar os tokens de uma palavra não gera texto nem custo. */
-const VERTEX_TEST_MODEL = "gemini-2.5-flash";
+const VERTEX_TEST_MODEL = "gemini-3.8-flash";
 
 /**
  * Teste real da chave do Vertex: "ok", "recusada" (com o código) ou "sem_teste" (com o motivo): falha que não é da chave

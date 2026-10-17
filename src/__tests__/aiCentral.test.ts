@@ -633,7 +633,7 @@ describe("Configuração", () => {
 
   it("envFallbackRef com uiKind usa LESSON_ASSIST_/PODCAST_ e os padrões", async () => {
     const { envFallbackRef } = await import("../../server/ai/config");
-    expect(envFallbackRef("criacao", {} as any, "gemini")).toEqual({ provider: "gemini", model: "gemini-2.5-pro" });
+    expect(envFallbackRef("criacao", {} as any, "gemini")).toEqual({ provider: "gemini", model: "gemini-3.8-flash" });
     expect(envFallbackRef("criacao", {} as any, "openai")).toBeNull();
     const env = { LESSON_ASSIST_GEMINI_MODEL: "g-lesson", PODCAST_GEMINI_MODEL: "g-pod", CONTENT_HUB_GEMINI_MODEL: "g-hub" } as any;
     expect(envFallbackRef("assistente_preencher", env, "gemini")?.model).toBe("g-lesson");

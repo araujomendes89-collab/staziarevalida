@@ -4,6 +4,9 @@ import { calculateAiCostUsd } from "./costCalculator";
 
 let geminiInstance: GoogleGenAI | null = null;
 
+/** Ordem de tentativa do caminho antigo (chave do AI Studio): 3.8 Flash, 3.5 Flash e, por último, o 3.1 Flash-Lite. */
+export const CANDIDATE_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"];
+
 export function getGeminiClient(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -34,7 +37,9 @@ export async function generateWithGemini(
     throw new Error("GEMINI_API_KEY environment variable is missing");
   }
 
-  const candidateModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro"];
+  // Família 2.5 sai do ar em 20/10/2026 e o 2.0 Flash já saiu em 01/06/2026 (página "Model versions" do Vertex AI): o Google recomenda
+  // o 3.8 Flash; os outros dois entram só se ele falhar (modelo indisponível, limite de uso).
+  const candidateModels = CANDIDATE_MODELS;
 
   let fullPrompt = "";
   for (const m of request.messages) {
@@ -113,7 +118,7 @@ export async function* streamWithGemini(
     throw new Error("GEMINI_API_KEY environment variable is missing");
   }
 
-  const candidateModels = ["gemini-2.5-flash", "gemini-2.0-flash"];
+  const candidateModels = CANDIDATE_MODELS.slice(0, 2);
   let fullPrompt = "";
   for (const m of request.messages) {
     if (m.role !== "system") {

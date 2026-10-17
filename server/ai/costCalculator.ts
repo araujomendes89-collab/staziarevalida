@@ -60,26 +60,42 @@ export const AI_MODEL_PRICING: Record<string, PricingRates> = {
     cachedInputPerMillion: 1.5,
   },
 
-  // Google Gemini 3.7 Flash & 2.5 Flash
-  "gemini-3.7-flash": {
-    inputPerMillion: 0.15,
-    outputPerMillion: 0.6,
-    cachedInputPerMillion: 0.0375,
+  // Google Gemini (preços da página oficial do Vertex AI, endpoint global, conferidos em 2026-10-17). O 3.7/3.8 Flash custam
+  // 0,75 / 3,75 até 31/12/2026 e 1,50 / 7,50 depois. A família 2.5 sai do ar em 20/10/2026 e não tem mais preço aqui.
+  "gemini-3.8-flash": {
+    inputPerMillion: 0.75,
+    outputPerMillion: 3.75,
+    cachedInputPerMillion: 0.075,
   },
-  "gemini-2.5-flash": {
-    inputPerMillion: 0.15,
-    outputPerMillion: 0.6,
-    cachedInputPerMillion: 0.0375,
+  "gemini-3.7-flash": {
+    inputPerMillion: 0.75,
+    outputPerMillion: 3.75,
+    cachedInputPerMillion: 0.075,
+  },
+  "gemini-3.5-flash": {
+    inputPerMillion: 1.5,
+    outputPerMillion: 9.0,
+    cachedInputPerMillion: 0.15,
+  },
+  "gemini-3.5-flash-lite": {
+    inputPerMillion: 0.3,
+    outputPerMillion: 2.5,
+    cachedInputPerMillion: 0.03,
+  },
+  "gemini-3.1-flash-lite": {
+    inputPerMillion: 0.25,
+    outputPerMillion: 1.5,
+    cachedInputPerMillion: 0.025,
   },
   "gemini-3.1-pro-preview": {
-    inputPerMillion: 1.25,
-    outputPerMillion: 5.0,
-    cachedInputPerMillion: 0.3125,
+    inputPerMillion: 2.0,
+    outputPerMillion: 12.0,
+    cachedInputPerMillion: 0.2,
   },
   "gemini": {
-    inputPerMillion: 0.15,
-    outputPerMillion: 0.6,
-    cachedInputPerMillion: 0.0375,
+    inputPerMillion: 0.75,
+    outputPerMillion: 3.75,
+    cachedInputPerMillion: 0.075,
   },
 };
 

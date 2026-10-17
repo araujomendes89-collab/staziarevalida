@@ -341,9 +341,10 @@ export function itensAfetados(docId, mapa, { principalSomente = false } = {}) {
 }
 
 // ---------------------------------------------------------------- custo da IA (estimativa)
-// Preços de tabela do Gemini 2.5 Flash em US$ por milhão de tokens (entrada 0,30; saída 2,50). Estimativa: conferir na fatura do Google Cloud.
+// Preços de tabela do Gemini em US$ por milhão de tokens (endpoint global do Vertex AI, conferidos em 2026-10-17). Estimativa: conferir
+// na fatura do Google Cloud. A família 2.5 sai do ar em 20/10/2026 e saiu desta tabela (o modelo do Radar é o 3.8 Flash).
 export const PRECOS_USD_POR_MILHAO = {
-  "gemini-2.5-flash": { entrada: 0.3, saida: 2.5 }, "gemini-2.5-flash-lite": { entrada: 0.1, saida: 0.4 },
+  "gemini-3.5-flash-lite": { entrada: 0.3, saida: 2.5 }, "gemini-3.1-flash-lite": { entrada: 0.25, saida: 1.5 },
   // gemini-3.8-flash: 0,75 / 3,75 até 31/12/2026; 1,50 / 7,50 a partir de 01/01/2027 (mesma tabela de server/ai/prices.ts)
   "gemini-3.8-flash": { entrada: 0.75, saida: 3.75, ate: "2026-12-31", depois: { entrada: 1.5, saida: 7.5 } },
   "gemini-3.5-flash": { entrada: 1.5, saida: 9 },

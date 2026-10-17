@@ -463,6 +463,23 @@ type GenerateClient = { models: { generateContent(params: any): Promise<any> } }
  */
 const abortConfig = (req: StructuredRequest) => (req.signal ? { abortSignal: req.signal } : {});
 
+/**
+ * O Google não achou o modelo (erro 404 / NOT_FOUND): o modelo saiu do ar (a família gemini-2.5 sai em 20/10/2026) ou o nome está
+ * errado. Em vez do JSON em inglês, quem lê vê uma frase em português dizendo o que fazer. O erro mantém `status` 404: o maestro não
+ * repete a mesma IA (pedido igual dá o mesmo erro) e passa direto para a reserva; nada foi gerado, então nada é cobrado.
+ */
+export function geminiModelGoneError(error: unknown, model: string): unknown {
+  if (!error || typeof error !== "object") return error;
+  const e = error as { status?: unknown; code?: unknown; message?: unknown };
+  const status = Number(e.status ?? e.code);
+  const text = typeof e.message === "string" ? e.message : "";
+  if (partialUsageOf(error) || !(status === 404 || /\bNOT_FOUND\b|was not found|is not found/i.test(text))) return error;
+  const out = new Error(`O Google não encontrou o modelo ${model}: ele saiu do ar ou o nome mudou. Escolha outro modelo do Gemini na Central de IAs (o Google recomenda o gemini-3.8-flash no lugar da família 2.5).`);
+  (out as { status?: number }).status = 404;
+  (out as { cause?: unknown }).cause = error;
+  return out;
+}
+
 export class GeminiProvider implements AiProvider {
   readonly name = "gemini";
   readonly isMock = false;
@@ -488,6 +505,8 @@ export class GeminiProvider implements AiProvider {
         // tempo esgotado no maestro: a biblioteca fecha o pedido (ela avisa que o Google pode cobrar o que já gerou)
         ...(req.signal ? { abortSignal: req.signal } : {}),
       },
+    }).catch((error: unknown) => {
+      throw geminiModelGoneError(error, this.model);
     });
     // tokens lidos antes de conferir a resposta: a que falha também é cobrada e entra no registro e nos tetos
     const u = res.usageMetadata as any;
@@ -536,7 +555,7 @@ export class GeminiProvider implements AiProvider {
         config: { systemInstruction: req.system, tools: [{ googleSearch: {} }], maxOutputTokens: req.maxOutputTokens ?? 4096, ...abortConfig(req) },
       })
       .catch((error: unknown) => {
-        throw ownError(error, req.signal);
+        throw ownError(geminiModelGoneError(error, this.model), req.signal);
       });
     const candidate = res.candidates?.[0];
     const grounding = candidate?.groundingMetadata;
@@ -632,7 +651,7 @@ export function resolveProviderKind(kind: string, mockRespond?: (req: Structured
     // Vertex AI (VERTEX_API_KEY) quando houver; senão AI Studio (GEMINI_API_KEY)
     const access = googleAiAccess();
     if (!access) return pending(GOOGLE_KEY_MISSING);
-    const p = new GeminiProvider(access, modelOverride || process.env.CONTENT_HUB_GEMINI_MODEL || "gemini-2.5-pro");
+    const p = new GeminiProvider(access, modelOverride || process.env.CONTENT_HUB_GEMINI_MODEL || "gemini-3.8-flash");
     return { provider: p, status: { ready: true, provider: p.name, model: p.model, isMock: false, pending: null } };
   }
   if (kind === "openai") {

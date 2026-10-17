@@ -1082,7 +1082,8 @@ describe("Central", () => {
       expect(by("gemini").length).toBeGreaterThan(0);
       for (const x of by("gemini")) expect(x.per_search_usd, x.model).toBe(x.model.startsWith("gemini-3") ? 0.014 : 0.035);
       for (const m of ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.8-flash"]) expect(PRICE_SEED.find((x) => x.model === m)?.per_search_usd, m).toBe(0.014);
-      expect(PRICE_SEED.find((x) => x.model === "gemini-2.5-flash")?.per_search_usd).toBe(0.035);
+      // a família 2.5 sai do ar em 20/10/2026: não está mais no catálogo
+      for (const m of ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"]) expect(PRICE_SEED.find((x) => x.model === m), m).toBeUndefined();
     });
 
     it("a migração 9610 preenche o preço por busca com os mesmos valores do catálogo, só onde está vazio (e pode rodar de novo)", () => {
@@ -1090,7 +1091,9 @@ describe("Central", () => {
       const block = sqlText.slice(sqlText.indexOf("update public.ai_model_prices p"), sqlText.indexOf("-- ---------------------------------------------------------------- permissões"));
       expect(block).toMatch(/per_search_usd is null/);
       const fromSql = [...block.matchAll(/\('(\w+)', '([^']+)', ([0-9.]+)\)/g)].map((m) => `${m[1]}/${m[2]}=${m[3]}`).sort();
-      const fromSeed = PRICE_SEED.filter((x) => typeof x.per_search_usd === "number").map((x) => `${x.provider}/${x.model}=${x.per_search_usd}`).sort();
+      // a migração 9610 é de antes de a família Gemini 2.5 sair do catálogo (20/10/2026): ela ainda preenche esses três
+      const retired25 = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"].map((m) => `gemini/${m}=0.035`);
+      const fromSeed = [...PRICE_SEED.filter((x) => typeof x.per_search_usd === "number").map((x) => `${x.provider}/${x.model}=${x.per_search_usd}`), ...retired25].sort();
       expect(fromSql).toEqual(fromSeed);
     });
 

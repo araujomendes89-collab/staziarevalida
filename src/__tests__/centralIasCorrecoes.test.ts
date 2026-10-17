@@ -149,10 +149,10 @@ describe("IA05: Gemini pelo Vertex (modo expresso)", () => {
     const fetchImpl = vi.fn();
     const list = await listModels("gemini", { VERTEX_API_KEY: VERTEX } as any, fetchImpl as any);
     expect(fetchImpl).not.toHaveBeenCalled();
-    expect(counted).toEqual([{ model: "gemini-2.5-flash" }]);
+    expect(counted).toEqual([{ model: "gemini-3.8-flash" }]);
     expect(list.status).toBe("pronta");
     expect(list.detail).toMatch(/modo expresso/);
-    expect(list.models.map((m) => m.id)).toEqual(["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro", "gemini-3.1-pro-preview"]);
+    expect(list.models.map((m) => m.id)).toEqual(["gemini-3.1-flash-lite", "gemini-3.1-pro-preview", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.8-flash"]);
     expect(list.models.every((m) => VERTEX_EXPRESS_MODELS.includes(m.id))).toBe(true);
   });
 
@@ -177,7 +177,7 @@ describe("IA05: Gemini pelo Vertex (modo expresso)", () => {
     const list = await listModels("gemini", { VERTEX_API_KEY: VERTEX } as any, vi.fn() as any);
     expect(list.status).toBe("pronta");
     expect(list.detail).toMatch(/não foi possível testar a chave agora \(o Google respondeu 429\)/);
-    expect(list.models.map((m) => m.id)).toEqual(["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro", "gemini-3.1-pro-preview"]);
+    expect(list.models.map((m) => m.id)).toEqual(["gemini-3.1-flash-lite", "gemini-3.1-pro-preview", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.8-flash"]);
   });
 });
 

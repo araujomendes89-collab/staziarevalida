@@ -41,7 +41,8 @@ export interface AiConfig {
 export const PROVIDER_IDS: AiProviderId[] = ["anthropic", "openai", "gemini", "ollama"];
 /** Nomes das IAs na tela. */
 export const PROVIDER_NAMES: Record<AiProviderId, string> = { anthropic: "Claude", openai: "OpenAI", gemini: "Gemini", ollama: "Ollama" };
-export const DEFAULT_MODELS: Partial<Record<AiProviderId, string>> = { anthropic: "claude-sonnet-5-5", gemini: "gemini-2.5-pro" };
+/** Modelo padrão de cada IA quando a função não tem um salvo. Gemini: o 2.5 Pro saiu do ar em 20/10/2026; o Google recomenda o 3.8 Flash (ou o 3.5 Flash) no lugar. */
+export const DEFAULT_MODELS: Partial<Record<AiProviderId, string>> = { anthropic: "claude-sonnet-5-5", gemini: "gemini-3.8-flash" };
 const CACHE_MS = 10_000;
 /** Máximo de buscas na internet por pedido quando a função de busca não tem um salvo. */
 export const DEFAULT_MAX_SEARCHES = 5;
