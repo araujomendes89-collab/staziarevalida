@@ -55,7 +55,31 @@ function AuthLayout({ children, aside }) {
 
 const ACCEPT_ERROR = "Para criar a conta, é preciso aceitar os Termos de Uso e a Política de Privacidade e declarar ter 18 anos ou mais.";
 // ids dos campos, na ordem da tela, para levar o foco ao primeiro com erro
-const FIELD_IDS = { name: "secure-name", email: "secure-email", pw: "secure-pw", pw2: "secure-pw2", accept: "secure-accept" };
+const FIELD_IDS = { name: "secure-name", email: "secure-email", pw: "secure-pw", pw2: "secure-pw2", accept: "secure-accept", marketing: "secure-marketing" };
+const PW_CURTA = `Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`;
+const PW_DIFERENTE = "As senhas não são iguais.";
+/** Caixa opcional de marketing (Contrato 3.0, cláusulas 6.2 e 32): separada do aceite, sempre desmarcada ao abrir. */
+export const MARKETING_TEXTO = "Quero receber novidades e ofertas por e-mail";
+
+/**
+ * Avisos das senhas enquanto a pessoa preenche (pedido do dono, 17/10/2026), sem atrapalhar quem ainda está digitando:
+ *   - "Mínimo de 8 caracteres." aparece ao SAIR do campo Senha (se estiver curta) e some assim que a senha chega ao tamanho;
+ *   - "As senhas não são iguais." aparece ao sair do Conferir senha ou, digitando, quando o tamanho já bate com o da Senha; depois
+ *     de sair do campo uma vez, aparece também quando o que está digitado já não confere com o começo da Senha. Enquanto a pessoa
+ *     digita certo (o começo confere), não aparece; some assim que as duas ficam iguais.
+ * Campo vazio não ganha aviso aqui (o envio continua conferindo tudo, como antes).
+ * @param {{ pw?: string, pw2?: string }} prev avisos atuais de pw e pw2
+ * @param {{ pw: string, pw2: string, evento: "pw-blur"|"pw-change"|"pw2-blur"|"pw2-change", visto2: boolean }} a
+ */
+export function avisosDasSenhas(prev, { pw, pw2, evento, visto2 }) {
+  let pwErr = prev.pw;
+  if (evento === "pw-blur" && pw && pw.length < PASSWORD_MIN_LENGTH) pwErr = PW_CURTA;
+  if (pwErr === PW_CURTA && pw.length >= PASSWORD_MIN_LENGTH) pwErr = undefined;
+  let pw2Err;
+  if (!pw2 || pw2 === pw) pw2Err = undefined;
+  else if (evento === "pw2-blur" || pw2.length >= pw.length || (visto2 && !pw.startsWith(pw2))) pw2Err = PW_DIFERENTE;
+  return { pw: pwErr, pw2: pw2Err };
+}
 
 // DECLARAÇÕES (feito em 17/10/2026, decisão do dono): as caixas separadas "Declaro que tenho 18 anos ou mais." e "Declaro que sou
 // médico(a)…" saíram. A maioridade vai na PRÓPRIA caixa do aceite (ACEITE_TEXTO) e segue nos metadados do cadastro como
@@ -83,7 +107,23 @@ function Signup({ go }) {
   const [saved, setSaved] = React.useState({ name: "", email: "" });
   const [loading, setLoading] = React.useState(false);
   const [accepted, setAccepted] = React.useState(false);
+  const [marketing, setMarketing] = React.useState(false);
   const [doc, setDoc] = React.useState(null);
+  // o Conferir senha já foi deixado uma vez: daí em diante o aviso acompanha a digitação
+  const visto2 = React.useRef(false);
+  const senhas = (evento) => {
+    if (evento === "pw2-blur") visto2.current = true;
+    const pw = document.getElementById(FIELD_IDS.pw)?.value ?? "";
+    const pw2 = document.getElementById(FIELD_IDS.pw2)?.value ?? "";
+    setErrors((prev) => {
+      const a = avisosDasSenhas(prev, { pw, pw2, evento, visto2: visto2.current });
+      if (a.pw === prev.pw && a.pw2 === prev.pw2) return prev;
+      const next = { ...prev, pw: a.pw, pw2: a.pw2 };
+      if (!next.pw) delete next.pw;
+      if (!next.pw2) delete next.pw2;
+      return next;
+    });
+  };
   const closeDoc = React.useCallback(() => setDoc(null), []);
   const messageRef = React.useRef(null);
 
@@ -101,8 +141,8 @@ function Signup({ go }) {
     const next = {};
     if (name.length < 2) next.name = "Informe seu nome.";
     if (!isEmail(email)) next.email = "Informe um e-mail válido.";
-    if (password.length < PASSWORD_MIN_LENGTH) next.pw = `Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`;
-    else if (password !== field("pw2")) next.pw2 = "As senhas não são iguais.";
+    if (password.length < PASSWORD_MIN_LENGTH) next.pw = PW_CURTA;
+    else if (password !== field("pw2")) next.pw2 = PW_DIFERENTE;
     if (!accepted) next.accept = acceptError;
     setErrors(next);
     setError(null);
@@ -123,6 +163,8 @@ function Signup({ go }) {
         userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
         // a caixa do aceite já traz a declaração de maioridade
         declaresAdult: true,
+        // caixa SEPARADA e opcional de marketing: só vai se a pessoa marcou
+        marketing,
       });
       setSaved({ name, email });
       // Contrato 3.0: o aceite guarda o IP; o cadastro passa pelo serviço de login, que não entrega o IP ao banco, então este mesmo
@@ -167,7 +209,7 @@ function Signup({ go }) {
     setErrors({});
     try {
       // guarda o aceite (com a maioridade, que está na mesma caixa) para gravar na volta do Google
-      rememberGoogleAcceptance((vig.vigentes ?? VIGENTES_DO_SITE).termo_uso?.version ?? TERMO_VERSAO, { adult: true });
+      rememberGoogleAcceptance((vig.vigentes ?? VIGENTES_DO_SITE).termo_uso?.version ?? TERMO_VERSAO, { adult: true, marketing });
       await backend.signInWithGoogle();
     } catch (err) {
       setError(messageFor(err));
@@ -193,8 +235,14 @@ function Signup({ go }) {
         )}
         <RecoveryField id={FIELD_IDS.name} name="name" label="Nome completo" autoComplete="name" icon="user" placeholder="Seu nome completo" error={errors.name} defaultValue={saved.name} />
         <RecoveryField id={FIELD_IDS.email} name="email" label="E-mail" type="email" autoComplete="email" icon="mail" placeholder="voce@exemplo.com" error={errors.email} defaultValue={saved.email} />
-        <RecoveryField id={FIELD_IDS.pw} name="pw" label="Senha" type="password" icon="lock" hint={`Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`} autoComplete="new-password" error={errors.pw} />
-        <RecoveryField id={FIELD_IDS.pw2} name="pw2" label="Conferir senha" type="password" icon="lock" autoComplete="new-password" error={errors.pw2} />
+        <RecoveryField
+          id={FIELD_IDS.pw} name="pw" label="Senha" type="password" icon="lock" hint={PW_CURTA} autoComplete="new-password" error={errors.pw}
+          onBlur={() => senhas("pw-blur")} onChange={() => senhas("pw-change")}
+        />
+        <RecoveryField
+          id={FIELD_IDS.pw2} name="pw2" label="Conferir senha" type="password" icon="lock" autoComplete="new-password" error={errors.pw2}
+          onBlur={() => senhas("pw2-blur")} onChange={() => senhas("pw2-change")}
+        />
 
         <div className={`cc-consent${errors.accept ? " is-error" : ""}`}>
           <div className="cc-item">
@@ -217,6 +265,15 @@ function Signup({ go }) {
               {AVISO_ACEITE_V3}
             </p>
           )}
+        </div>
+
+        {/* Contrato 3.0, cláusulas 6.2 e 32: caixa SEPARADA, opcional e desmarcada; não marcar não muda nada no cadastro */}
+        <div className="cc-mkt">
+          <label className="cc-check">
+            <input id={FIELD_IDS.marketing} type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} aria-describedby="secure-marketing-nota" />
+            <span>{MARKETING_TEXTO} <span className="cc-opcional">(opcional)</span></span>
+          </label>
+          <p id="secure-marketing-nota" className="cc-aviso">Você pode desligar quando quiser em Minha Conta.</p>
         </div>
 
         <RecoveryButton type="submit" loading={loading} loadingText="CRIANDO CONTA…">CRIAR CONTA</RecoveryButton>

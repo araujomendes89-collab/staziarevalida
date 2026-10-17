@@ -23,6 +23,11 @@ export interface SignUpExtra {
   /** Termo 2.0 em diante: marcou "tenho 18 anos ou mais" e "sou médico(a)". Vão como "true" nos metadados; só "sim" é enviado. */
   declaresAdult?: boolean;
   declaresPhysician?: boolean;
+  /**
+   * Contrato 3.0, cláusulas 6.2 e 32: marcou a caixa SEPARADA e opcional "Quero receber novidades e ofertas por e-mail". Só "sim"
+   * vai (marketing_opt_in = "true"); o banco grava com data e origem (migração …13800). Sem marcar, nada é enviado nem gravado.
+   */
+  marketing?: boolean;
 }
 
 export interface Backend {
@@ -131,6 +136,7 @@ export function signUpMetadata(extra: SignUpExtra = {}): Record<string, string> 
   if (extra.userAgent) meta.user_agent = extra.userAgent.slice(0, USER_AGENT_MAX);
   if (extra.declaresAdult === true) meta.declares_adult = "true";
   if (extra.declaresPhysician === true) meta.declares_physician = "true";
+  if (extra.marketing === true) meta.marketing_opt_in = "true";
   return meta;
 }
 

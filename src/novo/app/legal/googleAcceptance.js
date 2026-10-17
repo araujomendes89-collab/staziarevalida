@@ -5,11 +5,14 @@ const MAX_AGE_MS = 30 * 60 * 1000;
 
 /**
  * @param {string} version
- * @param {{ adult?: boolean, physician?: boolean }} [declarations] marcadas no cadastro (Termo 2.0 em diante)
+ * @param {{ adult?: boolean, physician?: boolean, marketing?: boolean }} [declarations] marcadas no cadastro (Termo 2.0 em diante);
+ *   marketing: a caixa opcional "Quero receber novidades e ofertas por e-mail" (Contrato 3.0, cláusula 6.2), gravada na volta
  */
 export function rememberGoogleAcceptance(version, declarations) {
   try {
-    const extra = declarations ? { adult: declarations.adult === true, physician: declarations.physician === true } : {};
+    const extra = declarations
+      ? { adult: declarations.adult === true, physician: declarations.physician === true, marketing: declarations.marketing === true }
+      : {};
     localStorage.setItem(KEY, JSON.stringify({ version, at: Date.now(), ...extra }));
   } catch {
     /* navegação privada pode recusar; sem registro o aceite é pedido na tela de aceite */
@@ -28,7 +31,7 @@ export function takeGoogleAcceptance(current) {
 /**
  * Como takeGoogleAcceptance, devolvendo também as declarações marcadas no cadastro: null quando não vale.
  * @param {string} current
- * @returns {{ adult: boolean, physician: boolean } | null}
+ * @returns {{ adult: boolean, physician: boolean, marketing: boolean } | null}
  */
 export function takeGoogleAcceptanceFull(current) {
   let raw = null;
@@ -40,10 +43,10 @@ export function takeGoogleAcceptanceFull(current) {
   }
   if (!raw) return null;
   try {
-    const { version, at, adult, physician } = JSON.parse(raw);
+    const { version, at, adult, physician, marketing } = JSON.parse(raw);
     const age = Date.now() - Number(at);
     if (version !== current || !Number.isFinite(age) || age < 0 || age >= MAX_AGE_MS) return null;
-    return { adult: adult === true, physician: physician === true };
+    return { adult: adult === true, physician: physician === true, marketing: marketing === true };
   } catch {
     return null;
   }

@@ -3,20 +3,21 @@
 // Os interruptores de lembrete e de alertas do protótipo saíram: o produto ainda não envia
 // notificações.
 import React from "react";
-import { Badge, Banner, Button, Icon, SegmentedControl, SelectField, TextField } from "../../ds";
+import { Badge, Banner, Button, Icon, SegmentedControl, SelectField, Switch, TextField } from "../../ds";
 import { isStaffRole } from "../admin/AdminScreen.jsx";
 import { isPhase2Locked } from "../admin/common.jsx";
 import { PASSWORD_MIN_LENGTH } from "../../data";
 import { useSession } from "../session.jsx";
 import { planStatusLabel as planBadge, planSummary, usePlanLock } from "../plan/planAccess.js";
 import { ReportProblem } from "../support/ReportProblem.jsx";
-import { SupportMail, useSupportEmail } from "../support/supportContact.jsx";
+import { PRIVACY_EMAIL, SUPPORT_HOURS, SupportMail, SupportPhone, useSupportEmail } from "../support/supportContact.jsx";
 import { useMobile } from "../Shell.jsx";
 import { Panel, RichIcon, Tile, useBreakpoint } from "../evolucao/ui.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
 import { CelebracoesPreferencias } from "../play/celebracoes/CelebracoesPreferencias.jsx";
 import { COUNTRIES, normalizePhone, phoneError, splitPhone } from "../legal/phone.js";
-import { DocumentosSection, nomeDoTermo } from "./DocumentosSection.jsx";
+import { DocumentosSection, dataHoraBR, nomeDoTermo } from "./DocumentosSection.jsx";
+import { semFuncaoNoBanco } from "../legal/vigente.js";
 import "./account.css";
 
 // icon = ícone ilustrado do pacote (RichIcon); tone = cor do azulejo. "Ajuda e suporte" fica fora do bloco "Sua conta" (vem depois, junto de "Sair da conta").
@@ -44,6 +45,15 @@ function SectionHeader({ title, subtitle }) {
   );
 }
 const MAIN_SECTIONS = SECTIONS.filter((s) => s.id !== "ajuda");
+/** Seção pedida no endereço (?secao=docs), se existir. */
+function secaoDoEndereco() {
+  try {
+    const id = new URLSearchParams(window.location.search).get("secao");
+    return SECTIONS.some((s) => s.id === id) ? id : null;
+  } catch {
+    return null;
+  }
+}
 const HELP = SECTIONS.find((s) => s.id === "ajuda");
 const THEMES = [
   { value: "light", label: "Claro", icon: "sun" },
@@ -333,6 +343,56 @@ function AcceptanceLine({ title, doc }) {
   );
 }
 
+/**
+ * Contrato 3.0, cláusulas 6.2 e 32: chave para ligar e desligar as comunicações promocionais por e-mail (opcional; desligada até a
+ * pessoa ligar). Dados: app_marketing_get / app_marketing_set (migração …13800). Num banco sem elas, a chave não aparece.
+ */
+export function MarketingSwitch() {
+  const { backend } = useSession();
+  const [st, setSt] = React.useState({ status: "carregando", opt_in: false, updated_at: null });
+  const [saving, setSaving] = React.useState(false);
+  const [erro, setErro] = React.useState(null);
+  React.useEffect(() => {
+    let vivo = true;
+    Promise.resolve()
+      .then(() => backend.rpc("app_marketing_get"))
+      .then((r) => vivo && setSt({ status: "pronto", opt_in: r?.opt_in === true, updated_at: r?.updated_at ?? null }))
+      .catch((err) => vivo && setSt((x) => ({ ...x, status: semFuncaoNoBanco(err) ? "sem" : "erro" })));
+    return () => {
+      vivo = false;
+    };
+  }, [backend]);
+  if (st.status === "sem") return null;
+  const mudar = async (optIn) => {
+    setSaving(true);
+    setErro(null);
+    try {
+      const r = await backend.rpc("app_marketing_set", { p_opt_in: optIn, p_origin: "minha_conta" });
+      setSt({ status: "pronto", opt_in: r?.opt_in === true, updated_at: r?.updated_at ?? null });
+    } catch {
+      setErro("Não foi possível salvar sua escolha. Tente de novo.");
+    }
+    setSaving(false);
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <Switch
+        label="Novidades e ofertas por e-mail"
+        description="Opcional. Os e-mails de serviço (cópia do contrato, segurança, cobrança e avisos da conta) chegam sempre."
+        checked={st.opt_in}
+        disabled={saving || st.status !== "pronto"}
+        onChange={(e) => mudar(e.target.checked)}
+      />
+      <div style={{ font: "var(--type-body-sm)", color: "var(--text-tertiary)" }} aria-live="polite">
+        {st.status === "carregando" && "Carregando sua escolha…"}
+        {st.status === "erro" && "Não foi possível carregar sua escolha agora."}
+        {st.status === "pronto" && (st.opt_in ? `Ligado${st.updated_at ? ` em ${dataHoraBR(st.updated_at)}` : ""}.` : `Desligado${st.updated_at ? ` em ${dataHoraBR(st.updated_at)}` : ""}.`)}
+      </div>
+      {erro && <Banner tone="danger">{erro}</Banner>}
+    </div>
+  );
+}
+
 function PrivacySection() {
   const { backend, boot } = useSession();
   const legal = boot.legal;
@@ -376,6 +436,7 @@ function PrivacySection() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <SectionHeader title="Privacidade e dados" subtitle="Seus direitos pela LGPD: acesso e exclusão dos seus dados" />
+      <MarketingSwitch />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 280px" }}>
           <div style={{ font: "var(--type-label)" }}>Baixar meus dados</div>
@@ -430,6 +491,21 @@ function HelpSection({ email }) {
           <SupportMail email={email} />
         </div>
         <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Escreva por aqui para tirar dúvidas, pedir acesso ou falar sobre seu plano.</div>
+      </div>
+      {/* Contrato 3.0, cláusula 1.3 (SAC): telefone/WhatsApp e horário de atendimento; e-mail do encarregado de dados (cláusula 1.4) */}
+      <div>
+        <div style={{ font: "var(--type-label)" }}>Telefone e WhatsApp</div>
+        <div style={{ font: "var(--type-body)" }}>
+          <SupportPhone />
+        </div>
+        <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{SUPPORT_HOURS}.</div>
+      </div>
+      <div>
+        <div style={{ font: "var(--type-label)" }}>Seus dados pessoais (LGPD)</div>
+        <div style={{ font: "var(--type-body)" }}>
+          <SupportMail email={PRIVACY_EMAIL} />
+        </div>
+        <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Para pedidos sobre seus dados: acesso, correção, exclusão ou dúvidas de privacidade.</div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 20, borderTop: "1px solid var(--border-subtle)" }}>
         <div>
@@ -532,7 +608,8 @@ export function AccountScreen({ go }) {
   }, [backend, isElite, eliteKey, tick]);
   const bp = useBreakpoint();
   // no celular a lista abre com as seções fechadas (D9); no computador e no tablet a primeira seção já aparece
-  const [section, setSection] = React.useState(() => (bp === "narrow" ? "" : "conta"));
+  // ?secao=docs (link do e-mail da cópia do contrato) abre direto a seção pedida
+  const [section, setSection] = React.useState(() => secaoDoEndereco() ?? (bp === "narrow" ? "" : "conta"));
   const active = section || "conta";
   const profile = boot.profile;
   const plan = planBadge(boot.subscription, boot.role, Boolean(boot.reviewer_areas?.length));
