@@ -67,9 +67,13 @@ export function montarOrigem(tipo: TipoConhecimento, o: Origem, termos: readonly
   let meta: MetaOrigem;
   switch (tipo) {
     case "fonte": {
-      const titulo = [txt(o.titulo), txt(o.orgao)].filter(Boolean).join(" · ").slice(0, 300);
+      // citação curta para a voz: o órgão até a primeira barra ("Ministério da Saúde / SVS / ..." → "Ministério da Saúde") e sem a
+      // "seção" que só repete a página ("Página 61 do PDF (página impressa 59)")
+      const orgao = txt(o.orgao).split(/\s+\/\s+|\s+\(/)[0].trim();
+      const titulo = [txt(o.titulo), orgao].filter(Boolean).join(" · ").slice(0, 300);
+      const secao = /^p[áa]gina\s+\d+\s+do\s+pdf/i.test(txt(o.secao)) ? null : txt(o.secao) || null;
       meta = { titulo, ano: o.ano ?? null, grupo: txt(o.grupo), nivel: "oficial" };
-      trechos.push(...trechosDe(titulo, txt(o.secao) || null, limpo(o.texto), o.pagina ?? null));
+      trechos.push(...trechosDe(titulo, secao, limpo(o.texto), o.pagina ?? null));
       break;
     }
     case "aula": {

@@ -31,6 +31,9 @@ const VAZIAS = new Set([
   "deve", "devo", "seria", "vai", "vou", "tenho", "temos", "quanto", "quanta", "quantos", "quantas", "qual", "e", "ha", "houver",
 ]);
 
+/** Prefixos soltos ("pós-parto" vira "pos parto"): sozinhos não dizem nada; só contam dentro da frase com a palavra seguinte. */
+const SO_EM_FRASE = new Set(["pos", "pre", "apos", "anti", "sub", "semi", "auto", "intra", "extra", "peri"]);
+
 /** Minúsculas, sem acento, só letras e números separados por espaço. */
 export function normalizar(texto: string | null | undefined): string {
   return String(texto ?? "")
@@ -47,7 +50,7 @@ function conta(w: string): boolean {
   if (SIGLAS.has(w)) return true;
   if (VAZIAS.has(w)) return false;
   if (/^\d+$/.test(w)) return w.length >= 2;
-  return w.length >= 3;
+  return w.length >= 3 && !SO_EM_FRASE.has(w);
 }
 
 /** Termos da pergunta, na ordem, sem repetição (até `max`). */
@@ -72,7 +75,8 @@ export function tsqueryDe(...textos: (string | null | undefined)[]): string {
   for (let i = 0; i + 1 < palavras.length && frases.length < 3; i++) {
     const a = palavras[i];
     const b = palavras[i + 1];
-    if (conta(a) && conta(b) && termos.includes(a) && termos.includes(b) && a !== b) {
+    const ok = (w: string) => (conta(w) && termos.includes(w)) || SO_EM_FRASE.has(w);
+    if (ok(a) && conta(b) && termos.includes(b) && a !== b) {
       const f = `(${a} <-> ${b})`;
       if (!frases.includes(f)) frases.push(f);
     }

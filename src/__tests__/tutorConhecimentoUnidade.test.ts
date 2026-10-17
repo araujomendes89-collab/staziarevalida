@@ -33,6 +33,8 @@ describe("consulta", () => {
     expect(tsqueryDe("crise asmática na criança")).toBe("crise | asmatica | crianca | (crise <-> asmatica)");
     expect(tsqueryDe("'; drop table x; --")).toBe("drop | table | (drop <-> table)");
     expect(tsqueryDe("")).toBe("");
+    // prefixo solto ("pós-parto") só conta na frase com a palavra seguinte
+    expect(tsqueryDe("conduta na hemorragia pós-parto")).toBe("conduta | hemorragia | parto | (pos <-> parto)");
   });
   it("hash do cache igual para a mesma pergunta dita de outro jeito", () => {
     expect(chaveDaConsulta("Tratamento da CRISE de asma?")).toBe(chaveDaConsulta("tratamento crise asma"));

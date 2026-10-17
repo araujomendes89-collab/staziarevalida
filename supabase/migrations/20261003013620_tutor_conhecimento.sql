@@ -360,6 +360,7 @@ end
 $$;
 
 -- Fontes: o vetor que a Central já gerou (ch_passage_embeddings) vale para o trecho que é o mesmo texto do trecho da fonte (sem custo).
+-- Trecho de fonte longa (cortado em partes) ou com texto retirado pela limpeza ganha vetor novo.
 create or replace function public.ch_worker_tutor_kb_copiar_vetores_fontes(p_model text) returns integer
   language plpgsql security definer set search_path = ''
 as $$
@@ -372,7 +373,7 @@ begin
     join public.ch_passage_embeddings e on e.passage_id = p.id and e.model = p_model
    where t.tipo = 'fonte' and t.parte = 0
      and not exists (select 1 from public.tutor_kb_trechos t2 where t2.tipo = 'fonte' and t2.origem_id = t.origem_id and t2.parte > 0)
-     and btrim(t.texto) = btrim(p.text)
+     and regexp_replace(btrim(t.texto), '\s+', ' ', 'g') = regexp_replace(btrim(p.text), '\s+', ' ', 'g') -- a limpeza só junta espaços
      and not exists (select 1 from public.tutor_kb_vetores v where v.trecho_id = t.id and v.model = p_model and v.hash = t.hash)
   on conflict (trecho_id) do update set model = excluded.model, hash = excluded.hash, embedding = excluded.embedding, criado_em = now();
   get diagnostics n = row_count;
