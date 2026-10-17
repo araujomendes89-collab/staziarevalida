@@ -3,6 +3,7 @@ import React from "react";
 import { Avatar, Badge, Banner, Button, Card, EmptyState, Icon, SegmentedControl, SelectField, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
+import { PlanoPorFaseUsuario } from "./planos/PlanoPorFaseUsuario.jsx";
 import { percent } from "../practice/format.js";
 import { AREA_LABEL } from "./content/labels.js";
 import {
@@ -260,6 +261,7 @@ function UserDetail({ id, onBack, onChanged }) {
           <Card>
             <PlanForm key={`p-${user.id}`} user={user} onSaved={saved} />
           </Card>
+          {!isStaffRole(user.role) && user.email && <PlanoPorFaseUsuario email={user.email} />}
           <DeleteUser
             user={user}
             onDeleted={() => {

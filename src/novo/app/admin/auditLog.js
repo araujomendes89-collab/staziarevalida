@@ -42,6 +42,7 @@ export const ACTION_LABEL = {
   "carteira.cortesia_cancelada": "Cortesia de créditos de IA cancelada", // 013680
   "direitos.fase_dada": "Plano por fase dado pela equipe (regra nova)", // 013690
   "direitos.fase_tirada": "Plano por fase tirado pela equipe (regra nova)", // 013690
+  "direitos.teste_verificado": "Teste grátis marcado como verificado (alerta de IP)", // 013690
   "settings.save": "Configurações salvas",
   "settings.sessao_unica": "Sessão única (uma conta, um aparelho por vez) alterada",
   "support.contact": "Contato de suporte alterado",

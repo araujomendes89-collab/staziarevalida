@@ -7,6 +7,7 @@ import React from "react";
 import { Badge, Banner, Button, Card, SelectField, Switch, TextField } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { LoadError, Loading, messageOf, useLoad } from "../common.jsx";
+import { TestesComAlerta } from "./PlanoPorFaseUsuario.jsx";
 
 const FASE_LABEL = { teoria: "1ª fase", pratica: "2ª fase", comum: "As duas fases" };
 const ACESSO = {
@@ -402,6 +403,7 @@ export function PlanosPorFase() {
     <>
       <DireitosPorFase data={data} setData={setData} />
       <DiagnosticoDireitos />
+      <TestesComAlerta />
     </>
   );
   return (

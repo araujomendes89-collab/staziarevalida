@@ -102,3 +102,43 @@ describe("Administração › Carteira de IA", () => {
     expect(await screen.findByText(/migração 013680/)).toBeTruthy();
   });
 });
+
+import { PlanoPorFaseUsuario, TestesComAlerta } from "../novo/app/admin/planos/PlanoPorFaseUsuario.jsx";
+
+describe("Administração › Usuários › Plano por fase (etapa 3)", () => {
+  const DIAG = { regra_nova: { perfil: "teste", modo: "sombra", fases: { teoria: { origem: "assinatura" }, pratica: {} } } };
+  it("dá o PRÁTICA até uma data, com motivo, e mostra o aviso da 2ª fase fechada", async () => {
+    const chamadas: any[] = [];
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      chamadas.push([fn, args]);
+      if (fn === "app_admin_direitos_aluno") return DIAG;
+      if (fn === "app_admin_direitos_dar_plano") return { ...DIAG, aviso: "A 2ª fase ainda está fechada aos alunos: a parte prática só aparece quando ela abrir." };
+      throw new Error(`rpc inesperada: ${fn}`);
+    });
+    render(<PlanoPorFaseUsuario email="aluno@teste.dev" />);
+    expect(await screen.findByText("Plano por fase (regra nova)")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Até"), { target: { value: "2026-12-31" } });
+    fireEvent.change(screen.getByLabelText("Motivo (obrigatório)"), { target: { value: "Conta de teste" } });
+    fireEvent.click(screen.getByRole("button", { name: "Dar plano por fase" }));
+    expect(await screen.findByText(/2ª fase ainda está fechada/)).toBeTruthy();
+    const [, args] = chamadas.find(([fn]) => fn === "app_admin_direitos_dar_plano");
+    expect(args).toMatchObject({ p_busca: "aluno@teste.dev", p_plano: "pratica", p_motivo: "Conta de teste" });
+    expect(args.p_ate).toMatch(/^2026-12-31T|^2027-01-01T/);
+  });
+  it("não aparece para quem não é administrador nem sem a migração", async () => {
+    backend.rpc.mockRejectedValue(new Error("Só o administrador pode fazer isso."));
+    const { container } = render(<PlanoPorFaseUsuario email="aluno@teste.dev" />);
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalled());
+    expect(container.textContent).toBe("");
+  });
+  it("lista os testes com verificação pedida e marca como verificado", async () => {
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_admin_testes_alerta") return [{ email: "ip@teste.dev", verificacao: "pedida" }];
+      if (fn === "app_admin_teste_verificado") return [{ email: "ip@teste.dev", verificacao: "feita" }];
+      throw new Error(`rpc inesperada: ${fn}`);
+    });
+    render(<TestesComAlerta />);
+    fireEvent.click(await screen.findByRole("button", { name: "Marcar como verificado" }));
+    expect(await screen.findByText("Verificado")).toBeTruthy();
+  });
+});
