@@ -14,6 +14,8 @@
  *    corpo (useMiniTutor.js → tutorTurn). O router repassa e o engine reserva o recurso "tutor_janela" (mesma conta de créditos;
  *    na Administração aparece separado). Sem o campo, conta como Tutor por texto.
  *  - Dica do Tutor na questão: server/tutor/questionHint.ts: recurso "dica_questao".
+ *  - Abertura do Tutor escrita pela IA (decisão do dono de 17/10; migração 013807): server/tutor/opening.ts, recurso "tutor_abertura".
+ *    Só cobra quando a conversa usa a fala da IA; a preparada e não usada segue custo da casa.
  *  - Correção de estação por IA (ramo dupla-sozinho-ia / stazia-match, server/dupla/soloEval.ts → evaluateSolo): DEPOIS de
  *    ch_worker_solo_prepare dar certo e ANTES de runFunction(maestro, "treino_avaliacao", …), chamar
  *      const w = await reservarCarteira(deps.db, { user: uid, recurso: "correcao_estacao_ia", requestId: `solo:${attemptId}` });
@@ -24,7 +26,7 @@
 import crypto from "node:crypto";
 import type { ContentDb } from "../contentHub/infra";
 
-export type RecursoCarteira = "tutor_texto" | "tutor_janela" | "dica_questao" | "correcao_estacao_ia";
+export type RecursoCarteira = "tutor_texto" | "tutor_janela" | "dica_questao" | "correcao_estacao_ia" | "tutor_abertura";
 
 export interface ReservaCarteira {
   ok: boolean;

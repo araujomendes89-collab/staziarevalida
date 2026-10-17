@@ -9,7 +9,8 @@
  * IA desligada, fora do ar, lenta (passou do tempo) ou fala barrada duas vezes: a reserva fica, sem erro para o aluno.
  *
  * Sem conteúdo médico: a IA da abertura não recebe enunciado, alternativas nem gabarito, só o tema.
- * Não gasta a cota de interações do aluno (o custo vai para o ai_usage_ledger com interactions = 0).
+ * Não gasta a cota de interações do aluno (o custo vai para o ai_usage_ledger com interactions = 0). Desde 17/10 (013807) a abertura
+ * escrita pela IA que a conversa USA é paga pela carteira do aluno (reservar → confirmar → devolver); com a chave desligada, nada muda.
  */
 import { aiAllowed } from "../contentHub/ai/registry";
 import type { Schema } from "../contentHub/ai/schema";
@@ -23,6 +24,7 @@ import { deterministicTutor, tutorSettings } from "./settings";
 import { protegerFala, violacoesDeSigilo } from "./escudo";
 import { achadosDeSigilo, blocoSigilo, nomeSeguro } from "./sigilo";
 import { languageViolations } from "./safety";
+import { reservarCarteira, type ReservaCarteira } from "../planos/carteira";
 
 export const OPENING_VERSION = "1.2.0";
 /**
@@ -288,6 +290,26 @@ export function openingViolations(text: string, heard: string[], startsUsed: str
 interface Uso { calls: number; input_tokens: number; output_tokens: number; cost_usd: number; provider: string; model: string }
 interface Gerada { text: string | null; violations: Violation[]; usage: Uso; system: string }
 
+/**
+ * Abertura escrita pela IA = custo do ALUNO (decisão do dono de 17/10; migração 013807): reserva na carteira (recurso
+ * "tutor_abertura") antes de usar a IA; a conta é acertada só se a conversa usar a fala da IA. Chave da carteira desligada: o banco só
+ * anota (nada muda para o aluno). Devolve null quando a carteira recusa (chave ligada e sem crédito, Tutor trancado) ou não responde:
+ * a conversa fica com a fala de reserva, sem IA.
+ */
+async function reservarAbertura(deps: TutorDeps, userId: string, sessionId: string, messageId: number, origem: "ia" | "pronta"): Promise<ReservaCarteira | null> {
+  try {
+    // um pedido por fala e por caminho (a preparada que não entrou devolve o dela; o pedido à IA logo depois é outro)
+    const requestId = `abertura:${origem === "pronta" ? "p" : "ia"}:${sessionId}:${messageId}`;
+    const w = await reservarCarteira(deps.db, { user: userId, recurso: "tutor_abertura", requestId, sessionId, log: deps.log });
+    if (w.ok) return w;
+    deps.log?.(`[tutor] abertura pela IA recusada pela carteira (${w.reason ?? "?"}): fica a reserva`);
+    return null;
+  } catch (error) {
+    deps.log?.(`[tutor] carteira não respondeu na abertura: fica a reserva (${(error as Error).message.slice(0, 120)})`);
+    return null;
+  }
+}
+
 const desligada = () =>
   /^(false|0|off|no)$/i.test((process.env.TUTOR_ENABLED ?? "").trim()) || /^(false|0|off|no)$/i.test((process.env.TUTOR_ABERTURA_IA ?? "").trim()) ||
   // modo determinístico (testes automatizados e conferências reproduzíveis): fica a reserva sorteada pelo banco
@@ -465,10 +487,24 @@ export async function naturalOpening(deps: TutorDeps, userId: string, sessionId:
     if (!resolveTutorProvider(deps.mockRespond).provider) return null;
     // reserva atômica (e limite de frequência) antes de qualquer custo
     if (!(await claim())) return null;
-    const g = await gerarFala(deps, sessionId, st, ctx, timeoutMs, t0);
-    if (!g) return await salvar(null, { calls: 0 }, {});
-    if (!g.text && g.violations.length) deps.log?.(`[tutor] abertura natural barrada (${g.violations.map((v) => v.code).join(", ")}): fica a reserva`);
-    return await salvar(g.text, g.usage, { model: g.usage.model, provider: g.usage.provider, origem: "na_hora" });
+    // a carteira do aluno paga a abertura escrita pela IA (recusou: fica a reserva, sem IA)
+    const carteira = await reservarAbertura(deps, userId, sessionId, msg.id, "ia");
+    if (!carteira) return await salvar(null, { calls: 0 }, { carteira: "recusada" });
+    let usada = false;
+    try {
+      const g = await gerarFala(deps, sessionId, st, ctx, timeoutMs, t0);
+      if (!g) return await salvar(null, { calls: 0 }, {});
+      if (!g.text && g.violations.length) deps.log?.(`[tutor] abertura natural barrada (${g.violations.map((v) => v.code).join(", ")}): fica a reserva`);
+      const saved = await salvar(g.text, g.usage, { model: g.usage.model, provider: g.usage.provider, origem: "na_hora" });
+      // só cobra se a conversa ficou com a fala da IA; custo sem preço do provedor: a carteira cobra a reserva (nunca zero)
+      if (saved && g.text && saved.content === g.text) {
+        usada = true;
+        await carteira.confirmar(g.usage.cost_usd > 0 ? g.usage.cost_usd : null);
+      }
+      return saved;
+    } finally {
+      if (!usada) await carteira.devolver();
+    }
   } catch (error) {
     deps.log?.(`[tutor] abertura natural falhou: ${(error as Error).message.slice(0, 160)}`);
     return null;
@@ -509,10 +545,23 @@ async function usarPronta(deps: TutorDeps, userId: string, sessionId: string, st
   }
   // o texto que entra é o que foi preparado e conferido (o banco confere que é a mesma preparação e que ela serve a esta conversa)
   if (conferida.text !== r.content) return undefined;
-  const saved = await deps.db.service<{ ok: boolean; id: number | null; content: string | null }>("ch_worker_tutor_use_ready_opening", {
-    p_user: userId, p_session_id: sessionId, p_message_id: st.message!.id, p_ready_id: r.id, p_meta: { prompt_version: OPENING_VERSION, ms: Date.now() - t0 },
-  });
-  return saved?.ok && saved.id != null && saved.content ? { id: saved.id, content: saved.content } : undefined;
+  // usar a fala preparada passa a ser custo do aluno: a carteira reserva antes (recusou: fica a reserva fixa; a preparada segue da casa)
+  const carteira = await reservarAbertura(deps, userId, sessionId, st.message!.id, "pronta");
+  if (!carteira) return null;
+  let usada = false;
+  try {
+    const saved = await deps.db.service<{ ok: boolean; id: number | null; content: string | null }>("ch_worker_tutor_use_ready_opening", {
+      p_user: userId, p_session_id: sessionId, p_message_id: st.message!.id, p_ready_id: r.id, p_meta: { prompt_version: OPENING_VERSION, ms: Date.now() - t0 },
+    });
+    if (!(saved?.ok && saved.id != null && saved.content)) return undefined;
+    usada = true;
+    const custo = await deps.db.service<number | string | null>("ch_worker_tutor_opening_ready_custo", { p_user: userId, p_ready_id: r.id }).catch(() => null);
+    const usd = custo == null ? null : Number(custo);
+    await carteira.confirmar(usd != null && Number.isFinite(usd) && usd > 0 ? usd : null);
+    return { id: saved.id, content: saved.content };
+  } finally {
+    if (!usada) await carteira.devolver();
+  }
 }
 
 /** A escolha na entrada do Tutor (os mesmos argumentos de app_tutor_start). */

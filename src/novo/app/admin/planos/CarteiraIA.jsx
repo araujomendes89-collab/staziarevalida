@@ -12,6 +12,7 @@ import { centavosParaReais, reaisParaCentavos } from "./DireitosPorFase.jsx";
 const RECURSO = {
   tutor_texto: "Tutor por texto",
   tutor_janela: "Janelinha do Tutor",
+  tutor_abertura: "Abertura do Tutor (IA)",
   dica_questao: "Dica na questão",
   correcao_estacao_ia: "Correção de estação por IA",
   voz_ao_vivo: "Voz ao vivo (além da franquia)",
