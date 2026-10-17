@@ -325,10 +325,12 @@ begin
   perform pg_advisory_xact_lock(hashtextextended('billing:' || p_user::text, 0));
   select * into p from public.billing_pedidos where user_id = p_user and idem_chave = p_idem;
   if found then return to_jsonb(p) || jsonb_build_object('repetido', true); end if;
-  -- pedido aberto vencido sai da frente (a tarefa agendada cancela a cobrança no fornecedor)
-  update public.billing_pedidos set status = 'expirado', atualizado_em = now()
-  where user_id = p_user and tipo = p_tipo and status = 'aberto' and expira_em <= now();
+  -- pedido aberto VENCIDO: não é encerrado aqui (a cobrança dele continuaria pagável no fornecedor = cobrança em dobro). O
+  -- servidor cancela a cobrança/assinatura no fornecedor, confere se não foi paga, encerra e tenta de novo (revisão 17/10).
   select * into v_aberto from public.billing_pedidos where user_id = p_user and tipo = p_tipo and status = 'aberto';
+  if found and v_aberto.expira_em <= now() then
+    raise exception 'pedido_vencido: Um pagamento anterior venceu e está sendo cancelado. Tente de novo.';
+  end if;
   if found then
     if v_aberto.codigo = p_codigo and v_aberto.ciclo = p_ciclo and v_aberto.metodo = p_metodo and v_aberto.url is not null then
       return to_jsonb(v_aberto) || jsonb_build_object('reaproveitado', true);
@@ -366,14 +368,20 @@ begin
 end
 $$;
 
+-- Grava a cobrança criada no pedido. false = o pedido já tinha cobrança (outro clique chegou antes) ou não está mais aberto:
+-- o servidor cancela no fornecedor a cobrança que sobrou (revisão 17/10: nunca duas cobranças para o mesmo pedido).
+drop function if exists public.ch_worker_billing_pedido_anexar(uuid, text, text, text, text, text, jsonb, date);
 create or replace function public.ch_worker_billing_pedido_anexar(p_pedido uuid, p_provider text, p_customer text, p_payment text,
                                                                   p_subscription text, p_url text, p_pix jsonb, p_vencimento date)
-  returns void
-  language sql security definer set search_path = ''
+  returns boolean
+  language plpgsql security definer set search_path = ''
 as $$
+begin
   update public.billing_pedidos set provider = p_provider, provider_customer_id = p_customer, provider_payment_id = p_payment,
     provider_subscription_id = p_subscription, url = p_url, pix = p_pix, vencimento = p_vencimento, atualizado_em = now()
-  where id = p_pedido and status = 'aberto'
+  where id = p_pedido and status = 'aberto' and provider_payment_id is null;
+  return found;
+end
 $$;
 
 -- Encerra um pedido ainda aberto (falhou, cancelado pelo aluno, expirado). Devolve o pedido (para cancelar no fornecedor).
@@ -397,12 +405,13 @@ create or replace function public.ch_worker_billing_pedido(p_pedido uuid, p_user
 as $$ select to_jsonb(p) from public.billing_pedidos p where p.id = p_pedido and (p_user is null or p.user_id = p_user) $$;
 
 -- Pedidos abertos que venceram (para cancelar a cobrança no fornecedor e encerrar).
-create or replace function public.ch_worker_billing_pedidos_vencidos() returns jsonb
+drop function if exists public.ch_worker_billing_pedidos_vencidos();
+create or replace function public.ch_worker_billing_pedidos_vencidos(p_user uuid default null) returns jsonb
   language sql stable security definer set search_path = ''
 as $$
   select coalesce(jsonb_agg(jsonb_build_object('id', p.id, 'provider', p.provider, 'payment_id', p.provider_payment_id,
                                                'subscription_id', p.provider_subscription_id) order by p.expira_em), '[]'::jsonb)
-  from public.billing_pedidos p where p.status = 'aberto' and p.expira_em <= now()
+  from public.billing_pedidos p where p.status = 'aberto' and p.expira_em <= now() and (p_user is null or p.user_id = p_user)
 $$;
 
 -- Aviso do fornecedor contado uma vez (tabela billing_events, de 000500). true = ainda não processado.

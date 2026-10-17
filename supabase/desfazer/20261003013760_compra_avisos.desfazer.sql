@@ -4,7 +4,7 @@ drop trigger if exists avisos_da_cobranca on public.billing_cobrancas;
 drop function if exists public.avisos_da_cobranca();
 drop function if exists public.app_amostra_hoje();
 drop function if exists public.ch_worker_billing_troca_cartao_abrir(uuid, text);
-drop function if exists public.ch_worker_billing_para_pix(uuid);
+drop function if exists public.ch_worker_billing_para_pix(uuid, text);
 drop function if exists public.ch_worker_billing_troca_situacao(uuid);
 drop function if exists public.ch_worker_billing_aceite_registrar(uuid, text);
 drop function if exists public.ch_worker_billing_contrato_doc();

@@ -100,6 +100,12 @@ begin
 
   if new.status = 'falhou' then
     if c.user_id is null then return new; end if; -- 1ª compra que não passou: a própria tela mostra
+    -- só a RENOVAÇÃO do contrato vigente (cobrança da assinatura atual ou o Pix da renovação deste vencimento); um Pix velho de
+    -- outro pedido que venceu não vira "acesso pausado" (revisão 17/10)
+    if not ((new.provider_subscription_id is not null and new.provider_subscription_id = c.provider_subscription_id)
+            or exists (select 1 from public.billing_pedidos p where p.id = new.pedido_id and p.motivo = 'renovacao' and p.renova_ate = c.periodo_fim)) then
+      return new;
+    end if;
     if new.metodo = 'cartao' then
       perform public.avisos_criar(new.user_id, 'acesso_bloqueado', 'bloqueado:' || public.avisos_dia(c.periodo_fim)::text,
         'A renovação no cartão não passou',
@@ -332,13 +338,21 @@ as $$
 $$;
 
 -- Cartão -> Pix (o servidor já cancelou a assinatura no fornecedor). O Pix da renovação sai 7 dias antes pela tarefa diária.
-create or replace function public.ch_worker_billing_para_pix(p_user uuid) returns jsonb
+-- p_sub: a assinatura que o servidor acabou de cancelar. Se o aviso "assinatura apagada" do fornecedor chegou antes (e desligou a
+-- renovação), a troca segue mesmo assim: foi a própria troca que apagou a assinatura.
+drop function if exists public.ch_worker_billing_para_pix(uuid);
+create or replace function public.ch_worker_billing_para_pix(p_user uuid, p_sub text default null) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare c public.billing_contratos; v_sub text;
 begin
   perform pg_advisory_xact_lock(hashtextextended('billing:' || p_user::text, 0));
   select * into c from public.billing_contratos where user_id = p_user for update;
+  if c.user_id is not null and not c.renova and c.metodo = 'cartao' and c.provider_subscription_id is null and p_sub is not null
+     and c.periodo_fim > now() then
+    update public.billing_contratos set renova = true, metodo = 'pix', atualizado_em = now() where user_id = p_user;
+    return jsonb_build_object('metodo', 'pix', 'periodo_fim', c.periodo_fim);
+  end if;
   if c.user_id is null or not c.renova or c.periodo_fim <= now() then
     raise exception 'sem_renovacao: Você não tem uma assinatura que renova para trocar a forma de pagamento.';
   end if;
@@ -374,8 +388,10 @@ begin
     raise exception 'sem_renovacao: Você não tem uma assinatura que renova para trocar a forma de pagamento.';
   end if;
   if c.metodo = 'cartao' then raise exception 'ja_no_cartao: Sua assinatura já renova no cartão de crédito.'; end if;
-  update public.billing_pedidos set status = 'expirado', atualizado_em = now()
-  where user_id = p_user and tipo = 'plano' and status = 'aberto' and expira_em <= now();
+  -- pedido vencido: o servidor cancela no fornecedor e encerra antes (nunca encerrado só aqui: a cobrança seguiria pagável)
+  if exists (select 1 from public.billing_pedidos x where x.user_id = p_user and x.tipo = 'plano' and x.status = 'aberto' and x.expira_em <= now()) then
+    raise exception 'pedido_vencido: Um pagamento anterior venceu e está sendo cancelado. Tente de novo.';
+  end if;
   if exists (select 1 from public.billing_pedidos x where x.user_id = p_user and x.tipo = 'plano' and x.status = 'aberto') then
     raise exception 'pedido_aberto: Você já tem um pagamento do plano em aberto. Conclua ou cancele antes de trocar.';
   end if;
@@ -441,7 +457,7 @@ revoke execute on function public.ch_worker_billing_recibo_salvar(text, text, te
 revoke execute on function public.ch_worker_billing_contrato_doc() from public, anon, authenticated;
 revoke execute on function public.ch_worker_billing_aceite_registrar(uuid, text) from public, anon, authenticated;
 revoke execute on function public.ch_worker_billing_troca_situacao(uuid) from public, anon, authenticated;
-revoke execute on function public.ch_worker_billing_para_pix(uuid) from public, anon, authenticated;
+revoke execute on function public.ch_worker_billing_para_pix(uuid, text) from public, anon, authenticated;
 revoke execute on function public.ch_worker_billing_troca_cartao_abrir(uuid, text) from public, anon, authenticated;
 revoke execute on function public.app_meus_avisos() from public, anon;
 grant execute on function public.app_meus_avisos() to authenticated;

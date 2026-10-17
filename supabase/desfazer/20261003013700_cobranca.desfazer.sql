@@ -16,6 +16,7 @@ drop function if exists public.ch_worker_billing_pago(text, text, uuid, uuid, te
 drop function if exists public.ch_worker_billing_achar(text, text, text, text);
 drop function if exists public.ch_worker_billing_evento_feito(text, text, uuid);
 drop function if exists public.ch_worker_billing_evento(text, text, text, jsonb);
+drop function if exists public.ch_worker_billing_pedidos_vencidos(uuid);
 drop function if exists public.ch_worker_billing_pedidos_vencidos();
 drop function if exists public.ch_worker_billing_pedido(uuid, uuid);
 drop function if exists public.ch_worker_billing_pedido_encerrar(uuid, text, text, uuid);

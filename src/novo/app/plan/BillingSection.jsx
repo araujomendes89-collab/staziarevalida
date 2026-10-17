@@ -352,9 +352,12 @@ export function PedidoAberto({ pedido, onChange, onNovo }) {
         <Button variant="secondary" icon="refresh-cw" onClick={conferir} loading={conferindo}>
           Já paguei: conferir
         </Button>
-        <Button variant="ghost" onClick={cancelar}>
-          Cancelar este pagamento
-        </Button>
+        {/* o Pix da renovação não se cancela por aqui (para não renovar: Cancelar assinatura, em Minha conta) */}
+        {!(p.motivo === "renovacao" && p.metodo === "pix") && (
+          <Button variant="ghost" onClick={cancelar}>
+            Cancelar este pagamento
+          </Button>
+        )}
       </div>
     </div>
   );

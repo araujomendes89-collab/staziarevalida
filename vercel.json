@@ -69,7 +69,7 @@
     },
     {
       "path": "/api/cobranca/cron",
-      "schedule": "0 10 * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }

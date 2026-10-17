@@ -26,8 +26,8 @@ import type { MailMessage } from "../../server/avisos/smtp";
 const TOKEN = "token-do-aviso-simulado-com-mais-de-32-caracteres";
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "compra-avisos-"));
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const [CARTAO, PIX, TROCA_PIX, TROCA_CARTAO, AMOSTRA, OUTRO, EQUIPE] = [21, 22, 23, 24, 25, 26, 27].map(id);
-const TODOS = [CARTAO, PIX, TROCA_PIX, TROCA_CARTAO, AMOSTRA, OUTRO, EQUIPE];
+const [CARTAO, PIX, TROCA_PIX, TROCA_CARTAO, AMOSTRA, OUTRO, EQUIPE, VENCIDO, DUPLO] = [21, 22, 23, 24, 25, 26, 27, 28, 29].map(id);
+const TODOS = [CARTAO, PIX, TROCA_PIX, TROCA_CARTAO, AMOSTRA, OUTRO, EQUIPE, VENCIDO, DUPLO];
 let dev: DevDatabase;
 let db: ContentDb;
 let base: string;
@@ -41,6 +41,7 @@ const charges = new Map<string, ProviderCharge & { reference: string }>();
 const subs = new Map<string, { active: boolean; firstDue: string }>();
 const log: string[] = [];
 let seq = 0;
+let atraso = 0; // fornecedor lento (para dois cliques chegarem juntos)
 const fake: PaymentProvider = {
   name: "asaas",
   mode: "test",
@@ -55,6 +56,7 @@ const fake: PaymentProvider = {
     return { chargeId: cid, url: `https://pagar.teste/${cid}`, pix: i.method === "pix" ? { payload: "000201", image: "img", expiresAt: null } : null };
   },
   async createCardSubscription(i) {
+    if (atraso) await new Promise((r) => setTimeout(r, atraso));
     const sid = `sub_${++seq}`;
     subs.set(sid, { active: true, firstDue: i.firstDueDate });
     const cid = `pay_${++seq}`;
@@ -445,5 +447,62 @@ describe("amostra do dia (telas de cadeado)", () => {
     } finally {
       await dev.db.query(`update public.direitos_config set cadeados_ligados = false`);
     }
+  });
+});
+
+describe("revisão de segurança (17/10): nada de cobrança em dobro", () => {
+  it("pedido vencido: antes de abrir outro, a cobrança velha é cancelada no fornecedor (não fica pagável)", async () => {
+    const a = await comprar(VENCIDO, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "pix" });
+    const velha = a.body.url.split("/").pop();
+    await dev.db.query(`update public.billing_pedidos set expira_em = now() - interval '1 minute' where id = $1`, [a.body.id]);
+    const b = await comprar(VENCIDO, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "pix" });
+    expect(b.status).toBe(200);
+    expect(log).toContain(`cancelou:${velha}`);
+    expect(charges.get(velha)!.status).toBe("canceled");
+    expect(await q1(`select status from public.billing_pedidos where id = $1`, [a.body.id])).toEqual({ status: "expirado" });
+  });
+
+  it("pedido vencido que foi pago no último minuto: vale o pagamento e a compra nova é barrada (já assinante)", async () => {
+    const aberto = await q1(`select id, provider_payment_id p from public.billing_pedidos where user_id = $1 and status = 'aberto'`, [VENCIDO]);
+    await dev.db.query(`update public.billing_pedidos set expira_em = now() - interval '1 minute' where id = $1`, [aberto.id]);
+    pay(aberto.p);
+    const c = await comprar(VENCIDO, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "pix" });
+    expect(c.body.code).toBe("ja_assinante");
+    expect(await q1(`select status from public.billing_pedidos where id = $1`, [aberto.id])).toEqual({ status: "pago" });
+    expect(await q1(`select count(*)::int n from public.billing_cobrancas where user_id = $1 and status = 'paga'`, [VENCIDO])).toEqual({ n: 1 });
+  });
+
+  it("o mesmo clique duas vezes ao mesmo tempo: uma cobrança só no fornecedor", async () => {
+    const antes = log.filter((l) => l.startsWith("cobranca:") || l.startsWith("assinatura:")).length;
+    const corpo = { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "cartao", aceite: true, idem: "idem-duplo-0001", documento: "366.385.446-91", nome: "Aluno Teste" };
+    atraso = 400;
+    const [r1, r2] = await Promise.all([api(DUPLO, "/checkout", corpo), api(DUPLO, "/checkout", corpo)]);
+    atraso = 0;
+    expect([r1.status, r2.status].sort()).toEqual([200, 409].sort());
+    expect(log.filter((l) => l.startsWith("cobranca:") || l.startsWith("assinatura:")).length - antes).toBe(1);
+    const again = await api(DUPLO, "/checkout", corpo);
+    expect(again.status).toBe(200);
+    expect(again.body.url).toBe((r1.status === 200 ? r1 : r2).body.url);
+  });
+
+  it("o Pix da renovação não se cancela pela tela (apagaria a cobrança da renovação)", async () => {
+    const ren = await q1(`select id from public.billing_pedidos where user_id = $1 and motivo = 'renovacao' and metodo = 'pix' and status = 'aberto'`, [TROCA_PIX]);
+    if (ren) expect((await api(TROCA_PIX, `/orders/${ren.id}/cancel`, {})).body.code).toBe("renovacao_nao_cancela");
+    const ped = await q1(`select id from public.billing_pedidos where motivo = 'renovacao' and metodo = 'pix' and status = 'aberto' limit 1`);
+    expect(ped).toBeTruthy();
+  });
+
+  it("Pix velho de outro pedido que venceu não vira aviso falso de 'acesso pausado'", async () => {
+    const antes = (await avisosDe(DUPLO)).length;
+    const cid = "pay_orfao_1";
+    charges.set(cid, { id: cid, status: "overdue", method: "pix", amountCents: 9990, refundedCents: 0, customerId: "cus_29", subscriptionId: null, externalReference: null, dueDate: hojeBr(), paidAt: null, installments: false, reference: "" });
+    const ped = await q1(`select id from public.billing_pedidos where user_id = $1 order by criado_em limit 1`, [DUPLO]);
+    // contrato existe (a compra do cartão pagou) e o Pix órfão (de um pedido de compra) venceu
+    const aberto = await q1(`select provider_payment_id p from public.billing_pedidos where user_id = $1 and status = 'aberto'`, [DUPLO]);
+    if (aberto?.p) { pay(aberto.p); await hook(aberto.p); }
+    await dev.db.query(`select public.ch_worker_billing_falhou('asaas', $1, $2, $3, null, 'plano', 'pro', 'mensal', 'pix', 9990, 'Venceu sem pagamento', null)`, [cid, ped.id, DUPLO]);
+    const depois = (await avisosDe(DUPLO)).filter((a: any) => a.tipo === "acesso_bloqueado");
+    expect(depois.length).toBe(0);
+    expect((await avisosDe(DUPLO)).length).toBeGreaterThanOrEqual(antes);
   });
 });

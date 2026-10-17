@@ -77,7 +77,7 @@ interface Ctx {
 function dbError(e: unknown): BillingError | null {
   const m = /([a-z_]{4,40}): (.{3,300})$/.exec(String((e as Error)?.message ?? ""));
   if (!m) return null;
-  const known: Record<string, number> = { renovacao_pendente: 409, sem_renovacao: 409, ja_no_cartao: 409, renovacao_paga: 409, vendas_desligadas: 503, pedido_aberto: 409, fora_de_venda: 409, ja_assinante: 409, sem_devolucao: 409, devolucao_em_andamento: 409 };
+  const known: Record<string, number> = { renovacao_pendente: 409, pedido_vencido: 409, sem_renovacao: 409, ja_no_cartao: 409, renovacao_paga: 409, vendas_desligadas: 503, pedido_aberto: 409, fora_de_venda: 409, ja_assinante: 409, sem_devolucao: 409, devolucao_em_andamento: 409 };
   return m[1] in known ? new BillingError(m[2], known[m[1]], m[1]) : null;
 }
 
@@ -94,6 +94,68 @@ export function createBilling(deps: BillingDeps) {
     if (!provider) throw new BillingError("O pagamento ainda não está disponível.", 503);
     return provider;
   };
+
+  /**
+   * Pedidos vencidos (de um aluno, ou de todos na tarefa): confere no fornecedor (pode ter sido pago no último minuto), cancela a
+   * cobrança e a assinatura que sobraram, confere DE NOVO e só então encerra. Nunca encerrar só no banco: a cobrança continuaria
+   * pagável no fornecedor (cobrança em dobro; revisão 17/10). Erro aqui deixa o pedido aberto para a próxima tentativa.
+   */
+  async function encerrarVencidos(userId: string | null) {
+    const p = need();
+    const out = { expirados: 0, erros: 0 };
+    for (const v of await svc<{ id: string; provider: string | null; payment_id: string | null; subscription_id: string | null }[]>("ch_worker_billing_pedidos_vencidos", { p_user: userId })) {
+      try {
+        if (v.payment_id && v.provider === p.name) {
+          await processCharge(v.payment_id, v.subscription_id);
+          const c = await p.getCharge(v.payment_id);
+          if (c && c.status !== "paid") {
+            await p.cancelCharge(v.payment_id);
+            if (v.subscription_id) await p.cancelSubscription(v.subscription_id);
+            const depois = await p.getCharge(v.payment_id);
+            if (depois?.status === "paid") await processCharge(v.payment_id, v.subscription_id);
+          }
+        }
+        await svc("ch_worker_billing_pedido_encerrar", { p_pedido: v.id, p_status: "expirado", p_erro: "Tempo para pagar acabou", p_user: null });
+        out.expirados++;
+      } catch (e) {
+        out.erros++;
+        log(`[billing] pedido vencido ${v.id}: ${(e as Error).message}`);
+      }
+    }
+    return out;
+  }
+
+  /** Abre um pedido; se houver um pedido vencido na frente, limpa (no fornecedor) e tenta uma vez de novo. */
+  async function abrirPedido(fn: string, args: Record<string, unknown> & { p_user: string }): Promise<Pedido> {
+    for (let tentativa = 0; ; tentativa++) {
+      try {
+        return await svc<Pedido>(fn, args);
+      } catch (e) {
+        const err = dbError(e);
+        if (err?.code === "pedido_vencido" && tentativa === 0) {
+          const r = await encerrarVencidos(args.p_user);
+          if (r.erros) throw new BillingError("Não foi possível cancelar um pagamento anterior agora. Tente de novo em instantes.", 502);
+          continue;
+        }
+        throw err ?? e;
+      }
+    }
+  }
+
+  /** Grava a cobrança no pedido; se outro clique chegou antes, cancela no fornecedor a que sobrou e usa a gravada. */
+  async function anexar(pedido: Pedido, created: { chargeId: string; subscriptionId?: string | null; url: string; pix?: unknown }, extra: { customer: string | null; vencimento: string }) {
+    const p = need();
+    const ok = await svc<boolean>("ch_worker_billing_pedido_anexar", {
+      p_pedido: pedido.id, p_provider: p.name, p_customer: extra.customer, p_payment: created.chargeId, p_subscription: created.subscriptionId ?? null,
+      p_url: created.url || null, p_pix: created.pix ?? null, p_vencimento: extra.vencimento,
+    });
+    if (ok !== false) return { ...pedido, url: created.url || null, pix: (created.pix ?? null) as unknown, vencimento: extra.vencimento, provider_payment_id: created.chargeId };
+    if (created.subscriptionId) await p.cancelSubscription(created.subscriptionId).catch((e) => log(`[billing] assinatura que sobrou não cancelada: ${(e as Error).message}`));
+    else if (created.chargeId !== pedido.provider_payment_id) await p.cancelCharge(created.chargeId).catch((e) => log(`[billing] cobrança que sobrou não cancelada: ${(e as Error).message}`));
+    const atual = await svc<Pedido | null>("ch_worker_billing_pedido", { p_pedido: pedido.id, p_user: null });
+    if (atual?.url && atual.status === "aberto") return atual;
+    throw new BillingError("Este pagamento já foi aberto em outra janela. Atualize a página.", 409, "pedido_em_andamento");
+  }
 
   async function overview(user: Identity) {
     if (!provider) return { enabled: false };
@@ -150,19 +212,16 @@ export function createBilling(deps: BillingDeps) {
       customerInput = { document, name };
     }
 
-    let pedido: Pedido;
-    try {
-      pedido = await svc<Pedido>("ch_worker_billing_pedido_abrir", {
-        p_user: user.id, p_tipo: tipo, p_codigo: codigo, p_ciclo: ciclo, p_metodo: metodo, p_motivo: "compra", p_idem: idem,
-        p_aceite: { aceito: true, ip: info.ip ?? null, user_agent: (info.userAgent ?? "").slice(0, 300) || null },
-        p_renova_ate: null,
-      });
-    } catch (e) {
-      throw dbError(e) ?? e;
-    }
+    const pedido = await abrirPedido("ch_worker_billing_pedido_abrir", {
+      p_user: user.id, p_tipo: tipo, p_codigo: codigo, p_ciclo: ciclo, p_metodo: metodo, p_motivo: "compra", p_idem: idem,
+      p_aceite: { aceito: true, ip: info.ip ?? null, user_agent: (info.userAgent ?? "").slice(0, 300) || null },
+      p_renova_ate: null,
+    });
     // clique repetido / pedido igual já aberto: devolve o mesmo pagamento (nada novo no fornecedor)
     if (pedido.url) return publicOrder(pedido);
     if (pedido.status !== "aberto") throw new BillingError("Este pedido já foi encerrado. Atualize a página.", 409, "pedido_encerrado");
+    // o mesmo clique chegou duas vezes e o primeiro ainda está criando a cobrança: o segundo não cria outra (revisão 17/10)
+    if (pedido.repetido || pedido.reaproveitado) throw new BillingError("Seu pagamento está sendo aberto. Aguarde um instante e atualize a página.", 409, "pedido_em_andamento");
     // o aceite também vira prova em legal_acceptances quando o documento do contrato existir no banco (nunca impede a compra)
     if (!pedido.repetido && !pedido.reaproveitado) {
       await svc("ch_worker_billing_aceite_registrar", { p_user: user.id, p_user_agent: (info.userAgent ?? "").slice(0, 300) || null }).catch(() => undefined);
@@ -181,12 +240,9 @@ export function createBilling(deps: BillingDeps) {
           ? await p.createCardSubscription({ customerId, amountCents: pedido.valor_centavos, cycle: ciclo === "trimestral" ? "quarterly" : "monthly", description: `StaziaMed ${pedido.nome}`, reference, firstDueDate: today, returnUrl })
           : await p.createCharge({ customerId, method: METODO[metodo], amountCents: pedido.valor_centavos, description: `StaziaMed ${pedido.nome}`, reference, dueDate: today, returnUrl });
       const subscriptionId = "subscriptionId" in created ? (created as { subscriptionId: string }).subscriptionId : null;
-      await svc("ch_worker_billing_pedido_anexar", {
-        p_pedido: pedido.id, p_provider: p.name, p_customer: customerId, p_payment: created.chargeId, p_subscription: subscriptionId,
-        p_url: created.url, p_pix: created.pix ?? null, p_vencimento: today,
-      });
-      return publicOrder({ ...pedido, url: created.url, pix: created.pix ?? null, vencimento: today, provider_payment_id: created.chargeId });
+      return publicOrder(await anexar(pedido, { ...created, subscriptionId }, { customer: customerId, vencimento: today }));
     } catch (e) {
+      if (e instanceof BillingError) throw e;
       log(`[billing] checkout falhou: ${(e as Error).message}`);
       await svc("ch_worker_billing_pedido_encerrar", { p_pedido: pedido.id, p_status: "falhou", p_erro: (e as Error).message, p_user: null }).catch(() => undefined);
       if (e instanceof ProviderError && e.code === "invalid_cpfCnpj") throw new BillingError("CPF ou CNPJ recusado pela instituição de pagamento. Confira os números.", 422, "documento_invalido");
@@ -195,7 +251,7 @@ export function createBilling(deps: BillingDeps) {
   }
 
   function publicOrder(p: Pedido) {
-    return { id: p.id, status: p.status, nome: p.nome, tipo: p.tipo, metodo: p.metodo, valor_centavos: p.valor_centavos, url: p.url, pix: p.pix ?? null, expira_em: p.expira_em };
+    return { id: p.id, status: p.status, nome: p.nome, tipo: p.tipo, metodo: p.metodo, motivo: p.motivo, valor_centavos: p.valor_centavos, url: p.url, pix: p.pix ?? null, expira_em: p.expira_em };
   }
 
   /** Situação do pedido para a tela que espera o pagamento. Se o fornecedor já diz "pago", confere e processa na hora. */
@@ -216,6 +272,12 @@ export function createBilling(deps: BillingDeps) {
   async function cancelOrder(user: Identity, id: string) {
     const p = need();
     if (!/^[0-9a-f-]{36}$/.test(id)) throw new BillingError("Pedido inválido.", 400);
+    const antes = await svc<Pedido | null>("ch_worker_billing_pedido", { p_pedido: id, p_user: user.id });
+    // o Pix da RENOVAÇÃO (o de 7 dias antes, ou a renovação do cartão que virou Pix) não se cancela por aqui: cancelar apagaria a
+    // própria cobrança da renovação no fornecedor. Para não renovar, o caminho é "Cancelar assinatura" (revisão 17/10).
+    if (antes?.motivo === "renovacao" && antes.metodo === "pix") {
+      throw new BillingError("Este é o Pix da sua renovação: ele fica disponível até ser pago. Para não renovar, use Cancelar assinatura em Minha conta.", 409, "renovacao_nao_cancela");
+    }
     const pedido = await svc<Pedido | null>("ch_worker_billing_pedido_encerrar", { p_pedido: id, p_status: "cancelado", p_erro: "Cancelado pelo aluno", p_user: user.id });
     if (!pedido) throw new BillingError("Não há pagamento em aberto com este número.", 404);
     if (pedido.provider_payment_id) await p.cancelCharge(pedido.provider_payment_id).catch((e) => log(`[billing] cancelar cobrança falhou: ${(e as Error).message}`));
@@ -259,20 +321,15 @@ export function createBilling(deps: BillingDeps) {
       throw new BillingError("Esta renovação já foi paga. Atualize a página.", 409, "ja_pago");
     }
     const due = brtDate(now());
-    let pedido: Pedido;
-    try {
-      pedido = await svc<Pedido>("ch_worker_billing_pedido_abrir", {
-        p_user: user.id, p_tipo: "plano", p_codigo: r.plano, p_ciclo: r.ciclo, p_metodo: "pix", p_motivo: "renovacao",
-        p_idem: `pix-falha-${r.payment_id}`.slice(0, 100), p_aceite: null, p_renova_ate: r.periodo_fim,
-      });
-    } catch (e) {
-      throw dbError(e) ?? e;
-    }
+    const pedido = await abrirPedido("ch_worker_billing_pedido_abrir", {
+      p_user: user.id, p_tipo: "plano", p_codigo: r.plano, p_ciclo: r.ciclo, p_metodo: "pix", p_motivo: "renovacao",
+      p_idem: `pix-falha:${r.payment_id}`.slice(0, 100), p_aceite: null, p_renova_ate: r.periodo_fim,
+    });
     if (pedido.url) return publicOrder(pedido);
     try {
       const created = await p.payChargeByPix(r.payment_id, due);
-      await svc("ch_worker_billing_pedido_anexar", { p_pedido: pedido.id, p_provider: p.name, p_customer: now0.customerId, p_payment: created.chargeId, p_subscription: null, p_url: created.url || null, p_pix: created.pix ?? null, p_vencimento: due });
-      return publicOrder({ ...pedido, url: created.url || null, pix: created.pix ?? null, provider_payment_id: created.chargeId });
+      // a mesma cobrança virou Pix: se outro clique já anexou, nada sobra para cancelar (é a mesma cobrança)
+      return publicOrder(await anexar({ ...pedido, provider_payment_id: created.chargeId }, { ...created, subscriptionId: null }, { customer: now0.customerId, vencimento: due }));
     } catch (e) {
       log(`[billing] renovação por Pix falhou: ${(e as Error).message}`);
       await svc("ch_worker_billing_pedido_encerrar", { p_pedido: pedido.id, p_status: "falhou", p_erro: (e as Error).message, p_user: null }).catch(() => undefined);
@@ -311,7 +368,7 @@ export function createBilling(deps: BillingDeps) {
         }
       }
       try {
-        const r = await svc<{ metodo: string; periodo_fim: string }>("ch_worker_billing_para_pix", { p_user: user.id });
+        const r = await svc<{ metodo: string; periodo_fim: string }>("ch_worker_billing_para_pix", { p_user: user.id, p_sub: s.subscription_id });
         return { ok: true, metodo: "pix", periodo_fim: r.periodo_fim };
       } catch (e) {
         throw dbError(e) ?? e;
@@ -338,13 +395,9 @@ export function createBilling(deps: BillingDeps) {
       await svc("ch_worker_billing_pedido_encerrar", { p_pedido: s.pix_aberto.id, p_status: "cancelado", p_erro: "Troca para cartão", p_user: user.id });
       s = (await ler())!;
     }
-    let pedido: Pedido;
-    try {
-      pedido = await svc<Pedido>("ch_worker_billing_troca_cartao_abrir", { p_user: user.id, p_idem: idem });
-    } catch (e) {
-      throw dbError(e) ?? e;
-    }
+    const pedido = await abrirPedido("ch_worker_billing_troca_cartao_abrir", { p_user: user.id, p_idem: idem });
     if (pedido.url) return publicOrder(pedido);
+    if (pedido.repetido) throw new BillingError("A troca está sendo aberta. Aguarde um instante e atualize a página.", 409, "pedido_em_andamento");
     try {
       const first = brtDate(new Date(s.periodo_fim));
       const today = brtDate(now());
@@ -353,12 +406,9 @@ export function createBilling(deps: BillingDeps) {
         description: `StaziaMed ${pedido.nome}`, reference: `smp:${pedido.id}`, firstDueDate: first < today ? today : first,
         returnUrl: `${deps.baseUrl ?? ""}/novo/perfil?pedido=${pedido.id}`,
       });
-      await svc("ch_worker_billing_pedido_anexar", {
-        p_pedido: pedido.id, p_provider: p.name, p_customer: s.customer_id, p_payment: created.chargeId, p_subscription: created.subscriptionId,
-        p_url: created.url, p_pix: null, p_vencimento: first < today ? today : first,
-      });
-      return publicOrder({ ...pedido, url: created.url, pix: null, provider_payment_id: created.chargeId });
+      return publicOrder(await anexar(pedido, created, { customer: s.customer_id, vencimento: first < today ? today : first }));
     } catch (e) {
+      if (e instanceof BillingError) throw e;
       log(`[billing] troca para cartão falhou: ${(e as Error).message}`);
       await svc("ch_worker_billing_pedido_encerrar", { p_pedido: pedido.id, p_status: "falhou", p_erro: (e as Error).message, p_user: null }).catch(() => undefined);
       throw new BillingError("Não foi possível abrir a página do cartão agora. Tente de novo.", 502);
@@ -466,34 +516,20 @@ export function createBilling(deps: BillingDeps) {
   /** Tarefa diária (e de hora em hora fora da Vercel): pedidos vencidos, Pix de renovação 7 dias antes, extras pendentes. */
   async function runScheduled() {
     const p = need();
-    const out = { expirados: 0, renovacoes: 0, entregues: 0, erros: 0 };
-    for (const v of await svc<{ id: string; provider: string | null; payment_id: string | null; subscription_id: string | null }[]>("ch_worker_billing_pedidos_vencidos", {})) {
-      try {
-        // antes de cancelar, confere: pode ter sido pago no último minuto
-        if (v.payment_id && v.provider === p.name) {
-          await processCharge(v.payment_id, v.subscription_id);
-          const c = await p.getCharge(v.payment_id);
-          if (c && c.status !== "paid") await p.cancelCharge(v.payment_id);
-          if (c?.status !== "paid" && v.subscription_id) await p.cancelSubscription(v.subscription_id);
-        }
-        await svc("ch_worker_billing_pedido_encerrar", { p_pedido: v.id, p_status: "expirado", p_erro: "Tempo para pagar acabou", p_user: null });
-        out.expirados++;
-      } catch (e) {
-        out.erros++;
-        log(`[billing] pedido vencido ${v.id}: ${(e as Error).message}`);
-      }
-    }
+    const v = await encerrarVencidos(null);
+    const out = { expirados: v.expirados, renovacoes: 0, entregues: 0, erros: v.erros };
     for (const r of await svc<{ user_id: string; plano: string; ciclo: "mensal" | "trimestral"; periodo_fim: string; provider: string; customer_id: string }[]>("ch_worker_billing_renovacoes_pix", {})) {
       if (r.provider !== p.name) continue;
       try {
         const due = brtDate(new Date(r.periodo_fim));
         const pedido = await svc<Pedido>("ch_worker_billing_pedido_abrir", {
           p_user: r.user_id, p_tipo: "plano", p_codigo: r.plano, p_ciclo: r.ciclo, p_metodo: "pix", p_motivo: "renovacao",
-          p_idem: `renovacao-${r.user_id.slice(0, 8)}-${due}`, p_aceite: null, p_renova_ate: r.periodo_fim,
+          // chave do servidor com ":" (o navegador não consegue usar esse caractere: ninguém bloqueia o Pix de outra renovação)
+          p_idem: `renovacao:${r.user_id}:${due}`, p_aceite: null, p_renova_ate: r.periodo_fim,
         });
         if (pedido.url || pedido.status !== "aberto") continue;
         const created = await p.createCharge({ customerId: r.customer_id, method: "pix", amountCents: pedido.valor_centavos, description: `StaziaMed ${pedido.nome}`, reference: `smp:${pedido.id}`, dueDate: due, returnUrl: `${deps.baseUrl ?? ""}/novo/planos?pedido=${pedido.id}` });
-        await svc("ch_worker_billing_pedido_anexar", { p_pedido: pedido.id, p_provider: p.name, p_customer: r.customer_id, p_payment: created.chargeId, p_subscription: null, p_url: created.url, p_pix: created.pix ?? null, p_vencimento: due });
+        await anexar(pedido, { ...created, subscriptionId: null }, { customer: r.customer_id, vencimento: due });
         out.renovacoes++;
       } catch (e) {
         out.erros++;
