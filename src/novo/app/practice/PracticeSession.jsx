@@ -453,6 +453,7 @@ function Runner({ session, go, onFinished }) {
               alternatives={
                 <Alternatives
                   options={question.options}
+                  formatacao={question.formatacao}
                   stateOf={optionState}
                   chosen={locked ? question.selected : selected}
                   struck={struck}

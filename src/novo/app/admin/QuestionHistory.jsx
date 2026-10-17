@@ -13,7 +13,14 @@ const FIELDS = [
   ["statement", "Enunciado"], ["options", "Alternativas"], ["correct_option", "Gabarito"], ["status", "Situação"], ["prova", "Prova e número"],
   ["topic", "Tema"], ["subtopic", "Subtema"], ["expected_conduct", "Conduta esperada"], ["inep_intent", "O que a questão avalia"],
   ["figura", "Figura"], ["needs_image", "Marca “Cita figura”"], ["update_note", "Nota “O que mudou desde a prova”"],
+  ["formatacao", "Formatação"],
 ];
+// editor profissional (013120): a trilha guarda só QUAIS campos tiveram a formatação mudada (negrito, cor...), não o antes e o depois
+const FORMAT_FIELD = (key) => {
+  const m = /^opcao\.([A-D])\.(texto|explicacao)$/.exec(key);
+  if (m) return m[2] === "texto" ? `Alternativa ${m[1]}` : `Explicação da ${m[1]}`;
+  return { statement: "Enunciado", expected_conduct: "Conduta esperada", inep_intent: "O que a questão avalia" }[key] ?? key;
+};
 const LABEL = Object.fromEntries(FIELDS);
 const RESTORABLE = new Set(["statement", "topic", "subtopic", "expected_conduct", "inep_intent"]);
 const summaryOf = (changes) => FIELDS.filter(([key]) => changes?.[key]).map(([, label]) => label).join(", ");
@@ -75,6 +82,17 @@ function Detail({ entry, onRestore }) {
         if (key === "status") return <ChangedField key={key} label={label} before={change.de} after={change.para} nameOf={(v) => QUESTION_STATUS_LABEL[v] ?? textOf(v)} />;
         if (key === "correct_option") return <ChangedField key={key} label={label} before={change.de} after={change.para} nameOf={(v) => (v ? String(v) : "(sem gabarito)")} />;
         if (key === "figura") return <ChangedField key={key} label={label} before={change.de} after={change.para} nameOf={(v) => v || "(sem figura)"} />;
+        if (key === "formatacao") {
+          const campos = Array.isArray(change.campos) ? change.campos.map(FORMAT_FIELD) : [];
+          return (
+            <div key={key} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "12px 0", borderTop: "1px solid var(--border-default)" }}>
+              <div style={{ font: "var(--type-label)" }}>{label}</div>
+              <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+                {`Mudou a formatação (negrito, cor, listas…)${campos.length ? ` de: ${campos.join(", ")}` : ""}.`}
+              </p>
+            </div>
+          );
+        }
         if (key === "needs_image") return <ChangedField key={key} label={label} before={change.de} after={change.para} nameOf={(v) => (v ? "marcada" : "desmarcada")} />;
         return <ChangedField key={key} label={label} before={change.de} after={change.para} restore={RESTORABLE.has(key) ? () => onRestore({ field: key }, change.de ?? "") : undefined} />;
       })}

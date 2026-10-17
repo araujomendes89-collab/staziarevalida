@@ -220,7 +220,8 @@ describe("Fila e funções de serviço", () => {
     // e as que vieram depois e mexem no mesmo lugar (a 010900 fecha de novo draft_approval_blockers para o app): a 9910 (etapa similarity) e a 9941 (source_change_analysis) refazem a restrição de
     // etapas de ch_jobs (união, em ordem); a 9990 (portão de atualidade) embrulha draft_approval_blockers por cima da versão da 9800
     const resto = ["20261003009810_analise_ia_pedidos.sql", "20261003009830_fechamento_leva4.sql", "20261003009910_similaridade_clinica.sql", "20261003009941_vigilancia_painel.sql",
-      "20261003009990_portao_atualidade.sql", "20261003010900_fecha_draft_approval_blockers.sql"].map((f) => fs.readFileSync(fileURLToPath(new URL(`../../supabase/migrations/${f}`, import.meta.url)), "utf8"));
+      // a 013120 (editor profissional nas questões) redefine o hash, o salvar, o equilibrar e o publicar por cima da 9800
+      "20261003009990_portao_atualidade.sql", "20261003010900_fecha_draft_approval_blockers.sql", "20261003013120_editor_pro_questoes.sql"].map((f) => fs.readFileSync(fileURLToPath(new URL(`../../supabase/migrations/${f}`, import.meta.url)), "utf8"));
     for (let volta = 0; volta < 2; volta++) {
       await env.dev.db.exec(text);
       for (const sql of resto) await env.dev.db.exec(sql);

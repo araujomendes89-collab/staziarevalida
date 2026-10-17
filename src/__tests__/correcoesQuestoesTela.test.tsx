@@ -22,6 +22,8 @@ vi.mock("../novo/app/session.jsx", () => ({ useSession: () => session }));
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
 // o botão do Tutor como aparece dentro do app (fora do app, sem o provedor, ele não aparece)
 vi.mock("../novo/app/tutor/TutorDrawer.jsx", () => ({ TutorButton: ({ label }: any) => <button type="button">{label}</button> }));
+// editor profissional (013120): nos testes antigos o campo vira um textarea com o mesmo rótulo
+vi.mock("../novo/app/editorPro/CampoRico.jsx", () => import("./helpers/campoRicoComoTexto"));
 
 import { AdminQuestions, QuestionEditor } from "../novo/app/admin/AdminQuestions.jsx";
 import { Correction, Verdict, answerState } from "../novo/app/practice/Correction.jsx";

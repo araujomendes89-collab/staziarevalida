@@ -3,8 +3,9 @@
 // estrutura padrão: vídeo · área/tema/título/duração/professor/especialidade · "Treinar questões deste tema" ·
 // materiais complementares (slides PDF, áudio Flashcast, diretriz SUS/PCDT) · resumo e racionalidade · pontos-chave.
 import React from "react";
-import { TextoRico } from "../textoRico/TextoRico.jsx";
 import ResumoRico from "../editorPro/editarAula/ResumoRico.jsx";
+import ParagrafoRico from "../editorPro/leitor/ParagrafoRico.jsx";
+import { ricoDoPonto } from "../../../shared/aulas/camposRicos";
 import { Badge, Banner, Button, Card, EmptyState, Icon, TextField } from "../../ds";
 import { IconTile } from "../../prototype/RealIcons.jsx";
 import { useSession } from "../session.jsx";
@@ -479,7 +480,7 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
                 {lesson.key_points.map((p, k) => (
                   <li key={k} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 14px", borderRadius: 14, background: "var(--surface-subtle)", border: "1px solid var(--border-subtle)" }}>
                     <span style={{ width: 24, height: 24, flex: "none", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "var(--warning-bg)", color: "var(--warning-text)", font: "700 12px var(--font-sans)" }}>{k + 1}</span>
-                    <span style={{ font: "500 14px/1.5 var(--font-sans)" }}><TextoRico texto={p} /></span>
+                    <ParagrafoRico texto={p} rico={ricoDoPonto(lesson.key_points_rico, k, p)} como="span" style={{ font: "500 14px/1.5 var(--font-sans)" }} />
                   </li>
                 ))}
               </ol>

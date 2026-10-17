@@ -14,6 +14,10 @@ import { ERROR_TYPE, KIND_LABEL } from "./diagnosisLabels.js";
 import { areaLabel, areaOf, isStaziamed } from "./format.js";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
 import { RelatedQuestions } from "./RelatedQuestions.jsx";
+// leitor do aluno (sem TipTap): a formatação vem na correção (o banco só a manda depois de responder, e só dos textos que o
+// aluno pode ver); sem formatação válida, o texto aparece como sempre
+import ParagrafoRico from "../editorPro/leitor/ParagrafoRico.jsx";
+import { ricoDoCampo } from "../../../shared/questions/formatacao";
 import "./tela/tela-questao.css";
 
 /**
@@ -234,12 +238,16 @@ const boxStyle = { padding: "14px 16px", borderRadius: 14, background: "var(--su
 /** O que fica dentro do cartão da questão depois de responder: veredito, explicação, letras, análise, conduta, fontes vinculadas. */
 export function CorrectionBody({ selected, correction, question, data }) {
   const { staz, annulled, commentary, linked, linkedNote } = data;
+  const rico = (chave, texto) => ricoDoCampo(correction.formatacao, chave, texto);
+  const ricoExplicacao = rico(`opcao.${correction.correct_option}.explicacao`, correction.explanation);
+  const ricoConduta = rico("expected_conduct", correction.expected_conduct);
+  const ricoAvalia = rico("inep_intent", correction.inep_intent);
   return (
     <div className="tq-answer" aria-live="polite">
       <Verdict selected={selected} correction={correction} />
       {/* gabarito oficial ainda preliminar (o banco diz answer_preliminary; some quando o definitivo for registrado) */}
       {!staz && !annulled && correction.answer_preliminary === true && <PreliminarySeal info={correction.preliminary ?? {}} />}
-      {correction.explanation && !annulled && <p className="tq-expl">{correction.explanation}</p>}
+      {correction.explanation && !annulled && (ricoExplicacao ? <ParagrafoRico texto={correction.explanation} rico={ricoExplicacao} className="tq-expl tq-rico" /> : <p className="tq-expl">{correction.explanation}</p>)}
       {question && correction.is_correct === false && selected != null && !annulled && <ErrorDiagnosis questionId={question.id} />}
       <QuestionCommentary commentary={commentary} />
       {!commentary && !annulled && correction.option_notes?.length > 0 && (
@@ -249,7 +257,7 @@ export function CorrectionBody({ selected, correction, question, data }) {
             {correction.option_notes.map((note) => (
               <div key={note.id} data-key={note.id === correction.correct_option ? "true" : "false"}>
                 <b>{note.id}.</b>
-                <span>{note.text}</span>
+                {rico(`opcao.${note.id}.explicacao`, note.text) ? <ParagrafoRico texto={note.text} rico={rico(`opcao.${note.id}.explicacao`, note.text)} className="tq-rico" /> : <span>{note.text}</span>}
               </div>
             ))}
           </div>
@@ -258,7 +266,7 @@ export function CorrectionBody({ selected, correction, question, data }) {
       {annulled && <AnnulledStudy notes={annulledStudyNotes(correction)} />}
       {correction.expected_conduct && (
         <div style={boxStyle}>
-          <b>Conduta esperada.</b> {correction.expected_conduct}
+          <b>Conduta esperada.</b> {ricoConduta ? <ParagrafoRico texto={correction.expected_conduct} rico={ricoConduta} className="tq-rico" /> : correction.expected_conduct}
         </div>
       )}
       {/* o cartão de atualização do comentário já mostra "o que mudou": a nota não se repete no quadro */}
@@ -269,7 +277,11 @@ export function CorrectionBody({ selected, correction, question, data }) {
       {!staz && correction.inep_intent && (
         <div>
           <div className="tq-over">O que a questão avalia</div>
-          <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.55, color: "var(--text-secondary)" }}>{correction.inep_intent}</p>
+          {ricoAvalia ? (
+            <ParagrafoRico texto={correction.inep_intent} rico={ricoAvalia} className="tq-rico" style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.55, color: "var(--text-secondary)" }} />
+          ) : (
+            <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.55, color: "var(--text-secondary)" }}>{correction.inep_intent}</p>
+          )}
         </div>
       )}
     </div>

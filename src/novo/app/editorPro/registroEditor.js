@@ -26,7 +26,9 @@ export function registrarModuloEditor(m) {
   modulosCarregados.add(m.id);
 
   if (m.extensoes) {
-    registros.extensoes.push(m.extensoes);
+    const fn = (ctx) => m.extensoes(ctx);
+    fn.modulo = m.id;
+    registros.extensoes.push(fn);
   }
 
   if (m.botoes) {
@@ -38,13 +40,13 @@ export function registrarModuloEditor(m) {
       if (!botoesAbaMap.has(b.aba)) {
         botoesAbaMap.set(b.aba, []);
       }
-      botoesAbaMap.get(b.aba).push(b);
+      botoesAbaMap.get(b.aba).push({ ...b, modulo: m.id });
     }
   }
 
   if (m.paineis) {
     for (const p of m.paineis) {
-      registros.paineis.push(p);
+      registros.paineis.push({ ...p, modulo: m.id });
     }
   }
 }
@@ -53,8 +55,9 @@ export function modulosEditor() {
   return Array.from(modulosCarregados);
 }
 
-export function extensoesDe(ctx) {
-  return registros.extensoes.flatMap(fn => fn(ctx));
+// semModulos: ids de módulos que este editor não carrega (ex.: campo de questão sem imagens, ver CampoRico.jsx)
+export function extensoesDe(ctx, semModulos = []) {
+  return registros.extensoes.filter(fn => !semModulos.includes(fn.modulo)).flatMap(fn => fn(ctx));
 }
 
 export function botoesDaAba(abaId) {

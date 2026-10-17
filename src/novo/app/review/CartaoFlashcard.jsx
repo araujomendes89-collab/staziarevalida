@@ -9,6 +9,7 @@ import React from "react";
 import { Icon } from "../../ds";
 import { areaOf } from "../practice/format.js";
 import { areaVars, temaVars } from "../study/temaCores.js";
+import LeitorDoc from "../editorPro/leitor/LeitorDoc.jsx";
 import "./cartaoFlashcard.css";
 
 /** Tamanho da letra pelo comprimento do texto: xl e lg em maiúsculas condensadas; md condensada; sm na fonte de leitura. */
@@ -37,8 +38,10 @@ const ROLAGEM = { ArrowDown: 40, ArrowUp: -40, PageDown: 0.85, PageUp: -0.85 };
  * front, back: texto do cartão. area: área do banco (CLINICA_MEDICA…). topic: título do tema na faixa.
  * selos: { essencial, atualizado: "mm/aaaa", meu } (só aparecem quando existem). cores: variáveis --gt-* (opcional).
  * flipped/onFlip: estado controlado (opcional). icone: ícone da faixa (padrão: o da área; "Meu cartão": caderno).
+ * frenteRica/versoRica: formatação do editor profissional já conferida com o texto (ricoValido; Atualizações, 013130). Sem ela, o
+ * texto aparece como sempre; com ela, o leitor React desenha a formatação (nunca HTML cru). O tamanho da fonte segue o texto.
  */
-export function CartaoFlashcard({ front, back, area, topic, selos = {}, cores, icone, flipped, onFlip, className = "", style }) {
+export function CartaoFlashcard({ front, back, frenteRica = null, versoRica = null, area, topic, selos = {}, cores, icone, flipped, onFlip, className = "", style }) {
   const [interno, setInterno] = React.useState(false);
   const virado = flipped ?? interno;
   const id = React.useId();
@@ -146,7 +149,11 @@ export function CartaoFlashcard({ front, back, area, topic, selos = {}, cores, i
                     </span>
                     Pergunta
                   </div>
-                  <p id={`${id}-f`} className={`fcp-t fcp-t--${tamanhoTexto(front, "frente")}`}>{front}</p>
+                  {frenteRica ? (
+                    <div id={`${id}-f`} className={`fcp-t fcp-t--${tamanhoTexto(front, "frente")}`}><LeitorDoc rico={frenteRica} /></div>
+                  ) : (
+                    <p id={`${id}-f`} className={`fcp-t fcp-t--${tamanhoTexto(front, "frente")}`}>{front}</p>
+                  )}
                   <span className="fcp-traco" aria-hidden="true" />
                 </div>
               </div>
@@ -171,7 +178,11 @@ export function CartaoFlashcard({ front, back, area, topic, selos = {}, cores, i
                     </span>
                     Resposta
                   </div>
-                  <p id={`${id}-v`} className={`fcp-t fcp-t--${tamanhoTexto(back, "verso")}`}>{back}</p>
+                  {versoRica ? (
+                    <div id={`${id}-v`} className={`fcp-t fcp-t--${tamanhoTexto(back, "verso")}`}><LeitorDoc rico={versoRica} /></div>
+                  ) : (
+                    <p id={`${id}-v`} className={`fcp-t fcp-t--${tamanhoTexto(back, "verso")}`}>{back}</p>
+                  )}
                 </div>
               </div>
             </div>

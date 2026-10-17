@@ -58,7 +58,7 @@ export const ACTION_LABEL = {
   // aulas
   "lesson.save": "Aula salva",
   "lesson.review": "Aula conferida",
-  "lesson.format": "Formatação do resumo da aula alterada (conferência mantida)",
+  "lesson.format": "Formatação do resumo ou dos pontos-chave da aula alterada (conferência mantida)",
   "lesson.audio.release": "Áudio Flashcast da aula liberado ao aluno",
   "lesson.delete": "Aula apagada",
   "lesson.material": "Material de aula adicionado",
@@ -108,6 +108,8 @@ export const ACTION_LABEL = {
   "unit.material.insert": "Material inserido na unidade",
   "unit.material.retire": "Material retirado da unidade",
   "unit.material.restore": "Material devolvido à lista da unidade",
+  "unit.material.edit": "Legenda ou transcrição de material da unidade alterada",
+  "unit.material.format": "Formatação da legenda ou transcrição alterada (aprovações mantidas)",
   "unit.format": "Formatação da unidade alterada (aprovações mantidas)",
   "unit.editor_assumido": "Edição da unidade assumida no editor completo",
   "review.sheet_import": "Ficha do revisor médico importada",

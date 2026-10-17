@@ -11,6 +11,8 @@ const backend: any = { rpc: vi.fn(), accessToken: async () => "t" };
 const session: any = { backend, boot: { role: "admin", profile: { name: "Adm" } }, user: { id: "a" }, refresh: async () => {} };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => session }));
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
+// editor profissional (013120): nos testes antigos o campo vira um textarea com o mesmo rótulo
+vi.mock("../novo/app/editorPro/CampoRico.jsx", () => import("./helpers/campoRicoComoTexto"));
 
 import { AdminQuestions, QuestionEditor } from "../novo/app/admin/AdminQuestions.jsx";
 import { AdminAudit } from "../novo/app/admin/AdminPanels.jsx";

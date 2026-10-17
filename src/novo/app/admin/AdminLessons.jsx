@@ -13,10 +13,12 @@ import { CampoTexto } from "../textoRico/CampoTexto.jsx";
 import { LessonAssistant } from "./LessonAssistant.jsx";
 import EditorResumo from "../editorPro/editarAula/EditorResumo.jsx";
 import { resumoRicoValido } from "../../../shared/docRico/modulos/editarAula";
+import EditorPontosChave from "../editorPro/editarAula/EditorPontosChave.jsx";
+import { pontosParaSalvar } from "../../../shared/aulas/camposRicos";
 
-const EMPTY = { area: "CLINICA_MEDICA", topic: "", title: "", duration_minutes: "", instructor: "", specialty: "", video_url: "", summary: "", summary_rico: null, key_points: "", guideline_title: "", guideline_url: "", published: false, position: 0, review_note: "" };
+const EMPTY = { area: "CLINICA_MEDICA", topic: "", title: "", duration_minutes: "", instructor: "", specialty: "", video_url: "", summary: "", summary_rico: null, key_points: "", key_points_rico: null, guideline_title: "", guideline_url: "", published: false, position: 0, review_note: "" };
 // Quem conferiu, quando e os avisos guardados da IA vêm da aula, mas não entram no formulário: a conferência é sempre nova (A01).
-const toForm = ({ ai_notes, reviewer, reviewed_at, ...l }) => ({ ...EMPTY, ...l, review_note: "", duration_minutes: l.duration_minutes ?? "", key_points: (l.key_points ?? []).join("\n"), instructor: l.instructor ?? "", specialty: l.specialty ?? "", video_url: l.video_url ?? "", summary: l.summary ?? "", summary_rico: l.summary_rico ?? null, guideline_title: l.guideline_title ?? "", guideline_url: l.guideline_url ?? "" });
+const toForm = ({ ai_notes, reviewer, reviewed_at, ...l }) => ({ ...EMPTY, ...l, review_note: "", duration_minutes: l.duration_minutes ?? "", key_points: (l.key_points ?? []).join("\n"), instructor: l.instructor ?? "", specialty: l.specialty ?? "", video_url: l.video_url ?? "", summary: l.summary ?? "", summary_rico: l.summary_rico ?? null, key_points_rico: l.key_points_rico ?? null, guideline_title: l.guideline_title ?? "", guideline_url: l.guideline_url ?? "" });
 
 // Os três materiais da aula, como no app anterior: PDF complementar, áudio Flashcast e a diretriz SUS/PCDT (link).
 const FILE_SLOTS = [
@@ -214,7 +216,8 @@ function LessonEditor({ lesson, topics, onSaved, onClose, isAdmin }) {
     setState({ saving: true, error: null, done: false });
     try {
       const saved = await backend.rpc("app_admin_save_lesson", {
-        p_lesson: { ...form, summary_rico: resumoRicoValido(form.summary, form.summary_rico), id: current?.id, duration_minutes: form.duration_minutes === "" ? null : Number(form.duration_minutes), position: Number(form.position) || 0, key_points: form.key_points.split("\n") },
+        // pontos-chave: só os que têm texto, aparados, com a formatação alinhada a eles (013160)
+        p_lesson: { ...form, summary_rico: resumoRicoValido(form.summary, form.summary_rico), id: current?.id, duration_minutes: form.duration_minutes === "" ? null : Number(form.duration_minutes), position: Number(form.position) || 0, ...pontosParaSalvar(form.key_points, form.key_points_rico) },
       });
       // materiais escolhidos na criação: sobem agora que a aula existe
       let latest = saved;
@@ -280,7 +283,7 @@ function LessonEditor({ lesson, topics, onSaved, onClose, isAdmin }) {
           <TextField label="Posição" type="number" value={form.position} onChange={(e) => set({ position: e.target.value })} hint="Ordem dentro da área." />
         </div>
         <EditorResumo summary={form.summary} rico={form.summary_rico} maxLength={8000} aoMudar={({ summary, summary_rico }) => set({ summary, summary_rico })} />
-        <CampoTexto modo="pontos" label="Pontos-chave para o Revalida (um por linha)" value={form.key_points} minRows={5} onChange={(v) => set({ key_points: v })} />
+        <EditorPontosChave pontos={form.key_points} ricos={form.key_points_rico} aoMudar={({ pontos, ricos }) => set({ key_points: pontos, key_points_rico: ricos })} />
         <MaterialsSection lesson={current} pending={pending} setPending={setPending} onChanged={(l) => (setCurrent((c) => ({ ...c, ...l })), onSaved(l))} form={form} set={set} />
         <ReviewSection form={form} current={current} set={set} />
         <Switch label="Publicada" description="Só aulas publicadas aparecem para os alunos." checked={Boolean(form.published)} onChange={(e) => set({ published: e.target.checked })} />

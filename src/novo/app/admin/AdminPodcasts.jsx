@@ -9,6 +9,9 @@ import { useSession } from "../session.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
 import { dateTimeBR, LoadError, Loading, messageOf, TextArea, useLoad } from "./common.jsx";
 import * as api from "../podcasts/podcastsApi.js";
+// Editor profissional (16/10): a "Fala" vai para a voz e o texto de fonte é material da IA, então os dois usam o editor SÓ COMO TEXTO
+// (desfazer, Revisão — localizar, contagem, ortografia — e Exibir; sem formatação). Nada muda no TTS.
+import { CampoRico } from "../editorPro/CampoRico.jsx";
 
 const DURATIONS = [3, 5, 8, 10, 15, 20, 30].map((m) => ({ value: String(m), label: `${m} minutos` }));
 const SOURCE_ICON = { pdf: "file-text", docx: "file-text", text: "text", link: "link", lesson: "tv" };
@@ -184,7 +187,7 @@ function Sources({ podcast, lessons, isAdmin, onChanged }) {
           {mode === "text" && (
             <>
               <TextField label="Título da fonte" value={text.title} maxLength={200} onChange={(e) => setText((t) => ({ ...t, title: e.target.value }))} placeholder="Ex.: Anotações da aula de 05/10" />
-              <TextArea label="Texto" value={text.body} rows={6} onChange={(v) => setText((t) => ({ ...t, body: v }))} />
+              <CampoRico label="Texto" somenteTexto texto={text.body} onChange={(c) => setText((t) => ({ ...t, body: c.texto }))} />
               <Button size="sm" style={{ alignSelf: "flex-start" }} loading={state.busy === "text"} disabled={text.body.trim().length < 80} onClick={addText}>Adicionar texto</Button>
             </>
           )}
@@ -269,7 +272,7 @@ function ScriptEditor({ podcast, warnings, onSaved, locked }) {
             <SelectField label="Quem fala" value={l.speaker} disabled={locked} onChange={(e) => edit(i, { speaker: e.target.value })} options={SPEAKERS} />
             <TextField label="Jeito de falar" value={l.style ?? ""} maxLength={80} disabled={locked} onChange={(e) => edit(i, { style: e.target.value })} placeholder="didático e calmo" />
           </div>
-          <TextArea label="Fala" value={l.text} rows={3} maxLength={700} disabled={locked} onChange={(v) => edit(i, { text: v })} />
+          <CampoRico label="Fala" somenteTexto texto={l.text} maxLength={700} disabled={locked} onChange={(c) => edit(i, { text: c.texto })} />
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "flex-start" }}>
             {(l.sources ?? []).length ? l.sources.map((s) => <Citation key={s} id={s} cited={podcast.cited} />) : <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Sem trecho citado</span>}
           </div>
@@ -283,7 +286,7 @@ function ScriptEditor({ podcast, warnings, onSaved, locked }) {
       ))}
       {!locked && (
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {dirty && <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Salvar a edição tira a aprovação e o áudio (precisam ser refeitos).</span>}
+          {dirty && <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Salvar uma mudança nas falas tira a aprovação e o áudio (precisam ser refeitos).</span>}
           <Button variant="secondary" disabled={!dirty} onClick={() => setLines(saved)}>Desfazer</Button>
           <Button loading={state.saving} disabled={!dirty || lines.some((l) => !l.text.trim())} onClick={save}>Salvar edição</Button>
         </div>
