@@ -199,7 +199,7 @@ export function renderAvisoInatividade(item: ItemFila, baseUrl: string | null): 
     : `Se você não entrar no app até <strong>${esc(ate)}</strong>, o seu saldo de Stazia Coins será zerado depois dessa data. A sua conta e o seu progresso continuam.`;
   const efeitoTxt = efeito.replace(/<\/?strong>/g, "");
   const manter = apagar
-    ? "Para manter a conta, basta entrar no StaziaMed. Se preferir guardar seus dados antes, use Minha Conta → Privacidade e dados → Baixar meus dados."
+    ? "Para manter a conta, basta entrar no StaziaMed. Se quiser uma cópia dos seus dados antes, peça pelo e-mail privacidade@staziamed.com.br."
     : "Para manter os Coins, basta entrar no StaziaMed.";
   const html = moldura(subject, [
     p(esc(ola)),

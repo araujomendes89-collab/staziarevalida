@@ -21,7 +21,6 @@ import { AceiteFrase } from "./AceiteFrase.jsx";
 import { useVigentes } from "./vigente.js";
 import { FieldError, RecoveryButton, RecoveryLayout, RecoveryLink, RecoveryMessage } from "../auth/RecoveryLayout.jsx";
 import { useSupportEmail } from "../support/supportContact.jsx";
-import { baixarArquivo } from "./baixar.js";
 
 const OUTDATED = "Versão desatualizada do termo.";
 const OUTDATED_NOTICE = "O contrato foi atualizado agora há pouco. Leia a nova versão e aceite de novo.";
@@ -76,7 +75,6 @@ export function AcceptanceScreen({ onAgoraNao } = {}) {
   const [erroCaixa, setErroCaixa] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   const [notice, setNotice] = React.useState(null);
-  const [exportando, setExportando] = React.useState(false);
   const [doc, setDoc] = React.useState(null);
   const closeDoc = React.useCallback(() => setDoc(null), []);
   // takeGoogleAcceptance apaga o registro ao ler: lê uma vez só (o StrictMode roda o efeito duas vezes em desenvolvimento)
@@ -128,17 +126,6 @@ export function AcceptanceScreen({ onAgoraNao } = {}) {
       }
     }
     setBusy(false);
-  };
-
-  const baixarDados = async () => {
-    setExportando(true);
-    try {
-      const data = await session.backend.rpc("app_export_my_data");
-      baixarArquivo(`staziamed-meus-dados-${new Date().toLocaleDateString("en-CA")}.json`, JSON.stringify(data, null, 2), "application/json");
-    } catch {
-      setNotice("Não foi possível gerar o arquivo dos seus dados. Tente de novo.");
-    }
-    setExportando(false);
   };
 
   const cancelamento = `mailto:${supportEmail}?subject=${encodeURIComponent("Pedido de cancelamento da assinatura")}&body=${encodeURIComponent(
@@ -224,7 +211,6 @@ export function AcceptanceScreen({ onAgoraNao } = {}) {
           {onAgoraNao && <RecoveryLink onClick={onAgoraNao}>Agora não</RecoveryLink>}
           {atualizacao && !onAgoraNao && (
             <>
-              <RecoveryLink onClick={baixarDados}>{exportando ? "Gerando o arquivo…" : "Baixar meus dados"}</RecoveryLink>
               <a className="ln-link rc-back ac3-link" href={cancelamento}>
                 <span>Não aceito: pedir o cancelamento</span>
               </a>

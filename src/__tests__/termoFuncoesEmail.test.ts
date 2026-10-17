@@ -196,7 +196,8 @@ describe("Aviso de conta inativa", () => {
     expect(e.subject).toBe("Sua conta StaziaMed será apagada por falta de acesso");
     expect(e.text).toContain("sem acesso desde 01/11/2025");
     expect(e.text).toContain("Se você não entrar no app até 20/11/2026, a sua conta e os seus dados de estudo serão apagados");
-    expect(e.text).toContain("Baixar meus dados");
+    expect(e.text).toContain("Se quiser uma cópia dos seus dados antes, peça pelo e-mail privacidade@staziamed.com.br.");
+    expect(e.text).not.toContain("Baixar meus dados");
     expect(e.html).toContain("https://app.staziamed.com.br/novo/login");
   });
 
