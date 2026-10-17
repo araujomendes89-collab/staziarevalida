@@ -26,7 +26,7 @@ import { protegerFala, sugestoesSemSigilo, violacoesDeSigilo } from "./escudo";
 import { lerRegistro, notaDoRegistro, palavraoContido } from "./leituraDoAluno";
 import { nomeSeguro } from "./sigilo";
 import { deterministicTutor, tutorSettings } from "./settings";
-import { buscarOuReserva } from "./conhecimento/buscar";
+import { buscarOuReserva, vetorEmParalelo } from "./conhecimento/buscar";
 
 export interface TutorDeps {
   db: ContentDb;
@@ -353,6 +353,11 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       task = a && a.is_correct && a.lucky_guess && !a.justification && ctx.session.question_state === "answered" ? { type: "justify" } : { type: "message", interrupted: action.interrupted?.slice(0, 300) || null };
     }
 
+    // cérebro do Tutor: o vetor da pergunta (só com TUTOR_CONHECIMENTO_VETOR=1) começa já, junto com o resto do preparo do turno
+    const weak = ctx.session.context?.type === "weak_points" ? (ctx.memory?.weak_subareas ?? []).slice(0, 3).map((w) => w.subarea).join(" ") : "";
+    const termosBusca = [q?.topic, q?.subtopic, ctx.session.topic, ctx.session.context?.label, weak, task.type === "message" && !q ? studentText : ""];
+    const vetorCedo = vetorEmParalelo(termosBusca.filter(Boolean).join(" "));
+
     const { provider, status } = resolveTutorProvider(deps.mockRespond);
     if (!provider) {
       deps.log?.(`[tutor] IA não configurada: ${status.pending}`);
@@ -365,13 +370,11 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
 
     // ---- base conferida
     const includeAnswer = Boolean(q) && (!open || task.type === "hint" || task.type === "reveal");
-    const weak = ctx.session.context?.type === "weak_points" ? (ctx.memory?.weak_subareas ?? []).slice(0, 3).map((w) => w.subarea).join(" ") : "";
     // lista de fontes que o aluno não pode ver: sem ela o Tutor não responde (nada é publicado nem gravado); o aluno tenta de novo
     const supportTerms = await termsOrFail(deps);
     // cérebro do Tutor: busca no conhecimento aprovado (aulas, atualizações, fontes, flashcards, explicações já liberadas), travas no banco;
     // sem o índice, a busca de antes
-    const termosBusca = [q?.topic, q?.subtopic, ctx.session.topic, ctx.session.context?.label, weak, task.type === "message" && !q ? studentText : ""];
-    const passages = (await buscarOuReserva(deps, { userId, sessionId, pergunta: termosBusca.filter(Boolean).join(" "), vetor: "ponte", via: "texto" }, () => searchSources(deps, sourceQuery(...termosBusca)))).passagens as Passage[];
+    const passages = (await buscarOuReserva(deps, { userId, sessionId, pergunta: termosBusca.filter(Boolean).join(" "), vetor: vetorCedo, via: "texto" }, () => searchSources(deps, sourceQuery(...termosBusca)))).passagens as Passage[];
     const blocks = buildBlocks(ctx, passages, includeAnswer);
 
     // ---- personalidade (sempre depois do conteúdo): estilo do professor + estado da sessão
