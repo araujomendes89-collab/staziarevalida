@@ -73,7 +73,7 @@ export function AdminScreen() {
       {tab === "config" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <AdminSettings />
-          <AdminDupla />
+          <AdminDupla onOpenIAs={isAdmin ? () => setParams({ aba: "ias" }) : undefined} />
           <AdminDuplaChatSettings />
           <AdminSupportContact />
           <AdminReports />
