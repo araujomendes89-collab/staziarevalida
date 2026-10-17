@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
  * Funções que o Contrato 3.0 promete (ramo termo-funcoes):
- *   013800 — cópia do contrato por e-mail (fila email_saida, um por aceite, nova tentativa, sem duplicar) e caixa opcional de marketing;
+ *   013800 — cópia do contrato por e-mail (fila email_saida, um por aceite, nova tentativa, sem duplicar) e escolha opcional de marketing (onboarding e Minha Conta);
  *   013810 — conta inativa (aviso 30 dias antes, apagar conta gratuita / zerar Coins) e expurgo dos aceites 5 anos depois do fim do
  *            contrato, tudo DESLIGADO por chave (modo ensaio).
  * Ensaio no PGlite: banco com todas as migrações de antes, as duas novas aplicadas duas vezes, desfeitas e aplicadas de novo.
@@ -202,21 +202,30 @@ describe("013800 — cópia do contrato por e-mail", () => {
   });
 });
 
-describe("013800 — caixa opcional de marketing", () => {
-  it("cadastro com a caixa marcada grava com data, origem e o texto mostrado", async () => {
+describe("013800 — escolha opcional de marketing (no onboarding e em Minha Conta; fora do cadastro)", () => {
+  it("o cadastro não grava marketing, nem com o metadado antigo; sem escolha a pessoa não recebe", async () => {
     const id = await signUp({ marketing_opt_in: "true" });
-    expect(await call(id, "app_marketing_get")).toMatchObject({ opt_in: true, origin: "cadastro" });
-    const log = await linhas(`select opt_in, origin, texto, at from public.marketing_consent_log where user_id = $1`, [id]);
-    expect(log).toEqual([{ opt_in: true, origin: "cadastro", texto: "Quero receber novidades e ofertas por e-mail.", at: expect.any(Date) }]);
-  });
-
-  it("sem marcar (o padrão), nada é gravado e a pessoa não recebe", async () => {
-    const id = await signUp({ marketing_opt_in: "false" });
     const outro = await signUp();
     for (const u of [id, outro]) {
       expect(await call(u, "app_marketing_get")).toEqual({ opt_in: false, updated_at: null, origin: null });
       expect(await linhas(`select 1 from public.marketing_consent_log where user_id = $1`, [u])).toEqual([]);
     }
+    expect(await linhas(`select 1 from pg_trigger where tgname = 'on_auth_user_marketing'`)).toEqual([]);
+  });
+
+  it("onboarding, \"Sim, quero receber\": grava com data, origem e o texto mostrado", async () => {
+    const id = await signUp();
+    expect(await call(id, "app_marketing_set", { p_opt_in: true, p_origin: "onboarding" })).toMatchObject({ opt_in: true, origin: "onboarding" });
+    const log = await linhas(`select opt_in, origin, texto, at from public.marketing_consent_log where user_id = $1`, [id]);
+    expect(log).toEqual([{ opt_in: true, origin: "onboarding", texto: expect.stringMatching(/^Quer receber novidades e ofertas/), at: expect.any(Date) }]);
+  });
+
+  it("o texto guardado no histórico é o mesmo que a pergunta do onboarding mostra", () => {
+    const c = ler("src/novo/app/account/MarketingPergunta.jsx");
+    const v = (nome: string) => c.match(new RegExp(`export const ${nome} =\\s*"([^"]+)"`))![1];
+    const guardado = `${v("MARKETING_PERGUNTA")} ${v("MARKETING_EXPLICACAO")} Resposta: ${v("MARKETING_SIM")}.`;
+    expect(SQL[0]).toContain(`'${guardado}'`);
+    expect(guardado.length).toBeLessThanOrEqual(300);
   });
 
   it("Minha Conta liga e desliga; repetir a mesma escolha não enche o histórico", async () => {
@@ -228,38 +237,26 @@ describe("013800 — caixa opcional de marketing", () => {
     expect(await call(id, "app_marketing_set", { p_opt_in: false })).toMatchObject({ opt_in: false, origin: "minha_conta" });
     const log = await linhas(`select opt_in from public.marketing_consent_log where user_id = $1 order by id`, [id]);
     expect(log.map((l) => l.opt_in)).toEqual([true, false]);
-    // volta do Google com a caixa marcada
-    const g = await signUp();
-    expect(await call(g, "app_marketing_set", { p_opt_in: true, p_origin: "cadastro_google" })).toMatchObject({ opt_in: true, origin: "cadastro_google" });
   });
 
-  it("o texto guardado no histórico é o mesmo da caixa da tela", () => {
-    const tela = ler("src/novo/app/AuthScreens.jsx").match(/export const MARKETING_TEXTO = "([^"]+)"/)![1];
-    expect(SQL[0]).toContain(`'${tela}.'`);
-  });
-
-  it("'cadastro_google' só vale na conta recém-criada (volta do Google)", async () => {
-    const velha = await signUp();
-    await db.query(`update auth.users set created_at = now() - interval '2 hours' where id = $1`, [velha]);
-    expect(await recusa(call(velha, "app_marketing_set", { p_opt_in: true, p_origin: "cadastro_google" }))).toMatch(/Escolha inválida/);
-    expect(await call(velha, "app_marketing_set", { p_opt_in: true })).toMatchObject({ opt_in: true, origin: "minha_conta" });
-  });
-
-  it("visitante não chama; o app não se passa por cadastro nem grava direto na tabela", async () => {
+  it("visitante não chama; origens do cadastro não existem mais; o aluno não grava direto na tabela", async () => {
     const id = await signUp();
-    expect(await recusa(call(null, "app_marketing_set", { p_opt_in: true }))).toMatch(/permission denied/);
-    expect(await recusa(call(id, "app_marketing_set", { p_opt_in: true, p_origin: "cadastro" }))).toMatch(/Escolha inválida/);
+    expect(await recusa(call(null, "app_marketing_set", { p_opt_in: true, p_origin: "onboarding" }))).toMatch(/permission denied/);
+    for (const o of ["cadastro", "cadastro_google", "link_email"]) {
+      expect(await recusa(call(id, "app_marketing_set", { p_opt_in: true, p_origin: o }))).toMatch(/Escolha inválida/);
+    }
     expect(await recusa(call(id, "app_marketing_set", { p_opt_in: null }))).toMatch(/Escolha inválida/);
     await expect(
       db.transaction(async (tx) => {
         await tx.exec(`set local role authenticated`);
-        await tx.query(`insert into public.marketing_consents (user_id, opt_in, origin) values ($1, true, 'cadastro')`, [id]);
+        await tx.query(`insert into public.marketing_consents (user_id, opt_in, origin) values ($1, true, 'onboarding')`, [id]);
       }),
     ).rejects.toThrow(/permission denied/);
   });
 
   it("conta apagada: escolha e histórico vão junto", async () => {
-    const id = await signUp({ marketing_opt_in: "true" });
+    const id = await signUp();
+    await call(id, "app_marketing_set", { p_opt_in: true, p_origin: "onboarding" });
     await db.query(`delete from auth.users where id = $1`, [id]);
     expect(await linhas(`select 1 from public.marketing_consent_log where user_id = $1`, [id])).toEqual([]);
   });
@@ -543,11 +540,12 @@ describe("desfazer e aplicar de novo", () => {
     expect((await linhas(`select count(*)::int as c from public.conta_inativa_desfeito`))[0].c).toBeGreaterThan(0);
     expect((await linhas(`select count(*)::int as c from public.legal_contrato_fim_desfeito`))[0].c).toBeGreaterThan(0);
     // aceite e cadastro seguem funcionando sem as funções novas
-    const id = await signUp({ terms_version: "3.0", declares_adult: "true", marketing_opt_in: "true" });
+    const id = await signUp({ terms_version: "3.0", declares_adult: "true" });
     expect(await linhas(`select 1 from public.legal_acceptances where user_id = $1`, [id])).toHaveLength(1);
     for (const s of SQL) await db.exec(s);
-    const outro = await signUp({ marketing_opt_in: "true" });
+    const outro = await signUp();
     await aceitar(outro);
+    await call(outro, "app_marketing_set", { p_opt_in: true, p_origin: "onboarding" });
     expect(await fila(outro)).toHaveLength(1);
     expect(await call(outro, "app_marketing_get")).toMatchObject({ opt_in: true });
     expect((await servico("ch_worker_contas_inativas")).modo).toBe("ensaio");

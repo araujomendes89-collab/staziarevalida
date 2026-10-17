@@ -2,7 +2,7 @@
 // (chave de marketing, Ajuda com telefone e horário, Documentos pelo link do e-mail). Sem Supabase: nada sai do navegador.
 // Troca só o módulo de dados (src/novo/data/index.ts) por um backend de mentira (dados-falsos.ts); o resto é o código real do app.
 // Uso (da raiz do projeto): npx vite --config scripts/previa-termo-funcoes/vite.config.mjs  (porta 31977)
-// Endereços: /?tela=cadastro|conta&secao=priv|ajuda|docs&tema=light|dark
+// Endereços: /?tela=cadastro|conta|pergunta &secao=priv|ajuda|docs &tema=light|dark
 // Capturas: node scripts/previa-termo-funcoes/capturar.mjs <pasta> <prefixo> [endereco]
 import path from "node:path";
 import { fileURLToPath } from "node:url";

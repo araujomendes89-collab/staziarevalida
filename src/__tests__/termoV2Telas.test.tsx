@@ -125,7 +125,7 @@ describe("Termo 2.0 — dados do cadastro e do Google", () => {
 
   it("o registro do Google guarda as declarações e continua lido uma única vez", () => {
     rememberGoogleAcceptance("2.0", { adult: true, physician: true });
-    expect(takeGoogleAcceptanceFull("2.0")).toEqual({ adult: true, physician: true, marketing: false });
+    expect(takeGoogleAcceptanceFull("2.0")).toEqual({ adult: true, physician: true });
     expect(takeGoogleAcceptanceFull("2.0")).toBeNull();
     rememberGoogleAcceptance("1.0");
     expect(takeGoogleAcceptanceFull("2.0")).toBeNull();

@@ -11,9 +11,11 @@ em `/Volumes/StaziaMed/.tmp-aulas/termo-funcoes/`: `013800_…_aplicar.sql`, `01
    código do texto, botão para Minha Conta → Documentos (`/novo/perfil?secao=docs`) e o texto completo anexado (`.txt`, igual ao
    botão Baixar). Falha antes da entrega: tenta de novo (5 min, 30 min, 2 h, 12 h; na 5ª desiste). Caiu depois de mandar: não repete
    (não duplica). Conta com e-mail não confirmado: espera até 30 dias. **Sem as variáveis SMTP, nada sai** (fica na fila).
-2. **Caixa de marketing** (cláusulas 6.2 e 32): caixa separada e desmarcada no cadastro (e no cadastro com Google); chave em Minha
-   Conta → Privacidade e dados. Guarda a escolha com data, origem e o texto mostrado (`marketing_consents` + histórico
-   `marketing_consent_log`). Ainda não existe envio de marketing.
+2. **Marketing (fora do cadastro, decisão do dono de 17/10)**: a escolha é feita no **onboarding** com o componente
+   `src/novo/app/account/MarketingPergunta.jsx` (pergunta, texto e os botões "Sim, quero receber" / "Agora não"; nada marcado; só o
+   "Sim" grava, com a origem `onboarding`; "Agora não" não grava nada) e pela chave em Minha Conta → Privacidade e dados. Guarda a
+   escolha com data, origem e o texto mostrado (`marketing_consents` + histórico `marketing_consent_log`). Ainda não existe envio
+   de marketing. **Encaixe no onboarding** (ramo onboarding/pacote1, junção do Pacote 2): ver o comentário no topo do componente.
 3. **Ajuda**: telefone/WhatsApp (41) 99903-1074, "de segunda a sexta, das 9h às 18h" (cláusula 1.3) e privacidade@staziamed.com.br.
 4. **Conta inativa** (Política 3.0 seção 5; Regulamento 4.3) e 5. **expurgo dos aceites 5 anos depois do fim do contrato**: rotina
    diária `/api/legal/diaria`, **desligada** (só relatório). Detalhes e chaves no topo da migração 013810.
@@ -36,17 +38,18 @@ um conjunto só serve aos dois.
 
 ## Ordem de publicação (SQL antes do site)
 0. **Antes de tudo: "Confirm email" ligado no Supabase** (Authentication → Providers → Email). Sem ele, a conta já nasce "confirmada"
-   e a cópia do contrato (e a escolha de marketing) podem ir para um e-mail digitado errado ou de outra pessoa (revisão LGPD).
+   e a cópia do contrato pode ir para um e-mail digitado errado ou de outra pessoa (revisão LGPD).
 1. Colar `013800_…_aplicar.sql` e depois `013810_…_aplicar.sql` no editor de SQL do Supabase. **Nunca `supabase db push`.**
    Cada uma confere tudo no fim e, se algo não bater, para sem mudar nada. Podem ser coladas de novo.
 2. Rodar `termo_funcoes_conferir.sql`: estrutura "ok", chaves todas `false`, permissões todas `false`.
 3. Criar as variáveis SMTP na Vercel (pode ser depois: até lá a fila só acumula).
 4. Publicar o site do ramo (Vercel). O `vercel.json` ganha as tarefas `/api/legal/email` (*/5) e `/api/legal/diaria` (4h20 UTC).
-5. Conferir: criar uma conta de teste → em até 5 min chega o e-mail com o anexo; Minha Conta → Privacidade e dados mostra a chave;
+5. Conferir: criar uma conta de teste (sem caixa de marketing no cadastro) → em até 5 min chega o e-mail com o anexo; Minha Conta →
+   Privacidade e dados mostra a chave de marketing desligada;
    Ajuda mostra telefone e horário; o relatório da rotina aparece em `app_rotinas_conta_log` com modo `ensaio`.
 
-Site antes do SQL também funciona (as chamadas novas falham em silêncio e a chave de marketing não aparece), mas a caixa de marketing
-do cadastro só é gravada com a 013800 no banco: por isso SQL primeiro.
+Site antes do SQL também funciona (as chamadas novas falham em silêncio e a chave de marketing não aparece), mas a cópia do contrato
+só entra na fila com a 013800 no banco: por isso SQL primeiro.
 
 ## Ligar as rotinas (decisão do dono)
 ```sql

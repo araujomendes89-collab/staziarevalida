@@ -2,7 +2,7 @@
  * Telas do ramo termo-funcoes (Contrato 3.0):
  *   - Criar conta: "Mínimo de 8 caracteres." ao sair da Senha e "As senhas não são iguais." enquanto a pessoa digita o Conferir senha
  *     (depois de sair do campo ou quando o tamanho já bate), sem atrapalhar quem está digitando certo;
- *   - caixa SEPARADA e desmarcada de marketing no cadastro (e-mail e Google) e a chave em Minha Conta → Privacidade e dados;
+ *   - marketing FORA do cadastro (decisão do dono, 17/10): pergunta do onboarding (MarketingPergunta) e chave em Minha Conta;
  *   - Ajuda: telefone/WhatsApp e horário do contrato, e o e-mail de privacidade;
  *   - link do e-mail (?secao=docs) abre Minha Conta → Documentos.
  */
@@ -24,10 +24,9 @@ vi.mock("../novo/data", async (importOriginal) => {
   return { ...actual, getBackend: async () => ({ rpc: semFuncao }) };
 });
 
-import { AuthFlow, avisosDasSenhas, MARKETING_TEXTO } from "../novo/app/AuthScreens.jsx";
+import { AuthFlow, avisosDasSenhas } from "../novo/app/AuthScreens.jsx";
 import { AccountScreen } from "../novo/app/account/AccountScreen.jsx";
-import { AcceptanceScreen } from "../novo/app/legal/AcceptanceScreen.jsx";
-import { takeGoogleAcceptanceFull } from "../novo/app/legal/googleAcceptance.js";
+import { MARKETING_EXPLICACAO, MARKETING_PERGUNTA, MARKETING_TEXTO_GUARDADO, MarketingPergunta } from "../novo/app/account/MarketingPergunta.jsx";
 import { PRIVACY_EMAIL, SUPPORT_HOURS, SUPPORT_PHONE } from "../novo/app/support/supportContact.jsx";
 
 const FRASE = "Li e aceito os Termos de Uso e a Política de Privacidade e declaro ter 18 anos ou mais.";
@@ -119,59 +118,69 @@ describe("Criar conta: avisos das senhas enquanto a pessoa preenche", () => {
   });
 });
 
-describe("Caixa opcional de marketing", () => {
-  it("no cadastro é SEPARADA do aceite e nasce desmarcada; sem marcar, vai marketing: false", async () => {
+describe("Marketing fora do cadastro (decisão do dono, 17/10)", () => {
+  it("Criar conta tem só a caixa do aceite; nada de marketing no cadastro nem no Google", async () => {
     abrirCadastro();
-    const mkt = campo(new RegExp(MARKETING_TEXTO) as any);
-    expect(mkt.checked).toBe(false);
-    expect(mkt).not.toBe(campo(FRASE));
-    expect(mkt.closest(".cc-consent")).toBeNull(); // fora do quadro do aceite
+    expect(screen.getAllByRole("checkbox")).toHaveLength(1);
+    expect(document.body.textContent).not.toMatch(/novidades e ofertas/i);
     digitar("Nome completo", "Ana Lima");
     digitar("E-mail", "ana@teste.dev");
     digitar("Senha", "senha-segura");
     digitar("Conferir senha", "senha-segura");
-    // sem o aceite, marcar só o marketing não cria a conta
-    fireEvent.click(mkt);
-    fireEvent.click(screen.getByRole("button", { name: /^CRIAR CONTA/ }));
-    expect(backend.signUp).not.toHaveBeenCalled();
-    fireEvent.click(mkt);
     fireEvent.click(campo(FRASE));
     fireEvent.click(screen.getByRole("button", { name: /^CRIAR CONTA/ }));
     await waitFor(() => expect(backend.signUp).toHaveBeenCalledTimes(1));
-    expect(backend.signUp.mock.calls[0][3].marketing).toBe(false);
-  });
-
-  it("marcada: vai no cadastro por e-mail e fica guardada para a volta do Google", async () => {
-    abrirCadastro();
-    fireEvent.click(campo(new RegExp(MARKETING_TEXTO) as any));
-    fireEvent.click(campo(FRASE));
+    expect(backend.signUp.mock.calls[0][3]).not.toHaveProperty("marketing");
     fireEvent.click(screen.getByRole("button", { name: "Criar conta com Google" }));
     await waitFor(() => expect(backend.signInWithGoogle).toHaveBeenCalledTimes(1));
-    expect(takeGoogleAcceptanceFull("2.0")).toEqual({ adult: true, physician: false, marketing: true });
-    digitar("Nome completo", "Ana Lima");
-    digitar("E-mail", "ana@teste.dev");
-    digitar("Senha", "senha-segura");
-    digitar("Conferir senha", "senha-segura");
-    fireEvent.click(screen.getByRole("button", { name: /^CRIAR CONTA/ }));
-    await waitFor(() => expect(backend.signUp).toHaveBeenCalledTimes(1));
-    expect(backend.signUp.mock.calls[0][3].marketing).toBe(true);
+    expect(JSON.parse(localStorage.getItem("smn-aceite-google")!)).not.toHaveProperty("marketing");
+  });
+});
+
+describe("Pergunta de marketing do onboarding (MarketingPergunta)", () => {
+  const abrir = () => {
+    const onRespondido = vi.fn();
+    state.session = { backend };
+    render(<MarketingPergunta onRespondido={onRespondido} />);
+    return onRespondido;
+  };
+
+  it("mostra a pergunta, o texto e os dois botões; nada marcado", () => {
+    abrir();
+    expect(screen.getByRole("heading", { name: MARKETING_PERGUNTA })).toBeTruthy();
+    expect(screen.getByText(MARKETING_EXPLICACAO)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sim, quero receber" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Agora não" })).toBeTruthy();
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    expect(MARKETING_TEXTO_GUARDADO).toBe(`${MARKETING_PERGUNTA} ${MARKETING_EXPLICACAO} Resposta: Sim, quero receber.`);
   });
 
-  it("volta do Google: grava o marketing só DEPOIS do aceite, e só se estava marcado", async () => {
-    const acceptTerms = vi.fn(async () => {});
-    const legal = { termo_uso: { current: "1.0", accepted: null, accepted_at: null }, tutor_ia: { current: "1.0" }, gate_required: true, phone_missing: false };
-    state.session = { backend, boot: { legal }, acceptTerms, refresh: vi.fn(), signOut: vi.fn() };
-    localStorage.setItem("smn-aceite-google", JSON.stringify({ version: "1.0", at: Date.now(), adult: true, marketing: true }));
-    render(<AcceptanceScreen />);
-    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_marketing_set", { p_opt_in: true, p_origin: "cadastro_google" }));
-    expect(acceptTerms).toHaveBeenCalledTimes(1);
+  it("\"Sim, quero receber\" grava com a origem onboarding e segue", async () => {
+    backend.rpc.mockResolvedValue({ opt_in: true });
+    const onRespondido = abrir();
+    fireEvent.click(screen.getByRole("button", { name: "Sim, quero receber" }));
+    await waitFor(() => expect(onRespondido).toHaveBeenCalledWith({ opt_in: true }));
+    expect(backend.rpc).toHaveBeenCalledWith("app_marketing_set", { p_opt_in: true, p_origin: "onboarding" });
+  });
+
+  it("\"Agora não\" não grava nada", () => {
+    const onRespondido = abrir();
+    fireEvent.click(screen.getByRole("button", { name: "Agora não" }));
+    expect(onRespondido).toHaveBeenCalledWith({ opt_in: false });
+    expect(backend.rpc).not.toHaveBeenCalled();
+  });
+
+  it("falha do banco: avisa e deixa tentar de novo; banco sem a função: segue sem gravar", async () => {
+    backend.rpc.mockRejectedValueOnce(new Error("falha de rede"));
+    const onRespondido = abrir();
+    fireEvent.click(screen.getByRole("button", { name: "Sim, quero receber" }));
+    expect(await screen.findByText(/Não foi possível salvar sua escolha agora/)).toBeTruthy();
+    expect(onRespondido).not.toHaveBeenCalled();
     cleanup();
-    backend.rpc.mockClear();
-    localStorage.setItem("smn-aceite-google", JSON.stringify({ version: "1.0", at: Date.now(), adult: true }));
-    render(<AcceptanceScreen />);
-    await waitFor(() => expect(acceptTerms).toHaveBeenCalledTimes(2));
-    await act(async () => {});
-    expect(backend.rpc).not.toHaveBeenCalledWith("app_marketing_set", expect.anything());
+    backend.rpc.mockRejectedValueOnce(new Error("Could not find the function public.app_marketing_set(p_opt_in, p_origin) in the schema cache"));
+    const r2 = abrir();
+    fireEvent.click(screen.getByRole("button", { name: "Sim, quero receber" }));
+    await waitFor(() => expect(r2).toHaveBeenCalledWith({ opt_in: false }));
   });
 });
 

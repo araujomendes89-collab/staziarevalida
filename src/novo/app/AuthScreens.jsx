@@ -55,11 +55,9 @@ function AuthLayout({ children, aside }) {
 
 const ACCEPT_ERROR = "Para criar a conta, é preciso aceitar os Termos de Uso e a Política de Privacidade e declarar ter 18 anos ou mais.";
 // ids dos campos, na ordem da tela, para levar o foco ao primeiro com erro
-const FIELD_IDS = { name: "secure-name", email: "secure-email", pw: "secure-pw", pw2: "secure-pw2", accept: "secure-accept", marketing: "secure-marketing" };
+const FIELD_IDS = { name: "secure-name", email: "secure-email", pw: "secure-pw", pw2: "secure-pw2", accept: "secure-accept" };
 const PW_CURTA = `Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`;
 const PW_DIFERENTE = "As senhas não são iguais.";
-/** Caixa opcional de marketing (Contrato 3.0, cláusulas 6.2 e 32): separada do aceite, sempre desmarcada ao abrir. */
-export const MARKETING_TEXTO = "Quero receber novidades e ofertas por e-mail";
 
 /**
  * Avisos das senhas enquanto a pessoa preenche (pedido do dono, 17/10/2026), sem atrapalhar quem ainda está digitando:
@@ -107,7 +105,6 @@ function Signup({ go }) {
   const [saved, setSaved] = React.useState({ name: "", email: "" });
   const [loading, setLoading] = React.useState(false);
   const [accepted, setAccepted] = React.useState(false);
-  const [marketing, setMarketing] = React.useState(false);
   const [doc, setDoc] = React.useState(null);
   // o Conferir senha já foi deixado uma vez: daí em diante o aviso acompanha a digitação
   const visto2 = React.useRef(false);
@@ -163,8 +160,6 @@ function Signup({ go }) {
         userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
         // a caixa do aceite já traz a declaração de maioridade
         declaresAdult: true,
-        // caixa SEPARADA e opcional de marketing: só vai se a pessoa marcou
-        marketing,
       });
       setSaved({ name, email });
       // Contrato 3.0: o aceite guarda o IP; o cadastro passa pelo serviço de login, que não entrega o IP ao banco, então este mesmo
@@ -209,7 +204,7 @@ function Signup({ go }) {
     setErrors({});
     try {
       // guarda o aceite (com a maioridade, que está na mesma caixa) para gravar na volta do Google
-      rememberGoogleAcceptance((vig.vigentes ?? VIGENTES_DO_SITE).termo_uso?.version ?? TERMO_VERSAO, { adult: true, marketing });
+      rememberGoogleAcceptance((vig.vigentes ?? VIGENTES_DO_SITE).termo_uso?.version ?? TERMO_VERSAO, { adult: true });
       await backend.signInWithGoogle();
     } catch (err) {
       setError(messageFor(err));
@@ -267,14 +262,6 @@ function Signup({ go }) {
           )}
         </div>
 
-        {/* Contrato 3.0, cláusulas 6.2 e 32: caixa SEPARADA, opcional e desmarcada; não marcar não muda nada no cadastro */}
-        <div className="cc-mkt">
-          <label className="cc-check">
-            <input id={FIELD_IDS.marketing} type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} aria-describedby="secure-marketing-nota" />
-            <span>{MARKETING_TEXTO} <span className="cc-opcional">(opcional)</span></span>
-          </label>
-          <p id="secure-marketing-nota" className="cc-aviso">Você pode desligar quando quiser em Minha Conta.</p>
-        </div>
 
         <RecoveryButton type="submit" loading={loading} loadingText="CRIANDO CONTA…">CRIAR CONTA</RecoveryButton>
         <div className="ln-or" aria-hidden="true">

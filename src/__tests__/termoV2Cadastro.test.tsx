@@ -48,13 +48,13 @@ describe("Cadastro com o Termo 2.0 (caixa única com a maioridade, 17/10/2026)",
     open();
     criar();
     await waitFor(() => expect(backend.signUp).toHaveBeenCalledTimes(1));
-    expect(backend.signUp.mock.calls[0][3]).toEqual({ termsVersion: "2.0", userAgent: expect.any(String), declaresAdult: true, marketing: false });
+    expect(backend.signUp.mock.calls[0][3]).toEqual({ termsVersion: "2.0", userAgent: expect.any(String), declaresAdult: true });
   });
 
   it("Google: com a caixa, o registro guarda a maioridade para a volta", async () => {
     open();
     fireEvent.click(screen.getByRole("button", { name: "Criar conta com Google" }));
     await waitFor(() => expect(backend.signInWithGoogle).toHaveBeenCalledTimes(1));
-    expect(takeGoogleAcceptanceFull("2.0")).toEqual({ adult: true, physician: false, marketing: false });
+    expect(takeGoogleAcceptanceFull("2.0")).toEqual({ adult: true, physician: false });
   });
 });

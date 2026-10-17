@@ -127,10 +127,8 @@ describe("Cadastro com Termo", () => {
   it("uma caixa só: sem as caixas separadas de 18+ e de médico(a); o texto é o combinado e a caixa nasce desmarcada", () => {
     open();
     expect(FRASE).toBe(ACEITE_TEXTO);
-    // a caixa do aceite e, separada, a de marketing (Contrato 3.0, cláusula 6.2): as duas nascem desmarcadas
-    expect(screen.getAllByRole("checkbox")).toHaveLength(2);
+    expect(screen.getAllByRole("checkbox")).toHaveLength(1);
     expect((screen.getByLabelText(FRASE) as HTMLInputElement).checked).toBe(false);
-    expect((screen.getByLabelText(/Quero receber novidades e ofertas por e-mail/) as HTMLInputElement).checked).toBe(false);
     expect(screen.queryByText(/sou médico/i)).toBeNull();
     expect(screen.queryByText("Declaro que tenho 18 anos ou mais.")).toBeNull();
     // sem marcar a caixa, nada é enviado
@@ -146,7 +144,7 @@ describe("Cadastro com Termo", () => {
     fireEvent.click(submitBtn());
     await waitFor(() => expect(backend.signUp).toHaveBeenCalledTimes(1));
     expect(backend.signUp.mock.calls[0]).toEqual(["Ana Lima", "ana@teste.dev", "senha-segura",
-      { termsVersion: "2.0", userAgent: expect.any(String), declaresAdult: true, marketing: false }]);
+      { termsVersion: "2.0", userAgent: expect.any(String), declaresAdult: true }]);
     expect(backend.signUp.mock.calls[0][3]).not.toHaveProperty("phone");
   });
 
@@ -159,7 +157,7 @@ describe("Cadastro com Termo", () => {
     fireEvent.click(screen.getByRole("button", { name: "Criar conta com Google" }));
     await waitFor(() => expect(backend.signInWithGoogle).toHaveBeenCalledTimes(1));
     expect(JSON.parse(localStorage.getItem("smn-aceite-google")!).version).toBe("2.0");
-    expect(takeGoogleAcceptanceFull("2.0")).toEqual({ adult: true, physician: false, marketing: false });
+    expect(takeGoogleAcceptanceFull("2.0")).toEqual({ adult: true, physician: false });
     expect(localStorage.getItem("smn-aceite-google")).toBeNull();
   });
 

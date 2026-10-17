@@ -14,13 +14,12 @@
 --      * sem as variáveis SMTP no servidor, nada sai: os e-mails ficam na fila, "pendente".
 --    Só versões com texto guardado pelo sistema (legal_texts, 3.0 em diante). Aceites anteriores a esta migração não recebem e-mail.
 --
--- 2) CAIXA OPCIONAL DE MARKETING (Contrato 3.0, cláusulas 6.2 e 32; Política 3.0: "Marketing — até você retirar o consentimento")
+-- 2) ESCOLHA OPCIONAL DE MARKETING (Contrato 3.0, cláusulas 6.2 e 32; Política 3.0: "Marketing — até você retirar o consentimento")
 --    public.marketing_consents: a escolha atual (uma linha por conta) e public.marketing_consent_log: o histórico (cada marcação ou
 --    retirada com data, hora, origem e o texto mostrado), prova do consentimento (LGPD, art. 8º, § 2º). Nunca obrigatória: quem não
---    marca não tem linha nenhuma (= não recebe). Caminhos:
---      * cadastro por e-mail: a caixa separada e DESMARCADA manda marketing_opt_in = "true" nos metadados da conta; o gatilho
---        on_auth_user_marketing grava. Sem a caixa marcada, nada é gravado;
---      * cadastro com Google: a tela de aceite, na volta, chama app_marketing_set(true, 'cadastro_google') se a caixa estava marcada;
+--    responde "sim" não tem linha nenhuma (= não recebe). Decisão do dono (17/10): a pergunta NÃO fica no cadastro. Caminhos:
+--      * onboarding: a pergunta com "Sim, quero receber" / "Agora não" (src/novo/app/account/MarketingPergunta.jsx); só o "Sim"
+--        chama app_marketing_set(true, 'onboarding'); "Agora não" não grava nada;
 --      * Minha Conta → Privacidade e dados: chave para ligar e desligar (app_marketing_set(…, 'minha_conta')).
 --    Ainda não há envio de e-mail de marketing; quando houver, só para opt_in = true e com link de descadastro (cláusula 32.2).
 --
@@ -191,12 +190,12 @@ $$;
 create table if not exists public.marketing_consents (
   user_id uuid primary key references auth.users (id) on delete cascade,
   opt_in boolean not null,
-  origin text not null check (origin in ('cadastro', 'cadastro_google', 'minha_conta', 'link_email')),
+  origin text not null check (origin in ('onboarding', 'minha_conta', 'link_email')),
   updated_at timestamptz not null default now()
 );
 comment on table public.marketing_consents is
   'Comunicações promocionais por e-mail (Contrato 3.0, cláusulas 6.2 e 32): a escolha atual da pessoa. Sem linha = não recebe. '
-  'Lida e gravada só por app_marketing_get / app_marketing_set e pelo gatilho do cadastro.';
+  'Lida e gravada só por app_marketing_get / app_marketing_set (onboarding e Minha Conta).';
 alter table public.marketing_consents enable row level security;
 revoke all on table public.marketing_consents from public, anon, authenticated;
 
@@ -204,7 +203,7 @@ create table if not exists public.marketing_consent_log (
   id bigint generated always as identity primary key,
   user_id uuid not null references auth.users (id) on delete cascade,
   opt_in boolean not null,
-  origin text not null check (origin in ('cadastro', 'cadastro_google', 'minha_conta', 'link_email')),
+  origin text not null check (origin in ('onboarding', 'minha_conta', 'link_email')),
   texto text not null check (char_length(texto) <= 300),
   at timestamptz not null default now()
 );
@@ -214,11 +213,11 @@ create index if not exists marketing_consent_log_user_idx on public.marketing_co
 alter table public.marketing_consent_log enable row level security;
 revoke all on table public.marketing_consent_log from public, anon, authenticated;
 
--- O texto da caixa (cadastro) e da chave (Minha Conta), guardado no histórico.
+-- O texto mostrado (pergunta do onboarding, igual a MarketingPergunta.jsx; chave da Minha Conta), guardado no histórico.
 create or replace function public.marketing_texto(p_origin text) returns text
   language sql immutable set search_path = ''
 as $$
-  select case when p_origin in ('cadastro', 'cadastro_google') then 'Quero receber novidades e ofertas por e-mail.'
+  select case when p_origin = 'onboarding' then 'Quer receber novidades e ofertas do StaziaMed por e-mail? Dicas de estudo, novidades do app e ofertas. É opcional: você pode mudar quando quiser em Minha Conta → Privacidade e dados. Resposta: Sim, quero receber.'
               when p_origin = 'link_email' then 'Descadastro pelo link do e-mail.'
               else 'Minha Conta: receber novidades e ofertas por e-mail.' end
 $$;
@@ -243,24 +242,9 @@ begin
 end
 $$;
 
--- Cadastro por e-mail: a caixa marcada vem nos metadados (marketing_opt_in = "true"). Nunca impede a criação da conta.
-create or replace function public.marketing_no_cadastro() returns trigger
-  language plpgsql security definer set search_path = ''
-as $$
-begin
-  if coalesce(new.raw_user_meta_data ->> 'marketing_opt_in', '') = 'true' then
-    begin
-      perform public.marketing_gravar(new.id, true, 'cadastro');
-    exception when others then
-      raise warning 'marketing do cadastro não gravado (%): %', new.id, sqlerrm;
-    end;
-  end if;
-  return null;
-end
-$$;
+-- Versão anterior deste ramo gravava a caixa do cadastro por gatilho: não existe mais (decisão do dono, 17/10)
 drop trigger if exists on_auth_user_marketing on auth.users;
-create trigger on_auth_user_marketing after insert on auth.users
-  for each row execute function public.marketing_no_cadastro();
+drop function if exists public.marketing_no_cadastro();
 
 create or replace function public.app_marketing_get() returns jsonb
   language plpgsql stable security definer set search_path = ''
@@ -286,12 +270,7 @@ begin
   if v_user is null then
     raise exception 'Entre na sua conta.' using errcode = '28000';
   end if;
-  if p_opt_in is null or coalesce(p_origin, '') not in ('minha_conta', 'cadastro_google') then
-    raise exception 'Escolha inválida.' using errcode = '22023';
-  end if;
-  -- "cadastro_google" só vale na volta do cadastro com Google (conta criada há menos de 1 hora)
-  if p_origin = 'cadastro_google'
-     and not exists (select 1 from auth.users u where u.id = v_user and u.created_at > now() - interval '1 hour') then
+  if p_opt_in is null or coalesce(p_origin, '') not in ('minha_conta', 'onboarding') then
     raise exception 'Escolha inválida.' using errcode = '22023';
   end if;
   perform public.marketing_gravar(v_user, p_opt_in, p_origin);
@@ -306,7 +285,6 @@ revoke execute on function public.ch_worker_email_pegar(integer) from public, an
 revoke execute on function public.ch_worker_email_marcar(bigint, text, text) from public, anon, authenticated;
 revoke execute on function public.marketing_texto(text) from public, anon, authenticated;
 revoke execute on function public.marketing_gravar(uuid, boolean, text) from public, anon, authenticated;
-revoke execute on function public.marketing_no_cadastro() from public, anon, authenticated;
 revoke execute on function public.app_marketing_get() from public, anon;
 revoke execute on function public.app_marketing_set(boolean, text) from public, anon;
 grant execute on function public.app_marketing_get() to authenticated;
@@ -318,7 +296,7 @@ grant execute on function public.ch_worker_email_marcar(bigint, text, text) to s
 do $confere_fim$
 begin
   if not exists (select 1 from pg_trigger where tgname = 'legal_copia_na_fila' and tgrelid = 'public.legal_acceptances'::regclass)
-     or not exists (select 1 from pg_trigger where tgname = 'on_auth_user_marketing' and tgrelid = 'auth.users'::regclass) then
+     or exists (select 1 from pg_trigger where tgname = 'on_auth_user_marketing' and tgrelid = 'auth.users'::regclass) then
     raise exception 'termo-funcoes 013800: gatilho não ficou no lugar';
   end if;
   if has_function_privilege('anon', 'public.ch_worker_email_pegar(integer)', 'execute')

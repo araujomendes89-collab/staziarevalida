@@ -90,8 +90,6 @@ export function AcceptanceScreen({ onAgoraNao } = {}) {
     setBusy(true);
     session
       .acceptTerms({ document: "termo_uso", version: current, origin: "google", declarations: needsDecl ? { adult: true } : undefined })
-      // caixa opcional de marketing marcada no cadastro (Contrato 3.0, cláusula 6.2): gravada só depois do aceite; sem a 013800, ignora
-      .then(() => google.marketing && session.backend.rpc("app_marketing_set", { p_opt_in: true, p_origin: "cadastro_google" }).catch(() => {}))
       .catch(() => setNotice(FAILED_NOTICE))
       .finally(() => setBusy(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps

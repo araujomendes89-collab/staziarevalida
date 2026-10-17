@@ -38,9 +38,3 @@
 
 /* Contrato 3.0: aviso fixo logo abaixo da caixa (data, hora, IP e navegador do aceite) */
 .cc-aviso { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--ln-muted); }
-
-/* Contrato 3.0, cláusulas 6.2 e 32: caixa opcional de marketing, separada do aceite (fora do quadro dele) */
-.cc-mkt { display: flex; flex-direction: column; gap: 4px; padding: 0 14px; margin-top: -4px; }
-.cc-mkt .cc-aviso { padding-left: 30px; }
-.cc-opcional { color: var(--ln-muted); }
-.ln-root--m .cc-mkt { padding: 0 12px; }

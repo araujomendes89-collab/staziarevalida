@@ -38,13 +38,15 @@ const ESTADOS = [
     await p.keyboard.type("senha-segurx", { delay: 10 });
     await p.waitForTimeout(200);
   }],
-  ["cadastro-4-preenchido-com-marketing", "?tela=cadastro", async (p) => {
+  ["cadastro-4-preenchido", "?tela=cadastro", async (p) => {
     await escrever(p, "Nome completo", "Ana Lima");
     await escrever(p, "E-mail", "ana.lima@exemplo.com");
     await escrever(p, "Senha", "senha-segura");
     await escrever(p, "Conferir senha", "senha-segura");
     await p.locator("#secure-accept").check();
-    if (await p.locator("#secure-marketing").count()) await p.locator("#secure-marketing").check();
+  }],
+  ["onboarding-pergunta-marketing", "?tela=pergunta", async (p) => {
+    await p.getByRole("button", { name: "Sim, quero receber" }).waitFor();
   }],
   ["conta-1-privacidade-e-dados", "?tela=conta&secao=priv", async (p) => {
     await p.getByText("Privacidade e dados", { exact: false }).first().waitFor();
