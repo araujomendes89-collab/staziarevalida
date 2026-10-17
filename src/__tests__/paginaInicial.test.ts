@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { aplicarPreviaLocal, ajustarEntrar, atualizarTopo, destinoDoLinkDeEmail, digitarTitulo, ligarAbas, ligarMenu, ligarMetro } from "../inicio/inicio.js";
 import { telaInicialPeloEndereco } from "../novo/app/AuthScreens.jsx";
+import { HTML_DESLIGADA, LIBERACOES, aplicarTextos, chavePaginaInicial, paginaInicialLigada, palavrasLiberadas } from "../inicio/chave.js";
 
 const raiz = path.resolve(__dirname, "../..");
 const html = fs.readFileSync(path.join(raiz, "index.html"), "utf-8");
@@ -29,7 +30,10 @@ describe("página inicial: estrutura e SEO", () => {
     expect(desc.length).toBeGreaterThan(50);
     expect(desc.length).toBeLessThanOrEqual(160);
     expect(doc.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe("https://app.staziamed.com.br/");
-    expect(doc.querySelector('meta[property="og:image"]')?.getAttribute("content")).toBe("https://app.staziamed.com.br/brand/og-image.png");
+    expect(doc.querySelector('meta[property="og:image"]')?.getAttribute("content")).toBe("https://app.staziamed.com.br/brand/compartilhar-inicio.jpg");
+    expect(fs.existsSync(path.join(raiz, "public/brand/compartilhar-inicio.jpg"))).toBe(true);
+    expect(doc.querySelector('meta[property="og:image:width"]')?.getAttribute("content")).toBe("1200");
+    expect(doc.querySelector('meta[property="og:image:height"]')?.getAttribute("content")).toBe("630");
     expect(doc.querySelector('meta[name="viewport"]')?.getAttribute("content")).not.toMatch(/user-scalable=no|maximum-scale/);
   });
 
@@ -66,20 +70,33 @@ describe("página inicial: estrutura e SEO", () => {
 });
 
 describe("página inicial: links", () => {
-  it("Entrar leva ao login e todo Teste grátis leva ao Criar conta", () => {
+  it("Entrar leva ao login (/novo/entrar) e todo Teste grátis leva ao Criar conta", () => {
     const doc = pagina();
     const entrar = [...doc.querySelectorAll("[data-entrar]")];
     expect(entrar.length).toBeGreaterThanOrEqual(2);
-    for (const a of entrar) expect(a.getAttribute("href")).toBe("/novo/login");
+    for (const a of entrar) expect(a.getAttribute("href")).toBe("/novo/entrar");
+    expect(html404).toContain('href="/novo/entrar"');
     const testes = [...doc.querySelectorAll("a")].filter((a) => /teste grátis/i.test(a.textContent || ""));
     expect(testes.length).toBeGreaterThanOrEqual(4);
     for (const a of testes) expect(a.getAttribute("href")).toBe("/novo/criar-conta");
   });
 
-  it("rodapé tem Termos, Privacidade e os contatos", () => {
+  it("rodapé tem as páginas legais 3.0 (Termos e Contrato, Privacidade, Regulamento) e os contatos", () => {
     const doc = pagina();
     const hrefs = [...doc.querySelectorAll("footer a")].map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(expect.arrayContaining(["/novo/termos", "/novo/privacidade", "/novo/login", "/novo/criar-conta", "mailto:suporte@staziamed.com.br", "mailto:privacidade@staziamed.com.br"]));
+    expect(hrefs).toEqual(expect.arrayContaining(["/novo/termos", "/novo/privacidade", "/novo/regulamento", "/novo/entrar", "/novo/criar-conta", "mailto:suporte@staziamed.com.br", "mailto:privacidade@staziamed.com.br"]));
+    // os mesmos nomes do menu das páginas legais do app (src/novo/app/legal/LegalPage.jsx)
+    const legal = fs.readFileSync(path.join(raiz, "src/novo/app/legal/LegalPage.jsx"), "utf-8");
+    for (const nome of ["Termos de Uso e Contrato", "Política de Privacidade", "Regulamento de Coins e Ligas"]) {
+      expect(legal).toContain(nome);
+      expect([...doc.querySelectorAll("footer a")].some((a) => a.textContent === nome), nome).toBe(true);
+    }
+    const robots = fs.readFileSync(path.join(raiz, "public/robots.txt"), "utf-8");
+    const sitemap = fs.readFileSync(path.join(raiz, "public/sitemap.xml"), "utf-8");
+    for (const p of ["/novo/termos", "/novo/privacidade", "/novo/regulamento"]) {
+      expect(robots).toContain(`Allow: ${p}`);
+      expect(sitemap).toContain(`https://app.staziamed.com.br${p}<`);
+    }
     expect(textoDe(doc)).toMatch(/CNPJ 64\.964\.213\/0001-16/);
     expect(textoDe(doc)).toMatch(/Usamos só cookies essenciais/);
   });
@@ -410,5 +427,51 @@ describe("página inicial: script", () => {
     expect(telaInicialPeloEndereco("/novo/criar-conta/")).toBe("signup");
     expect(telaInicialPeloEndereco("/novo/login")).toBe("login");
     expect(telaInicialPeloEndereco("/novo")).toBe("login");
+  });
+});
+
+describe("página inicial: chaves PAGINA_INICIAL e PAGINA_INICIAL_TEXTOS (build)", () => {
+  it("só liga com PAGINA_INICIAL=ligada (sem a variável, / continua levando ao app)", () => {
+    expect(paginaInicialLigada({})).toBe(false);
+    expect(paginaInicialLigada({ PAGINA_INICIAL: "" })).toBe(false);
+    expect(paginaInicialLigada({ PAGINA_INICIAL: "desligada" })).toBe(false);
+    expect(paginaInicialLigada({ PAGINA_INICIAL: "ligada" })).toBe(true);
+    expect(paginaInicialLigada({ PAGINA_INICIAL: " Ligada " })).toBe(true);
+    expect(paginaInicialLigada({ PAGINA_INICIAL: "1" })).toBe(true);
+  });
+
+  it("textos: hoje = nada liberado; pronto = tudo; ou só as palavras pedidas", () => {
+    expect(palavrasLiberadas({})).toEqual([]);
+    expect(palavrasLiberadas({ PAGINA_INICIAL_TEXTOS: "hoje" })).toEqual([]);
+    expect(palavrasLiberadas({ PAGINA_INICIAL_TEXTOS: "pronto" })).toEqual(["cobranca", "carteira", "tutor", "amostra"]);
+    expect(palavrasLiberadas({ PAGINA_INICIAL_TEXTOS: "tutor, cobranca xyz" })).toEqual(["cobranca", "tutor"]);
+    // as mesmas palavras do script da página e do CSS
+    const js = fs.readFileSync(path.join(raiz, "src/inicio/inicio.js"), "utf-8");
+    expect(js).toContain(`const LIBERACOES = ${JSON.stringify(LIBERACOES).replace(/,/g, ", ")};`);
+  });
+
+  it("ligada: escreve as palavras no <html> e mantém o resto da página igual", () => {
+    const pronto = aplicarTextos(html, { PAGINA_INICIAL_TEXTOS: "pronto" });
+    const doc = new DOMParser().parseFromString(pronto, "text/html");
+    expect(doc.documentElement.dataset.liberado).toBe("cobranca carteira tutor amostra");
+    expect(pronto.replace('data-liberado="cobranca carteira tutor amostra"', 'data-liberado=""')).toBe(html);
+    expect(new DOMParser().parseFromString(aplicarTextos(html, {}), "text/html").documentElement.dataset.liberado).toBe("");
+  });
+
+  it("o plugin só mexe no index.html: desligada vira a página que leva ao app, sem nada inline", () => {
+    const plugin = chavePaginaInicial({});
+    const h = plugin.transformIndexHtml.handler;
+    expect(h(html, { filename: "/x/index.html", path: "/index.html" })).toBe(HTML_DESLIGADA);
+    expect(h(html404, { filename: "/x/404.html", path: "/404.html" })).toBe(html404);
+    expect(h("<html>novo</html>", { filename: "/x/novo.html", path: "/novo.html" })).toBe("<html>novo</html>");
+    const ligada = chavePaginaInicial({ PAGINA_INICIAL: "ligada", PAGINA_INICIAL_TEXTOS: "hoje" }).transformIndexHtml.handler;
+    expect(ligada(html, { filename: "/x/index.html", path: "/index.html" })).toBe(html);
+    const doc = new DOMParser().parseFromString(HTML_DESLIGADA, "text/html");
+    expect(doc.querySelector('meta[name="robots"]')?.getAttribute("content")).toBe("noindex");
+    expect(doc.querySelector("script[src]")?.getAttribute("src")).toBe("/src/inicio/ir-para-o-app.js");
+    expect(doc.querySelectorAll("script:not([src]), [style], style")).toHaveLength(0);
+    expect(HTML_DESLIGADA).not.toMatch(/https?:\/\//);
+    const ir = fs.readFileSync(path.join(raiz, "src/inicio/ir-para-o-app.js"), "utf-8");
+    expect(ir).toContain('location.replace("/novo" + location.search + location.hash)');
   });
 });
