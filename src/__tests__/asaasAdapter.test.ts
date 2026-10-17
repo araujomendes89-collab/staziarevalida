@@ -176,6 +176,27 @@ describe("chamadas à API", () => {
     expect(fx("165-assinatura-depois").resposta).toMatchObject({ status: "ACTIVE", billingType: "CREDIT_CARD", nextDueDate: "2026-11-17" });
   });
 
+  it("nota fiscal: pede a NFS-e uma vez por pagamento, com o código nacional e o NBS (Curitiba = Portal Nacional)", async () => {
+    const env = { ASAAS_API_KEY: KEY, ASAAS_WEBHOOK_TOKEN: TOKEN, ASAAS_NFSE_SERVICE_CODE: "080201", ASAAS_NFSE_SERVICE_NAME: "Instrução, treinamento, orientação pedagógica e educacional", ASAAS_NFSE_NBS: "122051900", ASAAS_NFSE_ISS: "2.01" };
+    const { f, calls } = fakeFetch([
+      [/\/invoices\?payment=pay_ja$/, "GET", { data: [{ id: "inv_1" }] }],
+      [/\/invoices\?payment=pay_novo$/, "GET", { data: [] }],
+      [/\/invoices$/, "POST", { id: "inv_2", status: "SCHEDULED" }],
+    ]);
+    const p = createAsaasProvider(env, f)!;
+    const pago = { ...toProviderCharge(fx("32-pix-boost-simular-pagamento").resposta) };
+    await p.afterPaid!({ ...pago, id: "pay_ja" }, "StaziaMed");
+    await p.afterPaid!({ ...pago, id: "pay_novo" }, "Acesso à plataforma StaziaMed Revalida - plano PRO trimestral");
+    const posts = calls.filter((c) => c.method === "POST");
+    expect(posts).toHaveLength(1);
+    expect(posts[0].body).toMatchObject({ payment: "pay_novo", municipalServiceCode: "080201", value: 24.9, effectiveDate: "2026-10-17", taxes: { iss: 2.01, nbsCode: "122051900", pis: 0, cofins: 0 } });
+    expect(posts[0].body.municipalServiceId).toBeUndefined();
+    // sem configuração: nenhuma nota pedida por aqui
+    const { f: f2, calls: c2 } = fakeFetch([]);
+    await createAsaasProvider({ ASAAS_API_KEY: KEY, ASAAS_WEBHOOK_TOKEN: TOKEN }, f2)!.afterPaid!(pago, "x");
+    expect(c2).toHaveLength(0);
+  });
+
   it("cancelar cobrança só se ainda não paga", async () => {
     const { f, calls } = fakeFetch([
       [/\/payments\/pay_pago$/, "GET", { ...fx("32-pix-boost-simular-pagamento").resposta, id: "pay_pago" }],

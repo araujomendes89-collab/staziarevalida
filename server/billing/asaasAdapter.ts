@@ -39,9 +39,16 @@ const LIVE_API = "https://api.asaas.com/v3";
 
 type Obj = Record<string, any>;
 
+/**
+ * Nota fiscal (NFS-e) emitida pelo Asaas a cada pagamento confirmado. Curitiba emite pelo Portal/Emissor Nacional (Simples desde
+ * 1º/11/2025): lá o Asaas NÃO lista serviços (GET /fiscalInfo/services), então vale o CÓDIGO (código de tributação nacional, ex.:
+ * "080201") em ASAAS_NFSE_SERVICE_CODE; ASAAS_NFSE_SERVICE_ID só para prefeitura que lista serviços. O NBS vai em taxes.nbsCode.
+ */
 export interface AsaasNfseConfig {
   serviceId?: string;
+  serviceCode?: string;
   serviceName?: string;
+  nbsCode?: string;
   iss?: number;
   retainIss?: boolean;
 }
@@ -137,14 +144,18 @@ export function createAsaasProvider(env: NodeJS.ProcessEnv = process.env, fetchI
   const webhookToken = (env.ASAAS_WEBHOOK_TOKEN ?? "").trim();
   // sem token de aviso válido não dá para confirmar pagamento nenhum: melhor desligado do que meio ligado
   if (!isValidWebhookToken(webhookToken)) return null;
-  const serviceId = env.ASAAS_NFSE_SERVICE_ID?.trim();
+  const serviceId = env.ASAAS_NFSE_SERVICE_ID?.trim() || undefined;
+  const serviceCode = env.ASAAS_NFSE_SERVICE_CODE?.trim() || undefined;
   const serviceName = env.ASAAS_NFSE_SERVICE_NAME?.trim();
+  const nbsCode = env.ASAAS_NFSE_NBS?.trim() || undefined;
   return asaasProvider(
     {
       apiKey,
       webhookToken,
       returnUrls: env.ASAAS_RETURN_URL === "1",
-      nfse: serviceId && serviceName ? { serviceId, serviceName, iss: Number(env.ASAAS_NFSE_ISS || 0), retainIss: env.ASAAS_NFSE_RETAIN_ISS === "1" } : undefined,
+      nfse: (serviceId || serviceCode) && serviceName
+        ? { serviceId, serviceCode, serviceName, nbsCode, iss: Number(env.ASAAS_NFSE_ISS || 0), retainIss: env.ASAAS_NFSE_RETAIN_ISS === "1" }
+        : undefined,
       fetchImpl,
     },
     mode
@@ -307,9 +318,9 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
     },
 
     async afterPaid(charge, description) {
-      // NFS-e: só com o serviço municipal configurado (ASAAS_NFSE_SERVICE_ID e _NAME); sem isso, quem emite é o painel do Asaas
+      // NFS-e: só com o serviço configurado (ASAAS_NFSE_SERVICE_CODE ou _ID, e _NAME); sem isso, nenhuma nota é pedida por aqui
       const nfse = opts.nfse;
-      if (!nfse?.serviceId || !nfse.serviceName) return;
+      if (!(nfse?.serviceId || nfse?.serviceCode) || !nfse.serviceName) return;
       const existing = await call<Obj>("GET", `/invoices?payment=${encodeURIComponent(charge.id)}`);
       if (Array.isArray(existing?.data) && existing!.data.length > 0) return;
       await call("POST", "/invoices", {
@@ -319,9 +330,10 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
         value: reais(charge.amountCents),
         deductions: 0,
         effectiveDate: charge.paidAt ? charge.paidAt.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
-        municipalServiceId: nfse.serviceId,
+        ...(nfse.serviceCode ? { municipalServiceCode: nfse.serviceCode } : { municipalServiceId: nfse.serviceId }),
         municipalServiceName: nfse.serviceName,
-        taxes: { retainIss: Boolean(nfse.retainIss), iss: nfse.iss ?? 0, cofins: 0, csll: 0, inss: 0, ir: 0, pis: 0 },
+        // Simples Nacional: PIS, COFINS, CSLL, IR e INSS vão no DAS (zero na nota); ISS = alíquota da faixa, definida pelo contador
+        taxes: { retainIss: Boolean(nfse.retainIss), iss: nfse.iss ?? 0, cofins: 0, csll: 0, inss: 0, ir: 0, pis: 0, ...(nfse.nbsCode ? { nbsCode: nfse.nbsCode } : {}) },
       });
     },
   };
