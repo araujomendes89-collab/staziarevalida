@@ -23,7 +23,7 @@ import { elevenAccessOf, nexusStatus, openNexus, type TtsQuota } from "./nexus";
 import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, STT_BLOCK, STT_BUSY, STT_PER_MINUTE, audioFitsSeconds, sttAccessOf, sttConfig, transcribe } from "./stt";
 import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 import { rateHit } from "./limits";
-import { SESSAO_DERRUBADA_CODIGO, SESSAO_DERRUBADA_MENSAGEM, sessaoDerrubada } from "../auth/sessaoUnica";
+import { SESSAO_DERRUBADA_CODIGO, SESSAO_DERRUBADA_MENSAGEM, SESSAO_INDISPONIVEL_CODIGO, SESSAO_INDISPONIVEL_MENSAGEM, conferirSessao } from "../auth/sessaoUnica";
 import { rotasConhecimentoPonte } from "./conhecimento/rotaPonte";
 
 type Authed = Request & { user?: Identity };
@@ -101,8 +101,11 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     try {
       const user = await deps.db.authenticate(req);
       if (!user) return fail(res, 401, "Entre na sua conta.");
-      // sessão única: a conta foi aberta em outro aparelho → esta sessão não gasta IA (o app mostra o aviso e sai)
-      if (await sessaoDerrubada(deps.db, user, req)) return res.status(401).json({ error: SESSAO_DERRUBADA_MENSAGEM, code: SESSAO_DERRUBADA_CODIGO });
+      // sessão única: a conta foi aberta em outro aparelho → esta sessão não gasta IA (o app mostra o aviso e sai);
+      // sem conseguir conferir (banco fora), também não gasta IA, mas ninguém sai da conta (503, tente de novo)
+      const sessao = await conferirSessao(deps.db, user, req);
+      if (sessao === "derrubada") return res.status(401).json({ error: SESSAO_DERRUBADA_MENSAGEM, code: SESSAO_DERRUBADA_CODIGO });
+      if (sessao === "indisponivel") return res.status(503).json({ error: SESSAO_INDISPONIVEL_MENSAGEM, code: SESSAO_INDISPONIVEL_CODIGO });
       req.user = user;
       next();
     } catch (error) {
