@@ -19,7 +19,8 @@
 // Uso (na raiz do projeto):
 //   npx tsx scripts/voz-teste/bancada-natural.ts [--n 20] [--personalidade durao,acolhedor,durona,tranquila]
 //        [--saida <pasta>] [--paralelo 6] [--so-medir] [--sem-juiz] [--so-faltantes] [--abertura-fixa] [--db <pasta>]
-//        [--alunos 5] [--aluno-por-conversa]
+//        [--alunos 5] [--aluno-por-conversa] [--perfil brincalhao]
+// --perfil P: todas as conversas com o mesmo perfil de aluno (revisão de 17/10: medir só o brincalhão no Durão e na Durona).
 // --alunos K: cada personalidade tem K alunos simulados; as conversas do mesmo aluno rodam em sequência, com 1 dia entre elas (5 dias
 //   antes da conversa do perfil "volta depois de dias"), e o banco guarda a memória das aberturas desse aluno, como no app
 //   (tutor_recent_openings, conversa anterior, erros da última vez). --aluno-por-conversa: um aluno novo por conversa (como a base).
@@ -55,6 +56,8 @@ const MODELO = "gemini-3.8-flash";
 /** Um aluno novo por conversa (como a linha de base), sem memória entre conversas. */
 const ALUNO_POR_CONVERSA = flag("aluno-por-conversa");
 const ALUNOS = ALUNO_POR_CONVERSA ? N : Math.max(1, Math.min(N, Number(arg("alunos", "5"))));
+/** --perfil: um perfil de aluno só (os outros sorteios do desenho continuam iguais). */
+const PERFIL_FIXO = arg("perfil");
 fs.mkdirSync(SAIDA, { recursive: true });
 /** Semente da rodada: o mesmo aluno (uid) para as conversas dele, também quando --so-faltantes refaz uma. */
 const SEMENTE = (() => {
@@ -146,7 +149,7 @@ const plano = (idx: number): Plano => ({
   idx,
   aluno: idx % ALUNOS,
   vez_do_aluno: Math.floor(idx / ALUNOS),
-  perfil: NOMES_PERFIS[idx % NOMES_PERFIS.length],
+  perfil: PERFIL_FIXO && PERFIS[PERFIL_FIXO] ? PERFIL_FIXO : NOMES_PERFIS[idx % NOMES_PERFIS.length],
   modo: MODOS[idx % MODOS.length],
   tema: TEMAS[Math.floor(idx / 3) % TEMAS.length],
   turnos: 6 + (idx % 3),
@@ -161,6 +164,8 @@ let tutorTurn: typeof import("../../server/tutor/engine").tutorTurn;
 let naturalOpening: typeof import("../../server/tutor/opening").naturalOpening;
 /** --abertura-fixa: mede como antes (sem a troca pela IA). */
 const ABERTURA_FIXA = flag("abertura-fixa");
+/** Quanto a bancada espera a abertura (padrão: o mesmo da tela que espera no app, OPENING_WAIT_MS = 2 s). */
+const ESPERA_ABERTURA_MS = Number(arg("espera-abertura-ms", "2000"));
 const ADMIN = "00000000-0000-4000-8000-00000000bada";
 
 const rpc = async <T = any>(uid: string, fn: string, ...params: unknown[]): Promise<T> =>
@@ -188,6 +193,8 @@ async function prepararBanco() {
   await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, requires_pro: true, max_profanity: "moderate" }, "Bancada de naturalidade local (sem IA no ar).");
   // o mesmo aluno faz várias conversas no mesmo dia da bancada: limite diário de mensagens maior, só no banco local
   await sql(`update public.tutor_config set daily_message_limit = 500`);
+  // e várias aberturas por minuto: o limite de frequência da IA da abertura ('tutor_opening', revisão de 17/10) sobe só aqui
+  await sql(`update public.tutor_config set voice_rate_limits = voice_rate_limits || '{"tutor_opening_per_minute": 100000, "tutor_opening_per_day": 100000}'::jsonb`).catch(() => undefined);
   console.log(`[bancada] banco pronto em ${Math.round((Date.now() - t0) / 1000)} s`);
 
   // O Vertex recusa "enum" com números no esquema de resposta (evaluation.severity = 1..5): erro 400 em todo turno. Só na bancada,
@@ -265,6 +272,8 @@ interface Registro {
   questao?: { id: string; gabarito: string; texto_gabarito: string }[];
   erro?: string; falhas_do_provedor?: string[]; juiz?: unknown; ms: number; custo_tentativas_anteriores_usd?: number;
   aluno_uid?: string; conversas_anteriores_do_aluno?: number; aberturas_ja_ouvidas?: string[];
+  /** tempo de cada pedido de abertura/passagem (naturalOpening) como o app espera, e se a fala trocou */
+  aberturas_ms?: { tipo: "abertura" | "passagem"; ms: number; trocou: boolean }[];
 }
 
 async function questaoDaSessao(uid: string, sid: string) {
@@ -313,7 +322,14 @@ async function conversa(pid: string, p: Plano, novoAluno: (uid: string) => Promi
       const tema = p.modo === "livre_tema" || p.modo === "perguntas" ? p.tema : null;
       const s = await rpc<any>(uid, "app_tutor_start", modo, tema, null, null, pid);
       reg.sessao = s.id;
-      if (!ABERTURA_FIXA) await naturalOpening({ db: cdb, log: (m: string) => falhas.push(m.slice(0, 240)) }, uid, s.id);
+      reg.aberturas_ms = [];
+      // como o app: a abertura com a tela esperando (OPENING_WAIT_MS na Nexus; ESPERA_ABERTURA_MS muda)
+      const pedir = async (tipo: "abertura" | "passagem") => {
+        const t1 = Date.now();
+        const o = await naturalOpening({ db: cdb, log: (m: string) => falhas.push(m.slice(0, 240)) }, uid, s.id, ESPERA_ABERTURA_MS);
+        reg.aberturas_ms!.push({ tipo, ms: Date.now() - t1, trocou: Boolean(o) });
+      };
+      if (!ABERTURA_FIXA) await pedir("abertura");
       let q = p.modo === "questao" ? await questaoDaSessao(uid, s.id) : null;
       if (q) reg.questao!.push({ id: q.id, gabarito: q.gabarito, texto_gabarito: q.texto_gabarito });
       let turnosDesdeQuestao = 0;
@@ -352,7 +368,7 @@ async function conversa(pid: string, p: Plano, novoAluno: (uid: string) => Promi
         // passagem para a próxima questão (frase fixa de hoje) depois de discutir a correção
         if (q && q.estado === "answered" && !proximaFeita && turnosDesdeQuestao >= 4 && t < p.turnos - 2) {
           await rpc(uid, "app_tutor_next_question", s.id);
-          if (!ABERTURA_FIXA) await naturalOpening({ db: cdb, log: (m: string) => falhas.push(m.slice(0, 240)) }, uid, s.id);
+          if (!ABERTURA_FIXA) await pedir("passagem");
           proximaFeita = true;
           q = await questaoDaSessao(uid, s.id);
           if (q) reg.questao!.push({ id: q.id, gabarito: q.gabarito, texto_gabarito: q.texto_gabarito });
