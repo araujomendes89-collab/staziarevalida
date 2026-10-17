@@ -40,6 +40,8 @@ export const startCheckout = (backend, body) => call(backend, "/checkout", body)
 export const getOrder = (backend, id) => call(backend, `/orders/${encodeURIComponent(id)}`);
 export const cancelOrder = (backend, id) => call(backend, `/orders/${encodeURIComponent(id)}/cancel`, {});
 export const cancelRenewal = (backend) => call(backend, "/cancel-renewal", {});
+/** Renovação do cartão que falhou: a mesma cobrança vira Pix (volta na hora ao pagar). */
+export const payRenewalByPix = (backend) => call(backend, "/renewal/pix", {});
 export const requestRefund = (backend, cobrancaId) => call(backend, "/refunds", { cobranca_id: cobrancaId });
 
 /** Centavos em reais (ex.: 9990 -> "R$ 99,90"). */

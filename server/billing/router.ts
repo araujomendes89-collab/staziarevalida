@@ -100,6 +100,7 @@ export function createBillingRouter(get: () => BillingRoutesDeps | null) {
   router.post("/checkout", run((d, req) => d.billing.checkout(req.user!, req.body ?? {}, { ip: ipOf(req), userAgent: String(req.headers["user-agent"] ?? "") })));
   router.get("/orders/:id", run((d, req) => d.billing.orderStatus(req.user!, String(req.params.id))));
   router.post("/orders/:id/cancel", run((d, req) => d.billing.cancelOrder(req.user!, String(req.params.id))));
+  router.post("/renewal/pix", run((d, req) => d.billing.payRenewalByPix(req.user!)));
   router.post("/cancel-renewal", run((d, req) => d.billing.cancelRenewal(req.user!)));
   router.post("/refunds", run((d, req) => d.billing.refund(req.user!, req.body?.cobranca_id)));
   return router;

@@ -41,7 +41,7 @@ function mockFetch(overview: any, checkout?: any) {
     const u = String(url);
     const ok = (o: any) => new Response(JSON.stringify(o), { status: 200, headers: { "Content-Type": "application/json" } });
     if (u.endsWith("/overview")) return overview ? ok(overview) : new Response("{}", { status: 503 });
-    if (u.endsWith("/checkout")) return ok(checkout);
+    if (u.endsWith("/checkout") || u.endsWith("/renewal/pix")) return ok(checkout);
     return ok({ status: "aberto" });
   }) as any;
 }
@@ -94,5 +94,16 @@ describe("tela Planos com a cobrança", () => {
     expect(body).toMatchObject({ tipo: "extra", codigo: "boost", metodo: "pix", aceite: true, documento: "366.385.446-91", nome: "Aluno Teste" });
     expect(body.idem).toMatch(/^c-/);
     expect(screen.queryByText(/boleto/i)).toBeNull();
+  });
+
+  it("renovação do cartão recusada: aviso de acesso pausado e Pix da mesma cobrança na hora", async () => {
+    const ov = { ...OVERVIEW, precisa_documento: false, contrato: { plano: "pro", ciclo: "mensal", metodo: "cartao", valor_centavos: 9990, renova: true, periodo_fim: new Date(Date.now() + 3600e3).toISOString() }, renovacao_pendente: { valor_centavos: 9990, plano: "pro", ciclo: "mensal" } };
+    mockFetch(ov, { id: "22222222-2222-4222-8222-222222222222", status: "aberto", nome: "Pro mensal (renovação)", tipo: "plano", metodo: "pix", valor_centavos: 9990, pix: { payload: "000201REN", image: "img" } });
+    render(<PlansScreen go={vi.fn()} />);
+    const aviso = await screen.findByTestId("cobranca-renovacao-falhou");
+    expect(aviso.textContent).toContain("pausado");
+    fireEvent.click(screen.getByRole("button", { name: "Pagar agora por Pix" }));
+    await screen.findByText("000201REN");
+    expect(calls.some((c) => c.url.endsWith("/renewal/pix"))).toBe(true);
   });
 });

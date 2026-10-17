@@ -345,6 +345,9 @@ begin
     o := public.billing_oferta(p_tipo, p_codigo, p_ciclo);
   end if;
   if o is null then raise exception 'fora_de_venda: Esta opção não está à venda.'; end if;
+  if p_tipo = 'plano' and p_motivo = 'compra' and public.ch_worker_billing_renovacao_pendente(p_user) is not null then
+    raise exception 'renovacao_pendente: A renovação do seu cartão não passou. Pague essa mesma cobrança por Pix para voltar na hora.';
+  end if;
   if p_tipo = 'plano' and p_motivo = 'compra' and exists (
        select 1 from public.billing_contratos c where c.user_id = p_user and c.periodo_fim > now()) then
     raise exception 'ja_assinante: Você já tem um plano ativo. A troca de plano ainda não está disponível pelo app.';
@@ -506,7 +509,10 @@ begin
   select * into c from public.billing_contratos where user_id = p_user;
   insert into public.billing_contratos as k (user_id, plano, ciclo, metodo, valor_centavos, renova, provider, provider_subscription_id,
                                              contratado_em, periodo_inicio, periodo_fim, ultima_cobranca_id)
-  values (p_user, p_codigo, p_ciclo, p_metodo, p_valor, true, p_provider, p_subscription, p_pago_em, p_pago_em, p_periodo_fim, x.id)
+  -- cobrança de uma assinatura do cartão paga por Pix (renovação que falhou): o contrato continua "cartão" (senão o Pix de
+  -- renovação também seria gerado e o aluno pagaria duas vezes)
+  values (p_user, p_codigo, p_ciclo, case when p_subscription is not null then 'cartao' else p_metodo end, p_valor, true, p_provider, p_subscription,
+          p_pago_em, p_pago_em, p_periodo_fim, x.id)
   on conflict (user_id) do update set
     contratado_em = case when k.plano = excluded.plano and k.ciclo = excluded.ciclo and k.periodo_fim > excluded.periodo_inicio - interval '45 days'
                          then k.contratado_em else excluded.contratado_em end,
@@ -525,26 +531,45 @@ begin
 end
 $$;
 
--- COBRANÇA RECUSADA / VENCIDA SEM PAGAMENTO: só registra (sem tolerância, o acesso já cai sozinho no fim do período).
+-- COBRANÇA RECUSADA / VENCIDA SEM PAGAMENTO (decisão do dono 17/10: BLOQUEIO NO MESMO DIA, sem tolerância enquanto o fornecedor
+-- tenta de novo). Se esta cobrança era a renovação do período que está acabando (o acesso vai até p_venc_fim, o fim do dia do
+-- vencimento dela), o acesso pago cai AGORA. Volta sozinho quando qualquer pagamento for confirmado (a mesma cobrança paga
+-- depois, ou paga por Pix pelo app). O pedido NÃO é fechado: no cartão o aluno ainda pode tentar de novo na mesma página.
 create or replace function public.ch_worker_billing_falhou(p_provider text, p_payment text, p_pedido uuid, p_user uuid, p_subscription text,
-                                                           p_tipo text, p_codigo text, p_ciclo text, p_metodo text, p_valor integer, p_motivo text)
+                                                           p_tipo text, p_codigo text, p_ciclo text, p_metodo text, p_valor integer, p_motivo text,
+                                                           p_venc_fim timestamptz default null)
   returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
-declare x public.billing_cobrancas;
+declare x public.billing_cobrancas; v_cortou boolean := false;
 begin
   insert into public.billing_cobrancas (provider, provider_payment_id, user_id, pedido_id, provider_subscription_id, tipo, codigo, ciclo, metodo, valor_centavos, status)
   values (p_provider, p_payment, p_user, p_pedido, p_subscription, p_tipo, p_codigo, p_ciclo, p_metodo, p_valor, 'falhou')
   on conflict (provider, provider_payment_id) do update set status = 'falhou', atualizado_em = now()
     where public.billing_cobrancas.status = 'pendente'
   returning * into x;
-  -- Pix vencido continua pagável no fornecedor: o pedido NÃO é fechado (se o aluno pagar depois, o acesso volta)
-  if p_metodo = 'cartao' then
-    update public.billing_pedidos set status = 'falhou', erro = left(p_motivo, 300), atualizado_em = now()
-    where id = p_pedido and status = 'aberto';
+  if p_tipo = 'plano' and p_user is not null and p_venc_fim is not null and not public.user_has_full_access(p_user) then
+    -- só corta o período que esta cobrança deveria renovar (nunca um período já pago por outra cobrança mais nova)
+    update public.subscriptions set current_period_end = now(), updated_at = now()
+    where user_id = p_user and plan::text = p_codigo and current_period_end > now() and current_period_end <= p_venc_fim + interval '1 hour';
+    v_cortou := found;
   end if;
-  return jsonb_build_object('registrado', x.id is not null);
+  return jsonb_build_object('registrado', x.id is not null, 'acesso_pausado', v_cortou);
 end
+$$;
+
+-- Renovação do CARTÃO que falhou e ainda não foi paga (para o aluno pagar a MESMA cobrança por Pix e voltar na hora, sem risco
+-- de cobrança em dobro: a cobrança deixa de ser de cartão, o fornecedor não tenta mais o cartão).
+create or replace function public.ch_worker_billing_renovacao_pendente(p_user uuid) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select jsonb_build_object('cobranca_id', x.id, 'provider', x.provider, 'payment_id', x.provider_payment_id, 'valor_centavos', x.valor_centavos,
+                            'plano', c.plano, 'ciclo', c.ciclo, 'periodo_fim', c.periodo_fim,
+                            'pedido_pix', (select p.id from public.billing_pedidos p where p.provider = x.provider and p.provider_payment_id = x.provider_payment_id and p.status = 'aberto'))
+  from public.billing_cobrancas x
+  join public.billing_contratos c on c.user_id = x.user_id and c.provider_subscription_id = x.provider_subscription_id
+  where x.user_id = p_user and x.tipo = 'plano' and x.status = 'falhou' and c.renova and x.criado_em > now() - interval '35 days'
+  order by x.criado_em desc limit 1
 $$;
 
 -- DEVOLUÇÃO CONFIRMADA pelo fornecedor. p_devolvido = total devolvido até agora (centavos). Corta ou encurta o acesso conforme a
@@ -790,6 +815,7 @@ begin
                          'valor_centavos', x.valor_centavos, 'status', x.status, 'pago_em', x.pago_em, 'devolvido_centavos', x.devolvido_centavos)
                          order by x.criado_em desc)
                        from (select * from public.billing_cobrancas where user_id = v_user order by criado_em desc limit 12) x), '[]'::jsonb),
+    'renovacao_pendente', (select r - 'provider' - 'payment_id' from public.ch_worker_billing_renovacao_pendente(v_user) r),
     'devolucoes', public.ch_worker_billing_devolucoes(v_user),
     'reembolsos', coalesce((select jsonb_agg(jsonb_build_object('id', r.id, 'valor_centavos', r.valor_centavos, 'status', r.status, 'em', r.criado_em)
                          order by r.criado_em desc)

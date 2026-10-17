@@ -7,7 +7,7 @@
  * (o banco recusa valor diferente do pedido) e só então libera o plano ou o extra.
  */
 import type { ContentDb, Identity } from "../contentHub/infra";
-import { brtDate, cleanDocument, periodEndFor } from "./period";
+import { brtDate, cleanDocument, endOfBrtDay, periodEndFor } from "./period";
 import { ProviderError, type PaymentProvider, type ProviderCharge, type ProviderNotice } from "./provider";
 
 export class BillingError extends Error {
@@ -77,7 +77,7 @@ interface Ctx {
 function dbError(e: unknown): BillingError | null {
   const m = /([a-z_]{4,40}): (.{3,300})$/.exec(String((e as Error)?.message ?? ""));
   if (!m) return null;
-  const known: Record<string, number> = { vendas_desligadas: 503, pedido_aberto: 409, fora_de_venda: 409, ja_assinante: 409, sem_devolucao: 409, devolucao_em_andamento: 409 };
+  const known: Record<string, number> = { renovacao_pendente: 409, vendas_desligadas: 503, pedido_aberto: 409, fora_de_venda: 409, ja_assinante: 409, sem_devolucao: 409, devolucao_em_andamento: 409 };
   return m[1] in known ? new BillingError(m[2], known[m[1]], m[1]) : null;
 }
 
@@ -232,6 +232,44 @@ export function createBilling(deps: BillingDeps) {
     return { ok: true, acesso_ate: r.periodo_fim };
   }
 
+  /** Renovação do cartão que falhou: a MESMA cobrança vira Pix (sem cobrança em dobro) e o aluno volta na hora ao pagar. */
+  async function payRenewalByPix(user: Identity) {
+    const p = need();
+    const r = await svc<{ provider: string; payment_id: string; valor_centavos: number; plano: string; ciclo: "mensal" | "trimestral"; periodo_fim: string; pedido_pix: string | null } | null>(
+      "ch_worker_billing_renovacao_pendente", { p_user: user.id });
+    if (!r || r.provider !== p.name) throw new BillingError("Não há renovação pendente para pagar.", 404);
+    if (r.pedido_pix) {
+      const aberto = await svc<Pedido | null>("ch_worker_billing_pedido", { p_pedido: r.pedido_pix, p_user: user.id });
+      if (aberto) return publicOrder(aberto);
+    }
+    // confere antes: pode ter sido paga agora há pouco (o fornecedor reprocessou o cartão)
+    const now0 = await p.getCharge(r.payment_id);
+    if (!now0 || now0.status === "paid") {
+      if (now0) await processCharge(r.payment_id, now0.subscriptionId);
+      throw new BillingError("Esta renovação já foi paga. Atualize a página.", 409, "ja_pago");
+    }
+    const due = brtDate(now());
+    let pedido: Pedido;
+    try {
+      pedido = await svc<Pedido>("ch_worker_billing_pedido_abrir", {
+        p_user: user.id, p_tipo: "plano", p_codigo: r.plano, p_ciclo: r.ciclo, p_metodo: "pix", p_motivo: "renovacao",
+        p_idem: `pix-falha-${r.payment_id}`.slice(0, 100), p_aceite: null, p_renova_ate: r.periodo_fim,
+      });
+    } catch (e) {
+      throw dbError(e) ?? e;
+    }
+    if (pedido.url) return publicOrder(pedido);
+    try {
+      const created = await p.payChargeByPix(r.payment_id, due);
+      await svc("ch_worker_billing_pedido_anexar", { p_pedido: pedido.id, p_provider: p.name, p_customer: now0.customerId, p_payment: created.chargeId, p_subscription: null, p_url: created.url || null, p_pix: created.pix ?? null, p_vencimento: due });
+      return publicOrder({ ...pedido, url: created.url || null, pix: created.pix ?? null, provider_payment_id: created.chargeId });
+    } catch (e) {
+      log(`[billing] renovação por Pix falhou: ${(e as Error).message}`);
+      await svc("ch_worker_billing_pedido_encerrar", { p_pedido: pedido.id, p_status: "falhou", p_erro: (e as Error).message, p_user: null }).catch(() => undefined);
+      throw new BillingError("Não foi possível gerar o Pix agora. Tente de novo.", 502);
+    }
+  }
+
   /** Devolução pedida pelo aluno (regra do dono; o cálculo é do banco). Abuso/sem regra automática = vai para a equipe. */
   async function refund(user: Identity, cobrancaId: unknown) {
     const p = need();
@@ -269,7 +307,7 @@ export function createBilling(deps: BillingDeps) {
     const first = await svc<boolean>("ch_worker_billing_evento", { p_provider: p.name, p_event_id: n.eventId, p_type: n.event, p_payload: { kind: n.kind } });
     if (!first) return { handled: false, duplicate: true };
     let userId: string | null = null;
-    if (n.kind === "charge") userId = await processCharge(n.chargeId, n.subscriptionId);
+    if (n.kind === "charge") userId = await processCharge(n.chargeId, n.subscriptionId, Boolean(n.failed));
     else {
       const r = await svc<{ user_id: string | null }>("ch_worker_billing_assinatura_fim", { p_provider: p.name, p_subscription: n.subscriptionId });
       userId = r?.user_id ?? null;
@@ -279,7 +317,7 @@ export function createBilling(deps: BillingDeps) {
   }
 
   /** Relê a cobrança na API e aplica o que ela diz. Devolve o aluno (ou null se a cobrança não é nossa). */
-  async function processCharge(chargeId: string, hintSubscription: string | null): Promise<string | null> {
+  async function processCharge(chargeId: string, hintSubscription: string | null, attemptFailed = false): Promise<string | null> {
     const p = need();
     const charge = await p.getCharge(chargeId);
     if (!charge) return null; // não existe na NOSSA conta: aviso de outra conta ou forjado
@@ -310,10 +348,14 @@ export function createBilling(deps: BillingDeps) {
         await p.afterPaid(charge, tipo === "plano" ? `Acesso à plataforma StaziaMed Revalida - plano ${codigo.toUpperCase()} ${ciclo}` : `StaziaMed Revalida - pacote extra de IA (${codigo})`)
           .catch((e) => log(`[billing] nota fiscal não pedida (${charge.id}): ${(e as Error).message}`));
       }
-    } else if (charge.status === "failed" || charge.status === "overdue") {
+    } else if (charge.status === "failed" || charge.status === "overdue" || (attemptFailed && charge.status === "pending")) {
+      // sem tolerância (dono, 17/10): a renovação que falhou pausa o acesso NO MESMO DIA, mesmo que o fornecedor ainda vá tentar
+      // o cartão de novo; se ele conseguir depois, o aviso de pagamento libera de novo a partir da confirmação
       await svc("ch_worker_billing_falhou", {
         p_provider: p.name, p_payment: charge.id, p_pedido: pedido?.id ?? null, p_user: userId, p_subscription: charge.subscriptionId,
-        p_tipo: tipo, p_codigo: codigo, p_ciclo: ciclo, p_metodo: metodo, p_valor: charge.amountCents, p_motivo: charge.status === "overdue" ? "Venceu sem pagamento" : "Cartão recusado",
+        p_tipo: tipo, p_codigo: codigo, p_ciclo: ciclo, p_metodo: metodo, p_valor: charge.amountCents,
+        p_motivo: charge.status === "overdue" ? "Venceu sem pagamento" : "Cartão recusado",
+        p_venc_fim: tipo === "plano" && charge.dueDate ? endOfBrtDay(charge.dueDate).toISOString() : null,
       });
     } else if (charge.status === "refunded" || charge.status === "partially_refunded") {
       await svc("ch_worker_billing_devolvido", { p_provider: p.name, p_payment: charge.id, p_devolvido: charge.refundedCents || charge.amountCents });
@@ -364,7 +406,7 @@ export function createBilling(deps: BillingDeps) {
     return out;
   }
 
-  return { overview, checkout, orderStatus, cancelOrder, cancelRenewal, refund, handleNotice, processCharge, runScheduled };
+  return { overview, checkout, orderStatus, cancelOrder, cancelRenewal, payRenewalByPix, refund, handleNotice, processCharge, runScheduled };
 }
 
 export type Billing = ReturnType<typeof createBilling>;
