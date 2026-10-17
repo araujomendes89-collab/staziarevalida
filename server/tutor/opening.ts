@@ -20,7 +20,7 @@ import { NO_EVALUATION, type TutorMode } from "./prompts";
 import { safetyCheck, type Violation } from "./safety";
 import { deterministicTutor, tutorSettings } from "./settings";
 
-export const OPENING_VERSION = "1.0.0";
+export const OPENING_VERSION = "1.1.0";
 /** Tempo máximo esperando a IA (a tela espera junto). Passou disso, a reserva fica. */
 export const OPENING_TIMEOUT_MS = 4500;
 const MAX_CHARS = 280;
@@ -61,15 +61,49 @@ const startOf = (t: string, n = 3) => fold(t).split(" ").slice(0, n).join(" ");
 /** Palavras que toda fala tem (não dizem se uma fala copia a outra). */
 const COMMON = new Set(("voce voces vamos vamo por para pra pro com que uma umas uns hoje aqui isso esse essa este esta mais como onde quer ser ter tem sem dos das nos nas " +
   "mas sim nao ate bem ja vai vou sua seu teu tua meu minha gente agora entao tambem quando qual quais muito pouco").split(" "));
-const words = (t: string) => new Set(fold(t).split(" ").filter((w) => w.length >= 3 && !COMMON.has(w)));
-/** Parecida demais: mais de 60% das palavras que contam em comum (com poucas palavras, as mesmas palavras). */
-export function tooSimilar(a: string, b: string): boolean {
-  const A = words(a), B = words(b);
+const words = (t: string, ignore: ReadonlySet<string> = new Set()) => new Set(fold(t).split(" ").filter((w) => w.length >= 3 && !COMMON.has(w) && !ignore.has(w)));
+/**
+ * Parecida demais: mais de 60% das palavras que contam em comum (com poucas palavras, as mesmas palavras). `ignore`: o tema, que
+ * toda fala sobre ele repete por força.
+ */
+export function tooSimilar(a: string, b: string, ignore: string | null = null): boolean {
+  const skip = new Set(ignore ? fold(ignore).split(" ") : []);
+  const A = words(a, skip), B = words(b, skip);
   if (!A.size || !B.size) return fold(a) === fold(b);
   let common = 0;
   for (const w of A) if (B.has(w)) common++;
   if (Math.min(A.size, B.size) < 3) return common === A.size && common === B.size;
   return common / Math.min(A.size, B.size) > 0.6;
+}
+
+/**
+ * Por onde começar desta vez (descrição, não frase): sorteado por fala. Sem isto, alunos diferentes ouviam a mesma entrada do mesmo
+ * personagem (a memória das últimas falas é por aluno; a bancada de 17/10 mostrou a mesma abertura em 3 de 7 alunos novos).
+ */
+export const ANGULOS_ABERTURA = [
+  "comece reagindo ao período do dia (sem cumprimento de atendente)",
+  "comece direto pelo tema, com uma provocação ou curiosidade sobre ele, sem fato médico",
+  "comece pelo aluno: o que você sabe dele (a volta depois de dias, o que errou da última vez, o nome); sem nada disso, pergunte como ele chega hoje",
+  "comece pelo seu humor do dia, do seu jeito",
+  "comece com uma pergunta curta e já cobre a ação",
+  "comece com uma imagem do dia a dia (plantão, prova, jogo, trânsito), sem conteúdo médico",
+  "comece lançando um desafio ou uma meta para esta conversa",
+  "comece com duas ou três palavras soltas e depois chame para agir",
+];
+export const ANGULOS_PASSAGEM = [
+  "comece comentando como foi a questão anterior, em poucas palavras",
+  "comece lançando o desafio da próxima",
+  "comece pelo ritmo da sessão até aqui",
+  "comece com uma pergunta curta que já põe o aluno na questão nova",
+  "comece pelo seu humor agora, do seu jeito",
+];
+/** Entradas batidas que a bancada achou em várias conversas: não servem de começo. */
+export const ENTRADAS_BATIDAS = ["chegou", "chegou a hora", "bora", "fala", "senta aí", "na mesa", "desembucha", "olha quem"];
+export function anguloDe(seed: string, kind: OpeningKind): string {
+  const list = kind === "passagem" ? ANGULOS_PASSAGEM : ANGULOS_ABERTURA;
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  return list[(h >>> 0) % list.length];
 }
 
 const period = (h: number) => (h < 5 ? "madrugada" : h < 12 ? "manhã" : h < 18 ? "tarde" : "noite");
@@ -96,6 +130,7 @@ export function openingSystem(persona: string, kind: OpeningKind): string {
     "Uma ou duas frases curtas (até 200 caracteres), português do Brasil falado, falando com o aluno em \"você\", no jeito da sua ficha e do seu estado agora.",
     "Use o contexto que for natural, sem forçar tudo: o tema, o período do dia, se ele voltou depois de dias, o que ele errou da última vez, como foi a questão anterior. O nome do aluno, só de vez em quando.",
     "Termine puxando o aluno para agir (dizer o tema, contar o que já sabe, ler a questão, contar o raciocínio), do seu jeito.",
+    "Siga o jeito de começar sorteado em <contexto> (jeito_de_comecar). Não use como começo estas entradas batidas: " + ENTRADAS_BATIDAS.map((e) => `«${e}»`).join(", ") + ". Varie também a estrutura: nada de «tema na mesa», «tema hoje:» como fórmula.",
     "Proibido: repetir ou parafrasear de perto qualquer fala de <ja_ouviu>, começar com as mesmas palavras de uma delas, saudação de atendente, oferecer ajuda no fim, marcação entre colchetes, emoji.",
     "Sem conteúdo médico nenhum: nada de número, dose, critério, conduta, diagnóstico ou pista da questão. Questão aberta: nunca sugira letra nem resposta.",
     'Responda só no formato pedido: {"fala": "..."}.',
@@ -109,6 +144,7 @@ export function openingInput(st: OpeningState, ctx: OpeningContext): string {
   const errs = (mem?.recent_errors ?? []).filter((e) => !e.resolved).slice(0, 2).map((e) => ({ tema: e.theme, o_que_faltou: e.knowledge_gap }));
   const dados = {
     situacao: situationOf(st),
+    jeito_de_comecar: anguloDe(`${st.message!.id}:${st.message!.content}:${st.local_hour ?? ""}`, st.message!.kind),
     tema: s.topic ?? (s.context_type !== "weak_points" ? s.context_label : null) ?? (ctx.question?.topic ?? null),
     area: s.area ?? ctx.question?.area ?? null,
     ...(s.discuss_letter ? { alternativa_que_ele_marcou: s.discuss_letter } : {}),
@@ -127,17 +163,20 @@ export function openingInput(st: OpeningState, ctx: OpeningContext): string {
 }
 
 /** Conferência própria da abertura (além da safety.ts): tamanho, marcação, e nada parecido com o que o aluno já ouviu. */
-export function openingViolations(text: string, heard: string[], startsUsed: string[] = []): Violation[] {
+export function openingViolations(text: string, heard: string[], startsUsed: string[] = [], topic: string | null = null): Violation[] {
   const v: Violation[] = [];
   const t = text.trim();
   if (!t) v.push({ code: "empty", detail: "A fala veio vazia." });
   if (t.length > MAX_CHARS) v.push({ code: "too_long", detail: `A fala passou de ${MAX_CHARS} caracteres: uma ou duas frases curtas.` });
   if (/[[\]{}<>]|\p{Extended_Pictographic}/u.test(t)) v.push({ code: "markup", detail: "Sem colchetes, marcação ou emoji." });
+  const head = fold(t).split(" ").slice(0, 4).join(" ");
+  const batida = ENTRADAS_BATIDAS.find((e) => head === fold(e) || head.startsWith(`${fold(e)} `));
+  if (batida) v.push({ code: "batida", detail: `Começa com a entrada batida «${batida}»: comece de outro jeito.` });
   const two = startOf(t, 2);
   if (two && startsUsed.some((s) => startOf(s, 2) === two)) v.push({ code: "repeat_start", detail: `Já houve fala nesta conversa começando com «${two}»: comece de outro jeito.` });
   for (const h of heard) {
     if (startOf(t) && startOf(t) === startOf(h)) { v.push({ code: "repeat_start", detail: `Começa igual a uma fala que o aluno já ouviu («${h.slice(0, 60)}»): comece de outro jeito.` }); break; }
-    if (tooSimilar(t, h)) { v.push({ code: "repeat", detail: `Parecida demais com uma fala que o aluno já ouviu («${h.slice(0, 60)}»): diga outra coisa.` }); break; }
+    if (tooSimilar(t, h, topic)) { v.push({ code: "repeat", detail: `Parecida demais com uma fala que o aluno já ouviu («${h.slice(0, 60)}»): diga outra coisa.` }); break; }
   }
   return v;
 }
@@ -210,7 +249,7 @@ export async function naturalOpening(deps: TutorDeps, userId: string, sessionId:
         usage.model = r.model;
         const fala = String(r.output?.fala ?? "").replace(/\s+/g, " ").trim();
         const out = { reply: fala, grounding: "GENERAL" as const, citations: [], evaluation: NO_EVALUATION, justification: "NONE" as const, reveals_answer: false, suggested_replies: [] };
-        violations = [...openingViolations(fala, heard, starts), ...safetyCheck(out, safetyCtx).violations];
+        violations = [...openingViolations(fala, heard, starts, st.session.topic ?? st.session.context_label ?? ctx.question?.topic ?? null), ...safetyCheck(out, safetyCtx).violations];
         if (!violations.length) text = fala;
       } catch (error) {
         usage.calls++;

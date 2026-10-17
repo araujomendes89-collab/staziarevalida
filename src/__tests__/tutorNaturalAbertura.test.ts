@@ -115,9 +115,14 @@ describe("fichas do personagem (sem frases prontas)", () => {
 
   it("conferência da abertura: tamanho, marcação, mesma fala ou mesmo começo do que o aluno já ouviu", () => {
     const ouviu = ["Sepse de novo? Bora ver se hoje sai redondo."];
-    expect(openingViolations("Fala, doutora. Tuberculose hoje: me conta por onde quer começar.", ouviu)).toEqual([]);
+    expect(openingViolations("Doutora, tuberculose de novo no seu caminho. Me conta por onde quer começar.", ouviu)).toEqual([]);
+    // entradas batidas (a bancada achou em várias conversas) não servem de começo
+    expect(openingViolations("Chegou a hora, porra. Lê a questão.", []).map((v) => v.code)).toEqual(["batida"]);
+    expect(openingViolations("Bora, lê o caso.", []).map((v) => v.code)).toEqual(["batida"]);
     expect(openingViolations("Sepse de novo? Hoje vai, hein.", ouviu).map((v) => v.code)).toEqual(["repeat_start"]);
-    expect(openingViolations("Bora ver se hoje sai redondo essa sepse de novo.", ouviu).map((v) => v.code)).toEqual(["repeat"]);
+    expect(openingViolations("Ver se hoje sai redondo essa sepse de novo, hein.", ouviu).map((v) => v.code)).toEqual(["repeat"]);
+    // o tema não conta como cópia: toda fala sobre ele o repete
+    expect(tooSimilar("Pré-eclâmpsia pede calma: o que você já sabe dela?", "Vamos com calma em Pré-eclâmpsia.", "Pré-eclâmpsia")).toBe(false);
     expect(openingViolations("x".repeat(300), []).map((v) => v.code)).toEqual(["too_long"]);
     expect(openingViolations("[risada] Bora.", []).map((v) => v.code)).toEqual(["markup"]);
     expect(openingViolations("Isso, cacete, próxima.", [], ["Isso cacete"]).map((v) => v.code)).toEqual(["repeat_start"]);
@@ -136,7 +141,7 @@ let server: Server;
 let base: string;
 const tokens: Record<string, string> = {};
 const calls: StructuredRequest[] = [];
-let respond: (req: StructuredRequest) => unknown = () => ({ fala: "Fala! Bora começar." });
+let respond: (req: StructuredRequest) => unknown = () => ({ fala: "Começando: me diz o que quer estudar." });
 const deps: any = { mockRespond: (req: StructuredRequest) => { calls.push(req); return respond(req); }, log: () => undefined };
 const sql = async <T = any>(q: string, p: unknown[] = []) => (await dev.db.query<T>(q, p)).rows;
 const rpc = async (uid: string, fn: string, ...args: unknown[]) =>
@@ -181,7 +186,7 @@ afterAll(async () => {
 });
 beforeEach(() => {
   calls.length = 0;
-  respond = () => ({ fala: "Fala! Bora começar." });
+  respond = () => ({ fala: "Começando: me diz o que quer estudar." });
   delete process.env.DETERMINISTIC_TUTOR;
   delete process.env.TUTOR_ABERTURA_IA;
 });
@@ -203,6 +208,8 @@ describe("abertura e passagem criadas pela IA (servidor e banco local)", () => {
     expect(req.system).toContain("Sem palavrão.");
     expect(req.system).toMatch(/Sem conteúdo médico nenhum/);
     expect(req.input).toMatch(/"tema":"Sepse"/);
+    expect(req.input).toMatch(/"jeito_de_comecar":"comece [^"]+"/);
+    expect(req.system).toMatch(/entradas batidas: «chegou»/);
     expect(req.input).toMatch(/"periodo_do_dia":"(madrugada|manhã|tarde|noite)"/);
     expect(req.input).toContain(JSON.stringify(reserva).slice(1, -1)); // a reserva entra em <ja_ouviu>: a IA não copia
     // a próxima conversa dela com a Tranquila já leva essa fala em <ja_ouviu>
@@ -262,7 +269,7 @@ describe("abertura e passagem criadas pela IA (servidor e banco local)", () => {
     expect(await naturalOpening(deps, ANA, a)).toBeNull();
     expect((await firstMessage(a)).content).toBe(reserva);
     const b = await start(ANA, "livre", "durao", "IAM");
-    respond = () => ({ fala: "Fala." });
+    respond = () => ({ fala: "Pronto." });
     expect(await naturalOpening(deps, ANA, b, 100)).toBeNull(); // tempo curto demais: nem chama
     calls.length = 0;
     process.env.DETERMINISTIC_TUTOR = "true";
