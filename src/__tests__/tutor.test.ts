@@ -638,7 +638,7 @@ describe("Banco e motor (IA simulada)", () => {
       expect(seen[seen.length - 1].input).toMatch(/<correcao_obrigatoria>[\s\S]*50 mg\/kg/);
       expect(fixed.message).toMatchObject({ content: "Esse número eu não tenho confirmado aqui. Vamos pelo raciocínio?", grounding: "insufficient", notice: null }); // dito do jeito dele, sem frase pronta
       const stuck = await turn(() => reply("A Portaria nº 999 manda usar 50 mg/kg."), { type: "message", text: "e a portaria?" });
-      expect(stuck.message.content).toMatch(/não tenho confirmado aqui/);
+      expect(stuck.message.content).toMatch(/não tenho confirmado aqui|não vou chutar|não tenho conferido na base/); // reservas por situação (revisão de 17/10), variam pela conversa
       expect(stuck.message.notice).toMatch(/Resposta substituída/);
       const meta = (await lastMeta()).meta;
       expect(meta.violations).toEqual(expect.arrayContaining(["invented_reference", "ungrounded_number"]));
@@ -726,7 +726,7 @@ describe("Banco e motor (IA simulada)", () => {
       expect(ok.message).toMatchObject({ content: "Agora sim: qual é o dado principal?", notice: null });
       expect(seen[seen.length - 1].input).toMatch(/<correcao_obrigatoria>[\s\S]*fora do formato/);
       const bad = await turn(() => ({ reply: "x".repeat(3000) }), { type: "message", text: "oi" });
-      expect(bad.message.content).toBe("Travei aqui. Pergunta de novo, de outro jeito?");
+      expect(bad.message.content).toMatch(/^(Travei aqui\. Pergunta de novo, de outro jeito\?|Me perdi nessa\. Repete com outras palavras\?)$/);
       expect((await lastMeta()).meta.violations).toEqual(["invalid_format"]);
     });
 
@@ -752,7 +752,7 @@ describe("Banco e motor (IA simulada)", () => {
         expect((await state(qs)).hint_level).toBe(1);
         // a IA tenta entregar a letra na dica 2: barrado duas vezes → resposta fixa, e a dica conta
         const leak = await turn(() => reply(`A resposta é ${off[qid]}.`), { type: "hint" }, S1, qs);
-        expect(leak.message.content).toMatch(/ainda não vou te entregar/);
+        expect(leak.message.content).toMatch(/ainda não vou te entregar|primeiro o seu raciocínio/);
         expect(leak.message.hint_level).toBe(2);
         expect((await state(qs))).toMatchObject({ hint_level: 2, question_state: "open" });
       });

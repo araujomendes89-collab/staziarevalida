@@ -105,3 +105,19 @@ describe("no texto o humor muda a cada fala do aluno, não só na resposta da qu
     }
   });
 });
+
+describe("reserva fixa por situação (a frase do dado sem fonte não responde mais a «manda uma questão» nem à letra marcada)", () => {
+  it("pedido de caso, reação à letra e dado sem fonte têm reservas próprias, que variam pela conversa", async () => {
+    const { fallbackReply, pedeCaso } = await import("../../server/tutor/safety");
+    const num = [{ code: "ungrounded_number", detail: "" }];
+    for (const t of ["Manda uma questão de tuberculose", "Pode soltar o caso clínico da dengue", "bora, me dá um caso de sepse"]) expect(pedeCaso(t), t).toBe(true);
+    for (const t of ["acho que é dengue grave", "o caso fala de febre"]) expect(pedeCaso(t), t).toBe(false);
+    const caso = fallbackReply(num, { pedidoDeCaso: true, tema: "tuberculose" });
+    expect(caso).not.toMatch(/não tenho confirmado aqui/);
+    expect(caso).toMatch(/questão oficial de tuberculose/);
+    expect(fallbackReply(num, { reacao: { letra: "B", acertou: true } })).toMatch(/Marcou a B e acertou/);
+    expect(fallbackReply(num, { reacao: { letra: "C", acertou: false }, semente: 1 })).toMatch(/A C não é a certa/);
+    const dados = new Set([0, 1, 2].map((semente) => fallbackReply(num, { semente })));
+    expect(dados.size).toBe(3);
+  });
+});

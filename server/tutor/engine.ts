@@ -21,7 +21,7 @@ import { avatarOf, engineFor, languageIntensity, leituraDoRegistro, normalize, p
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
 import { NO_EVALUATION, TUTOR_PROMPT_LAYERS, TUTOR_SCHEMA, TUTOR_VERSION, composeSystem, taskInstruction, type TutorMode, type TutorOutput, type TutorTask } from "./prompts";
 import { ComplementarTermsUnavailable, labelIsSupportMaterial, loadComplementarTerms } from "../contentHub/complementarGuard";
-import { fallbackReply, safetyCheck, spokenText, type BaseBlock, type SafetyResult, type Violation } from "./safety";
+import { fallbackReply, pedeCaso, safetyCheck, spokenText, type BaseBlock, type SafetyResult, type Violation } from "./safety";
 import { protegerFala, sugestoesSemSigilo, violacoesDeSigilo } from "./escudo";
 import { lerRegistro, notaDoRegistro, palavraoContido } from "./leituraDoAluno";
 import { nomeSeguro } from "./sigilo";
@@ -485,7 +485,10 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const sigiloCtx = { instrucoes: system, permitidos: [studentText, ...ctx.history.map((h) => h.content), ...blocks.map((b) => b.text)], base: blocks.map((b) => b.text), pergunta: studentText };
     let ultima: { out: TutorOutput; check: SafetyResult } | null = null;
     for (let attempt = 0; attempt < 2; attempt++) {
-      const input = attempt === 0 ? baseInput : `${baseInput}\n<correcao_obrigatoria>\nSua resposta anterior foi barrada. Refaça sem estes problemas:\n${violations.map((x) => `- ${x.detail}`).join("\n")}\n</correcao_obrigatoria>`;
+      // revisão de 17/10: barrada por número sem base, a segunda tentativa recebe o COMO (sem o número, ou só os da base), não só o quê
+      const comoCorrigir = violations.some((x) => x.code === "ungrounded_number")
+        ? "\n- Como corrigir: tire esses valores e fale sem número (\"febre alta\", \"pressão baixa\", \"dose de ataque\"), ou use só os valores que estão em <base> com a citação. Caso de exemplo: descreva sinais e sintomas em palavras, sem número." : "";
+      const input = attempt === 0 ? baseInput : `${baseInput}\n<correcao_obrigatoria>\nSua resposta anterior foi barrada. Refaça sem estes problemas:\n${violations.map((x) => `- ${x.detail}`).join("\n")}${comoCorrigir}\n</correcao_obrigatoria>`;
       let r;
       try {
         r = await provider.generate<TutorOutput>({ promptId: "tutor", promptVersion: TUTOR_VERSION, system, input, schema: TUTOR_SCHEMA, schemaName: "staziamed_tutor", maxOutputTokens: 2000, effort: EFFORT });
@@ -524,7 +527,14 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     // barrada só por sigilo nas duas tentativas: a resposta fica, reescrita no personagem (não vira a resposta fixa)
     if (!out && ultima && violations.length && violations.every((x) => x.code === "sigilo")) ({ out, check } = ultima);
     const replaced = !out;
-    const reply = protegerFala(out ? out.reply.trim() : fallbackReply(violations), ctx.personality.id, sigiloCtx).texto;
+    // reserva fixa por situação (revisão de 17/10): reação à letra marcada, pedido de caso sem questão aberta ou dado sem fonte
+    const situacao = {
+      reacao: task.type === "react" ? { letra: task.selected, acertou: task.correct } : null,
+      pedidoDeCaso: task.type === "message" && !(q && open) && pedeCaso(studentText),
+      tema: q?.topic ?? ctx.session.topic ?? ctx.session.context?.label ?? null,
+      semente: ctx.history.length,
+    };
+    const reply = protegerFala(out ? out.reply.trim() : fallbackReply(violations, situacao), ctx.personality.id, sigiloCtx).texto;
     // a resolução (dica 5 ou pedido explícito) revela a resposta mesmo se a IA esquecer de marcar
     const reveals = hintLevel === 5 && (Boolean(out?.reveals_answer) || task.type === "reveal" || replaced);
     const ev = out?.evaluation ?? NO_EVALUATION;

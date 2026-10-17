@@ -366,18 +366,59 @@ export function safetyCheck(out: TutorOutput, ctx: SafetyContext): SafetyResult 
   return { violations: v, grounding, sources: valid.filter((b) => b.kind !== "question" && !labelIsSupportMaterial(b.label, ctx.supportTerms ?? [])).map((b) => ({ ref: b.ref, label: b.label })) };
 }
 
+/**
+ * Em que situação a resposta fixa entra (revisão de 17/10: a mesma frase «Esse dado eu não tenho confirmado aqui… me conta o que
+ * você já sabe do caso» aparecia como resposta a «manda uma questão» e logo depois de o aluno marcar uma letra, sem combinar com nada).
+ */
+export interface SituacaoReserva {
+  /** o aluno pediu um caso ou uma questão e não há questão aberta */
+  pedidoDeCaso?: boolean;
+  /** reação à letra que o aluno acabou de marcar (a questão já foi corrigida pelo banco) */
+  reacao?: { letra: string; acertou: boolean } | null;
+  /** o tema da conversa, se houver */
+  tema?: string | null;
+  /** muda a frase escolhida (a mesma conversa não ouve a mesma reserva duas vezes seguidas) */
+  semente?: number;
+}
+
+/** O aluno está pedindo um caso clínico ou uma questão ("manda uma questão", "solta o caso", "me dá um caso de dengue"). */
+export function pedeCaso(texto: string | null | undefined): boolean {
+  return /\b(?:manda|mande|solta|solte|traz|traga|me da|me de|bora|quero|faz|faca|monta|monte|passa|joga|pode soltar|pode mandar)\b[^.?!]{0,40}\b(?:questao|questoes|caso|casos|caso clinico|pergunta)\b/.test(fold(String(texto ?? "")));
+}
+
+const pick = (list: string[], semente = 0) => list[Math.abs(Math.trunc(semente)) % list.length];
+
 /** Resposta fixa quando a IA insiste em algo que a validação barra. Honesta, sem personagem e sem cara de aviso de sistema. */
-export function fallbackReply(violations: Violation[]): string {
+export function fallbackReply(violations: Violation[], situacao: SituacaoReserva = {}): string {
+  const s = situacao.semente ?? 0;
+  const tema = situacao.tema ? String(situacao.tema).replace(/\s+/g, " ").trim().slice(0, 60) : null;
   if (violations.some((x) => x.code === "answer_leak")) {
-    return "Calma, essa eu ainda não vou te entregar. Me diz o que você tá pensando, ou pede mais uma ajuda.";
+    return pick(["Calma, essa eu ainda não vou te entregar. Me diz o que você tá pensando, ou pede mais uma ajuda.",
+      "Ainda não: primeiro o seu raciocínio. O que no caso pesa mais pra você?"], s);
   }
   if (violations.length > 0 && violations.every((x) => x.code === "invalid_format")) {
-    return "Travei aqui. Pergunta de novo, de outro jeito?";
+    return pick(["Travei aqui. Pergunta de novo, de outro jeito?", "Me perdi nessa. Repete com outras palavras?"], s);
   }
   if (violations.some((x) => x.code === "personal_attack" || x.code === "profanity")) {
-    return "Vamos direto ao ponto: me conta o que você entendeu até aqui.";
+    return pick(["Vamos direto ao ponto: me conta o que você entendeu até aqui.", "Voltando ao caso: o que você já tem firme até aqui?"], s);
   }
-  return "Esse dado eu não tenho confirmado aqui, então prefiro não te passar de cabeça. Me conta o que você já sabe do caso e a gente segue pelo raciocínio.";
+  if (situacao.reacao) {
+    const { letra, acertou } = situacao.reacao;
+    return acertou
+      ? pick([`Marcou a ${letra} e acertou. Agora me mostra o porquê: qual pista do caso te levou até ela?`, `${letra}, certa. Qual dado do enunciado te fez fechar nela?`], s)
+      : pick([`Marcou a ${letra}, e não é essa. O que no caso te puxou pra ela? A gente acha o desvio juntos.`, `A ${letra} não é a certa. Me conta o raciocínio que te levou até ela.`], s);
+  }
+  if (situacao.pedidoDeCaso) {
+    return pick([
+      `Caso inventado com número eu não monto de cabeça. Abre uma questão oficial${tema ? ` de ${tema}` : ""} e a gente resolve junto, ou me diz o que você já sabe e eu te testo pelo raciocínio.`,
+      `Questão boa é a oficial: pega uma${tema ? ` de ${tema}` : ""} na aba de questões que a gente destrincha. Enquanto isso, qual parte do tema mais te pega?`,
+    ], s);
+  }
+  return pick([
+    "Esse dado eu não tenho confirmado aqui, então prefiro não te passar de cabeça. Me conta o que você já sabe do caso e a gente segue pelo raciocínio.",
+    "Esse número eu não vou chutar: não tenho confirmado aqui. Vamos pelo raciocínio, que é o que decide a questão.",
+    "Isso eu não tenho conferido na base, então fica de fora. O que mais você quer entender desse ponto?",
+  ], s);
 }
 
 /** Texto para falar em voz alta: sem marcação, sem símbolos soltos, em frases. */
