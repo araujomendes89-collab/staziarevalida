@@ -141,9 +141,17 @@ describe("StationCard", () => {
   it("selo 'Aguardando conteúdo' só quando pedido (quem chama liga só para a equipe)", () => {
     const { container, rerender } = render(<StationCard areaCode="CM" title="X" source="Revalida 2013" />);
     expect(container.querySelector(".osce-station__wait")).toBeNull();
-    rerender(<StationCard areaCode="CM" title="X" source="Revalida 2013" awaitingContent />);
+    const onClick = vi.fn();
+    rerender(<StationCard areaCode="CM" title="X" source="Revalida 2013" awaitingContent onClick={onClick} />);
     expect(screen.getByText("Aguardando conteúdo")).toBeTruthy();
     expect(screen.getByText("Revalida 2013")).toBeTruthy();
+    // desabilitado sem sair do leitor de tela: aria-disabled, sem o atributo disabled; o toque mostra a dica e não chama onClick
+    const btn = screen.getByRole("button");
+    expect(btn.getAttribute("aria-disabled")).toBe("true");
+    expect(btn.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(btn);
+    expect(onClick).not.toHaveBeenCalled();
+    expect(screen.getByRole("status").textContent).toBe("Conteúdo em preparação");
   });
 
   it("sem grau e sem origem não desenha a linha; nomes das cinco áreas", () => {

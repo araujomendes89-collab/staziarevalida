@@ -225,6 +225,45 @@ describe("Banco de estações: origem do catálogo e cartões aguardando conteú
     expect(linhas.filter((b) => b.textContent?.includes("Aguardando conteúdo"))).toHaveLength(2);
   });
 
+  it("equipe: cartão e linha 'Aguardando conteúdo' não abrem o Praticar; desabilitados (aria-disabled, no leitor de tela) e mostram 'Conteúdo em preparação'", async () => {
+    session.boot = { role: "admin" };
+    const { go } = setup(comCatalogo());
+    await ready();
+    fireEvent.click(screen.getByRole("switch", { name: /Só com conteúdo/ }));
+
+    const card = cardOf("Apendicite aguda");
+    expect(card.getAttribute("aria-disabled")).toBe("true");
+    expect(card.hasAttribute("disabled")).toBe(false); // continua no foco e no leitor de tela
+    card.focus();
+    expect(document.activeElement).toBe(card);
+    const dica = within(card).getByRole("status");
+    expect(card.getAttribute("aria-describedby")).toBe(dica.id);
+    expect(dica.textContent).toBe("");
+    fireEvent.click(card);
+    expect(dica.textContent).toBe("Conteúdo em preparação");
+    expect(go).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull(); // nem a escolha Sozinho / Em dupla
+
+    // cartão com conteúdo continua abrindo (a equipe escolhe Sozinho ou Em dupla)
+    const pronto = cardOf("Coqueluche no lactente");
+    expect(pronto.getAttribute("aria-disabled")).toBeNull();
+    expect(within(pronto).queryByRole("status")).toBeNull();
+    fireEvent.click(pronto);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Em dupla" }));
+    expect(go).toHaveBeenCalledWith("dupla", { estacao: ID(3) });
+
+    // na lista também
+    go.mockClear();
+    fireEvent.click(within(screen.getByRole("radiogroup", { name: "Visualização" })).getByRole("radio", { name: "Lista" }));
+    const linha = screen.getAllByRole("button").find((b) => b.textContent?.includes("Leucemia aguda"))!;
+    expect(linha.getAttribute("aria-disabled")).toBe("true");
+    expect(linha.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(linha);
+    expect(within(linha).getByRole("status").textContent).toBe("Conteúdo em preparação");
+    expect(go).not.toHaveBeenCalled();
+  });
+
   it("equipe com tudo escondido pelo filtro: a tela diz para desligar 'Só com conteúdo'", async () => {
     session.boot = { role: "editor" };
     setup(bankRows().map((r) => ({ ...r, content_status: "awaiting_content" as const })));

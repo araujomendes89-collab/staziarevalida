@@ -4,10 +4,11 @@
 // Sem o número e sem os temas pequenos (styles): a busca continua procurando neles. Dados reais de `app_dupla_stations()`;
 // sem nota fica "—".
 // Equipe (catálogo da 013420): os cartões ainda sem conteúdo levam o selo "Aguardando conteúdo" e o filtro "Só com conteúdo",
-// ligado por padrão, esconde esses cartões. O aluno nunca recebe cartão sem conteúdo (o banco não entrega) e não vê o filtro.
+// ligado por padrão, esconde esses cartões. Cartão ou linha sem conteúdo não abre o Praticar: fica desabilitado (aria-disabled,
+// continua no leitor de tela) e, ao tocar, mostra "Conteúdo em preparação" (decisão de 17/10). O aluno nunca recebe cartão sem conteúdo (o banco não entrega) e não vê o filtro.
 // Clique numa estação: `go("dupla", { estacao: id })` abre o Praticar com ela escolhida.
 import React from "react";
-import { Button, Dialog, Icon, SegmentedControl, StationCard, StationLevel, Switch, TextField } from "../../ds";
+import { Button, Dialog, Icon, SegmentedControl, StationCard, StationLevel, Switch, TextField, useWaitHint, WAIT_HINT } from "../../ds";
 import { formatDecimal } from "../../ds/format.js";
 import { useSession } from "../session.jsx";
 import { isStaffRole, LoadError, Loading, useLoad } from "../admin/common.jsx";
@@ -52,6 +53,11 @@ const CSS = `
 .dst__row .osce-level{height:24px;background:var(--surface-subtle)}
 .dst__wait{display:inline-flex;align-items:center;height:22px;margin-left:8px;padding:0 8px;border-radius:var(--radius-pill);background:var(--warning-bg);border:1px solid var(--warning-border);color:var(--warning-text);font:700 10px var(--font-sans);letter-spacing:0;text-transform:none;white-space:nowrap}
 .dst__only{flex:none}
+.dst__row[data-waiting="true"]{cursor:not-allowed}
+.dst__row[data-waiting="true"]:hover{background:transparent}
+.dst__row[data-waiting="true"] .dst__row-t{color:var(--text-secondary)}
+.dst__hint{display:block;margin-top:6px;font:600 12px var(--font-sans);color:var(--warning-text)}
+.dst__hint[data-on="false"]{margin:0}
 .dst__scores{display:flex;gap:18px;align-items:center}
 .dst__score{text-align:right}
 .dst__k{display:block;font:600 10px var(--font-sans);letter-spacing:.05em;text-transform:uppercase;color:var(--text-tertiary)}
@@ -83,16 +89,25 @@ const pct = (value, digits) => (typeof value === "number" && Number.isFinite(val
 function Row({ station, onOpen, staff }) {
   const area = areaByCode(station.area_code);
   const mine = typeof station.my_last_pct === "number" && Number.isFinite(station.my_last_pct);
+  const waiting = staff && awaiting(station);
+  const [hint, showHint] = useWaitHint();
+  const hintId = React.useId();
+  const props = waiting ? { "aria-disabled": "true", "aria-describedby": hintId, "data-waiting": "true", onClick: showHint } : { onClick: onOpen };
   return (
-    <button type="button" className="dst__row" style={cssVars(station.area_code)} onClick={onOpen}>
+    <button type="button" className="dst__row" style={cssVars(station.area_code)} {...props}>
       <span style={{ minWidth: 0 }}>
         {(area || (staff && awaiting(station))) && (
           <span className="dst__row-a">
             {area?.card}
-            {staff && awaiting(station) && <span className="dst__wait">Aguardando conteúdo</span>}
+            {waiting && <span className="dst__wait">Aguardando conteúdo</span>}
           </span>
         )}
         <span className="dst__row-t">{station.name}</span>
+        {waiting && (
+          <span id={hintId} role="status" className="dst__hint" data-on={hint}>
+            {hint ? WAIT_HINT : ""}
+          </span>
+        )}
         <span className="dst__row-m">
           <StationLevel level={station.difficulty} />
           <span>{originLabel(station)}</span>
