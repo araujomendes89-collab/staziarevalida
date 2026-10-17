@@ -351,8 +351,32 @@ const respostasAdm = {
 };
 // Treino sozinho (2ª fase): app_fase2_* simuladas (soloSimulado.js); a "IA" é um roteiro de teste, não avalia nada.
 const solo = criarSolo({ dados, NOW, EM });
+// Administração › Configurações › Treinamento em Dupla (painel da avaliação por IA do treino sozinho), DADOS DE TESTE em memória.
+// ?funcao=pronta (padrão) | naopronta mostra o estado da função da Central de IAs; ?elite=1 liga a linha do benefício Elite.
+let painelIA = { aberto: false, planos: [], limite_dia: null, limite_mes: null };
+const pronta = new URLSearchParams(location.search).get("funcao") !== "naopronta";
+const respostasPainel = {
+  app_admin_settings: () => ({ treino_dupla: { aberto: true, planos: ["pro", "elite"] } }),
+  app_admin_save_dupla: ({ p_aberto, p_planos }) => ({ aberto: p_aberto, planos: p_planos }),
+  app_admin_dupla_ia: () => ({
+    ...painelIA, funcao_pronta: pronta,
+    funcao_motivo: pronta ? null : "O comitê precisa de pelo menos dois membros de empresas diferentes.",
+    elite_libera: new URLSearchParams(location.search).get("elite") === "1",
+  }),
+  app_admin_save_dupla_ia: ({ p_config }) => {
+    const dia = p_config.limite_dia, mes = p_config.limite_mes;
+    if ((dia != null && dia < 1) || (mes != null && dia != null && mes < dia)) throw new Error("Limites inválidos: use números inteiros de 1 em diante, com o do mês maior ou igual ao do dia.");
+    painelIA = { aberto: p_config.aberto, planos: p_config.planos, limite_dia: dia ?? null, limite_mes: mes ?? null };
+    return painelIA;
+  },
+  app_admin_dupla_usage: () => ({
+    month: new Date().toISOString().slice(0, 7), salas: 12, rodadas_avaliadas: 9, alunos: 7, impressos_por_rodada: 1.4,
+    sozinho: { treinos: 31, ia: 18, autoavaliacao: 13, alunos: 9, gasto_ia_usd: 0.4235 },
+  }),
+};
 const respostas = {
   ...respostasChat,
+  ...respostasPainel,
   ...respostasAdm,
   ...respostasHistorico,
   ...solo.respostas,
