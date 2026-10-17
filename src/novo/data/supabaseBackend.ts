@@ -80,7 +80,7 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
     async rpc<T>(fn: string, args: Record<string, unknown> = {}) {
       assertRpcCall(fn, args);
       const { data, error } = await client.rpc(fn, args);
-      if (error) throw new BackendError(/fetch|network/i.test(error.message) ? "network" : "unknown", error.message);
+      if (error) throw new BackendError(/fetch|network/i.test(error.message) ? "network" : "unknown", error.message, error.hint || undefined);
       return data as T;
     },
     async uploadToSignedUrl(bucket, path, token, file, contentType, onProgress) {

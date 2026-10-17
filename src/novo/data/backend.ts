@@ -130,7 +130,9 @@ export type BackendErrorCode =
 export class BackendError extends Error {
   constructor(
     public readonly code: BackendErrorCode,
-    message: string
+    message: string,
+    /** Dica do PostgREST (ex.: INSUFFICIENT_CREDITS), quando a função do banco a enviou. */
+    public readonly hint?: string
   ) {
     super(message);
     this.name = "BackendError";

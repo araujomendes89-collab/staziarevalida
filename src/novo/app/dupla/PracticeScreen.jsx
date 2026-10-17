@@ -14,6 +14,9 @@ import { useDuplaChannel, useHeartbeat } from "./live.js";
 import { InviteWatcher, MatchModal } from "./MatchModal.jsx";
 import { installAudioWake, playSkipSound } from "./sound.js";
 import { useChatWindows } from "./chat/ChatList.jsx";
+import { CreditHeader } from "./CreditHeader.jsx";
+import { QuotaNotice } from "./QuotaNotice.jsx";
+import { useCreditState } from "./credits.js";
 
 const ROLE_OPTIONS = [
   { value: "any", label: "Qualquer papel" },
@@ -204,6 +207,8 @@ function PracticeBoard({ go, profile, saved, stationId, station, onRemoveStation
   const [cmd, setCmd] = React.useState(null);
   const [matched, setMatched] = React.useState(null);
   const [leaving, setLeaving] = React.useState(false);
+  const [quotaOpen, setQuotaOpen] = React.useState(false);
+  const { credit, reload: reloadCredit } = useCreditState(backend);
   const pressCount = React.useRef(0);
   const openProfile = () => go("dupla-perfil");
   const chat = useChatWindows({ go, onError: (text) => showToast(text, "danger") });
@@ -245,7 +250,12 @@ function PracticeBoard({ go, profile, saved, stationId, station, onRemoveStation
         p_direction: direction,
         p_station_id: direction === "right" ? stationForSwipe : null,
       });
-      if (result?.matched) {
+      if (result?.reason === "quota") {
+        deck.restore(card);
+        setQuotaOpen(true);
+        void reloadCredit();
+      } else if (result?.matched) {
+        void reloadCredit();
         deck.freeze(true);
         setMatched({ roomId: result.room_id, partnerId: result.partner?.user_id ?? card.user_id, partnerName: result.partner?.public_name ?? card.public_name });
         void deck.refresh();
@@ -347,6 +357,7 @@ function PracticeBoard({ go, profile, saved, stationId, station, onRemoveStation
               </span>
             </>
           )}
+          <CreditHeader credit={credit} />
         </div>
       </div>
 
@@ -463,7 +474,8 @@ function PracticeBoard({ go, profile, saved, stationId, station, onRemoveStation
         />
       )}
       {chat.node}
-      <InviteWatcher go={go} meName={saved.public_name} inviteTick={inviteTick} live={live} paused={chat.chatOpen} />
+      <QuotaNotice open={quotaOpen} onClose={() => setQuotaOpen(false)} />
+      <InviteWatcher go={go} meName={saved.public_name} inviteTick={inviteTick} live={live} paused={chat.chatOpen} onCredit={reloadCredit} />
     </div>
   );
 }
