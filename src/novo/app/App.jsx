@@ -330,6 +330,10 @@ function Root() {
       <Routes>
         {/* /novo/login: sem sessão, qualquer endereço mostra o login; com sessão, volta para o início */}
         <Route path="/login" element={<Navigate to="/" replace />} />
+        {/* /novo/entrar: o mesmo login, com o nome usado pela página inicial; com sessão, volta para o início */}
+        <Route path="/entrar" element={<Navigate to="/" replace />} />
+        {/* /novo/criar-conta: sem sessão abre o Criar conta (AuthFlow); com sessão, volta para o início */}
+        <Route path="/criar-conta" element={<Navigate to="/" replace />} />
         <Route path="/:route?" element={<Screen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -1,11 +1,14 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import {defineConfig, loadEnv} from 'vite';
+import {chavePaginaInicial} from './src/inicio/chave.js';
 
-export default defineConfig(() => {
+export default defineConfig(({mode}) => {
+  // Chaves da página inicial (PAGINA_INICIAL e PAGINA_INICIAL_TEXTOS, ver src/inicio/chave.js): variável do ambiente (Vercel) ou .env
+  const env = {...loadEnv(mode, process.cwd(), 'PAGINA_INICIAL'), ...process.env};
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), chavePaginaInicial(env)],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
@@ -18,10 +21,12 @@ export default defineConfig(() => {
     },
     build: {
       rollupOptions: {
-        // Duas páginas: o app atual (index.html) e o app novo do design system (novo.html, em /novo).
+        // Três páginas: a página inicial pública (index.html, leve e sem React), o app novo (novo.html, em /novo)
+        // e a página "não encontrada" (404.html). O app antigo saiu do build (a entrada dele ficou em app-antigo.html).
         input: {
           main: path.resolve(__dirname, 'index.html'),
           novo: path.resolve(__dirname, 'novo.html'),
+          naoEncontrada: path.resolve(__dirname, '404.html'),
         },
       },
     },
