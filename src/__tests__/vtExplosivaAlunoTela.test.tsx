@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Preferências do Tutor (aluno) — "Jeito da Durona". Decisão do dono de 16/10: ligado para todos, padrão N3 com gritos e palavrões;
- * o aluno baixa o nível e desliga gritos e/ou palavrões; N3/N4 dependem da declaração de 18+ e médico do aceite do Termo.
+ * o aluno baixa o nível e desliga gritos e/ou palavrões; N3/N4 dependem da declaração de 18+ do aceite do Termo (desde 17/10/2026 só a maioridade).
  */
 import React from "react";
 import "@testing-library/jest-dom/vitest";
@@ -64,7 +64,7 @@ describe("Jeito da Durona (aluno)", () => {
     expect(await screen.findByRole("radio", { name: /N4 · Explosiva/ })).toBeDisabled();
     expect(screen.getByRole("radio", { name: /N3 · Estressada/ })).toBeDisabled();
     expect(screen.getByRole("radio", { name: /N1 · Direta/ })).toBeEnabled();
-    expect(screen.getByRole("note")).toHaveTextContent(/declaração de que você é médico\(a\) e maior de 18/);
+    expect(screen.getByRole("note")).toHaveTextContent(/declaração de que você tem 18 anos ou mais/);
     expect(screen.getByText(/Agora:/)).toHaveTextContent("N2 · Sarcástica");
   });
 
@@ -78,7 +78,7 @@ describe("Jeito da Durona (aluno)", () => {
   it("erro do banco aparece em português", async () => {
     render(<ExplosivaPreferences />);
     fireEvent.click(await screen.findByRole("radio", { name: /N4 · Explosiva/ }));
-    rpc.mockImplementationOnce(async () => { throw new Error("Os níveis 3 e 4 ficam liberados depois do aceite do Termo com a declaração de maioridade e de médico."); });
+    rpc.mockImplementationOnce(async () => { throw new Error("Os níveis 3 e 4 ficam liberados depois do aceite do Termo com a declaração de maioridade."); });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     expect(await screen.findByText(/ficam liberados depois do aceite do Termo/)).toBeInTheDocument();
   });

@@ -13,7 +13,6 @@ const TELAS = {
   celular: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   computador: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
 };
-const FRASE = "Declaro que li e compreendi os Termos de Aceite e Uso e a Política de Privacidade do StaziaMed Revalida e concordo com suas condições.";
 
 const clicar = (p, nome) => p.getByRole("button", { name: nome, exact: true }).click();
 const escrever = (p, rotulo, valor) => p.getByLabel(rotulo, { exact: true }).fill(valor);
@@ -26,7 +25,8 @@ async function preencher(p, email = "ana.lima@exemplo.com") {
   await whatsapp(p, "(41) 99999-8888");
   await escrever(p, "Senha", "senha-segura");
   await escrever(p, "Conferir senha", "senha-segura");
-  await p.getByLabel(FRASE, { exact: true }).check();
+  // a caixa do aceite (desde 17/10/2026 uma só, com a maioridade); nas capturas de "antes" ainda havia as de 18+ e médico
+  await p.locator("#secure-accept").check();
   for (const c of await p.locator("#secure-adulto, #secure-medico").all()) await c.check();
 }
 

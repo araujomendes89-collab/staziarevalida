@@ -101,10 +101,11 @@ export function SessionProvider({ children }) {
       },
       /**
        * Registra o aceite de um documento (document: "termo_uso" ou "tutor_ia"; origin: "google", "tela_aceite" ou "tutor") e
-       * troca os dados de abertura pelos atualizados. `phone` (formato internacional) só vai quando a tela pediu o WhatsApp.
-       * Se o servidor recusar (ex.: versão desatualizada), o erro sobe para a tela e os dados de abertura não mudam.
-       * `declarations` ({ adult, physician }) só vai quando a versão vigente pede (Termo 2.0, boot.legal.declarations_required):
-       * aí a chamada é app_accept_terms_declared, que grava as declarações junto do aceite.
+       * troca os dados de abertura pelos atualizados. `phone` (formato internacional) é opcional (as telas de aceite não pedem mais o
+       * WhatsApp desde 17/10/2026). Se o servidor recusar (ex.: versão desatualizada), o erro sobe para a tela e os dados de abertura não mudam.
+       * `declarations` só vai quando a versão vigente pede (Termo 2.0, boot.legal.declarations_required): aí a chamada é
+       * app_accept_terms_declared, que grava a maioridade (adult) junto do aceite. Desde 17/10/2026 as telas mandam só { adult: true }
+       * (a caixa única do aceite); physician vai false e o banco grava vazio (migração …13661_aceite_com_maioridade).
        */
       async acceptTerms({ document, version, origin, phone, declarations }) {
         const args = {

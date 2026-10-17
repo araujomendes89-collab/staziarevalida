@@ -63,7 +63,7 @@ function open(path: string, boot: any, extra: Record<string, unknown> = {}) {
 }
 
 const TITLE = "Termo de Aceite e Uso";
-const checkbox = () => screen.getByRole("checkbox", { name: /Declaro que li e compreendi/ });
+const checkbox = () => screen.getByRole("checkbox", { name: "Li e aceito os Termos de Uso e a Política de Privacidade e declaro ter 18 anos ou mais." });
 const accept = () => screen.getByRole("button", { name: "Aceitar e continuar" });
 
 beforeEach(() => {

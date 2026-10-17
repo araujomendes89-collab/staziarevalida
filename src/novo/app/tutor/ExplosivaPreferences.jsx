@@ -85,7 +85,7 @@ export function ExplosivaPreferences({ compact = false }) {
       </fieldset>
       {!adult && (
         <p className="explosiva-prefs__notice" role="note">
-          Os níveis 3 e 4 ficam liberados depois do aceite do Termo com a declaração de que você é médico(a) e maior de 18. Até lá, a Durona fala no N2.
+          Os níveis 3 e 4 ficam liberados depois do aceite do Termo com a declaração de que você tem 18 anos ou mais. Até lá, a Durona fala no N2.
         </p>
       )}
 

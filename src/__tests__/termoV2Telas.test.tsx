@@ -1,7 +1,7 @@
 /**
  * Termo 2.0 nas telas: a tela de aceite mostra o texto da versão que o BANCO diz que está vigente e, quando ele pede
- * (legal.declarations_required), as declarações de maioridade e de formação em Medicina; session.acceptTerms usa
- * app_accept_terms_declared só nesse caso. Com o 1.0 vigente, tudo fica como antes. Texto: docs/voice-tutor/04-termo-voz.md.
+ * (legal.declarations_required), a declaração de maioridade, que desde 17/10/2026 vem na PRÓPRIA caixa do aceite (a de formação em
+ * Medicina saiu); session.acceptTerms usa app_accept_terms_declared só nesse caso. Com o 1.0 vigente, tudo fica como antes. Texto: docs/voice-tutor/04-termo-voz.md.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,13 +11,13 @@ const state: { session: any } = { session: null };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => state.session }));
 
 import { AcceptanceScreen } from "../novo/app/legal/AcceptanceScreen.jsx";
-import { documentosDa, DECLARACAO_ADULTO, DECLARACAO_MEDICO } from "../novo/app/legal/documentos.js";
+import { documentosDa } from "../novo/app/legal/documentos.js";
 import { rememberGoogleAcceptance, takeGoogleAcceptance, takeGoogleAcceptanceFull } from "../novo/app/legal/googleAcceptance.js";
 import { signUpMetadata } from "../novo/data/backend";
 import { TERMO_VERSAO } from "../novo/app/legal/versions.js";
 import { TUTOR_CONSENT_TEXTS } from "../novo/app/tutor/TutorConsentCard.jsx";
 
-const FRASE = /Declaro que li e compreendi/;
+const FRASE = "Li e aceito os Termos de Uso e a Política de Privacidade e declaro ter 18 anos ou mais.";
 const legalOf = (versao: string, extra: Record<string, unknown> = {}) => ({
   termo_uso: { current: versao, accepted: "1.0", accepted_at: "2026-10-08T12:00:00Z" },
   tutor_ia: { current: "1.0", accepted: null, accepted_at: null },
@@ -69,45 +69,40 @@ describe("Termo 2.0 — textos por versão", () => {
 describe("Termo 2.0 — tela de aceite", () => {
   it("com o 1.0 vigente: sem declarações e com o texto de hoje", () => {
     const fns = open(legalOf("1.0", { termo_uso: { current: "1.0", accepted: null, accepted_at: null } }));
-    expect(screen.queryByRole("checkbox", { name: DECLARACAO_ADULTO })).toBeNull();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(1);
     expect(document.body.textContent).not.toContain("QUEM PODE USAR");
     fireEvent.click(screen.getByRole("checkbox", { name: FRASE }));
     expect(botao().disabled).toBe(false);
     fireEvent.click(botao());
-    return waitFor(() => expect(fns.acceptTerms).toHaveBeenCalledWith({ document: "termo_uso", version: "1.0", origin: "tela_aceite", phone: undefined, declarations: undefined }));
+    return waitFor(() => expect(fns.acceptTerms).toHaveBeenCalledWith({ document: "termo_uso", version: "1.0", origin: "tela_aceite", declarations: undefined }));
   });
 
-  it("com o 2.0 vigente: mostra o texto 2.0 e só aceita com as três marcações", async () => {
+  it("com o 2.0 vigente: mostra o texto 2.0 e aceita com a caixa única, que já traz a maioridade", async () => {
     const fns = open(legalOf("2.0", { declarations_required: true }));
     expect(screen.getByText("Versão 2.0")).toBeTruthy();
     expect(document.body.textContent).toContain("QUEM PODE USAR");
-    const adulto = screen.getByRole("checkbox", { name: DECLARACAO_ADULTO });
-    const medico = screen.getByRole("checkbox", { name: DECLARACAO_MEDICO });
-
+    expect(screen.getAllByRole("checkbox")).toHaveLength(1);
+    expect(botao().disabled).toBe(true);
     fireEvent.click(screen.getByRole("checkbox", { name: FRASE }));
-    expect(botao().disabled).toBe(true);
-    fireEvent.click(adulto);
-    expect(botao().disabled).toBe(true);
-    fireEvent.click(medico);
     expect(botao().disabled).toBe(false);
     fireEvent.click(botao());
     await waitFor(() => expect(fns.acceptTerms).toHaveBeenCalledTimes(1));
     expect(fns.acceptTerms).toHaveBeenCalledWith({
-      document: "termo_uso", version: "2.0", origin: "tela_aceite", phone: undefined, declarations: { adult: true, physician: true },
+      document: "termo_uso", version: "2.0", origin: "tela_aceite", declarations: { adult: true },
     });
   });
 
-  it("volta do Google: aceita sozinho só se o cadastro guardou as duas declarações", async () => {
-    rememberGoogleAcceptance("2.0", { adult: true, physician: true });
+  it("volta do Google: aceita sozinho só se o cadastro guardou a maioridade", async () => {
+    rememberGoogleAcceptance("2.0", { adult: true });
     const ok = open(legalOf("2.0", { declarations_required: true }));
-    await waitFor(() => expect(ok.acceptTerms).toHaveBeenCalledWith({ document: "termo_uso", version: "2.0", origin: "google", declarations: { adult: true, physician: true } }));
+    await waitFor(() => expect(ok.acceptTerms).toHaveBeenCalledWith({ document: "termo_uso", version: "2.0", origin: "google", declarations: { adult: true } }));
     cleanup();
 
     rememberGoogleAcceptance("2.0");
     const falta = open(legalOf("2.0", { declarations_required: true }));
     await new Promise((r) => setTimeout(r, 20));
     expect(falta.acceptTerms).not.toHaveBeenCalled();
-    expect(screen.getByRole("checkbox", { name: DECLARACAO_MEDICO })).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: FRASE })).toBeTruthy();
   });
 });
 

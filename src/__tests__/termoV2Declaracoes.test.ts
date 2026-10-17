@@ -100,7 +100,9 @@ let antes: Awaited<ReturnType<typeof fotografia>>;
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(ler("supabase/tests/bootstrap.sql"));
-  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== NOVA && f !== ATIVACAO).sort()) {
+  // a …13661 (aceite só com a maioridade, 17/10/2026) remenda funções criadas pela …11500: fica fora deste ensaio da 11500
+  // (testada em aceiteMaioridadeBanco.test.ts)
+  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== NOVA && f !== ATIVACAO && f !== "20261003013661_aceite_com_maioridade.sql").sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
   // um aluno com o Termo 1.0 aceito antes da migração

@@ -1,8 +1,10 @@
 // Tela de aceite: fica antes de todas as telas do app novo para o aluno (boot.legal.gate_required, calculado pelo servidor) que ainda não
 // aceitou a versão vigente do Termo. Desde 17/10/2026 (decisão do dono) não pede mais o WhatsApp: o banco deixou de exigir o telefone
 // (migração …13660_cadastro_sem_whatsapp) e o aceite vai sem p_phone (o WhatsApp continua opcional em Minha conta).
-// Termo 2.0 em diante (boot.legal.declarations_required): também as declarações de maioridade e de formação em Medicina, gravadas
-// junto do aceite (app_accept_terms_declared). O texto mostrado é o da versão que o banco diz que está vigente.
+// Uma caixa só (17/10/2026): "Li e aceito os Termos de Uso e a Política de Privacidade e declaro ter 18 anos ou mais." (ACEITE_TEXTO).
+// Quando a versão vigente pede a declaração (boot.legal.declarations_required), a maioridade vai junto do aceite
+// (app_accept_terms_declared, adult = true); a de formação em Medicina não é mais pedida (migração …13661_aceite_com_maioridade).
+// O texto mostrado é o da versão que o banco diz que está vigente.
 import React from "react";
 import "../auth/login.css";
 import "./legal.css";
@@ -10,7 +12,8 @@ import { useSession } from "../session.jsx";
 import { DocumentModal } from "./DocumentModal.jsx";
 import { LegalText } from "./LegalText.jsx";
 import { takeGoogleAcceptanceFull } from "./googleAcceptance.js";
-import { DECLARACAO_ADULTO, DECLARACAO_MEDICO, DECLARACOES_ERRO, documentosDa } from "./documentos.js";
+import { ACEITE_TEXTO, documentosDa } from "./documentos.js";
+import { AceiteFrase } from "./AceiteFrase.jsx";
 
 const OUTDATED = "Versão desatualizada do termo.";
 const OUTDATED_NOTICE = "O termo foi atualizado. Leia a nova versão e aceite de novo.";
@@ -36,8 +39,6 @@ export function AcceptanceScreen() {
   const termoFonte = documentosDa(current).termo;
 
   const [checked, setChecked] = React.useState(false);
-  const [adult, setAdult] = React.useState(false);
-  const [physician, setPhysician] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [notice, setNotice] = React.useState(null);
   const [doc, setDoc] = React.useState(null);
@@ -50,18 +51,18 @@ export function AcceptanceScreen() {
     googleTried.current = true;
     const google = takeGoogleAcceptanceFull(current);
     if (!google) return;
-    // versão com declarações: só aceita sozinho se o cadastro guardou as duas (senão a pessoa marca aqui)
-    if (needsDecl && !(google.adult && google.physician)) return;
+    // versão com a declaração: só aceita sozinho se o cadastro guardou a maioridade (senão a pessoa marca aqui)
+    if (needsDecl && !google.adult) return;
     setBusy(true);
     session
-      .acceptTerms({ document: "termo_uso", version: current, origin: "google", declarations: needsDecl ? { adult: true, physician: true } : undefined })
+      .acceptTerms({ document: "termo_uso", version: current, origin: "google", declarations: needsDecl ? { adult: true } : undefined })
       .catch(() => setNotice(FAILED_NOTICE))
       .finally(() => setBusy(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // o botão vale assim que cada caixa exigida está marcada
-  const filled = (!needsTerms || checked) && (!needsDecl || (adult && physician));
+  const filled = !needsTerms || checked;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -72,13 +73,11 @@ export function AcceptanceScreen() {
     try {
       await session.acceptTerms({
         document: "termo_uso", version: current, origin: "tela_aceite",
-        declarations: needsDecl ? { adult: true, physician: true } : undefined,
+        declarations: needsDecl ? { adult: true } : undefined,
       });
     } catch (err) {
       if (err?.message === OUTDATED) {
         setChecked(false);
-        setAdult(false);
-        setPhysician(false);
         try {
           await session.refresh();
         } catch {
@@ -111,32 +110,14 @@ export function AcceptanceScreen() {
                 <label className="lg-accept">
                   <input
                     id="aceite-accept"
-                    aria-label="Declaro que li e compreendi os Termos de Aceite e Uso e a Política de Privacidade do StaziaMed Revalida e concordo com suas condições."
+                    aria-label={ACEITE_TEXTO}
                     type="checkbox"
                     className="lg-check"
                     checked={checked}
                     onChange={(e) => setChecked(e.target.checked)}
                     aria-invalid="false"
                   />
-                  <span>
-                    Declaro que li e compreendi os{" "}
-                    <button type="button" className="lg-link-btn" onClick={() => setDoc("termos")}>Termos de Aceite e Uso</button>
-                    {" "}e a{" "}
-                    <button type="button" className="lg-link-btn" onClick={() => setDoc("privacidade")}>Política de Privacidade</button>
-                    {" "}do StaziaMed Revalida e concordo com suas condições.
-                  </span>
-                </label>
-              </div>
-            )}
-            {needsDecl && (
-              <div className="lg-field" role="group" aria-label={DECLARACOES_ERRO}>
-                <label className="lg-accept">
-                  <input id="aceite-adulto" aria-label={DECLARACAO_ADULTO} type="checkbox" className="lg-check" checked={adult} onChange={(e) => setAdult(e.target.checked)} />
-                  <span>{DECLARACAO_ADULTO}</span>
-                </label>
-                <label className="lg-accept">
-                  <input id="aceite-medico" aria-label={DECLARACAO_MEDICO} type="checkbox" className="lg-check" checked={physician} onChange={(e) => setPhysician(e.target.checked)} />
-                  <span>{DECLARACAO_MEDICO}</span>
+                  <AceiteFrase onDoc={setDoc} linkClassName="lg-link-btn" />
                 </label>
               </div>
             )}

@@ -1,7 +1,8 @@
 /**
  * Cadastro (src/novo/app/AuthScreens.jsx): conferir senha e aceite obrigatório do Termo, também no Google. Sem WhatsApp desde
  * 17/10/2026 (decisão do dono; migração …13660_cadastro_sem_whatsapp). Visual novo (moldura de auth/RecoveryLayout.jsx).
- * Termo vigente 2.0: o aceite só segue com as declarações de 18 anos ou mais e de médico(a) (DECLARACAO_ADULTO / DECLARACAO_MEDICO).
+ * Uma caixa só (17/10/2026): "Li e aceito os Termos de Uso e a Política de Privacidade e declaro ter 18 anos ou mais." (ACEITE_TEXTO);
+ * a maioridade vai junto (declaresAdult) e a declaração de médico(a) não existe mais (migração …13661_aceite_com_maioridade).
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,10 +13,10 @@ vi.mock("../novo/app/session.jsx", async (orig) => ({ ...(await orig<any>()), us
 
 import { AuthFlow } from "../novo/app/AuthScreens.jsx";
 import { takeGoogleAcceptance, takeGoogleAcceptanceFull } from "../novo/app/legal/googleAcceptance.js";
-import { DECLARACAO_ADULTO, DECLARACAO_MEDICO, DECLARACOES_ERRO } from "../novo/app/legal/documentos.js";
+import { ACEITE_TEXTO } from "../novo/app/legal/documentos.js";
 
-const FRASE = "Declaro que li e compreendi os Termos de Aceite e Uso e a Política de Privacidade do StaziaMed Revalida e concordo com suas condições.";
-const ACEITE = "Para criar a conta, é preciso aceitar o Termo de Aceite e Uso e a Política de Privacidade.";
+const FRASE = "Li e aceito os Termos de Uso e a Política de Privacidade e declaro ter 18 anos ou mais.";
+const ACEITE = "Para criar a conta, é preciso aceitar os Termos de Uso e a Política de Privacidade e declarar ter 18 anos ou mais.";
 
 const open = () => {
   render(<AuthFlow />);
@@ -29,7 +30,7 @@ const fillAll = (over: Record<string, string> = {}) => {
   type("Conferir senha", over.pw2 ?? "senha-segura");
 };
 /** O aceite completo do Termo 2.0: a frase do §33 e as duas declarações. */
-const aceitarTudo = () => [FRASE, DECLARACAO_ADULTO, DECLARACAO_MEDICO].forEach((l) => fireEvent.click(screen.getByLabelText(l)));
+const aceitarTudo = () => fireEvent.click(screen.getByLabelText(FRASE));
 const submitBtn = () => screen.getByRole("button", { name: /^CRIAR CONTA/ });
 
 beforeEach(() => {
@@ -42,7 +43,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Cadastro com Termo", () => {
-  it("mostra os campos na ordem e a frase do §33, sem a frase passiva", () => {
+  it("mostra os campos na ordem e a caixa única do aceite, sem a frase passiva", () => {
     open();
     const labels = ["Nome completo", "E-mail", "Senha", "Conferir senha", FRASE].map((l) => screen.getByLabelText(l));
     for (let i = 1; i < labels.length; i++) {
@@ -67,14 +68,13 @@ describe("Cadastro com Termo", () => {
     expect(screen.getByText("As senhas não são iguais.")).toBeTruthy();
     expect(screen.getByText("Informe um e-mail válido.")).toBeTruthy();
     expect(screen.getByText(ACEITE)).toBeTruthy();
-    expect(screen.getByText(DECLARACOES_ERRO)).toBeTruthy();
     expect(backend.signUp).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Conferir senha").getAttribute("aria-invalid")).toBe("true");
     expect(screen.getByLabelText("E-mail").getAttribute("aria-invalid")).toBe("true");
     // o erro fica ligado ao campo (leitor de tela)
     expect(document.getElementById(screen.getByLabelText("Conferir senha").getAttribute("aria-describedby")!)!.textContent).toBe("As senhas não são iguais.");
     expect(document.getElementById(screen.getByLabelText(FRASE).getAttribute("aria-describedby")!)!.textContent).toBe(ACEITE);
-    expect(screen.getByLabelText(DECLARACAO_ADULTO).getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByLabelText(FRASE).getAttribute("aria-invalid")).toBe("true");
   });
 
   it("e-mail que já tem conta: o aviso fica no campo E-mail, com o foco nele, e o que foi digitado continua", async () => {
@@ -124,28 +124,31 @@ describe("Cadastro com Termo", () => {
     expect(screen.getByRole("button", { name: "ENTRAR" })).toBeTruthy();
   });
 
-  it("sem as duas declarações (18+ e médico) a conta não é criada, mesmo com a frase do §33 marcada", () => {
+  it("uma caixa só: sem as caixas separadas de 18+ e de médico(a); o texto é o combinado e a caixa nasce desmarcada", () => {
     open();
+    expect(FRASE).toBe(ACEITE_TEXTO);
+    expect(screen.getAllByRole("checkbox")).toHaveLength(1);
+    expect((screen.getByLabelText(FRASE) as HTMLInputElement).checked).toBe(false);
+    expect(screen.queryByText(/sou médico/i)).toBeNull();
+    expect(screen.queryByText("Declaro que tenho 18 anos ou mais.")).toBeNull();
+    // sem marcar a caixa, nada é enviado
     fillAll();
-    fireEvent.click(screen.getByLabelText(FRASE));
-    fireEvent.click(screen.getByLabelText(DECLARACAO_MEDICO));
     fireEvent.click(submitBtn());
-    expect(screen.getByText(DECLARACOES_ERRO)).toBeTruthy();
     expect(backend.signUp).not.toHaveBeenCalled();
   });
 
-  it("tudo certo: signUp com versão 2.0, declarações e navegador (sem telefone)", async () => {
+  it("tudo certo: signUp com versão 2.0, maioridade e navegador (sem telefone e sem médico)", async () => {
     open();
     fillAll();
     aceitarTudo();
     fireEvent.click(submitBtn());
     await waitFor(() => expect(backend.signUp).toHaveBeenCalledTimes(1));
     expect(backend.signUp.mock.calls[0]).toEqual(["Ana Lima", "ana@teste.dev", "senha-segura",
-      { termsVersion: "2.0", userAgent: expect.any(String), declaresAdult: true, declaresPhysician: true }]);
+      { termsVersion: "2.0", userAgent: expect.any(String), declaresAdult: true }]);
     expect(backend.signUp.mock.calls[0][3]).not.toHaveProperty("phone");
   });
 
-  it("Google só com as caixas marcadas e guarda o aceite (com as declarações) por 30 min", async () => {
+  it("Google só com a caixa marcada e guarda o aceite (com a maioridade) por 30 min", async () => {
     open();
     fireEvent.click(screen.getByRole("button", { name: "Criar conta com Google" }));
     expect(screen.getByText(ACEITE)).toBeTruthy();
@@ -154,14 +157,14 @@ describe("Cadastro com Termo", () => {
     fireEvent.click(screen.getByRole("button", { name: "Criar conta com Google" }));
     await waitFor(() => expect(backend.signInWithGoogle).toHaveBeenCalledTimes(1));
     expect(JSON.parse(localStorage.getItem("smn-aceite-google")!).version).toBe("2.0");
-    expect(takeGoogleAcceptanceFull("2.0")).toEqual({ adult: true, physician: true });
+    expect(takeGoogleAcceptanceFull("2.0")).toEqual({ adult: true, physician: false });
     expect(localStorage.getItem("smn-aceite-google")).toBeNull();
   });
 
   it("o link do termo abre a janela e o que foi digitado continua", () => {
     open();
     fillAll();
-    fireEvent.click(screen.getByRole("button", { name: "Termos de Aceite e Uso" }));
+    fireEvent.click(screen.getByRole("button", { name: "Termos de Uso" }));
     expect(screen.getByRole("dialog")).toBeTruthy();
     // fora do cartão com backdrop-filter, direto no body: o "fixed" vale para a tela toda
     const overlay = screen.getByRole("dialog").parentElement!;

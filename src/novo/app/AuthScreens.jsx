@@ -12,7 +12,8 @@ import { ConfirmEmailScreen, ConfirmLinkExpired } from "./auth/ConfirmEmail.jsx"
 import { DocumentModal } from "./legal/DocumentModal.jsx";
 import { TERMO_VERSAO } from "./legal/versions.js";
 import { rememberGoogleAcceptance } from "./legal/googleAcceptance.js";
-import { DECLARACAO_ADULTO, DECLARACAO_MEDICO, DECLARACOES_ERRO, documentosDa } from "./legal/documentos.js";
+import { ACEITE_TEXTO } from "./legal/documentos.js";
+import { AceiteFrase } from "./legal/AceiteFrase.jsx";
 import { clearAuthLinkFromUrl, initialAuthLink } from "./auth/authLink.js";
 import { FieldError, RecoveryButton, RecoveryField, RecoveryLayout, RecoveryLink, RecoveryMessage } from "./auth/RecoveryLayout.jsx";
 import "./auth/criar-conta.css";
@@ -51,22 +52,14 @@ function AuthLayout({ children, aside }) {
   );
 }
 
-const ACCEPT_ERROR = "Para criar a conta, é preciso aceitar o Termo de Aceite e Uso e a Política de Privacidade.";
-const ACCEPT_TEXT = "Declaro que li e compreendi os Termos de Aceite e Uso e a Política de Privacidade do StaziaMed Revalida e concordo com suas condições.";
+const ACCEPT_ERROR = "Para criar a conta, é preciso aceitar os Termos de Uso e a Política de Privacidade e declarar ter 18 anos ou mais.";
 // ids dos campos, na ordem da tela, para levar o foco ao primeiro com erro
-const FIELD_IDS = { name: "secure-name", email: "secure-email", pw: "secure-pw", pw2: "secure-pw2", accept: "secure-accept", decl: "secure-adulto" };
+const FIELD_IDS = { name: "secure-name", email: "secure-email", pw: "secure-pw", pw2: "secure-pw2", accept: "secure-accept" };
 
-// ---------------------------------------------------------------------------------------------------------------------------------
-// DECLARAÇÕES DE 18+ E DE MÉDICO(A) NO CADASTRO — PONTO DE REMOÇÃO (contrato 3.0)
-// O dono decidiu tirar estas duas caixas, MAS só quando o contrato 3.0 (que traz a declaração de maioridade no próprio aceite)
-// estiver no ar. Hoje o banco ainda exige as declarações (Termo 2.0: legal_versions.requires_declarations, migrações
-// …11500/…11510) e o Tutor (N3/N4) depende delas; tirar antes faria toda conta nova cair na tela de aceite.
-// Para remover, quando o 3.0 for publicado: (1) em legal/documentos.js, a versão 3.0 com `declaracoes: false`; (2) TERMO_VERSAO
-// = "3.0" em legal/versions.js; (3) no banco, a versão 3.0 com requires_declarations = false. Com isso PEDE_DECLARACOES vira
-// false e as caixas somem sozinhas (nada a mudar aqui). Para apagar o código de vez: o bloco marcado "DECLARAÇÕES (contrato 3.0)"
-// no formulário abaixo, os estados `adult`/`physician` e as linhas com PEDE_DECLARACOES em `submit` e `google`.
-// ---------------------------------------------------------------------------------------------------------------------------------
-const PEDE_DECLARACOES = documentosDa(TERMO_VERSAO).declaracoes;
+// DECLARAÇÕES (feito em 17/10/2026, decisão do dono): as caixas separadas "Declaro que tenho 18 anos ou mais." e "Declaro que sou
+// médico(a)…" saíram. A maioridade vai na PRÓPRIA caixa do aceite (ACEITE_TEXTO) e segue nos metadados do cadastro como
+// declares_adult = "true"; a de médico não é mais pedida. O banco aceita assim desde a migração …13661_aceite_com_maioridade (o
+// Tutor N3/N4 passa a olhar só a maioridade). Por isso esta publicação precisa da 13661 aplicada ANTES do site.
 
 /**
  * Criar conta (17/10/2026): no MESMO padrão do login e das telas de recuperar senha e "Confirme seu e-mail" (moldura de
@@ -85,14 +78,12 @@ function Signup({ go }) {
   const [saved, setSaved] = React.useState({ name: "", email: "" });
   const [loading, setLoading] = React.useState(false);
   const [accepted, setAccepted] = React.useState(false);
-  const [adult, setAdult] = React.useState(false);
-  const [physician, setPhysician] = React.useState(false);
   const [doc, setDoc] = React.useState(null);
   const closeDoc = React.useCallback(() => setDoc(null), []);
   const messageRef = React.useRef(null);
 
   const focusFirst = (next) => {
-    const first = ["name", "email", "pw", "pw2", "accept", "decl"].find((k) => next[k]);
+    const first = ["name", "email", "pw", "pw2", "accept"].find((k) => next[k]);
     if (first) document.getElementById(FIELD_IDS[first])?.focus();
   };
 
@@ -108,7 +99,6 @@ function Signup({ go }) {
     if (password.length < PASSWORD_MIN_LENGTH) next.pw = `Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`;
     else if (password !== field("pw2")) next.pw2 = "As senhas não são iguais.";
     if (!accepted) next.accept = ACCEPT_ERROR;
-    if (PEDE_DECLARACOES && !(adult && physician)) next.decl = DECLARACOES_ERRO;
     setErrors(next);
     setError(null);
     if (Object.keys(next).length) {
@@ -122,7 +112,8 @@ function Signup({ go }) {
       const result = await backend.signUp(name, email, password, {
         termsVersion: TERMO_VERSAO,
         userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
-        ...(PEDE_DECLARACOES ? { declaresAdult: adult, declaresPhysician: physician } : {}),
+        // a caixa do aceite já traz a declaração de maioridade
+        declaresAdult: true,
       });
       setSaved({ name, email });
       if (result?.needsEmailConfirmation) {
@@ -144,7 +135,7 @@ function Signup({ go }) {
     }
     setLoading(false);
   };
-  // volta ao formulário com nome, e-mail e aceites preenchidos; o foco vai para o e-mail
+  // volta ao formulário com nome, e-mail e o aceite marcado; o foco vai para o e-mail
   const changeEmail = () => {
     setConfirmEmail(null);
     setTimeout(() => {
@@ -155,15 +146,16 @@ function Signup({ go }) {
   };
   const google = async () => {
     setError(null);
-    if (!accepted || (PEDE_DECLARACOES && !(adult && physician))) {
-      const next = { ...(!accepted ? { accept: ACCEPT_ERROR } : {}), ...(PEDE_DECLARACOES && !(adult && physician) ? { decl: DECLARACOES_ERRO } : {}) };
+    if (!accepted) {
+      const next = { accept: ACCEPT_ERROR };
       setErrors(next);
       focusFirst(next);
       return;
     }
     setErrors({});
     try {
-      rememberGoogleAcceptance(TERMO_VERSAO, PEDE_DECLARACOES ? { adult, physician } : undefined);
+      // guarda o aceite (com a maioridade, que está na mesma caixa) para gravar na volta do Google
+      rememberGoogleAcceptance(TERMO_VERSAO, { adult: true });
       await backend.signInWithGoogle();
     } catch (err) {
       setError(messageFor(err));
@@ -192,46 +184,22 @@ function Signup({ go }) {
         <RecoveryField id={FIELD_IDS.pw} name="pw" label="Senha" type="password" icon="lock" hint={`Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`} autoComplete="new-password" error={errors.pw} />
         <RecoveryField id={FIELD_IDS.pw2} name="pw2" label="Conferir senha" type="password" icon="lock" autoComplete="new-password" error={errors.pw2} />
 
-        <div className={`cc-consent${errors.accept || errors.decl ? " is-error" : ""}`}>
+        <div className={`cc-consent${errors.accept ? " is-error" : ""}`}>
           <div className="cc-item">
             <label className="cc-check">
               <input
                 id={FIELD_IDS.accept}
-                aria-label={ACCEPT_TEXT}
+                aria-label={ACEITE_TEXTO}
                 type="checkbox"
                 checked={accepted}
                 onChange={(e) => setAccepted(e.target.checked)}
                 aria-invalid={errors.accept ? "true" : "false"}
                 aria-describedby={errors.accept ? "secure-accept-error" : undefined}
               />
-              <span>
-                Declaro que li e compreendi os{" "}
-                <button type="button" className="cc-inline-link" onClick={() => setDoc("termos")}>Termos de Aceite e Uso</button>
-                {" "}e a{" "}
-                <button type="button" className="cc-inline-link" onClick={() => setDoc("privacidade")}>Política de Privacidade</button>
-                {" "}do StaziaMed Revalida e concordo com suas condições.
-              </span>
+              <AceiteFrase onDoc={setDoc} linkClassName="cc-inline-link" />
             </label>
             {errors.accept ? <FieldError id="secure-accept-error">{errors.accept}</FieldError> : null}
           </div>
-          {/* DECLARAÇÕES (contrato 3.0): sai quando o contrato 3.0 estiver no ar (ver PONTO DE REMOÇÃO acima) */}
-          {PEDE_DECLARACOES && (
-            <div className="cc-item cc-decl" role="group" aria-label="Declarações">
-              <label className="cc-check">
-                <input id="secure-adulto" aria-label={DECLARACAO_ADULTO} type="checkbox" checked={adult}
-                  onChange={(e) => setAdult(e.target.checked)} aria-invalid={errors.decl && !adult ? "true" : "false"}
-                  aria-describedby={errors.decl ? "secure-decl-error" : undefined} />
-                <span>{DECLARACAO_ADULTO}</span>
-              </label>
-              <label className="cc-check">
-                <input id="secure-medico" aria-label={DECLARACAO_MEDICO} type="checkbox" checked={physician}
-                  onChange={(e) => setPhysician(e.target.checked)} aria-invalid={errors.decl && !physician ? "true" : "false"}
-                  aria-describedby={errors.decl ? "secure-decl-error" : undefined} />
-                <span>{DECLARACAO_MEDICO}</span>
-              </label>
-              {errors.decl ? <FieldError id="secure-decl-error">{errors.decl}</FieldError> : null}
-            </div>
-          )}
         </div>
 
         <RecoveryButton type="submit" loading={loading} loadingText="CRIANDO CONTA…">CRIAR CONTA</RecoveryButton>

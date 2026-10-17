@@ -26,9 +26,8 @@ import { AuthFlow } from "../novo/app/AuthScreens.jsx";
 import { readAuthLink } from "../novo/app/auth/authLink.js";
 import { BackendError, confirmRedirect } from "../novo/data/backend";
 import { createSupabaseBackend } from "../novo/data/supabaseBackend";
-import { DECLARACAO_ADULTO, DECLARACAO_MEDICO } from "../novo/app/legal/documentos.js";
 
-const FRASE = "Declaro que li e compreendi os Termos de Aceite e Uso e a Política de Privacidade do StaziaMed Revalida e concordo com suas condições.";
+const FRASE = "Li e aceito os Termos de Uso e a Política de Privacidade e declaro ter 18 anos ou mais.";
 const type = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
 function cadastrar(email = "ana@teste.dev") {
@@ -38,7 +37,7 @@ function cadastrar(email = "ana@teste.dev") {
   type("E-mail", email);
   type("Senha", "senha-segura");
   type("Conferir senha", "senha-segura");
-  [FRASE, DECLARACAO_ADULTO, DECLARACAO_MEDICO].forEach((l) => fireEvent.click(screen.getByLabelText(l)));
+  fireEvent.click(screen.getByLabelText(FRASE));
   fireEvent.click(screen.getByRole("button", { name: /^CRIAR CONTA/ }));
 }
 
@@ -92,7 +91,7 @@ describe("Tela Confirme seu e-mail depois do cadastro", () => {
     const reenviar = screen.getByRole("button", { name: /REENVIAR EM 60 s/ }) as HTMLButtonElement;
     expect(reenviar.disabled).toBe(true);
     expect(screen.queryByLabelText("Senha")).toBeNull();
-    expect(backend.signUp.mock.calls[0][3]).toMatchObject({ declaresAdult: true, declaresPhysician: true });
+    expect(backend.signUp.mock.calls[0][3]).toMatchObject({ declaresAdult: true });
     expect(backend.signUp.mock.calls[0][3]).not.toHaveProperty("phone");
   });
 

@@ -225,11 +225,11 @@ describe("Termo — função de aceitar", () => {
     }
     // documento que não existe
     expect(await recusa(rpc(id, "app_accept_terms", { p_document: "outro", p_version: "2.0" }))).toEqual({ message: "Documento inválido.", code: "22023" });
-    // Termo 2.0: a versão velha (1.0) é recusada e, sem as duas declarações (18+ e médico), o aceite também
+    // Termo 2.0: a versão velha (1.0) é recusada e, sem a declaração de maioridade, o aceite também (desde a …13661 a de médico não é exigida)
     expect(await recusa(rpc(id, "app_accept_terms_declared", { ...SIM, p_document: "termo_uso", p_version: "1.0" }))).toEqual({ message: VERSAO_VELHA, code: "22023" });
-    const SEM_DECLARACAO = { message: "Confirme que você tem 18 anos ou mais e que é médico(a).", code: "22023" };
+    const SEM_DECLARACAO = { message: "Confirme que você tem 18 anos ou mais.", code: "22023" };
     expect(await recusa(rpc(id, "app_accept_terms", { p_document: "termo_uso", p_version: "2.0" }))).toEqual(SEM_DECLARACAO);
-    expect(await recusa(rpc(id, "app_accept_terms_declared", { p_document: "termo_uso", p_version: "2.0", p_adult: true, p_physician: false }))).toEqual(SEM_DECLARACAO);
+    expect(await recusa(rpc(id, "app_accept_terms_declared", { p_document: "termo_uso", p_version: "2.0", p_adult: false, p_physician: true }))).toEqual(SEM_DECLARACAO);
     // nenhuma recusa deixou rastro: nem aceite, nem telefone
     expect(await acceptances(id)).toHaveLength(0);
     expect((await profile(id)).phone).toBeNull();
