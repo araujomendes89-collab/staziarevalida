@@ -1,5 +1,11 @@
-/* Página inicial sem JavaScript: mostra todo o conteúdo das abas e o menu do celular (o texto inteiro fica legível). */
+/* Página inicial sem JavaScript: mostra todo o conteúdo das abas e o menu do celular (o texto inteiro fica legível).
+   A linha do ciclo já sai toda acesa e parada (inicio.css, sem a classe .js). */
 [role="tabpanel"][hidden] { display: block !important; margin-top: 16px; }
-.ciclo__conteudo[role="tabpanel"][hidden] { display: flex !important; }
 [role="tablist"] { display: none !important; }
-@media (max-width: 1080px) { .topo__painel[hidden] { display: block !important; border-top: 1px solid #DCE1E8; } .topo__menu { display: none !important; } }
+@media (max-width: 1180px) {
+  /* o menu fica aberto dentro do topo; por isso o topo deixa de grudar no alto */
+  .topo { position: relative !important; margin-bottom: 0 !important; background: #081426 !important; }
+  .abertura { padding-top: 0 !important; }
+  .topo__painel[hidden] { display: block !important; border-top: 1px solid rgba(255, 255, 255, .08); }
+  .topo__menu { display: none !important; }
+}

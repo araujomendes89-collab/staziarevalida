@@ -2,6 +2,8 @@
 <!--
   Página inicial pública do StaziaMed Revalida (app.staziamed.com.br/).
   Desenho do dono: "Pagina inicial/Home.dc.html" (17/10/2026), adaptado pelo plano PLANO-E-TEXTOS.md.
+  Estilo do site do grupo (stazia.com.br), aprovado pelo dono em 17/10: topo com desfoque e barra de rolagem, rótulos
+  monoespaçados, fundo escuro com pontos, título com cursor, linha de metrô no ciclo, seções alternando escuro e claro, Manrope.
   O app antigo (src/main.tsx) saiu do build: a entrada dele foi guardada em app-antigo.html (só para o servidor local).
 
   data-liberado: textos que só podem ir ao ar quando a coisa estiver ligada no app (ver docs/pagina-inicial.md).
@@ -19,7 +21,7 @@
     <meta name="description" content="Questões oficiais do Revalida INEP e do ENAMED, simulados no ritmo da prova, flashcards e Tutor IA que explica seus erros. Teste grátis de 7 dias, sem cartão." />
     <link rel="canonical" href="https://app.staziamed.com.br/" />
     <meta name="robots" content="index, follow" />
-    <meta name="theme-color" content="#052A5A" />
+    <meta name="theme-color" content="#081426" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="pt_BR" />
@@ -37,7 +39,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/brand/favicon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/brand/apple-touch-icon.png" />
     <link rel="manifest" href="/brand/site.webmanifest" />
-    <link rel="preload" href="/src/inicio/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/src/inicio/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/src/inicio/inicio.css" />
     <noscript><link rel="stylesheet" href="/inicio-sem-js.css" /></noscript>
     <script type="application/ld+json">
@@ -75,13 +77,20 @@
     </script>
   </head>
   <body id="pagina-inicial">
+    <svg class="sprite" aria-hidden="true" focusable="false">
+      <symbol id="icone-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+      <symbol id="icone-seta" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+    </svg>
     <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
-    <!-- Topo -->
-    <header class="topo">
+    <!-- Topo: semitransparente com desfoque; ganha fundo ao rolar; barra fina mostra quanto da página já foi lido -->
+    <header class="topo" id="topo">
       <div class="caixa topo__linha">
         <a class="topo__logo" href="/" aria-label="StaziaMed Revalida, início">
-          <img src="/brand/horizontal-320w.png" srcset="/brand/horizontal-320w.png 320w, /brand/horizontal-480w.png 480w" sizes="168px" width="168" height="52" alt="StaziaMed Revalida" />
+          <picture>
+            <source media="(max-width: 419px)" srcset="/brand/simbolo-escuro-64w.png 64w, /brand/simbolo-escuro-96w.png 96w" sizes="26px" width="26" height="38" />
+            <img src="/brand/horizontal-escuro-320w.png" srcset="/brand/horizontal-escuro-320w.png 320w, /brand/horizontal-escuro-480w.png 480w" sizes="136px" width="136" height="42" alt="StaziaMed Revalida" />
+          </picture>
         </a>
         <nav class="topo__nav" aria-label="Seções da página">
           <a class="topo__link" href="#ferramentas">Ferramentas</a>
@@ -111,15 +120,16 @@
           </ul>
         </nav>
       </div>
+      <span class="topo__progresso" aria-hidden="true"></span>
     </header>
 
     <main id="conteudo" tabindex="-1">
-      <!-- Abertura -->
-      <section class="abertura escuro" aria-labelledby="titulo-abertura">
+      <!-- Abertura (escura, com pontos e brilho atrás da lontra) -->
+      <section class="abertura escuro pontos" aria-labelledby="titulo-abertura">
         <div class="caixa abertura__caixa">
           <div class="abertura__texto">
-            <span class="abertura__selo">Plataforma StaziaMed Revalida</span>
-            <h1 class="h1" id="titulo-abertura">Estude, treine e dispute. Tudo no mesmo lugar.</h1>
+            <p class="rotulo">Plataforma StaziaMed Revalida</p>
+            <h1 class="h1" id="titulo-abertura">Estude, treine e dispute. <span class="h1__destaque"><span data-digita>Tudo no mesmo lugar</span><span class="cursor" aria-hidden="true"></span></span></h1>
             <p class="abertura__p">Questões oficiais do Revalida INEP e do ENAMED, simulados no ritmo da prova, flashcards com revisão espaçada e um Tutor IA que explica seus erros. Cada ferramenta alimenta a próxima, e a Stazia Arena transforma seu esforço em XP e Coins.</p>
             <div class="abertura__botoes">
               <a class="botao botao--branco" href="/novo/criar-conta">Começar teste grátis de 7 dias</a>
@@ -134,22 +144,22 @@
               <img src="/src/inicio/img/lontra-bracos-cruzados-320.webp" width="320" height="526" alt="Lontra, mascote da StaziaMed, de braços cruzados" fetchpriority="high" decoding="async" />
             </picture>
             <div class="flutua flutua--plano">
-              <span class="flutua__rotulo">Hoje no seu plano</span>
+              <span class="etiqueta">Hoje no seu plano</span>
               <p class="flutua__linha"><span>Plano de Hoje</span><span>pronto</span></p>
               <p class="flutua__linha"><span>Flashcards para revisar</span><span>hoje</span></p>
               <p class="flutua__linha"><span>Tutor IA</span><span>texto e voz</span></p>
             </div>
             <div class="flutua flutua--arena">
-              <span class="flutua__rotulo">Stazia Arena</span>
+              <span class="etiqueta">Stazia Arena</span>
               <span class="flutua__frase">Estude, ganhe XP e Coins, suba de liga.</span>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Faixa de 4 destaques -->
-      <section class="caixa faixa" aria-label="Destaques">
-        <ul class="faixa__lista">
+      <!-- Faixa de 4 destaques (clara) -->
+      <section class="faixa claro" aria-label="Destaques">
+        <ul class="caixa faixa__lista">
           <li class="faixa__item"><span class="faixa__valor">Revalida + ENAMED</span><span class="faixa__texto">Questões oficiais das duas provas, com comentário</span></li>
           <li class="faixa__item"><span class="faixa__valor">Simulados</span><span class="faixa__texto">Quando quiser, no ritmo da prova</span></li>
           <li class="faixa__item"><span class="faixa__valor">Texto e voz</span><span class="faixa__texto">Tutor IA que explica seus erros</span></li>
@@ -157,135 +167,146 @@
         </ul>
       </section>
 
-      <!-- Ferramentas por fase -->
-      <section class="caixa secao" id="ferramentas" aria-labelledby="titulo-ferramentas">
-        <div class="cabeca">
-          <span class="rotulo">Ferramentas</span>
-          <h2 class="h2" id="titulo-ferramentas">Escolha sua fase e veja o que abre</h2>
-          <p class="apoio">Comece pela 1ª fase. A 2ª fase, com as estações práticas, está em construção.</p>
-        </div>
-        <div class="pilulas" role="tablist" aria-label="Fases">
-          <button class="pilula" type="button" role="tab" id="aba-fase-1" aria-controls="painel-fase-1" aria-selected="true">1ª fase<span class="rotulo-longo"> · Teoria (PRO)</span></button>
-          <button class="pilula" type="button" role="tab" id="aba-fase-2" aria-controls="painel-fase-2" aria-selected="false" tabindex="-1">2ª fase<span class="rotulo-longo"> · Prática</span> <span class="selo-embreve">Em breve</span></button>
-          <button class="pilula" type="button" role="tab" id="aba-fase-elite" aria-controls="painel-fase-elite" aria-selected="false" tabindex="-1">Elite<span class="rotulo-longo"> · as duas fases</span> <span class="selo-embreve">Em breve</span></button>
-        </div>
-        <div class="painel" id="painel-fase-1" role="tabpanel" aria-labelledby="aba-fase-1" tabindex="0">
-          <ul class="ferramentas__grade">
-            <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">01</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Questões oficiais</h3><p class="ferramenta__d">Provas do Revalida INEP (2020 a 2026/2) e do ENAMED 2025, com gabarito e comentário das alternativas.</p></div></li>
-            <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">02</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Questões Inéditas StaziaMed</h3><p class="ferramenta__d">Questões novas no estilo da prova, liberadas conforme o plano.</p></div></li>
-            <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">03</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Simulados no formato da prova</h3><p class="ferramenta__d">Monte o seu: no ritmo do Revalida INEP (100 questões em 5 h) ou por área, com cronômetro e correção clássica ou TRI (estimativa).</p></div></li>
-            <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">04</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Temas Essenciais</h3><p class="ferramenta__d">Os temas que mais caem, escolhidos a partir das provas oficiais. As aulas são publicadas aos poucos, depois de revisão médica.</p></div></li>
-            <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">05</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Flashcards e mapas mentais</h3><p class="ferramenta__d">Flashcards com revisão espaçada e mapas mentais dos temas que já têm aula.</p></div></li>
-            <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">06</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Trilha e Plano de Hoje</h3><p class="ferramenta__d">Um caminho guiado e as revisões nos momentos certos.</p></div></li>
-            <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">07</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Diretrizes e Atualizações</h3><p class="ferramenta__d">Mudanças de protocolo que caem na prova, conferidas por médico antes de chegar a você.</p></div></li>
-            <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">08</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Desempenho e Caderno de Erros</h3><p class="ferramenta__d">Veja por área onde você mais erra e refaça as questões que errou.</p></div></li>
-            <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">09</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Tutor IA e Stazia Arena</h3><p class="ferramenta__d">Tire dúvidas por texto ou por voz, e ganhe XP, Coins e medalhas enquanto estuda.</p></div></li>
-          </ul>
-        </div>
-        <div class="painel" id="painel-fase-2" role="tabpanel" aria-labelledby="aba-fase-2" tabindex="0" hidden>
-          <div class="aviso-bloco">
-            <h3 class="aviso-bloco__t">2ª fase · em construção <span class="selo-embreve">Em breve</span></h3>
-            <p class="aviso-bloco__p">Estamos preparando estações baseadas nas provas do Inep, com checklist (PEP) revisado por médicos. Avisaremos quando abrir.</p>
+      <!-- Ferramentas por fase (clara suave) -->
+      <section class="secao suave" id="ferramentas" aria-labelledby="titulo-ferramentas">
+        <div class="caixa secao__caixa">
+          <div class="cabeca">
+            <p class="rotulo">Ferramentas</p>
+            <h2 class="h2" id="titulo-ferramentas">Escolha sua fase e veja o que abre</h2>
+            <p class="apoio">Comece pela 1ª fase. A 2ª fase, com as estações práticas, está em construção.</p>
           </div>
-        </div>
-        <div class="painel" id="painel-fase-elite" role="tabpanel" aria-labelledby="aba-fase-elite" tabindex="0" hidden>
-          <div class="aviso-bloco">
-            <h3 class="aviso-bloco__t">Elite · em breve <span class="selo-embreve">Em breve</span></h3>
-            <p class="aviso-bloco__p">O Elite vai reunir a 1ª e a 2ª fase no mesmo acesso. Ele abre junto com a 2ª fase.</p>
+          <div class="pilulas" role="tablist" aria-label="Fases">
+            <button class="pilula" type="button" role="tab" id="aba-fase-1" aria-controls="painel-fase-1" aria-selected="true">1ª fase<span class="rotulo-longo"> · Teoria (PRO)</span></button>
+            <button class="pilula" type="button" role="tab" id="aba-fase-2" aria-controls="painel-fase-2" aria-selected="false" tabindex="-1">2ª fase<span class="rotulo-longo"> · Prática</span> <span class="selo-embreve">Em breve</span></button>
+            <button class="pilula" type="button" role="tab" id="aba-fase-elite" aria-controls="painel-fase-elite" aria-selected="false" tabindex="-1">Elite<span class="rotulo-longo"> · as duas fases</span> <span class="selo-embreve">Em breve</span></button>
+          </div>
+          <div class="painel" id="painel-fase-1" role="tabpanel" aria-labelledby="aba-fase-1" tabindex="0">
+            <ul class="ferramentas__grade">
+              <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">01</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Questões oficiais</h3><p class="ferramenta__d">Provas do Revalida INEP (2020 a 2026/2) e do ENAMED 2025, com gabarito e comentário das alternativas.</p></div></li>
+              <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">02</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Questões Inéditas StaziaMed</h3><p class="ferramenta__d">Questões novas no estilo da prova, liberadas conforme o plano.</p></div></li>
+              <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">03</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Simulados no formato da prova</h3><p class="ferramenta__d">Monte o seu: no ritmo do Revalida INEP (100 questões em 5 h) ou por área, com cronômetro e correção clássica ou TRI (estimativa).</p></div></li>
+              <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">04</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Temas Essenciais</h3><p class="ferramenta__d">Os temas que mais caem, escolhidos a partir das provas oficiais. As aulas são publicadas aos poucos, depois de revisão médica.</p></div></li>
+              <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">05</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Flashcards e mapas mentais</h3><p class="ferramenta__d">Flashcards com revisão espaçada e mapas mentais dos temas que já têm aula.</p></div></li>
+              <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">06</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Trilha e Plano de Hoje</h3><p class="ferramenta__d">Um caminho guiado e as revisões nos momentos certos.</p></div></li>
+              <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">07</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Diretrizes e Atualizações</h3><p class="ferramenta__d">Mudanças de protocolo que caem na prova, conferidas por médico antes de chegar a você.</p></div></li>
+              <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">08</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Desempenho e Caderno de Erros</h3><p class="ferramenta__d">Veja por área onde você mais erra e refaça as questões que errou.</p></div></li>
+              <li class="ferramenta"><span class="ferramenta__n" aria-hidden="true">09</span><div class="ferramenta__corpo"><h3 class="ferramenta__t">Tutor IA e Stazia Arena</h3><p class="ferramenta__d">Tire dúvidas por texto ou por voz, e ganhe XP, Coins e medalhas enquanto estuda.</p></div></li>
+            </ul>
+          </div>
+          <div class="painel" id="painel-fase-2" role="tabpanel" aria-labelledby="aba-fase-2" tabindex="0" hidden>
+            <div class="aviso-bloco">
+              <h3 class="aviso-bloco__t">2ª fase · em construção <span class="selo-embreve">Em breve</span></h3>
+              <p class="aviso-bloco__p">Estamos preparando estações baseadas nas provas do Inep, com checklist (PEP) revisado por médicos. Avisaremos quando abrir.</p>
+            </div>
+          </div>
+          <div class="painel" id="painel-fase-elite" role="tabpanel" aria-labelledby="aba-fase-elite" tabindex="0" hidden>
+            <div class="aviso-bloco">
+              <h3 class="aviso-bloco__t">Elite · em breve <span class="selo-embreve">Em breve</span></h3>
+              <p class="aviso-bloco__p">O Elite vai reunir a 1ª e a 2ª fase no mesmo acesso. Ele abre junto com a 2ª fase.</p>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- Seu ciclo -->
-      <section class="caixa secao" id="ciclo" aria-labelledby="titulo-ciclo">
-        <div class="cabeca">
-          <span class="rotulo">Seu ciclo de estudo</span>
-          <h2 class="h2" id="titulo-ciclo">Um ciclo, cinco passos, tudo conectado</h2>
-          <p class="apoio">Os erros do simulado viram revisão, e a revisão volta para o seu próximo treino. Toque em cada passo.</p>
-        </div>
-        <div class="ciclo__painel">
-          <div class="pilulas" role="tablist" aria-label="Passos do ciclo">
-            <button class="pilula" type="button" role="tab" id="aba-passo-1" aria-controls="painel-passo-1" aria-selected="true"><span class="pilula__n" aria-hidden="true">1</span>Estude</button>
-            <button class="pilula" type="button" role="tab" id="aba-passo-2" aria-controls="painel-passo-2" aria-selected="false" tabindex="-1"><span class="pilula__n" aria-hidden="true">2</span>Treine</button>
-            <button class="pilula" type="button" role="tab" id="aba-passo-3" aria-controls="painel-passo-3" aria-selected="false" tabindex="-1"><span class="pilula__n" aria-hidden="true">3</span>Simule</button>
-            <button class="pilula" type="button" role="tab" id="aba-passo-4" aria-controls="painel-passo-4" aria-selected="false" tabindex="-1"><span class="pilula__n" aria-hidden="true">4</span>Corrija</button>
-            <button class="pilula" type="button" role="tab" id="aba-passo-5" aria-controls="painel-passo-5" aria-selected="false" tabindex="-1"><span class="pilula__n" aria-hidden="true">5</span>Revise</button>
+      <!-- Seu ciclo (escura): linha de metrô que acende conforme a pessoa rola ou toca num passo -->
+      <section class="secao escuro pontos" id="ciclo" aria-labelledby="titulo-ciclo">
+        <div class="caixa secao__caixa">
+          <div class="cabeca">
+            <p class="rotulo">Seu ciclo de estudo</p>
+            <h2 class="h2" id="titulo-ciclo">Um ciclo, cinco passos, tudo conectado</h2>
+            <p class="apoio">Os erros do simulado viram revisão, e a revisão volta para o seu próximo treino. Role a página ou toque em cada passo.</p>
           </div>
-
-          <div class="painel ciclo__conteudo" id="painel-passo-1" role="tabpanel" aria-labelledby="aba-passo-1" tabindex="0">
-            <div class="ciclo__texto">
-              <h3 class="ciclo__t">Estude com um caminho guiado</h3>
-              <p class="ciclo__d">A Trilha e o Plano de Hoje organizam seus estudos. Temas Essenciais, mapas mentais e flashcards ajudam a fixar. Tudo fica registrado no seu histórico.</p>
-            </div>
-            <ul class="ciclo__lista">
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Trilha e Plano de Hoje</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Temas Essenciais com aulas revisadas</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Mapas mentais e flashcards</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Diretrizes e Atualizações</span></li>
-            </ul>
-          </div>
-
-          <div class="painel ciclo__conteudo" id="painel-passo-2" role="tabpanel" aria-labelledby="aba-passo-2" tabindex="0" hidden>
-            <div class="ciclo__texto">
-              <h3 class="ciclo__t">Treine com questões comentadas</h3>
-              <p class="ciclo__d">Questões oficiais e inéditas, com comentário e a ajuda do Tutor IA quando você erra.</p>
-              <p class="ciclo__nota">Estações práticas e treino em dupla: em breve, com a 2ª fase.</p>
-            </div>
-            <ul class="ciclo__lista">
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Questões oficiais e inéditas</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Filtros por área, tema e prova</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Tutor IA explica a questão</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Caderno de Erros</span></li>
-            </ul>
-          </div>
-
-          <div class="painel ciclo__conteudo" id="painel-passo-3" role="tabpanel" aria-labelledby="aba-passo-3" tabindex="0" hidden>
-            <div class="ciclo__texto">
-              <h3 class="ciclo__t">Simule a prova quando quiser</h3>
-              <p class="ciclo__d">Monte um simulado no ritmo do Revalida INEP (100 questões em 5 h) ou do ENAMED, com cronômetro e correção clássica ou TRI.</p>
-            </div>
-            <ul class="ciclo__lista">
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Simulado no ritmo da prova</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Simulado por área</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Correção TRI (estimativa)</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Desempenho por área</span></li>
-            </ul>
-          </div>
-
-          <div class="painel ciclo__conteudo" id="painel-passo-4" role="tabpanel" aria-labelledby="aba-passo-4" tabindex="0" hidden>
-            <div class="ciclo__texto">
-              <h3 class="ciclo__t">Corrija com explicação</h3>
-              <p class="ciclo__d">As questões trazem gabarito comentado, e o Tutor IA explica onde o seu raciocínio se desviou.</p>
-            </div>
-            <ul class="ciclo__lista">
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Gabarito comentado</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Tutor IA explica o erro</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Caderno de Erros</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Fontes ligadas à questão</span></li>
-            </ul>
-          </div>
-
-          <div class="painel ciclo__conteudo" id="painel-passo-5" role="tabpanel" aria-labelledby="aba-passo-5" tabindex="0" hidden>
-            <div class="ciclo__texto">
-              <h3 class="ciclo__t">Revise onde você mais erra</h3>
-              <p class="ciclo__d">O sistema identifica pontos fracos por área, e o Tutor IA explica os erros e recomenda revisões. O ciclo recomeça mais forte.</p>
-            </div>
-            <ul class="ciclo__lista">
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Desempenho por área e pontos fracos</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Revisão espaçada</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>Tutor IA explica seus erros</span></li>
-              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A6FD8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" /></svg><span>XP e Coins na Stazia Arena</span></li>
-            </ul>
+          <div class="metro" data-metro>
+            <div class="metro__trilho" aria-hidden="true"><span class="metro__aceso"></span><span class="metro__bolinha"></span></div>
+            <ol class="metro__paradas" aria-label="Passos do ciclo">
+              <li class="metro__parada" id="passo-1">
+                <button class="metro__no" type="button"><span class="metro__ponto" aria-hidden="true"><span class="metro__halo"></span></span><span class="metro__n" aria-hidden="true">01</span><span class="metro__nome"><span class="so-leitor">Passo 1 de 5: </span>Estude</span></button>
+                <div class="metro__corpo">
+                  <div class="metro__texto">
+                    <h3 class="metro__t">Estude com um caminho guiado</h3>
+                    <p class="metro__d">A Trilha e o Plano de Hoje organizam seus estudos. Temas Essenciais, mapas mentais e flashcards ajudam a fixar. Tudo fica registrado no seu histórico.</p>
+                  </div>
+                  <ul class="metro__lista">
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Trilha e Plano de Hoje</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Temas Essenciais com aulas revisadas</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Mapas mentais e flashcards</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Diretrizes e Atualizações</span></li>
+                  </ul>
+                </div>
+              </li>
+              <li class="metro__parada" id="passo-2">
+                <button class="metro__no" type="button"><span class="metro__ponto" aria-hidden="true"><span class="metro__halo"></span></span><span class="metro__n" aria-hidden="true">02</span><span class="metro__nome"><span class="so-leitor">Passo 2 de 5: </span>Treine</span></button>
+                <div class="metro__corpo">
+                  <div class="metro__texto">
+                    <h3 class="metro__t">Treine com questões comentadas</h3>
+                    <p class="metro__d">Questões oficiais e inéditas, com comentário e a ajuda do Tutor IA quando você erra.</p>
+                    <p class="metro__nota">Estações práticas e treino em dupla: em breve, com a 2ª fase.</p>
+                  </div>
+                  <ul class="metro__lista">
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Questões oficiais e inéditas</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Filtros por área, tema e prova</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Tutor IA explica a questão</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Caderno de Erros</span></li>
+                  </ul>
+                </div>
+              </li>
+              <li class="metro__parada" id="passo-3">
+                <button class="metro__no" type="button"><span class="metro__ponto" aria-hidden="true"><span class="metro__halo"></span></span><span class="metro__n" aria-hidden="true">03</span><span class="metro__nome"><span class="so-leitor">Passo 3 de 5: </span>Simule</span></button>
+                <div class="metro__corpo">
+                  <div class="metro__texto">
+                    <h3 class="metro__t">Simule a prova quando quiser</h3>
+                    <p class="metro__d">Monte um simulado no ritmo do Revalida INEP (100 questões em 5 h) ou do ENAMED, com cronômetro e correção clássica ou TRI.</p>
+                  </div>
+                  <ul class="metro__lista">
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Simulado no ritmo da prova</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Simulado por área</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Correção TRI (estimativa)</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Desempenho por área</span></li>
+                  </ul>
+                </div>
+              </li>
+              <li class="metro__parada" id="passo-4">
+                <button class="metro__no" type="button"><span class="metro__ponto" aria-hidden="true"><span class="metro__halo"></span></span><span class="metro__n" aria-hidden="true">04</span><span class="metro__nome"><span class="so-leitor">Passo 4 de 5: </span>Corrija</span></button>
+                <div class="metro__corpo">
+                  <div class="metro__texto">
+                    <h3 class="metro__t">Corrija com explicação</h3>
+                    <p class="metro__d">As questões trazem gabarito comentado, e o Tutor IA explica onde o seu raciocínio se desviou.</p>
+                  </div>
+                  <ul class="metro__lista">
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Gabarito comentado</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Tutor IA explica o erro</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Caderno de Erros</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Fontes ligadas à questão</span></li>
+                  </ul>
+                </div>
+              </li>
+              <li class="metro__parada" id="passo-5">
+                <button class="metro__no" type="button"><span class="metro__ponto" aria-hidden="true"><span class="metro__halo"></span></span><span class="metro__n" aria-hidden="true">05</span><span class="metro__nome"><span class="so-leitor">Passo 5 de 5: </span>Revise</span></button>
+                <div class="metro__corpo">
+                  <div class="metro__texto">
+                    <h3 class="metro__t">Revise onde você mais erra</h3>
+                    <p class="metro__d">O sistema identifica pontos fracos por área, e o Tutor IA explica os erros e recomenda revisões. O ciclo recomeça mais forte.</p>
+                  </div>
+                  <ul class="metro__lista">
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Desempenho por área e pontos fracos</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Revisão espaçada</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>Tutor IA explica seus erros</span></li>
+                    <li><svg aria-hidden="true" focusable="false"><use href="#icone-ok" /></svg><span>XP e Coins na Stazia Arena</span></li>
+                  </ul>
+                </div>
+              </li>
+            </ol>
+            <p class="so-leitor" id="ciclo-anuncio" aria-live="polite"></p>
           </div>
         </div>
       </section>
 
-      <!-- Tutor IA -->
-      <section class="caixa secao" id="tutor" aria-labelledby="titulo-tutor">
-        <div class="tutor">
+      <!-- Tutor IA (clara) -->
+      <section class="secao claro" id="tutor" aria-labelledby="titulo-tutor">
+        <div class="caixa tutor">
           <div class="tutor__info">
             <div class="cabeca">
-              <span class="rotulo">Tutor IA</span>
+              <p class="rotulo">Tutor IA</p>
               <h2 class="h2" id="titulo-tutor">Um tutor que explica seus erros</h2>
               <p class="apoio"><span data-quando="tutor">Escolha quem te acompanha: o Stazi ou a Stazia. </span>Pergunte por texto ou por voz, receba a explicação e uma sugestão de revisão.<span data-quando="carteira"> Veja a franquia de cada plano.</span></p>
             </div>
@@ -324,8 +345,8 @@
             <p class="tutor__nota" data-quando="carteira">A conversa por voz usa os minutos de voz do seu plano e não gasta créditos. Os créditos valem para o Tutor por texto e para a ajuda dentro da questão. Cada pergunta gasta conforme o tamanho da resposta, e o limite do dia renova à meia-noite (horário de Brasília).</p>
           </div>
 
-          <div class="conversa escuro" aria-label="Exemplo de conversa com o Tutor IA">
-            <span class="conversa__selo">Exemplo ilustrativo</span>
+          <div class="conversa escuro pontos" aria-label="Exemplo de conversa com o Tutor IA">
+            <span class="etiqueta">Exemplo ilustrativo</span>
             <p class="bolha bolha--aluno"><span class="so-leitor">Aluno: </span>Errei esta questão do meu simulado. Pode me explicar o raciocínio?</p>
             <p class="bolha bolha--tutor"><span class="so-leitor">Tutor IA: </span>Claro. Vou mostrar onde o raciocínio se desviou, explicar a alternativa correta e indicar uma revisão para fixar esse ponto.</p>
             <ul class="conversa__pilulas" aria-label="Opções do Tutor">
@@ -337,17 +358,17 @@
         </div>
       </section>
 
-      <!-- Stazia Arena -->
-      <section class="arena escuro" id="arena" aria-labelledby="titulo-arena">
+      <!-- Stazia Arena (escura) -->
+      <section class="secao escuro pontos arena" id="arena" aria-labelledby="titulo-arena">
         <div class="caixa arena__caixa">
           <div class="arena__info">
-            <span class="rotulo">Stazia Arena</span>
+            <p class="rotulo">Stazia Arena</p>
             <h2 class="h2" id="titulo-arena">Estudar rende XP, Coins e medalhas</h2>
             <p class="apoio">Ranking da semana, ligas e medalhas, em todos os planos, inclusive no teste. Use seus Coins na loja do app. Coins são bônus e não têm valor em dinheiro. Novas trocas serão anunciadas com 30 dias de antecedência.</p>
             <ul class="arena__cards">
-              <li class="arena__card"><span class="arena__card-t">Proteção de sequência</span><span class="arena__card-d">Use Coins para não perder sua sequência num dia difícil.</span></li>
-              <li class="arena__card"><span class="arena__card-t">Molduras no ranking</span><span class="arena__card-d">Destaque seu nome no ranking.</span></li>
-              <li class="arena__card"><span class="arena__card-t">Ligas e medalhas</span><span class="arena__card-d">Suba de liga toda semana estudando.</span></li>
+              <li class="arena__card"><span class="arena__card-n" aria-hidden="true">01</span><span class="arena__card-t">Proteção de sequência</span><span class="arena__card-d">Use Coins para não perder sua sequência num dia difícil.</span></li>
+              <li class="arena__card"><span class="arena__card-n" aria-hidden="true">02</span><span class="arena__card-t">Molduras no ranking</span><span class="arena__card-d">Destaque seu nome no ranking.</span></li>
+              <li class="arena__card"><span class="arena__card-n" aria-hidden="true">03</span><span class="arena__card-t">Ligas e medalhas</span><span class="arena__card-d">Suba de liga toda semana estudando.</span></li>
             </ul>
           </div>
           <div class="ranking">
@@ -375,63 +396,68 @@
         </div>
       </section>
 
-      <!-- Além da preparação — [DONO DECIDE 10]: bloco único "em construção" (recomendado) ou tirar a seção -->
-      <section class="caixa secao" aria-labelledby="titulo-alem">
-        <div class="cabeca">
-          <span class="rotulo">Além da preparação</span>
-        </div>
-        <div class="alem">
-          <h2 class="alem__t" id="titulo-alem">Benefícios e comunidade: em construção <span class="selo-embreve">Em breve</span></h2>
-          <p class="alem__p">Estamos montando benefícios de parceiros e espaços de comunidade para os assinantes. Quando houver parceiro confirmado, ele aparece aqui, com as regras. Os benefícios de parceiros são uma cortesia da StaziaMed e não fazem parte do plano contratado.</p>
+      <!-- Além da preparação (clara suave) — [DONO DECIDE 10]: bloco único "em construção" (recomendado) ou tirar a seção -->
+      <section class="secao suave secao--curta" aria-labelledby="titulo-alem">
+        <div class="caixa secao__caixa">
+          <div class="cabeca">
+            <p class="rotulo">Além da preparação</p>
+          </div>
+          <div class="alem">
+            <h2 class="alem__t" id="titulo-alem">Benefícios e comunidade: em construção <span class="selo-embreve">Em breve</span></h2>
+            <p class="alem__p">Estamos montando benefícios de parceiros e espaços de comunidade para os assinantes. Quando houver parceiro confirmado, ele aparece aqui, com as regras. Os benefícios de parceiros são uma cortesia da StaziaMed e não fazem parte do plano contratado.</p>
+          </div>
         </div>
       </section>
 
-      <!-- Planos -->
-      <section class="caixa secao" id="planos" aria-labelledby="titulo-planos">
-        <div class="cabeca">
-          <span class="rotulo">Planos</span>
-          <h2 class="h2" id="titulo-planos">Comece grátis e escolha quando quiser</h2>
+      <!-- Planos (clara) -->
+      <section class="secao claro" id="planos" aria-labelledby="titulo-planos">
+        <div class="caixa secao__caixa">
+          <div class="cabeca">
+            <p class="rotulo">Planos</p>
+            <h2 class="h2" id="titulo-planos">Comece grátis e escolha quando quiser</h2>
+          </div>
+          <ul class="planos__grade">
+            <li class="plano plano--destaque escuro pontos">
+              <span class="etiqueta">1ª fase · Teoria</span>
+              <h3 class="plano__nome">PRO</h3>
+              <p class="plano__valor">R$&nbsp;99,90 <small>por mês</small></p>
+              <p class="plano__preco">ou R$&nbsp;269,70 a cada 3 meses (equivale a R$&nbsp;89,90 por mês)</p>
+              <p class="plano__inclui">Inclui: questões oficiais do Revalida INEP e do ENAMED, Questões Inéditas, simulados, Temas Essenciais, flashcards, Tutor IA <span data-quando="carteira">(8 créditos por dia, até 180 por mês, e 10 min de voz por mês)</span><span data-ate-la="carteira">por texto e por voz, com limite diário de uso,</span> e a Stazia Arena.</p>
+              <div class="plano__acoes">
+                <a class="botao botao--branco" href="/novo/criar-conta">Começar teste grátis</a>
+                <a class="botao botao--contorno" href="/novo/planos" data-quando="cobranca">Assinar o PRO</a>
+                <p class="botao botao--desligado" data-ate-la="cobranca">Assinatura em breve</p>
+              </div>
+            </li>
+            <li class="plano">
+              <span class="etiqueta">2ª fase · Prática</span>
+              <h3 class="plano__nome">PRÁTICA <span class="selo-embreve">Em breve</span></h3>
+              <p class="plano__em-breve">Para a prova prática: estações baseadas nas provas do Inep, com checklist (PEP) revisado por médicos.</p>
+              <p class="plano__pe">Abre junto com a 2ª fase. Preço e franquia anunciados quando abrir.</p>
+            </li>
+            <li class="plano">
+              <span class="etiqueta">As duas fases</span>
+              <h3 class="plano__nome">ELITE <span class="selo-embreve">Em breve</span></h3>
+              <p class="plano__em-breve">A 1ª e a 2ª fase no mesmo acesso.</p>
+              <p class="plano__pe">Abre junto com a 2ª fase. Preço e franquia anunciados quando abrir.</p>
+            </li>
+          </ul>
+          <ul class="planos__regras">
+            <li>Teste grátis de 7 dias na 1ª fase, sem cartão, com uma amostra diária de cada ferramenta. Um teste por conta.</li>
+            <li data-quando="cobranca">Pagamento à vista por Pix ou cartão de crédito.</li>
+            <li data-quando="cobranca">Desistiu em até 7 dias depois de assinar? Devolvemos tudo.</li>
+            <li data-quando="cobranca">No cartão, a renovação é automática. No Pix, enviamos a cobrança da renovação 7 dias antes do vencimento, e o acesso pago continua quando o pagamento for confirmado. Você pode cancelar a renovação quando quiser em Minha Conta.</li>
+          </ul>
+          <a class="link-azul" href="/novo/termos">Termos de Uso</a>
         </div>
-        <ul class="planos__grade">
-          <li class="plano plano--destaque escuro">
-            <span class="plano__etiqueta">1ª fase · Teoria</span>
-            <h3 class="plano__nome">PRO</h3>
-            <p class="plano__valor">R$&nbsp;99,90 <small>por mês</small></p>
-            <p class="plano__preco">ou R$&nbsp;269,70 a cada 3 meses (equivale a R$&nbsp;89,90 por mês)</p>
-            <p class="plano__inclui">Inclui: questões oficiais do Revalida INEP e do ENAMED, Questões Inéditas, simulados, Temas Essenciais, flashcards, Tutor IA <span data-quando="carteira">(8 créditos por dia, até 180 por mês, e 10 min de voz por mês)</span><span data-ate-la="carteira">por texto e por voz, com limite diário de uso,</span> e a Stazia Arena.</p>
-            <div class="plano__acoes">
-              <a class="botao botao--branco" href="/novo/criar-conta">Começar teste grátis</a>
-              <a class="botao botao--contorno" href="/novo/planos" data-quando="cobranca">Assinar o PRO</a>
-              <p class="botao botao--desligado" data-ate-la="cobranca">Assinatura em breve</p>
-            </div>
-          </li>
-          <li class="plano">
-            <span class="plano__etiqueta">2ª fase · Prática</span>
-            <h3 class="plano__nome">PRÁTICA <span class="selo-embreve">Em breve</span></h3>
-            <p class="plano__em-breve">Para a prova prática: estações baseadas nas provas do Inep, com checklist (PEP) revisado por médicos.</p>
-            <p class="plano__pe">Abre junto com a 2ª fase. Preço e franquia anunciados quando abrir.</p>
-          </li>
-          <li class="plano">
-            <span class="plano__etiqueta">As duas fases</span>
-            <h3 class="plano__nome">ELITE <span class="selo-embreve">Em breve</span></h3>
-            <p class="plano__em-breve">A 1ª e a 2ª fase no mesmo acesso.</p>
-            <p class="plano__pe">Abre junto com a 2ª fase. Preço e franquia anunciados quando abrir.</p>
-          </li>
-        </ul>
-        <ul class="planos__regras">
-          <li>Teste grátis de 7 dias na 1ª fase, sem cartão, com uma amostra diária de cada ferramenta. Um teste por conta.</li>
-          <li data-quando="cobranca">Pagamento à vista por Pix ou cartão de crédito.</li>
-          <li data-quando="cobranca">Desistiu em até 7 dias depois de assinar? Devolvemos tudo.</li>
-          <li data-quando="cobranca">No cartão, a renovação é automática. No Pix, enviamos a cobrança da renovação 7 dias antes do vencimento, e o acesso pago continua quando o pagamento for confirmado. Você pode cancelar a renovação quando quiser em Minha Conta.</li>
-        </ul>
-        <a class="link-azul" href="/novo/termos">Termos de Uso</a>
       </section>
 
-      <!-- Chamada final -->
-      <section class="caixa secao" aria-labelledby="titulo-chamada">
-        <div class="chamada escuro">
+      <!-- Chamada final (escura) -->
+      <section class="chamada escuro pontos" aria-labelledby="titulo-chamada">
+        <div class="caixa chamada__caixa">
           <div class="chamada__texto">
-            <h2 class="chamada__h2" id="titulo-chamada">Comece hoje. Seu teste de 7 dias é grátis.</h2>
+            <p class="rotulo">Teste grátis</p>
+            <h2 class="h2" id="titulo-chamada">Comece hoje. Seu teste de 7 dias é grátis.</h2>
             <p class="chamada__p" data-ate-la="amostra">7 dias grátis na 1ª fase, sem cartão, com uma amostra diária: questões, um simulado curto, Temas Essenciais, flashcards e o Tutor IA.</p>
             <p class="chamada__p" data-quando="amostra">7 dias grátis na 1ª fase, sem cartão, com uma amostra por dia: 20 questões, 1 simulado curto, 3 Temas ou aulas, os flashcards do dia e o Tutor IA (5 créditos por dia e 2 minutos de voz no teste inteiro).</p>
             <a class="botao botao--branco" href="/novo/criar-conta">Começar teste grátis</a>
@@ -445,12 +471,12 @@
       </section>
     </main>
 
-    <!-- Rodapé -->
-    <footer class="rodape">
+    <!-- Rodapé (escuro profundo) -->
+    <footer class="rodape escuro">
       <div class="caixa rodape__colunas">
         <div class="rodape__col">
           <div class="rodape__marca">
-            <img src="/brand/simbolo-64w.png" width="27" height="40" alt="" />
+            <img src="/brand/simbolo-escuro-64w.png" width="27" height="40" alt="" />
             <span class="rodape__nome">StaziaMed Revalida</span>
           </div>
           <p>Recursos em desenvolvimento só aparecem como disponíveis após a publicação e validação.</p>
