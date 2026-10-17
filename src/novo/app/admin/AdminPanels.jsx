@@ -443,11 +443,14 @@ export function StationSummary({ station, legacy = "", onStatus, suggestDraft = 
   const { backend } = useSession();
   const [data, setData] = React.useState(undefined);
   const [text, setText] = React.useState("");
+  // nota do que foi conferido ao aprovar (decisão do dono de 17/10: como a aprovação da estação, 10 caracteres ou mais)
+  const [note, setNote] = React.useState("");
   const [state, setState] = React.useState({ busy: false, error: null });
   const apply = React.useCallback(
     (res) => {
       setData(res ?? null);
       setText(res?.body ?? "");
+      setNote("");
       onStatus?.(res?.status ?? null);
     },
     [onStatus]
@@ -479,7 +482,7 @@ export function StationSummary({ station, legacy = "", onStatus, suggestDraft = 
   const badge = SUMMARY_BADGE[status];
   const record =
     status === "approved"
-      ? `Aprovado${data.approved_by ? ` por ${data.approved_by}` : ""} em ${dateTimeBR(data.approved_at)}.`
+      ? `Aprovado${data.approved_by ? ` por ${data.approved_by}` : ""} em ${dateTimeBR(data.approved_at)}${data.approval_note ? `: “${data.approval_note}”` : "."}`
       : status === "draft"
         ? `Rascunho salvo${data.updated_by ? ` por ${data.updated_by}` : ""} em ${dateTimeBR(data.updated_at)}. Ainda não aparece na sala.`
         : null;
@@ -498,6 +501,16 @@ export function StationSummary({ station, legacy = "", onStatus, suggestDraft = 
       {record && <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{record}</div>}
       {state.error && <Banner tone="danger">{state.error}</Banner>}
       <TextArea label="Texto do resumo" value={text} rows={6} maxLength={SUMMARY_MAX} onChange={setText} hint="Até 8.000 caracteres. Parágrafos separados por uma linha em branco." />
+      {status === "draft" && !changed && data?.can_approve && (
+        <TextArea
+          label="O que foi conferido no resumo"
+          value={note}
+          rows={2}
+          maxLength={2000}
+          onChange={setNote}
+          hint="Pelo menos 10 caracteres. Fica registrado com seu nome e a data."
+        />
+      )}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <Button size="sm" variant="secondary" icon="save" disabled={!changed} loading={state.busy} onClick={() => run("app_admin_save_station_summary", { p_body: text })}>
           {text.trim() || !saved ? "Salvar rascunho" : "Apagar resumo"}
@@ -513,7 +526,13 @@ export function StationSummary({ station, legacy = "", onStatus, suggestDraft = 
           </Button>
         )}
         {status === "draft" && !changed && data?.can_approve && (
-          <Button size="sm" icon="check" loading={state.busy} onClick={() => run("app_admin_review_station_summary", { p_status: "approved" })}>
+          <Button
+            size="sm"
+            icon="check"
+            disabled={note.trim().length < MIN_NOTE}
+            loading={state.busy}
+            onClick={() => run("app_admin_review_station_summary", { p_status: "approved", p_note: note.trim() })}
+          >
             Aprovar resumo
           </Button>
         )}

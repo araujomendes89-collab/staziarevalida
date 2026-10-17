@@ -59,6 +59,7 @@ const resumoResp = () => ({
   station_id: "st-cm", body: resumo?.body ?? null, status: resumo?.status ?? null, origin: resumo ? "equipe" : null,
   updated_at: resumo ? "2026-10-16T12:00:00Z" : null, updated_by: resumo ? "Editora" : null,
   approved_at: resumo?.status === "approved" ? "2026-10-16T13:00:00Z" : null, approved_by: resumo?.status === "approved" ? "Dr. Clínico" : null,
+  approval_note: resumo?.status === "approved" ? resumo.note ?? null : null,
   can_approve: podeAprovar,
 });
 
@@ -78,7 +79,7 @@ beforeEach(() => {
       return resumoResp();
     }
     if (fn === "app_admin_review_station_summary") {
-      resumo = { ...resumo, status: args.p_status };
+      resumo = { ...resumo, status: args.p_status, note: args.p_note ?? null };
       return resumoResp();
     }
     if (fn === "app_admin_set_station_review")
@@ -229,10 +230,21 @@ describe("Estações: Resumo sobre o tema (pedido 4 do dono, 16/10)", () => {
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_save_station_summary", { p_station_id: "st-cm", p_body: EXEMPLO }));
     expect((await screen.findAllByText("Resumo em rascunho")).length).toBeGreaterThan(0);
     expect(screen.getByText(/Rascunho salvo por Editora em .*Ainda não aparece na sala\./)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Aprovar resumo" }));
-    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_review_station_summary", { p_station_id: "st-cm", p_status: "approved" }));
+    // aprovar pede a nota do que foi conferido (decisão do dono de 17/10: 10 caracteres ou mais)
+    const aprovar = screen.getByRole("button", { name: "Aprovar resumo" }) as HTMLButtonElement;
+    expect(aprovar.disabled).toBe(true);
+    const nota = screen.getByLabelText("O que foi conferido no resumo") as HTMLTextAreaElement;
+    fireEvent.change(nota, { target: { value: "curta" } });
+    expect(aprovar.disabled).toBe(true);
+    fireEvent.change(nota, { target: { value: "  Conferido com a fonte de teste.  " } });
+    expect(aprovar.disabled).toBe(false);
+    fireEvent.click(aprovar);
+    await waitFor(() =>
+      expect(backend.rpc).toHaveBeenCalledWith("app_admin_review_station_summary", { p_station_id: "st-cm", p_status: "approved", p_note: "Conferido com a fonte de teste." })
+    );
     expect((await screen.findAllByText("Resumo aprovado")).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Aprovado por Dr\. Clínico em/)).toBeTruthy();
+    expect(screen.getByText(/Aprovado por Dr\. Clínico em .*: “Conferido com a fonte de teste\.”/)).toBeTruthy();
+    expect(screen.queryByLabelText("O que foi conferido no resumo")).toBeNull();
     expect(screen.getByRole("button", { name: "Voltar a rascunho" })).toBeTruthy();
   });
 
@@ -266,7 +278,7 @@ describe("Estações: Resumo sobre o tema (pedido 4 do dono, 16/10)", () => {
         ? {
             total: 2, limit: 50, offset: 0, actions: ["station.summary.save", "station.summary.review"],
             items: [
-              { id: 2, action: "station.summary.review", target: "st-cm", details: { from: "draft", to: "approved", area: "Clínica Médica" }, created_at: "2026-10-16T13:00:00Z", actor: "Dr. Clínico" },
+              { id: 2, action: "station.summary.review", target: "st-cm", details: { from: "draft", to: "approved", area: "Clínica Médica", note: "Conferido com a fonte." }, created_at: "2026-10-16T13:00:00Z", actor: "Dr. Clínico" },
               { id: 1, action: "station.summary.save", target: "st-cm", details: { action: "saved", chars: 50 }, created_at: "2026-10-16T12:00:00Z", actor: "Editora" },
             ],
           }
@@ -274,7 +286,7 @@ describe("Estações: Resumo sobre o tema (pedido 4 do dono, 16/10)", () => {
     );
     render(<AdminAudit />);
     const lista = within(await screen.findByRole("list", { name: "Ações registradas" }));
-    expect(lista.getByText("st-cm: resumo aprovado pela revisão médica")).toBeTruthy();
+    expect(lista.getByText("st-cm: resumo aprovado pela revisão médica · “Conferido com a fonte.”")).toBeTruthy();
     expect(lista.getByText("st-cm: rascunho do resumo salvo")).toBeTruthy();
   });
 });

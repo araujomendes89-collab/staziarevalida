@@ -432,7 +432,8 @@ const SUMMARY = {
   "question.explanations_reviewed": explanationsReviewed,
   "station.review": (d, entry) => `${entry.target}: ${d.to === "approved" ? "aprovada" : "voltou para revisão"}${d.note ? ` · “${d.note}”` : ""}`,
   "station.summary.save": (d, entry) => `${entry.target}: ${d.action === "deleted" ? "resumo apagado" : "rascunho do resumo salvo"}`,
-  "station.summary.review": (d, entry) => `${entry.target}: ${d.to === "approved" ? "resumo aprovado pela revisão médica" : "resumo voltou a rascunho"}`,
+  "station.summary.review": (d, entry) =>
+    `${entry.target}: ${d.to === "approved" ? "resumo aprovado pela revisão médica" : "resumo voltou a rascunho"}${d.note ? ` · “${d.note}”` : ""}`,
   "guideline_update.publish": (d) => join([topic(d), d.review_status === "approved" ? "Conferência médica aprovada" : d.review_status && "Publicada sem conferência médica aprovada"]),
   "guideline_update.unpublish": (d, entry) => join([topic(d), `Motivo: ${retirementReason(entry)}`, d.note && `Nota do revisor: ${d.note}`]),
   "guideline_update.delete": topic,
