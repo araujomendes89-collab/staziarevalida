@@ -7,6 +7,8 @@
 // confirmação. O nome da estação aparece aos dois só aqui, no resultado.
 // Só leitura (`readOnly`, decisão do dono de 17/10): o mesmo resultado aberto pelo histórico (Meus PEPs), inclusive depois de a
 // sala fechar; sem as ações da sala (encerrar, outra estação, pedir ou rever a revisão), com "Voltar" (`onBack`).
+// "O que mudou desde a prova" (decisão do dono de 17/10, migração 013560): as notas de conduta atual que os revisores deixaram
+// aparecem só aqui, no resultado e no histórico, depois da avaliação pelo PEP original. Não mudam a nota.
 import React from "react";
 import { Avatar, Badge, Banner, Button, Dialog, Tabs, Textarea } from "../../../ds";
 import { formatDecimal, formatDuration } from "../../../ds/format.js";
@@ -118,6 +120,7 @@ export function ResultPhase({ room, result, actions, askLeave, readOnly = false,
   const feedback = result.feedback || {};
   const evaluator = result.evaluator?.public_name;
   const rowGrid = { display: "grid", gridTemplateColumns: "minmax(0,1fr) 120px 96px", gap: 12 };
+  const conductNotes = (Array.isArray(result.conduct_notes) ? result.conduct_notes : []).filter((n) => typeof n?.text === "string" && n.text.trim());
 
   return (
     <main style={{ ...pageStyle, maxWidth: 1120, padding: "28px 28px 64px", gap: 24 }}>
@@ -331,6 +334,27 @@ export function ResultPhase({ room, result, actions, askLeave, readOnly = false,
           )}
         </aside>
       </div>
+
+      {conductNotes.length > 0 && (
+        <section aria-labelledby="res-mudou" style={{ ...box, padding: "16px 20px" }}>
+          <h2 id="res-mudou" style={h2}>
+            O que mudou desde a prova
+          </h2>
+          <p style={{ margin: "4px 0 0", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+            A conduta atual mudou em alguns pontos. Isso não altera a nota: a avaliação seguiu o PEP original da prova.
+          </p>
+          <ul style={{ margin: "12px 0 0", padding: 0, listStyle: "none", display: "grid", gap: 10 }}>
+            {conductNotes.map((note, index) => (
+              <li key={index} style={{ font: "var(--type-body-sm)", lineHeight: 1.6, color: "var(--text-primary)", textWrap: "pretty" }}>
+                {typeof note.item_order === "number" && (
+                  <span style={{ font: "600 var(--text-xs) var(--font-sans)", color: "var(--text-brand)", marginRight: 8 }}>{`Item ${note.item_order}`}</span>
+                )}
+                {note.text}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }

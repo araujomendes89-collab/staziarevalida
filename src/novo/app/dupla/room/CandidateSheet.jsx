@@ -11,6 +11,13 @@ import { isTaskNote, splitBlocks, splitTasks } from "../content.js";
 import { Scene } from "./parts.jsx";
 import { relatoNaFolha, tarefasAjustadas } from "../../../../shared/dupla/tarefasRelato";
 
+/**
+ * O impresso está NA FOLHA do candidato (o relato do caso, sem número)? O servidor manda `in_sheet`. Sem ele (conteúdo antigo),
+ * todo impresso inicial era o relato, que ficava na folha. O impresso visível desde o início que NÃO está na folha (monitor e
+ * bandeja "em cima da maca", decisão do dono de 17/10) aparece sozinho na lista de impressos, numerado com os liberáveis.
+ */
+export const inSheet = (p) => (typeof p?.in_sheet === "boolean" ? p.in_sheet : Boolean(p?.initially_visible));
+
 const overline = { font: "var(--type-overline)", letterSpacing: "var(--tracking-overline)", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 10 };
 
 /** Endereço da imagem pela rota da sala; `null` enquanto carrega ou quando não há imagem (aí o texto aparece). */
@@ -85,7 +92,7 @@ function SheetText({ station, withReport }) {
  */
 export function CandidateSheet({ station, content, actions }) {
   const sheet = useImageUrl("candidate_sheet", Boolean(station.candidate_sheet?.has_image), actions);
-  const initial = (content.pressings || []).filter((p) => p.initially_visible);
+  const initial = (content.pressings || []).filter(inSheet);
   const withReport = relatoNaFolha(content.pressings);
   return (
     <div className="dupla-cand__col">
@@ -114,7 +121,7 @@ export function CandidateSheet({ station, content, actions }) {
   );
 }
 
-/** Impresso liberado: abre e fecha (aberto ao chegar), com a imagem ampliável e "Ocultar". */
+/** Impresso liberado (ou visível desde o início): abre e fecha (aberto ao chegar), com a imagem ampliável e "Ocultar". */
 function ReleasedPrint({ pressing, actions }) {
   const [open, setOpen] = React.useState(true);
   const label = `Impresso ${pressing.display_number} · ${pressing.name}`;
@@ -141,7 +148,10 @@ function ReleasedPrint({ pressing, actions }) {
       >
         <Icon name={open ? "chevron-down" : "chevron-right"} size={16} />
         <Icon name="lock-open" size={15} />
-        <span style={{ flex: 1 }}>{label}</span>
+        <span style={{ flex: 1 }}>
+          {label}
+          {pressing.initially_visible && <span style={{ marginLeft: 8, font: "500 var(--text-xs) var(--font-sans)", color: "var(--text-secondary)" }}>disponível desde o início</span>}
+        </span>
         <span style={{ font: "600 var(--text-xs) var(--font-sans)", color: "var(--text-secondary)" }}>{open ? "Fechar" : "Abrir"}</span>
       </button>
       {open && (
@@ -153,10 +163,13 @@ function ReleasedPrint({ pressing, actions }) {
   );
 }
 
-/** Lista "Impressos" do candidato: só os liberáveis, numerados 1, 2, 3; os não liberados aguardam. */
+/**
+ * Lista "Impressos" do candidato, numerada 1, 2, 3: os visíveis desde o início (já abertos, sem liberação) e os que o avaliador
+ * liberou; os não liberados aguardam. O relato do caso fica na folha e não entra aqui.
+ */
 export function CandidatePrints({ content, actions }) {
   const total = content.pressing_count ?? 0;
-  const released = (content.pressings || []).filter((p) => !p.initially_visible);
+  const released = (content.pressings || []).filter((p) => !inSheet(p));
   return (
     <Card padding="12px 16px">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "4px 0 8px" }}>

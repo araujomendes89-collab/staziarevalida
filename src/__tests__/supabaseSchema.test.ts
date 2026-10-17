@@ -296,7 +296,7 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
       expect(cand.role).toBe("candidate");
       expect(cand.pressing_count).toBe(2);
       // Etapa P (012900): chave de tela 'd<n>', sem o nome nem o id da estação, com a folha do candidato.
-      expect(cand.pressings).toEqual([{ id: "d1", display_number: 1, initially_visible: false, name: "Hemograma", content: "Hb 9,0 g/dL", has_image: false }]);
+      expect(cand.pressings).toEqual([{ id: "d1", display_number: 1, initially_visible: false, in_sheet: false, name: "Hemograma", content: "Hb 9,0 g/dL", has_image: false }]);
       expect(cand.station).toEqual({
         label: "Estação", area: "Clínica Médica", area_code: "CM", number: null, duration_ms: 600000, version: "1.0",
         doctor_scene: STATION.doctor_scene, doctor_tasks: STATION.doctor_tasks, candidate_sheet: { has_image: false },

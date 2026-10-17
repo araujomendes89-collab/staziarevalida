@@ -9,7 +9,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { blocosDoRelato, escapeHtml, folhaHtml, minutosDe, paragrafos, tarefasDe, textosEsperados, type FolhaFonte } from "../shared/dupla/folhaCandidato";
+import { blocosDoRelato, cenarioInep, escapeHtml, folhaHtml, notaInep, minutosDe, paragrafos, tarefasDe, textosEsperados, type FolhaFonte } from "../shared/dupla/folhaCandidato";
 import { openDuplaDb, type DuplaDb } from "./helpers/duplaDb";
 import { buildDuplaTestStatements } from "../../server/dupla/testStations";
 import { localStorageDir, type ContentDb } from "../../server/contentHub/infra";
@@ -138,4 +138,49 @@ describe("geração da imagem (Chromium) e gravação, sobre o banco em memória
       fs.writeFileSync(path.join(process.env.FOLHA_SAIDA, `folha-gerada-${feito.geradas[0]}.png`), await storage.get(p));
     }
   }, 120_000);
+});
+
+describe("títulos do INEP (opção desligada por padrão; comparação de 17/10)", () => {
+  const fonte: FolhaFonte = {
+    numero: 1, area: "Clínica Médica", duracao_ms: 600000,
+    cenario: "Nível de atenção: primária.\nA unidade possui:\n• consultório;\n\nDESCRIÇÃO DO CASO\nVocê é um médico atendendo um paciente de 36 anos.",
+    tarefas: "1. realizar anamnese;\n2. solicitar exame físico;\nObservação: ATENÇÃO! CASO JULGUE NECESSÁRIO, VERBALIZE! O PACIENTE NÃO DEVERÁ SER TOCADO.",
+    impressos: [], bloqueio: null,
+  };
+  const opc = { logoSrc: "data:image/png;base64,AA==" };
+
+  it("sem a opção, o modelo aprovado continua igual (nada muda para o app)", () => {
+    const h = folhaHtml(fonte, opc);
+    expect(h).toContain("INSTRUÇÕES PARA O(A) PARTICIPANTE");
+    expect(h).toContain("CENÁRIO DE ATUAÇÃO");
+    expect(h).toContain("Nos próximos 10 minutos, deverão ser realizadas as seguintes tarefas:");
+    expect(h).toContain("Observação: ATENÇÃO!");
+    expect(h).not.toMatch(/class="caixa"|INSTRUÇÕES AO PARTICIPANTE/);
+    expect(folhaHtml(fonte, { ...opc, titulosInep: false })).toBe(h);
+  });
+
+  it("com a opção: títulos e blocos do caderno, tarefas dentro da descrição, ATENÇÃO em destaque, mesmo texto", () => {
+    const h = folhaHtml(fonte, { ...opc, titulosInep: true });
+    expect(h).toContain("INSTRUÇÕES AO PARTICIPANTE");
+    expect(h).toContain("CENÁRIO DE ATENDIMENTO");
+    expect(h).toContain("DESCRIÇÃO DO CASO");
+    expect(h).toContain("Nos 10 minutos de duração da estação, você deverá executar as seguintes tarefas:");
+    expect(h).toContain('<span class="atencao-rotulo">ATENÇÃO!</span> CASO JULGUE NECESSÁRIO, VERBALIZE!<br>O PACIENTE NÃO DEVERÁ SER TOCADO.');
+    expect(h).not.toMatch(/CENÁRIO DE ATUAÇÃO|Observação:|INSTRUÇÕES PARA O\(A\)/);
+    // a descrição vem depois do bloco do cenário e as tarefas ficam no bloco da descrição
+    expect(h.indexOf("CENÁRIO DE ATENDIMENTO")).toBeLessThan(h.indexOf("DESCRIÇÃO DO CASO"));
+    expect(h.indexOf("DESCRIÇÃO DO CASO")).toBeLessThan(h.indexOf("realizar anamnese"));
+    expect(h.indexOf("realizar anamnese")).toBeLessThan(h.indexOf("ATENÇÃO!"));
+    // o texto esperado pela conferência continua todo na página (sem o "Observação:" na frente da nota)
+    const esperados = textosEsperados(fonte, { titulosInep: true });
+    expect(esperados).toContain("ATENÇÃO! CASO JULGUE NECESSÁRIO, VERBALIZE! O PACIENTE NÃO DEVERÁ SER TOCADO.");
+    expect(textosEsperados(fonte)).toContain("Observação: ATENÇÃO! CASO JULGUE NECESSÁRIO, VERBALIZE! O PACIENTE NÃO DEVERÁ SER TOCADO.");
+  });
+
+  it("ajudantes: divide o cenário no título; sem o título tudo fica no cenário de atendimento; nota sem Observação", () => {
+    expect(cenarioInep(["A", "DESCRIÇÃO DO CASO\nB", "C"])).toEqual({ atendimento: ["A"], descricao: ["B", "C"], temDescricao: true });
+    expect(cenarioInep(["A", "B"])).toEqual({ atendimento: ["A", "B"], descricao: [], temDescricao: false });
+    expect(notaInep("Observação: ATENÇÃO! Faça isso! Não faça aquilo.")).toEqual(["ATENÇÃO! Faça isso!", "Não faça aquilo."]);
+    expect(notaInep("Observação: Sem aviso.")).toEqual(["Sem aviso."]);
+  });
 });

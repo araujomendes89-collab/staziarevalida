@@ -50,6 +50,13 @@ export interface FolhaOpcoes {
   logoSrc: string;
   /** CSS das fontes (@font-face embutido no servidor; @import do Google Fonts na pré-visualização). */
   fontCss?: string;
+  /**
+   * Títulos como no caderno do INEP ("INSTRUÇÕES AO PARTICIPANTE", "CENÁRIO DE ATENDIMENTO", bloco "DESCRIÇÃO DO CASO" com as tarefas
+   * dentro, "Nos N minutos de duração da estação, você deverá executar as seguintes tarefas:" e o aviso "ATENÇÃO" em destaque).
+   * DESLIGADO por padrão: o modelo aprovado ("INSTRUÇÕES PARA O(A) PARTICIPANTE", "CENÁRIO DE ATUAÇÃO", "Observação:") continua o
+   * do app até o dono escolher (comparação de 17/10). Só muda os títulos e a disposição; o texto da estação é o mesmo.
+   */
+  titulosInep?: boolean;
 }
 
 const texto = (v: unknown) => (typeof v === "string" ? v : "");
@@ -158,6 +165,36 @@ export function minutosDe(duracaoMs: number): string {
 
 const comQuebras = (v: string) => linhas(v).map(escapeHtml).join("<br>");
 
+/** Parágrafo do cenário que abre com a linha "DESCRIÇÃO DO CASO" (o modelo guarda o título dentro do cenário). */
+const DESCRICAO = /^DESCRI[ÇC][ÃA]O\s+DO\s+CASO\s*(?:\n|$)/i;
+
+/**
+ * Títulos do INEP: o cenário vira dois blocos. Antes de "DESCRIÇÃO DO CASO" fica o cenário de atendimento; do título em diante,
+ * a descrição (o título sai do texto e vira o título do bloco). Sem o título no cenário, tudo fica no cenário de atendimento.
+ */
+export function cenarioInep(paragrafosDoCenario: string[]): { atendimento: string[]; descricao: string[]; temDescricao: boolean } {
+  const i = paragrafosDoCenario.findIndex((p) => DESCRICAO.test(p));
+  if (i < 0) return { atendimento: paragrafosDoCenario, descricao: [], temDescricao: false };
+  const resto = paragrafosDoCenario[i].replace(DESCRICAO, "").trim();
+  return {
+    atendimento: paragrafosDoCenario.slice(0, i),
+    descricao: [...(resto ? [resto] : []), ...paragrafosDoCenario.slice(i + 1)],
+    temDescricao: true,
+  };
+}
+
+/** Nota das tarefas no estilo do INEP: sem "Observação:" na frente; cada frase com "!" no fim numa linha. */
+export function notaInep(v: string): string[] {
+  const frases = v
+    .replace(/^Observaç(?:ão|ões)\s*:\s*/i, "")
+    .split(/(?<=!)\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  // "ATENÇÃO!" sozinho fica junto da frase seguinte, como no caderno
+  if (frases.length > 1 && /^ATENÇÃO!$/i.test(frases[0])) frases.splice(0, 2, `${frases[0]} ${frases[1]}`);
+  return frases;
+}
+
 /** Folha do candidato em HTML (documento completo, uma página da largura FOLHA_LARGURA, altura do conteúdo). */
 export function folhaHtml(fonte: FolhaFonte, opcoes: FolhaOpcoes): string {
   const numero = typeof fonte.numero === "number" && Number.isFinite(fonte.numero) ? ` ${fonte.numero}` : "";
@@ -165,10 +202,32 @@ export function folhaHtml(fonte: FolhaFonte, opcoes: FolhaOpcoes): string {
   const cenario = paragrafos(fonte.cenario);
   const impressos = Array.isArray(fonte.impressos) ? fonte.impressos : [];
 
+  const inep = Boolean(opcoes.titulosInep);
   const htmlTarefas = tarefas.length
     ? `<h3 class="tarefas-titulo">Nos próximos ${escapeHtml(minutosDe(fonte.duracao_ms))} minutos, deverão ser realizadas as seguintes tarefas:</h3>
 <ul class="marcadores tarefas">${tarefas.map((t) => (t.tipo === "nota" ? `<li class="nota">${escapeHtml(t.texto)}</li>` : `<li>${escapeHtml(t.texto)}</li>`)).join("")}</ul>`
     : "";
+
+  // Títulos do INEP (opção): cenário de atendimento e descrição do caso em blocos; tarefas dentro da descrição; aviso em destaque.
+  let htmlCorpoInep = "";
+  if (inep) {
+    const { atendimento, descricao, temDescricao } = cenarioInep(cenario);
+    const soTarefas = tarefas.filter((t) => t.tipo === "tarefa");
+    const notas = tarefas.filter((t) => t.tipo === "nota");
+    const blocoTarefas = soTarefas.length
+      ? `<h3 class="tarefas-titulo dentro">Nos ${escapeHtml(minutosDe(fonte.duracao_ms))} minutos de duração da estação, você deverá executar as seguintes tarefas:</h3>
+<ul class="marcadores tarefas">${soTarefas.map((t) => `<li>${escapeHtml(t.texto)}</li>`).join("")}</ul>`
+      : "";
+    const caixa = (titulo: string, corpo: string) => `<section class="caixa">${titulo ? `<h3 class="caixa-titulo">${titulo}</h3>` : ""}${corpo}</section>`;
+    htmlCorpoInep =
+      (atendimento.length ? caixa("CENÁRIO DE ATENDIMENTO", `<div class="cenario-bloco">${atendimento.map((p) => `<p>${comQuebras(p)}</p>`).join("")}</div>`) : "") +
+      (temDescricao || blocoTarefas
+        ? caixa(temDescricao ? "DESCRIÇÃO DO CASO" : "", `<div class="cenario-bloco">${descricao.map((p) => `<p>${comQuebras(p)}</p>`).join("")}</div>${blocoTarefas}`)
+        : "") +
+      notas
+        .map((n) => `<p class="atencao">${notaInep(n.texto).map((s) => escapeHtml(s).replace(/^(ATENÇÃO!?)/, '<span class="atencao-rotulo">$1</span>')).join("<br>")}</p>`)
+        .join("");
+  }
 
   const htmlImpressos = impressos
     .map((imp) => {
@@ -223,15 +282,26 @@ ul.relato li::before{left:5px}
 h3.rotulo{margin:16px 0 4px;font-size:17px}
 p.relato-p{margin:0 0 10px;font-size:15.5px;line-height:1.55;text-align:justify}
 ul.relato + p.relato-p, h2.secao + p.relato-p{margin-top:18px}
+.caixa{position:relative;margin:34px 30px 0;border:1.5px solid var(--azul);border-radius:3px;padding:26px 24px 12px}
+.caixa-titulo{position:absolute;top:-14px;left:16px;margin:0;padding:3px 12px;background:#E8EEF8;color:var(--azul);font-size:15.5px;letter-spacing:.2px}
+.cenario-bloco p{margin:0 0 10px;font-size:15.5px;line-height:1.62;text-align:justify;hyphens:none}
+h3.tarefas-titulo.dentro{margin:18px 0 0}
+.caixa ul.tarefas{margin-left:4px}
+.atencao{margin:30px 30px 0;text-align:center;font-size:16px;font-weight:700;line-height:1.7}
+.atencao-rotulo{color:var(--azul)}
 </style></head>
 <body><main class="folha" data-folha="candidato">
 <img class="logo" src="${escapeHtml(opcoes.logoSrc)}" alt="StaziaMed Revalida">
 <header class="cabecalho"><div class="estacao">ESTAÇÃO${escapeHtml(numero)}</div><div class="barra" aria-hidden="true"></div>
 <div class="lado"><div>AVALIAÇÃO DE HABILIDADES CLÍNICAS</div><div>Área: ${escapeHtml(fonte.area)}</div></div></header>
 <div class="faixa" aria-hidden="true"></div>
-<h1 class="titulo">INSTRUÇÕES PARA O(A) PARTICIPANTE</h1>
-${cenario.length ? `<h3 class="cenario-titulo">CENÁRIO DE ATUAÇÃO</h3><div class="cenario">${cenario.map((p) => `<p>${comQuebras(p)}</p>`).join("")}</div>` : ""}
-${htmlTarefas}
+<h1 class="titulo">${inep ? "INSTRUÇÕES AO PARTICIPANTE" : "INSTRUÇÕES PARA O(A) PARTICIPANTE"}</h1>
+${
+  inep
+    ? htmlCorpoInep
+    : `${cenario.length ? `<h3 class="cenario-titulo">CENÁRIO DE ATUAÇÃO</h3><div class="cenario">${cenario.map((p) => `<p>${comQuebras(p)}</p>`).join("")}</div>` : ""}
+${htmlTarefas}`
+}
 ${htmlImpressos}
 </main></body></html>`;
 }
@@ -240,10 +310,11 @@ ${htmlImpressos}
  * Todo o texto da estação que precisa aparecer na folha (para a conferência depois de gerar): cenário, tarefas e o texto dos
  * impressos, em pedaços sem espaços duplicados.
  */
-export function textosEsperados(fonte: FolhaFonte): string[] {
+export function textosEsperados(fonte: FolhaFonte, opcoes: Pick<FolhaOpcoes, "titulosInep"> = {}): string[] {
   const out: string[] = [];
   for (const p of paragrafos(fonte.cenario)) out.push(...linhas(p));
-  for (const t of tarefasDe(tarefasDaFolha(fonte))) out.push(t.texto);
+  // com os títulos do INEP o título "DESCRIÇÃO DO CASO" continua na página (vira o título do bloco) e a nota perde o "Observação:"
+  for (const t of tarefasDe(tarefasDaFolha(fonte))) out.push(opcoes.titulosInep && t.tipo === "nota" ? notaInep(t.texto).join(" ") : t.texto);
   for (const imp of fonte.impressos ?? []) {
     for (const b of blocosDoRelato(imp.texto)) {
       if (b.tipo === "lista") out.push(...b.itens);
