@@ -463,6 +463,29 @@ describe("Convite por link e pedido de treino de 24 h", () => {
     await expect(d.rpc(null, "app_dupla_answer_request", { p_request_id: U.ana, p_accept: true })).rejects.toThrow();
   });
 
+  it("crédito do Stazia Match no link e no pedido: sem crédito do dono o link vira pedido; aceitar exige crédito dos dois", async () => {
+    await d.sql(`create table public.teste_sem_credito (uid uuid primary key)`);
+    await d.sql(
+      `create function public.credit_available(p_uid uuid, p_pool text, p_n integer default 1, p_now timestamptz default now()) returns boolean
+         language sql stable security definer set search_path = '' as $$ select not exists (select 1 from public.teste_sem_credito t where t.uid = p_uid) and p_pool = 'match' $$`
+    );
+    try {
+      await d.sql(`insert into public.teste_sem_credito values ($1)`, [U.bruno]);
+      expect((await lookup(U.ana, "bruno.link")).mode).toBe("pedido"); // não diz que é falta de crédito
+      const r = await pedir(U.ana, "bruno.link");
+      expect(r.kind).toBe("pedido");
+      await d.sql(`delete from public.teste_sem_credito`);
+      await d.sql(`insert into public.teste_sem_credito values ($1)`, [U.ana]); // agora quem pediu ficou sem crédito
+      await expect(responder(U.bruno, r.request_id, true)).rejects.toThrow(/Ana Souza não pode receber convites agora\./);
+      expect((await d.sql<any>(`select status from public.study_train_requests where id = $1`, [r.request_id]))[0].status).toBe("pending");
+      await d.sql(`delete from public.teste_sem_credito`);
+      expect((await responder(U.bruno, r.request_id, true)).room_id).toBeTruthy();
+    } finally {
+      await d.sql(`drop function public.credit_available(uuid, text, integer, timestamptz)`);
+      await d.sql(`drop table public.teste_sem_credito`);
+    }
+  });
+
   it("a tabela de pedidos não é lida nem escrita direto; colar de novo dá o mesmo banco", async () => {
     await seen(d.db, U.bruno, 3600, "fora");
     await pedir(U.ana, "bruno.link");

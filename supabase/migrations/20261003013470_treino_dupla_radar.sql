@@ -29,6 +29,8 @@
 --  7) Painel: app_admin_dupla_radar() lê e app_admin_save_dupla_radar(jsonb) grava o bloco "convites" SEM tocar no resto da
 --     chave "treino_dupla" (aberto, planos e o que outras frentes guardarem ali).
 --  8) Chat: "guarda_denuncia_dias" da chave treino_dupla_chat passa de vazio para 180 (só se estiver vazio).
+--  8b) Crédito do Stazia Match: ponto de chamada pronto (dupla_credit_ok), que só passa a bloquear quando a função credit_available
+--     do ramo stazia-match existir; sem ela não bloqueia.
 --  9) Nome de usuário único com @ (study_profiles.handle), pedido do dono de 17/10: gerado sozinho ("revalida.k7m2"), único sem
 --     diferença de maiúsculas, 3 a 20 caracteres (a-z 0-9 . _, sem ponto no começo nem no fim), com lista de reservados e o mesmo
 --     filtro de palavras do chat; a pessoa pode trocar. Trocar o @ NÃO muda o nome público, o user_id, matches, salas, chat,
@@ -539,6 +541,26 @@ begin
 end
 $$;
 
+-- ---------------------------------------------------------------- 5a) crédito (Stazia Match)
+-- PONTO DE CHAMADA da pré-checagem de crédito do Stazia Match (ramo stazia-match: credit_available(uuid, text, integer,
+-- timestamptz), que não debita e vale sempre quando a cota está desligada ou a pessoa é da equipe). Este ramo ainda não tem a
+-- função: sem ela a checagem PASSA (não bloqueia). Com ela, o convite direto, o convite por link e a resposta a um pedido
+-- precisam do crédito "match" das DUAS pessoas antes de criar a sala; ninguém vê o saldo do outro (a recusa de quem recebe é a
+-- mesma mensagem neutra de "não pode receber convites agora").
+create or replace function public.dupla_credit_ok(p_uid uuid) returns boolean
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  v_ok boolean;
+begin
+  if to_regprocedure('public.credit_available(uuid, text, integer, timestamp with time zone)') is null then
+    return true;
+  end if;
+  execute 'select public.credit_available($1, $2)' into v_ok using p_uid, 'match';
+  return coalesce(v_ok, false);
+end
+$$;
+
 -- ---------------------------------------------------------------- 5) convite direto
 -- Convida p_to (que está no radar) para treinar. Cria a sala na fase dos papéis (sem match, com a estação e os papéis
 -- sugeridos por dupla_assign) e o convite de 60 s (kind 'direto'). Quem convida entra na sala; quem recebe vê o aviso.
@@ -600,6 +622,13 @@ begin
      or public.dupla_hides(v_uid, p_to)
      or exists (select 1 from public.checklist_rooms r where r.phase <> 'closed' and p_to = any (r.member_ids))
      or exists (select 1 from public.study_invites i where i.to_user = p_to and i.status = 'pending' and i.expires_at > now()) then
+    raise exception '% não pode receber convites agora.', other.public_name using errcode = '42501';
+  end if;
+  -- Crédito do Stazia Match: o meu (mensagem do próprio crédito) e o dele (mensagem neutra). Sem a função do Match, passa.
+  if not public.dupla_credit_ok(v_uid) then
+    raise exception 'sem_credito' using errcode = '54000', hint = 'INSUFFICIENT_CREDITS';
+  end if;
+  if not public.dupla_credit_ok(p_to) then
     raise exception '% não pode receber convites agora.', other.public_name using errcode = '42501';
   end if;
 
@@ -742,6 +771,7 @@ revoke execute on function public.dupla_place(text) from public, anon, authentic
 revoke execute on function public.dupla_near(jsonb, jsonb) from public, anon, authenticated;
 revoke execute on function public.app_dupla_invite(uuid, text) from public, anon;
 revoke execute on function public.dupla_invite_core(uuid, uuid, text, boolean) from public, anon, authenticated;
+revoke execute on function public.dupla_credit_ok(uuid) from public, anon, authenticated;
 revoke execute on function public.app_admin_dupla_radar() from public, anon;
 revoke execute on function public.app_admin_save_dupla_radar(jsonb) from public, anon;
 revoke execute on function public.app_dupla_handle_check(text) from public, anon;

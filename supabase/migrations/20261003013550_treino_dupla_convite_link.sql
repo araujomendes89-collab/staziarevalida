@@ -78,6 +78,7 @@ as $$
                     and o.status not in ('fora', 'em_estacao', 'sozinho'))
      and not exists (select 1 from public.checklist_rooms r where r.phase <> 'closed' and p_to = any (r.member_ids))
      and not exists (select 1 from public.study_invites i where i.to_user = p_to and i.status = 'pending' and i.expires_at > now())
+     and public.dupla_credit_ok(p_to)
 $$;
 
 -- Resumo da estação sem o nome (só "Estação N", a área e a duração). Nulo se a estação não existe ou não pode ser vista.

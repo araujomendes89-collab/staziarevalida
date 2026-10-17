@@ -410,6 +410,31 @@ describe("Migrações 013470 e 013480 — radar e convite direto", () => {
     }
   });
 
+  // ------------------------------------------------------------------ crédito do Stazia Match (ponto de chamada)
+  it("crédito do Stazia Match: sem a função não bloqueia; com a função, as duas pessoas precisam de crédito e ninguém vê o saldo do outro", async () => {
+    // Sem credit_available neste ramo: o convite passa (os testes acima já mostram isso). Agora um substituto de TESTE da função do Match.
+    await d.sql(`create table public.teste_sem_credito (uid uuid primary key)`);
+    await d.sql(
+      `create function public.credit_available(p_uid uuid, p_pool text, p_n integer default 1, p_now timestamptz default now()) returns boolean
+         language sql stable security definer set search_path = '' as $$ select not exists (select 1 from public.teste_sem_credito t where t.uid = p_uid) and p_pool = 'match' $$`
+    );
+    try {
+      await d.sql(`insert into public.teste_sem_credito values ($1)`, [U.ana]);
+      await expect(convidar(U.ana, U.bruno)).rejects.toThrow(/sem_credito/); // o meu crédito: a mensagem do próprio crédito
+      expect(await d.sql(`select 1 from public.checklist_rooms`)).toEqual([]);
+      await d.sql(`delete from public.teste_sem_credito`);
+      await d.sql(`insert into public.teste_sem_credito values ($1)`, [U.bruno]);
+      await expect(convidar(U.ana, U.bruno)).rejects.toThrow(/Bruno Lima não pode receber convites agora\./); // o dele: neutra, sem dizer o motivo
+      expect(await d.sql(`select 1 from public.checklist_rooms`)).toEqual([]);
+      expect(await d.sql(`select 1 from public.study_invites`)).toEqual([]);
+      await d.sql(`delete from public.teste_sem_credito`);
+      expect((await convidar(U.ana, U.bruno)).room_id).toBeTruthy(); // com crédito dos dois, passa
+    } finally {
+      await d.sql(`drop function public.credit_available(uuid, text, integer, timestamptz)`);
+      await d.sql(`drop table public.teste_sem_credito`);
+    }
+  });
+
   // ------------------------------------------------------------------ limites (a definir pelo dono; só 1 pendente é fixo)
   it("sem número preenchido: só 1 convite pendente por vez", async () => {
     await convidar(U.ana, U.bruno);
