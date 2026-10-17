@@ -14,6 +14,7 @@
  *   - "callback" (endereço de volta) só funciona com um site cadastrado em Minha Conta > Informações: ligar com
  *     ASAAS_RETURN_URL=1 depois que o dono cadastrar app.staziamed.com.br;
  *   - QR Code do Pix continua pagável depois do vencimento (pagamento atrasado volta o acesso);
+ *   - cobrança da assinatura do cartão que não foi paga pode virar Pix (PUT billingType=PIX): a assinatura continua no cartão;
  *   - devolução de Pix fica "AWAITING_CRITICAL_ACTION_AUTHORIZATION" até alguém autorizar no painel (ou o dono liberar);
  *     devolução parcial de cartão só a partir do dia seguinte ao pagamento.
  */
@@ -245,6 +246,14 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
       return { subscriptionId: String(s.id), chargeId: String(first.id), url: String(first.invoiceUrl), pix: null };
     },
 
+    async payChargeByPix(chargeId: string, dueDate: string) {
+      // testado no sandbox (17/10): a cobrança da assinatura do cartão vira Pix, é paga, e a assinatura continua no cartão
+      if (!ID.test(chargeId)) throw new ProviderError("Cobrança inválida.", 400);
+      const p = await call<Obj>("PUT", `/payments/${encodeURIComponent(chargeId)}`, { billingType: "PIX", dueDate });
+      if (!p?.id || p.billingType !== "PIX") throw new ProviderError("Asaas não trocou a cobrança para Pix.");
+      return { chargeId: String(p.id), url: String(p.invoiceUrl ?? ""), pix: await pixOf(String(p.id)) };
+    },
+
     async getCharge(chargeId: string) {
       if (!ID.test(chargeId)) return null;
       const p = await call<Obj>("GET", `/payments/${encodeURIComponent(chargeId)}`, undefined, true);
@@ -283,7 +292,8 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
       const chargeId = body?.payment?.id ? String(body.payment.id) : null;
       const eventId = String(body?.id ?? `${event}:${chargeId ?? body?.subscription?.id ?? "?"}:${body?.payment?.status ?? ""}`).slice(0, 200);
       if (event.startsWith("PAYMENT_") && chargeId) {
-        return { kind: "charge", eventId, event, chargeId, subscriptionId: body.payment.subscription ? String(body.payment.subscription) : null };
+        const failed = event === "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED" || event === "PAYMENT_REPROVED_BY_RISK_ANALYSIS";
+        return { kind: "charge", eventId, event, chargeId, subscriptionId: body.payment.subscription ? String(body.payment.subscription) : null, ...(failed ? { failed: true } : {}) };
       }
       if ((event === "SUBSCRIPTION_DELETED" || event === "SUBSCRIPTION_INACTIVATED") && body?.subscription?.id) {
         return { kind: "subscription_ended", eventId, event, subscriptionId: String(body.subscription.id) };

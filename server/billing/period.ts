@@ -26,14 +26,14 @@ export const cycleMonths = (c: Cycle | "mensal" | "trimestral") => (c === "quart
 
 /**
  * Até quando vale o acesso pago por uma cobrança do plano (regra SEM tolerância: vale até o fim do dia do próximo vencimento).
- *   - cartão: vencimento da cobrança + ciclo (a assinatura do fornecedor cobra de novo nesse mesmo dia);
- *   - Pix pago até o vencimento: vencimento + ciclo (pagar antes não perde dias);
- *   - Pix pago DEPOIS do vencimento (acesso já tinha caído): dia do pagamento + ciclo.
+ *   - pago até o vencimento (cartão no dia, Pix antes): vencimento + ciclo (pagar antes não perde dias);
+ *   - pago DEPOIS do vencimento (cartão que o fornecedor reprocessou dias depois, ou Pix atrasado; o acesso já tinha caído):
+ *     o período conta da CONFIRMAÇÃO (decisão do dono 17/10): dia do pagamento + ciclo.
  */
 export function periodEndFor(opts: { method: "pix" | "card"; dueDate: string | null; paidAt: Date; cycle: Cycle | "mensal" | "trimestral" }): Date {
   const paidDay = brtDate(opts.paidAt);
   const due = opts.dueDate ?? paidDay;
-  const base = opts.method === "pix" && paidDay > due ? paidDay : due;
+  const base = paidDay > due ? paidDay : due;
   return endOfBrtDay(addMonthsToDay(base, cycleMonths(opts.cycle)));
 }
 

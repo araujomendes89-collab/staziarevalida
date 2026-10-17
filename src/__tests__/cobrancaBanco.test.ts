@@ -25,7 +25,7 @@ import { BillingSignatureError, type PaymentProvider, type ProviderCharge } from
 const TOKEN = "token-do-aviso-simulado-com-mais-de-32-caracteres";
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "cobranca-"));
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL] = [1, 2, 3, 4, 5, 6, 7].map(id);
+const [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL, FALHA] = [1, 2, 3, 4, 5, 6, 7, 8].map(id);
 let dev: DevDatabase;
 let db: ContentDb;
 let base: string;
@@ -61,6 +61,12 @@ const fake: PaymentProvider = {
     log.push(`assinatura:${sid}:${i.cycle}:${i.amountCents}`);
     return { subscriptionId: sid, chargeId: cid, url: `https://pagar.teste/${cid}`, pix: null };
   },
+  async payChargeByPix(cid, due) {
+    const c = charges.get(cid)!;
+    Object.assign(c, { method: "pix", dueDate: due, status: "pending" });
+    log.push(`virou-pix:${cid}`);
+    return { chargeId: cid, url: `https://pagar.teste/${cid}`, pix: { payload: "000201REN", image: "img", expiresAt: null } };
+  },
   async getCharge(cid) {
     const c = charges.get(cid);
     return c ? { ...c } : null;
@@ -85,13 +91,13 @@ const fake: PaymentProvider = {
   parseNotice(raw, headers) {
     if (headers["asaas-access-token"] !== TOKEN) throw new BillingSignatureError();
     const b = JSON.parse(raw.toString());
-    return b.payment ? { kind: "charge", eventId: b.id, event: b.event, chargeId: b.payment.id, subscriptionId: b.payment.subscription ?? null } : { kind: "ignored", eventId: b.id, event: b.event };
+    return b.payment ? { kind: "charge", eventId: b.id, event: b.event, chargeId: b.payment.id, subscriptionId: b.payment.subscription ?? null, failed: b.event === "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED" } : { kind: "ignored", eventId: b.id, event: b.event };
   },
 };
 const pay = (cid: string, when = clock, over: Partial<ProviderCharge> = {}) => Object.assign(charges.get(cid)!, { status: "paid", paidAt: when, ...over });
 let evt = 0;
-const hook = (cid: string, token = TOKEN) =>
-  fetch(`${base}/api/cobranca/webhook`, { method: "POST", headers: { "Content-Type": "application/json", "asaas-access-token": token }, body: JSON.stringify({ id: `evt_${++evt}`, event: "PAYMENT_RECEIVED", payment: { id: cid } }) });
+const hook = (cid: string, token = TOKEN, event = "PAYMENT_RECEIVED") =>
+  fetch(`${base}/api/cobranca/webhook`, { method: "POST", headers: { "Content-Type": "application/json", "asaas-access-token": token }, body: JSON.stringify({ id: `evt_${++evt}`, event, payment: { id: cid } }) });
 const api = (b: string, user: string, p: string, body?: unknown) =>
   fetch(`${b}/api/cobranca${p}`, { method: body === undefined ? "GET" : "POST", headers: { Authorization: `Bearer ${tokens[user]}`, "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) }).then(async (r) => ({ status: r.status, body: (await r.json()) as any }));
 const q1 = async (sql: string, args: unknown[] = []) => (await dev.db.query<any>(sql, args)).rows[0];
@@ -161,7 +167,7 @@ end $$;`;
 beforeAll(async () => {
   dev = await openDevDatabaseForTests(path.join(tmp, "db"));
   db = devContentDb(async () => dev);
-  for (const [i, uid] of [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL].entries()) {
+  for (const [i, uid] of [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL, FALHA].entries()) {
     await dev.db.query(`insert into auth.users (id, email) values ($1, $2)`, [uid, `c${i}@t.dev`]);
     tokens[uid] = await dev.createSession(uid);
     if (uid !== SEM_TERMO) await dev.db.query(`insert into public.legal_acceptances (user_id, document, version, origin, email_hash) select $1, document, version, 'tela_aceite', 'x' from public.legal_versions where document = 'termo_uso'`, [uid]);
@@ -294,12 +300,12 @@ describe("PRO mensal no cartão (renovação automática, sem tolerância)", () 
     expect(new Date(s.current_period_end).toISOString()).toBe("2026-12-18T02:59:59.000Z");
   });
 
-  it("cartão recusado na renovação: só registra; nada de 'past_due' (que daria 3 dias)", async () => {
+  it("cartão recusado na renovação: pausa o acesso NA HORA; nada de 'past_due' (que daria 3 dias)", async () => {
     const sid = (await q1(`select provider_subscription_id s from public.subscriptions where user_id = $1`, [CARTAO])).s;
     charges.set("pay_recusado", { id: "pay_recusado", status: "failed", method: "card", amountCents: 9990, refundedCents: 0, customerId: "cus_02", subscriptionId: sid, externalReference: null, dueDate: "2026-12-17", paidAt: null, installments: false, reference: "" });
     expect((await hook("pay_recusado")).status).toBe(200);
-    const s = await q1(`select status from public.subscriptions where user_id = $1`, [CARTAO]);
-    expect(s.status).toBe("active");
+    const s = await q1(`select status, current_period_end <= now() as pausado from public.subscriptions where user_id = $1`, [CARTAO]);
+    expect(s).toEqual({ status: "active", pausado: true });
     expect(await q1(`select status from public.billing_cobrancas where provider_payment_id = 'pay_recusado'`)).toEqual({ status: "falhou" });
   });
 
@@ -310,6 +316,65 @@ describe("PRO mensal no cartão (renovação automática, sem tolerância)", () 
     expect(log.some((l) => l.startsWith("cancelou-assinatura:"))).toBe(true);
     const s = await q1(`select status, provider_subscription_id from public.subscriptions where user_id = $1`, [CARTAO]);
     expect(s).toEqual({ status: "active", provider_subscription_id: null });
+  });
+});
+
+describe("renovação do cartão recusada (decisão do dono 17/10): bloqueio no mesmo dia, volta ao pagar, sem cobrança em dobro", () => {
+  const hoje = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+  let sid: string;
+  it("cartão recusado no dia do vencimento: o acesso cai na hora, mesmo com o Asaas ainda tentando", async () => {
+    const r = await comprar(FALHA, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "cartao" });
+    pay(r.body.url.split("/").pop());
+    await api(base, FALHA, `/orders/${r.body.id}`);
+    sid = (await q1(`select provider_subscription_id s from public.subscriptions where user_id = $1`, [FALHA])).s;
+    // como se o mês pago terminasse hoje (fim do dia do vencimento)
+    const fimHoje = new Date(`${hoje()}T23:59:59-03:00`).toISOString();
+    await dev.db.query(`update public.subscriptions set current_period_end = $2 where user_id = $1`, [FALHA, fimHoje]);
+    await dev.db.query(`update public.billing_contratos set periodo_fim = $2 where user_id = $1`, [FALHA, fimHoje]);
+    // a cobrança de renovação de hoje foi recusada (aviso de recusa; a cobrança continua "pendente" para nova tentativa)
+    charges.set("pay_ren_falhou", { id: "pay_ren_falhou", status: "pending", method: "card", amountCents: 9990, refundedCents: 0, customerId: "cus_08", subscriptionId: sid, externalReference: null, dueDate: hoje(), paidAt: null, installments: false, reference: "" });
+    expect((await hook("pay_ren_falhou", TOKEN, "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED")).status).toBe(200);
+    const s = await q1(`select status, current_period_end <= now() as pausado from public.subscriptions where user_id = $1`, [FALHA]);
+    expect(s).toEqual({ status: "active", pausado: true });
+    const ov = await api(base, FALHA, "/overview");
+    expect(ov.body.renovacao_pendente).toMatchObject({ valor_centavos: 9990, plano: "pro" });
+    expect(ov.body.renovacao_pendente.payment_id).toBeUndefined(); // o aluno não vê o código interno
+    // comprar de novo seria cobrança em dobro: barrado, com o caminho certo
+    expect((await comprar(FALHA, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "pix" })).body.code).toBe("renovacao_pendente");
+  });
+
+  it("paga por Pix: a MESMA cobrança vira Pix (nada novo no fornecedor) e o acesso volta na hora, contando da confirmação", async () => {
+    const antes = log.filter((l) => l.startsWith("cobranca:") || l.startsWith("assinatura:")).length;
+    const r = await api(base, FALHA, "/renewal/pix", {});
+    expect(r.status).toBe(200);
+    expect(r.body.pix.payload).toBe("000201REN");
+    expect(log).toContain("virou-pix:pay_ren_falhou");
+    expect(log.filter((l) => l.startsWith("cobranca:") || l.startsWith("assinatura:")).length).toBe(antes);
+    // repetir o clique devolve o mesmo Pix
+    expect((await api(base, FALHA, "/renewal/pix", {})).body.id).toBe(r.body.id);
+    pay("pay_ren_falhou");
+    expect((await hook("pay_ren_falhou")).status).toBe(200);
+    const s = await q1(`select status, current_period_end from public.subscriptions where user_id = $1`, [FALHA]);
+    expect(s.status).toBe("active");
+    expect(new Date(s.current_period_end) > new Date(Date.now() + 25 * 86400e3)).toBe(true);
+    // o contrato continua no cartão (a assinatura segue cobrando o cartão nos próximos meses; nada de Pix de renovação extra)
+    expect(await q1(`select metodo, renova, provider_subscription_id = $2 as mesma from public.billing_contratos where user_id = $1`, [FALHA, sid])).toEqual({ metodo: "cartao", renova: true, mesma: true });
+    expect((await api(base, FALHA, "/overview")).body.renovacao_pendente).toBeNull();
+    const billing = createBilling({ db, provider: fake, baseUrl: "https://app.teste.dev", now: () => clock });
+    await dev.db.query(`update public.billing_contratos set periodo_fim = now() + interval '3 days' where user_id = $1`, [FALHA]);
+    expect((await billing.runScheduled()).renovacoes).toBe(0);
+    expect((await api(base, FALHA, "/renewal/pix", {})).status).toBe(404);
+  });
+
+  it("aviso de recusa de uma cobrança ANTIGA não corta um período já pago por outra", async () => {
+    charges.set("pay_velha", { id: "pay_velha", status: "pending", method: "card", amountCents: 9990, refundedCents: 0, customerId: "cus_08", subscriptionId: sid, externalReference: null, dueDate: "2026-09-17", paidAt: null, installments: false, reference: "" });
+    await hook("pay_velha", TOKEN, "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED");
+    expect(await q1(`select current_period_end > now() as ativo from public.subscriptions where user_id = $1`, [FALHA])).toEqual({ ativo: true });
+  });
+
+  it("o Asaas reprocessa o cartão dias depois e passa: libera a partir da confirmação (uma cobrança só)", () => {
+    expect(periodEndFor({ method: "card", dueDate: "2026-11-17", paidAt: new Date("2026-11-19T13:00:00Z"), cycle: "mensal" }).toISOString()).toBe("2026-12-20T02:59:59.000Z");
+    expect(periodEndFor({ method: "card", dueDate: "2026-11-17", paidAt: new Date("2026-11-17T09:00:00Z"), cycle: "trimestral" }).toISOString()).toBe("2027-02-18T02:59:59.000Z");
   });
 });
 

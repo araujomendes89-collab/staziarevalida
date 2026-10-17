@@ -68,6 +68,8 @@ describe("aviso (webhook)", () => {
     const fim = p.parseNotice(body({ id: "evt_2", event: "SUBSCRIPTION_DELETED", subscription: { id: "sub_kcjrcccayp7mfz68" } }), { "asaas-access-token": TOKEN });
     expect(fim).toEqual({ kind: "subscription_ended", eventId: "evt_2", event: "SUBSCRIPTION_DELETED", subscriptionId: "sub_kcjrcccayp7mfz68" });
     expect(p.parseNotice(body({ id: "evt_3", event: "INVOICE_CREATED" }), { "asaas-access-token": TOKEN }).kind).toBe("ignored");
+    const recusa = p.parseNotice(body({ id: "evt_4", event: "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED", payment: { id: "pay_x", subscription: "sub_y" } }), { "asaas-access-token": TOKEN });
+    expect(recusa).toMatchObject({ kind: "charge", chargeId: "pay_x", subscriptionId: "sub_y", failed: true });
     expect(() => p.parseNotice(Buffer.from("{nao é json"), { "asaas-access-token": TOKEN })).toThrow(BillingSignatureError);
   });
 });
@@ -153,6 +155,19 @@ describe("chamadas à API", () => {
     expect(await p.refund("pay_jdm7q88423fwlj55")).toEqual({ status: "done" });
     expect(await p.refund("pay_0z4t2997qg6rqgre", 8091)).toEqual({ status: "pending" }); // Pix: aguarda autorização no painel
     expect(calls.find((c) => c.url.includes("pay_0z4t"))?.body).toEqual({ value: 80.91 });
+  });
+
+  it("renovação recusada vira Pix na MESMA cobrança (resposta real do sandbox)", async () => {
+    const { f, calls } = fakeFetch([
+      [/\/payments\/pay_yx5q0ebtqlvlecgg$/, "PUT", fx("162-trocar-para-pix").resposta],
+      [/\/payments\/pay_yx5q0ebtqlvlecgg\/pixQrCode$/, "GET", { payload: "000201x", encodedImage: "img", expirationDate: null }],
+    ]);
+    const p = asaasProvider({ apiKey: KEY, webhookToken: TOKEN, fetchImpl: f });
+    const r = await p.payChargeByPix("pay_yx5q0ebtqlvlecgg", "2026-10-17");
+    expect(r).toMatchObject({ chargeId: "pay_yx5q0ebtqlvlecgg", pix: { payload: "000201x" } });
+    expect(calls[0].body).toEqual({ billingType: "PIX", dueDate: "2026-10-17" });
+    expect(fx("164-pix-pago-cobranca-trocada").resposta).toMatchObject({ status: "RECEIVED", billingType: "PIX", subscription: "sub_1jlkaaoo4uy3hlh2" });
+    expect(fx("165-assinatura-depois").resposta).toMatchObject({ status: "ACTIVE", billingType: "CREDIT_CARD", nextDueDate: "2026-11-17" });
   });
 
   it("cancelar cobrança só se ainda não paga", async () => {

@@ -35,7 +35,8 @@ export interface ProviderCharge {
 
 /** Aviso do fornecedor já conferido (token/assinatura). Não traz decisão: o núcleo relê a cobrança antes de agir. */
 export type ProviderNotice =
-  | { kind: "charge"; eventId: string; event: string; chargeId: string; subscriptionId: string | null }
+  /** failed = o fornecedor avisou que a TENTATIVA falhou (ex.: cartão recusado) mesmo que a cobrança continue "pendente" para nova tentativa. */
+  | { kind: "charge"; eventId: string; event: string; chargeId: string; subscriptionId: string | null; failed?: boolean }
   | { kind: "subscription_ended"; eventId: string; event: string; subscriptionId: string }
   | { kind: "ignored"; eventId: string; event: string };
 
@@ -93,6 +94,8 @@ export interface PaymentProvider {
   createCharge(input: ChargeInput): Promise<ChargeCreated>;
   /** Assinatura no cartão (renovação automática). Devolve a assinatura e a primeira cobrança (paga na página do fornecedor). */
   createCardSubscription(input: SubscriptionInput): Promise<ChargeCreated & { subscriptionId: string }>;
+  /** Transforma uma cobrança ainda não paga (ex.: renovação do cartão recusada) em Pix, a MESMA cobrança: sem cobrança em dobro. */
+  payChargeByPix(chargeId: string, dueDate: string): Promise<ChargeCreated>;
   /** Lê a cobrança na API (conferência antes de liberar). null = não existe nesta conta. */
   getCharge(chargeId: string): Promise<ProviderCharge | null>;
   /** Cancela uma cobrança ainda não paga (pedido expirado ou cancelado). Já paga/inexistente: não faz nada. */

@@ -5,7 +5,7 @@
 import React from "react";
 import { Badge, BillingOption, Button, Checkbox, Icon, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
-import { brl, cancelOrder, cancelRenewal, dateBR, getBillingOverview, getOrder, newIdem, requestRefund, startCheckout } from "./billingApi.js";
+import { brl, cancelOrder, cancelRenewal, dateBR, getBillingOverview, getOrder, newIdem, payRenewalByPix, requestRefund, startCheckout } from "./billingApi.js";
 
 const CICLO = { mensal: "Mensal", trimestral: "Trimestral" };
 const METODOS = [
@@ -232,6 +232,29 @@ export function BillingSection({ onEnabled }) {
   return (
     <section className="pn-sec bl" aria-label="Assinatura e pagamentos" data-testid="cobranca">
       {ov.mode === "test" && <Badge tone="warning">Modo de teste: nenhum valor real é cobrado</Badge>}
+      {ov.renovacao_pendente && !aberto && (
+        <div className="ev-panel bl-aberto" role="alert" data-testid="cobranca-renovacao-falhou">
+          <h3 className="bl-h3">A renovação no cartão não passou</h3>
+          <p>
+            Seu acesso pago está pausado desde hoje. Pague a renovação ({brl(ov.renovacao_pendente.valor_centavos)}) por Pix e ele volta assim que o pagamento for
+            confirmado. Se o cartão for aprovado numa nova tentativa, o acesso também volta sozinho, sem cobrança em dobro.
+          </p>
+          <div className="bl-acoes">
+            <Button
+              onClick={async () => {
+                try {
+                  setPedido(await payRenewalByPix(backend));
+                } catch (e) {
+                  setAviso(e.message);
+                  reload();
+                }
+              }}
+            >
+              Pagar agora por Pix
+            </Button>
+          </div>
+        </div>
+      )}
       {aberto && <PedidoAberto pedido={aberto} onChange={reload} />}
       {alvo ? (
         <Compra
