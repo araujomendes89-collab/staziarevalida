@@ -6,7 +6,8 @@
  * Regras que estes testes seguram (Review Focus do plano):
  *  - cota ligada: 1 crédito de CADA um, na mesma transação (ou os dois pagam, ou ninguém paga e a sala não muda);
  *  - falta de saldo de qualquer um: a MESMA mensagem neutra, sem saldo, sem limite e sem dizer quem falhou;
- *  - repetir o início nunca debita de novo; rodada extra só cobra se creditos.match.cobra_rodada_extra = true;
+ *  - repetir o início nunca debita de novo; rodada extra ("Treinar outra estação") COBRA por padrão (decisão do dono de 17/10); só um
+ *    creditos.match.cobra_rodada_extra = false explícito deixa de cobrar;
  *  - equipe não paga (linha 'unlimited', sem lançamento); cota desligada = comportamento de antes;
  *  - sair, falta de sinal, convite recusado ou vencido não devolvem nada sozinhos.
  *
@@ -96,6 +97,10 @@ describe("Stazia Match · crédito no início da estação (app_dupla_start)", (
     throw new Error("Era esperado um erro, mas a chamada deu certo.");
   };
   /** A mensagem neutra: erro de máquina 54000 + INSUFFICIENT_CREDITS, sem número, sem detalhe e sem nome. */
+  const ehNeutraProxima = (e: any) => {
+    expect(e.message).toBe("Não foi possível abrir outra estação agora. Confirmem a cota de hoje e tentem de novo.");
+    expect(e.hint).toBe("INSUFFICIENT_CREDITS");
+  };
   const ehNeutra = (e: any) => {
     expect(e.message).toBe(NEUTRA);
     expect(e.code).toBe("54000");
@@ -348,7 +353,7 @@ describe("Stazia Match · crédito no início da estação (app_dupla_start)", (
     return id;
   };
 
-  it("rodada 2 com cobra_rodada_extra = false (padrão): NÃO debita e não cria linha nova", async () => {
+  it("rodada 2 com cobra_rodada_extra = false DESLIGADO à mão na Administração: NÃO debita e não cria linha nova", async () => {
     await cota(true);
     const cand = await conta("pro");
     const aval = await conta("pro");
@@ -394,21 +399,90 @@ describe("Stazia Match · crédito no início da estação (app_dupla_start)", (
     expect(await livro(id)).toHaveLength(4);
   });
 
-  it("rodada 2 cobrada sem saldo: mensagem neutra, nada novo no livro, a sala fica em 'setup' e a rodada 1 permanece", async () => {
-    await cota(true, { pro: 1, cobra_rodada_extra: true });
+  // Decisão do dono (17/10): cada estação nova na mesma sala é uma sessão nova e cobra 1 crédito de cada um, como o primeiro início.
+  it("PADRÃO (chave ausente): duas estações seguidas na mesma sala cobram 2 de cada um; recarregar ou repetir o início não cobra de novo", async () => {
+    await cota(true, { pro: 3, cobra_rodada_extra: undefined }); // sem a chave: vale o padrão, que cobra
+    expect(await d.sql(`select value -> 'match' ? 'cobra_rodada_extra' as tem from public.app_settings where key = 'creditos'`)).toEqual([{ tem: false }]);
     const cand = await conta("pro");
     const aval = await conta("pro");
-    const id = await ateRodada2(cand, aval); // o único crédito do dia de cada um já foi na rodada 1
+    const id = await ateRodada2(cand, aval);
+    expect(await livro(id)).toHaveLength(2); // rodada 1: 1 de cada
+    await iniciar(aval, id);
+    expect(await livro(id)).toHaveLength(4); // rodada 2: mais 1 de cada
+    expect(await uso(cand)).toBe(2);
+    expect(await uso(aval)).toBe(2);
+    expect((await cobrancas(id)).map((x: any) => `${x.round}:${x.user_id}`).sort()).toEqual([`1:${cand}`, `1:${aval}`, `2:${cand}`, `2:${aval}`].sort());
+    // recarregar a página (ler a sala) e repetir o início: nada novo
+    await estadoSala(cand, id);
+    await estadoSala(aval, id);
+    await expect(iniciar(aval, id)).rejects.toThrow(FASE);
+    expect(await livro(id)).toHaveLength(4);
+    expect(await uso(cand)).toBe(2);
+  });
+
+  it("sem crédito para a segunda estação: 'Treinar outra estação' não abre (pré-checagem dos dois), mensagem neutra, sala segue no resultado", async () => {
+    await cota(true, { pro: 1, cobra_rodada_extra: undefined });
+    const cand = await conta("pro");
+    const aval = await conta("pro");
+    const id = await sala(cand, aval);
+    await iniciar(aval, id); // o único crédito do dia de cada um
+    await d.sql(`update public.checklist_rooms set phase = 'result' where id = $1`, [id]);
+    for (const quem of [cand, aval]) {
+      const e = await erroDe(d.rpc(quem, "app_dupla_next_station", { p_room_id: id }));
+      expect(e.message).toBe("Não foi possível abrir outra estação agora. Confirmem a cota de hoje e tentem de novo.");
+      expect(e.code).toBe("54000");
+      expect(e.hint).toBe("INSUFFICIENT_CREDITS");
+      expect(e.message).not.toMatch(/\d|cr[eé]dito|saldo/i);
+    }
+    expect(await linhaSala(id)).toMatchObject({ phase: "result", round: 1 });
+    // só UM sem crédito também recusa os dois, igual: cand ganha bônus, aval não
+    await concede(cand, 1, "bonus");
+    ehNeutraProxima(await erroDe(d.rpc(cand, "app_dupla_next_station", { p_room_id: id })));
+    // com bônus nos dois, abre
+    await concede(aval, 1, "bonus");
+    expect(await d.rpc<any>(cand, "app_dupla_next_station", { p_room_id: id })).toMatchObject({ phase: "roles", round: 2 });
+  });
+
+  it("sem crédito na hora de INICIAR a segunda estação (gastou no meio): a sala não começa, mensagem neutra, nada novo no livro", async () => {
+    await cota(true, { pro: 2, cobra_rodada_extra: undefined });
+    const cand = await conta("pro");
+    const aval = await conta("pro");
+    const id = await ateRodada2(cand, aval); // rodada 1 paga; a pré-checagem passou (sobra 1 de cada)
+    await gasta(cand); // o crédito que sobrava de um deles é usado por fora (outra frente)
     ehNeutra(await erroDe(iniciar(aval, id)));
     expect(await livro(id)).toHaveLength(2);
     expect((await cobrancas(id)).every((x: any) => x.round === 1)).toBe(true);
     expect(await linhaSala(id)).toMatchObject({ phase: "setup", round: 2 });
-    // com bônus nos dois, a rodada 2 passa e leva a sua chave
+    // com bônus no candidato, a rodada 2 passa e leva a sua chave
     await concede(cand, 1, "bonus");
-    await concede(aval, 1, "bonus");
     await iniciar(aval, id);
     const c = (await cobrancas(id)).filter((x: any) => x.round === 2);
-    expect(c.map((x: any) => x.bucket)).toEqual(["bonus", "bonus"]);
+    expect(c.map((x: any) => x.bucket).sort()).toEqual(["bonus", "daily"]);
+  });
+
+  it("rodada 2 desligada à mão (cobra_rodada_extra = false): 'Treinar outra estação' abre mesmo sem crédito e não cobra", async () => {
+    await cota(true, { pro: 1, cobra_rodada_extra: false });
+    const cand = await conta("pro");
+    const aval = await conta("pro");
+    const id = await sala(cand, aval);
+    await iniciar(aval, id);
+    await d.sql(`update public.checklist_rooms set phase = 'result' where id = $1`, [id]);
+    expect(await d.rpc<any>(cand, "app_dupla_next_station", { p_room_id: id })).toMatchObject({ phase: "roles", round: 2 });
+  });
+
+  it("'Treinar outra estação' com a cota desligada ou entre pessoas da equipe: abre como antes", async () => {
+    await cota(false, { pro: 0 });
+    const a = await conta("pro");
+    const b = await conta("pro");
+    const id = await sala(a, b);
+    await d.sql(`update public.checklist_rooms set phase = 'result' where id = $1`, [id]);
+    expect(await d.rpc<any>(a, "app_dupla_next_station", { p_room_id: id })).toMatchObject({ round: 2 });
+    await cota(true, { pro: 0 });
+    const e1 = await conta("editor");
+    const e2 = await conta("admin");
+    const id2 = await sala(e1, e2);
+    await d.sql(`update public.checklist_rooms set phase = 'result' where id = $1`, [id2]);
+    expect(await d.rpc<any>(e1, "app_dupla_next_station", { p_room_id: id2 })).toMatchObject({ round: 2 });
   });
 
   // ------------------------------------------------------------------ cota desligada

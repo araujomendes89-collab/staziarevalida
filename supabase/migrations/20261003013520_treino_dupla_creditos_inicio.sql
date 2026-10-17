@@ -13,8 +13,12 @@
 --     'Não foi possível iniciar agora. Confirmem a cota de hoje e tentem de novo.' (hint INSUFFICIENT_CREDITS). Grava uma linha em
 --     study_room_charges por aluno (equipe: bucket 'unlimited', sem lançamento) e checklist_rooms.charged_at.
 --       - Chave por aluno: 'sala:<sala>:<aluno>' (rodada 1). Repetir NUNCA debita de novo (chave única + chave primária).
---       - "Treinar outra estação" (rodada 2 em diante, 013380) só cobra se creditos.match.cobra_rodada_extra = true (padrão
---         falso); então a chave é 'sala:<sala>:r<n>:<aluno>' e cada rodada tem a sua linha em study_room_charges.
+--       - "Treinar outra estação" (rodada 2 em diante, 013380) COBRA, por decisão do dono de 17/10: cada estação nova na mesma sala
+--         é uma sessão nova, 1 crédito de cada um, os dois pagam ou nenhum, mesma mensagem neutra. A chave é
+--         'sala:<sala>:r<n>:<aluno>' e cada rodada tem a sua linha em study_room_charges. A chave
+--         creditos.match.cobra_rodada_extra vale VERDADEIRO por padrão (ausente = cobra); só um "false" explícito deixa de cobrar.
+--       - Antes de abrir a estação nova (app_dupla_next_station) confere o crédito dos DOIS, sem debitar, com a mesma mensagem
+--         neutra. Recarregar a página, repetir o início ou reabrir a mesma estação NUNCA cobra de novo (chave única por rodada).
 --       - Chamar start de novo (clique duplo, outra aba, depois de timeout) continua recusado pela fase ('Esta ação não vale
 --         nesta fase da sala.'), como na 013350: nunca debita duas vezes.
 --       - Sair da sala depois de iniciar, fechar por falta de sinal, convite vencido/recusado: NÃO devolvem (app_dupla_leave e
@@ -39,6 +43,7 @@
 --
 -- FUNÇÕES REDEFINIDAS E A BASE DE CADA UMA
 --   app_dupla_start(uuid) ← 013350 (igual, mais o débito dos dois);
+--   app_dupla_next_station(uuid) ← 013380 (igual, mais a pré-checagem de crédito dos dois);
 --   app_dupla_swipe(uuid, text, text) ← 013510 (igual, mais a pré-checagem);
 --   app_dupla_answer_invite(uuid, boolean) ← 013320 (igual, mais a pré-checagem ao aceitar).
 --   Usadas sem mudar: dupla_room_for_action, dupla_room_need, dupla_room_state (013350), credit_* (013500).
@@ -75,7 +80,7 @@ begin
   v_dur := coalesce(r.duration_ms, (select s.duration_ms from public.checklist_stations s where s.id = r.station_id), 600000);
 
   -- Crédito dos dois, na mesma transação: ou os dois pagam, ou nenhum paga (e a sala não muda).
-  v_cobra := r.round = 1 or coalesce(public.credit_cfg() -> 'match' -> 'cobra_rodada_extra' = 'true'::jsonb, false);
+  v_cobra := r.round = 1 or public.credit_cobra_rodada();
   if v_cobra and public.credit_ativa() and cardinality(r.member_ids) = 2 then
     -- Só se cobra sala cujo convite foi aceito: um convite pendente venceria (ou seria recusado) no meio da estação e fecharia
     -- uma sala já paga (dupla_sweep e a recusa fecham a sala em qualquer fase).
@@ -109,6 +114,41 @@ begin
      set phase = 'running', started_at = now(), ends_at = now() + v_dur * interval '1 millisecond',
          paused_left_ms = null, paused_at = null, paused_total_ms = 0, released_pressings = '{}', finished_at = null,
          charged_at = case when v_any then v_now else charged_at end,
+         rev = rev + 1, updated_by = v_uid
+   where id = r.id
+  returning * into r;
+  return public.dupla_room_state(r, v_uid);
+end
+$$;
+
+-- ---------------------------------------------------------------- 1b) "Treinar outra estação" com pré-checagem (base: 013380)
+-- Igual à 013380; antes de abrir a rodada seguinte, com a cota ligada e a rodada extra cobrando, os DOIS precisam ter crédito
+-- (sem debitar; quem não tem não é revelado: mesma mensagem neutra para os dois).
+create or replace function public.app_dupla_next_station(p_room_id uuid) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := public.dupla_assert_access();
+  r public.checklist_rooms;
+  v_m uuid;
+begin
+  select * into r from public.dupla_room_for_action(p_room_id, v_uid);
+  perform public.dupla_room_need(r, v_uid, array['result'], false);
+  if public.credit_ativa() and public.credit_cobra_rodada() then
+    foreach v_m in array r.member_ids loop
+      if not public.credit_available(v_m, 'match') then
+        raise exception 'Não foi possível abrir outra estação agora. Confirmem a cota de hoje e tentem de novo.'
+          using errcode = '54000', hint = 'INSUFFICIENT_CREDITS';
+      end if;
+    end loop;
+  end if;
+  update public.checklist_rooms
+     set phase = 'roles', round = round + 1,
+         candidate_id = null, evaluator_id = null,
+         station_id = null, station_chosen_by = null, duration_ms = null,
+         confirmed_ids = '{}', connected_ids = '{}', ready_ids = '{}',
+         started_at = null, ends_at = null, paused_left_ms = null, paused_at = null, paused_total_ms = 0,
+         finished_at = null, released_pressings = '{}',
          rev = rev + 1, updated_by = v_uid
    where id = r.id
   returning * into r;
@@ -271,5 +311,6 @@ $$;
 
 -- ---------------------------------------------------------------- permissões
 revoke execute on function public.app_dupla_start(uuid) from public, anon;
+revoke execute on function public.app_dupla_next_station(uuid) from public, anon;
 revoke execute on function public.app_dupla_swipe(uuid, text, text) from public, anon;
 revoke execute on function public.app_dupla_answer_invite(uuid, boolean) from public, anon;

@@ -74,7 +74,7 @@ describe("Créditos · configuração", () => {
     await mount();
     expect(screen.getByRole("heading", { name: "Créditos" })).toBeTruthy();
     expect(sw("Cota diária de matches")).not.toBeChecked();
-    expect(sw("Treinar outra estação gasta crédito")).not.toBeChecked();
+    expect(sw("Cada estação nova na mesma sala gasta crédito")).not.toBeChecked();
     for (const plan of ["Teste grátis", "Pro", "Elite"]) expect(screen.getByLabelText(plan)).toHaveValue("");
     expect(screen.getByText("Plano sem número fica sem crédito quando a cota estiver ligada.")).toBeTruthy();
     expect(screen.getByText(/Ordem de débito: diária, bônus, comprados/)).toBeTruthy();
@@ -89,7 +89,7 @@ describe("Créditos · configuração", () => {
     expect(screen.getByLabelText("Teste grátis")).toHaveValue("0");
     expect(screen.getByLabelText("Pro")).toHaveValue("5");
     expect(screen.getByLabelText("Elite")).toHaveValue("");
-    expect(sw("Treinar outra estação gasta crédito")).toBeChecked();
+    expect(sw("Cada estação nova na mesma sala gasta crédito")).toBeChecked();
     expect(screen.getByText(/Ordem de débito: bônus, diária, comprados/)).toBeTruthy();
   });
 
@@ -120,7 +120,7 @@ describe("Créditos · configuração", () => {
     fireEvent.change(screen.getByLabelText("Pro"), { target: { value: " 12 " } });
     fireEvent.change(screen.getByLabelText("Elite"), { target: { value: "0" } });
     fireEvent.click(sw("Cota diária de matches"));
-    fireEvent.click(sw("Treinar outra estação gasta crédito"));
+    fireEvent.click(sw("Cada estação nova na mesma sala gasta crédito"));
     fireEvent.click(screen.getByRole("button", { name: "Salvar configurações de créditos" }));
     expect(await screen.findByText("Configurações de créditos salvas.")).toBeTruthy();
     expect(calls("app_admin_save_credit_config")).toEqual([

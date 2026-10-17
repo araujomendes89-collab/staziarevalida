@@ -15,6 +15,9 @@
 --        A moeda "match" não muda (só dia).
 --     2) credit_refund_ref(tipo, ref, motivo): estorna, de uma vez, os consumos ainda não estornados de uma referência (a tentativa
 --        do treino sozinho), cada um ao seu balde. É o que ch_worker_solo_fail vai chamar.
+--   DECISÃO DO DONO (17/10): cada sessão com avaliação por IA no treino sozinho GASTA crédito de IA (moeda "ia"), assim como cada
+--   estação nova em dupla gasta crédito do match. Os números (peso da avaliação, janelas dia/semana/mês por plano) seguem VAZIOS:
+--   vazio = IA bloqueada. A ligação abaixo fica para quando o ramo dupla-sozinho-ia for juntado.
 --   A LIGAÇÃO (feita na junção, depois de a 6B estar no mesmo ramo e de o dono dar os números):
 --     - ch_worker_solo_prepare: trocar a contagem por ia_reserved_at pela reserva
 --         credit_consume(p_user, 'ia', <peso em creditos.ia.pesos.avaliacao_sozinho>, 'solo_run', p_attempt, 'solo:' || p_attempt)

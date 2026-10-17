@@ -10,7 +10,7 @@
 --  1) app_settings: a lista de chaves aceitas passa a ser a UNIÃO das chaves que já existem no sistema
 --     (trial_days, announcement, simulado_ineditas_pct, treino_dupla, treino_dupla_chat) + as que já estão gravadas na tabela
 --     + "creditos". Assim colar esta migração nunca recusa uma chave que já esteja gravada. Linha "creditos" nasce desligada:
---       { "ativa": false, "match": { "cobra_rodada_extra": false }, "ia": {} }   (limites por plano: vazios = sem crédito).
+--       { "ativa": false, "match": { "cobra_rodada_extra": true }, "ia": {} }   (limites por plano: vazios = sem crédito).
 --  2) credit_wallets (user_id, pool): saldo de BÔNUS e de COMPRADOS (vazios até haver concessão ou compra). Sem acesso direto.
 --  3) credit_daily (user_id, pool, day): uso do dia (dia de São Paulo). O aluno lê só a própria linha.
 --  4) credit_ledger: o LIVRO. Só acrescenta (gatilho recusa update, delete e truncate). idem_key única = a mesma operação
@@ -22,7 +22,8 @@
 -- DECISÕES PEQUENAS (fora do texto do plano; o dono pode mudar)
 --  - study_room_charges ganha a coluna "round" (padrão 1) e a chave (room_id, user_id, round): o plano tinha (room_id, user_id),
 --    mas "Treinar outra estação" (013380) abre outra rodada na MESMA sala; se o dono mandar cobrar a rodada extra
---    (creditos.match.cobra_rodada_extra = true), cada rodada precisa da sua linha. Com a chave desligada só a rodada 1 cobra.
+--    (creditos.match.cobra_rodada_extra, que é VERDADEIRO por padrão: decisão do dono de 17/10), cada rodada precisa da sua linha. Com a
+--    chave desligada à mão só a rodada 1 cobra.
 --  - Amount do livro é sempre positivo (a direção vem do tipo), exceto "adjust", que pode ser negativo. O balde diário só aceita
 --    consumo e estorno (concessão e compra só existem nos baldes bonus e purchased).
 --  - Na leitura do aluno ficam de fora: idem_key (chave interna) e created_by (quem da equipe lançou).
@@ -55,7 +56,7 @@ end
 $$;
 
 insert into public.app_settings (key, value)
-values ('creditos', '{"ativa": false, "match": {"cobra_rodada_extra": false}, "ia": {}}'::jsonb)
+values ('creditos', '{"ativa": false, "match": {"cobra_rodada_extra": true}, "ia": {}}'::jsonb)
 on conflict (key) do nothing;
 
 -- ---------------------------------------------------------------- 2) carteira (bônus e comprados)

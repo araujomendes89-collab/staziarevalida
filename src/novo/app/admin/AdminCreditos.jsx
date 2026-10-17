@@ -54,7 +54,7 @@ const fromConfig = (raw) => {
   return {
     ativa: raw?.ativa === true,
     limites: { trial: field("trial"), pro: field("pro"), elite: field("elite") },
-    cobra: match.cobra_rodada_extra === true,
+    cobra: match.cobra_rodada_extra !== false,
     ordem: Array.isArray(match.ordem) ? match.ordem : null,
     ia: raw?.ia && typeof raw.ia === "object" ? raw.ia : {},
   };
@@ -131,7 +131,8 @@ function ConfigCard() {
             ))}
           </div>
           <Banner tone="info">Plano sem número fica sem crédito quando a cota estiver ligada.</Banner>
-          <Switch label="Treinar outra estação gasta crédito" checked={form.cobra} onChange={(e) => change({ cobra: e.target.checked })} />
+          <Switch label="Cada estação nova na mesma sala gasta crédito" checked={form.cobra} onChange={(e) => change({ cobra: e.target.checked })} />
+          <p style={mutedStyle}>Treinar outra estação na mesma sala cobra 1 crédito de cada um, como o primeiro início.</p>
           <p style={mutedStyle}>Ordem de débito: {order.join(", ").toLowerCase()}.</p>
           {state.error && <Banner tone="danger">{state.error}</Banner>}
           <div style={rightStyle}>

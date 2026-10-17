@@ -15,7 +15,7 @@ import { MIGRATIONS_DIR, U, makeRoom, openDuplaDb, setPlan, type DuplaDb } from 
 const MIGRACAO = "20261003013530_treino_dupla_creditos_admin.sql";
 const SQL = fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8");
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
-const PADRAO = { ativa: false, match: { cobra_rodada_extra: false }, ia: {} };
+const PADRAO = { ativa: false, match: { cobra_rodada_extra: true }, ia: {} };
 const SO_ADMIN = /Acesso restrito a administradores\./;
 const MOEDA = /Moeda inválida\./;
 const NAO_ACHOU = /Aluno não encontrado\./;
@@ -173,9 +173,9 @@ describe("Migração 013530 — administração dos créditos do Stazia Match", 
     expect(await getCfg()).toEqual(PADRAO);
     expect((await registro("credito.config")).length).toBe(logAntes);
 
-    expect(await salvar({ ativa: true, match: { elite: 10 } })).toEqual({ ativa: true, match: { elite: 10, cobra_rodada_extra: false }, ia: {} });
+    expect(await salvar({ ativa: true, match: { elite: 10 } })).toEqual({ ativa: true, match: { elite: 10, cobra_rodada_extra: true }, ia: {} });
     // Zero é um número: o plano está "preenchido" (zero crédito para o plano, de propósito).
-    expect((await salvar({ ativa: true, match: { pro: 0 } })).match).toEqual({ pro: 0, cobra_rodada_extra: false });
+    expect((await salvar({ ativa: true, match: { pro: 0 } })).match).toEqual({ pro: 0, cobra_rodada_extra: true });
     expect(await salvar({ ativa: false })).toEqual(PADRAO);
     expect(await salvar({ ativa: false, match: {} })).toEqual(PADRAO);
     expect(await config()).toEqual(PADRAO);
@@ -195,11 +195,11 @@ describe("Migração 013530 — administração dos créditos do Stazia Match", 
     expect((await registro("credito.config")).length).toBe(logAntes);
 
     // Planos fora de trial/pro/elite são ignorados, sem erro e sem gravar; chaves soltas na raiz também.
-    expect(await salvar({ ativa: false, match: { pro: 5, ouro: 7, "": 1 }, extra: 1 })).toEqual({ ativa: false, match: { pro: 5, cobra_rodada_extra: false }, ia: {} });
-    expect(await getCfg()).toEqual({ ativa: false, match: { pro: 5, cobra_rodada_extra: false }, ia: {} });
+    expect(await salvar({ ativa: false, match: { pro: 5, ouro: 7, "": 1 }, extra: 1 })).toEqual({ ativa: false, match: { pro: 5, cobra_rodada_extra: true }, ia: {} });
+    expect(await getCfg()).toEqual({ ativa: false, match: { pro: 5, cobra_rodada_extra: true }, ia: {} });
     // Limites nos extremos e nulo (apaga o número do plano).
-    expect((await salvar({ ativa: false, match: { trial: 0, pro: 100000 } })).match).toEqual({ trial: 0, pro: 100000, cobra_rodada_extra: false });
-    expect((await salvar({ ativa: false, match: { trial: null, pro: 2 } })).match).toEqual({ pro: 2, cobra_rodada_extra: false });
+    expect((await salvar({ ativa: false, match: { trial: 0, pro: 100000 } })).match).toEqual({ trial: 0, pro: 100000, cobra_rodada_extra: true });
+    expect((await salvar({ ativa: false, match: { trial: null, pro: 2 } })).match).toEqual({ pro: 2, cobra_rodada_extra: true });
     // 3.0 é inteiro.
     expect((await salvar({ ativa: false, match: { pro: 3.0 } })).match.pro).toBe(3);
   });
@@ -233,18 +233,18 @@ describe("Migração 013530 — administração dos créditos do Stazia Match", 
       await expect(salvar({ ativa: false, match: { ordem: errada } }), JSON.stringify(errada)).rejects.toThrow(ORDEM);
     }
     const valida = ["bonus", "daily", "purchased"];
-    expect((await salvar({ ativa: false, match: { pro: 2, ordem: valida } })).match).toEqual({ pro: 2, cobra_rodada_extra: false, ordem: valida });
+    expect((await salvar({ ativa: false, match: { pro: 2, ordem: valida } })).match).toEqual({ pro: 2, cobra_rodada_extra: true, ordem: valida });
     expect((await config()).match.ordem).toEqual(valida);
     // 'ordem' nula não grava nada.
-    expect((await salvar({ ativa: false, match: { ordem: null } })).match).toEqual({ cobra_rodada_extra: false });
+    expect((await salvar({ ativa: false, match: { ordem: null } })).match).toEqual({ cobra_rodada_extra: true });
 
-    // cobra_rodada_extra: só booleano (ou nulo/ausente = não cobra).
+    // cobra_rodada_extra: só booleano (nulo ou ausente = cobra, o padrão desde 17/10).
     for (const errado of ["sim", "true", 1, 0, [], {}]) {
       await expect(salvar({ ativa: false, match: { cobra_rodada_extra: errado } }), JSON.stringify(errado)).rejects.toThrow(/é sim ou não/);
     }
     expect((await salvar({ ativa: false, match: { cobra_rodada_extra: true } })).match.cobra_rodada_extra).toBe(true);
-    expect((await salvar({ ativa: false, match: { cobra_rodada_extra: null } })).match.cobra_rodada_extra).toBe(false);
-    expect((await salvar({ ativa: false, match: {} })).match.cobra_rodada_extra).toBe(false);
+    expect((await salvar({ ativa: false, match: { cobra_rodada_extra: null } })).match.cobra_rodada_extra).toBe(true);
+    expect((await salvar({ ativa: false, match: {} })).match.cobra_rodada_extra).toBe(true);
   });
 
   it("configuração da IA: chave desconhecida, peso decimal e plano com objeto de chaves erradas são recusados; válida é gravada", async () => {
@@ -275,7 +275,7 @@ describe("Migração 013530 — administração dos créditos do Stazia Match", 
     expect(await getCfg()).toEqual(PADRAO);
 
     const valida = { pro: { dia: 5, semana: 20, mes: 60 }, pesos: { avaliacao_sozinho: 3 } };
-    expect(await salvar({ ativa: false, ia: valida })).toEqual({ ativa: false, match: { cobra_rodada_extra: false }, ia: valida });
+    expect(await salvar({ ativa: false, ia: valida })).toEqual({ ativa: false, match: { cobra_rodada_extra: true }, ia: valida });
     expect((await config()).ia).toEqual(valida);
     // Outras formas válidas: plano com número, nulo e objeto parcial; pesos vazio.
     const variada = { trial: 2, pro: { dia: 4, semana: null }, elite: null, pesos: {} };

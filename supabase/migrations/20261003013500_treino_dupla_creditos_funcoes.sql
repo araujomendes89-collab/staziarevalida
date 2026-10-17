@@ -91,6 +91,12 @@ begin
 end
 $$;
 
+-- "Treinar outra estação" (rodada 2 em diante) cobra? Decisão do dono de 17/10: SIM, cada estação nova na mesma sala é uma sessão nova.
+-- Verdadeiro quando a chave está ausente, nula ou verdadeira; só um "false" explícito (desligado à mão na Administração) deixa de cobrar.
+create or replace function public.credit_cobra_rodada() returns boolean
+  language sql stable security definer set search_path = ''
+as $$ select (public.credit_cfg() -> 'match' -> 'cobra_rodada_extra') is distinct from 'false'::jsonb $$;
+
 -- Ordem do débito da moeda (padrão do documento: diária, bônus, comprados).
 create or replace function public.credit_order(p_pool text) returns text[]
   language plpgsql stable security definer set search_path = ''
@@ -555,6 +561,7 @@ $$;
 revoke execute on function public.credit_day(timestamptz) from public, anon, authenticated;
 revoke execute on function public.credit_cfg() from public, anon, authenticated;
 revoke execute on function public.credit_ativa() from public, anon, authenticated;
+revoke execute on function public.credit_cobra_rodada() from public, anon, authenticated;
 revoke execute on function public.credit_plan(uuid, timestamptz) from public, anon, authenticated;
 revoke execute on function public.credit_limit(uuid, text, timestamptz) from public, anon, authenticated;
 revoke execute on function public.credit_order(text) from public, anon, authenticated;

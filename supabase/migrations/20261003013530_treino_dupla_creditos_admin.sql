@@ -43,7 +43,7 @@ begin
   v := public.credit_cfg();
   return jsonb_build_object(
     'ativa', coalesce(v -> 'ativa' = 'true'::jsonb, false),
-    'match', jsonb_build_object('cobra_rodada_extra', false) || coalesce(case when jsonb_typeof(v -> 'match') = 'object' then v -> 'match' end, '{}'::jsonb),
+    'match', jsonb_build_object('cobra_rodada_extra', true) || coalesce(case when jsonb_typeof(v -> 'match') = 'object' then v -> 'match' end, '{}'::jsonb),
     'ia', coalesce(case when jsonb_typeof(v -> 'ia') = 'object' then v -> 'ia' end, '{}'::jsonb)
   );
 end
@@ -95,9 +95,9 @@ begin
   end loop;
   v_x := v_match -> 'cobra_rodada_extra';
   if v_x is not null and jsonb_typeof(v_x) not in ('boolean', 'null') then
-    raise exception 'Configuração dos matches inválida: "inverter/outra estação gasta crédito" é sim ou não.' using errcode = '22023';
+    raise exception 'Configuração dos matches inválida: "cada estação nova gasta crédito" é sim ou não.' using errcode = '22023';
   end if;
-  v_out_match := v_out_match || jsonb_build_object('cobra_rodada_extra', coalesce(v_x = 'true'::jsonb, false));
+  v_out_match := v_out_match || jsonb_build_object('cobra_rodada_extra', case when v_x is null or jsonb_typeof(v_x) = 'null' then true else v_x = 'true'::jsonb end);
   v_ord := v_match -> 'ordem';
   if v_ord is not null and jsonb_typeof(v_ord) <> 'null' then
     if jsonb_typeof(v_ord) <> 'array' or jsonb_array_length(v_ord) <> 3

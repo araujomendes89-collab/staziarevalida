@@ -21,7 +21,7 @@ const MIGRACOES = [
   "20261003013490_treino_dupla_creditos_tabelas.sql", "20261003013500_treino_dupla_creditos_funcoes.sql", "20261003013540_treino_dupla_creditos_ia.sql",
 ];
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
-const CHAVE_INICIAL = { ativa: false, match: { cobra_rodada_extra: false }, ia: {} };
+const CHAVE_INICIAL = { ativa: false, match: { cobra_rodada_extra: true }, ia: {} };
 
 // Instantes de teste. São Paulo é UTC-3 (sem horário de verão): 02:59:59Z do dia 17 ainda é 16/10 em São Paulo.
 const FIM_DO_DIA_16 = "2026-10-17T02:59:59Z";
@@ -230,7 +230,7 @@ describe("Livro de créditos · tabelas e funções internas", () => {
 
   // ------------------------------------------------------------------ chave de configuração
   describe("chave 'creditos' de app_settings", () => {
-    it("nasce desligada e sem número: { ativa: false, match: { cobra_rodada_extra: false }, ia: {} }", () => {
+    it("nasce desligada e sem número: { ativa: false, match: { cobra_rodada_extra: true }, ia: {} }", () => {
       expect(valorInicial).toEqual(CHAVE_INICIAL);
     });
 
@@ -994,7 +994,7 @@ describe("Livro de créditos · tabelas e funções internas", () => {
     const NOMES = [
       "credit_day", "credit_cfg", "credit_ativa", "credit_plan", "credit_limit", "credit_order", "credit_avail", "credit_state",
       "credit_available", "credit_assert_available", "credit_consume", "credit_consume_pair", "credit_refund", "credit_grant",
-      "credit_reconcile", "credit_ledger_guard", "credit_refund_ref",
+      "credit_reconcile", "credit_ledger_guard", "credit_refund_ref", "credit_cobra_rodada",
     ];
 
     it("o aluno (authenticated) e o visitante NÃO executam nenhuma credit_*", async () => {
