@@ -27,7 +27,7 @@ export const metodosDaCompra = (overview, alvo) =>
 /** O pagamento em aberto do resumo do servidor (vem sem "status": todos ali estão abertos). */
 export const pedidoDoResumo = (ov) => {
   const p = (ov?.pedidos_abertos ?? [])[0];
-  return p ? { status: "aberto", ...p } : null;
+  return p ? { status: "aberto", cancelavel: !(p.motivo === "renovacao" && p.metodo === "pix"), ...p } : null;
 };
 /** Texto das formas aceitas, conforme o servidor. */
 export const textoFormas = (overview) => (overview?.methods?.debit === true ? "Pix, crédito ou débito" : "Pix ou cartão de crédito");
@@ -342,6 +342,7 @@ export function PedidoAberto({ pedido, onChange, onNovo }) {
               </Button>
             </div>
             {ate && p.motivo !== "renovacao" && <p className="bl-fina">Este Pix vale até {ate} de hoje.</p>}
+            {p.motivo === "renovacao" && p.vencimento && <p className="bl-fina">Pix da renovação: pague até {dateBR(`${p.vencimento}T12:00:00-03:00`)} para o acesso não pausar.</p>}
           </div>
         </div>
       ) : (
