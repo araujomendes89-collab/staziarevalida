@@ -49,6 +49,9 @@ export interface CustomerInput {
   name: string;
   /** CPF ou CNPJ só com dígitos (pedido na hora de pagar; vai para o fornecedor, NÃO fica no nosso banco). */
   document: string;
+  /** CEP (8 dígitos) e número: exigidos pela nota fiscal (o fornecedor completa rua, bairro e cidade pelo CEP). Também não ficam aqui. */
+  postalCode?: string;
+  addressNumber?: string;
 }
 
 export interface ChargeInput {
@@ -85,6 +88,8 @@ export interface ProviderCapabilities {
   methods: { card: boolean; pix: boolean; debit: boolean };
   /** Devolução de parte do valor. */
   partialRefund: boolean;
+  /** Nota fiscal ligada: a primeira compra pede CEP e número (o endereço do tomador é obrigatório na NFS-e). */
+  requiresAddress: boolean;
 }
 
 export interface PaymentProvider {
@@ -110,6 +115,8 @@ export interface PaymentProvider {
   parseNotice(rawBody: Buffer, headers: Record<string, string | string[] | undefined>): ProviderNotice;
   /** Depois de gravar um pagamento (ex.: nota fiscal). Erro aqui só é registrado; nunca desfaz o pagamento. */
   afterPaid?(charge: ProviderCharge, description: string): Promise<void>;
+  /** Depois de uma devolução TOTAL confirmada (ex.: cancelar a nota fiscal daquele pagamento). Erro aqui só é registrado. */
+  afterRefunded?(charge: ProviderCharge): Promise<void>;
 }
 
 export class BillingSignatureError extends Error {

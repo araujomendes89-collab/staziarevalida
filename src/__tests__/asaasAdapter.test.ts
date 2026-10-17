@@ -205,6 +205,27 @@ describe("chamadas à API", () => {
     expect(descricaoDaNota({ tipo: "extra", codigo: "boost", ciclo: "avulso", nome: "IA Boost" })).toBe("Pacote extra de IA (IA Boost) – plataforma de preparação para o Revalida");
   });
 
+  it("nota: com a nota ligada pede endereço; devolução total cancela a nota (só as válidas)", async () => {
+    const env = { ASAAS_API_KEY: KEY, ASAAS_WEBHOOK_TOKEN: TOKEN, ASAAS_NFSE_SERVICE_CODE: "08.02.01", ASAAS_NFSE_SERVICE_NAME: "Instrução", ASAAS_NFSE_NBS: "1.2205.19.00" };
+    const { f, calls } = fakeFetch([
+      [/\/invoices\?payment=pay_dev$/, "GET", { data: [{ id: "inv_000000590510", status: "AUTHORIZED" }, { id: "inv_000000000002", status: "CANCELED" }] }],
+      [/\/invoices\/inv_000000590510\/cancel$/, "POST", fx("191-nota-cancelar").resposta],
+      [/\/customers\?externalReference=/, "GET", { data: [] }],
+      [/\/customers$/, "POST", { id: "cus_n" }],
+    ]);
+    const p = createAsaasProvider(env, f)!;
+    expect(p.capabilities.requiresAddress).toBe(true);
+    expect(createAsaasProvider({ ASAAS_API_KEY: KEY, ASAAS_WEBHOOK_TOKEN: TOKEN })!.capabilities.requiresAddress).toBe(false);
+    const dev = { ...toProviderCharge(fx("84-estorno-total-cartao-pro").resposta), id: "pay_dev" };
+    await p.afterRefunded!(dev);
+    expect(calls.filter((c) => c.method === "POST").map((c) => c.url)).toEqual(["https://api-sandbox.asaas.com/v3/invoices/inv_000000590510/cancel"]);
+    await p.ensureCustomer({ userId: "u9", email: "a@b.dev", name: "Aluno", document: "36638544691", postalCode: "80010000", addressNumber: "100" });
+    expect(calls.at(-1)!.body).toMatchObject({ postalCode: "80010000", addressNumber: "100", notificationDisabled: true });
+    // respostas reais: nota agendada com código "08.02.01" e NBS com pontos, emitida no sandbox
+    expect(fx("187-nota-depois-do-cep").resposta).toMatchObject({ status: "SCHEDULED", municipalServiceCode: "08.02.01" });
+    expect(fx("189-nota-depois").resposta).toMatchObject({ status: "AUTHORIZED" });
+  });
+
   it("cancelar cobrança só se ainda não paga", async () => {
     const { f, calls } = fakeFetch([
       [/\/payments\/pay_pago$/, "GET", { ...fx("32-pix-boost-simular-pagamento").resposta, id: "pay_pago" }],

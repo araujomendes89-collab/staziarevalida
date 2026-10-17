@@ -25,7 +25,7 @@ import { BillingSignatureError, type PaymentProvider, type ProviderCharge } from
 const TOKEN = "token-do-aviso-simulado-com-mais-de-32-caracteres";
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "cobranca-"));
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL, FALHA, DEBITO] = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(id);
+const [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL, FALHA, DEBITO, ENDERECO] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(id);
 let dev: DevDatabase;
 let db: ContentDb;
 let base: string;
@@ -42,9 +42,9 @@ let seq = 0;
 const fake: PaymentProvider = {
   name: "asaas",
   mode: "test",
-  capabilities: { methods: { card: true, pix: true, debit: true }, partialRefund: true },
+  capabilities: { methods: { card: true, pix: true, debit: true }, partialRefund: true, requiresAddress: false },
   async ensureCustomer(i) {
-    log.push(`cliente:${i.document}`);
+    log.push(`cliente:${i.document}${i.postalCode ? `:${i.postalCode}:${i.addressNumber}` : ""}`);
     return `cus_${i.userId.slice(-2)}`;
   },
   async createCharge(i) {
@@ -167,7 +167,7 @@ end $$;`;
 beforeAll(async () => {
   dev = await openDevDatabaseForTests(path.join(tmp, "db"));
   db = devContentDb(async () => dev);
-  for (const [i, uid] of [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL, FALHA, DEBITO].entries()) {
+  for (const [i, uid] of [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL, FALHA, DEBITO, ENDERECO].entries()) {
     await dev.db.query(`insert into auth.users (id, email) values ($1, $2)`, [uid, `c${i}@t.dev`]);
     tokens[uid] = await dev.createSession(uid);
     if (uid !== SEM_TERMO) await dev.db.query(`insert into public.legal_acceptances (user_id, document, version, origin, email_hash) select $1, document, version, 'tela_aceite', 'x' from public.legal_versions where document = 'termo_uso'`, [uid]);
@@ -494,6 +494,23 @@ describe("cartão de débito (decisão do dono 17/10): à vista, nunca renova so
     expect((await hook(cid)).status).toBe(200);
     expect(await q1(`select metodo, status from public.billing_cobrancas where provider_payment_id = $1`, [cid])).toEqual({ metodo: "cartao", status: "paga" });
     expect(await q1(`select count(*)::int n from public.carteira_extras where user_id = $1`, [DEBITO])).toEqual({ n: 1 });
+  });
+});
+
+describe("nota fiscal ligada: a 1ª compra pede CEP e número (vão para o fornecedor)", () => {
+  it("sem CEP recusa; com CEP e número cria o cliente com o endereço e o resumo avisa", async () => {
+    const comNota: PaymentProvider = { ...fake, capabilities: { ...fake.capabilities, requiresAddress: true } };
+    const billing = createBilling({ db, provider: comNota, baseUrl: "https://app.teste.dev", now: () => clock });
+    const u = { id: ENDERECO, email: "c9@t.dev" } as any;
+    expect((await billing.overview(u) as any).precisa_endereco).toBe(true);
+    const base0 = { tipo: "extra", codigo: "boost", metodo: "pix", aceite: true, documento: "36638544691", nome: "Aluno Teste" };
+    await expect(billing.checkout(u, { ...base0, idem: "idem-end-1" })).rejects.toMatchObject({ code: "cep_obrigatorio" });
+    await expect(billing.checkout(u, { ...base0, idem: "idem-end-2", cep: "80010-000" })).rejects.toMatchObject({ code: "numero_obrigatorio" });
+    const r = await billing.checkout(u, { ...base0, idem: "idem-end-3", cep: "80010-000", numero: "100" });
+    expect(r.status).toBe("aberto");
+    expect(log).toContain("cliente:36638544691:80010000:100");
+    const tudo = JSON.stringify((await dev.db.query(`select * from public.billing_pedidos where user_id = $1`, [ENDERECO])).rows);
+    expect(tudo).not.toContain("80010000");
   });
 });
 
