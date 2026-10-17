@@ -592,7 +592,7 @@ describe("Configuração", () => {
 
   it("sem função salva e sem uiKind, vale CONTENT_HUB_AI_PROVIDER antes do padrão; as específicas ganham dela", async () => {
     const { envFallbackRef } = await import("../../server/ai/config");
-    const gemini = { provider: "gemini", model: "gemini-2.5-pro" };
+    const gemini = { provider: "gemini", model: "gemini-3.8-flash" };
     const env = { CONTENT_HUB_AI_PROVIDER: "gemini" } as any;
     for (const fn of ["criacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "verificacao"] as const) expect(envFallbackRef(fn, env), fn).toEqual(gemini);
     const mix = { CONTENT_HUB_AI_PROVIDER: "gemini", CONTENT_HUB_AI_PROVIDER_CREATE: "anthropic", CONTENT_HUB_VERIFIER_PROVIDER: "openai", CONTENT_HUB_OPENAI_MODEL: "gpt-x" } as any;
@@ -610,7 +610,7 @@ describe("Configuração", () => {
   it("envFallbackRef: CONTENT_HUB_MODEL_CREATE só vale com a IA de _CREATE (ou o padrão sem variável de IA); o que não é IA é pulado", async () => {
     const { envFallbackRef } = await import("../../server/ai/config");
     const claude = { provider: "anthropic", model: "claude-sonnet-5-5" };
-    const gemini = { provider: "gemini", model: "gemini-2.5-pro" };
+    const gemini = { provider: "gemini", model: "gemini-3.8-flash" };
     // IA vinda de CONTENT_HUB_AI_PROVIDER: o modelo é o da própria IA, não o CONTENT_HUB_MODEL_CREATE (que era de outra IA)
     expect(envFallbackRef("criacao", { CONTENT_HUB_AI_PROVIDER: "gemini", CONTENT_HUB_MODEL_CREATE: "claude-x" } as any)).toEqual(gemini);
     expect(envFallbackRef("criacao", { CONTENT_HUB_AI_PROVIDER: "gemini", CONTENT_HUB_MODEL_CREATE: "claude-x", CONTENT_HUB_GEMINI_MODEL: "g-env" } as any)).toEqual({ provider: "gemini", model: "g-env" });
@@ -649,7 +649,7 @@ describe("Configuração", () => {
     const GEM = "Chave do Google ausente no servidor: defina VERTEX_API_KEY (Vertex AI) ou GEMINI_API_KEY (AI Studio).";
     const O = ref("ollama", "qwen3");
     const C = ref("anthropic", "claude-sonnet-5-5");
-    const G = ref("gemini", "gemini-2.5-pro");
+    const G = ref("gemini", "gemini-3.8-flash");
     /** O servidor com as três chaves; PROD é o site publicado e LOCAL o Mac. As chaves são conferidas pelo env recebido. */
     const KEYS = { ANTHROPIC_API_KEY: "k", OPENAI_API_KEY: "k", GEMINI_API_KEY: "g".repeat(40) };
     const PROD = { ...KEYS, NODE_ENV: "production" } as any;
@@ -657,7 +657,7 @@ describe("Configuração", () => {
     const SEM_CHAVE = (nome: string) => `${nome}: sem chave neste servidor (site). O processamento da Central (Cloud Run) usa as chaves de lá; Aulas e Podcasts rodam no site e precisam da chave aqui.`;
     // IA09: modelo pago sem preço ganha um aviso próprio (precoObrigatorioModeloPago.test.ts); aqui os modelos têm preço, para estes
     // testes (de outra regra) continuarem comparando a lista exata de avisos
-    const PRICED = [["anthropic", "claude-sonnet-5-5"], ["gemini", "gemini-2.5-pro"], ["openai", "gpt-x"], ["gemini", "gemini-flash"]].map(([provider, model]) => ({ provider, model, input_per_mtok: 1, output_per_mtok: 2, source_url: "https://exemplo.com", checked_on: "2026-10-11" }));
+    const PRICED = [["anthropic", "claude-sonnet-5-5"], ["gemini", "gemini-3.8-flash"], ["openai", "gpt-x"], ["gemini", "gemini-flash"]].map(([provider, model]) => ({ provider, model, input_per_mtok: 1, output_per_mtok: 2, source_url: "https://exemplo.com", checked_on: "2026-10-11" }));
     const check = async (fn: any, env: any = PROD, over: Parameters<typeof mkCfg>[0] = {}) => {
       const { functionChecks } = await import("../../server/ai/config");
       const cfg = mkCfg({ prices: PRICED, ...over });
@@ -809,7 +809,7 @@ describe("Maestro", () => {
   type R = { provider: string; model: string };
   const A: R = { provider: "anthropic", model: "claude-sonnet-5-5" };
   const O: R = { provider: "openai", model: "gpt-5.4" };
-  const G: R = { provider: "gemini", model: "gemini-2.5-pro" };
+  const G: R = { provider: "gemini", model: "gemini-3.8-flash" };
   const L: R = { provider: "ollama", model: "qwen3" };
   const origin = { source: "central" as const, itemId: "item-1", actorId: null };
   const REQ = { promptId: "t", promptVersion: "1", system: "sistema", input: "x".repeat(400), schema: { type: "object" as const }, schemaName: "teste", maxOutputTokens: 1000 };
@@ -1590,7 +1590,7 @@ describe("Rotas", () => {
     expect(site.provider_checks.anthropic).toEqual({ pending: null, blocks: false });
 
     // função salva no Mac com Ollama: pronta no Mac, não pronta no site publicado (com o motivo)
-    await priceModels({ provider: "gemini", model: "gemini-2.5-pro" });
+    await priceModels({ provider: "gemini", model: "gemini-3.8-flash" });
     await call("admin", "POST", "/providers/ollama/enabled", { enabled: true });
     expect((await call("admin", "PUT", "/functions/criacao", { config: { mode: "sozinha", primary: { provider: "ollama", model: "qwen3" } } })).status).toBe(200);
     const mac = (await (await call("admin", "GET", "/overview")).json()).checks.criacao;
@@ -1600,7 +1600,7 @@ describe("Rotas", () => {
 
     // Gemini sem chave neste servidor (o site): pode ser salvo, e a função fica pronta, só com o aviso
     await call("admin", "POST", "/providers/gemini/enabled", { enabled: true });
-    const gem = await call("admin", "PUT", "/functions/verificacao", { config: { mode: "sozinha", primary: { provider: "gemini", model: "gemini-2.5-pro" } } });
+    const gem = await call("admin", "PUT", "/functions/verificacao", { config: { mode: "sozinha", primary: { provider: "gemini", model: "gemini-3.8-flash" } } });
     expect(gem.status).toBe(200);
     const ver = (await (await callAt(prod, "admin", "GET", "/overview")).json()).checks.verificacao;
     expect(ver).toMatchObject({ source: "banco", ready: true, problems: [] });

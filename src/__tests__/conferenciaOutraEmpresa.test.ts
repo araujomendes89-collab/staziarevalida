@@ -24,7 +24,7 @@ let db: ContentDb;
 type R = { provider: string; model: string };
 const A: R = { provider: "anthropic", model: "claude-sonnet-5-5" };
 const O: R = { provider: "openai", model: "gpt-6.1-sol" };
-const G: R = { provider: "gemini", model: "gemini-2.5-pro" };
+const G: R = { provider: "gemini", model: "gemini-3.8-flash" }; // o padrão do Gemini (DEFAULT_MODELS) depois que o 2.5 saiu do ar em 20/10/2026
 const key = (r: R) => `${r.provider}:${r.model}`;
 const origin = { source: "central" as const, itemId: "item-1", actorId: null };
 const REQ = { promptId: "t", promptVersion: "1", system: "sistema", input: "x".repeat(400), schema: { type: "object" as const }, schemaName: "teste", maxOutputTokens: 1000 };

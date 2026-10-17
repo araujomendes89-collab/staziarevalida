@@ -127,12 +127,13 @@ describe("modelo que saiu do ar: erro em português, sem repetir e sem quebrar",
 
 describe("migração 013580 (troca só o nome do modelo)", () => {
   const sql = fs.readFileSync(path.join(__dirname, "../../supabase/migrations/20261003013580_modelos_gemini_25_saem.sql"), "utf8");
-  it("troca os três modelos 2.5, atualiza a lista do Gemini e não mexe em preços existentes", () => {
+  it("troca os três modelos 2.5, atualiza a lista do Gemini (só se já existir) e não mexe em preços", () => {
     expect(sql).toMatch(/'gemini-2\.5-pro' then 'gemini-3\.8-flash'/);
     expect(sql).toMatch(/'gemini-2\.5-flash' then 'gemini-3\.8-flash'/);
     expect(sql).toMatch(/'gemini-2\.5-flash-lite' then 'gemini-3\.1-flash-lite'/);
-    expect(sql).toMatch(/on conflict \(provider, model\) do nothing/);
-    expect(sql).not.toMatch(/update public\.ai_model_prices/i);
+    expect(sql).toMatch(/jsonb_array_length\(models\) > 0/);
+    expect(sql).not.toMatch(/ai_model_prices\s*(\(|set)/i);
+    expect(sql).not.toMatch(/insert into/i);
     expect(sql).not.toMatch(/delete /i);
   });
   it("a lista nova do Gemini é igual à que o código monta ao atualizar", async () => {

@@ -13,8 +13,8 @@
 -- o botão "Atualizar lista" montaria com o código novo (só os modelos com preço cadastrado que a chave expressa do Vertex aceita).
 -- Sem essa lista nova, o modelo escolhido nas funções ficaria "fora da lista" e a Central o bloquearia (refProblems).
 --
--- Os preços dos 5 modelos novos já estão em ai_model_prices; o insert abaixo só garante que existam (on conflict do nothing:
--- preço que o dono já tem nunca é sobrescrito). Os preços do Gemini 2.5 ficam (histórico).
+-- Preços: não mexe em nenhum. Os 5 modelos novos já têm preço em ai_model_prices em produção (conferido em 17/10/2026; o
+-- conferir-013580.sql avisa se algum faltar) e os preços do Gemini 2.5 ficam (histórico).
 --
 -- Pode ser colada duas vezes: a segunda não encontra mais nenhum gemini-2.5 nas funções e regrava a mesma lista.
 -- Para desfazer: modelos-gemini/desfazer-013580.sql. Para conferir: modelos-gemini/conferir-013580.sql.
@@ -52,7 +52,7 @@ set primary_ref = pg_temp.ref_nova(f.primary_ref),
     updated_at = now()
 where f.primary_ref::text ~ 'gemini-2\.5-' or f.fallback_ref::text ~ 'gemini-2\.5-' or f.reviewers::text ~ 'gemini-2\.5-';
 
--- 2) lista de modelos do Gemini na Central (mesma lista que o código novo monta ao atualizar)
+-- 2) lista de modelos do Gemini na Central (mesma lista que o código novo monta ao atualizar), se já existir uma lista guardada
 update public.ai_providers
 set models = '[
   {"id": "gemini-3.1-flash-lite", "label": "gemini-3.1-flash-lite"},
@@ -63,14 +63,6 @@ set models = '[
 ]'::jsonb,
     models_refreshed_at = now(),
     updated_at = now()
-where id = 'gemini';
-
--- 3) garante o preço dos modelos novos (Vertex AI, endpoint global, conferido em 17/10/2026); não sobrescreve o que já existe
-insert into public.ai_model_prices (provider, model, input_per_mtok, output_per_mtok, per_search_usd, source_url, checked_on)
-values
-  ('gemini', 'gemini-3.8-flash', 0.75, 3.75, 0.014, 'https://cloud.google.com/vertex-ai/generative-ai/pricing', '2026-10-17'),
-  ('gemini', 'gemini-3.5-flash', 1.5, 9, 0.014, 'https://cloud.google.com/vertex-ai/generative-ai/pricing', '2026-10-17'),
-  ('gemini', 'gemini-3.5-flash-lite', 0.3, 2.5, 0.014, 'https://cloud.google.com/vertex-ai/generative-ai/pricing', '2026-10-17'),
-  ('gemini', 'gemini-3.1-flash-lite', 0.25, 1.5, 0.014, 'https://cloud.google.com/vertex-ai/generative-ai/pricing', '2026-10-17'),
-  ('gemini', 'gemini-3.1-pro-preview', 2, 12, 0.014, 'https://cloud.google.com/vertex-ai/generative-ai/pricing', '2026-10-17')
-on conflict (provider, model) do nothing;
+where id = 'gemini'
+  -- só quando a lista já foi montada alguma vez (lista vazia = Central sem lista guardada: nada é conferido contra ela)
+  and jsonb_array_length(models) > 0;
