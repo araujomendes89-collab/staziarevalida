@@ -234,7 +234,9 @@ main:focus, main:focus-visible { box-shadow: none; }
 .alem__p { font-size: 14px; line-height: 1.6; color: var(--texto-2); font-weight: 500; }
 
 /* ---------- planos ---------- */
-.planos__grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; }
+/* PRO na coluna larga; PRÁTICA e ELITE ("em breve") empilhados ao lado, somando a altura do PRO (sem buraco vazio) */
+.planos__grade { display: grid; grid-template-columns: 1.25fr 1fr; grid-template-rows: 1fr 1fr; gap: 20px; align-items: stretch; }
+.plano--destaque { grid-row: 1 / span 2; }
 .plano { background: #FFFFFF; border: 1px solid var(--borda); border-radius: var(--raio-xl); padding: 28px; display: flex; flex-direction: column; gap: 8px; color: var(--texto); }
 .plano--destaque { background: var(--marinho); border-color: var(--marinho); color: #FFFFFF; box-shadow: var(--sombra-painel); }
 .plano__etiqueta { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--azul-texto); }
@@ -248,6 +250,7 @@ main:focus, main:focus-visible { box-shadow: none; }
 .plano__acoes { margin-top: auto; padding-top: 16px; display: flex; flex-direction: column; gap: 10px; }
 .plano__acoes .botao { width: 100%; min-height: 48px; font-size: 15px; }
 .plano__em-breve { font-size: 14px; font-weight: 600; color: var(--texto-2); line-height: 1.55; }
+.plano__pe { margin-top: auto; padding-top: 12px; border-top: 1px dashed var(--borda); font-size: 13px; font-weight: 600; color: var(--texto-2); line-height: 1.5; }
 .planos__regras { display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.55; color: var(--texto-2); font-weight: 500; }
 .planos__regras li { padding-left: 18px; position: relative; }
 .planos__regras li::before { content: ""; position: absolute; left: 4px; top: .62em; width: 6px; height: 6px; border-radius: 50%; background: var(--azul); }
@@ -289,12 +292,12 @@ main:focus, main:focus-visible { box-shadow: none; }
   .topo__menu { display: inline-flex; }
   .js .topo__painel:not([hidden]) { display: block; border-top: 1px solid var(--borda); }
   .abertura__arte { flex-basis: 380px; }
-  .planos__grade { grid-template-columns: 1fr 1fr; }
-  .plano--destaque { grid-column: 1 / -1; }
 }
 @media (max-width: 900px) {
   :root { --entre-secoes: 64px; }
   .faixa__lista { grid-template-columns: 1fr 1fr; }
+  .planos__grade { grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
+  .plano--destaque { grid-column: 1 / -1; grid-row: auto; }
   .faixa__item:nth-child(-n+2) { border-bottom: 1px solid var(--borda); }
   .rodape__colunas { grid-template-columns: 1fr 1fr; }
   .rodape__colunas > :first-child { grid-column: 1 / -1; }
@@ -324,10 +327,9 @@ main:focus, main:focus-visible { box-shadow: none; }
   .faixa__item { padding: 16px; }
   .faixa__valor { font-size: 26px; }
   .apoio { font-size: 16px; }
-  /* abas e passos correm de lado */
-  .pilulas--rolar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 calc(var(--lateral) * -1); padding: 4px var(--lateral); scroll-padding: 0 var(--lateral); }
-  .pilulas--rolar::-webkit-scrollbar { display: none; }
-  .ciclo__painel .pilulas--rolar { margin: 0 -20px; padding: 4px 20px; }
+  /* abas e passos quebram em linhas, como no desenho (nada escondido ao lado); nomes das fases mais curtos */
+  .rotulo-longo { display: none; }
+  .pilula { padding: 0 16px; }
   .ciclo__painel { padding: 20px; border-radius: var(--raio-lg); }
   .ciclo__t { font-size: 24px; }
   .ferramenta { padding: 18px; }

@@ -22,10 +22,10 @@ Ramo `pagina-inicial`. Nada disto está no ar. Publicar só com ordem do dono (p
 
 | Palavra | Ligar quando | O que muda |
 |---|---|---|
-| `cobranca` | a cobrança pelo Asaas estiver no ar | "Assinatura em breve" vira o botão "Assinar o PRO" (`/novo/planos` — conferir o endereço da tela de assinatura) |
+| `cobranca` | a cobrança estiver no ar **e** o Contrato de Assinatura 3.0 estiver publicado | "Assinatura em breve" vira o botão "Assinar o PRO" (`/novo/planos` — conferir o endereço da tela de assinatura) e aparecem as regras: pagamento à vista (Pix ou cartão), devolução em 7 dias e renovação (cartão automática; Pix com cobrança 7 dias antes). Se o provedor for a Stripe (Pix = compra de um mês, sem renovação), reescrever a frase da renovação antes de ligar. Trocar também o link "Termos de Uso" pelo contrato com as condições comerciais. |
 | `carteira` | a carteira de créditos e minutos estiver ligada para o aluno | aparecem os botões por plano e os números (5/dia e 2 min no teste; 8/dia, 180/mês e 10 min no PRO) e a nota "a voz usa minutos e não gasta créditos" |
 | `tutor` | o Tutor com Stazi e Stazia estiver publicado | "Escolha quem te acompanha: o Stazi ou a Stazia" e o cartão "2 personagens · 4 personalidades" |
-| `amostra` | a amostra diária do teste estiver ligada | a chamada final cita "5 créditos por dia e 2 minutos de voz no teste" |
+| `amostra` | a amostra diária do teste estiver ligada (ramo planos-acesso, migração 013640) | a chamada final passa a dar os números da amostra: 20 questões, 1 simulado curto, 3 Temas ou aulas, os flashcards do dia, 5 créditos por dia e 2 minutos de voz no teste inteiro (conferir com `direitos_recursos` no dia) |
 
 Exemplo: `<html lang="pt-BR" data-liberado="cobranca carteira">`.
 Para ver tudo ligado no computador local: `http://127.0.0.1:PORTA/?liberar=tudo` (no site de verdade o parâmetro não faz nada).
@@ -51,6 +51,11 @@ o `inicio.js` manda para `/novo` com o mesmo resto do endereço.
 - Ordem do dono e respostas às decisões [DONO DECIDE] do PLANO-E-TEXTOS.md.
 - Plano da Vercel permite uso comercial (o Hobby não permite).
 - Supabase: Site URL = `https://app.staziamed.com.br/novo` e Redirect URLs com `/novo?confirmacao=1`.
-- No banco: todas as questões oficiais têm comentário (cartão 01); anos das provas (2020 a 2026/1, ENAMED 2025).
+- No banco (contado em 17/10, só leitura): 13 provas oficiais (Revalida 2020 a 2026/2 e ENAMED 2025, 1.300 questões);
+  6 questões da 2026/2 sem comentário (gabarito definitivo previsto para 04/12) e 33 com comentário em só parte das
+  alternativas; 408 Questões Inéditas ativas; 51 Atualizações publicadas e aprovadas. Recontar no dia de publicar.
+- Contrato de Assinatura 3.0 no ar antes de ligar `cobranca` (os Termos 2.0 não trazem as regras de teste, devolução e renovação).
+- Razão social: a consulta pública da Receita (BrasilAPI, 17/10) já mostra "STAZIA TECNOLOGIA E EDUCACAO LTDA", ativa,
+  CEP 80420-210; outra base (cnpj.ws, atualizada em 12/09) ainda mostra o nome antigo. Conferir no cartão CNPJ.
 - Prévia da Vercel do ramo: `/` 200 com a página nova; `/assets/nao-existe.js` 404; `/questoes` → `/novo`;
   `/novo/login`, `/novo/criar-conta`, `/novo/termos`, `/novo/privacidade` 200; `/robots.txt` e `/sitemap.xml` 200.

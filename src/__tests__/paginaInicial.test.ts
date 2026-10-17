@@ -231,6 +231,37 @@ describe("página inicial: só promete o que existe (decisões do dono)", () => 
     expect(t).toMatch(/não fazem parte do plano contratado/);
   });
 
+  it("sem parcelamento: pagamento só à vista por Pix ou cartão (decisão de 17/10)", () => {
+    expect(html).not.toMatch(/\d\s*[x×]\s*sem juros|parcel/i);
+    const doc = pagina();
+    const pagamento = [...doc.querySelectorAll(".planos__regras li")].find((li) => /Pix/.test(li.textContent || ""));
+    expect(pagamento?.textContent).toMatch(/à vista/);
+  });
+
+  it("o teste grátis é anunciado como amostra diária em toda chamada", () => {
+    const doc = pagina();
+    for (const sel of [".abertura__nota", ".faixa__item:last-child", ".planos__regras li:first-child", '.chamada__p[data-ate-la="amostra"]', '.chamada__p[data-quando="amostra"]']) {
+      expect(doc.querySelector(sel)?.textContent, sel).toMatch(/amostra/);
+    }
+    expect(doc.querySelector('.chamada__p[data-quando="amostra"]')?.textContent).toMatch(/20 questões.*1 simulado curto.*3 Temas/);
+  });
+
+  it("regras de pagamento, devolução e renovação só aparecem com a cobrança ligada; o link diz Termos de Uso", () => {
+    const doc = pagina();
+    const regras = [...doc.querySelectorAll(".planos__regras li")];
+    expect(regras[0].getAttribute("data-quando")).toBeNull();
+    for (const li of regras.slice(1)) expect(li.getAttribute("data-quando"), li.textContent || "").toBe("cobranca");
+    expect(textoDe(doc)).not.toMatch(/renova sozinha|condições completas/);
+    const renovacao = regras.find((li) => /renovação/.test(li.textContent || ""));
+    expect(renovacao?.textContent).toMatch(/No Pix.*7 dias antes.*confirmado/);
+  });
+
+  it("questões oficiais: anos que estão no banco e sem prometer comentário em cada questão", () => {
+    const t = textoDe(pagina());
+    expect(t).toMatch(/2020 a 2026\/2/);
+    expect(t).not.toMatch(/em cada questão|Cada questão tem/);
+  });
+
   it("o arquivo sai com tudo desligado: os textos que dependem do app ficam escondidos", () => {
     const doc = pagina();
     expect(doc.documentElement.dataset.liberado).toBe("");
