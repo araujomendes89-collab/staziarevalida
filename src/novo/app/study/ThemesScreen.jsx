@@ -82,10 +82,8 @@ export function ThemesScreen({ go }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Recolhivel titulo="Como contamos">
-        {data.method} Hoje o catálogo tem {plural(data.official_total, "questão oficial", "questões oficiais")} (fora as {data.annulled} anuladas):{" "}
-        {data.linked} {data.linked === 1 ? "está ligada" : "estão ligadas"} a algum dos 100 temas e {data.unlinked} ainda não {data.unlinked === 1 ? "tem" : "têm"} tema,
-        porque o assunto delas fica fora dos 100 temas ou não tem uma casa clara.
+      <Recolhivel titulo="Estude com estratégia e dados reais!">
+        100 temas selecionados a partir de questões oficiais do Revalida e ENAMED, relacionadas aos temas para ajudar você a priorizar seus estudos.
       </Recolhivel>
       <div className="ap-busca"><TextField icon="search" aria-label="Buscar" placeholder="Buscar tema, subárea ou área" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
       <AreaFiltro valor={area} onChange={setArea} itens={[{ id: "", label: "Todas", k: "todas" }, ...data.areas.map((a) => ({ id: a.id, label: a.name, k: a.id }))]} />

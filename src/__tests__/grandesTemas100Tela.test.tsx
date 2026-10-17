@@ -57,15 +57,12 @@ afterEach(cleanup);
 const calls = (fn: string) => backend.rpc.mock.calls.filter((c: any[]) => c[0] === fn);
 
 describe("Grandes Temas: 100 Grandes Temas Prioritários", () => {
-  it("o banner 'Como contamos' diz que é seleção pedagógica (não ranking do Inep), o que é contado, as anuladas e quantas ficam sem tema", async () => {
+  it("o aviso do topo traz o texto do dono de 17/10 (estude com estratégia; 100 temas a partir de questões oficiais do Revalida e ENAMED)", async () => {
     render(<ThemesScreen go={go} />);
-    const banner = await screen.findByText("Como contamos");
+    const banner = await screen.findByText("Estude com estratégia e dados reais!");
     const texto = banner.closest("section")!.textContent!; // aviso recolhível (onda 4): o texto fica na página, só oculto até abrir
-    expect(texto).toMatch(/seleção pedagógica do StaziaMed/);
-    expect(texto).toMatch(/não um ranking oficial do Inep/);
-    expect(texto).toMatch(/questões oficiais catalogadas \(Revalida e ENAMED\) ligadas a ele/);
-    expect(texto).toMatch(/1\.?217 questões oficiais \(fora as 83 anuladas\)/);
-    expect(texto).toMatch(/701 estão ligadas a algum dos 100 temas e 516 ainda não têm tema/);
+    expect(texto).toMatch(/100 temas selecionados a partir de questões oficiais do Revalida e ENAMED, relacionadas aos temas para ajudar você a priorizar seus estudos\./);
+    expect(texto).not.toMatch(/seleção pedagógica|anuladas|ainda não têm tema/);
     expect(calls("app_grandes_temas")).toHaveLength(1);
     // a antiga contagem por subárea/competência não é mais chamada
     expect(calls("app_incidence")).toHaveLength(0);
