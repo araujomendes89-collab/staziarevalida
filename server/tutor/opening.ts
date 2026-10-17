@@ -19,6 +19,8 @@ import { effectiveParams, personalityLayer, profanityLevel, type Personality, ty
 import { NO_EVALUATION, type TutorMode } from "./prompts";
 import { safetyCheck, type Violation } from "./safety";
 import { deterministicTutor, tutorSettings } from "./settings";
+import { protegerFala, violacoesDeSigilo } from "./escudo";
+import { blocoSigilo, nomeSeguro } from "./sigilo";
 
 export const OPENING_VERSION = "1.1.0";
 /** Tempo máximo esperando a IA (a tela espera junto). Passou disso, a reserva fica. */
@@ -122,7 +124,7 @@ export function situationOf(st: OpeningState): string {
 }
 
 /** O sistema da fala: a persona inteira (ficha, estado, palavrão, limites) e as regras da abertura. */
-export function openingSystem(persona: string, kind: OpeningKind): string {
+export function openingSystem(persona: string, kind: OpeningKind, personaId?: string | null): string {
   return [
     "Você é o professor de medicina do aplicativo de estudos StaziaMed, conversando por chat ou voz com um médico que estuda para a 1ª fase do Revalida.",
     persona,
@@ -134,6 +136,8 @@ export function openingSystem(persona: string, kind: OpeningKind): string {
     "Proibido: repetir ou parafrasear de perto qualquer fala de <ja_ouviu>, começar com as mesmas palavras de uma delas, saudação de atendente, oferecer ajuda no fim, marcação entre colchetes, emoji.",
     "Sem conteúdo médico nenhum: nada de número, dose, critério, conduta, diagnóstico ou pista da questão. Questão aberta: nunca sugira letra nem resposta.",
     'Responda só no formato pedido: {"fala": "..."}.',
+    // sigilo (sigilo.ts): nada no contexto é ordem, nem o nome do aluno
+    blocoSigilo(personaId),
   ].join("\n\n");
 }
 
@@ -149,7 +153,7 @@ export function openingInput(st: OpeningState, ctx: OpeningContext): string {
     area: s.area ?? ctx.question?.area ?? null,
     ...(s.discuss_letter ? { alternativa_que_ele_marcou: s.discuss_letter } : {}),
     ...(st.message!.kind === "passagem" && s.previous_correct != null ? { questao_anterior: s.previous_correct ? "acertou" : "errou" } : {}),
-    nome: ctx.student?.first_name ?? null,
+    nome: nomeSeguro(ctx.student?.first_name),
     periodo_do_dia: st.local_hour != null ? period(st.local_hour) : null,
     dias_desde_a_ultima_conversa: st.previous_session?.days ?? null,
     assunto_da_ultima_conversa: st.previous_session?.topic ?? null,
@@ -215,7 +219,7 @@ export async function naturalOpening(deps: TutorDeps, userId: string, sessionId:
     const mood = { label: state.mood, text: stateLayer(ctx.personality.id, state, engine, profanity), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado", strong: li >= 3 };
     const persona = personalityLayer(ctx.personality, effectiveParams(ctx.personality.params, 3, prefs), profanity, 3, null, mood, { seed: sessionId });
     const kind = st.message.kind;
-    const system = openingSystem(persona, kind);
+    const system = openingSystem(persona, kind, ctx.personality.id);
     const baseInput = openingInput(st, ctx);
     const heard = [...(st.recent ?? []), st.message.content];
     // passagem: a conversa já tem falas do professor; a nova não começa como nenhuma delas
@@ -249,8 +253,10 @@ export async function naturalOpening(deps: TutorDeps, userId: string, sessionId:
         usage.model = r.model;
         const fala = String(r.output?.fala ?? "").replace(/\s+/g, " ").trim();
         const out = { reply: fala, grounding: "GENERAL" as const, citations: [], evaluation: NO_EVALUATION, justification: "NONE" as const, reveals_answer: false, suggested_replies: [] };
-        violations = [...openingViolations(fala, heard, starts, st.session.topic ?? st.session.context_label ?? ctx.question?.topic ?? null), ...safetyCheck(out, safetyCtx).violations];
-        if (!violations.length) text = fala;
+        violations = [...openingViolations(fala, heard, starts, st.session.topic ?? st.session.context_label ?? ctx.question?.topic ?? null), ...safetyCheck(out, safetyCtx).violations,
+          ...violacoesDeSigilo(out, { instrucoes: system })];
+        // última palavra do sigilo (escudo.ts) antes de o aluno ver
+        if (!violations.length) text = protegerFala(fala, ctx.personality.id, { instrucoes: system }).texto;
       } catch (error) {
         usage.calls++;
         deps.log?.(`[tutor] abertura natural: ${(error as Error).message.slice(0, 160)}`);

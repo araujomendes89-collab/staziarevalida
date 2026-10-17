@@ -23,7 +23,7 @@ import { NO_EVALUATION, TUTOR_PROMPT_LAYERS, TUTOR_SCHEMA, TUTOR_VERSION, compos
 import { ComplementarTermsUnavailable, labelIsSupportMaterial, loadComplementarTerms } from "../contentHub/complementarGuard";
 import { fallbackReply, safetyCheck, spokenText, type BaseBlock, type SafetyResult, type Violation } from "./safety";
 import { protegerFala, sugestoesSemSigilo, violacoesDeSigilo } from "./escudo";
-import { lerRegistro, notaDoRegistro } from "./leituraDoAluno";
+import { lerRegistro, notaDoRegistro, palavraoContido } from "./leituraDoAluno";
 import { nomeSeguro } from "./sigilo";
 import { deterministicTutor, tutorSettings } from "./settings";
 import { buscarOuReserva } from "./conhecimento/buscar";
@@ -389,9 +389,12 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const li = languageIntensity(before, engine);
     const RANK = { off: 0, mild: 1, moderate: 2 } as const;
     const byIntensity = profanityForIntensity(li);
-    const profanity = RANK[byIntensity] < RANK[personaMax] ? byIntensity : personaMax;
+    // leitura do aluno (leituraDoAluno.ts): aluno ansioso, frustrado, desanimado ou abalado não ouve palavrão nesta fala
+    const lido = task.type === "message" ? lerRegistro(studentText) : null;
+    const contido = Boolean(lido && palavraoContido(lido));
+    const profanity = contido ? "off" : RANK[byIntensity] < RANK[personaMax] ? byIntensity : personaMax;
     // a conferência aceita um degrau acima do pedido (a reação à gravidade real do erro pode subir o tom)
-    const checkLevel = RANK[profanityForIntensity(Math.min(5, li + 1))] < RANK[personaMax] ? profanityForIntensity(Math.min(5, li + 1)) : personaMax;
+    const checkLevel = contido ? (RANK[personaMax] > 0 ? "mild" : "off") : RANK[profanityForIntensity(Math.min(5, li + 1))] < RANK[personaMax] ? profanityForIntensity(Math.min(5, li + 1)) : personaMax;
     const mood = { label: before.mood, text: stateLayer(ctx.personality.id, before, engine, profanity), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado", strong: li >= 3 };
     const system = composeSystem({ mode: ctx.session.mode, browserVoice: Boolean(action.voice), persona: personalityLayer(ctx.personality, eff, profanity, 3, null, mood, { seed: sessionId }), personaId: ctx.personality.id });
 
@@ -421,7 +424,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       comecos_ja_usados: usedStarts(ctx.history.filter((h) => h.role === "tutor").map((h) => h.content)),
     };
     // leitura do aluno por software (sem IA): uma linha interna na tarefa quando há sinal claro (leituraDoAluno.ts)
-    const leitura = task.type === "message" ? notaDoRegistro(lerRegistro(studentText)) : "";
+    const leitura = lido ? notaDoRegistro(lido) : "";
     const conversation = ctx.history.map((h) => `${h.role === "student" ? "Aluno" : "Tutor"}: ${h.content.slice(0, 600)}`).join("\n");
     const baseInput =
       `Responda no formato "tutor".\n<base>\n${JSON.stringify(blocks.map((b) => ({ ref: b.ref, tipo: b.kind, rotulo: b.label, texto: b.text })))}\n</base>\n` +
@@ -459,7 +462,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     let model = provider.model;
     let providerName = provider.name;
     // sigilo (escudo.ts): o que pode ser repetido sem ser vazamento é o que o aluno disse, a conversa e a base
-    const sigiloCtx = { instrucoes: system, permitidos: [studentText, ...ctx.history.map((h) => h.content), ...blocks.map((b) => b.text)], pergunta: studentText };
+    const sigiloCtx = { instrucoes: system, permitidos: [studentText, ...ctx.history.map((h) => h.content), ...blocks.map((b) => b.text)], base: blocks.map((b) => b.text), pergunta: studentText };
     let ultima: { out: TutorOutput; check: SafetyResult } | null = null;
     for (let attempt = 0; attempt < 2; attempt++) {
       const input = attempt === 0 ? baseInput : `${baseInput}\n<correcao_obrigatoria>\nSua resposta anterior foi barrada. Refaça sem estes problemas:\n${violations.map((x) => `- ${x.detail}`).join("\n")}\n</correcao_obrigatoria>`;
