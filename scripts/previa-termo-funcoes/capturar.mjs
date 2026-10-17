@@ -14,6 +14,13 @@ const TELAS = {
   computador: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
 };
 const escrever = (p, rotulo, valor) => p.getByLabel(rotulo, { exact: true }).fill(valor);
+/** "antes" não tem o ?secao=: abre a seção pelo botão (no celular, a linha da lista) */
+async function abrirSecao(p, nome, texto) {
+  await p.getByRole("button", { name: nome }).first().waitFor();
+  if (await p.getByText(texto).first().isVisible().catch(() => false)) return;
+  await p.getByRole("button", { name: nome }).first().click();
+  await p.getByText(texto).first().waitFor();
+}
 const ESTADOS = [
   ["cadastro-1-vazio", "?tela=cadastro", async (p) => p.getByLabel("Nome completo", { exact: true }).waitFor()],
   ["cadastro-2-senha-curta-ao-sair", "?tela=cadastro", async (p) => {
@@ -41,10 +48,12 @@ const ESTADOS = [
   }],
   ["conta-1-privacidade-e-dados", "?tela=conta&secao=priv", async (p) => {
     await p.getByText("Privacidade e dados", { exact: false }).first().waitFor();
+    if (antes) await abrirSecao(p, /Privacidade e dados/, "Baixar meus dados");
     if (!antes) await p.getByRole("switch").waitFor();
     await p.waitForTimeout(400);
   }],
   ["conta-2-ajuda-e-suporte", "?tela=conta&secao=ajuda", async (p) => {
+    if (antes) await abrirSecao(p, /Ajuda e suporte/, "E-mail de suporte");
     await p.getByText("E-mail de suporte").waitFor();
   }],
   ["conta-3-documentos-pelo-link-do-email", "?tela=conta&secao=docs", async (p) => {
