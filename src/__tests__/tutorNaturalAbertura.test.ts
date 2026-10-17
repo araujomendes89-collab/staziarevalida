@@ -321,6 +321,7 @@ describe("abertura e passagem criadas pela IA (servidor e banco local)", () => {
   });
 
   it("revisão: a passagem é preparada junto com a reação à resposta e entra na hora em que o aluno pede a próxima (sem esperar a IA)", async () => {
+    process.env.TUTOR_PASSAGEM_PREPARADA = "1"; // com a IA simulada, só liga pedindo
     const sid = await start(BIA, "questao", "tranquila");
     const wrong = (await sql(`select case when q.correct_option = 'A' then 'B' else 'A' end o from public.tutor_sessions t join public.questions q on q.id = t.question_id where t.id = $1`, [sid]))[0].o;
     await rpc(BIA, "app_tutor_answer", sid, wrong, 2, 40_000, null);
@@ -350,6 +351,7 @@ describe("abertura e passagem criadas pela IA (servidor e banco local)", () => {
     expect(await sql(`select 1 from public.tutor_natural_prep where session_id = $1`, [sid])).toEqual([]);
     // o custo da preparação ficou no registro, sem gastar a cota de interações
     expect((await sql(`select interactions, meta from public.ai_usage_ledger where session_id = $1 and meta ->> 'kind' = 'passagem_preparada'`, [sid]))[0]).toMatchObject({ interactions: 0, meta: { used: true } });
+    delete process.env.TUTOR_PASSAGEM_PREPARADA;
   });
 
   it("revisão: dois pedidos juntos para a mesma abertura chamam a IA uma vez só", async () => {
