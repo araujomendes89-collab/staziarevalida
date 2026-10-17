@@ -7,7 +7,10 @@ import { PRIVACIDADE } from "./privacidade.js";
 import { PRIVACIDADE_V2 } from "./privacidade-v2.js";
 import { TERMO_VERSAO } from "./versions.js";
 
-/** declaracoes: a versão pede as declarações de maioridade e de formação em Medicina junto do aceite. */
+/**
+ * declaracoes: a versão pede a declaração de maioridade junto do aceite. Desde 17/10/2026 (decisão do dono) ela vem na PRÓPRIA caixa
+ * do aceite (ACEITE_TEXTO) e a declaração de formação em Medicina não é mais pedida (migração …13661_aceite_com_maioridade).
+ */
 const DOCUMENTOS = {
   "1.0": { termo: termoV1, privacidade: PRIVACIDADE, declaracoes: false },
   "2.0": { termo: termoV2, privacidade: PRIVACIDADE_V2, declaracoes: true },
@@ -18,6 +21,5 @@ export function documentosDa(versao = TERMO_VERSAO) {
   return DOCUMENTOS[versao] ?? DOCUMENTOS[TERMO_VERSAO];
 }
 
-export const DECLARACAO_ADULTO = "Declaro que tenho 18 anos ou mais.";
-export const DECLARACAO_MEDICO = "Declaro que sou médico(a), com a graduação em Medicina concluída.";
-export const DECLARACOES_ERRO = "Para continuar, confirme que você tem 18 anos ou mais e que é médico(a).";
+/** A caixa única do aceite (cadastro, volta do Google e tela de aceite): Termos, Política e a declaração de maioridade juntos. */
+export const ACEITE_TEXTO = "Li e aceito os Termos de Uso e a Política de Privacidade e declaro ter 18 anos ou mais.";

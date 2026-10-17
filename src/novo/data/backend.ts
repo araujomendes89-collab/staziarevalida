@@ -48,7 +48,21 @@ export interface Backend {
   resetPassword(email: string): Promise<void>;
   /** Troca a senha de quem está logado. */
   updatePassword(password: string): Promise<void>;
-  signOut(): Promise<void>;
+  /**
+   * Sai da conta. `localOnly` (sessão única): sai só deste navegador, sem encerrar o login dos outros aparelhos
+   * (no Supabase o padrão do signOut encerra todos).
+   */
+  signOut(opts?: { localOnly?: boolean }): Promise<void>;
+  /**
+   * Sessão única: o identificador do login deste navegador (no Supabase, o session_id do token, o mesmo em todas as abas).
+   * Sem ele, o app usa um identificador guardado no navegador.
+   */
+  readonly sessionId?: () => Promise<string | null>;
+  /**
+   * Sessão única em tempo real: avisa quando a linha "sessão vigente" da própria conta muda (outro aparelho entrou).
+   * Só existe no Supabase (Realtime); devolve a função para cancelar.
+   */
+  readonly subscribeSessao?: (userId: string, onChange: () => void) => () => void;
   /** Chama uma função `app_*` do banco. */
   rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T>;
   /**
@@ -133,6 +147,23 @@ export function confirmRedirect(redirectTo: string): string {
     return url.toString();
   } catch {
     return redirectTo;
+  }
+}
+
+/**
+ * Sessão única: o identificador do login (claim session_id) dentro do token do Supabase, sem conferir a assinatura (quem confere
+ * é o banco, que usa o claim do token e não o que o navegador manda). Nulo se não houver.
+ */
+export function sessionIdFromToken(token: string | null | undefined): string | null {
+  if (typeof token !== "string") return null;
+  const part = token.split(".")[1];
+  if (!part) return null;
+  try {
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(part.length / 4) * 4, "=");
+    const payload = JSON.parse(atob(b64)) as { session_id?: unknown };
+    return typeof payload?.session_id === "string" && /^[A-Za-z0-9_-]{8,128}$/.test(payload.session_id) ? payload.session_id : null;
+  } catch {
+    return null;
   }
 }
 

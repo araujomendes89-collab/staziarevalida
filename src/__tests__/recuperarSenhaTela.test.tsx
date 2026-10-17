@@ -91,12 +91,12 @@ describe("Recuperar senha no padrão do login novo", () => {
     expect(screen.getByRole("region", { name: "Recuperar senha" })).toBeTruthy();
   });
 
-  it("o cadastro continua igual (título e painel 'Já tem conta?')", () => {
+  it("o cadastro usa a mesma moldura (título e painel 'Já tem conta?')", () => {
     render(<AuthFlow />);
     fireEvent.click(screen.getByRole("button", { name: /criar conta/i }));
     expect(screen.getByRole("region", { name: "Criar conta" })).toBeTruthy();
-    expect(screen.getByText("Já tem conta?")).toBeTruthy();
-    expect(document.querySelector(".lg-root")).toBeTruthy();
-    expect(document.querySelector(".rc-root")).toBeNull();
+    expect(screen.getAllByText("Já tem conta?", { exact: false }).length).toBeGreaterThan(0);
+    expect(document.querySelector(".rc-root")).toBeTruthy();
+    expect(document.querySelector(".lg-root")).toBeNull();
   });
 });

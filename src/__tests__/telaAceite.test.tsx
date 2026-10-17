@@ -1,6 +1,6 @@
 /**
  * Tela de aceite antes de todas as telas (spec 2026-10-07-termo-aceite-cadastro, seção 7).
- * Aparece quando boot.legal.gate_required (o servidor decide); sem `legal` no boot, nunca aparece.
+ * Aparece quando boot.legal.gate_required (o servidor decide); sem `legal` no boot, nunca aparece. Sem WhatsApp desde 17/10/2026.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -63,9 +63,8 @@ function open(path: string, boot: any, extra: Record<string, unknown> = {}) {
 }
 
 const TITLE = "Termo de Aceite e Uso";
-const checkbox = () => screen.getByRole("checkbox", { name: /Declaro que li e compreendi/ });
+const checkbox = () => screen.getByRole("checkbox", { name: "Li e aceito os Termos de Uso e a Política de Privacidade e declaro ter 18 anos ou mais." });
 const accept = () => screen.getByRole("button", { name: "Aceitar e continuar" });
-const type = (label: string | RegExp, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
 beforeEach(() => {
   window.scrollTo = vi.fn() as any;
@@ -107,57 +106,31 @@ describe("tela de aceite", () => {
     expect(screen.queryByRole("button", { name: "Aceitar e continuar" })).toBeNull();
   });
 
-  it("só falta o WhatsApp: a tela pede só o WhatsApp", () => {
-    open("/", bootOf(legalOf({ phone_missing: true }, { accepted: "1.0", accepted_at: "2026-10-07T12:00:00Z" })));
-    expect(screen.getByLabelText("WhatsApp")).toBeTruthy();
-    expect(screen.queryByRole("checkbox")).toBeNull();
-    expect((accept() as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it("aceitar chama acceptTerms com termo_uso, 1.0, tela_aceite e o WhatsApp normalizado", async () => {
+  it("sem WhatsApp (17/10/2026): a tela não pede o número, mesmo com phone_missing, e aceitar não manda telefone", async () => {
     const { acceptTerms } = open("/", bootOf(legalOf({ phone_missing: true })));
-    type("WhatsApp", "(41) 99999-8888");
+    expect(screen.queryByLabelText("WhatsApp")).toBeNull();
+    expect(screen.queryByLabelText("País do WhatsApp")).toBeNull();
     expect((accept() as HTMLButtonElement).disabled).toBe(true); // falta a caixa
     fireEvent.click(checkbox());
     expect((accept() as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(accept());
     await waitFor(() => expect(acceptTerms).toHaveBeenCalledTimes(1));
-    expect(acceptTerms).toHaveBeenCalledWith({ document: "termo_uso", version: "1.0", origin: "tela_aceite", phone: "+5541999998888" });
+    expect(acceptTerms).toHaveBeenCalledWith({ document: "termo_uso", version: "1.0", origin: "tela_aceite", declarations: undefined });
   });
 
-  it("WhatsApp preenchido mas inválido: botão habilitado, mostra o erro no campo e não envia", () => {
-    const { acceptTerms } = open("/", bootOf(legalOf({ phone_missing: true })));
-    type("WhatsApp", "99999-8888"); // Brasil sem DDD
-    fireEvent.click(checkbox());
-    expect((accept() as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(accept());
-    expect(screen.getByText("Informe o WhatsApp com DDD.")).toBeTruthy();
-    expect(acceptTerms).not.toHaveBeenCalled();
+  it("banco ainda sem a 13660: Termo aceito e só o WhatsApp faltando não prende a pessoa na tela", () => {
+    open("/", bootOf(legalOf({ phone_missing: true, gate_required: true }, { accepted: "1.0", accepted_at: "2026-10-07T12:00:00Z" })));
+    expect(screen.queryByRole("heading", { name: TITLE })).toBeNull();
+    expect(screen.getByTestId("tela-home")).toBeTruthy();
   });
 
-  it("WhatsApp inválido leva o foco ao campo do número; no modo Outro com código inválido, ao do código", () => {
-    open("/", bootOf(legalOf({ phone_missing: true })));
-    type("WhatsApp", "99999-8888"); // Brasil sem DDD
-    fireEvent.click(checkbox());
-    fireEvent.click(accept());
-    expect(document.activeElement).toBe(screen.getByLabelText("WhatsApp"));
-
-    fireEvent.change(screen.getByLabelText("País do WhatsApp"), { target: { value: "outro" } });
-    type("WhatsApp", "923456789");
-    type("Código do país", "abc");
-    fireEvent.click(accept());
-    expect(document.activeElement).toBe(screen.getByLabelText("Código do país"));
-  });
-
-  it("o botão fica desabilitado enquanto falta a caixa ou o número", () => {
-    open("/", bootOf(legalOf({ phone_missing: true })));
+  it("o botão fica desabilitado enquanto falta a caixa", () => {
+    open("/", bootOf(legalOf()));
     expect((accept() as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(checkbox());
-    expect((accept() as HTMLButtonElement).disabled).toBe(true); // sem número
-    type("WhatsApp", "41999998888");
     expect((accept() as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(checkbox());
-    expect((accept() as HTMLButtonElement).disabled).toBe(true); // sem caixa
+    expect((accept() as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("sem WhatsApp faltando, aceitar não manda telefone", async () => {
@@ -217,8 +190,7 @@ describe("tela de aceite", () => {
     const text = screen.getByRole("region", { name: "Texto do Termo de Aceite e Uso" });
     expect(text.getAttribute("tabindex")).toBe("0");
     expect(text.textContent).toContain("Termo");
-    expect(screen.getByLabelText("WhatsApp")).toBeTruthy();
-    expect(screen.getByLabelText("País do WhatsApp")).toBeTruthy();
+    expect(screen.queryByLabelText("WhatsApp")).toBeNull();
     expect(checkbox()).toBeTruthy();
   });
 });

@@ -38,6 +38,7 @@ export const ACTION_LABEL = {
   "direitos.modo": "Cadeados: modo sombra ou ligado alterado", // 013640
   "direitos.segunda_fase": "Segunda fase aberta ou fechada aos alunos (regra nova)", // 013640
   "settings.save": "Configurações salvas",
+  "settings.sessao_unica": "Sessão única (uma conta, um aparelho por vez) alterada",
   "support.contact": "Contato de suporte alterado",
   "report.resolve": "Relato de aluno atendido",
   // questões

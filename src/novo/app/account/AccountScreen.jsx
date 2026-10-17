@@ -120,8 +120,8 @@ const ACCOUNT_FIELDS = ["name"];
 const COUNTRY_CODES = new Set(COUNTRIES.filter((c) => c.code !== "outro").map((c) => c.code));
 
 /**
- * WhatsApp com os componentes do design system, nas mesmas regras e no mesmo contrato "Outro" do PhoneField do cadastro
- * (lógica do seletor espelhada de legal/PhoneField.jsx; o PhoneField segue só no cadastro e na tela de aceite).
+ * WhatsApp (opcional) com os componentes do design system, nas regras e no contrato "Outro" de legal/phone.js. Desde 17/10/2026 o
+ * cadastro e a tela de aceite não pedem mais o WhatsApp (o antigo legal/PhoneField.jsx saiu); aqui a pessoa informa se quiser.
  */
 function PhoneInputs({ code, number, onChange, error, codeError, id }) {
   const [other, setOther] = React.useState(() => !COUNTRY_CODES.has(code));

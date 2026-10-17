@@ -194,7 +194,7 @@ export function resolveProfile(input: ProfileInput): ResolvedProfile {
       let level = choice.level;
       if ((level === "n3" || level === "n4") && !choice.adultDeclared) {
         level = "n2";
-        note = "N3 e N4 dependem da declaração de maioridade e de médico do aceite do Termo: ficou no N2.";
+        note = "N3 e N4 dependem da declaração de maioridade do aceite do Termo: ficou no N2.";
       }
       key = `durona:${level}`;
     }

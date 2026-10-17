@@ -1,10 +1,18 @@
 // Chamadas ao servidor do Stazia Tutor (/api/tutor) com o token da sessão. Nenhuma chave de IA passa pelo navegador.
+import { CODIGO_SESSAO_DERRUBADA, EVENTO_SESSAO_DERRUBADA, cabecalhoSessao } from "../sessaoUnica.js";
+
 const BASE = "/api/tutor";
 
 async function headers(backend, extra = {}) {
   const token = backend.accessToken ? await backend.accessToken() : null;
   if (!token) throw new Error("O Tutor precisa do servidor: entre de novo na sua conta.");
-  return { Authorization: `Bearer ${token}`, ...extra };
+  // sessão única: no banco local o servidor confere a sessão por este cabeçalho (no Supabase vale a do token)
+  return { Authorization: `Bearer ${token}`, ...cabecalhoSessao(), ...extra };
+}
+
+/** Sessão única: o servidor recusou porque a conta foi aberta em outro aparelho; o app confere e mostra o aviso. */
+function avisarSeDerrubada(code) {
+  if (code === CODIGO_SESSAO_DERRUBADA && typeof window !== "undefined") window.dispatchEvent(new Event(EVENTO_SESSAO_DERRUBADA));
 }
 
 async function parse(res) {
@@ -18,6 +26,7 @@ async function parse(res) {
   } catch {
     // resposta sem corpo
   }
+  avisarSeDerrubada(code);
   const error = new Error(message);
   error.status = res.status;
   error.code = code;
@@ -60,6 +69,7 @@ async function voicePost(backend, path, body) {
   } catch {
     // resposta sem corpo
   }
+  avisarSeDerrubada(data.code);
   const error = new Error(data.error ?? `Erro ${res.status}.`);
   error.status = res.status;
   error.code = data.code ?? null;
@@ -88,6 +98,7 @@ async function failure(res) {
   } catch {
     // resposta sem corpo
   }
+  avisarSeDerrubada(data.code);
   const error = new Error(data.error ?? `Erro ${res.status}.`);
   error.status = res.status;
   error.code = data.code ?? null;

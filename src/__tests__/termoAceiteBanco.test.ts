@@ -225,11 +225,11 @@ describe("Termo — função de aceitar", () => {
     }
     // documento que não existe
     expect(await recusa(rpc(id, "app_accept_terms", { p_document: "outro", p_version: "2.0" }))).toEqual({ message: "Documento inválido.", code: "22023" });
-    // Termo 2.0: a versão velha (1.0) é recusada e, sem as duas declarações (18+ e médico), o aceite também
+    // Termo 2.0: a versão velha (1.0) é recusada e, sem a declaração de maioridade, o aceite também (desde a …13661 a de médico não é exigida)
     expect(await recusa(rpc(id, "app_accept_terms_declared", { ...SIM, p_document: "termo_uso", p_version: "1.0" }))).toEqual({ message: VERSAO_VELHA, code: "22023" });
-    const SEM_DECLARACAO = { message: "Confirme que você tem 18 anos ou mais e que é médico(a).", code: "22023" };
+    const SEM_DECLARACAO = { message: "Confirme que você tem 18 anos ou mais.", code: "22023" };
     expect(await recusa(rpc(id, "app_accept_terms", { p_document: "termo_uso", p_version: "2.0" }))).toEqual(SEM_DECLARACAO);
-    expect(await recusa(rpc(id, "app_accept_terms_declared", { p_document: "termo_uso", p_version: "2.0", p_adult: true, p_physician: false }))).toEqual(SEM_DECLARACAO);
+    expect(await recusa(rpc(id, "app_accept_terms_declared", { p_document: "termo_uso", p_version: "2.0", p_adult: false, p_physician: true }))).toEqual(SEM_DECLARACAO);
     // nenhuma recusa deixou rastro: nem aceite, nem telefone
     expect(await acceptances(id)).toHaveLength(0);
     expect((await profile(id)).phone).toBeNull();
@@ -490,7 +490,7 @@ describe("Termo — dados de abertura do app (app_bootstrap → legal)", () => {
   const abertura = async (uid: string | null) => rpc(uid, "app_bootstrap");
   const legal = async (uid: string) => (await abertura(uid)).legal;
 
-  it("abertura: aluno sem aceite ou sem WhatsApp precisa da tela; com os dois, não", async () => {
+  it("abertura: aluno sem aceite precisa da tela; com o aceite, não (o WhatsApp não trava mais: …13660, 17/10/2026)", async () => {
     // conta recém-criada, sem nada (como a do Google): precisa da tela
     const nova = await signUp({ name: "Nova" });
     expect(await legal(nova.id)).toEqual({
@@ -511,10 +511,10 @@ describe("Termo — dados de abertura do app (app_bootstrap → legal)", () => {
       gate_required: true,
     });
 
-    // com aceite e sem WhatsApp: precisa
+    // com aceite e sem WhatsApp: não precisa mais (phone_missing só informa)
     const soAceite = await signUp({ name: "So aceite", terms_version: "2.0", ...DECL });
     const semZap = await legal(soAceite.id);
-    expect(semZap).toMatchObject({ student: true, phone_missing: true, gate_required: true });
+    expect(semZap).toMatchObject({ student: true, phone_missing: true, gate_required: false });
     expect(semZap.termo_uso).toMatchObject({ current: "2.0", accepted: "2.0" });
 
     // com os dois: não precisa; a versão aceita e a data vêm da prova gravada
@@ -692,9 +692,9 @@ describe("Termo — dados de abertura do app (app_bootstrap → legal)", () => {
       termo_uso: { current: "2.0", accepted: "2.0", accepted_at: expect.any(String) },
     });
 
-    // aluno que aceitou o termo no cadastro e ainda está sem WhatsApp: Minha conta tira a tela
+    // aluno que aceitou o termo no cadastro e está sem WhatsApp: já não vê a tela; Minha conta grava o WhatsApp (opcional)
     const semZap = await signUp({ name: "Sem zap", terms_version: "2.0", ...DECL });
-    expect((await legal(semZap.id)).gate_required).toBe(true);
+    expect(await legal(semZap.id)).toMatchObject({ phone_missing: true, gate_required: false });
     const salvou = await rpc(semZap.id, "app_update_profile", { p_patch: { phone: PHONE } });
     expect(salvou.legal).toMatchObject({ phone_missing: false, gate_required: false, termo_uso: { accepted: "2.0" } });
   });

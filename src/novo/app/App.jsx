@@ -6,8 +6,9 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, usePa
 import { Banner, Button, EmptyState, SegmentedControl } from "../ds";
 import { AppShell, useMobile } from "./Shell.jsx";
 import { AuthFlow, NewPasswordScreen } from "./AuthScreens.jsx";
+import { SessaoDerrubadaScreen } from "./auth/SessaoDerrubada.jsx";
 import { LegalPage } from "./legal/LegalPage.jsx";
-import { AcceptanceScreen } from "./legal/AcceptanceScreen.jsx";
+import { AcceptanceScreen, precisaTelaDeAceite } from "./legal/AcceptanceScreen.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
 import { forgetShellCounts } from "./shell/useShellCounts.js";
 import { rememberScreen } from "./support/lastScreen.js";
@@ -303,11 +304,13 @@ function Root() {
       </Splash>
     );
   }
+  // sessão única: a conta foi aberta em outro aparelho e este saiu; o aviso vem antes do login
+  if (session.status === "signed-out" && session.derrubada) return <SessaoDerrubadaScreen aviso={session.derrubada} onEntrar={session.entrarNovamente} />;
   if (session.status === "signed-out") return <AuthFlow />;
   // Veio pelo link de recuperar senha: antes de qualquer tela do app, a pessoa cria a nova senha
   if (session.recovery) return <NewPasswordScreen />;
-  // Aluno sem aceite do Termo vigente ou sem WhatsApp: a tela de aceite vem antes de qualquer rota (o servidor decide em gate_required)
-  if (session.boot?.legal?.gate_required) return <AcceptanceScreen />;
+  // Aluno sem aceite do Termo vigente: a tela de aceite vem antes de qualquer rota (o servidor decide em gate_required)
+  if (precisaTelaDeAceite(session.boot?.legal)) return <AcceptanceScreen />;
   // Conta nova: o onboarding (apresentação, configuração, nivelamento, plano) antes do app; o servidor decide (013720)
   if (deveMostrarOnboarding(session.boot)) return <Onboarding modo="primeira" />;
   if (deveMostrarNivelamento(session.boot)) return <Nivelamento modo="primeira" go={() => {}} />;

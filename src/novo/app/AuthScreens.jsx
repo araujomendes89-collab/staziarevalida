@@ -1,9 +1,7 @@
 // Login, cadastro e recuperação de senha. O login fica em auth/LoginScreen.jsx; cadastro, recuperação e conta master continuam
-// aqui. A recuperação (Recuperar senha, Criar nova senha, Link vencido) usa a moldura de auth/RecoveryLayout.jsx, no mesmo padrão
-// do login no ar (17/10/2026); o cadastro segue no visual "Acesso seguro REVALIDA".
-// Derivado de "ui_kits/auth-billing/AuthScreens.jsx" do design system: mesma marcação e
-// estilos, agora ligados ao backend real. Em telas estreitas o painel azul vai para baixo
-// do formulário (o kit original só tinha a versão de duas colunas).
+// aqui. O cadastro (Criar conta) e a recuperação (Recuperar senha, Criar nova senha, Link vencido) usam a moldura de
+// auth/RecoveryLayout.jsx, no mesmo padrão do login no ar (17/10/2026). Só a conta master (1º acesso no banco local) segue na
+// moldura antiga do design system (AuthLayout, derivado de "ui_kits/auth-billing/AuthScreens.jsx").
 import React from "react";
 import { Button, TextField, Banner } from "../ds";
 import { PASSWORD_MIN_LENGTH } from "../data";
@@ -11,16 +9,14 @@ import { useMobile } from "./Shell.jsx";
 import { useSession, rememberChoice } from "./session.jsx";
 import { LoginScreen } from "./auth/LoginScreen.jsx";
 import { ConfirmEmailScreen, ConfirmLinkExpired } from "./auth/ConfirmEmail.jsx";
-import { PhoneField } from "./legal/PhoneField.jsx";
 import { DocumentModal } from "./legal/DocumentModal.jsx";
-import { COUNTRIES, normalizePhone, phoneError } from "./legal/phone.js";
 import { TERMO_VERSAO } from "./legal/versions.js";
 import { rememberGoogleAcceptance } from "./legal/googleAcceptance.js";
-import { DECLARACAO_ADULTO, DECLARACAO_MEDICO, DECLARACOES_ERRO, documentosDa } from "./legal/documentos.js";
+import { ACEITE_TEXTO } from "./legal/documentos.js";
+import { AceiteFrase } from "./legal/AceiteFrase.jsx";
 import { clearAuthLinkFromUrl, initialAuthLink } from "./auth/authLink.js";
-import { RecoveryButton, RecoveryField, RecoveryLayout, RecoveryLink, RecoveryMessage } from "./auth/RecoveryLayout.jsx";
-import { useSupportEmail } from "./support/supportContact.jsx";
-import "./auth/login.css";
+import { FieldError, RecoveryButton, RecoveryField, RecoveryLayout, RecoveryLink, RecoveryMessage } from "./auth/RecoveryLayout.jsx";
+import "./auth/criar-conta.css";
 
 const ERROR_TEXT = {
   invalid_credentials: "Não foi possível entrar com esses dados. Verifique seu e-mail e senha.",
@@ -37,25 +33,6 @@ const ERROR_TEXT = {
 };
 const messageFor = (error) => ERROR_TEXT[error?.code] ?? ERROR_TEXT.unknown;
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-
-function GoogleBtn({ children, onClick, disabled }) {
-  return (
-    <Button variant="secondary" fullWidth onClick={onClick} disabled={disabled}>
-      <img src="/novo-assets/google.svg" alt="" width="18" height="18" />
-      {children}
-    </Button>
-  );
-}
-
-function Divider({ children }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
-      <span style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
-      {children}
-      <span style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
-    </div>
-  );
-}
 
 function AuthLayout({ children, aside }) {
   const mobile = useMobile();
@@ -75,62 +52,22 @@ function AuthLayout({ children, aside }) {
   );
 }
 
-const asideButtonStyle = { background: "transparent", color: "#fff", borderColor: "rgba(255,255,255,.4)" };
-
-function SecureField({ name, label, type = "text", autoComplete, hint, error, defaultValue }) {
-  return (
-    <div className="lg-field">
-      <label className="lg-label" htmlFor={`secure-${name}`}>{label}</label>
-      <input
-        id={`secure-${name}`}
-        name={name}
-        type={type}
-        autoComplete={autoComplete}
-        defaultValue={defaultValue}
-        className={`lg-input lg-input--plain${error ? " is-error" : ""}`}
-        aria-invalid={error ? "true" : "false"}
-        aria-describedby={error ? `secure-${name}-error` : undefined}
-      />
-      {error ? <span id={`secure-${name}-error`} className="lg-field-error">{error}</span> : hint ? <span className="lg-field-hint">{hint}</span> : null}
-    </div>
-  );
-}
-
-function SecureSignupLayout({ children, onLogin, onDoc, label = "Criar conta", asideTitle = "Já tem conta?", asideCopy = "Entre para continuar sua preparação para o Revalida.", asideButton = "Entrar" }) {
-  const supportEmail = useSupportEmail();
-  return (
-    <div className="lg-root">
-      <div className="lg-shell lg-shell--auth">
-        <header className="lg-top"><img className="lg-logo" src="/brand/horizontal-escuro-480w.png" alt="StaziaMed Revalida" width="200" height="62" /></header>
-        <h1 className="lg-h1">Acesso seguro <span className="lg-grad">REVALIDA</span></h1>
-        <section className="lg-card lg-auth-card" aria-label={label}>
-          <div className="lg-auth-form">{children}</div>
-          <aside className="lg-auth-aside">
-            <svg className="lg-auth-mark" aria-hidden="true" viewBox="0 0 120 120" fill="none">
-              <circle cx="60" cy="60" r="52" stroke="#7FE3DE" opacity=".2" />
-              <path d="M60 18 94 31v30c0 23-15 40-34 49-19-9-34-26-34-49V31Z" fill="rgba(31,166,160,.12)" stroke="#7FE3DE" strokeWidth="2" />
-              <path d="M43 60h34M60 43v34" stroke="#7FE3DE" strokeWidth="6" strokeLinecap="round" />
-            </svg>
-            <h2 className="lg-h2">{asideTitle}</h2>
-            <p className="lg-sub lg-auth-copy">{asideCopy}</p>
-            {asideButton ? <button type="button" className="lg-btn lg-btn-ghost lg-auth-login" onClick={onLogin}>{asideButton}</button> : null}
-          </aside>
-        </section>
-        <p className="lg-tagline">Foco no que cai <span className="lg-dot">•</span> Memória no que fica <span className="lg-dot">•</span> Confiança na prova</p>
-        <footer className="lg-footer"><span>© 2026 StaziaMed Revalida</span><button type="button" className="lg-link-btn" onClick={() => onDoc("termos")}>Termos de uso</button><button type="button" className="lg-link-btn" onClick={() => onDoc("privacidade")}>Privacidade</button><span>Precisa de ajuda? <a className="lg-link-btn" href={`mailto:${supportEmail}`}>{supportEmail}</a></span></footer>
-      </div>
-    </div>
-  );
-}
-
-const COUNTRY_CODES = new Set(COUNTRIES.filter((c) => c.code !== "outro").map((c) => c.code));
-const ACCEPT_ERROR = "Para criar a conta, é preciso aceitar o Termo de Aceite e Uso e a Política de Privacidade.";
-const ACCEPT_TEXT = "Declaro que li e compreendi os Termos de Aceite e Uso e a Política de Privacidade do StaziaMed Revalida e concordo com suas condições.";
+const ACCEPT_ERROR = "Para criar a conta, é preciso aceitar os Termos de Uso e a Política de Privacidade e declarar ter 18 anos ou mais.";
 // ids dos campos, na ordem da tela, para levar o foco ao primeiro com erro
-const FIELD_IDS = { name: "secure-name", email: "secure-email", code: "secure-phone-code", phone: "secure-phone-number", pw: "secure-pw", pw2: "secure-pw2", accept: "secure-accept", decl: "secure-adulto" };
-// Termo 2.0 em diante: as declarações de maioridade e de formação em Medicina entram no cadastro (a versão de versions.js decide).
-const PEDE_DECLARACOES = documentosDa(TERMO_VERSAO).declaracoes;
+const FIELD_IDS = { name: "secure-name", email: "secure-email", pw: "secure-pw", pw2: "secure-pw2", accept: "secure-accept" };
 
+// DECLARAÇÕES (feito em 17/10/2026, decisão do dono): as caixas separadas "Declaro que tenho 18 anos ou mais." e "Declaro que sou
+// médico(a)…" saíram. A maioridade vai na PRÓPRIA caixa do aceite (ACEITE_TEXTO) e segue nos metadados do cadastro como
+// declares_adult = "true"; a de médico não é mais pedida. O banco aceita assim desde a migração …13661_aceite_com_maioridade (o
+// Tutor N3/N4 passa a olhar só a maioridade). Por isso esta publicação precisa da 13661 aplicada ANTES do site.
+
+/**
+ * Criar conta (17/10/2026): no MESMO padrão do login e das telas de recuperar senha e "Confirme seu e-mail" (moldura de
+ * auth/RecoveryLayout.jsx: azul-marinho, logo nova, frase da marca, cartão branco com o selo ACESSO SEGURO · REVALIDA, mesmo rodapé,
+ * claro/escuro, celular e computador). Só muda a aparência: mesmos campos, validações e envio (signUp com os metadados), o Google
+ * continua e, com a confirmação ligada, segue para "Confirme seu e-mail".
+ * Sem WhatsApp desde 17/10/2026 (decisão do dono): o banco deixou de exigir o telefone (migração …13660_cadastro_sem_whatsapp).
+ */
 function Signup({ go }) {
   const { backend } = useSession();
   const [errors, setErrors] = React.useState({});
@@ -140,15 +77,13 @@ function Signup({ go }) {
   // o que a pessoa já escreveu, para "Usar outro e-mail" voltar ao formulário preenchido (as senhas não ficam guardadas)
   const [saved, setSaved] = React.useState({ name: "", email: "" });
   const [loading, setLoading] = React.useState(false);
-  const [phone, setPhone] = React.useState({ code: "+55", number: "" });
   const [accepted, setAccepted] = React.useState(false);
-  const [adult, setAdult] = React.useState(false);
-  const [physician, setPhysician] = React.useState(false);
   const [doc, setDoc] = React.useState(null);
   const closeDoc = React.useCallback(() => setDoc(null), []);
+  const messageRef = React.useRef(null);
 
   const focusFirst = (next) => {
-    const first = ["name", "email", "code", "phone", "pw", "pw2", "accept", "decl"].find((k) => next[k]);
+    const first = ["name", "email", "pw", "pw2", "accept"].find((k) => next[k]);
     if (first) document.getElementById(FIELD_IDS[first])?.focus();
   };
 
@@ -161,16 +96,9 @@ function Signup({ go }) {
     const next = {};
     if (name.length < 2) next.name = "Informe seu nome.";
     if (!isEmail(email)) next.email = "Informe um e-mail válido.";
-    const phoneMsg = phoneError(phone.code, phone.number);
-    if (phoneMsg) {
-      // Outro país com número preenchido, mas código vazio ou inválido: o erro vai para a caixa do código
-      if (phone.number.trim() && !/^\+?[1-9][0-9]{0,2}$/.test(phone.code.trim()) && !COUNTRY_CODES.has(phone.code)) next.code = phoneMsg;
-      else next.phone = phoneMsg;
-    }
     if (password.length < PASSWORD_MIN_LENGTH) next.pw = `Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`;
     else if (password !== field("pw2")) next.pw2 = "As senhas não são iguais.";
     if (!accepted) next.accept = ACCEPT_ERROR;
-    if (PEDE_DECLARACOES && !(adult && physician)) next.decl = DECLARACOES_ERRO;
     setErrors(next);
     setError(null);
     if (Object.keys(next).length) {
@@ -182,10 +110,10 @@ function Signup({ go }) {
     try {
       rememberChoice(true);
       const result = await backend.signUp(name, email, password, {
-        phone: normalizePhone(phone.code, phone.number),
         termsVersion: TERMO_VERSAO,
         userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
-        ...(PEDE_DECLARACOES ? { declaresAdult: adult, declaresPhysician: physician } : {}),
+        // a caixa do aceite já traz a declaração de maioridade
+        declaresAdult: true,
       });
       setSaved({ name, email });
       if (result?.needsEmailConfirmation) {
@@ -196,11 +124,18 @@ function Signup({ go }) {
       }
     } catch (err) {
       setSaved({ name, email });
-      setError(messageFor(err));
+      if (err?.code === "email_taken") {
+        // e-mail que já tem conta: o aviso fica no próprio campo, com o foco nele
+        setErrors({ email: messageFor(err) });
+        setTimeout(() => document.getElementById(FIELD_IDS.email)?.focus(), 0);
+      } else {
+        setError(messageFor(err));
+        setTimeout(() => messageRef.current?.scrollIntoView?.({ block: "center" }), 0);
+      }
     }
     setLoading(false);
   };
-  // volta ao formulário com nome, e-mail, WhatsApp e aceites preenchidos; o foco vai para o e-mail
+  // volta ao formulário com nome, e-mail e o aceite marcado; o foco vai para o e-mail
   const changeEmail = () => {
     setConfirmEmail(null);
     setTimeout(() => {
@@ -211,15 +146,16 @@ function Signup({ go }) {
   };
   const google = async () => {
     setError(null);
-    if (!accepted || (PEDE_DECLARACOES && !(adult && physician))) {
-      const next = { ...(!accepted ? { accept: ACCEPT_ERROR } : {}), ...(PEDE_DECLARACOES && !(adult && physician) ? { decl: DECLARACOES_ERRO } : {}) };
+    if (!accepted) {
+      const next = { accept: ACCEPT_ERROR };
       setErrors(next);
       focusFirst(next);
       return;
     }
     setErrors({});
     try {
-      rememberGoogleAcceptance(TERMO_VERSAO, PEDE_DECLARACOES ? { adult, physician } : undefined);
+      // guarda o aceite (com a maioridade, que está na mesma caixa) para gravar na volta do Google
+      rememberGoogleAcceptance(TERMO_VERSAO, { adult: true });
       await backend.signInWithGoogle();
     } catch (err) {
       setError(messageFor(err));
@@ -231,58 +167,58 @@ function Signup({ go }) {
   }
 
   return (
-    <SecureSignupLayout onLogin={() => go("login")} onDoc={setDoc}>
-      <form onSubmit={submit} className="lg-auth-fields" noValidate>
-        <div><h2 className="lg-h2">Criar conta</h2><p className="lg-sub">Crie sua conta e comece sua jornada.</p></div>
-        {error && <div className="lg-msg lg-msg--error" role="alert">{error}</div>}
-        <SecureField name="name" label="Nome completo" autoComplete="name" error={errors.name} defaultValue={saved.name} />
-        <SecureField name="email" label="E-mail" type="email" autoComplete="email" error={errors.email} defaultValue={saved.email} />
-        <PhoneField code={phone.code} number={phone.number} onChange={setPhone} error={errors.phone} codeError={errors.code} />
-        <SecureField name="pw" label="Senha" type="password" hint={`Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`} autoComplete="new-password" error={errors.pw} />
-        <SecureField name="pw2" label="Conferir senha" type="password" autoComplete="new-password" error={errors.pw2} />
-        <div className="lg-field">
-          <label className="lg-accept">
-            <input
-              id="secure-accept"
-              aria-label={ACCEPT_TEXT}
-              type="checkbox"
-              className="lg-check"
-              checked={accepted}
-              onChange={(e) => setAccepted(e.target.checked)}
-              aria-invalid={errors.accept ? "true" : "false"}
-              aria-describedby={errors.accept ? "secure-accept-error" : undefined}
-            />
-            <span>
-              Declaro que li e compreendi os{" "}
-              <button type="button" className="lg-link-btn" onClick={() => setDoc("termos")}>Termos de Aceite e Uso</button>
-              {" "}e a{" "}
-              <button type="button" className="lg-link-btn" onClick={() => setDoc("privacidade")}>Política de Privacidade</button>
-              {" "}do StaziaMed Revalida e concordo com suas condições.
-            </span>
-          </label>
-          {errors.accept ? <span id="secure-accept-error" className="lg-field-error">{errors.accept}</span> : null}
-        </div>
-        {PEDE_DECLARACOES && (
-          <div className="lg-field" role="group" aria-label="Declarações">
-            <label className="lg-accept">
-              <input id="secure-adulto" aria-label={DECLARACAO_ADULTO} type="checkbox" className="lg-check" checked={adult}
-                onChange={(e) => setAdult(e.target.checked)} aria-invalid={errors.decl && !adult ? "true" : "false"} />
-              <span>{DECLARACAO_ADULTO}</span>
-            </label>
-            <label className="lg-accept">
-              <input id="secure-medico" aria-label={DECLARACAO_MEDICO} type="checkbox" className="lg-check" checked={physician}
-                onChange={(e) => setPhysician(e.target.checked)} aria-invalid={errors.decl && !physician ? "true" : "false"} />
-              <span>{DECLARACAO_MEDICO}</span>
-            </label>
-            {errors.decl ? <span className="lg-field-error" role="alert">{errors.decl}</span> : null}
+    <RecoveryLayout
+      label="Criar conta"
+      title="Criar conta"
+      sub="Crie sua conta e comece sua jornada."
+      aside={{ title: "Já tem conta?", copy: "Entre para continuar sua preparação para o Revalida.", button: "Entrar", onButton: () => go("login") }}
+    >
+      <form onSubmit={submit} className="rc-fields cc-fields" noValidate>
+        {error && (
+          <div ref={messageRef}>
+            <RecoveryMessage tone="danger">{error}</RecoveryMessage>
           </div>
         )}
-        <button type="submit" className="lg-btn lg-btn-primary" disabled={loading}>{loading ? <><span className="lg-spin" />CRIANDO CONTA…</> : "CRIAR CONTA"}</button>
-        <div className="lg-or" aria-hidden="true"><span /><span>ou cadastre-se com</span><span /></div>
-        <button type="button" className="lg-btn lg-btn-ghost" onClick={google} disabled={loading}><img src="/novo-assets/google.svg" alt="" width="18" height="18" />Criar conta com Google</button>
+        <RecoveryField id={FIELD_IDS.name} name="name" label="Nome completo" autoComplete="name" icon="user" placeholder="Seu nome completo" error={errors.name} defaultValue={saved.name} />
+        <RecoveryField id={FIELD_IDS.email} name="email" label="E-mail" type="email" autoComplete="email" icon="mail" placeholder="voce@exemplo.com" error={errors.email} defaultValue={saved.email} />
+        <RecoveryField id={FIELD_IDS.pw} name="pw" label="Senha" type="password" icon="lock" hint={`Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`} autoComplete="new-password" error={errors.pw} />
+        <RecoveryField id={FIELD_IDS.pw2} name="pw2" label="Conferir senha" type="password" icon="lock" autoComplete="new-password" error={errors.pw2} />
+
+        <div className={`cc-consent${errors.accept ? " is-error" : ""}`}>
+          <div className="cc-item">
+            <label className="cc-check">
+              <input
+                id={FIELD_IDS.accept}
+                aria-label={ACEITE_TEXTO}
+                type="checkbox"
+                checked={accepted}
+                onChange={(e) => setAccepted(e.target.checked)}
+                aria-invalid={errors.accept ? "true" : "false"}
+                aria-describedby={errors.accept ? "secure-accept-error" : undefined}
+              />
+              <AceiteFrase onDoc={setDoc} linkClassName="cc-inline-link" />
+            </label>
+            {errors.accept ? <FieldError id="secure-accept-error">{errors.accept}</FieldError> : null}
+          </div>
+        </div>
+
+        <RecoveryButton type="submit" loading={loading} loadingText="CRIANDO CONTA…">CRIAR CONTA</RecoveryButton>
+        <div className="ln-or" aria-hidden="true">
+          <span />
+          ou cadastre-se com
+          <span />
+        </div>
+        <button type="button" className="ln-btn ln-btn--google" onClick={google} disabled={loading}>
+          <img src="/novo-assets/google.svg" alt="" width="20" height="20" />
+          <span>Criar conta com Google</span>
+        </button>
+        {/* mesmo caminho de volta das telas de recuperar senha (no computador, o lado azul também tem "Já tem conta? Entrar") */}
+        <div className="rc-actions">
+          <RecoveryLink back onClick={() => go("login")}>Voltar para o login</RecoveryLink>
+        </div>
       </form>
       {doc && <DocumentModal doc={doc} onClose={closeDoc} />}
-    </SecureSignupLayout>
+    </RecoveryLayout>
   );
 }
 

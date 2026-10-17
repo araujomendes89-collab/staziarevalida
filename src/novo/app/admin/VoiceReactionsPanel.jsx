@@ -107,7 +107,7 @@ export function VoiceReactionsPanel() {
       <div className="voice-reactions__explosiva">
         <Switch
           label="Durona Explosiva disponível para os alunos"
-          description="Ligada para todos (todos são médicos maiores de 18). Quem escolhe a Durona começa no N3 Estressada, com gritos e palavrões; N3 e N4 dependem da declaração de 18+ e médico no aceite do Termo. O aluno pode baixar o nível e desligar gritos e palavrões nas preferências."
+          description="Ligada para todos (todos são médicos maiores de 18). Quem escolhe a Durona começa no N3 Estressada, com gritos e palavrões; N3 e N4 dependem da declaração de 18+ no aceite do Termo. O aluno pode baixar o nível e desligar gritos e palavrões nas preferências."
           checked={explosiva}
           onChange={(e) => { setExplosiva(e.target.checked); setState({ saving: false, error: null, done: false }); }}
         />

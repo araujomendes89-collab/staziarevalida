@@ -119,8 +119,8 @@ describe("Cadastro — banco local do navegador", () => {
     expect(boot.legal).toMatchObject({ phone_missing: true, gate_required: true });
   });
 
-  it("versão vigente sem as declarações de maioridade e de médico não vale como aceite", async () => {
-    await backend.signUp("Lia Souza", "lia2@teste.dev", "senha-segura", { phone: PHONE, termsVersion: TERMO_VERSAO, declaresAdult: true, userAgent: "T" });
+  it("versão vigente sem a declaração de maioridade não vale como aceite", async () => {
+    await backend.signUp("Lia Souza", "lia2@teste.dev", "senha-segura", { phone: PHONE, termsVersion: TERMO_VERSAO, declaresPhysician: true, userAgent: "T" });
     const boot = await backend.rpc<any>("app_bootstrap");
     expect(boot.legal).toMatchObject({ gate_required: true, declarations_required: true, termo_uso: { accepted: null } });
   });
@@ -151,10 +151,11 @@ describe("Cadastro — banco local do navegador", () => {
 
     await expect(backend.rpc("app_accept_terms_declared", { ...args, p_version: "0.9" })).rejects.toThrow("Versão desatualizada do termo.");
     await expect(backend.rpc("app_accept_terms_declared", { ...args, p_phone: "41999998888" })).rejects.toThrow("Informe o WhatsApp com código do país.");
-    // Termo 2.0: sem as duas declarações não há aceite (nem pela função antiga, nem com uma só)
+    // Termo 2.0: sem a declaração de maioridade não há aceite (nem pela função antiga, nem só com a de médico); a de médico não é
+    // mais exigida (…13661_aceite_com_maioridade)
     const { p_adult: _a, p_physician: _p, ...semDeclaracao } = args;
-    await expect(backend.rpc("app_accept_terms", semDeclaracao)).rejects.toThrow("Confirme que você tem 18 anos ou mais e que é médico(a).");
-    await expect(backend.rpc("app_accept_terms_declared", { ...args, p_physician: false })).rejects.toThrow("Confirme que você tem 18 anos ou mais e que é médico(a).");
+    await expect(backend.rpc("app_accept_terms", semDeclaracao)).rejects.toThrow("Confirme que você tem 18 anos ou mais.");
+    await expect(backend.rpc("app_accept_terms_declared", { ...args, p_adult: false })).rejects.toThrow("Confirme que você tem 18 anos ou mais.");
 
     const boot = await backend.rpc<any>("app_bootstrap");
     expect(boot.profile.phone).toBeNull();
