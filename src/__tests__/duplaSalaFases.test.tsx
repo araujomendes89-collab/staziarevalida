@@ -41,6 +41,10 @@ function roomState(over: Record<string, any> = {}) {
 const { id: _id, name: _name, ...SEM_TEMA } = STATION;
 const CAND_STATION = { ...SEM_TEMA, label: "Estação 3" };
 
+// Avisos da fase dos papéis (013405): quem já viu a estação e a dica para quem ainda não é avaliador.
+const SEEN_CAND = "Você já viu esta estação, então já conhece o tema. Se quiserem, o avaliador pode trocar a estação.";
+const HINT = "A estação já foi escolhida: quem passar a avaliador verá o tema.";
+
 const roles = (me: "candidate" | "evaluator" | null, over: Record<string, any> = {}) =>
   roomState({
     station: me === "evaluator" ? STATION : CAND_STATION,
@@ -427,19 +431,42 @@ describe("Sala: fases a partir do estado gravado", () => {
 
   it("decisões do dono (16/10): origem sempre visível ao candidato e aviso a quem escolheu a estação e ficou como candidato", async () => {
     // b) a origem "Revalida 2020 · INEP" aparece para o candidato nos papéis, na preparação e na estação; a) nunca o nome
-    await mount({ room: roles("candidate", { me: { picked_station: true } }), content: contentFor("candidate") });
+    await mount({ room: roles("candidate", { me: { seen_station: true } }), content: contentFor("candidate") });
     expect(screen.getByText("Estação 3 · Clínica Médica · Revalida 2020 · INEP")).toBeTruthy();
-    // c) quem escolheu a estação (Banco de estações ou sala) e está como candidato vê o aviso; o tema não aparece
-    expect(screen.getByRole("note").textContent).toBe("Você escolheu esta estação, então já conhece o tema.");
+    // c) quem já viu a estação (escolheu no Banco ou na sala, ou passou por avaliador) e está como candidato vê o aviso; o
+    // tema não aparece
+    expect(screen.getByRole("note").textContent).toBe(SEEN_CAND);
     expect(document.body.textContent).not.toContain("Estação de teste");
+    expect(screen.queryByText(HINT)).toBeNull(); // já viu: a dica de "verá o tema" não aparece
     cleanup();
 
-    // os dois escolhem os papéis: o mesmo aviso some se a pessoa passa a ser avaliador, e não aparece a quem não escolheu
-    await mount({ room: roles("evaluator", { me: { picked_station: true } }), content: contentFor(null) });
-    expect(screen.queryByText("Você escolheu esta estação, então já conhece o tema.")).toBeNull();
-    cleanup();
-    await mount({ room: roles("candidate", { me: { picked_station: false } }), content: contentFor("candidate") });
+    // os dois escolhem os papéis: o aviso some se a pessoa passa a ser avaliador, e não aparece a quem não viu
+    await mount({ room: roles("evaluator", { me: { seen_station: true } }), content: contentFor(null) });
+    expect(screen.queryByText(SEEN_CAND)).toBeNull();
     expect(screen.queryByRole("note")).toBeNull();
+    cleanup();
+    await mount({ room: roles("candidate", { me: { seen_station: false } }), content: contentFor("candidate") });
+    expect(screen.queryByRole("note")).toBeNull();
+    // estação já escolhida e a candidata ainda não viu: dica de que virar avaliador mostra o tema
+    expect(screen.getByText(HINT)).toBeTruthy();
+    cleanup();
+    // o campo antigo (picked_station) não acende mais o aviso
+    await mount({ room: roles("candidate", { me: { picked_station: true } }), content: contentFor("candidate") });
+    expect(screen.queryByRole("note")).toBeNull();
+    cleanup();
+
+    // 013405: o avaliador fica sabendo que a candidata já viu a estação, com texto neutro
+    await mount({ room: roles("evaluator", { partner: { seen_station: true } }), content: contentFor(null) });
+    expect(screen.getByRole("note").textContent).toBe("Bruno já viu esta estação. Se quiserem, troque a estação.");
+    expect(screen.queryByText(HINT)).toBeNull();
+    cleanup();
+    // para a candidata, o campo do parceiro (o avaliador) não muda nada
+    await mount({ room: roles("candidate", { partner: { seen_station: true } }), content: contentFor("candidate") });
+    expect(screen.queryByRole("note")).toBeNull();
+    cleanup();
+    // sem estação: nem aviso nem dica
+    await mount({ room: roles("candidate", { station: null }), content: contentFor("candidate") });
+    expect(screen.queryByText(HINT)).toBeNull();
     cleanup();
 
     await mount({ room: roles("candidate", { phase: "connecting" }), content: contentFor("candidate") });

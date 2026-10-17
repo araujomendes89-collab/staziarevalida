@@ -101,7 +101,7 @@ describe("Resultado: revisão da nota", () => {
     // a rodada 2 começa sem papéis e sem estação (app_dupla_next_station)
     srv.steps.app_dupla_next_station = () => ({
       phase: "roles", round: 2, finished_at: null, station: null, duration_ms: null,
-      me: { ...srv.room.me, role: null, confirmed: false, connected: false, ready: false, picked_station: false },
+      me: { ...srv.room.me, role: null, confirmed: false, connected: false, ready: false, seen_station: false },
       partner: { ...srv.room.partner, role: null, confirmed: false, connected: false, ready: false },
     });
     srv.content = () => ({ role: null, station: null, pressing_count: 0, pressings: [] });

@@ -179,7 +179,7 @@ describe("Migração 013360 (+013380): resultado, revisão da nota, treinar outr
     expect(s).toMatchObject({
       phase: "roles", round: 2, station: null, duration_ms: null, started_at: null, ends_at: null, paused_left_ms: null, paused_at: null,
       finished_at: null, released_pressings: [], call_link: "https://meet.example.com/abc",
-      me: { role: null, confirmed: false, connected: false, ready: false, picked_station: false },
+      me: { role: null, confirmed: false, connected: false, ready: false, seen_station: false },
       partner: { role: null, confirmed: false, connected: false, ready: false },
     });
     const r = await linha(id);

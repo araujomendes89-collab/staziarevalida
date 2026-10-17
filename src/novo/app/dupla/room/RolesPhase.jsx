@@ -55,6 +55,14 @@ export function RolesPhase({ room, actions }) {
   // Só o avaliador escolhe ou troca a estação (o candidato não pode saber o tema antes do resultado).
   const isEval = room.me.role === "evaluator";
   const evaluatorName = room.partner.role === "evaluator" ? partnerName : null;
+  const seenNote =
+    room.me.role === "candidate" && room.me.seen_station
+      ? "Você já viu esta estação, então já conhece o tema. Se quiserem, o avaliador pode trocar a estação."
+      : isEval && room.partner.role === "candidate" && room.partner.seen_station
+        ? `${firstName(partnerName)} já viu esta estação. Se quiserem, troque a estação.`
+        : null;
+  // Com a estação já escolhida, virar avaliador mostra o tema (e quem voltar a candidato recebe o aviso acima).
+  const revealHint = Boolean(station) && !isEval && !room.me.seen_station;
 
   return (
     <main style={pageStyle}>
@@ -90,9 +98,10 @@ export function RolesPhase({ room, actions }) {
           Aguardando {partnerName} entrar na sala
         </div>
       )}
-      {room.me.role === "candidate" && room.me.picked_station && (
-        // Decisão do dono (16/10): os dois escolhem os papéis; quem escolheu a estação (no Banco de estações ou na sala) e fica
-        // como candidato recebe este aviso. O tema continua só para o avaliador.
+      {seenNote && (
+        // Decisão do dono (16/10): os dois escolhem os papéis. Quem já viu esta estação (escolheu, no Banco de estações ou na
+        // sala, ou passou por avaliador com ela) e está como candidato recebe o aviso; o avaliador também fica sabendo, para
+        // combinarem trocar de estação. O tema continua só para o avaliador.
         <div
           role="note"
           style={{
@@ -107,7 +116,7 @@ export function RolesPhase({ room, actions }) {
           }}
         >
           <Icon name="triangle-alert" size={18} />
-          Você escolheu esta estação, então já conhece o tema.
+          {seenNote}
         </div>
       )}
       <CardBlock
@@ -126,6 +135,11 @@ export function RolesPhase({ room, actions }) {
         {room.partner.role && (
           <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", marginTop: 12 }}>
             {partnerName} será <b style={strong}>{roleLabel(room.partner.role)}</b>.
+          </div>
+        )}
+        {revealHint && (
+          <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", marginTop: 8 }}>
+            A estação já foi escolhida: quem passar a avaliador verá o tema.
           </div>
         )}
       </CardBlock>

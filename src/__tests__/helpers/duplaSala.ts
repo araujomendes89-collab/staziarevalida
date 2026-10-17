@@ -22,7 +22,7 @@ export const ITEMS = [
 export function baseRoom(over: Record<string, any> = {}) {
   return {
     id: "r1", rev: 1, phase: "setup", round: 1, server_now: NOW, station: STATION, duration_ms: 600000,
-    me: { user_id: "u-ana", public_name: "Ana Souza", role: "evaluator", confirmed: true, connected: true, ready: true, picked_station: false },
+    me: { user_id: "u-ana", public_name: "Ana Souza", role: "evaluator", confirmed: true, connected: true, ready: true, seen_station: false },
     partner: { user_id: "u-bruno", public_name: "Bruno Lima", role: "candidate", confirmed: true, connected: true, ready: true, seen_ms_ago: 1000 },
     match_note: null, invite_pending: false, call_link: null, started_at: null, ends_at: null, paused_left_ms: null, paused_at: null,
     finished_at: null, released_pressings: [], closed_reason: null, closed_by: null,

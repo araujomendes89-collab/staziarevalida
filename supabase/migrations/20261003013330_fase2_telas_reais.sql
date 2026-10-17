@@ -19,7 +19,9 @@
 --   * A tabela station_attempts fica FECHADA (acesso por linha ligado, sem política e sem permissão para aluno e visitante):
 --     só estas funções leem e gravam. Nada de nota, ranking ou XP: treino sozinho não vale ponto na Arena.
 --   * Sem dado, a tela mostra estado vazio: nenhuma função devolve exemplo.
--- Esta migração é colada uma vez só. Colada de novo por engano, para no primeiro comando ("already exists") e não muda nada.
+-- Pode ser colada duas vezes: só "create or replace function", "create table if not exists", "create index if not exists",
+-- acesso por linha e permissões; não grava dado. Colada de novo, roda tudo outra vez sem erro e refaz as funções app_fase2_*
+-- com o mesmo texto (nenhuma outra migração as redefine).
 -- Para desfazer: supabase/desfazer/20261003013330_fase2_telas_reais.desfazer.sql
 -- =============================================================================
 

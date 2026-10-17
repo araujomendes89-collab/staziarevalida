@@ -26,7 +26,7 @@ const fnCalls = (fn: string) => rpc.mock.calls.filter((c: any[]) => c[0] === fn)
 function base(over: any = {}) {
   return {
     id: "r1", rev: 1, phase: "roles", round: 1, server_now: NOW, station: STATION, duration_ms: 600000,
-    me: { user_id: "u-ana", public_name: "Ana Souza", role: "evaluator", confirmed: false, connected: false, ready: false, picked_station: false },
+    me: { user_id: "u-ana", public_name: "Ana Souza", role: "evaluator", confirmed: false, connected: false, ready: false, seen_station: false },
     partner: { user_id: "u-bruno", public_name: "Bruno Lima", role: "candidate", confirmed: false, connected: false, ready: false, seen_ms_ago: 1000 },
     match_note: null, invite_pending: false, call_link: null, started_at: null, ends_at: null, paused_left_ms: null, paused_at: null,
     finished_at: null, released_pressings: [], closed_reason: null, closed_by: null,

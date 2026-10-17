@@ -668,6 +668,10 @@ describe("Migração 9770 — sinal, baralho, escolha, match, convite e saída d
     });
     const antes = await retrato();
     await d.db.exec(SQL);
+    // A 013405 (correções da publicação) refaz app_dupla_swipe: colada de novo na ordem, depois desta, o banco volta igual.
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.includes("treino_dupla") && f > MIGRACAO).sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect(await retrato()).toEqual(antes);
   });
 });

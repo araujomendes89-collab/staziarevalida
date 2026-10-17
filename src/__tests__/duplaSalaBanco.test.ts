@@ -1,7 +1,7 @@
 /**
  * Treino em Dupla · Tarefa 14 (plano de 12/10, "9910"): migração 013350 sobre o banco local (PGlite, migrações reais).
  * Ações da sala (papéis, estação, conexão, prontidão, cronômetro, impressos, marcações, finalizar), caminho da imagem do
- * impresso, "me.picked_station", números de tela contínuos e o aviso de tempo real (só o rev, por broadcast em room:<id>).
+ * impresso, "me.seen_station" (013405; antes "me.picked_station"), números de tela contínuos e o aviso de tempo real (só o rev, por broadcast em room:<id>).
  * O candidato nunca recebe o tema: conferido pelo TEXTO BRUTO (JSON.stringify) das respostas.
  */
 import fs from "node:fs";
@@ -451,22 +451,21 @@ describe("Migração 013350: ações da sala do Treino em Dupla", () => {
   });
 
   // ------------------------------------------------------------------ quem escolheu a estação
-  it("me.picked_station: verdadeiro para quem escolheu no Banco (swipe) e para quem escolheu na sala; falso para o outro", async () => {
+  it("me.seen_station (013405): verdadeiro para quem escolheu na sala; a escolha do Banco gravada depois não conta; falso para o outro", async () => {
     const id = await sala("roles", { papeis: false, station: null });
     await act(U.ana, "set_roles", id, { p_candidate_id: U.ana });
     let s = await act(U.bruno, "set_station", id, { p_station_id: SECRETA.id });
-    expect(s.me.picked_station).toBe(true);
-    expect((await d.rpc(U.ana, "app_dupla_room", { p_room_id: id })).me.picked_station).toBe(false);
-    expect((await d.rpc(U.ana, "app_dupla_room", { p_room_id: id })).partner).not.toHaveProperty("picked_station");
-    // a candidata escolheu a mesma estação no Banco de estações (escolha "Estudar junto" com estação)
+    expect(s.me.seen_station).toBe(true);
+    expect(s.me).not.toHaveProperty("picked_station");
+    const a = await d.rpc(U.ana, "app_dupla_room", { p_room_id: id });
+    expect(a.me.seen_station).toBe(false);
+    expect(a.partner.seen_station).toBe(false); // o parceiro da candidata é o avaliador: sempre falso
+    // a candidata grava no Banco de estações uma escolha com a mesma estação: não acende (sem tentativa e erro)
     await d.sql(`insert into public.study_swipes (from_user, to_user, direction, station_id) values ($1, $2, 'right', $3)`, [U.ana, U.bruno, SECRETA.id]);
-    expect((await d.rpc(U.ana, "app_dupla_room", { p_room_id: id })).me.picked_station).toBe(true);
-    // swipe com outra estação não conta; sala sem estação: falso
-    await d.sql(`update public.study_swipes set station_id = $1 where from_user = $2`, [STATION.id, U.ana]);
-    expect((await d.rpc(U.ana, "app_dupla_room", { p_room_id: id })).me.picked_station).toBe(false);
+    expect((await d.rpc(U.ana, "app_dupla_room", { p_room_id: id })).me.seen_station).toBe(false);
     const vazia = await sala("roles", { station: null });
     s = await d.rpc(U.ana, "app_dupla_room", { p_room_id: vazia });
-    expect(s.me.picked_station).toBe(false);
+    expect(s.me.seen_station).toBe(false);
   });
 
   // ------------------------------------------------------------------ números de tela
