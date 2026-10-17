@@ -213,7 +213,8 @@ export class AudioPlayer {
       };
       this.waiting.add(done);
       this.sources.add(src);
-      this._anotar(buf.getChannelData(0), buf.sampleRate, this.ctx.currentTime);
+      // a boca só acompanha quando o áudio decodificado traz as amostras (navegador real); sem elas o som toca do mesmo jeito
+      if (typeof buf.getChannelData === "function") this._anotar(buf.getChannelData(0), buf.sampleRate, this.ctx.currentTime);
       src.onended = () => {
         this.sources.delete(src);
         done(true);
@@ -250,7 +251,7 @@ export class AudioPlayer {
       src.connect(g);
       g.connect(this.gain);
       const at = this.ctx.currentTime + FOLGA_S;
-      this._anotar(buf.getChannelData(0), buf.sampleRate, at);
+      if (typeof buf.getChannelData === "function") this._anotar(buf.getChannelData(0), buf.sampleRate, at);
       const v = { src, g, trilha: this.trilha[this.trilha.length - 1], resolve };
       this.vinheta = v;
       src.onended = () => {
