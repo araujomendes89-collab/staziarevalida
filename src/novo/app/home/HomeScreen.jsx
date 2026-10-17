@@ -21,6 +21,7 @@ import { usePlayLoad } from "../play/usePlay.js";
 import { inicioCelular } from "../shell/cascaConfig.js";
 import { NivelamentoConvite } from "../nivelamento/NivelamentoConvite.jsx";
 import { CONVITE } from "../nivelamento/textos.js";
+import { CreditosHoje } from "./CreditosHoje.jsx";
 
 const DIAGNOSTIC_SIZE = 10;
 const R = { borderRadius: 24 };
@@ -683,6 +684,7 @@ export function HomeScreen({ go, mobile }) {
   return (
     <>
       {error && <Banner tone="danger">{error}</Banner>}
+      <CreditosHoje go={go} />
       {boot.role === "admin" && <RadarAvisoFaixa avisos={radar} go={go} />}
       {data.announcement && (
         <Banner tone={data.announcement.tone} icon="megaphone" title={data.announcement.title}>

@@ -133,6 +133,16 @@ describe("Migração 013540 — moeda 'ia': janelas de dia, semana e mês e esto
     expect(m).not.toHaveProperty("limite_semana");
   });
 
+  it("o estado de 'hoje' (Início do aluno) renova na virada de Brasília e preserva bônus e comprados", async () => {
+    const a = await conta();
+    await ia({ pro: { dia: 5 } });
+    await d.sql(`select public.credit_grant($1::uuid, 'ia', 3, 'teste', 'virada-bonus-' || $1::text, 'bonus')`, [a]);
+    await gasta(a, "virada-1", "2026-10-17T20:00:00Z"); // 17:00 de Brasília
+    await gasta(a, "virada-2", "2026-10-18T02:59:59Z"); // 23:59:59 de Brasília, ainda dia 17
+    expect(await estado(a, "2026-10-18T02:59:59Z")).toMatchObject({ usados_hoje: 2, limite_dia: 5, bonus: 3, disponivel: 6 });
+    expect(await estado(a, "2026-10-18T03:00:01Z")).toMatchObject({ usados_hoje: 0, limite_dia: 5, bonus: 3, disponivel: 8 });
+  });
+
   it("colar duas vezes dá o mesmo banco; credit_* continuam fechadas para o navegador", async () => {
     const defs = () =>
       d.sql(`select p.oid::regprocedure::text as id, pg_get_functiondef(p.oid) as def, p.proacl::text as acl from pg_proc p where p.pronamespace = 'public'::regnamespace order by 1`);
