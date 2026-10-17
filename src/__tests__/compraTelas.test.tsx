@@ -248,3 +248,12 @@ describe("formas de pagamento (decisão do dono 17/10, noite: débito também)",
     expect(textoFormas(semDebito)).toBe("Pix ou cartão de crédito");
   });
 });
+
+describe("pagamento em aberto ao voltar para o app", () => {
+  it("o Pix aberto do resumo (sem 'status') aparece aguardando, com QR e copia-e-cola", async () => {
+    mockFetch({ "/overview": { ...OV_ASSINATURA, contrato: { ...OV_ASSINATURA.contrato, metodo: "pix" }, pedidos_abertos: [{ id: "44444444-4444-4444-8444-444444444444", tipo: "plano", nome: "Pro mensal (renovação)", metodo: "pix", motivo: "renovacao", valor_centavos: 9990, pix: { payload: "000201REN7", image: "img" }, url: "https://x" }] } });
+    backend.rpc.mockResolvedValue({ pagamentos: [], novos: [], recentes: [] });
+    render(<AssinaturaSection go={vi.fn()} />);
+    expect((await screen.findByTestId("cobranca-aberta")).textContent).toContain("000201REN7");
+  });
+});

@@ -5,7 +5,7 @@ import React from "react";
 import { Badge, Banner, Button, Icon, IconTile } from "../../ds";
 import { useSession } from "../session.jsx";
 import { brl, cancelRenewal, changePaymentMethod, dateBR, getBillingOverview, newIdem, requestRefund } from "./billingApi.js";
-import { PedidoAberto, RenovacaoPendente, abrirAbaVazia } from "./BillingSection.jsx";
+import { PedidoAberto, RenovacaoPendente, abrirAbaVazia, pedidoDoResumo } from "./BillingSection.jsx";
 import "./planos.css";
 
 const CICLO = { mensal: "mensal", trimestral: "trimestral" };
@@ -93,7 +93,7 @@ export function AssinaturaSection({ go, Cabecalho }) {
 
   const c = ov.contrato;
   const vigente = c && new Date(c.periodo_fim) > new Date();
-  const aberto = pedido ?? (ov.pedidos_abertos ?? [])[0] ?? null;
+  const aberto = pedido ?? pedidoDoResumo(ov);
   const pagamentos = hist?.pagamentos ?? [];
   const contratoUrl = hist?.contrato_url ?? ov.contrato_doc?.url ?? "/novo/termos";
 
@@ -204,7 +204,7 @@ export function AssinaturaSection({ go, Cabecalho }) {
               }
             />
           )}
-          {!pergunta && c.renova && !ov.renovacao_pendente && !(aberto && aberto.status === "aberto") && (
+          {!pergunta && c.renova && !ov.renovacao_pendente && !(aberto && aberto.status === "aberto" && aberto.motivo !== "renovacao") && (
             <div className="bl-acoes">
               <Button variant="secondary" icon={c.metodo === "cartao" ? "qr-code" : "credit-card"} onClick={() => setPergunta("trocar")}>
                 {c.metodo === "cartao" ? "Trocar para Pix" : "Trocar para cartão"}

@@ -24,6 +24,11 @@ const METODOS = [
 /** Formas de pagamento desta compra: débito só fora do plano mensal (que renova sozinho no crédito). */
 export const metodosDaCompra = (overview, alvo) =>
   METODOS.filter((m) => (m.id === "debito" ? overview.methods?.debit === true && !(alvo.tipo === "plano" && alvo.ciclo === "mensal") : overview.methods?.[m.cap] !== false));
+/** O pagamento em aberto do resumo do servidor (vem sem "status": todos ali estão abertos). */
+export const pedidoDoResumo = (ov) => {
+  const p = (ov?.pedidos_abertos ?? [])[0];
+  return p ? { status: "aberto", ...p } : null;
+};
 /** Texto das formas aceitas, conforme o servidor. */
 export const textoFormas = (overview) => (overview?.methods?.debit === true ? "Pix, crédito ou débito" : "Pix ou cartão de crédito");
 const ESTADO_FINAL = {
@@ -491,7 +496,8 @@ export function BillingSection({ onEnabled, go, pedidoInicial }) {
   const planos = ov.vitrine?.planos ?? [];
   const extras = ov.vitrine?.extras ?? [];
   const contrato = ov.contrato && new Date(ov.contrato.periodo_fim) > new Date() ? ov.contrato : null;
-  const aberto = pedido ?? (ov.pedidos_abertos ?? [])[0] ?? null;
+  // os pedidos abertos do resumo vêm sem "status" (são todos abertos): sem isto, a tela não mostrava o pagamento em aberto ao voltar
+  const aberto = pedido ?? pedidoDoResumo(ov);
   const vendas = Boolean(ov.vendas_ligadas);
 
   return (
@@ -520,7 +526,7 @@ export function BillingSection({ onEnabled, go, pedidoInicial }) {
           }}
         />
       ) : (
-        !(aberto && aberto.status === "aberto") && (
+        !(aberto && aberto.status === "aberto" && aberto.motivo !== "renovacao") && (
           <>
             {contrato ? (
               <div className="ev-panel bl-minha" data-testid="cobranca-minha">
