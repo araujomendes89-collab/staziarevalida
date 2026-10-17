@@ -76,19 +76,20 @@ export function pcm16Base64(f32) {
 export { base64ToFloat32 };
 
 /**
- * Abre a voz do Gemini. `handlers`: onReady, onAudio, onIdle, onTranscript(role, text, finished), onTurnComplete, onInterrupted,
+ * Abre a voz do Gemini. `semitons`: afinação da voz do personagem (manifest `voz.semitons`; +3 = Stazi); sem valor, segue o que a
+ * tela de voz definiu (definirSemitonsDaVoz), e 0 é o caminho original. `handlers`: onReady, onAudio, onIdle, onTranscript(role, text, finished), onTurnComplete, onInterrupted,
  * onToolCalls(calls), onUsage(usage), onReconnect(why: "goaway" | "drop"), onClose({ beforeReady, reason }), onError(err).
  * onReady só chega depois de esta função devolver o controle (a abertura do professor usa o controle).
- * Devolve o controle: mute, sendText, respondTools, interrupt, setVolume, close, outputStream.
+ * Devolve o controle: mute, sendText, respondTools, interrupt, setVolume, setSemitons, close, outputStream.
  */
-export async function openGeminiLive({ token, model, stream, volume = 1, handlers = {}, sdk = null, audioContext = null }) {
+export async function openGeminiLive({ token, model, stream, volume = 1, handlers = {}, sdk = null, audioContext = null, semitons = null }) {
   const ctx = audioContext ?? getAudioContext();
   if (!ctx) throw new Error("Este navegador não toca o áudio da voz.");
   if (ctx.state === "suspended") ctx.resume?.()?.catch?.(() => {});
   const { GoogleGenAI } = sdk ?? (await import("@google/genai/web"));
   const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: "v1alpha" } });
   const h = handlers;
-  const player = new AudioPlayer(ctx, volume, () => h.onIdle?.());
+  const player = new AudioPlayer(ctx, volume, () => h.onIdle?.(), semitons == null ? { seguirTela: true } : { semitons });
   // `current`: qual conexão vale agora (a antiga, ao fechar depois de trocada, não derruba a nova).
   // O Google troca a conexão de tempos em tempos (aviso "goAway", rotina em conversa longa); quedas de rede são poucas.
   const state = { session: null, current: 0, ready: false, readySent: false, handedOver: false, muted: false, closed: false, resuming: false, handle: null, resumes: 0, drops: 0, capture: null };
@@ -123,7 +124,10 @@ export async function openGeminiLive({ token, model, stream, volume = 1, handler
       }
       if (sc.inputTranscription?.text) h.onTranscript?.("student", sc.inputTranscription.text, Boolean(sc.inputTranscription.finished));
       if (sc.outputTranscription?.text) h.onTranscript?.("tutor", sc.outputTranscription.text, Boolean(sc.outputTranscription.finished));
-      if (sc.turnComplete) h.onTurnComplete?.();
+      if (sc.turnComplete) {
+        player.flush(); // voz afinada: solta o finzinho que o afinador guardava
+        h.onTurnComplete?.();
+      }
     }
     if (msg.usageMetadata) h.onUsage?.(msg.usageMetadata);
   };
@@ -285,6 +289,10 @@ export async function openGeminiLive({ token, model, stream, volume = 1, handler
     },
     setVolume(v) {
       player.setVolume(v);
+    },
+    /** Afinação da voz do personagem (semitons; 0 = sem afinar). */
+    setSemitons(n) {
+      player.setSemitons(n);
     },
     close() {
       if (state.closed) return;

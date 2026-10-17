@@ -15,6 +15,7 @@ import { VoiceControls } from "./VoiceControls.jsx";
 import { VoiceStatus } from "./VoiceStatus.jsx";
 import { VoiceCaptions, VoiceChatSheet } from "./VoiceTranscript.jsx";
 import { releaseAudioContext } from "./audioUnlock.js";
+import { definirSemitonsDaVoz } from "./pitchShift.js";
 import { realtimeErrorMessage } from "../useRealtimeVoice.js";
 import "./voiceMode.css";
 
@@ -72,7 +73,7 @@ const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabin
  * card: o que fica abaixo da esfera (o cartão da questão). Para escrever, o Chat abre por cima, na mesma conversa.
  * onWrite: quando a voz não abriu, "Escrever pelo Chat" pede antes à tela um jeito em que o Chat manda (a Nexus passa para por escrito).
  */
-export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, entitlement = null, note = null, onClose, jeitoLabel = null, card = null, onWrite = null, personagem = null, motor = "2d" }) {
+export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, entitlement = null, note = null, onClose, jeitoLabel = null, card = null, onWrite = null, personagem = null, motor = "2d", semitons = null }) {
   const [chatOpen, setChatOpen] = React.useState(false);
   const [showCaptions, setShowCaptionsState] = React.useState(() => readPref("smn-voice-captions", true));
   const [volume, setVolumeState] = React.useState(() => readPref("smn-voice-volume", 1));
@@ -87,6 +88,16 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
   // personagem fica fixo na conversa; a troca no meio só existe para conversa antiga, de professor aposentado, e só muda o desenho
   // (a ligação, o microfone e a conversa seguem como estão).
   const personagemFixo = Boolean(personagemDe(persona?.id));
+  // 17/10/2026: a voz ao vivo do personagem vem afinada pelo manifest (`voz.semitons`: Stazi +3, efeito de desenho; Stazia 0, sem
+  // afinar). Vale o personagem DONO da voz (o da personalidade), nunca o desenho trocado de conversa antiga (essa voz não é dele).
+  // A prop `semitons` passa por cima. A tela avisa o tocador da voz ao vivo (geminiLive/geminiPonte seguem definirSemitonsDaVoz);
+  // quem abrir a ligação também pode passar `semitons` direto a openGeminiLive/openGeminiPonte.
+  const donoDaVoz = personagemDe(persona?.id);
+  const semitonsDaVoz = semitons ?? PERSONAGENS[donoDaVoz]?.voz?.semitons ?? 0;
+  React.useEffect(() => {
+    definirSemitonsDaVoz(semitonsDaVoz);
+    return () => definirSemitonsDaVoz(0);
+  }, [semitonsDaVoz]);
   const trocarPersonagem = () => {
     setQuem(outro);
     gravarPersonagem(outro);

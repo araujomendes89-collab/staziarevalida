@@ -1,6 +1,9 @@
 // Tocador da voz no navegador: os pedaços PCM da voz ao vivo (Gemini) e o mp3 da voz do professor (Nexus). Toca pelo mesmo
 // contexto de áudio e por um MediaStream que a esfera mede (o nível do som anima a esfera); para tudo na hora quando o aluno
 // interrompe.
+// 17/10/2026: a voz ao vivo pode vir afinada (o Stazi sobe +3 semitons, efeito de desenho; pitchShift.js). Com 0 semitons (a Stazia)
+// o caminho é exatamente o de antes. O mp3 do professor (playEncoded) nunca é afinado.
+import { AfinadorStream, normalizarSemitons, seguirSemitonsDaVoz, semitonsDaVoz } from "./pitchShift.js";
 
 /** base64 de PCM 16 bits → Float32. */
 export function base64ToFloat32(b64) {
@@ -16,7 +19,10 @@ export function base64ToFloat32(b64) {
 }
 
 export class AudioPlayer {
-  constructor(ctx, volume = 1, onIdle = null) {
+  /**
+   * opcoes.semitons: afina a voz ao vivo (play) neste valor; opcoes.seguirTela: sem valor próprio, segue definirSemitonsDaVoz.
+   */
+  constructor(ctx, volume = 1, onIdle = null, opcoes = {}) {
     this.ctx = ctx;
     this.gain = ctx.createGain();
     this.gain.gain.value = volume;
@@ -28,6 +34,27 @@ export class AudioPlayer {
     this.sources = new Set();
     this.waiting = new Set(); // promessas de playEncoded que o stop() resolve com false
     this.onIdle = onIdle;
+    this.semitons = 0;
+    this.afinador = null;
+    this.esvaziar = null; // relógio que solta o fim guardado no afinador quando a fila de som vai acabar
+    if (opcoes.semitons != null) this.setSemitons(opcoes.semitons);
+    else if (opcoes.seguirTela) {
+      // sem valor próprio: segue o que a tela de voz pede (definirSemitonsDaVoz), inclusive se mudar com a ligação aberta
+      this.largarTela = seguirSemitonsDaVoz((s) => this.setSemitons(s));
+      this.setSemitons(semitonsDaVoz());
+    }
+  }
+  /** Quanto afinar a voz ao vivo daqui em diante (0 = sem afinar, caminho original). O que estava guardado no afinador é descartado. */
+  setSemitons(n) {
+    const s = normalizarSemitons(n);
+    if (s === this.semitons) return;
+    this.semitons = s;
+    this.afinador = null;
+    this._pararRelogio();
+  }
+  _pararRelogio() {
+    if (this.esvaziar) clearTimeout(this.esvaziar);
+    this.esvaziar = null;
   }
   get stream() {
     return this.dest?.stream ?? null;
@@ -45,7 +72,40 @@ export class AudioPlayer {
   /** Pedaço de PCM 16 bits em base64 (a voz ao vivo), na sequência dos anteriores, sem buraco. */
   play(b64, rate = 24000) {
     if (this.ctx.state === "suspended") this.ctx.resume?.()?.catch?.(() => {});
-    const data = base64ToFloat32(b64);
+    let data = base64ToFloat32(b64);
+    if (this.semitons) {
+      // afinada: o afinador devolve o pedaço já afinado (o finzinho, ~30 ms, fica guardado para emendar com o próximo)
+      if (!this.afinador || this.afinador.taxa !== rate) this.afinador = new AfinadorStream({ semitons: this.semitons, taxa: rate });
+      data = this.afinador.processar(data);
+      this._agendar(data, rate);
+      this._armarRelogio();
+      return;
+    }
+    this._agendar(data, rate);
+  }
+  /**
+   * Fim da fala (turno completo) ou fila de som acabando sem pedaço novo: solta o que o afinador guardou, logo depois do último
+   * pedaço, e o afinador recomeça do zero. Sem afinação, não faz nada.
+   */
+  flush() {
+    this._pararRelogio();
+    const a = this.afinador;
+    if (!a) return;
+    const resto = a.finalizar();
+    this._agendar(resto, a.taxa);
+  }
+  _armarRelogio() {
+    this._pararRelogio();
+    if (!this.afinador?.retidas) return;
+    // solta o fim um pouco antes de a fila acabar (se chegar pedaço novo antes, o relógio recomeça); nunca antes de 50 ms, para
+    // um pedaço miúdo no começo da fala não fazer o afinador recomeçar a cada pedaço
+    const ms = Math.max(50, (this.next - this.ctx.currentTime - 0.02) * 1000);
+    this.esvaziar = setTimeout(() => {
+      this.esvaziar = null;
+      this.flush();
+    }, ms);
+  }
+  _agendar(data, rate) {
     if (!data.length) return;
     // o pedaço vem na taxa dele; o contexto toca na taxa dele (o navegador converte)
     const buf = this.ctx.createBuffer(1, data.length, rate);
@@ -81,6 +141,9 @@ export class AudioPlayer {
     });
   }
   stop() {
+    // interrupção: o que o afinador guardava é descartado junto (nada da fala cortada sai depois)
+    this._pararRelogio();
+    this.afinador?.reiniciar();
     for (const s of this.sources) {
       try {
         s.onended = null;
@@ -99,6 +162,8 @@ export class AudioPlayer {
   /** O contexto é compartilhado (a esfera usa o mesmo): só desliga os nós desta voz. */
   close() {
     this.stop();
+    this.largarTela?.();
+    this.largarTela = null;
     try {
       this.gain.disconnect();
     } catch {

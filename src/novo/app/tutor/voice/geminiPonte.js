@@ -10,16 +10,17 @@ import { CAPTURE_WORKLET, GEMINI_IN_RATE, pcm16Base64 } from "./geminiLive.js";
 const loaded = new WeakSet();
 
 /**
- * Abre a voz pela ponte. `ponte`: { url, bilhete } vindos de /voice/start. handlers: onReady, onAudio, onIdle,
+ * Abre a voz pela ponte. `ponte`: { url, bilhete } vindos de /voice/start. `semitons`: afinação da voz do personagem (como em
+ * openGeminiLive; sem valor, segue a tela de voz). handlers: onReady, onAudio, onIdle,
  * onTranscript(role, text, finished), onTurnComplete, onInterrupted, onToolCalls(calls), onUsage(uso), onReconnect(why),
  * onClose({ beforeReady, reason }), onError(err). Testes podem trocar o WebSocket (WebSocketImpl).
  */
-export async function openGeminiPonte({ ponte, stream, volume = 1, handlers = {}, audioContext = null, WebSocketImpl = null }) {
+export async function openGeminiPonte({ ponte, stream, volume = 1, handlers = {}, audioContext = null, WebSocketImpl = null, semitons = null }) {
   const ctx = audioContext ?? getAudioContext();
   if (!ctx) throw new Error("Este navegador não toca o áudio da voz.");
   if (ctx.state === "suspended") ctx.resume?.()?.catch?.(() => {});
   const h = handlers;
-  const player = new AudioPlayer(ctx, volume, () => h.onIdle?.());
+  const player = new AudioPlayer(ctx, volume, () => h.onIdle?.(), semitons == null ? { seguirTela: true } : { semitons });
   const state = { ws: null, ready: false, readySent: false, handedOver: false, muted: false, closed: false, capture: null };
   const send = (o) => {
     if (state.ws?.readyState === 1) state.ws.send(JSON.stringify(o));
@@ -68,6 +69,7 @@ export async function openGeminiPonte({ ponte, stream, volume = 1, handlers = {}
         h.onInterrupted?.();
         break;
       case "turno_completo":
+        player.flush(); // voz afinada: solta o finzinho que o afinador guardava
         h.onTurnComplete?.();
         break;
       case "ferramentas":
@@ -179,6 +181,10 @@ export async function openGeminiPonte({ ponte, stream, volume = 1, handlers = {}
     },
     setVolume(v) {
       player.setVolume(v);
+    },
+    /** Afinação da voz do personagem (semitons; 0 = sem afinar). */
+    setSemitons(n) {
+      player.setSemitons(n);
     },
     close() {
       if (state.closed) return;
