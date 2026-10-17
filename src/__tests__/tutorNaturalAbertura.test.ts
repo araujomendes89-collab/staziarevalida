@@ -64,7 +64,11 @@ describe("fichas do personagem (sem frases prontas)", () => {
     expect(tq).toMatch(/Devolve a pergunta para o aluno pensar primeiro/);
     expect(tq).toMatch(/A preguiça é sua, de brincadeira, e nunca do aluno/);
     expect(FICHAS.acolhedor.nunca).toMatch(/Dizer ou insinuar que o aluno tem preguiça/);
-    expect(FICHAS.acolhedor.tiques).toContain("preguiça de");
+    // revisão de 17/10: a preguiça charmosa é a marca dele (aparece em parte das falas), não um vício proibido; fala curtíssima
+    expect(FICHAS.acolhedor.jeito).toMatch(/charme de preguiça é a marca dele e aparece em uma de cada duas ou três falas/);
+    expect(FICHAS.acolhedor.jeito).toMatch(/Não é a Tranquila/);
+    expect(FICHAS.acolhedor.tiques).not.toContain("preguiça de");
+    expect(FICHAS.acolhedor.tamanho).toMatch(/até umas 25 palavras/);
     for (const id of ["acolhedor", "tranquila"] as const) expect(fichaTexto(FICHAS[id])).toMatch(/Sem palavrão e sem grito|Não usa palavrão e não grita/);
   });
 

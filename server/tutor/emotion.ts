@@ -400,7 +400,14 @@ const ESCALATION: Record<string, string[]> = {
 
 /** Os mesmos degraus no masculino (Durão) e no feminino (Tranquila): só concordância, o tom é o da família. */
 ESCALATION.durao = ESCALATION.durona.map((l) => l.replace("irritada de verdade", "irritado de verdade"));
-ESCALATION.tranquila = ESCALATION.acolhedor.map((l) => l.replace(/^Tranquilo:/, "Tranquila:"));
+// a Tranquila tem os degraus dela (revisão de 17/10: herdava o "eu podia explicar" do Tranquilo e os dois ficaram parecidos)
+ESCALATION.tranquila = [
+  "Tranquila: aponta com calma onde o raciocínio saiu do trilho e pede uma nova tentativa antes de explicar.",
+  "Se o aluno travar, reduz a uma pergunta menor e dá uma pista concreta, sem pressa.",
+  "Se repetir o erro, fica mais firme, com preocupação e nunca com raiva, e propõe olhar o ponto de novo até fixar.",
+  "Quando acertar, reconhece de verdade o que ele fez de certo, sem exagero.",
+  "Explica por inteiro quando houve tentativa real, bloqueio ou pedido explícito, com calma, um pedaço por vez.",
+];
 
 const MOOD_PT: Record<Mood, string> = {
   neutral: "neutro", pleased: "satisfeito", encouraged: "animado com a melhora", impatient: "impaciente", irritated: "irritado",
@@ -440,7 +447,7 @@ export function stateLayer(personaId: string, s: TutorState, engine: PersonaEngi
   const eventText = (e: string) => (now.includes(e as "relieved") ? RELIEF_NOW[e as "relieved"][profanity === "moderate" ? "moderate" : "light"] : EVENT_PT[e] ?? e);
   const swearNow = now.length > 0 && profanity === "moderate";
   const lines = [
-    `ESTADO NESTA SESSÃO (interno, nunca diga números): humor ${MOOD_PT[s.mood]}; frustração ${s.frustration}/100 (faixa ${band(s.frustration) + 1} de 5); paciência ${s.patience}; calor ${s.warmth}; sarcasmo ${s.sarcasm}; confiança no aluno ${s.confidence}. Humor do dia: ${s.sessionMood === "good" ? "bom" : s.sessionMood === "impatient" ? "impaciente" : "neutro"}.`,
+    `ESTADO NESTA SESSÃO (interno, nunca diga números): humor ${MOOD_PT[s.mood]}; frustração ${s.frustration}/100 (faixa ${band(s.frustration) + 1} de 5); paciência ${s.patience}; calor ${s.warmth}; sarcasmo ${s.sarcasm}; confiança no aluno ${s.confidence}.${s.sessionMood === "good" ? " Hoje você está bem-disposto (mostre pelo jeito, nunca anuncie)." : s.sessionMood === "impatient" ? " Hoje você está com pouca paciência (mostre pelo jeito, nunca anuncie)." : ""}`,
     `Na sessão: ${s.sessionQuestions} questão(ões); ${s.consecutiveErrors} erro(s) seguido(s); ${s.consecutiveCorrect} acerto(s) seguido(s); erros repetidos ${s.repeatedErrors}; por desatenção ${s.carelessErrors}; de raciocínio ${s.reasoningErrors}; de conhecimento ${s.knowledgeErrors}.`,
     s.events.length ? `Acontecimentos recentes: ${s.events.map(eventText).join("; ")}.` : "",
     `INTENSIDADE DE LINGUAGEM AGORA: ${LANGUAGE_TEXT[li]}. Palavrão só se combinar com o professor e com esta intensidade, espontâneo, ${swearNow ? "obrigatório só no alívio ou na comemoração pedidos acima" : "nunca obrigatório"} e nunca como muleta.`,
