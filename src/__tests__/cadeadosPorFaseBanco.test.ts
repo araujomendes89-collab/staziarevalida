@@ -197,6 +197,9 @@ describe("chave LIGADA: a matriz por fase", () => {
     expect(r[PRATICA].flashcards).toBe('ok: {"n":0}');
     expect(r[PRATICA].revisar).toMatch(/^erro:/);
     await expect(db.query(`insert into public.tutor_sessions (user_id, mode, title, personality_id, intensity, question_id) values ($1, 'questao', 't', (select id from public.tutor_personalities order by id limit 1), 3, 'q-1')`, [PRATICA])).rejects.toThrow(/1ª fase/);
+    // nivelamento: as questões do diagnóstico também não chegam
+    const diag = await one(`insert into public.nivelamento_diagnosticos (user_id) values ($1) returning id r`, [PRATICA]);
+    await expect(db.query(`insert into public.nivelamento_itens (diagnostico_id, ordem, bloco, question_id, area, grupo) values ($1, 1, 1, 'q-1', 'CLINICA_MEDICA', 'g')`, [diag])).rejects.toThrow(/1ª fase/);
     // o servidor gravando uma resposta (sem pessoa logada) também é barrado: o gatilho olha o aluno da linha
     await expect(db.query(`insert into public.question_attempts (user_id, question_id, selected_option) values ($1, 'q-1', 'B')`, [PRATICA])).rejects.toThrow(/1ª fase/);
   });
@@ -309,6 +312,9 @@ describe("colar de novo, conferência e desfazer", () => {
   it("o SQL de conferência responde OK", async () => {
     const r = await q(fs.readFileSync(path.join(ROOT, "supabase/conferir/cadeados-por-fase.sql"), "utf8"));
     expect(r[0].resultado).toMatch(/^OK: cadeados por fase no banco/);
+  });
+  it("desfazer a 013680 antes da 013690 é recusado (a 013690 depende dela)", async () => {
+    await expect(db.exec(fs.readFileSync(path.join(ROOT, "supabase/desfazer/20261003013680_carteira_creditos.desfazer.sql"), "utf8"))).rejects.toThrow(/Desfaça antes a 013690/);
   });
   it("desfazer devolve as funções antigas com o nome de sempre e o comportamento de antes", async () => {
     await ligar(false);

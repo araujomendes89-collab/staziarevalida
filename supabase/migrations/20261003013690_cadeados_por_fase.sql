@@ -4,8 +4,8 @@
 -- O QUE FAZ (com a chave LIGADA; desligada, nada muda para ninguém):
 --   * a matriz por fase da etapa 1 (direitos_do_aluno / user_has_access) passa a valer no banco, para quem chama pela REST ou
 --     pelas funções do app, inclusive as que rodam como "dono" (security definer):
---       - questões teóricas: abrir treino (practice_sessions), responder (question_attempts, também pelo Tutor) e abrir o Tutor
---         numa questão (tutor_sessions). Amostra = N respostas por dia (20; respostas dentro de simulado não contam). PRÁTICA:
+--       - questões teóricas: abrir treino (practice_sessions), responder (question_attempts, também pelo Tutor), abrir o Tutor
+--         numa questão (tutor_sessions) e receber as questões do nivelamento (nivelamento_itens). Amostra = N respostas por dia (20; respostas dentro de simulado não contam). PRÁTICA:
 --         trancado. Leitura direta da tabela questions pela REST: trancada para quem não tem a 1ª fase;
 --       - simulados Revalida/ENAMED: amostra = 1 simulado CURTO por dia (até 30 questões, editável); PRÁTICA: trancado. A trava
 --         antiga do teste vencido (simulado_gate, …9730) deixa de valer com a chave ligada (a regra nova decide: vencido = amostra);
@@ -205,6 +205,22 @@ revoke execute on function public.cadeado_tutor_sessions() from public, anon, au
 drop trigger if exists cadeado_tutor_sessions on public.tutor_sessions;
 create trigger cadeado_tutor_sessions before insert or update of question_id on public.tutor_sessions
   for each row execute function public.cadeado_tutor_sessions();
+
+-- Nivelamento (questões teóricas, com a correção): quem não tem a 1ª fase não recebe as questões do diagnóstico. Sem contagem
+-- (o nivelamento é um por aluno e não gasta a amostra do dia).
+create or replace function public.cadeado_diagnostico_itens() returns trigger
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  if not public.direitos_cadeados_ligados() then return new; end if;
+  perform public.cadeado_conferir((select d.user_id from public.nivelamento_diagnosticos d where d.id = new.diagnostico_id), 'questoes');
+  return new;
+end
+$$;
+revoke execute on function public.cadeado_diagnostico_itens() from public, anon, authenticated;
+drop trigger if exists cadeado_diagnostico_itens on public.nivelamento_itens;
+create trigger cadeado_diagnostico_itens before insert on public.nivelamento_itens
+  for each row execute function public.cadeado_diagnostico_itens();
 
 -- ---------------------------------------------------------------- regras de leitura NOVAS (RESTRICTIVE: só tiram, nunca dão acesso)
 drop policy if exists "cadeado: 1ª fase (questões)" on public.questions;

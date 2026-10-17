@@ -8,6 +8,7 @@ drop trigger if exists cadeado_practice_sessions on public.practice_sessions;
 drop trigger if exists cadeado_question_attempts on public.question_attempts;
 drop trigger if exists cadeado_flashcard_reviews on public.flashcard_reviews;
 drop trigger if exists cadeado_tutor_sessions on public.tutor_sessions;
+drop trigger if exists cadeado_diagnostico_itens on public.nivelamento_itens;
 
 drop policy if exists "cadeado: 1ª fase (questões)" on public.questions;
 drop policy if exists "cadeado: 1ª fase (flashcards)" on public.flashcards;
@@ -40,6 +41,7 @@ drop function if exists public.ch_worker_teste_ips_limpar();
 drop function if exists public.ch_worker_teste_ativar(uuid, text, text);
 drop function if exists public.direitos_escolher_teste(uuid, text);
 drop function if exists public.cadeado_tutor_sessions();
+drop function if exists public.cadeado_diagnostico_itens();
 drop function if exists public.cadeado_flashcard_reviews();
 drop function if exists public.cadeado_question_attempts();
 drop function if exists public.cadeado_practice_sessions();

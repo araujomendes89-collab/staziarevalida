@@ -184,9 +184,12 @@ describe("chave LIGADA: a carteira manda", () => {
     expect(v.mode).toBe("trial"); // vencido = amostra
     expect(v.can_text).toBe(true);
     for (const u of [ADMIN, REVISOR]) expect(await one(`select public.tutor_entitlement($1) r`, [u])).toEqual(entAntes[u]);
+    // conta sem assinatura nenhuma: sem Tutor (texto E voz), mesmo com cortesia
+    await db.query(`insert into public.carteira_extras (user_id, origem, creditos, voz_segundos, valido_ate) values ($1, 'cortesia', 50, 600, now() + interval '30 days')`, [SEM_PLANO]);
     const sp = await one(`select public.tutor_entitlement($1) r`, [SEM_PLANO]);
     expect(sp.mode).toBe("blocked");
     expect(sp.can_text).toBe(false);
+    expect(sp.can_voice).toBe(false);
   });
   it("reservar → confirmar pelo custo real → franquia do dia; devolve o que a reserva pegou a mais", async () => {
     await zerarCarteira();
@@ -200,6 +203,12 @@ describe("chave LIGADA: a carteira manda", () => {
     expect((await cart(PRO)).disponivel_franquia).toBe(6.9);
     // a reserva antiga do Tutor não é usada com a chave ligada
     expect((await q(`select count(*)::int n from public.ai_usage_ledger where user_id = $1 and interactions = 1`, [PRO]))[0].n).toBe(antigas);
+  });
+  it("custo desconhecido (provedor sem preço): cobra a reserva, nunca zero; e conta no teto do dia", async () => {
+    await zerarCarteira();
+    await reservar(PRO, "tutor_texto", "semcusto-01");
+    expect((await confirmar(PRO, "semcusto-01", null)).creditos).toBe(3);
+    expect(Number(await one(`select public.carteira_gasto_hoje_usd() r`))).toBeCloseTo((3 * 10) / 100 / 5.08, 4);
   });
   it("IA falhou: devolver devolve tudo; devolver de novo não dá crédito a mais; confirmar depois não cobra", async () => {
     await zerarCarteira();
@@ -350,6 +359,10 @@ describe("segurança", () => {
     await expect(como(PRO, `select public.app_admin_carteira_cortesia($1, 100, 0, 30, 'eu mesmo')`, [`c6@teste.dev`])).rejects.toThrow();
     await expect(como(null, `select public.app_minha_carteira()`)).rejects.toThrow();
     await expect(como(null, `select * from public.carteira_movimentos`)).rejects.toThrow();
+    // o aluno não lê o custo em dólar nem o motivo/autor da cortesia
+    await expect(como(PRO, `select custo_usd from public.carteira_movimentos`)).rejects.toThrow();
+    await expect(como(PRO, `select motivo, dado_por from public.carteira_extras`)).rejects.toThrow();
+    expect((await como(PRO, `select recurso, creditos from public.carteira_movimentos limit 1`)).length).toBeGreaterThanOrEqual(0);
     // o aluno só lê o que é dele
     const outros = await como(PRO, `select count(*)::int n from public.carteira_movimentos where user_id <> $1`, [PRO]);
     expect(outros[0].n).toBe(0);

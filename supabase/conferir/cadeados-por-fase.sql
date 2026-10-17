@@ -13,7 +13,7 @@ with falta (ordem, item) as (
   union all select 3, 'porteiro sumiu (recriada por cima): ' || f from unnest(array['simulado_gate()']) f
    where to_regprocedure('public.' || f) is not null
      and position('regra_antiga' in pg_get_functiondef(to_regprocedure('public.' || f))) = 0
-  union all select 4, 'gatilho ' || g from unnest(array['cadeado_practice_sessions', 'cadeado_question_attempts', 'cadeado_flashcard_reviews', 'cadeado_tutor_sessions']) g
+  union all select 4, 'gatilho ' || g from unnest(array['cadeado_practice_sessions', 'cadeado_question_attempts', 'cadeado_flashcard_reviews', 'cadeado_tutor_sessions', 'cadeado_diagnostico_itens']) g
    where not exists (select 1 from pg_trigger t where t.tgname = g and not t.tgisinternal)
   union all select 5, 'regra de leitura "' || pol || '"' from unnest(array['cadeado: 1ª fase (questões)', 'cadeado: 1ª fase (flashcards)', 'cadeado: 2ª fase (estações)',
       'cadeado: 2ª fase (conteúdo das estações)', 'cadeado: 2ª fase (simulados práticos)', 'cadeado: 2ª fase (salas da dupla)', 'cadeado: 2ª fase (convites da dupla)']) pol

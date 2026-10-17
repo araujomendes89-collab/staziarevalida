@@ -5,6 +5,15 @@
 -- desfaça a 013690 ANTES. Pode ser rodado de novo sem erro.
 -- Para guardar antes: select * from public.carteira_extras; select * from public.carteira_movimentos;
 
+-- a 013690 usa funções desta: desfazer esta antes daquela quebraria a Administração
+do $do$
+begin
+  if to_regprocedure('public.cadeado_conferir(uuid,text,integer)') is not null then
+    raise exception 'Desfaça antes a 013690 (supabase/desfazer/20261003013690_cadeados_por_fase.desfazer.sql).';
+  end if;
+end
+$do$;
+
 drop trigger if exists carteira_voz_fechamento on public.tutor_voice_calls;
 
 -- o porteiro sai e a regra antiga volta com o nome de sempre

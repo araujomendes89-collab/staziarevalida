@@ -447,6 +447,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     }
 
     // ---- gerar e validar (uma nova tentativa com a correção)
+    let custoConhecido = false; // sem preço do provedor, a carteira cobra a reserva (nunca "zero")
     const usage = { calls: 0, input_tokens: 0, output_tokens: 0, cost_usd: 0, provider: provider.name, model: provider.model, ...(voiceTurn && !charged ? { feature: "tutor_voice_backend" } : {}) };
     let out: TutorOutput | null = null;
     let check: SafetyResult | null = null;
@@ -476,6 +477,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       usage.input_tokens += r.inputTokens ?? 0;
       usage.output_tokens += r.outputTokens ?? 0;
       usage.cost_usd += r.costUsd ?? 0;
+      if (r.costUsd != null) custoConhecido = true;
       model = r.model;
       providerName = r.provider;
       usage.model = r.model;
@@ -558,7 +560,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       throw error;
     }
     // acerta a carteira pelo custo real (nunca derruba a resposta já gravada)
-    const conta = wallet ? await wallet.confirmar(usage.cost_usd) : null;
+    const conta = wallet ? await wallet.confirmar(custoConhecido ? usage.cost_usd : null) : null;
     const pelaCarteira = wallet?.modo === "ligado" && conta?.ok === true && conta.usado_hoje != null;
     return {
       message: {

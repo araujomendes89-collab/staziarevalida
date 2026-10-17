@@ -173,7 +173,7 @@ export async function runTutorTool(t: ToolCtx, name: string, args: Record<string
           await reserved.devolver(); // erro da IA não gasta a cota
           throw error;
         }
-        await reserved.confirmar(ev.usage.cost_usd ?? null);
+        await reserved.confirmar(ev.usage.cost_known_usd ?? null); // custo desconhecido: a carteira cobra a reserva
         await svc("ch_worker_tutor_ledger", { p_session_id: t.sessionId, p_entry: { feature: "tutor_eval", provider: ev.usage.provider, model: ev.usage.model, input_text_tokens: ev.usage.input_tokens, output_text_tokens: ev.usage.output_tokens, estimated_cost_usd: ev.usage.cost_usd } });
         let times = 0;
         if (ev.error_type !== "none" && ev.correct === false) {

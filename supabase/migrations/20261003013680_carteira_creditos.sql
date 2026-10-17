@@ -116,9 +116,10 @@ alter table public.carteira_extras enable row level security;
 drop policy if exists "extras: ler os próprios" on public.carteira_extras;
 create policy "extras: ler os próprios" on public.carteira_extras
   for select to authenticated using (user_id = (select auth.uid()) or public.is_admin());
-revoke all on public.carteira_extras from public, anon;
-revoke insert, update, delete, truncate, references, trigger on public.carteira_extras from authenticated;
-grant select on public.carteira_extras to authenticated;
+revoke all on public.carteira_extras from public, anon, authenticated;
+-- o aluno lê só o essencial dos próprios extras (sem o motivo escrito pela equipe nem quem deu)
+grant select (id, user_id, pacote, origem, creditos, creditos_usados, voz_segundos, voz_usados_s, valido_de, valido_ate, cancelado_em, criado_em)
+  on public.carteira_extras to authenticated;
 
 -- ---------------------------------------------------------------- movimentos (cada pedido de IA, e cada ligação de voz que passou da franquia)
 -- situacao: reservado (antes da IA) → confirmado (custo real) | devolvido (a IA falhou) | expirado (reserva esquecida > 10 min).
@@ -159,9 +160,9 @@ alter table public.carteira_movimentos enable row level security;
 drop policy if exists "carteira: ler os próprios" on public.carteira_movimentos;
 create policy "carteira: ler os próprios" on public.carteira_movimentos
   for select to authenticated using (user_id = (select auth.uid()) or public.is_admin());
-revoke all on public.carteira_movimentos from public, anon;
-revoke insert, update, delete, truncate, references, trigger on public.carteira_movimentos from authenticated;
-grant select on public.carteira_movimentos to authenticated;
+revoke all on public.carteira_movimentos from public, anon, authenticated;
+-- o aluno lê só o essencial dos próprios pedidos (sem custo em dólar nem os campos internos)
+grant select (id, user_id, recurso, situacao, dia, creditos, voz_segundos, criado_em) on public.carteira_movimentos to authenticated;
 
 -- ---------------------------------------------------------------- avisos ao aluno (um por período e nível)
 -- creditos_dia / creditos_mes / voz: 80, 90 e 100% da franquia. renovacao: 7, 3 e 1 dia antes do fim do período pago (decisão do
@@ -593,10 +594,9 @@ begin
   v_perfil := d ->> 'perfil';
   v_disp := coalesce((d #>> '{creditos,disponivel}')::numeric, 0);
   v_vleft := case when c.voice_enabled then coalesce((d #>> '{voz,restante_s}')::int, 0) else 0 end;
+  -- sem plano e sem teste nenhum (conta sem assinatura): sem Tutor, mesmo com extra (extra precisa de plano, teste ou amostra)
   v_mode := case when v_perfil in ('elite', 'pro', 'pratica') then 'paid'
                  when v_perfil in ('teste', 'vencido') then 'trial'
-                 -- sem plano e sem teste, mas com extra válido: usa o extra
-                 when v_disp >= 0.1 or v_vleft > 0 then 'paid'
                  else 'blocked' end;
   v_acesso := d #>> '{recursos,tutor_texto,acesso}';
   return v_old || jsonb_build_object(
@@ -614,7 +614,8 @@ begin
                                 'extras_s', d #> '{voz,extras_s}', 'remaining_s', v_vleft),
     'can_use', c.enabled and v_mode <> 'blocked',
     'can_text', c.enabled and v_mode <> 'blocked' and v_disp >= 0.1 and v_acesso is distinct from 'trancado',
-    'can_voice', c.enabled and v_mode <> 'blocked' and c.voice_enabled and v_vleft > 0,
+    'can_voice', c.enabled and v_mode <> 'blocked' and c.voice_enabled and v_vleft > 0
+                 and (d #>> '{recursos,voz_ao_vivo,acesso}') is distinct from 'trancado',
     'block_reason', case when not c.enabled then 'disabled' when v_mode = 'blocked' then 'trial_expired' end);
 end
 $$;
@@ -710,12 +711,14 @@ end
 $$;
 revoke execute on function public.carteira_varrer_reservas(uuid) from public, anon, authenticated;
 
--- Custo de IA de HOJE da conta inteira nos recursos da carteira (US$): confirmados pelo custo real + reservas em andamento.
+-- Custo de IA de HOJE da conta inteira (US$): recursos da carteira (confirmados pelo custo real; sem custo informado, pelos
+-- créditos cobrados; reservas em andamento pela reserva) + a voz ao vivo do dia (a mesma conta dos tetos de voz da …12800).
 create or replace function public.carteira_gasto_hoje_usd() returns numeric
   language sql stable security definer set search_path = ''
 as $$
-  select coalesce(sum(case when m.situacao = 'confirmado' then coalesce(m.custo_usd, 0)
-                           else m.creditos * c.credito_valor_centavos / 100.0 / coalesce(c.cotacao_dolar, 5.08) end), 0)::numeric(12, 6)
+  select (coalesce(sum(case when m.situacao = 'confirmado' and m.custo_usd is not null then m.custo_usd
+                           else m.creditos * c.credito_valor_centavos / 100.0 / coalesce(c.cotacao_dolar, 5.08) end), 0)
+          + coalesce((public.tutor_live_account_today() ->> 'usd')::numeric, 0))::numeric(12, 6)
   from public.carteira_movimentos m
   cross join (select coalesce(x.credito_valor_centavos, 10) as credito_valor_centavos, x.cotacao_dolar from public.direitos_config x) c
   where m.dia = (now() at time zone 'America/Sao_Paulo')::date and m.recurso <> 'voz_ao_vivo'
