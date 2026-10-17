@@ -130,4 +130,8 @@ for (const [tam, vp, tema] of VARIANTES) {
   console.log(`[${tam}-${tema}] ok: ${n} capturas`);
 }
 await browser.close();
-fs.writeFileSync(path.join(SAIDA, "capturas.json"), JSON.stringify(lista, null, 1));
+// junta com as capturas de outras rodadas (SO=...), trocando as da mesma variante
+const arqJson = path.join(SAIDA, "capturas.json");
+const antes = fs.existsSync(arqJson) ? JSON.parse(fs.readFileSync(arqJson, "utf8")) : [];
+const feitas = new Set(lista.map((x) => `${x.tam}-${x.tema}`));
+fs.writeFileSync(arqJson, JSON.stringify([...antes.filter((x) => !feitas.has(`${x.tam}-${x.tema}`)), ...lista], null, 1));
