@@ -19,7 +19,9 @@ export default defineConfig({
     alias: [{ find: /^@elevenlabs\/react$/, replacement: path.join(SDK, "@elevenlabs/react/dist/index.js") }],
   },
   server: {
-    port: 31991, strictPort: true, host: "127.0.0.1", fs: { allow: [raiz, SDK, here] },
+    port: 31991, strictPort: true, host: "127.0.0.1",
+    // sem recarga automática: outro trabalho mexe em src/novo ao mesmo tempo e a recarga derrubava a conversa no meio
+    hmr: false, watch: { ignored: ["**/src/**", "**/server/**", "**/supabase/**"] }, fs: { allow: [raiz, SDK, here] },
     proxy: { "/api/voz": { target: "http://127.0.0.1:31996", ws: true, changeOrigin: false } },
   },
   cacheDir: "/Volumes/StaziaMed/.tmp-aulas/voice-tutor/vite-cache",

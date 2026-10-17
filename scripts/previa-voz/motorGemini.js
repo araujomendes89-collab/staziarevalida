@@ -1,6 +1,8 @@
 // Motor da prévia: usa o MESMO cliente do app (src/novo/app/tutor/voice/geminiPonte.js) contra a MESMA ponte do Cloud Run
 // (server/vozPonte), rodando aqui no Mac. O servidor de teste faz o papel do app: sela o bilhete e executa as ferramentas.
 // Métricas da prévia: um medidor de energia do microfone (só para medir o fim da fala e mostrar "você está falando").
+// Personagem (17/10/2026): o servidor de teste devolve a voz e a afinação do personagem da personalidade escolhida (Stazi +3
+// semitons, Stazia 0) e o tocador do app (AudioPlayer, dentro do geminiPonte) toca a voz PELO AFINADOR com esse valor.
 import { openGeminiPonte } from "../../src/novo/app/tutor/voice/geminiPonte.js";
 import { getAudioContext, unlockAudio } from "../../src/novo/app/tutor/voice/audioUnlock.js";
 
@@ -54,22 +56,26 @@ export function criarMotorGemini({ emitir, metrica }) {
       const r = await fetch("/api/voz/ferramenta", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ vc, name: c.name, args: c.args ?? {} }) });
       const j = await r.json().catch(() => ({ output: { erro: "falhou" } }));
       if (c.name === "submit_answer") emitir({ tipo: "log", texto: `resposta registrada: ${j.output?.registrada ?? "?"} (${j.output?.acertou ? "acertou" : "errou"})` });
+      if (j.emocao) emitir({ tipo: "emocao", valor: j.emocao });
       respostas.push({ id: c.id, name: c.name, response: { output: j.output } });
     }
     gem?.respondTools(respostas);
   }
 
-  async function iniciar({ voz, nivel, gritos, palavroes, vad }) {
+  async function iniciar({ personalidade, nivel, gritos, palavroes, vad }) {
     unlockAudio(); // gesto do usuário (clique)
     stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
-    const r = await fetch("/api/voz/sessao", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ voz, nivel, gritos, palavroes, vad }) });
+    const r = await fetch("/api/voz/sessao", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ personalidade, nivel, gritos, palavroes, vad }) });
     if (!r.ok) throw new Error(`o servidor de teste recusou a sessão (${r.status})`);
     const s = await r.json();
     vc = s.vc;
+    emitir({ tipo: "sessao", personagem: s.personagem, voz: s.voz, semitons: s.semitons, professor: s.professor, perfil: s.perfil });
+    emitir({ tipo: "log", texto: `sessão: ${s.perfil} · voz ${s.voz} · afinação ${s.semitons > 0 ? "+" : ""}${s.semitons} semitons` });
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     gem = await openGeminiPonte({
       ponte: { url: `${proto}//${location.host}${s.ponte}`, bilhete: s.bilhete },
       stream,
+      semitons: Number(s.semitons) || 0, // a afinação do personagem: o AudioPlayer passa a voz pelo AfinadorStream quando ≠ 0
       handlers: {
         onReady: () => {
           emitir({ tipo: "pronto" });
@@ -98,6 +104,8 @@ export function criarMotorGemini({ emitir, metrica }) {
       },
     });
     medir();
+    // microfone e voz do professor para o desenho (boca acompanha a voz; inclina ao ouvir)
+    emitir({ tipo: "fluxos", entrada: stream, saida: gem.outputStream ?? null });
   }
 
   function limpar() {
@@ -108,6 +116,7 @@ export function criarMotorGemini({ emitir, metrica }) {
 
   return {
     iniciar,
+    get fluxos() { return { entrada: stream, saida: gem?.outputStream ?? null }; },
     interromper() { gem?.interrupt(); tutorFalando = false; emitir({ tipo: "interrompido" }); },
     silenciar(v) { gem?.mute(v); emitir({ tipo: "mudo", valor: v }); },
     volume(v) { gem?.setVolume(v); },
