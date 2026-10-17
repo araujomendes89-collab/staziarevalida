@@ -6,7 +6,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import type { Identity } from "../contentHub/infra";
 import { TUTOR_CONSENT_PENDING, TutorError, consentError, resolveTutorProvider, tutorTurn, type TutorDeps } from "./engine";
 import { speechProviderFor, tutorSpeech } from "./speech";
-import { endVoice, purgeVoiceTranscripts, recordVoiceMetrics, recordVoiceUsage, rememberEvidence, renewVoice, startVoice, sweepVoice, voiceCall, voiceReady, voiceTranscript, type EndReason } from "./realtime";
+import { endVoice, guardarAberturaDaPonte, purgeVoiceTranscripts, recordVoiceMetrics, recordVoiceUsage, rememberEvidence, renewVoice, startVoice, sweepVoice, voiceCall, voiceReady, voiceTranscript, type EndReason } from "./realtime";
 import { runTutorTool, TOOL_NAMES } from "./tools";
 import { limparRetornoFerramenta } from "./sigilo";
 import { delegateVoice, sayVoice, type Letter } from "./delegate";
@@ -70,6 +70,23 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
         duration_seconds: n(b.duracao_s), estimated_cost_usd: Math.max(0, Number(b.custo_usd) || 0), meta: { voice_call: b.vc, via: "vertex-ponte", por: "tokens" },
       } });
       res.json({ ok: true });
+    } catch (error) {
+      fail(res, 500, shown(error));
+    }
+  });
+
+  /**
+   * Abertura da ligação relatada pela PONTE (revisão de 17/10): a 1ª fala do professor como o Google transcreveu, assinada com
+   * VOZ_PONTE_SEGREDO. Só por aqui a abertura da voz pelo Vertex entra na memória (o texto do navegador não entra).
+   */
+  router.post("/voice/ponte-abertura", async (req, res) => {
+    const ponte = vertexPonteConfig();
+    const corpo = typeof (req as Request & { rawBody?: string }).rawBody === "string" ? (req as Request & { rawBody?: string }).rawBody! : JSON.stringify(req.body ?? {});
+    if (!deps || !ponte || !relatorioConfere(corpo, String(req.headers["x-stazia-ponte-assinatura"] ?? ""), ponte.segredo)) return fail(res, 401, "Não autorizado.");
+    try {
+      const b = JSON.parse(corpo) as { vc?: string; u?: string; texto?: string; t?: number };
+      if (!uuid.test(String(b.vc ?? "")) || !uuid.test(String(b.u ?? "")) || typeof b.texto !== "string" || Math.abs(Date.now() - Number(b.t ?? 0)) > 10 * 60_000) return fail(res, 400, "Relatório inválido.");
+      res.json({ ok: await guardarAberturaDaPonte(deps, String(b.u), String(b.vc), b.texto.slice(0, 600)) });
     } catch (error) {
       fail(res, 500, shown(error));
     }

@@ -134,7 +134,14 @@ describe("ponte", () => {
     await esperar();
     expect(g.fechado).toBe(true);
     expect(logs.at(-1)).toMatchObject({ ponte: "fim", vc: C.vc, motivo: "aluno encerrou", turnos: 1 });
-    const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
+    // a 1ª fala do professor vai assinada para a memória das aberturas (revisão de 17/10); o uso vai no fim
+    const chamadas = fetchFn.mock.calls as unknown as [string, RequestInit][];
+    const ab = chamadas.find(([u]) => u.endsWith("/ponte-abertura"))!;
+    expect(ab[0]).toBe("https://app/api/tutor/voice/ponte-abertura");
+    expect(relatorioConfere(String(ab[1].body), String((ab[1].headers as Record<string, string>)["X-Stazia-Ponte-Assinatura"]), SEG)).toBe(true);
+    expect(JSON.parse(String(ab[1].body))).toMatchObject({ vc: C.vc, u: C.u, texto: "Acertou." });
+    expect(chamadas.filter(([u]) => u.endsWith("/ponte-abertura"))).toHaveLength(1);
+    const [url, init] = chamadas.find(([u]) => u.endsWith("/ponte-uso"))!;
     expect(url).toBe("https://app/api/tutor/voice/ponte-uso");
     expect(relatorioConfere(String(init.body), String((init.headers as Record<string, string>)["X-Stazia-Ponte-Assinatura"]), SEG)).toBe(true);
     expect(JSON.parse(String(init.body))).toMatchObject({ vc: C.vc, u: C.u, uso: { textoEntrada: 8, audioSaida: 2 } });

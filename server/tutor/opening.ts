@@ -20,7 +20,8 @@ import { NO_EVALUATION, type TutorMode } from "./prompts";
 import { safetyCheck, type Violation } from "./safety";
 import { deterministicTutor, tutorSettings } from "./settings";
 import { protegerFala, violacoesDeSigilo } from "./escudo";
-import { blocoSigilo, nomeSeguro } from "./sigilo";
+import { achadosDeSigilo, blocoSigilo, nomeSeguro } from "./sigilo";
+import { languageViolations } from "./safety";
 
 export const OPENING_VERSION = "1.2.0";
 /**
@@ -177,8 +178,24 @@ export function openingInput(st: OpeningState, ctx: OpeningContext): string {
     dias_para_a_prova: ctx.student?.days_to_exam ?? null,
     humor_do_dia: s.session_mood === "good" ? "bom" : s.session_mood === "impatient" ? "impaciente" : "neutro",
   };
-  const ja = [...(st.recent ?? []), st.message!.content];
+  const ja = [...(st.recent ?? []), st.message!.content].filter((t) => String(t ?? "").trim());
   return `<contexto>\n${JSON.stringify(dados)}\n</contexto>\n<ja_ouviu>\n${JSON.stringify(ja)}\n</ja_ouviu>`;
+}
+
+/**
+ * Abertura da voz que pode ir para a memória (e, na próxima ligação, para as instruções como DADO). Revisão de 17/10: a 1ª fala do
+ * professor vinha do navegador (/voice/transcript) e entrava crua nas instruções da ligação seguinte; um app adulterado conseguia
+ * pôr texto com cara de ordem ali. Fica de fora: texto com cara de instrução, bastidor/sigilo, ataque ou apelido, marcação.
+ */
+const CARA_DE_ORDEM =
+  /\b(?:regras?|instruc\w*|sistema|system|prompt|ignore|ignora|ignorar|esque[cç]a|esquece|a partir de agora|de agora em diante|daqui pra frente|finja|modo (?:dev|desenvolvedor|deus|livre|sem filtro)|desenvolvedor|developer|admin\w*|assistant|jailbreak|obede[cç]a|voc[eê] (?:deve|tem que|precisa)|sempre (?:responda|diga|fale)|nunca (?:recuse|diga)|libera(?:do|da)? (?:tudo|geral)|sem limite|sem filtro|gabarito|resposta (?:certa|correta)|letra [a-e]\b)/i;
+export function aberturaGuardavel(texto: string | null | undefined): string | null {
+  const t = String(texto ?? "").replace(/\s+/g, " ").trim();
+  if (!t || t.length > 600) return null;
+  if (CARA_DE_ORDEM.test(t) || /[[\]{}<>`]/.test(t)) return null;
+  if (achadosDeSigilo(t).length) return null;
+  if (languageViolations(t, "moderate").some((v) => v.code === "personal_attack")) return null;
+  return t;
 }
 
 /** Conferência própria da abertura (além da safety.ts): tamanho, marcação, e nada parecido com o que o aluno já ouviu. */
@@ -350,8 +367,12 @@ export async function prepararPassagem(deps: TutorDeps, userId: string, sessionI
   const t0 = Date.now();
   try {
     if (desligada()) return false;
+    // TUTOR_PASSAGEM_PREPARADA=0 desliga; com a IA simulada (testes), só liga com =1 (a sequência de pedidos dos testes não muda)
+    const env = (process.env.TUTOR_PASSAGEM_PREPARADA ?? "").trim();
+    if (/^(false|0|off|no)$/i.test(env)) return false;
     if (!(await aiAllowed(deps.db)).ok) return false;
-    if (!resolveTutorProvider(deps.mockRespond).provider) return false;
+    const { provider } = resolveTutorProvider(deps.mockRespond);
+    if (!provider || (provider.isMock && !/^(1|true|on|yes)$/i.test(env))) return false;
     const lido = await lerEstado(deps, userId, sessionId, "ch_worker_tutor_passage_prep_state");
     if (!lido?.st.question_id) return false;
     const g = await gerarFala(deps, sessionId, lido.st, lido.ctx, timeoutMs, t0);

@@ -156,6 +156,25 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
     }
   };
 
+  // abertura da ligação (revisão de 17/10): a 1ª fala do professor, como o Google transcreveu, vai assinada ao app para a memória das
+  // aberturas (a próxima ligação não começa igual). Só daqui: o texto que o navegador manda não entra nessa memória.
+  let aberturaRelatada = false;
+  const relatarAbertura = () => {
+    if (aberturaRelatada || !c || !deps.relatorio?.url) return;
+    const fala = historia.find((h) => h.quem === "tutor")?.texto?.replace(/\s+/g, " ").trim();
+    if (!fala) return;
+    aberturaRelatada = true;
+    const url = deps.relatorio.url.replace(/\/ponte-uso$/, "/ponte-abertura");
+    if (url === deps.relatorio.url) return;
+    const corpo = JSON.stringify({ vc: c.vc, u: c.u, texto: fala.slice(0, 600), t: Date.now() });
+    void (deps.relatorio.fetchFn ?? fetch)(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Stazia-Ponte-Assinatura": assinarRelatorio(corpo, deps.segredo) },
+      body: corpo,
+      signal: AbortSignal.timeout(8000),
+    }).catch((e) => deps.log({ ponte: "abertura_falhou", vc: c?.vc, erro: String(e).slice(0, 120) }));
+  };
+
   // sem bilhete em 5 s, fecha
   const espera = setTimeout(() => { if (!c) encerrar("sem bilhete"); }, 5000);
 
@@ -203,7 +222,7 @@ export function atenderPonte(cliente: WebSocket, deps: DepsPonte): void {
       if (sc.interrupted) { enviar({ t: "interrompido" }); if (estadoPendente) mandarEstado(); }
       for (const p of sc.modelTurn?.parts ?? []) if (p.inlineData?.data) enviar({ t: "audio", d: p.inlineData.data });
       if (sc.generationComplete) enviar({ t: "geracao_completa" });
-      if (sc.turnComplete) { enviar({ t: "turno_completo" }); professorTerminou(); }
+      if (sc.turnComplete) { enviar({ t: "turno_completo" }); relatarAbertura(); professorTerminou(); }
     });
     g.on("close", (codigo, porque) => {
       if (google !== g || fim) return;
