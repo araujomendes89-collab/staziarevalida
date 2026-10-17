@@ -8,7 +8,8 @@ import { nexusApi, tutorServerStatus } from "../api.js";
 import { ERROR_CLASS, modeLabel } from "../labels.js";
 import { useRealtimeVoice } from "../useRealtimeVoice.js";
 import { StaziaVoiceMode } from "../voice/StaziaVoiceMode.jsx";
-import { StaziaVoiceOrb } from "../voice/StaziaVoiceOrb.jsx";
+import { PersonagemTutor } from "../personagens/PersonagemTutor.jsx";
+import { lerPersonagem } from "../personagens/personagens.js";
 import { unlockAudio } from "../voice/audioUnlock.js";
 import { TutorGate } from "./TutorGate.jsx";
 import { NexusLobby, withArticle } from "./NexusLobby.jsx";
@@ -409,7 +410,7 @@ function SummaryView({ session, onAgain, busy, onLobby, onHistory, onClose = nul
         </div>
       )}
       <div className="nx-summary__orb" aria-hidden="true">
-        <StaziaVoiceOrb conversationState="idle" emotion="neutral" emotionIntensity={0.3} />
+        <PersonagemTutor personagem={lerPersonagem(p.id)} conversationState={closed ? "ended" : "idle"} emotion="neutral" emotionIntensity={0.3} decorativo />
       </div>
       <div className="nx-summary__head">
         <span className="nx-overline">{readOnly ? "Só leitura" : closed ? "Conversa encerrada" : "Conversa"}</span>

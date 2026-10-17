@@ -1,8 +1,11 @@
 // Entrada do Nexus (prévia aprovada pelo dono em 2026-10-08): a esfera, "Escolha seu professor" com os três cartões, o modo
 // ("Perguntar ao Tutor" já marcado), "Começar com …", a linha de voz do dia e o aviso da Política. Nada começa sem o toque.
 // Com `request` (aberta por outra tela), o modo vem travado e só se escolhe o professor.
+// 17/10/2026: a esfera deu lugar ao personagem (Stazi ou Stazia), que o aluno escolhe aqui, junto com o professor.
 import React from "react";
-import { StaziaVoiceOrb } from "../voice/StaziaVoiceOrb.jsx";
+import { PersonagemTutor } from "../personagens/PersonagemTutor.jsx";
+import { EscolhaPersonagem } from "../personagens/EscolhaPersonagem.jsx";
+import { gravarPersonagem, lerPersonagem, personagemPadrao, temPersonagemSalvo } from "../personagens/personagens.js";
 import { modeLabel } from "../labels.js";
 import { TutorQuota } from "../TutorQuota.jsx";
 
@@ -29,6 +32,13 @@ export function NexusLobby({ status, nexus, request = null, busy = false, error 
   const professors = status.personalities ?? [];
   const [choice, setChoice] = React.useState(() => (professors.some((p) => p.id === status.preferences?.personality_id) ? status.preferences.personality_id : professors[0]?.id));
   const [mode, setMode] = React.useState("livre");
+  // sem escolha salva, o personagem acompanha o professor (Durona → Stazia) até o aluno tocar num deles
+  const [pers, setPers] = React.useState(() => (temPersonagemSalvo() ? lerPersonagem() : null));
+  const personagem = pers ?? personagemPadrao(choice);
+  const escolherPersonagem = (id) => {
+    setPers(id);
+    gravarPersonagem(id);
+  };
   const chosen = professors.find((p) => p.id === choice);
   const line = voiceLine(nexus, choice);
 
@@ -50,7 +60,7 @@ export function NexusLobby({ status, nexus, request = null, busy = false, error 
 
       <div className="nx-lobby__body">
         <div className="nx-lobby__orb" aria-hidden="true">
-          <StaziaVoiceOrb conversationState="idle" emotion="neutral" emotionIntensity={0.3} />
+          <PersonagemTutor key={personagem} personagem={personagem} conversationState="ready" emotion="neutral" emotionIntensity={0.3} decorativo />
         </div>
         <div className="nx-lobby__head">
           <span className="nx-overline">Antes de começar</span>
@@ -80,6 +90,8 @@ export function NexusLobby({ status, nexus, request = null, busy = false, error 
           })}
         </div>
 
+        <EscolhaPersonagem valor={personagem} onEscolher={escolherPersonagem} />
+
         {duronaSettings && choice === "durona" ? <div className="nx-lobby__durona">{duronaSettings}</div> : null}
 
         {request ? (
@@ -97,7 +109,7 @@ export function NexusLobby({ status, nexus, request = null, busy = false, error 
 
         {error}
 
-        <button type="button" className="nx-start" disabled={busy || !chosen} onClick={() => onStart(choice, request?.mode ?? mode)}>
+        <button type="button" className="nx-start" disabled={busy || !chosen} onClick={() => (gravarPersonagem(personagem), onStart(choice, request?.mode ?? mode))}>
           {busy ? "Abrindo…" : `Começar com ${withArticle(chosen)}`}
         </button>
 

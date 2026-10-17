@@ -32,6 +32,10 @@ vi.mock("../novo/app/tutor/voice/StaziaVoiceOrb.jsx", () => ({
   StaziaVoiceOrb: (p: any) => <div data-testid="orb" data-emotion={p.emotion} data-state={p.conversationState} />,
   orbEmotion: (a: any) => ({ emotion: a ? ({ irritated: "annoyed", firm: "firm" } as any)[a.emotion] ?? a.emotion : "neutral", intensity: 0.5 }),
 }));
+// 17/10/2026: o personagem (Stazi/Stazia) ocupa o lugar da esfera, com as mesmas entradas
+vi.mock("../novo/app/tutor/personagens/PersonagemTutor.jsx", () => ({
+  PersonagemTutor: (p: any) => <div data-testid="orb" data-emotion={p.emotion} data-state={p.conversationState} data-personagem={p.personagem} />,
+}));
 const live = vi.hoisted(() => ({ starts: 0, sent: [] as string[], error: null as any }));
 vi.mock("../novo/app/tutor/useRealtimeVoice.js", () => ({
   realtimeErrorMessage: (e: any) => (e?.kind === "mic" ? "O navegador bloqueou o microfone. Clique no cadeado ao lado do endereço, permita o microfone e tente de novo." : e?.message ?? "erro"),

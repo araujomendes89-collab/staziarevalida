@@ -1,0 +1,132 @@
+.nx-pers {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.nx-pers__opcoes {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.nx-pers__op {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 88px;
+  min-width: 190px;
+  padding: 8px 16px 8px 10px;
+  border-radius: 18px;
+  border: 1px solid var(--nx-line, rgba(255, 255, 255, 0.14));
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--nx-ink, #eef1ff);
+  cursor: pointer;
+}
+.nx-pers__op:focus-visible {
+  outline: 3px solid var(--nx-cyan, #3ce0e6);
+  outline-offset: 2px;
+}
+.nx-pers__op--on {
+  border-color: var(--nx-cyan, #3ce0e6);
+  background: rgba(60, 224, 230, 0.13);
+  box-shadow: 0 0 30px rgba(60, 224, 230, 0.16);
+}
+.nx-pers__img {
+  height: 72px;
+  width: auto;
+  flex: none;
+}
+.nx-pers__txt {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+}
+.nx-pers__nome {
+  font-size: 17px;
+  font-weight: 800;
+}
+.nx-pers__desc {
+  font-size: 13px;
+  color: var(--nx-muted, rgba(226, 232, 255, 0.76));
+}
+@media (max-width: 420px) {
+  .nx-pers__opcoes {
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+  .nx-pers__op {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px 8px 6px;
+  }
+}
+
+/* Tela de voz com o personagem: botão de trocar de personagem e cor de fundo que acompanha a emoção (como a esfera fazia:
+   calma azul, firme roxo, irritada magenta, com raiva vermelho). O fundo é uma camada com opacidade (a troca de cor é suave). */
+.svm__troca {
+  all: unset;
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--svm-line, rgba(255, 255, 255, 0.14));
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--svm-muted, rgba(226, 232, 255, 0.76));
+  font: 600 13px/1 var(--font-sans, system-ui, sans-serif);
+  white-space: nowrap;
+  flex: none;
+  cursor: pointer;
+}
+.svm__troca:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.svm__troca:focus-visible {
+  outline: 3px solid var(--svm-cyan, #3ce0e6);
+  outline-offset: 2px;
+}
+.svm[data-emo]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 700ms ease;
+  background: radial-gradient(80% 55% at 50% 42%, var(--svm-emo-cor, transparent) 0%, transparent 70%);
+}
+.svm[data-emo="firm"] {
+  --svm-emo-cor: rgba(139, 108, 255, 0.34);
+}
+.svm[data-emo="annoyed"] {
+  --svm-emo-cor: rgba(236, 72, 153, 0.34);
+}
+.svm[data-emo="angry"] {
+  --svm-emo-cor: rgba(255, 70, 70, 0.4);
+}
+.svm[data-emo="relieved"],
+.svm[data-emo="happy"],
+.svm[data-emo="proud"],
+.svm[data-emo="impressed"] {
+  --svm-emo-cor: rgba(94, 234, 212, 0.2);
+}
+.svm[data-emo="firm"]::before,
+.svm[data-emo="annoyed"]::before,
+.svm[data-emo="angry"]::before,
+.svm[data-emo="relieved"]::before,
+.svm[data-emo="happy"]::before,
+.svm[data-emo="proud"]::before,
+.svm[data-emo="impressed"]::before {
+  opacity: clamp(0.35, calc(0.35 + var(--svm-emo-i, 0.3) * 0.75), 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .svm[data-emo]::before {
+    transition: none;
+  }
+}
