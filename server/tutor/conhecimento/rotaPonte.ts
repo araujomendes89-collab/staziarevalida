@@ -11,7 +11,9 @@ import express, { type Request, type Response } from "express";
 import type { ContentDb } from "../../contentHub/infra";
 import { aiAllowed } from "../../contentHub/ai/registry";
 import { CABECALHO_ASSINATURA, conferirCorpo, NoncesConhecimento } from "./assinatura";
-import { buscarConhecimento, paraFerramenta } from "./buscar";
+import { buscarOuReserva, ferramentaOuReserva } from "./buscar";
+import { searchSources, sourceQuery } from "../engine";
+import { rateHit } from "../limits";
 import { pacoteDoTema } from "./pacote";
 import type { VetorConsulta } from "./tipos";
 
@@ -41,11 +43,18 @@ export function rotasConhecimentoPonte(deps: Deps | null, env: NodeJS.ProcessEnv
     if (!d) return;
     try {
       const v = d.vetor && typeof d.vetor === "object" && Array.isArray(d.vetor.values) && d.vetor.values.length === 768 && typeof d.vetor.model === "string" ? d.vetor : null;
-      const r = await buscarConhecimento(deps!, { userId: d.u, voiceCallId: d.vc, pergunta: String(d.consulta ?? "").slice(0, 2000), vetor: v, via: "ponte", bucket: "voice_tool", checarIa: true });
-      res.json({ output: paraFerramenta(r), rotulos: r.trechos.map((t) => t.citacao), vetor: r.vetor });
+      const pergunta = String(d.consulta ?? "").slice(0, 2000);
+      // índice ainda vazio ou função ausente: a busca de antes (só fontes oficiais, por palavras), com o limite e a chave da IA conferidos aqui
+      const reserva = async () => {
+        await rateHit(deps as never, d.u, "voice_tool");
+        if (!(await aiAllowed(deps!.db as ContentDb)).ok) return [];
+        return searchSources(deps as never, sourceQuery(pergunta));
+      };
+      const r = await buscarOuReserva(deps!, { userId: d.u, voiceCallId: d.vc, pergunta, vetor: v, via: "ponte", bucket: "voice_tool", checarIa: true }, reserva);
+      res.json({ output: ferramentaOuReserva(r), rotulos: r.resultado ? r.resultado.trechos.map((t) => t.citacao) : r.passagens.map((p) => p.citacao ?? p.source), vetor: r.resultado?.vetor ?? "nenhum" });
     } catch (error) {
       const msg = (error as Error).message ?? "";
-      res.json({ output: { error: /encerrada|não encontrada/i.test(msg) ? "A conversa por voz foi encerrada." : "Não consegui consultar isso agora." } });
+      res.json({ output: { error: /encerrada|não encontrada/i.test(msg) ? "A conversa por voz foi encerrada." : /Muitos pedidos|limite/i.test(msg) ? msg.slice(0, 160) : "Não consegui consultar isso agora." } });
     }
   });
 

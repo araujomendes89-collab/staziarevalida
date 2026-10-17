@@ -34,7 +34,9 @@ export interface ResultadoBusca {
   trechos: TrechoEntregue[];
   /** de onde veio o vetor: recebido (gerado agora), cache (pergunta repetida) ou nenhum (só palavras) */
   vetor: "recebido" | "cache" | "nenhum";
-  motivo?: "ia_desligada" | "limite" | "erro";
+  motivo?: "ia_desligada" | "limite" | "erro" | "sem_indice";
+  /** false enquanto o índice estiver vazio (indexador nunca rodou) */
+  indice?: boolean;
   retry_after_s?: number | null;
 }
 

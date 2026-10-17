@@ -675,7 +675,8 @@ begin
   if k > 0 then
     insert into public.tutor_kb_entregas (sessao_id, voice_call_id, trecho_ids, via) values (s.id, p_voice_call, ids, p_via);
   end if;
-  return jsonb_build_object('ok', true, 'trechos', out, 'vetor', v_origem_vetor);
+  -- indice: false enquanto o indexador nunca rodou (o servidor usa a busca antiga só nesse caso)
+  return jsonb_build_object('ok', true, 'trechos', out, 'vetor', v_origem_vetor, 'indice', k > 0 or exists (select 1 from public.tutor_kb_trechos));
 end
 $$;
 

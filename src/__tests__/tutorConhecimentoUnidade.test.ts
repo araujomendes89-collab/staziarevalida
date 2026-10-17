@@ -110,6 +110,10 @@ describe("recorte e formato da ferramenta", () => {
     expect(await buscarConhecimento({ db: quebrado }, { userId: U, pergunta: "adrenalina", via: "texto" })).toMatchObject({ ok: false, motivo: "erro", trechos: [] });
     const reserva = vi.fn(async () => [{ source: "Antiga", organ: "MS", version: null, page: 1, section: null, text: "t" }]);
     expect((await buscarOuReserva({ db: quebrado }, { userId: U, pergunta: "adrenalina", via: "texto" }, reserva)).passagens).toEqual([expect.objectContaining({ source: "Antiga" })]);
+    // índice ainda vazio (indexador nunca rodou): a busca de antes entra
+    const vazio = { service: vi.fn(async (fn: string) => (fn === "ch_worker_complementar_terms" ? [] : { ok: true, vetor: "nenhum", trechos: [], indice: false })) };
+    expect(await buscarConhecimento({ db: vazio }, { userId: U, pergunta: "adrenalina", via: "texto" })).toMatchObject({ ok: false, motivo: "sem_indice" });
+    expect((await buscarOuReserva({ db: vazio }, { userId: U, pergunta: "adrenalina", via: "texto" }, reserva)).resultado).toBeNull();
     const recusa = { service: vi.fn(async () => { throw new Error("Conversa não encontrada."); }) };
     await expect(buscarConhecimento({ db: recusa }, { userId: U, pergunta: "adrenalina", via: "texto" })).rejects.toThrow(/Conversa não encontrada/);
   });

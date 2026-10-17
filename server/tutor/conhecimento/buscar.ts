@@ -81,6 +81,8 @@ export async function buscarConhecimento(deps: Deps, p: PedidoBusca): Promise<Re
     return { ok: false, trechos: [], vetor: "nenhum", motivo: "erro" };
   }
   if (!r?.ok) return { ok: false, trechos: [], vetor: r?.vetor ?? "nenhum", motivo: r?.motivo ?? "erro", retry_after_s: r?.retry_after_s ?? null };
+  // índice ainda vazio (migração aplicada, indexador nunca rodou): quem chama usa a busca antiga
+  if (r.indice === false) return { ok: false, trechos: [], vetor: r.vetor, motivo: "sem_indice" };
   // apostila nunca vai ao aluno, nem pelo nome (o índice já não tem fonte complementar; aqui é a segunda trava, como em engine.ts)
   let termos: string[];
   try {
@@ -126,6 +128,14 @@ export async function buscarOuReserva<T>(deps: Deps, p: Omit<PedidoBusca, "vetor
     vetor = await vetorPelaPonte(p.pergunta);
   } else vetor = p.vetor ?? null;
   const r = await buscarConhecimento(deps, { ...p, vetor });
-  if (!r.ok && r.motivo === "erro") return { resultado: null, passagens: await reserva() };
+  if (!r.ok && (r.motivo === "erro" || r.motivo === "sem_indice")) return { resultado: null, passagens: await reserva() };
   return { resultado: r, passagens: comoPassages(r) };
+}
+
+/** Saída da ferramenta de voz: a da busca nova ou, na reserva, o formato de antes (rótulo da fonte e texto). */
+export function ferramentaOuReserva(r: { resultado: ResultadoBusca | null; passagens: PassagemComCitacao[] }): Record<string, unknown> {
+  if (r.resultado) return paraFerramenta(r.resultado);
+  return r.passagens.length
+    ? { passages: r.passagens.map((p) => ({ fonte: p.citacao ?? `${p.source} · ${p.organ}${p.version ? ` · versão ${p.version}` : ""}${p.page != null ? ` · p. ${p.page}` : ""}`, texto: p.text })) }
+    : { passages: [], note: "Nada encontrado na base conferida para este tema. Diga ao aluno que não encontrou confirmação e não cite número, dose ou diretriz." };
 }
