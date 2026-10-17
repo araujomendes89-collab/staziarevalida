@@ -36,7 +36,6 @@ function cadastrar(email = "ana@teste.dev") {
   fireEvent.click(screen.getByRole("button", { name: /criar conta/i }));
   type("Nome completo", "Ana Lima");
   type("E-mail", email);
-  type("WhatsApp", "(41) 99999-8888");
   type("Senha", "senha-segura");
   type("Conferir senha", "senha-segura");
   [FRASE, DECLARACAO_ADULTO, DECLARACAO_MEDICO].forEach((l) => fireEvent.click(screen.getByLabelText(l)));
@@ -93,7 +92,8 @@ describe("Tela Confirme seu e-mail depois do cadastro", () => {
     const reenviar = screen.getByRole("button", { name: /REENVIAR EM 60 s/ }) as HTMLButtonElement;
     expect(reenviar.disabled).toBe(true);
     expect(screen.queryByLabelText("Senha")).toBeNull();
-    expect(backend.signUp.mock.calls[0][3]).toMatchObject({ phone: "+5541999998888", declaresAdult: true, declaresPhysician: true });
+    expect(backend.signUp.mock.calls[0][3]).toMatchObject({ declaresAdult: true, declaresPhysician: true });
+    expect(backend.signUp.mock.calls[0][3]).not.toHaveProperty("phone");
   });
 
   it("depois da espera, reenvia para o mesmo e-mail e confirma o envio", async () => {
@@ -117,7 +117,7 @@ describe("Tela Confirme seu e-mail depois do cadastro", () => {
     fireEvent.click(screen.getByRole("button", { name: "Usar outro e-mail" }));
     expect((screen.getByLabelText("Nome completo") as HTMLInputElement).value).toBe("Ana Lima");
     expect((screen.getByLabelText("E-mail") as HTMLInputElement).value).toBe("ana@teste.dev");
-    expect((screen.getByLabelText("WhatsApp") as HTMLInputElement).value).not.toBe("");
+    expect(screen.queryByLabelText("WhatsApp")).toBeNull();
     expect((screen.getByLabelText(FRASE) as HTMLInputElement).checked).toBe(true);
   });
 

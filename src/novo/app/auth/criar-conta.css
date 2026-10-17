@@ -1,0 +1,38 @@
+/* Criar conta (17/10/2026): mesmo padrão do login no ar e das telas de recuperar senha (login-novo.css, classes ln-, e
+   recuperar-senha.css, classes rc-). Aqui só o que elas não têm: o quadro dos aceites (Termo e declarações) com as caixas de marcar
+   e os links do Termo e da Política dentro do texto. Classes cc-. Textos com contraste >= 4,5:1 no claro e no escuro; caixas com
+   área de toque de 44 px. */
+.cc-fields { gap: 16px; }
+.cc-fields .ln-or { margin-top: 2px; }
+.cc-fields .rc-actions { margin-top: -6px; }
+
+.cc-consent {
+  display: flex; flex-direction: column; gap: 12px; padding: 14px 14px 12px; border-radius: 14px;
+  border: 1px solid var(--ln-line-soft); background: #f6f9fd;
+}
+:root[data-theme="dark"] .cc-consent { background: rgba(255, 255, 255, .03); }
+.cc-consent.is-error { border-color: #e9a0a0; }
+:root[data-theme="dark"] .cc-consent.is-error { border-color: rgba(255, 140, 140, .45); }
+.cc-item { display: flex; flex-direction: column; gap: 6px; }
+.cc-decl { gap: 8px; padding-top: 12px; border-top: 1px solid var(--ln-line-soft); }
+
+.cc-check { display: flex; align-items: flex-start; gap: 10px; min-height: 24px; font-size: 13.5px; line-height: 1.5; color: var(--ln-body); cursor: pointer; }
+/* a caixa tem 20 px, mas o toque vale a linha inteira (o rótulo envolve a caixa) */
+.cc-check input { flex: none; width: 20px; height: 20px; margin: 1px 0 0; accent-color: #0a6fd8; cursor: pointer; }
+:root[data-theme="dark"] .cc-check input { accent-color: #5fb2ff; }
+.cc-check input[aria-invalid="true"] { outline: 2px solid #c62828; outline-offset: 1px; border-radius: 4px; }
+:root[data-theme="dark"] .cc-check input[aria-invalid="true"] { outline-color: #ffb4b4; }
+
+.cc-inline-link {
+  display: inline; padding: 0; border: 0; background: none; font: inherit; font-weight: 700; color: var(--ln-blue);
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.cc-inline-link:hover { text-decoration-thickness: 2px; }
+
+/* celular: o cartão vai até o fim da tela, como na recuperação de senha */
+.ln-root--m .cc-consent { padding: 12px; }
+.ln-root--m .cc-check { min-height: 44px; align-items: flex-start; padding-top: 2px; }
+
+/* erros de duas linhas (aceites): o ícone fica do tamanho certo, no alto */
+.cc-item .rc-field-error { align-items: flex-start; line-height: 1.45; }
+.cc-item .rc-field-error svg { flex: none; margin-top: 2px; }

@@ -1,4 +1,4 @@
-// Moldura das telas de recuperar senha (Recuperar senha, Criar nova senha e Link vencido), no MESMO padrão do login que está no ar
+// Moldura das telas de recuperar senha (Recuperar senha, Criar nova senha e Link vencido) e do cadastro (Criar conta), no MESMO padrão do login que está no ar
 // (LoginNovo.jsx, pacote "Novas telas" de 15/10/2026): fundo azul-marinho, logo nova (public/brand), frase da marca, cartão branco
 // com o selo "ACESSO SEGURO · REVALIDA", título em Barlow Condensed, campos e botão azul iguais aos do login. Usa as classes ln- de
 // login-novo.css (claro e escuro já resolvidos lá) e só acrescenta o que o login não tem (dica/erro no campo, link de voltar,
@@ -44,6 +44,12 @@ const ICONS = {
     </>
   ),
   back: <path d="M19 12H5M11 18l-6-6 6-6" />,
+  user: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+    </>
+  ),
 };
 const Icon = ({ name, ...p }) => <Svg {...p}>{ICONS[name]}</Svg>;
 
@@ -58,8 +64,21 @@ export function RecoveryMessage({ tone = "danger", children }) {
   );
 }
 
-/** Campo no visual do login: rótulo, ícone à esquerda, olho para mostrar a senha, dica ou erro embaixo. */
-export function RecoveryField({ id, name, label, type = "text", autoComplete, hint, error, icon = "mail", disabled, placeholder }) {
+/** Erro embaixo de um campo (ou de um grupo de caixas), com o ícone de alerta. `id` liga o erro ao campo por aria-describedby. */
+export function FieldError({ id, children }) {
+  return (
+    <span id={id} className="rc-field-error">
+      <Icon name="alert" size={16} />
+      {children}
+    </span>
+  );
+}
+
+/**
+ * Campo no visual do login: rótulo, ícone à esquerda, olho para mostrar a senha, dica ou erro embaixo.
+ * `defaultValue`: o que a pessoa já tinha escrito (cadastro: volta de "Usar outro e-mail").
+ */
+export function RecoveryField({ id, name, label, type = "text", autoComplete, hint, error, icon = "mail", disabled, placeholder, defaultValue }) {
   const [show, setShow] = React.useState(false);
   const pw = type === "password";
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
@@ -77,6 +96,7 @@ export function RecoveryField({ id, name, label, type = "text", autoComplete, hi
           autoComplete={autoComplete}
           inputMode={type === "email" ? "email" : undefined}
           placeholder={placeholder}
+          defaultValue={defaultValue}
           className={`ln-input${pw ? " ln-input--pw" : ""}${error ? " is-error" : ""}`}
           aria-invalid={error ? "true" : "false"}
           aria-describedby={describedBy}
@@ -93,10 +113,7 @@ export function RecoveryField({ id, name, label, type = "text", autoComplete, hi
         )}
       </span>
       {error ? (
-        <span id={`${id}-error`} className="rc-field-error">
-          <Icon name="alert" size={16} />
-          {error}
-        </span>
+        <FieldError id={`${id}-error`}>{error}</FieldError>
       ) : hint ? (
         <span id={`${id}-hint`} className="rc-field-hint">
           {hint}

@@ -21,7 +21,6 @@ function open() {
   fireEvent.click(screen.getByRole("button", { name: /criar conta/i }));
   type("Nome completo", "Ana Lima");
   type("E-mail", "ana@teste.dev");
-  type("WhatsApp", "(41) 99999-8888");
   type("Senha", "senha-segura");
   type("Conferir senha", "senha-segura");
   fireEvent.click(screen.getByLabelText(FRASE));
@@ -51,7 +50,7 @@ describe("Cadastro com o Termo 2.0", () => {
     criar();
     await waitFor(() => expect(backend.signUp).toHaveBeenCalledTimes(1));
     expect(backend.signUp.mock.calls[0][3]).toEqual({
-      phone: "+5541999998888", termsVersion: "2.0", userAgent: expect.any(String), declaresAdult: true, declaresPhysician: true,
+      termsVersion: "2.0", userAgent: expect.any(String), declaresAdult: true, declaresPhysician: true,
     });
   });
 

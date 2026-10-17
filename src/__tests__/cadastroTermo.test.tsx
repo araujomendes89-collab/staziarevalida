@@ -1,5 +1,6 @@
 /**
- * Cadastro (src/novo/app/AuthScreens.jsx): WhatsApp, conferir senha e aceite obrigatório do Termo, também no Google.
+ * Cadastro (src/novo/app/AuthScreens.jsx): conferir senha e aceite obrigatório do Termo, também no Google. Sem WhatsApp desde
+ * 17/10/2026 (decisão do dono; migração …13660_cadastro_sem_whatsapp). Visual novo (moldura de auth/RecoveryLayout.jsx).
  * Termo vigente 2.0: o aceite só segue com as declarações de 18 anos ou mais e de médico(a) (DECLARACAO_ADULTO / DECLARACAO_MEDICO).
  */
 import React from "react";
@@ -24,7 +25,6 @@ const type = (label: string, value: string) => fireEvent.change(screen.getByLabe
 const fillAll = (over: Record<string, string> = {}) => {
   type("Nome completo", over.name ?? "Ana Lima");
   type("E-mail", over.email ?? "ana@teste.dev");
-  type("WhatsApp", over.phone ?? "(41) 99999-8888");
   type("Senha", over.pw ?? "senha-segura");
   type("Conferir senha", over.pw2 ?? "senha-segura");
 };
@@ -44,40 +44,84 @@ afterEach(cleanup);
 describe("Cadastro com Termo", () => {
   it("mostra os campos na ordem e a frase do §33, sem a frase passiva", () => {
     open();
-    const labels = ["Nome completo", "E-mail", "WhatsApp", "Senha", "Conferir senha", FRASE].map((l) => screen.getByLabelText(l));
+    const labels = ["Nome completo", "E-mail", "Senha", "Conferir senha", FRASE].map((l) => screen.getByLabelText(l));
     for (let i = 1; i < labels.length; i++) {
       expect(labels[i - 1].compareDocumentPosition(labels[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
-    expect((labels[5] as HTMLInputElement).type).toBe("checkbox");
+    expect((labels[4] as HTMLInputElement).type).toBe("checkbox");
+    // sem WhatsApp (decisão do dono, 17/10/2026)
+    expect(screen.queryByLabelText("WhatsApp")).toBeNull();
+    expect(screen.queryByLabelText("País do WhatsApp")).toBeNull();
+    // visual novo: selo, título e o caminho de volta para o login dentro do cartão
+    expect(screen.getByText("Acesso seguro · Revalida", { exact: false })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Criar conta" })).toBeTruthy();
+    expect(document.querySelector(".rc-root .ln-card")).toBeTruthy();
     expect(document.body.textContent).not.toContain("Ao continuar, você concorda");
     expect(screen.getByRole("button", { name: "Criar conta com Google" })).toBeTruthy();
   });
 
   it("cada erro aparece no próprio campo e nada é enviado", () => {
     open();
-    fillAll({ phone: "999998888", pw2: "outra-senha" });
+    fillAll({ email: "ana@teste", pw2: "outra-senha" });
     fireEvent.click(submitBtn());
     expect(screen.getByText("As senhas não são iguais.")).toBeTruthy();
-    expect(screen.getByText("Informe o WhatsApp com DDD.")).toBeTruthy();
+    expect(screen.getByText("Informe um e-mail válido.")).toBeTruthy();
     expect(screen.getByText(ACEITE)).toBeTruthy();
     expect(screen.getByText(DECLARACOES_ERRO)).toBeTruthy();
     expect(backend.signUp).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Conferir senha").getAttribute("aria-invalid")).toBe("true");
-    expect(screen.getByLabelText("WhatsApp").getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByLabelText("E-mail").getAttribute("aria-invalid")).toBe("true");
+    // o erro fica ligado ao campo (leitor de tela)
+    expect(document.getElementById(screen.getByLabelText("Conferir senha").getAttribute("aria-describedby")!)!.textContent).toBe("As senhas não são iguais.");
+    expect(document.getElementById(screen.getByLabelText(FRASE).getAttribute("aria-describedby")!)!.textContent).toBe(ACEITE);
+    expect(screen.getByLabelText(DECLARACAO_ADULTO).getAttribute("aria-invalid")).toBe("true");
   });
 
-  it("em Outro, número preenchido e código vazio mostra o erro na caixa do código", () => {
+  it("e-mail que já tem conta: o aviso fica no campo E-mail, com o foco nele, e o que foi digitado continua", async () => {
+    backend.signUp.mockRejectedValue(Object.assign(new Error("User already registered"), { code: "email_taken" }));
     open();
-    fireEvent.change(screen.getByLabelText("País do WhatsApp"), { target: { value: "outro" } });
-    fillAll({ phone: "7911123456" });
+    fillAll();
     aceitarTudo();
     fireEvent.click(submitBtn());
-    expect(screen.getByLabelText("Código do país").getAttribute("aria-invalid")).toBe("true");
-    expect(screen.getByText("Informe o WhatsApp com código do país.")).toBeTruthy();
-    expect(backend.signUp).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText("Código do país"), { target: { value: "+44" } });
+    expect(await screen.findByText("Já existe uma conta com este e-mail.")).toBeTruthy();
+    const email = screen.getByLabelText("E-mail") as HTMLInputElement;
+    expect(email.getAttribute("aria-invalid")).toBe("true");
+    await waitFor(() => expect(document.activeElement).toBe(email));
+    expect(email.value).toBe("ana@teste.dev");
+    expect((screen.getByLabelText("Nome completo") as HTMLInputElement).value).toBe("Ana Lima");
+  });
+
+  it("enviando: o botão mostra CRIANDO CONTA… e fica ocupado; o Google espera", async () => {
+    let soltar: (v: unknown) => void = () => {};
+    backend.signUp.mockReturnValue(new Promise((r) => (soltar = r)));
+    open();
+    fillAll();
+    aceitarTudo();
     fireEvent.click(submitBtn());
-    return waitFor(() => expect(backend.signUp.mock.calls[0][3].phone).toBe("+447911123456"));
+    const ocupado = await screen.findByRole("button", { name: "CRIANDO CONTA…" });
+    expect(ocupado.getAttribute("aria-busy")).toBe("true");
+    expect((ocupado as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Criar conta com Google" }) as HTMLButtonElement).disabled).toBe(true);
+    soltar({});
+    await waitFor(() => expect(screen.getByRole("button", { name: "CRIAR CONTA" })).toBeTruthy());
+  });
+
+  it("falha de conexão: aviso no alto do cartão, em português", async () => {
+    backend.signUp.mockRejectedValue(Object.assign(new Error("fetch failed"), { code: "network" }));
+    open();
+    fillAll();
+    aceitarTudo();
+    fireEvent.click(submitBtn());
+    expect((await screen.findByRole("alert")).textContent).toContain("Falha de conexão. Verifique sua internet e tente de novo.");
+  });
+
+  it("'Voltar para o login' e 'Já tem conta? Entrar' levam ao login", () => {
+    open();
+    fireEvent.click(screen.getByRole("button", { name: "Voltar para o login" }));
+    expect(screen.getByRole("button", { name: "ENTRAR" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /criar conta/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    expect(screen.getByRole("button", { name: "ENTRAR" })).toBeTruthy();
   });
 
   it("sem as duas declarações (18+ e médico) a conta não é criada, mesmo com a frase do §33 marcada", () => {
@@ -90,14 +134,15 @@ describe("Cadastro com Termo", () => {
     expect(backend.signUp).not.toHaveBeenCalled();
   });
 
-  it("tudo certo: signUp com WhatsApp normalizado, versão 2.0, declarações e navegador", async () => {
+  it("tudo certo: signUp com versão 2.0, declarações e navegador (sem telefone)", async () => {
     open();
     fillAll();
     aceitarTudo();
     fireEvent.click(submitBtn());
     await waitFor(() => expect(backend.signUp).toHaveBeenCalledTimes(1));
     expect(backend.signUp.mock.calls[0]).toEqual(["Ana Lima", "ana@teste.dev", "senha-segura",
-      { phone: "+5541999998888", termsVersion: "2.0", userAgent: expect.any(String), declaresAdult: true, declaresPhysician: true }]);
+      { termsVersion: "2.0", userAgent: expect.any(String), declaresAdult: true, declaresPhysician: true }]);
+    expect(backend.signUp.mock.calls[0][3]).not.toHaveProperty("phone");
   });
 
   it("Google só com as caixas marcadas e guarda o aceite (com as declarações) por 30 min", async () => {
@@ -121,12 +166,11 @@ describe("Cadastro com Termo", () => {
     // fora do cartão com backdrop-filter, direto no body: o "fixed" vale para a tela toda
     const overlay = screen.getByRole("dialog").parentElement!;
     expect(overlay.parentElement).toBe(document.body);
-    expect(overlay.closest(".lg-card")).toBeNull();
+    expect(overlay.closest(".ln-card")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect((screen.getByLabelText("Nome completo") as HTMLInputElement).value).toBe("Ana Lima");
     expect((screen.getByLabelText("Conferir senha") as HTMLInputElement).value).toBe("senha-segura");
-    expect((screen.getByLabelText("WhatsApp") as HTMLInputElement).value).toBe("(41) 99999-8888");
     fireEvent.click(screen.getByRole("button", { name: "Política de Privacidade" }));
     expect(screen.getByRole("dialog", { name: "Política de Privacidade" })).toBeTruthy();
   });
