@@ -434,8 +434,8 @@ describe("Treino sozinho no banco (013430 a 013460)", () => {
         items: [
           { item_id: "i1", grade: "correct", quote: "Eu me apresento ao paciente", reason: "Apresentação feita.", label: null, score: 99 },
           { item_id: "i2", grade: "partial", quote: "x", reason: "Esse item não tem parcial.", label: null }, // nível que o item não tem
+          { item_id: "i3", grade: null, quote: null, reason: null, label: "sem_trecho" }, // a IA não achou um trecho que provasse o item
           { item_id: "inventado", grade: "correct", quote: "x", reason: "?" },
-          // i3 não veio: fica pendente
         ],
         note: "Texto organizado.",
         diverged: 1,
@@ -449,7 +449,7 @@ describe("Treino sozinho no banco (013430 a 013460)", () => {
       expect(a.status).toBe("done");
       expect(Number(a.score)).toBe(2.5); // só o i1 vale; a IA não manda na nota
       expect(a.source).toBe("ia");
-      expect(a.marks.map((m: any) => [m.order, m.grade, m.label ?? null])).toEqual([[1, "correct", null], [2, null, "sem_avaliacao"], [3, null, "sem_avaliacao"]]);
+      expect(a.marks.map((m: any) => [m.order, m.grade, m.label ?? null])).toEqual([[1, "correct", null], [2, null, "sem_avaliacao"], [3, null, "sem_trecho"]]);
       expect(a.marks[0]).toMatchObject({ quote: "Eu me apresento ao paciente", reason: "Apresentação feita." });
       const sess = await sql(`select mode, source, correctness from public.checklist_study_sessions where solo_run_id = $1`, [id]);
       expect(sess).toEqual([{ mode: "sozinho", source: "ia", correctness: "25.0" }]);

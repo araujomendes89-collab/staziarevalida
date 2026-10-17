@@ -151,8 +151,8 @@ begin
                      else jsonb_build_object(
                             'quote', case when r ->> 'grade' is not null and jsonb_typeof(y -> 'quote') = 'string' then left(y ->> 'quote', 600) end,
                             'reason', case when jsonb_typeof(y -> 'reason') = 'string' then left(y ->> 'reason', 240) end,
-                            'label', case when r ->> 'grade' is null then 'sem_avaliacao'
-                                          when y ->> 'label' in ('divergiram', 'sem_trecho', 'nao_citado') then y ->> 'label' end) end
+                            'label', case when y ->> 'label' in ('divergiram', 'sem_trecho', 'nao_citado') then y ->> 'label'
+                                          when r ->> 'grade' is null then 'sem_avaliacao' end) end
            order by (r ->> 'order')::int), '[]'::jsonb)
     into v_rows
     from jsonb_array_elements(v_calc -> 'rows') r
