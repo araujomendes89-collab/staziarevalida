@@ -9,7 +9,7 @@ import { PedidoAberto, RenovacaoPendente, abrirAbaVazia } from "./BillingSection
 import "./planos.css";
 
 const CICLO = { mensal: "mensal", trimestral: "trimestral" };
-const METODO = { pix: "Pix", cartao: "Cartão de crédito" };
+const METODO = { pix: "Pix", cartao: "Cartão de crédito", debito: "Cartão de débito" };
 const STATUS = {
   paga: ["Pago", "success"],
   pendente: ["Aguardando", "warning"],

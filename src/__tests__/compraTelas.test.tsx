@@ -233,3 +233,18 @@ describe("CPF", () => {
     expect(mascararCpf("366.385.446-91")).toBe("***.385.446-**");
   });
 });
+
+describe("formas de pagamento (decisão do dono 17/10, noite: débito também)", () => {
+  it("débito só aparece quando o servidor aceita e fora do plano mensal (que renova sozinho no crédito)", async () => {
+    const { metodosDaCompra, textoFormas } = await import("../novo/app/plan/BillingSection.jsx");
+    const semDebito = { methods: { pix: true, card: true } };
+    const comDebito = { methods: { pix: true, card: true, debit: true } };
+    const ids = (ov: any, alvo: any) => metodosDaCompra(ov, alvo).map((m: any) => m.id);
+    expect(ids(semDebito, { tipo: "plano", ciclo: "trimestral" })).toEqual(["pix", "cartao"]);
+    expect(ids(comDebito, { tipo: "plano", ciclo: "mensal" })).toEqual(["pix", "cartao"]);
+    expect(ids(comDebito, { tipo: "plano", ciclo: "trimestral" })).toEqual(["pix", "cartao", "debito"]);
+    expect(ids(comDebito, { tipo: "extra", ciclo: "avulso" })).toEqual(["pix", "cartao", "debito"]);
+    expect(textoFormas(comDebito)).toBe("Pix, crédito ou débito");
+    expect(textoFormas(semDebito)).toBe("Pix ou cartão de crédito");
+  });
+});

@@ -14,10 +14,18 @@ import { brl, cancelOrder, dateBR, getBillingOverview, getOrder, newIdem, payRen
 import { cpfValido, formatarCpf, mascararCpf, proximaData } from "./compraUtil.js";
 
 const CICLO = { mensal: "Mensal", trimestral: "Trimestral" };
+// Débito (decisão do dono 17/10, noite): só nas compras à vista que não renovam sozinhas (trimestral, extras); a renovação
+// automática é só no crédito. Aparece quando o servidor disser que o fornecedor aceita (overview.methods.debit).
 const METODOS = [
-  { id: "pix", title: "Pix", icon: "qr-code", note: "Paga na hora pelo app do banco. Na renovação, um Pix novo chega 7 dias antes do vencimento." },
-  { id: "cartao", title: "Cartão de crédito", icon: "credit-card", note: "À vista, sem parcelas. Renova sozinho no dia do vencimento." },
+  { id: "pix", cap: "pix", title: "Pix", icon: "qr-code", note: "Paga na hora pelo app do banco. Na renovação, um Pix novo chega 7 dias antes do vencimento." },
+  { id: "cartao", cap: "card", title: "Cartão de crédito", icon: "credit-card", note: "À vista, sem parcelas. Renova sozinho no dia do vencimento." },
+  { id: "debito", cap: "debit", title: "Cartão de débito", icon: "credit-card", note: "À vista. Na renovação, você paga de novo (Pix, crédito ou débito)." },
 ];
+/** Formas de pagamento desta compra: débito só fora do plano mensal (que renova sozinho no crédito). */
+export const metodosDaCompra = (overview, alvo) =>
+  METODOS.filter((m) => (m.id === "debito" ? overview.methods?.debit === true && !(alvo.tipo === "plano" && alvo.ciclo === "mensal") : overview.methods?.[m.cap] !== false));
+/** Texto das formas aceitas, conforme o servidor. */
+export const textoFormas = (overview) => (overview?.methods?.debit === true ? "Pix, crédito ou débito" : "Pix ou cartão de crédito");
 const ESTADO_FINAL = {
   falhou: ["O pagamento não foi concluído", "A instituição de pagamento recusou ou não confirmou. Nada foi cobrado. Você pode tentar de novo, com Pix ou outro cartão."],
   expirado: ["O tempo para pagar acabou", "Este pagamento venceu sem confirmação e foi cancelado. Nada foi cobrado. É só começar de novo."],
@@ -46,14 +54,16 @@ export function Resumo({ alvo, metodo, cpf }) {
   const linhas = [
     ["O que você contrata", alvo.tipo === "plano" ? `${alvo.planoNome} · ${CICLO[alvo.ciclo]?.toLowerCase()}` : alvo.nome],
     ["Valor à vista", `${brl(alvo.valor)}${alvo.tipo === "plano" ? (meses === 3 ? " a cada 3 meses" : " por mês") : " (pagamento único)"}`],
-    ["Forma de pagamento", metodo === "pix" ? "Pix" : "Cartão de crédito, à vista"],
+    ["Forma de pagamento", metodo === "pix" ? "Pix" : metodo === "debito" ? "Cartão de débito, à vista" : "Cartão de crédito, à vista"],
   ];
   if (alvo.tipo === "plano") {
     linhas.push([
       "Renovação",
       metodo === "pix"
         ? `Sem débito automático: um Pix novo chega 7 dias antes de ${proxima}.`
-        : `Renova sozinho no cartão em ${proxima}${meses === 3 ? " (a cada 3 meses)" : " (todo mês)"}.`,
+        : metodo === "debito"
+          ? `Não renova sozinho: antes de ${proxima} avisamos para você pagar de novo.`
+          : `Renova sozinho no cartão em ${proxima}${meses === 3 ? " (a cada 3 meses)" : " (todo mês)"}.`,
     ]);
   }
   if (cpf) linhas.push(["CPF", mascararCpf(cpf)]);
@@ -83,12 +93,12 @@ function Compra({ alvo, overview, onDone, onCancel }) {
   const cpfOk = !precisaDoc || cpfValido(cpf);
   const nomeOk = !precisaDoc || nome.trim().replace(/\s+/g, " ").length >= 3;
   const contrato = overview.contrato_doc ?? { url: "/novo/termos", versao: null };
-  const metodos = METODOS.filter((m) => overview.methods?.[m.id === "pix" ? "pix" : "card"] !== false);
+  const metodos = metodosDaCompra(overview, alvo);
 
   const pagar = async () => {
     setBusy(true);
     setErro(null);
-    const aba = metodo === "cartao" ? abrirAbaVazia() : null;
+    const aba = metodo === "cartao" || metodo === "debito" ? abrirAbaVazia() : null;
     try {
       const body = { tipo: alvo.tipo, codigo: alvo.codigo, ciclo: alvo.ciclo, metodo, aceite: true, idem };
       if (precisaDoc) Object.assign(body, { nome: nome.trim().replace(/\s+/g, " "), documento: cpf });
@@ -190,7 +200,7 @@ function Compra({ alvo, overview, onDone, onCancel }) {
               {busy ? "Abrindo o pagamento…" : metodo === "pix" ? "Gerar o Pix" : "Ir para a página segura do cartão"}
             </Button>
           </div>
-          {metodo === "cartao" && <p className="bl-fina">O número do cartão é digitado só na página da instituição de pagamento (Asaas). O StaziaMed não vê nem guarda o cartão.</p>}
+          {metodo !== "pix" && <p className="bl-fina">O número do cartão é digitado só na página da instituição de pagamento (Asaas). O StaziaMed não vê nem guarda o cartão.</p>}
         </>
       )}
     </div>
@@ -538,7 +548,7 @@ export function BillingSection({ onEnabled, go, pedidoInicial }) {
                   ))}
                 </div>
                 <p className="bl-fina bl-garantias">
-                  <Icon name="shield-check" size={16} /> Pix ou cartão de crédito, sempre à vista · sem multa e sem juros · cancele quando quiser · 7 dias para desistir com devolução integral
+                  <Icon name="shield-check" size={16} /> {textoFormas(ov)}, sempre à vista · sem multa e sem juros · cancele quando quiser · 7 dias para desistir com devolução integral
                 </p>
               </div>
             )}
