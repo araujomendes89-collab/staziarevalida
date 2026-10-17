@@ -4,7 +4,8 @@
  * VOZ_MODO=llm (padrão; é o que vai para o Cloud Run): só GET /saude e POST /v1/chat/completions (Custom LLM da ElevenLabs,
  *   com segredo compartilhado). Nada de microfone, Live ou token aqui: o serviço público não deixa ninguém gastar.
  * VOZ_MODO=previa (só no Mac, preso em 127.0.0.1): faz o papel do APP para a prévia: POST /api/voz/sessao (sela o bilhete da
- *   ponte com a Durona do Personality Engine), POST /api/voz/ferramenta (ferramentas do protótipo) e monta a MESMA ponte do
+ *   ponte com o professor escolhido (Stazi: Durão/Tranquilo; Stazia: Durona/Tranquila) do Personality Engine, com a voz do
+ *   personagem), POST /api/voz/ferramenta (ferramentas do protótipo) e monta a MESMA ponte do
  *   Cloud Run (server/vozPonte) em WS /api/voz/ponte. GET /api/voz/eleven/* fica para a opção futura (ElevenLabs parada).
  *
  * Segredos: VOZ_LLM_SEGREDO e VOZ_PONTE_SEGREDO (env ou ~/.config/staziamed-voz-teste/segredos.env), VERTEX_API_KEY (env ou
@@ -21,7 +22,8 @@ import { tokenGoogle } from "../vozPonte/googleToken";
 import { randomUUID } from "node:crypto";
 import { WebSocketServer } from "ws";
 import { vozValida, MODELO_LIVE } from "./liveConfig";
-import { diretivaPrevia, escolhaValida, instrucoesPrevia, type EscolhaExplosiva } from "./durona";
+import { diretivaPrevia, EMOCAO_DO_ESTADO, escolhaValida, instrucoesPrevia, PERSONALIDADES_PREVIA, vozDaPersonalidade, type EscolhaExplosiva } from "./durona";
+import type { PersonaMemory } from "../tutor/personalityEngine";
 import { DECLARACOES_FERRAMENTAS, EstadoQuestao, QUESTAO_ANAFILAXIA } from "./questaoTeste";
 import { personaPromptLayer } from "../tutor/personalityEngine";
 import { NoncesUsados, selarBilhete } from "../vozPonte/bilhete";
@@ -40,7 +42,7 @@ const HOST = MODO === "previa" ? "127.0.0.1" : "0.0.0.0";
 const ORIGENS = new Set(["http://127.0.0.1:31991", "http://localhost:31991"]);
 const usados = new NoncesUsados();
 /** Ligações da prévia (o "banco" do teste): estado da questão e escolha da Durona, só em memória. */
-const ligacoes = new Map<string, { questao: EstadoQuestao; escolha: EscolhaExplosiva; criada: number }>();
+const ligacoes = new Map<string, { questao: EstadoQuestao; escolha: EscolhaExplosiva; memoria: PersonaMemory | null; criada: number }>();
 const cerebros: ConfigCerebros = {
   apiKey: env("VERTEX_API_KEY"),
   apiBase: env("VERTEX_API_BASE"),
@@ -92,12 +94,20 @@ const servidor = http.createServer(async (req, res) => {
       const escolha = escolhaValida(b);
       const vc = randomUUID();
       for (const [k, v] of ligacoes) if (Date.now() - v.criada > 3600_000) ligacoes.delete(k);
-      ligacoes.set(vc, { questao: new EstadoQuestao(QUESTAO_ANAFILAXIA), escolha, criada: Date.now() });
+      ligacoes.set(vc, { questao: new EstadoQuestao(QUESTAO_ANAFILAXIA), escolha, memoria: null, criada: Date.now() });
+      // a voz vem do personagem da personalidade (Stazi: Zubenelgenubi; Stazia: Kore); o navegador não escolhe
+      const pv = vozDaPersonalidade(escolha.personalidade ?? "durona");
+      const d = diretivaPrevia(escolha);
+      log({ sessao: vc, personalidade: escolha.personalidade, perfil: d.profileName, voz: pv.voz, semitons: pv.semitons });
       const { bilhete, expiraEm } = selarBilhete({
-        vc, u: "00000000-0000-4000-8000-000000000000", modelo: MODELO_LIVE, voz: vozValida(b.voz), instrucoes: instrucoesPrevia(escolha),
+        vc, u: "00000000-0000-4000-8000-000000000000", modelo: MODELO_LIVE, voz: vozValida(pv.voz), instrucoes: instrucoesPrevia(escolha),
         ferramentas: DECLARACOES_FERRAMENTAS, maxSegundos: Number(env("VOZ_MAX_SESSAO_S", "600")), vad: b.vad === "rapido" ? "rapido" : "padrao",
       }, env("VOZ_PONTE_SEGREDO"));
-      return json(res, 200, { vc, bilhete, expiraEm, ponte: "/api/voz/ponte" });
+      return json(res, 200, {
+        vc, bilhete, expiraEm, ponte: "/api/voz/ponte",
+        personagem: pv.personagem, voz: pv.voz, semitons: pv.semitons,
+        professor: PERSONALIDADES_PREVIA[escolha.personalidade ?? "durona"].nome, perfil: d.profileName, emocao: EMOCAO_DO_ESTADO[d.state] ?? "neutral",
+      });
     }
     // faz o papel de /api/tutor/voice/tool: executa a ferramenta no servidor; depois da resposta devolve o tom novo (Personality Engine)
     if (req.method === "POST" && url.pathname === "/api/voz/ferramenta") {
@@ -105,8 +115,15 @@ const servidor = http.createServer(async (req, res) => {
       const l = ligacoes.get(String(b.vc ?? ""));
       if (!l) return json(res, 404, { erro: "ligação não encontrada" });
       const output: Record<string, unknown> = l.questao.executar(String(b.name ?? ""), (b.args ?? {}) as Record<string, unknown>);
-      if (b.name === "submit_answer" && typeof output.acertou === "boolean") output.tom_do_professor = personaPromptLayer(diretivaPrevia(l.escolha, [output.acertou ? "correct" : "wrong"]));
-      return json(res, 200, { output });
+      let emocao: string | null = null;
+      if (b.name === "submit_answer" && typeof output.acertou === "boolean") {
+        // o motor guarda a memória da ligação (erro repetido, alívio depois do erro...) e devolve o tom novo e a emoção do desenho
+        const d = diretivaPrevia(l.escolha, [output.acertou ? "correct" : "wrong"], l.memoria);
+        l.memoria = d.memory;
+        output.tom_do_professor = personaPromptLayer(d);
+        emocao = EMOCAO_DO_ESTADO[d.state] ?? "neutral";
+      }
+      return json(res, 200, { output, emocao });
     }
     if (req.method === "GET" && url.pathname === "/api/voz/eleven/estado") {
       const c = configEleven();

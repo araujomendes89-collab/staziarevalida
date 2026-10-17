@@ -122,28 +122,59 @@ export function instrucoesDurona(o: OpcoesInstrucoes): string {
 }
 
 // ------------------------------------------------------------------------------------------------ Personality Engine (vt-personalidade)
-import { personaPromptLayer, personaTurn, resolveProfile, type ExplosivaLevel, type PersonaDirective, type Signal } from "../tutor/personalityEngine";
+import { personaPromptLayer, personaTurn, resolveProfile, voiceActingLayer, type EmotionalState, type ExplosivaLevel, type PersonaDirective, type PersonaMemory, type Signal } from "../tutor/personalityEngine";
+import { PERSONAGENS } from "../../src/novo/app/tutor/personagens/personagens.js";
+
+/**
+ * Os quatro professores da prévia (17/10/2026): Stazi = Durão e Tranquilo (id "acolhedor", como no banco); Stazia = Durona e
+ * Tranquila. A voz e a afinação vêm do personagem (manifest do app: personagens.js), nunca do navegador.
+ */
+export const PERSONALIDADES_PREVIA = {
+  durao: { personagem: "stazi", nome: "Durão", duro: true },
+  acolhedor: { personagem: "stazi", nome: "Tranquilo", duro: false },
+  durona: { personagem: "stazia", nome: "Durona", duro: true },
+  tranquila: { personagem: "stazia", nome: "Tranquila", duro: false },
+} as const;
+export type PersonalidadePrevia = keyof typeof PERSONALIDADES_PREVIA;
+export const personalidadeValida = (v: unknown): PersonalidadePrevia =>
+  v === "tranquilo" ? "acolhedor" : v && Object.hasOwn(PERSONALIDADES_PREVIA, String(v)) ? (v as PersonalidadePrevia) : "durona";
+
+/** Personagem, voz do Gemini Live e afinação (semitons) da personalidade. */
+export function vozDaPersonalidade(id: PersonalidadePrevia): { personagem: "stazi" | "stazia"; voz: string; semitons: number } {
+  const personagem = PERSONALIDADES_PREVIA[id].personagem;
+  const v = (PERSONAGENS as Record<string, { voz: { gemini: string; semitons: number } }>)[personagem].voz;
+  return { personagem, voz: v.gemini, semitons: v.semitons };
+}
+
+/** Estado interno do motor → emoção do desenho (as poses do PersonagemTutor). */
+export const EMOCAO_DO_ESTADO: Record<EmotionalState, string> = {
+  neutral: "neutral", curious: "curious", skeptical: "skeptical", sarcastic: "skeptical", irritated: "annoyed", frustrated: "angry",
+  surprised: "impressed", excited: "happy", proud: "proud", playful: "happy", focused: "firm", calm: "neutral", empathetic: "relieved",
+};
 
 export const NIVEIS_EXPLOSIVA: readonly ExplosivaLevel[] = ["n1", "n2", "n3", "n4"] as const;
-export interface EscolhaExplosiva { nivel: ExplosivaLevel; gritos: boolean; palavroes: boolean }
+/** `personalidade` sem valor = a Durona (como era antes da escolha de personagem). */
+export interface EscolhaExplosiva { personalidade?: PersonalidadePrevia; nivel: ExplosivaLevel; gritos: boolean; palavroes: boolean }
 export const escolhaValida = (b: Record<string, unknown>): EscolhaExplosiva => ({
+  personalidade: personalidadeValida(b.personalidade),
   nivel: NIVEIS_EXPLOSIVA.includes(b.nivel as ExplosivaLevel) ? (b.nivel as ExplosivaLevel) : "n3",
   gritos: b.gritos !== false,
   palavroes: b.palavroes !== false,
 });
 
 /** Diretiva do Personality Engine para a prévia (todos maiores de 18 pelo Termo; painel com a Explosiva ligada; reações: nenhuma no Live). */
-export function diretivaPrevia(e: EscolhaExplosiva, fatos: Signal[] = []): PersonaDirective {
+export function diretivaPrevia(e: EscolhaExplosiva, fatos: Signal[] = [], memoria: PersonaMemory | null = null): PersonaDirective {
   const resolved = resolveProfile({
-    personality: "durona",
+    personality: e.personalidade ?? "durona",
     explosiva: { level: e.nivel, shouts: e.gritos, profanity: e.palavroes, adultDeclared: true },
     platform: { maxProfanity: "moderate", explosivaEnabled: true },
   });
-  return personaTurn({ resolved, memory: null, facts: fatos, rules: [], provider: "gemini_live" });
+  return personaTurn({ resolved, memory: memoria, facts: fatos, rules: [], provider: "gemini_live" });
 }
 
 /**
- * Instruções da prévia no MESMO formato do app pela ponte: camadas do Tutor + Personality Engine (Durona Explosiva) +
+ * Instruções da prévia no MESMO formato do app pela ponte: camadas do Tutor + Personality Engine (a personalidade escolhida;
+ * Durão/Durona no nível pedido) + atuação de voz do personagem +
  * ferramentas para a correção (o gabarito nunca vai no prompt). O tom muda depois de cada resposta pela própria ferramenta.
  */
 export function instrucoesPrevia(e: EscolhaExplosiva, questao: QuestaoTeste = QUESTAO_ANAFILAXIA): string {
@@ -156,6 +187,8 @@ export function instrucoesPrevia(e: EscolhaExplosiva, questao: QuestaoTeste = QU
     COM_FERRAMENTAS + "\n- Depois de submit_answer, o resultado traz tom_do_professor: siga esse tom a partir dali.",
     FALA_SEM_FILTRO,
     personaPromptLayer(diretivaPrevia(e)),
+    // a atuação de desenho animado do Stazi (Durão e Tranquilo); vazia na Stazia
+    voiceActingLayer(e.personalidade ?? "durona"),
     blocoBase(questao, null),
     "Esta é uma sessão de TESTE do protótipo de voz (questão fictícia, sem aluno real).",
   ].join("\n\n");
