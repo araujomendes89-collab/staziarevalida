@@ -452,7 +452,7 @@ function MasterSetup({ go }) {
   );
 }
 
-/** /novo/criar-conta abre direto o Criar conta (botões "Teste grátis" da página inicial); o resto abre o login. */
+/** /novo/criar-conta abre direto o Criar conta (botões "Teste grátis" da página inicial); o resto (/novo, /novo/login, /novo/entrar…) abre o login. */
 export function telaInicialPeloEndereco(pathname = typeof window !== "undefined" ? window.location.pathname : "") {
   return /^\/novo\/criar-conta\/?$/.test(pathname || "") ? "signup" : "login";
 }
