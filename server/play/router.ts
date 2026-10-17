@@ -7,6 +7,7 @@
 import express, { type Response } from "express";
 import type { ContentDb } from "../contentHub/infra";
 import { shown } from "../auth/friendlyError";
+import { cronAutorizado } from "../seguranca/protecoes";
 
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
 
@@ -26,7 +27,7 @@ export function createPlayRouter(deps: PlayDeps | null) {
 
   router.get("/cron", async (req, res) => {
     const secret = process.env.CRON_SECRET;
-    if (!deps || !secret || req.headers.authorization !== `Bearer ${secret}`) return fail(res, 401, "Não autorizado.");
+    if (!deps || !cronAutorizado(req.headers.authorization, secret)) return fail(res, 401, "Não autorizado.");
     try {
       res.json(await runPlayDaily(deps));
     } catch (error) {

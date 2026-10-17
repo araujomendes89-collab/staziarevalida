@@ -94,10 +94,11 @@ describe("Supabase — cadastro, perfil, papel e plano", () => {
   });
 
   it("aluno não consegue se promover a admin nem liberar plano", async () => {
-    const role = await as(user(ids.ana), (tx) => tx.query(`update public.user_roles set role = 'admin'`));
+    // papel: desde a 013780 (auditoria de segurança) o aluno nem tem permissão de gravar; o RLS continua como segunda trava
+    await expect(as(user(ids.ana), (tx) => tx.query(`update public.user_roles set role = 'admin'`))).rejects.toThrow(/permission denied/);
     const plan = await as(user(ids.ana), (tx) => tx.query(`update public.subscriptions set plan = 'elite', status = 'active'`));
-    expect(role.affectedRows).toBe(0);
     expect(plan.affectedRows).toBe(0);
+    expect(await as(user(ids.ana), (tx) => rows(tx, `select role from public.user_roles`))).toEqual([{ role: "student" }]);
     await expect(
       as(user(ids.ana), (tx) => tx.query(`insert into public.billing_events (provider, event_id, event_type, payload) values ('x','1','paid','{}')`))
     ).rejects.toThrow(/row-level security/);
