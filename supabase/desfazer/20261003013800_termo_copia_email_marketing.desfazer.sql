@@ -2,8 +2,8 @@
 -- Pode ser colado de novo. Antes, desfazer a 013810 (contas inativas e expurgo), se tiver sido colada: ela usa a fila daqui.
 --
 -- O que sai: os dois gatilhos (cópia na fila e marketing do cadastro), as funções e as tabelas novas.
--- ATENÇÃO: apaga a fila de e-mails e o histórico do consentimento de marketing. Se o dono quiser guardar o histórico antes, rodar:
---   select * from public.marketing_consent_log order by id;
+-- A fila de e-mails sai. O histórico do consentimento de marketing NÃO é apagado: fica guardado como
+-- public.marketing_consent_log_desfeito (sem acesso do navegador), para servir de prova; apagar à mão só se o dono decidir.
 -- O site continua funcionando sem estas funções: a chave de marketing some da Minha Conta e a caixa do cadastro passa a não gravar.
 -- Nenhum aceite (legal_acceptances) é tocado.
 
@@ -20,6 +20,24 @@ drop function if exists public.ch_worker_email_pegar(integer);
 drop function if exists public.legal_copia_na_fila();
 drop function if exists public.email_conta_confirmada(uuid);
 
-drop table if exists public.marketing_consent_log;
+-- (a cópia guardada continua presa à conta: some se a conta for apagada; os índices ganham outro nome para a migração poder voltar)
+do $guarda$
+declare
+  i text;
+begin
+  if to_regclass('public.marketing_consent_log') is not null then
+    if to_regclass('public.marketing_consent_log_desfeito') is null then
+      alter table public.marketing_consent_log rename to marketing_consent_log_desfeito;
+      for i in select indexname from pg_indexes where schemaname = 'public' and tablename = 'marketing_consent_log_desfeito' loop
+        execute format('alter index public.%I rename to %I', i, left(i, 50) || '_desfeito');
+      end loop;
+    else
+      insert into public.marketing_consent_log_desfeito (user_id, opt_in, origin, texto, at)
+      select user_id, opt_in, origin, texto, at from public.marketing_consent_log;
+      drop table public.marketing_consent_log;
+    end if;
+  end if;
+end
+$guarda$;
 drop table if exists public.marketing_consents;
 drop table if exists public.email_saida;

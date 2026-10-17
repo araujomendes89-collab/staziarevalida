@@ -10,7 +10,7 @@ em `/Volumes/StaziaMed/.tmp-aulas/termo-funcoes/`: `013800_…_aplicar.sql`, `01
    fila no banco (`email_saida`, um por aceite). A tarefa `/api/legal/email` (a cada 5 min) manda o e-mail com versão, data e hora,
    código do texto, botão para Minha Conta → Documentos (`/novo/perfil?secao=docs`) e o texto completo anexado (`.txt`, igual ao
    botão Baixar). Falha antes da entrega: tenta de novo (5 min, 30 min, 2 h, 12 h; na 5ª desiste). Caiu depois de mandar: não repete
-   (não duplica). Conta com e-mail não confirmado: espera até 7 dias. **Sem as variáveis SMTP, nada sai** (fica na fila).
+   (não duplica). Conta com e-mail não confirmado: espera até 30 dias. **Sem as variáveis SMTP, nada sai** (fica na fila).
 2. **Caixa de marketing** (cláusulas 6.2 e 32): caixa separada e desmarcada no cadastro (e no cadastro com Google); chave em Minha
    Conta → Privacidade e dados. Guarda a escolha com data, origem e o texto mostrado (`marketing_consents` + histórico
    `marketing_consent_log`). Ainda não existe envio de marketing.

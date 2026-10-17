@@ -10,7 +10,7 @@
 --        é repetido;
 --      * nova tentativa: falha antes de o servidor de e-mail aceitar a mensagem volta para a fila (5 min, 30 min, 2 h, 12 h; na 5ª,
 --        "falhou");
---      * conta com e-mail ainda não confirmado: espera a confirmação (até 7 dias; depois, "cancelado");
+--      * conta com e-mail ainda não confirmado: espera a confirmação (até 30 dias; depois, "cancelado");
 --      * sem as variáveis SMTP no servidor, nada sai: os e-mails ficam na fila, "pendente".
 --    Só versões com texto guardado pelo sistema (legal_texts, 3.0 em diante). Aceites anteriores a esta migração não recebem e-mail.
 --
@@ -95,7 +95,7 @@ create trigger legal_copia_na_fila after insert on public.legal_acceptances
   for each row execute function public.legal_copia_na_fila();
 
 -- Pega um lote para enviar (só serviço). Marca "enviando" e devolve o que o e-mail precisa. Antes: envio parado há 15 min vira
--- "incerto" (não repete) e conta sem e-mail confirmado há 7 dias desiste ("cancelado").
+-- "incerto" (não repete) e conta sem e-mail confirmado há 30 dias desiste ("cancelado").
 -- Aviso de conta inativa: o prazo (a partir de quando a conta é apagada ou os Coins zerados) é calculado AQUI, na hora do envio:
 -- o maior entre 12 meses do último acesso e 31 dias depois de hoje (horário de Brasília), e fica no payload.
 create or replace function public.ch_worker_email_pegar(p_limite integer default 20) returns jsonb
@@ -110,8 +110,8 @@ begin
    where status = 'enviando' and pego_em < now() - interval '15 minutes';
 
   update public.email_saida e
-     set status = 'cancelado', erro = 'E-mail da conta não confirmado em 7 dias.'
-   where e.status = 'pendente' and e.created_at < now() - interval '7 days' and not public.email_conta_confirmada(e.user_id);
+     set status = 'cancelado', erro = 'E-mail da conta não confirmado em 30 dias.'
+   where e.status = 'pendente' and e.created_at < now() - interval '30 days' and not public.email_conta_confirmada(e.user_id);
 
   select array_agg(x.id) into v_ids
   from (
@@ -287,6 +287,11 @@ begin
     raise exception 'Entre na sua conta.' using errcode = '28000';
   end if;
   if p_opt_in is null or coalesce(p_origin, '') not in ('minha_conta', 'cadastro_google') then
+    raise exception 'Escolha inválida.' using errcode = '22023';
+  end if;
+  -- "cadastro_google" só vale na volta do cadastro com Google (conta criada há menos de 1 hora)
+  if p_origin = 'cadastro_google'
+     and not exists (select 1 from auth.users u where u.id = v_user and u.created_at > now() - interval '1 hour') then
     raise exception 'Escolha inválida.' using errcode = '22023';
   end if;
   perform public.marketing_gravar(v_user, p_opt_in, p_origin);

@@ -11,6 +11,7 @@
 --   Ligar:    update public.app_rotinas_conta_config set inativas_avisar = true, updated_at = now();
 --   Desligar: update public.app_rotinas_conta_config set inativas_avisar = false, updated_at = now();
 --   Ver o que fariam: select ran_at, rotina, modo, resultado from public.app_rotinas_conta_log order by id desc limit 10;
+--   Ver a lista de contas (até 50) do ensaio: select public.ch_worker_contas_inativas();  (com as chaves desligadas não muda nada)
 --
 -- 1) CONTA INATIVA (Política 3.0, seção 5: "contas gratuitas sem nenhum acesso por mais de 12 meses terão os dados de estudo
 --    eliminados ou anonimizados, mediante aviso prévio ao seu e-mail com pelo menos 30 dias de antecedência"; Regulamento 1.0, 4.3:
@@ -76,7 +77,7 @@ create table if not exists public.app_rotinas_conta_log (
   resultado jsonb not null,
   ran_at timestamptz not null default now()
 );
-comment on table public.app_rotinas_conta_log is 'Relatório de cada rodada das rotinas (o que fez ou, no ensaio, o que faria). Guardado por 400 dias.';
+comment on table public.app_rotinas_conta_log is 'Relatório de cada rodada das rotinas (contagens do que fez ou, no ensaio, do que faria; sem a lista de contas). Guardado por 90 dias.';
 alter table public.app_rotinas_conta_log enable row level security;
 revoke all on table public.app_rotinas_conta_log from public, anon, authenticated;
 
@@ -167,6 +168,12 @@ declare
 begin
   select * into cfg from public.app_rotinas_conta_config where id;
 
+  -- a0) aviso desligado: os avisos que ainda não saíram são cancelados (nada chega depois de desligar)
+  if not cfg.inativas_avisar then
+    update public.email_saida e set status = 'cancelado', erro = 'Aviso de conta inativa desligado.'
+    where e.kind = 'aviso_inatividade' and e.status = 'pendente';
+  end if;
+
   -- a) avisos abertos: quem voltou, quem apagou a conta sozinho e aviso que não saiu são fechados
   for r in
     select c.id, c.account_id, c.ultimo_acesso, c.email_id, e.status as email_status,
@@ -244,6 +251,11 @@ begin
         end if;
         delete from auth.users where id = r.account_id;
       else
+        if not public.legal_is_student(r.account_id) then
+          update public.conta_inativa set situacao = 'cancelado', fechado_em = now(),
+                 detalhe = 'Deixou de ser aluno; os Coins não foram zerados.' where id = r.id;
+          continue;
+        end if;
         select s.coins into v_coins from public.user_gamification_stats s where s.user_id = r.account_id for update;
         if coalesce(v_coins, 0) > 0 then
           insert into public.coin_transactions (user_id, amount, type, source_type, source_id, metadata)
@@ -267,8 +279,11 @@ begin
     'prazo_vencido', n_agir, 'feitos', n_feitos, 'falhas', n_falhas,
     'voltaram', n_voltaram, 'aviso_nao_entregue', n_sem_entrega,
     'contas', v_lista);
-  insert into public.app_rotinas_conta_log (rotina, modo, resultado) values ('contas_inativas', v_out ->> 'modo', v_out);
-  delete from public.app_rotinas_conta_log where ran_at < now() - interval '400 days';
+  -- o relatório guardado leva só as contagens (a lista de contas sai só na resposta da rotina); guardado por 90 dias
+  insert into public.app_rotinas_conta_log (rotina, modo, resultado) values ('contas_inativas', v_out ->> 'modo', v_out - 'contas');
+  delete from public.app_rotinas_conta_log where ran_at < now() - interval '90 days';
+  -- aviso fechado sem ação (a pessoa voltou, aviso não entregue…) não precisa ficar: some 1 ano depois
+  delete from public.conta_inativa where situacao = 'cancelado' and fechado_em < now() - interval '1 year';
   return v_out;
 end
 $$;

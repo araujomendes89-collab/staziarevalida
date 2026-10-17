@@ -158,7 +158,7 @@ describe("013800 — cópia do contrato por e-mail", () => {
     expect(await recusa(servico("ch_worker_email_marcar", { p_id: item.id, p_resultado: "qualquer" }))).toMatch(/Resultado inválido/);
   });
 
-  it("e-mail da conta não confirmado: espera; depois de 7 dias, cancela", async () => {
+  it("e-mail da conta não confirmado: espera; depois de 30 dias, cancela", async () => {
     await limparFila();
     await db.exec(`alter table auth.users add column if not exists email_confirmed_at timestamptz default now()`);
     try {
@@ -171,7 +171,10 @@ describe("013800 — cópia do contrato por e-mail", () => {
       const outro = await signUp();
       await db.query(`update auth.users set email_confirmed_at = null where id = $1`, [outro]);
       await aceitar(outro);
-      await db.query(`update public.email_saida set created_at = now() - interval '8 days' where user_id = $1`, [outro]);
+      await db.query(`update public.email_saida set created_at = now() - interval '29 days' where user_id = $1`, [outro]);
+      expect(await servico("ch_worker_email_pegar")).toEqual([]);
+      expect((await fila(outro))[0].status).toBe("pendente");
+      await db.query(`update public.email_saida set created_at = now() - interval '31 days' where user_id = $1`, [outro]);
       expect(await servico("ch_worker_email_pegar")).toEqual([]);
       expect((await fila(outro))[0]).toMatchObject({ status: "cancelado", erro: expect.stringContaining("não confirmado") });
     } finally {
@@ -228,6 +231,18 @@ describe("013800 — caixa opcional de marketing", () => {
     // volta do Google com a caixa marcada
     const g = await signUp();
     expect(await call(g, "app_marketing_set", { p_opt_in: true, p_origin: "cadastro_google" })).toMatchObject({ opt_in: true, origin: "cadastro_google" });
+  });
+
+  it("o texto guardado no histórico é o mesmo da caixa da tela", () => {
+    const tela = ler("src/novo/app/AuthScreens.jsx").match(/export const MARKETING_TEXTO = "([^"]+)"/)![1];
+    expect(SQL[0]).toContain(`'${tela}.'`);
+  });
+
+  it("'cadastro_google' só vale na conta recém-criada (volta do Google)", async () => {
+    const velha = await signUp();
+    await db.query(`update auth.users set created_at = now() - interval '2 hours' where id = $1`, [velha]);
+    expect(await recusa(call(velha, "app_marketing_set", { p_opt_in: true, p_origin: "cadastro_google" }))).toMatch(/Escolha inválida/);
+    expect(await call(velha, "app_marketing_set", { p_opt_in: true })).toMatchObject({ opt_in: true, origin: "minha_conta" });
   });
 
   it("visitante não chama; o app não se passa por cadastro nem grava direto na tabela", async () => {
@@ -407,6 +422,39 @@ describe("013810 — conta inativa", () => {
     await chaves("inativas_avisar = false, inativas_agir = false");
   });
 
+  it("desligar o aviso cancela os que ainda não saíram; o relatório guardado não leva a lista de contas", async () => {
+    await chaves("inativas_avisar = true");
+    const p = await signUp();
+    await parada(p, "11 months 15 days");
+    await servico("ch_worker_contas_inativas");
+    expect((await fila(p)).at(-1)).toMatchObject({ kind: "aviso_inatividade", status: "pendente" });
+    await chaves("inativas_avisar = false");
+    const r = await servico("ch_worker_contas_inativas");
+    expect(r.contas.length).toBeGreaterThan(0); // a resposta traz a lista (para o dono ver)
+    expect((await fila(p)).at(-1)).toMatchObject({ status: "cancelado", erro: "Aviso de conta inativa desligado." });
+    const [log] = await linhas(`select resultado from public.app_rotinas_conta_log where rotina = 'contas_inativas' order by id desc limit 1`);
+    expect(log.resultado).not.toHaveProperty("contas");
+    expect(log.resultado).toHaveProperty("para_avisar");
+  });
+
+  it("quem virou equipe entre o aviso e o prazo não perde os Coins", async () => {
+    await chaves("inativas_avisar = true, inativas_agir = true");
+    try {
+      const vira = await signUp();
+      await db.query(`update public.subscriptions set plan = 'pro', status = 'canceled' where user_id = $1`, [vira]);
+      await db.query(`insert into public.user_gamification_stats (user_id, coins) values ($1, 30) on conflict (user_id) do update set coins = 30`, [vira]);
+      await parada(vira, "12 months");
+      await servico("ch_worker_contas_inativas");
+      await db.query(`update public.email_saida set status = 'enviado', enviado_em = now(), payload = payload || '{"prazo": "2026-01-01"}' where user_id = $1 and kind = 'aviso_inatividade'`, [vira]);
+      await db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [vira]);
+      await servico("ch_worker_contas_inativas");
+      expect((await linhas(`select coins from public.user_gamification_stats where user_id = $1`, [vira]))[0].coins).toBe(30);
+      expect((await linhas(`select situacao, detalhe from public.conta_inativa where account_id = $1`, [vira]))[0]).toEqual({ situacao: "cancelado", detalhe: "Deixou de ser aluno; os Coins não foram zerados." });
+    } finally {
+      await chaves("inativas_avisar = false, inativas_agir = false");
+    }
+  });
+
   it("aluno e visitante não rodam a rotina nem leem as chaves", async () => {
     const id = await signUp();
     expect(await recusa(call(id, "ch_worker_contas_inativas"))).toMatch(/permission denied/);
@@ -489,6 +537,11 @@ describe("desfazer e aplicar de novo", () => {
       expect((await linhas(`select to_regclass($1) as r`, [`public.${t}`]))[0].r).toBeNull();
     }
     expect((await linhas(`select count(*)::int as n from public.legal_acceptances`))[0].n).toBe(n);
+    // as provas não são apagadas: ficam guardadas com outro nome
+    const [{ log }] = await linhas(`select count(*)::int as log from public.marketing_consent_log_desfeito`);
+    expect(log).toBeGreaterThan(0);
+    expect((await linhas(`select count(*)::int as c from public.conta_inativa_desfeito`))[0].c).toBeGreaterThan(0);
+    expect((await linhas(`select count(*)::int as c from public.legal_contrato_fim_desfeito`))[0].c).toBeGreaterThan(0);
     // aceite e cadastro seguem funcionando sem as funções novas
     const id = await signUp({ terms_version: "3.0", declares_adult: "true", marketing_opt_in: "true" });
     expect(await linhas(`select 1 from public.legal_acceptances where user_id = $1`, [id])).toHaveLength(1);
@@ -498,5 +551,11 @@ describe("desfazer e aplicar de novo", () => {
     expect(await fila(outro)).toHaveLength(1);
     expect(await call(outro, "app_marketing_get")).toMatchObject({ opt_in: true });
     expect((await servico("ch_worker_contas_inativas")).modo).toBe("ensaio");
+    // a migração voltou com os índices dela (o aviso aberto continua único por conta)
+    expect(await linhas(`select 1 from pg_indexes where tablename = 'conta_inativa' and indexname = 'conta_inativa_aberta_idx'`)).toHaveLength(1);
+    // desfazer de novo, com a cópia guardada já existindo, junta as linhas
+    await db.exec(DESFAZER[1]);
+    await db.exec(DESFAZER[0]);
+    for (const s of SQL) await db.exec(s);
   });
 });
