@@ -39,6 +39,12 @@ export const ORIGIN_LABEL = {
   dupla: "Em dupla",
 };
 
+/** Quem corrigiu o treino sozinho (`source` do servidor). Sem fonte conhecida, nada é mostrado. */
+export const SOURCE_LABEL = {
+  ia: "IA",
+  autoavaliacao: "Autoavaliação",
+};
+
 export const GRADE_LABEL = {
   correct: "Adequado",
   partial: "Parcial",
