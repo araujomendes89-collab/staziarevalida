@@ -162,8 +162,11 @@ describe("Supabase — estações (2ª fase)", () => {
     const pro = await as(user(ids.carla), (tx) => rows(tx, `select station_id from public.checklist_station_contents order by 1`));
     expect(pro).toEqual([]);
 
-    const admin = await as(user(ids.admin), (tx) => rows(tx, `select id from public.checklist_stations`));
+    // os cartões do catálogo (migração 013420, sem conteúdo e pendentes) também aparecem só para a equipe: fora da conta aqui
+    const admin = await as(user(ids.admin), (tx) => rows(tx, `select id from public.checklist_stations where catalog_edition is null`));
     expect(admin).toHaveLength(3);
+    const catalogo = await as(user(ids.admin), (tx) => rows(tx, `select id from public.checklist_stations where catalog_edition is not null`));
+    expect(catalogo).toHaveLength(179);
     const adminContents = await as(user(ids.admin), (tx) => rows(tx, `select station_id from public.checklist_station_contents order by 1`));
     expect(adminContents.map((x) => x.station_id)).toEqual(["st-free", "st-pending", "st-pro"]);
   });
