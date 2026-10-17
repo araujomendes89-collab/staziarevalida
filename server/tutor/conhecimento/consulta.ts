@@ -53,14 +53,31 @@ function conta(w: string): boolean {
   return w.length >= 3 && !SO_EM_FRASE.has(w);
 }
 
-/** Termos da pergunta, na ordem, sem repetição (até `max`). */
-export function termosDaConsulta(...textos: (string | null | undefined)[]): string[] {
+/**
+ * Palavras clínicas genéricas ("tratamento", "conduta", "manejo"...): aparecem em quase todo trecho e, soltas na busca por OU,
+ * puxavam documento errado ("tratamento da malária" trazia epilepsia). Ficam só se a pergunta não tiver outra palavra.
+ */
+const GENERICAS = new Set([
+  "tratamento", "tratar", "trata", "conduta", "condutas", "manejo", "manejar", "diagnostico", "diagnosticar", "criterio", "criterios",
+  "indicar", "indicacao", "indicado", "classificar", "classificacao", "abordar", "abordagem", "fazer", "usar", "uso", "caso", "casos",
+  "adulto", "adultos", "quadro", "pacientes", "doenca", "sinais", "sintomas", "primeira", "linha", "escolha", "melhor",
+]);
+
+/** Todas as palavras que contam, na ordem, sem repetição (até 12): é a chave do cache do vetor ("conduta" e "diagnóstico" mudam o sentido). */
+function todosOsTermos(...textos: (string | null | undefined)[]): string[] {
   const out: string[] = [];
   for (const w of normalizar(textos.filter(Boolean).join(" ")).split(" ")) {
     if (conta(w) && !out.includes(w)) out.push(w);
     if (out.length >= 12) break;
   }
   return out;
+}
+
+/** Termos da busca por palavras: os da pergunta sem as genéricas (só ficam se não houver outra palavra). */
+export function termosDaConsulta(...textos: (string | null | undefined)[]): string[] {
+  const out = todosOsTermos(...textos);
+  const especificas = out.filter((w) => !GENERICAS.has(w));
+  return especificas.length ? especificas : out;
 }
 
 /**
@@ -75,8 +92,8 @@ export function tsqueryDe(...textos: (string | null | undefined)[]): string {
   for (let i = 0; i + 1 < palavras.length && frases.length < 3; i++) {
     const a = palavras[i];
     const b = palavras[i + 1];
-    const ok = (w: string) => (conta(w) && termos.includes(w)) || SO_EM_FRASE.has(w);
-    if (ok(a) && conta(b) && termos.includes(b) && a !== b) {
+    const ok = (w: string) => (conta(w) && termos.includes(w)) || SO_EM_FRASE.has(w) || GENERICAS.has(w);
+    if (ok(a) && conta(b) && (termos.includes(b) || GENERICAS.has(b)) && a !== b && !(GENERICAS.has(a) && GENERICAS.has(b))) {
       const f = `(${a} <-> ${b})`;
       if (!frases.includes(f)) frases.push(f);
     }
@@ -86,7 +103,7 @@ export function tsqueryDe(...textos: (string | null | undefined)[]): string {
 
 /** Chave do cache dos vetores de pergunta: termos normalizados, na ordem (a mesma pergunta dita de novo cai no mesmo vetor). */
 export function chaveDaConsulta(texto: string): string {
-  return termosDaConsulta(texto).join(" ");
+  return todosOsTermos(texto).join(" ");
 }
 
 export function hashDaConsulta(texto: string): string | null {

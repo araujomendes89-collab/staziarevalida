@@ -28,13 +28,17 @@ describe("consulta", () => {
     expect(termosDaConsulta("Qual a dose na crise de asma?")).toEqual(["dose", "crise", "asma"]);
     expect(termosDaConsulta("trombólise no AVC e DPOC, HIV e IAM")).toEqual(["trombolise", "avc", "dpoc", "hiv", "iam"]);
     expect(termosDaConsulta("me explica isso aí professora")).toEqual([]);
+    // genéricas ("tratamento", "conduta") saem da busca por palavras quando há palavra específica, mas não da chave do cache
+    expect(tsqueryDe("tratamento da malária por vivax")).toBe("malaria | vivax");
+    expect(termosDaConsulta("tratamento")).toEqual(["tratamento"]);
+    expect(chaveDaConsulta("conduta na asma")).not.toBe(chaveDaConsulta("diagnóstico da asma"));
   });
   it("tsquery por OU com frase das palavras vizinhas, só [a-z0-9]", () => {
     expect(tsqueryDe("crise asmática na criança")).toBe("crise | asmatica | crianca | (crise <-> asmatica)");
     expect(tsqueryDe("'; drop table x; --")).toBe("drop | table | (drop <-> table)");
     expect(tsqueryDe("")).toBe("");
     // prefixo solto ("pós-parto") só conta na frase com a palavra seguinte
-    expect(tsqueryDe("conduta na hemorragia pós-parto")).toBe("conduta | hemorragia | parto | (pos <-> parto)");
+    expect(tsqueryDe("conduta na hemorragia pós-parto")).toBe("hemorragia | parto | (pos <-> parto)");
   });
   it("hash do cache igual para a mesma pergunta dita de outro jeito", () => {
     expect(chaveDaConsulta("Tratamento da CRISE de asma?")).toBe(chaveDaConsulta("tratamento crise asma"));
