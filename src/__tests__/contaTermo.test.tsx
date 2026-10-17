@@ -111,6 +111,7 @@ describe("Minha conta: aceites", () => {
     render(<AccountScreen go={vi.fn()} />);
     openPrivacy();
     expect(screen.queryByText(/Termo de Aceite e Uso v/)).toBeNull();
-    expect(screen.getByText("Baixar meus dados")).toBeTruthy();
+    expect(screen.queryByText("Baixar meus dados")).toBeNull();
+    expect(screen.getByText(/privacidade@staziamed\.com\.br/)).toBeTruthy();
   });
 });
