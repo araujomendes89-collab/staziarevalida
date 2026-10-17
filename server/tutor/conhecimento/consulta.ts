@@ -15,7 +15,7 @@ export const SIGLAS = new Set([
   "rn", "rnpt", "pig", "gig", "aig", "apgar", "tc", "rm", "usg", "ecg", "eeg", "pcr", "rcp", "acls", "atls", "pals", "bls", "sara", "sdra",
   "cad", "eha", "ehh", "aas", "ieca", "bra", "bcc", "ains", "ibp", "tsh", "t4", "hb", "ht", "vhs", "inr", "ttpa", "pfc", "ubs", "upa", "sus",
   "samu", "caps", "esf", "nasf", "aps", "ab", "sbv", "sav", "uti", "ctg", "imc", "pa", "fc", "fr", "sat", "spo2", "glasgow", "qsofa",
-  "gota", "asma", "dose", "lues", "sifilis", "raiva", "ebv", "cmv", "vsr", "covid", "h1n1", "lpv", "mmii", "mmss",
+  "gota", "asma", "lues", "sifilis", "raiva", "ebv", "cmv", "vsr", "covid", "h1n1", "lpv", "mmii", "mmss",
 ]);
 
 /** Palavras vazias (português corrente e as da conversa com o Tutor). */
@@ -29,6 +29,13 @@ const VAZIAS = new Set([
   "tutor", "professor", "professora", "stazia", "stazi", "paciente", "questao", "questoes", "alternativa", "resposta", "certo", "certa", "errado",
   "errada", "aquilo", "coisa", "coisas", "gente", "favor", "obrigado", "obrigada", "ola", "oi", "bom", "boa", "dia", "tarde", "noite",
   "deve", "devo", "seria", "vai", "vou", "tenho", "temos", "quanto", "quanta", "quantos", "quantas", "qual", "e", "ha", "houver",
+  "mudou", "mudaram", "muda", "mudanca", "mudancas", "novidade", "novidades", "atual", "atuais", "hoje", "precisa", "precisam",
+  // fala solta da conversa: uma palavra de 5+ letras que não existe no índice conta como assunto que falta (o banco exige o assunto)
+  "direitinho", "certinho", "rapidinho", "entendi", "entender", "entendo", "ajuda", "ajudar", "ajude", "lembrar", "lembro", "lembra",
+  "esqueci", "esquecer", "estudar", "estudando", "estudei", "importante", "principal", "principais", "exemplo", "exemplos", "resumo",
+  "resumir", "resume", "detalhe", "detalhes", "jeito", "forma", "maneira", "pergunta", "perguntar", "responder", "respondi", "acho",
+  "achei", "falou", "disse", "dizendo", "falando", "mesmo", "mesma", "outra", "outro", "agora", "depois", "antes", "ainda", "tambem",
+  "assim", "nesse", "nessa", "desse", "dessa", "daquele", "daquela", "alguma", "algum", "alguns", "algumas", "porfa", "beleza", "valeu",
 ]);
 
 /** Prefixos soltos ("pós-parto" vira "pos parto"): sozinhos não dizem nada; só contam dentro da frase com a palavra seguinte. */
@@ -54,13 +61,17 @@ function conta(w: string): boolean {
 }
 
 /**
- * Palavras clínicas genéricas ("tratamento", "conduta", "manejo"...): aparecem em quase todo trecho e, soltas na busca por OU,
- * puxavam documento errado ("tratamento da malária" trazia epilepsia). Ficam só se a pergunta não tiver outra palavra.
+ * Palavras clínicas genéricas ("tratamento", "conduta", "dose", "grave"...): aparecem em quase todo trecho e, soltas na busca por OU,
+ * puxavam documento errado ("dose de adrenalina" trazia "dose zero" do calendário de vacinação). Ficam só se a pergunta não tiver
+ * outra palavra. A INTENÇÃO não se perde: o banco sobe, entre os trechos do assunto, os que falam de tratamento/dose/conduta ou de
+ * diagnóstico/critério (ch_worker_tutor_kb_buscar, v_intencao), sem que a palavra genérica sozinha traga trecho de outro assunto.
  */
 const GENERICAS = new Set([
   "tratamento", "tratar", "trata", "conduta", "condutas", "manejo", "manejar", "diagnostico", "diagnosticar", "criterio", "criterios",
   "indicar", "indicacao", "indicado", "classificar", "classificacao", "abordar", "abordagem", "fazer", "usar", "uso", "caso", "casos",
   "adulto", "adultos", "quadro", "pacientes", "doenca", "sinais", "sintomas", "primeira", "linha", "escolha", "melhor",
+  "dose", "doses", "grave", "graves", "novo", "nova", "novos", "novas", "diretriz", "diretrizes", "protocolo", "protocolos", "aula", "aulas",
+  "atualizacao", "atualizacoes", "recomendacao", "recomendacoes", "orientacao", "candidato", "estacao",
 ]);
 
 /** Todas as palavras que contam, na ordem, sem repetição (até 12): é a chave do cache do vetor ("conduta" e "diagnóstico" mudam o sentido). */

@@ -29,6 +29,8 @@ export interface Relato {
   vetores: { copiados: number; gerados: number; tokens: number; custoUsd: number; erros: string[] };
   rotulos: { gerados: number; erros: string[] };
   limpeza: Record<string, number> | null;
+  /** vetores por tipo; "completa" liga a soma de palavras + significado na busca */
+  cobertura?: { completa: boolean; por_tipo: Record<string, { trechos: number; com_vetor: number }> } | null;
   ms: number;
 }
 
@@ -247,6 +249,8 @@ export async function sincronizar(db: Db, o: OpcoesIndexador = {}): Promise<Rela
   }
 
   rel.limpeza = await db.service<Record<string, number>>("ch_worker_tutor_kb_limpar", { p_mapas: mapas.map((m) => String(m.origem_id)) });
+  rel.cobertura = await db.service<Relato["cobertura"]>("ch_worker_tutor_kb_cobertura", { p_model: modelo });
+  log(`[conhecimento] cobertura dos vetores: ${rel.cobertura?.completa ? "completa (soma palavras + significado)" : "incompleta (cada trecho vale pela melhor posição)"}`);
   rel.ms = Date.now() - t0;
   return rel;
 }

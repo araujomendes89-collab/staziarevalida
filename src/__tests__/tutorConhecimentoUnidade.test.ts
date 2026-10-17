@@ -10,12 +10,12 @@ import type { AddressInfo } from "node:net";
 import { chaveDaConsulta, hashDaConsulta, termosDaConsulta, tsqueryDe } from "../../server/tutor/conhecimento/consulta";
 import { limparTexto } from "../../server/tutor/conhecimento/limpeza";
 import { dividir, MAX, TETO, trechosDe } from "../../server/tutor/conhecimento/pedacos";
-import { buscarConhecimento, buscarOuReserva, paraFerramenta, recortar, RECORTE } from "../../server/tutor/conhecimento/buscar";
+import { _zerarMemoriaDoIndice, buscarConhecimento, buscarOuReserva, indiceAusenteAgora, paraFerramenta, recortar, RECORTE, vetorEmParalelo } from "../../server/tutor/conhecimento/buscar";
 import { blocoMaterial } from "../../server/tutor/conhecimento/pacote";
 import { CABECALHO_ASSINATURA, conferirCorpo, corpoAssinado, NoncesConhecimento } from "../../server/tutor/conhecimento/assinatura";
-import { CacheLRU, urlHttpDaPonte, urlVertexEmbed, VetorDaPonte, vetorPelaPonte } from "../../server/tutor/conhecimento/vetorPergunta";
+import { _zerarPausaDoApp, CacheLRU, urlHttpDaPonte, urlVertexEmbed, VetorDaPonte, vetorPelaPonte } from "../../server/tutor/conhecimento/vetorPergunta";
 import { rotasConhecimentoPonte } from "../../server/tutor/conhecimento/rotaPonte";
-import { criarConhecimentoPonte } from "../../server/vozPonte/conhecimento";
+import { criarConhecimentoPonte, NOTA_SEM_CONFIRMAR } from "../../server/vozPonte/conhecimento";
 import { montarOrigem } from "../../server/tutor/conhecimento/indexador";
 
 const SEG = "s".repeat(48);
@@ -24,8 +24,14 @@ const U = "22222222-2222-4222-8222-222222222222";
 const v768 = (x = 1) => Array.from({ length: 768 }, (_, i) => (i === 0 ? x : 0));
 
 describe("consulta", () => {
-  it("palavras curtas e siglas ficam: asma, AVC, DPOC, HIV, IAM, dose", () => {
-    expect(termosDaConsulta("Qual a dose na crise de asma?")).toEqual(["dose", "crise", "asma"]);
+  it("palavras curtas e siglas ficam: asma, AVC, DPOC, HIV, IAM; 'dose', 'grave', 'caso' e 'novo' são genéricas", () => {
+    expect(termosDaConsulta("Qual a dose na crise de asma?")).toEqual(["crise", "asma"]);
+    expect(termosDaConsulta("qual a dose?")).toEqual(["dose"]); // sozinha, fica
+    // revisão de 17/10: "dose" puxava "dose zero" do calendário vacinal; "caso novo" tirava o esquema da tuberculose do topo
+    expect(tsqueryDe("qual a dose de adrenalina na anafilaxia")).toBe("adrenalina | anafilaxia");
+    expect(tsqueryDe("qual o tratamento da tuberculose pulmonar em caso novo")).toBe("tuberculose | pulmonar | (tuberculose <-> pulmonar)");
+    expect(tsqueryDe("conduta na pré-eclâmpsia grave e dose do sulfato de magnésio")).toBe("eclampsia | sulfato | magnesio | (pre <-> eclampsia) | (eclampsia <-> grave)");
+    expect(termosDaConsulta("o que mudou na diretriz de rastreamento do câncer de mama")).toEqual(["rastreamento", "cancer", "mama"]);
     expect(termosDaConsulta("trombólise no AVC e DPOC, HIV e IAM")).toEqual(["trombolise", "avc", "dpoc", "hiv", "iam"]);
     expect(termosDaConsulta("me explica isso aí professora")).toEqual([]);
     // genéricas ("tratamento", "conduta") saem da busca por palavras quando há palavra específica, mas não da chave do cache
@@ -110,14 +116,29 @@ describe("recorte e formato da ferramenta", () => {
     const r = await buscarConhecimento({ db }, { userId: U, sessionId: VC, pergunta: "adrenalina", via: "texto" });
     expect(r.trechos.map((t) => t.titulo)).toEqual(["Protocolo"]);
     expect(r.trechos[0].ref).toBe("C1");
-    const quebrado = { service: vi.fn(async () => { throw new Error("function public.ch_worker_tutor_kb_buscar does not exist"); }) };
-    expect(await buscarConhecimento({ db: quebrado }, { userId: U, pergunta: "adrenalina", via: "texto" })).toMatchObject({ ok: false, motivo: "erro", trechos: [] });
+    _zerarMemoriaDoIndice();
+    const caiu = { service: vi.fn(async () => { throw new Error("connection terminated"); }) };
+    expect(await buscarConhecimento({ db: caiu }, { userId: U, pergunta: "adrenalina", via: "texto" })).toMatchObject({ ok: false, motivo: "erro", trechos: [] });
+    const quebrado = { service: vi.fn(async () => { throw new Error("function public.ch_worker_tutor_kb_buscar(p_user => uuid) does not exist"); }) };
+    expect(await buscarConhecimento({ db: quebrado }, { userId: U, pergunta: "adrenalina", via: "texto" })).toMatchObject({ ok: false, motivo: "sem_funcao", trechos: [] });
     const reserva = vi.fn(async () => [{ source: "Antiga", organ: "MS", version: null, page: 1, section: null, text: "t" }]);
+    // erro passageiro: a reserva entra, mas sem memória (a próxima tenta a busca nova de novo)
+    expect((await buscarOuReserva({ db: caiu }, { userId: U, pergunta: "adrenalina", via: "texto" }, reserva)).passagens).toEqual([expect.objectContaining({ source: "Antiga" })]);
+    expect(indiceAusenteAgora()).toBe(false);
     expect((await buscarOuReserva({ db: quebrado }, { userId: U, pergunta: "adrenalina", via: "texto" }, reserva)).passagens).toEqual([expect.objectContaining({ source: "Antiga" })]);
+    // função ausente: por 5 minutos vai direto à busca antiga, sem chamar o banco nem pedir vetor (site publicado antes da migração)
+    expect(indiceAusenteAgora()).toBe(true);
+    const chamadas = quebrado.service.mock.calls.length;
+    await buscarOuReserva({ db: quebrado }, { userId: U, pergunta: "sepse", via: "texto", vetor: "ponte" }, reserva);
+    expect(quebrado.service.mock.calls.length).toBe(chamadas);
+    expect(indiceAusenteAgora(Date.now() + 5 * 60_000 + 1)).toBe(false);
+    _zerarMemoriaDoIndice();
     // índice ainda vazio (indexador nunca rodou): a busca de antes entra
     const vazio = { service: vi.fn(async (fn: string) => (fn === "ch_worker_complementar_terms" ? [] : { ok: true, vetor: "nenhum", trechos: [], indice: false })) };
     expect(await buscarConhecimento({ db: vazio }, { userId: U, pergunta: "adrenalina", via: "texto" })).toMatchObject({ ok: false, motivo: "sem_indice" });
     expect((await buscarOuReserva({ db: vazio }, { userId: U, pergunta: "adrenalina", via: "texto" }, reserva)).resultado).toBeNull();
+    expect(indiceAusenteAgora()).toBe(true); // índice vazio também fica guardado
+    _zerarMemoriaDoIndice();
     const recusa = { service: vi.fn(async () => { throw new Error("Conversa não encontrada."); }) };
     await expect(buscarConhecimento({ db: recusa }, { userId: U, pergunta: "adrenalina", via: "texto" })).rejects.toThrow(/Conversa não encontrada/);
   });
@@ -171,8 +192,30 @@ describe("vetor da pergunta", () => {
     expect(await g3.vetor("choque")).toBeNull();
     expect(cota).toHaveBeenCalledTimes(1); // pausa depois do 429
   });
+  it("app: desligado por padrão (só com TUTOR_CONHECIMENTO_VETOR=1); ponte antiga (404) ou fria: para de pedir por um tempo", async () => {
+    _zerarPausaDoApp();
+    const semFlag = vi.fn();
+    expect(await vetorPelaPonte("asma grave", { VOZ_PONTE_URL: "wss://ponte.run.app/ponte", VOZ_PONTE_SEGREDO: SEG } as never, { fetchFn: semFlag as never })).toBeNull();
+    expect(await vetorEmParalelo("asma grave", { VOZ_PONTE_URL: "wss://ponte.run.app/ponte", VOZ_PONTE_SEGREDO: SEG } as never)).toBeNull();
+    expect(semFlag).not.toHaveBeenCalled();
+    const env = { VOZ_PONTE_URL: "wss://ponte.run.app/ponte", VOZ_PONTE_SEGREDO: SEG, TUTOR_CONHECIMENTO_VETOR: "1" } as never;
+    let agora = 1_000_000;
+    const antiga = vi.fn(async () => new Response("não existe", { status: 404 }));
+    expect(await vetorPelaPonte("dengue grave", env, { fetchFn: antiga as never, agora: () => agora })).toBeNull();
+    expect(await vetorPelaPonte("dengue grupo c", env, { fetchFn: antiga as never, agora: () => agora })).toBeNull();
+    expect(antiga).toHaveBeenCalledTimes(1); // 10 minutos sem pedir
+    agora += 10 * 60_000 + 1;
+    const fria = vi.fn(async (_u: string, init: RequestInit) => new Promise<Response>((_ok, erro) => init.signal?.addEventListener("abort", () => erro(new DOMException("timeout", "TimeoutError")))));
+    const t0 = Date.now();
+    expect(await vetorPelaPonte("sepse", env, { fetchFn: fria as never, prazoMs: 30, agora: () => agora })).toBeNull();
+    expect(Date.now() - t0).toBeLessThan(1000);
+    expect(await vetorPelaPonte("choque", env, { fetchFn: fria as never, prazoMs: 30, agora: () => agora })).toBeNull();
+    expect(fria).toHaveBeenCalledTimes(1); // 2 minutos sem pedir
+    _zerarPausaDoApp();
+  });
   it("app: pede à ponte assinado; sem ponte configurada não pede nada", async () => {
-    const env = { VOZ_PONTE_URL: "wss://ponte.run.app/ponte", VOZ_PONTE_SEGREDO: SEG } as never;
+    _zerarPausaDoApp();
+    const env = { VOZ_PONTE_URL: "wss://ponte.run.app/ponte", VOZ_PONTE_SEGREDO: SEG, TUTOR_CONHECIMENTO_VETOR: "1" } as never;
     const f = vi.fn(async (url: string, init: RequestInit) => {
       expect(url).toBe("https://ponte.run.app/vetor");
       const c = conferirCorpo<{ texto: string }>(String(init.body), String((init.headers as Record<string, string>)[CABECALHO_ASSINATURA]), SEG, new NoncesConhecimento());
@@ -233,5 +276,17 @@ describe("ponte → app (rota assinada) e a busca de dentro da ponte", () => {
     const k = criarConhecimentoPonte({ appUrl: "http://127.0.0.1:9", segredo: SEG, projeto: "p", tokenGoogle: async () => "tok", fetchFn: (async () => { throw new Error("recusado"); }) as never, vetores: new VetorDaPonte({ projeto: "p", tokenGoogle: async () => "tok", fetchFn: (async () => new Response("{}", { status: 500 })) as never }) });
     const r = await k.buscar({ vc: VC, u: U }, { topic: "sepse" });
     expect(r.response).toMatchObject({ passages: [], note: expect.stringMatching(/não cite número/) });
+    expect(k.medidas).toMatchObject({ buscas: 1, erros: 1, prazoEstourado: 0 });
+  });
+  it("app lento (Vercel fria, banco lento): a ponte não espera mais que o prazo e responde 'não confirmei' ao Google", async () => {
+    const lento = vi.fn(async (_u: string, init: RequestInit) => new Promise<Response>((_ok, erro) => init.signal?.addEventListener("abort", () => erro(new DOMException("timeout", "TimeoutError")))));
+    const log = vi.fn();
+    const k = criarConhecimentoPonte({ appUrl: "https://app.exemplo", segredo: SEG, projeto: "p", tokenGoogle: async () => "tok", fetchFn: lento as never, prazoAppMs: 80, log,
+      vetores: new VetorDaPonte({ projeto: "p", tokenGoogle: async () => "tok", fetchFn: (async () => new Response("{}", { status: 500 })) as never }) });
+    const r = await k.buscar({ vc: VC, u: U }, { pergunta: "dose na pré-eclâmpsia" });
+    expect(r.ms).toBeLessThan(1000);
+    expect(r.response).toEqual({ passages: [], note: NOTA_SEM_CONFIRMAR });
+    expect(k.medidas.prazoEstourado).toBe(1);
+    expect(log).toHaveBeenCalledWith(expect.objectContaining({ ponte: "conhecimento_prazo", prazoEstourado: 1 }));
   });
 });

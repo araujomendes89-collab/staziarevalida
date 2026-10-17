@@ -2,9 +2,12 @@
  * CÉREBRO DO TUTOR — vetor da pergunta do aluno (gemini-embedding-2, 768 dimensões, o mesmo modelo dos vetores do índice).
  *
  *  - Na PONTE de voz (Cloud Run): `VetorDaPonte` gera pelo Vertex AI com a conta de serviço que a ponte já tem (a mesma do Live), na
- *    multirregião "us", com cache em memória (LRU, 5 mil perguntas, 24 h) e PRAZO (padrão 400 ms): passou disso, a busca segue só por
+ *    multirregião "us", com cache em memória (LRU, 5 mil perguntas, 24 h) e PRAZO (padrão 250 ms): passou disso, a busca segue só por
  *    palavras (o vetor que chegar depois ainda entra no cache, para a próxima vez).
- *  - No APP (Vercel, sem conta de serviço do Google): `vetorPelaPonte` pede à ponte (POST /vetor, assinado), com o mesmo prazo.
+ *  - No APP (Vercel, sem conta de serviço do Google): `vetorPelaPonte` pede à ponte (POST /vetor, assinado), com prazo. DESLIGADO por
+ *    padrão: só com TUTOR_CONHECIMENTO_VETOR=1, que se liga DEPOIS de a ponte nova estar no ar (a de hoje responde 404 em /vetor e
+ *    cada turno pagaria a espera à toa). Depois de 404/401/403 para de pedir por 10 minutos; depois de prazo estourado ou erro de rede,
+ *    por 2 minutos (ponte fria ou fora do ar).
  * O formato do texto é o mesmo de contentHub/embeddings.ts (embedQuery): "task: search result | query: …", e o vetor é normalizado.
  * Arquivo sem dependência pesada: também vai no pacote da ponte.
  */
@@ -14,7 +17,7 @@ import type { VetorConsulta } from "./tipos";
 
 export const MODELO_VETOR = "gemini-embedding-2";
 export const DIMENSOES = 768;
-export const PRAZO_VETOR_MS = 400;
+export const PRAZO_VETOR_MS = 250;
 
 /** LRU simples por ordem de inserção do Map. */
 export class CacheLRU<V> {
@@ -121,30 +124,39 @@ export function urlHttpDaPonte(wss: string | null | undefined): string | null {
 }
 
 const cacheApp = new CacheLRU<number[]>(2000, 6 * 3600_000);
+let pausaAppAte = 0;
+/** Testes. */
+export function _zerarPausaDoApp() { pausaAppAte = 0; }
 /**
- * App (Tutor por texto, reserva OpenAI): pede o vetor à ponte, com prazo. Sem ponte configurada, sem resposta no prazo ou com erro:
- * null (a busca segue por palavras). Nunca lança.
+ * App (Tutor por texto, reserva OpenAI, GPT-Live/Nexus): pede o vetor à ponte, com prazo. Só com TUTOR_CONHECIMENTO_VETOR=1; sem
+ * ponte configurada, em pausa, sem resposta no prazo ou com erro: null (a busca segue por palavras). Nunca lança.
  */
-export async function vetorPelaPonte(texto: string, env: NodeJS.ProcessEnv = process.env, o: { prazoMs?: number; fetchFn?: typeof fetch } = {}): Promise<VetorConsulta | null> {
+export async function vetorPelaPonte(texto: string, env: NodeJS.ProcessEnv = process.env, o: { prazoMs?: number; fetchFn?: typeof fetch; agora?: () => number } = {}): Promise<VetorConsulta | null> {
+  if (env.TUTOR_CONHECIMENTO_VETOR !== "1") return null;
   const chave = chaveDaConsulta(texto);
   if (!chave) return null;
   const emCache = cacheApp.get(chave);
   if (emCache) return { model: MODELO_VETOR, values: emCache };
+  const agora = o.agora ?? Date.now;
+  if (agora() < pausaAppAte) return null;
   const base = urlHttpDaPonte(env.VOZ_PONTE_URL);
   const segredo = (env.VOZ_PONTE_SEGREDO ?? "").trim();
-  if (!base || segredo.length < 32 || env.TUTOR_CONHECIMENTO_VETOR === "0") return null;
+  if (!base || segredo.length < 32) return null;
   try {
     const { corpo, assinatura } = corpoAssinado({ texto: texto.slice(0, 2000) }, segredo);
-    const prazo = o.prazoMs ?? PRAZO_VETOR_MS + 250; // a ida até a ponte soma ao prazo dela
+    const prazo = o.prazoMs ?? PRAZO_VETOR_MS + 150; // a ida até a ponte soma ao prazo dela
     const r = await (o.fetchFn ?? fetch)(`${base}/vetor`, {
       method: "POST", headers: { "Content-Type": "application/json", [CABECALHO_ASSINATURA]: assinatura }, body: corpo, signal: AbortSignal.timeout(prazo),
     });
-    if (!r.ok) return null;
+    // ponte antiga (sem /vetor) ou segredo diferente: para de pedir por 10 minutos
+    if ([401, 403, 404, 405].includes(r.status)) { pausaAppAte = agora() + 10 * 60_000; return null; }
+    if (!r.ok) return null; // 204: a ponte não conseguiu no prazo dela (o vetor entra no cache dela para a próxima)
     const j = (await r.json()) as { model?: string; values?: number[] } | null;
     if (!j || !Array.isArray(j.values) || j.values.length !== DIMENSOES || typeof j.model !== "string") return null;
     cacheApp.set(chave, j.values);
     return { model: j.model, values: j.values };
   } catch {
+    pausaAppAte = agora() + 2 * 60_000; // prazo estourado ou rede: ponte fria ou fora do ar
     return null;
   }
 }

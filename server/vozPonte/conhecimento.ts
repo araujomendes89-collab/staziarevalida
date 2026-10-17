@@ -4,15 +4,17 @@
  * Quando o Google pede `get_topic_context`, a ponte NÃO repassa ao navegador (antes: Google → ponte → celular do aluno → Vercel → banco
  * → celular → ponte → Google). Ela:
  *   1. avisa o navegador {t:"buscando"} (o celular toca uma frase curta pré-gravada na voz do personagem, se houver);
- *   2. gera o vetor da pergunta com a conta de serviço que já tem (Vertex "us", cache em memória, prazo de 400 ms; passou: só palavras);
- *   3. chama o app, assinado (POST {app}/api/tutor/voz/conhecimento), com vc e u do BILHETE (o navegador não escolhe aluno nem ligação);
+ *   2. gera o vetor da pergunta com a conta de serviço que já tem (Vertex "us", cache em memória, prazo de 250 ms; passou: só palavras);
+ *   3. chama o app, assinado (POST {app}/api/tutor/voz/conhecimento), com vc e u do BILHETE (o navegador não escolhe aluno nem ligação),
+ *      com PRAZO de 1,5 s (VOZ_PONTE_CONHECIMENTO_PRAZO_MS): passou, responde logo ao Google "não confirmei, não cite número" (o
+ *      professor não fica mudo esperando a Vercel fria ou o banco lento) e conta no log quantas vezes estourou;
  *   4. devolve o toolResponse ao Google e manda ao navegador só {t:"fontes", rotulos:[citações]} (o texto da busca não passa por ele).
  * Depois de repassar a resposta de `next_question`, pede o material novo do tema (POST /api/tutor/voz/pacote) e troca só o material
  * nas instruções da sessão (contextUpdate.systemInstruction: medido 0,85 a 0,98 s de 1º áudio com 20 mil tokens).
  * Também atende POST /vetor (assinado) para o Tutor por texto, que roda no site sem conta de serviço do Google.
  *
  * Ambiente da ponte: VOZ_PONTE_APP_URL (ex.: https://app.staziamed.com.br; sem ela, tudo segue como antes, pelo navegador),
- * VOZ_PONTE_VETOR_LOCAL (padrão "us"), VOZ_PONTE_VETOR_PRAZO_MS (padrão 400).
+ * VOZ_PONTE_VETOR_LOCAL (padrão "us"), VOZ_PONTE_VETOR_PRAZO_MS (padrão 250), VOZ_PONTE_CONHECIMENTO_PRAZO_MS (padrão 1500).
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { CABECALHO_ASSINATURA, conferirCorpo, corpoAssinado, NoncesConhecimento } from "../tutor/conhecimento/assinatura";
@@ -30,7 +32,13 @@ export interface ConhecimentoPonte {
   /** POST /vetor (app → ponte): devolve true se tratou o pedido */
   atenderHttp(req: IncomingMessage, res: ServerResponse): boolean;
   vetores: VetorDaPonte;
+  /** contagem desta instância: buscas, prazo do app estourado, outros erros */
+  medidas: { buscas: number; prazoEstourado: number; erros: number };
 }
+
+export const PRAZO_APP_MS = 1500;
+export const NOTA_SEM_CONFIRMAR =
+  "Não consegui confirmar no material aprovado agora. Diga que não confirmou e não cite número, dose, corte ou diretriz; se o aluno quiser, tente de novo daqui a pouco.";
 
 export interface OpcoesConhecimentoPonte {
   appUrl: string;
@@ -39,6 +47,8 @@ export interface OpcoesConhecimentoPonte {
   tokenGoogle: () => Promise<string>;
   local?: string;
   prazoVetorMs?: number;
+  /** prazo da chamada ao app (padrão 1500 ms) */
+  prazoAppMs?: number;
   fetchFn?: typeof fetch;
   log?: (o: Record<string, unknown>) => void;
   /** testes: troca o gerador de vetores */
@@ -65,20 +75,28 @@ export function criarConhecimentoPonte(o: OpcoesConhecimentoPonte): Conhecimento
     return (await r.json()) as Record<string, unknown>;
   };
 
+  const medidas = { buscas: 0, prazoEstourado: 0, erros: 0 };
+  const prazoApp = o.prazoAppMs ?? PRAZO_APP_MS;
+
   return {
     vetores,
+    medidas,
     intercepta: (nome) => nome === FERRAMENTA_CONHECIMENTO,
     async buscar(id, args) {
       const t0 = Date.now();
+      medidas.buscas++;
       const consulta = String(args.pergunta ?? args.topic ?? args.query ?? "").slice(0, 2000);
       try {
         const vetor = consulta ? await vetores.vetor(consulta) : null;
-        const j = await postar("/api/tutor/voz/conhecimento", { vc: id.vc, u: id.u, consulta, vetor }, 6000);
+        // o prazo do app conta a partir de agora (o do vetor já tem o dele)
+        const j = await postar("/api/tutor/voz/conhecimento", { vc: id.vc, u: id.u, consulta, vetor }, prazoApp);
         const response = j.output && typeof j.output === "object" ? (j.output as Record<string, unknown>) : { error: "Não consegui consultar isso agora." };
         return { response, rotulos: Array.isArray(j.rotulos) ? (j.rotulos as unknown[]).map(String).slice(0, 8) : [], ms: Date.now() - t0, vetor: String(j.vetor ?? (vetor ? "recebido" : "nenhum")) };
       } catch (e) {
-        o.log?.({ ponte: "conhecimento_falhou", vc: id.vc, erro: String(e).slice(0, 120) });
-        return { response: { passages: [], note: "Não consegui consultar o material aprovado agora. Diga que não confirmou e não cite número, dose ou diretriz." }, rotulos: [], ms: Date.now() - t0, vetor: "nenhum" };
+        const prazo = (e as Error)?.name === "TimeoutError" || /timeout|aborted/i.test(String(e));
+        if (prazo) medidas.prazoEstourado++; else medidas.erros++;
+        o.log?.({ ponte: prazo ? "conhecimento_prazo" : "conhecimento_falhou", vc: id.vc, ms: Date.now() - t0, prazo_ms: prazoApp, ...medidas, erro: String(e).slice(0, 120) });
+        return { response: { passages: [], note: NOTA_SEM_CONFIRMAR }, rotulos: [], ms: Date.now() - t0, vetor: "nenhum" };
       }
     },
     async pacote(id) {
@@ -114,5 +132,10 @@ export function conhecimentoDoAmbiente(env: NodeJS.ProcessEnv, base: { segredo: 
   const appUrl = (env.VOZ_PONTE_APP_URL ?? "").trim();
   if (!/^https?:\/\/[^\s]+$/.test(appUrl)) return null;
   const prazo = Number(env.VOZ_PONTE_VETOR_PRAZO_MS);
-  return criarConhecimentoPonte({ ...base, appUrl, local: (env.VOZ_PONTE_VETOR_LOCAL ?? "us").trim() || "us", prazoVetorMs: Number.isFinite(prazo) && prazo > 0 ? prazo : undefined });
+  const prazoApp = Number(env.VOZ_PONTE_CONHECIMENTO_PRAZO_MS);
+  return criarConhecimentoPonte({
+    ...base, appUrl, local: (env.VOZ_PONTE_VETOR_LOCAL ?? "us").trim() || "us",
+    prazoVetorMs: Number.isFinite(prazo) && prazo > 0 ? prazo : undefined,
+    prazoAppMs: Number.isFinite(prazoApp) && prazoApp >= 300 ? prazoApp : undefined,
+  });
 }

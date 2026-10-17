@@ -15,6 +15,7 @@ import { hashDaConsulta, normalizar, termosDaConsulta, tsqueryDe } from "./consu
 import type { ResultadoBusca, TrechoEntregue, VetorConsulta } from "./tipos";
 
 export const RECORTE = 600;
+const SEM_FUNCAO = /ch_worker_tutor_kb_buscar.*(does not exist|não existe)|Could not find the function|PGRST202|^42883$/i;
 
 export interface PedidoBusca {
   userId: string;
@@ -77,6 +78,8 @@ export async function buscarConhecimento(deps: Deps, p: PedidoBusca): Promise<Re
     const msg = (error as Error).message ?? "";
     // conversa de outro aluno, ligação encerrada: o chamador decide (sobe)
     if (/Conversa não encontrada|conversa por voz foi encerrada/i.test(msg)) throw error;
+    // migração 013620 ainda não aplicada: a função não existe (Postgres 42883; PostgREST PGRST202)
+    if (SEM_FUNCAO.test(msg) || SEM_FUNCAO.test(String((error as { code?: string }).code ?? ""))) return { ok: false, trechos: [], vetor: "nenhum", motivo: "sem_funcao" };
     deps.log?.(`[tutor] busca de conhecimento falhou: ${msg.slice(0, 200)}`);
     return { ok: false, trechos: [], vetor: "nenhum", motivo: "erro" };
   }
@@ -117,18 +120,40 @@ export function comoPassages(r: ResultadoBusca): PassagemComCitacao[] {
 }
 
 /**
- * Para as ligações (engine.ts, tools.ts): a busca nova; se ela não existir no banco ainda (migração 013620 não aplicada) ou falhar,
- * a busca antiga (`reserva`, só fontes oficiais por palavras), para o Tutor não ficar sem fonte nenhuma durante a troca.
- * Vetor: o que vier no pedido ou, com `vetor` = "ponte", pedido à ponte com prazo (sem ponte: só palavras).
+ * Para as ligações (engine.ts, tools.ts, rotaPonte.ts): a busca nova; se ela não existir no banco ainda (migração 013620 não
+ * aplicada), se o índice estiver vazio (indexador nunca rodou) ou se falhar, a busca antiga (`reserva`, só fontes oficiais por
+ * palavras), para o Tutor não ficar sem fonte nenhuma durante a troca.
+ *
+ * Sem custo na TRANSIÇÃO (site publicado antes da migração, do indexador ou da ponte nova): "sem função" ou "sem índice" fica
+ * guardado por 5 minutos nesta instância e, nesse tempo, vai direto para a busca antiga, sem pedir vetor nem chamar a função que falta.
+ * Vetor: o que vier no pedido, uma promessa já começada (vetorEmParalelo, pedida junto com o resto do turno) ou, com "ponte", pedido
+ * agora à ponte (só com TUTOR_CONHECIMENTO_VETOR=1; senão, só palavras).
  */
-export async function buscarOuReserva<T>(deps: Deps, p: Omit<PedidoBusca, "vetor"> & { vetor?: VetorConsulta | null | "ponte" }, reserva: () => Promise<T[]>): Promise<{ resultado: ResultadoBusca | null; passagens: (PassagemComCitacao | T)[] }> {
+export const ESPERA_SEM_INDICE_MS = 5 * 60_000;
+let semIndiceAte = 0;
+/** Testes. */
+export function _zerarMemoriaDoIndice() { semIndiceAte = 0; }
+export const indiceAusenteAgora = (agora = Date.now()) => agora < semIndiceAte;
+
+/** Começa a pedir o vetor da pergunta JÁ (em paralelo com o resto do turno). Nunca rejeita; null quando não há o que pedir. */
+export function vetorEmParalelo(pergunta: string, env: NodeJS.ProcessEnv = process.env): Promise<VetorConsulta | null> {
+  if (indiceAusenteAgora() || env.TUTOR_CONHECIMENTO_VETOR !== "1") return Promise.resolve(null);
+  return import("./vetorPergunta").then((m) => m.vetorPelaPonte(pergunta, env)).catch(() => null);
+}
+
+export async function buscarOuReserva<T>(
+  deps: Deps,
+  p: Omit<PedidoBusca, "vetor"> & { vetor?: VetorConsulta | null | "ponte" | Promise<VetorConsulta | null> },
+  reserva: () => Promise<T[]>,
+): Promise<{ resultado: ResultadoBusca | null; passagens: (PassagemComCitacao | T)[] }> {
+  if (indiceAusenteAgora()) return { resultado: null, passagens: await reserva() };
   let vetor: VetorConsulta | null = null;
-  if (p.vetor === "ponte") {
-    const { vetorPelaPonte } = await import("./vetorPergunta");
-    vetor = await vetorPelaPonte(p.pergunta);
-  } else vetor = p.vetor ?? null;
+  if (p.vetor === "ponte") vetor = await vetorEmParalelo(p.pergunta);
+  else if (p.vetor && typeof (p.vetor as Promise<unknown>).then === "function") vetor = await (p.vetor as Promise<VetorConsulta | null>).catch(() => null);
+  else vetor = (p.vetor as VetorConsulta | null | undefined) ?? null;
   const r = await buscarConhecimento(deps, { ...p, vetor });
-  if (!r.ok && (r.motivo === "erro" || r.motivo === "sem_indice")) return { resultado: null, passagens: await reserva() };
+  if (!r.ok && (r.motivo === "sem_funcao" || r.motivo === "sem_indice")) semIndiceAte = Date.now() + ESPERA_SEM_INDICE_MS;
+  if (!r.ok && (r.motivo === "erro" || r.motivo === "sem_indice" || r.motivo === "sem_funcao")) return { resultado: null, passagens: await reserva() };
   return { resultado: r, passagens: comoPassages(r) };
 }
 
