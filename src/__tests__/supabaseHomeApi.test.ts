@@ -207,6 +207,13 @@ describe("Plano de hoje — dias seguintes", () => {
     expect(task.minutes).toBe(40);
     expect(plan.tasks.some((t: any) => t.kind === "revisar")).toBe(false);
 
+    // opções novas do "Personalizar plano" (17/10/2026): o Plano de hoje usa a mesma regra de daily_question_target
+    for (const [minutos, questoes] of [[15, 5], [45, 15], [90, 25], [240, 65], [300, 80]]) {
+      await rpc(ANA, "app_update_profile", { p_patch: { daily_minutes: minutos } });
+      plan = await rpc(ANA, "app_today", { p_rebuild: true });
+      expect(plan.tasks[0]).toMatchObject({ target: questoes, minutes: questoes * 2 });
+    }
+
     await rpc(ANA, "app_update_profile", { p_patch: { daily_minutes: 30 } });
     plan = await rpc(ANA, "app_today", { p_rebuild: true });
     expect(plan.tasks[0]).toMatchObject({ target: 10, minutes: 20 });

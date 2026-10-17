@@ -92,8 +92,9 @@ describe("Planejamento", () => {
   });
 
   it("a meta diária segue as faixas de tempo de estudo", async () => {
-    const r = await db.query<any>(`select array[public.daily_question_target(null), public.daily_question_target(30), public.daily_question_target(60),
-                                                public.daily_question_target(120), public.daily_question_target(180)] as t`);
-    expect(r.rows[0].t).toEqual([20, 10, 20, 30, 50]);
+    // degraus que já existiam (30 = 10, 60 = 20, 120 = 30, 180 = 50) ficam iguais; os novos (15, 45, 90, 240, 300) completam a escada
+    const tempos = [null, 15, 30, 45, 60, 90, 120, 180, 240, 300, 600];
+    const r = await db.query<any>(`select array[${tempos.map((m) => `public.daily_question_target(${m})`).join(", ")}] as t`);
+    expect(r.rows[0].t).toEqual([20, 5, 10, 15, 20, 25, 30, 50, 65, 80, 80]);
   });
 });

@@ -50,10 +50,15 @@ const THEMES = [
 ];
 const MINUTES = [
   { value: "", label: "Não definido" },
+  { value: "15", label: "15 min por dia" },
   { value: "30", label: "30 min por dia" },
+  { value: "45", label: "45 min por dia" },
   { value: "60", label: "1 h por dia" },
+  { value: "90", label: "1 h 30 por dia" },
   { value: "120", label: "2 h por dia" },
-  { value: "180", label: "3 h ou mais por dia" },
+  { value: "180", label: "3 h por dia" },
+  { value: "240", label: "4 h por dia" },
+  { value: "300", label: "5 h ou mais por dia" },
 ];
 // Data e hora do aceite sempre no fuso de Brasília, qualquer que seja o deslocamento do texto que o banco devolve.
 const dateTimeBR = (iso) => {

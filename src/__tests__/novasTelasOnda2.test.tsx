@@ -199,8 +199,11 @@ describe("Plano de Hoje", () => {
     rpcs({ app_today: (args: any) => (args?.p_rebuild ? { ...PLAN, rebuilt: true } : PLAN) });
     render(<MemoryRouter initialEntries={["/hoje?ajustar=1"]}><TodayPlan go={vi.fn()} /></MemoryRouter>);
     const dialog = await screen.findByRole("dialog", { name: "Personalizar plano" });
-    expect(within(dialog).getByRole("radio", { name: /1 h/ }).getAttribute("aria-checked")).toBe("true");
-    fireEvent.click(within(dialog).getByRole("radio", { name: /2 h/ }));
+    // nove opções, cada uma com rótulo e descrição próprios (sem repetir)
+    const opcoes = within(dialog).getAllByRole("radio").map((r) => r.textContent);
+    expect(opcoes).toEqual(["15 minrápido", "30 minleve", "45 minconstante", "1 hequilibrado", "1 h 30firme", "2 hintenso", "3 hdedicado", "4 hreta final", "5 h+imersão"]);
+    expect(within(dialog).getByRole("radio", { name: /^1 h\s*equilibrado/ }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(within(dialog).getByRole("radio", { name: /^2 h\s*intenso/ }));
     const date = within(dialog).getByLabelText("Data da prova") as HTMLInputElement;
     fireEvent.change(date, { target: { value: "2020-01-01" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
@@ -212,6 +215,20 @@ describe("Plano de Hoje", () => {
     expect(backend.rpc).toHaveBeenCalledWith("app_today", { p_rebuild: true });
     expect(await screen.findByText("Plano atualizado: 2 h por dia · prova em 10/05/2099.")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("'Personalizar plano': opções novas gravam os minutos certos; quem já tinha 3 h+ (180) continua em 3 h e 5 h ou mais aparece no aviso", async () => {
+    bootRef.profile.daily_minutes = 180;
+    rpcs();
+    render(<MemoryRouter initialEntries={["/hoje?ajustar=1"]}><TodayPlan go={vi.fn()} /></MemoryRouter>);
+    const dialog = await screen.findByRole("dialog", { name: "Personalizar plano" });
+    expect(within(dialog).getByRole("radio", { name: /^3 h\s*dedicado/ }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(within(dialog).getByRole("radio", { name: /^5 h\+/ }));
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "Ainda não sei a data da prova" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledWith({ exam_date: null, daily_minutes: 300 }));
+    expect(await screen.findByText("Plano atualizado: 5 h ou mais por dia.")).toBeTruthy();
+    bootRef.profile.daily_minutes = 60;
   });
 
   it("Esc fecha a janela e 'Ainda não sei a data' limpa a data da prova", async () => {

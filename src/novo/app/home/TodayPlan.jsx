@@ -14,18 +14,24 @@ import { areaLabel } from "../practice/format.js";
 import "./inicio.css";
 
 // [minutos, rótulo, descrição]
+// Pedido do dono (17/10/2026): 9 opções. O banco guarda os minutos (0 a 1440) e a regra das questões fica em public.daily_question_target.
 const MINUTES = [
+  ["15", "15 min", "rápido"],
   ["30", "30 min", "leve"],
+  ["45", "45 min", "constante"],
   ["60", "1 h", "equilibrado"],
+  ["90", "1 h 30", "firme"],
   ["120", "2 h", "intenso"],
-  ["180", "3 h+", "reta final"],
+  ["180", "3 h", "dedicado"],
+  ["240", "4 h", "reta final"],
+  ["300", "5 h+", "imersão"],
 ];
-const MINUTES_TEXT = { 30: "30 min", 60: "1 h", 120: "2 h", 180: "3 h ou mais" };
+const MINUTES_TEXT = { 15: "15 min", 30: "30 min", 45: "45 min", 60: "1 h", 90: "1 h 30", 120: "2 h", 180: "3 h", 240: "4 h", 300: "5 h ou mais" };
 const CTA = { praticar: "Resolver questões", revisar: "Revisar agora" };
 
 /** Janela "Personalizar plano": data da prova e tempo por dia. Fecha com Esc, com o fundo ou em Cancelar; devolve o foco ao botão que abriu. */
 function PersonalizeDialog({ profile, onSave, onCancel }) {
-  const [minutes, setMinutes] = React.useState(String(MINUTES.find(([v]) => Number(v) >= (profile.daily_minutes ?? 60))?.[0] ?? "180"));
+  const [minutes, setMinutes] = React.useState(String(MINUTES.find(([v]) => Number(v) >= (profile.daily_minutes ?? 60))?.[0] ?? "300"));
   const [date, setDate] = React.useState(profile.exam_date ?? "");
   const [noDate, setNoDate] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
