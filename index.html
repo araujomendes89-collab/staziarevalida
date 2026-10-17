@@ -29,17 +29,20 @@
     <meta property="og:url" content="https://app.staziamed.com.br/" />
     <meta property="og:title" content="StaziaMed Revalida — estude, treine e dispute" />
     <meta property="og:description" content="Questões oficiais do Revalida INEP e do ENAMED, simulados, flashcards e Tutor IA. Teste grátis de 7 dias, sem cartão." />
-    <meta property="og:image" content="https://app.staziamed.com.br/brand/og-image.png" />
+    <meta property="og:image" content="https://app.staziamed.com.br/brand/compartilhar-inicio.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Logo do StaziaMed Revalida" />
+    <meta property="og:image:alt" content="Logo do StaziaMed Revalida e a lontra mascote da StaziaMed, com a frase Estude, treine e dispute" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://app.staziamed.com.br/brand/compartilhar-inicio.jpg" />
     <link rel="icon" href="/brand/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/brand/favicon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/brand/apple-touch-icon.png" />
     <link rel="manifest" href="/brand/site.webmanifest" />
     <link rel="preload" href="/src/inicio/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/src/novo/app/auth/fonts/barlow-condensed-700.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/src/inicio/inicio.css" />
     <noscript><link rel="stylesheet" href="/inicio-sem-js.css" /></noscript>
     <script type="application/ld+json">
@@ -83,7 +86,10 @@
     <header class="topo" id="topo">
       <div class="caixa topo__linha">
         <a class="topo__logo" href="/" aria-label="StaziaMed Revalida, início">
-          <img src="/brand/horizontal-320w.png" srcset="/brand/horizontal-320w.png 320w, /brand/horizontal-480w.png 480w" sizes="168px" width="168" height="52" alt="StaziaMed Revalida" />
+          <picture>
+            <source type="image/webp" srcset="/src/inicio/img/logo-horizontal-336.webp 336w, /src/inicio/img/logo-horizontal-504.webp 504w" sizes="168px" />
+            <img src="/brand/horizontal-320w.png" srcset="/brand/horizontal-320w.png 320w, /brand/horizontal-480w.png 480w" sizes="168px" width="168" height="52" alt="StaziaMed Revalida" />
+          </picture>
         </a>
         <nav class="topo__nav" aria-label="Seções da página">
           <a class="topo__link" href="#ferramentas">Ferramentas</a>
@@ -93,7 +99,7 @@
           <a class="topo__link" href="#planos">Planos</a>
         </nav>
         <div class="topo__acoes">
-          <a class="topo__entrar" href="/novo/login" data-entrar>Entrar</a>
+          <a class="topo__entrar" href="/novo/entrar" data-entrar>Entrar</a>
           <a class="topo__teste" href="/novo/criar-conta">Teste grátis</a>
           <button class="topo__menu" id="botao-menu" type="button" aria-expanded="false" aria-controls="menu-celular" aria-label="Abrir menu">
             <svg class="icone-abrir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
@@ -109,7 +115,7 @@
             <li><a href="#tutor">Tutor IA</a></li>
             <li><a href="#arena">Arena</a></li>
             <li><a href="#planos">Planos</a></li>
-            <li><a href="/novo/login" data-entrar>Entrar</a></li>
+            <li><a href="/novo/entrar" data-entrar>Entrar</a></li>
           </ul>
         </nav>
       </div>
@@ -132,8 +138,8 @@
           </div>
           <div class="abertura__arte">
             <picture class="abertura__lontra">
-              <source type="image/avif" srcset="/src/inicio/img/lontra-bracos-cruzados-320.avif 320w, /src/inicio/img/lontra-bracos-cruzados-640.avif 640w" sizes="(max-width: 640px) 183px, (max-width: 900px) 256px, 304px" />
-              <source type="image/webp" srcset="/src/inicio/img/lontra-bracos-cruzados-320.webp 320w, /src/inicio/img/lontra-bracos-cruzados-640.webp 640w" sizes="(max-width: 640px) 183px, (max-width: 900px) 256px, 304px" />
+              <source type="image/avif" srcset="/src/inicio/img/lontra-bracos-cruzados-320.avif 320w, /src/inicio/img/lontra-bracos-cruzados-480.avif 480w, /src/inicio/img/lontra-bracos-cruzados-640.avif 640w" sizes="(max-width: 640px) 183px, (max-width: 900px) 256px, 304px" />
+              <source type="image/webp" srcset="/src/inicio/img/lontra-bracos-cruzados-320.webp 320w, /src/inicio/img/lontra-bracos-cruzados-480.webp 480w, /src/inicio/img/lontra-bracos-cruzados-640.webp 640w" sizes="(max-width: 640px) 183px, (max-width: 900px) 256px, 304px" />
               <img src="/src/inicio/img/lontra-bracos-cruzados-320.webp" width="320" height="526" alt="Lontra, mascote da StaziaMed, de braços cruzados" fetchpriority="high" decoding="async" />
             </picture>
             <div class="flutua flutua--plano">
@@ -368,18 +374,22 @@
                 <button type="button" role="tab" id="aba-rank-mes" aria-controls="painel-rank-mes" aria-selected="false" tabindex="-1" data-titulo="Ranking do mês">Mês</button>
               </div>
             </div>
-            <ol class="painel ranking__lista" id="painel-rank-semana" role="tabpanel" aria-labelledby="aba-rank-semana">
-              <li class="linha"><span class="linha__pos">1</span><span class="linha__nome">Estudante A</span><span class="linha__barra b120" aria-hidden="true"></span><span class="linha__xp">1.240 XP</span></li>
-              <li class="linha"><span class="linha__pos">2</span><span class="linha__nome">Estudante B</span><span class="linha__barra b104" aria-hidden="true"></span><span class="linha__xp">1.080 XP</span></li>
-              <li class="linha linha--voce"><span class="linha__pos">3</span><span class="linha__nome">Você</span><span class="linha__barra b92" aria-hidden="true"></span><span class="linha__xp">960 XP</span></li>
-              <li class="linha"><span class="linha__pos">4</span><span class="linha__nome">Estudante C</span><span class="linha__barra b70" aria-hidden="true"></span><span class="linha__xp">720 XP</span></li>
-            </ol>
-            <ol class="painel ranking__lista" id="painel-rank-mes" role="tabpanel" aria-labelledby="aba-rank-mes" hidden>
-              <li class="linha"><span class="linha__pos">1</span><span class="linha__nome">Estudante B</span><span class="linha__barra b120" aria-hidden="true"></span><span class="linha__xp">4.980 XP</span></li>
-              <li class="linha linha--voce"><span class="linha__pos">2</span><span class="linha__nome">Você</span><span class="linha__barra b110" aria-hidden="true"></span><span class="linha__xp">4.410 XP</span></li>
-              <li class="linha"><span class="linha__pos">3</span><span class="linha__nome">Estudante A</span><span class="linha__barra b92" aria-hidden="true"></span><span class="linha__xp">3.870 XP</span></li>
-              <li class="linha"><span class="linha__pos">4</span><span class="linha__nome">Estudante C</span><span class="linha__barra b70" aria-hidden="true"></span><span class="linha__xp">2.950 XP</span></li>
-            </ol>
+            <div class="painel" id="painel-rank-semana" role="tabpanel" aria-labelledby="aba-rank-semana">
+              <ol class="ranking__lista">
+                <li class="linha"><span class="linha__pos">1</span><span class="linha__nome">Estudante A</span><span class="linha__barra b120" aria-hidden="true"></span><span class="linha__xp">1.240 XP</span></li>
+                <li class="linha"><span class="linha__pos">2</span><span class="linha__nome">Estudante B</span><span class="linha__barra b104" aria-hidden="true"></span><span class="linha__xp">1.080 XP</span></li>
+                <li class="linha linha--voce"><span class="linha__pos">3</span><span class="linha__nome">Você</span><span class="linha__barra b92" aria-hidden="true"></span><span class="linha__xp">960 XP</span></li>
+                <li class="linha"><span class="linha__pos">4</span><span class="linha__nome">Estudante C</span><span class="linha__barra b70" aria-hidden="true"></span><span class="linha__xp">720 XP</span></li>
+              </ol>
+            </div>
+            <div class="painel" id="painel-rank-mes" role="tabpanel" aria-labelledby="aba-rank-mes" hidden>
+              <ol class="ranking__lista">
+                <li class="linha"><span class="linha__pos">1</span><span class="linha__nome">Estudante B</span><span class="linha__barra b120" aria-hidden="true"></span><span class="linha__xp">4.980 XP</span></li>
+                <li class="linha linha--voce"><span class="linha__pos">2</span><span class="linha__nome">Você</span><span class="linha__barra b110" aria-hidden="true"></span><span class="linha__xp">4.410 XP</span></li>
+                <li class="linha"><span class="linha__pos">3</span><span class="linha__nome">Estudante A</span><span class="linha__barra b92" aria-hidden="true"></span><span class="linha__xp">3.870 XP</span></li>
+                <li class="linha"><span class="linha__pos">4</span><span class="linha__nome">Estudante C</span><span class="linha__barra b70" aria-hidden="true"></span><span class="linha__xp">2.950 XP</span></li>
+              </ol>
+            </div>
             <p class="ranking__nota">Exemplo ilustrativo.</p>
           </div>
         </div>
@@ -434,7 +444,7 @@
           <li data-quando="cobranca">Desistiu em até 7 dias depois de assinar? Devolvemos tudo.</li>
           <li data-quando="cobranca">No cartão, a renovação é automática. No Pix, enviamos a cobrança da renovação 7 dias antes do vencimento, e o acesso pago continua quando o pagamento for confirmado. Você pode cancelar a renovação quando quiser em Minha Conta.</li>
         </ul>
-        <a class="link-azul" href="/novo/termos">Termos de Uso</a>
+        <a class="link-azul" href="/novo/termos">Termos de Uso e Contrato</a>
       </section>
 
       <!-- Chamada final -->
@@ -475,10 +485,11 @@
         <div class="rodape__col">
           <h2 class="rodape__titulo">Acesso e documentos</h2>
           <nav class="rodape__links" aria-label="Links do rodapé">
-            <a href="/novo/login" data-entrar>Entrar</a>
+            <a href="/novo/entrar" data-entrar>Entrar</a>
             <a href="/novo/criar-conta">Criar conta</a>
-            <a href="/novo/termos">Termos de Uso</a>
+            <a href="/novo/termos">Termos de Uso e Contrato</a>
             <a href="/novo/privacidade">Política de Privacidade</a>
+            <a href="/novo/regulamento">Regulamento de Coins e Ligas</a>
           </nav>
           <p>Usamos só cookies essenciais.</p>
         </div>

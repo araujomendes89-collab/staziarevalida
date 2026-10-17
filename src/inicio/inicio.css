@@ -115,6 +115,7 @@ main:focus, main:focus-visible { box-shadow: none; }
 }
 @keyframes progresso-cresce { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .topo__linha { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; padding-bottom: 10px; }
+.topo__logo picture { display: block; }
 .topo__logo img { height: 52px; width: auto; }
 .topo__nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .topo__link { min-height: 44px; padding: 0 14px; display: inline-flex; align-items: center; font-size: 14px; font-weight: 700; color: var(--marinho); border-radius: 999px; transition: background-color .2s; }

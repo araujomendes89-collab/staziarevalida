@@ -3,4 +3,5 @@
   <url><loc>https://app.staziamed.com.br/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
   <url><loc>https://app.staziamed.com.br/novo/termos</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
   <url><loc>https://app.staziamed.com.br/novo/privacidade</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://app.staziamed.com.br/novo/regulamento</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
 </urlset>
