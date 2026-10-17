@@ -1,5 +1,6 @@
-// Login, cadastro e recuperação de senha. O login fica em auth/LoginScreen.jsx (tela "Acesso seguro REVALIDA",
-// 2026-10-07); cadastro, recuperação e conta master continuam aqui.
+// Login, cadastro e recuperação de senha. O login fica em auth/LoginScreen.jsx; cadastro, recuperação e conta master continuam
+// aqui. A recuperação (Recuperar senha, Criar nova senha, Link vencido) usa a moldura de auth/RecoveryLayout.jsx, no mesmo padrão
+// do login no ar (17/10/2026); o cadastro segue no visual "Acesso seguro REVALIDA".
 // Derivado de "ui_kits/auth-billing/AuthScreens.jsx" do design system: mesma marcação e
 // estilos, agora ligados ao backend real. Em telas estreitas o painel azul vai para baixo
 // do formulário (o kit original só tinha a versão de duas colunas).
@@ -16,6 +17,7 @@ import { TERMO_VERSAO } from "./legal/versions.js";
 import { rememberGoogleAcceptance } from "./legal/googleAcceptance.js";
 import { DECLARACAO_ADULTO, DECLARACAO_MEDICO, DECLARACOES_ERRO, documentosDa } from "./legal/documentos.js";
 import { clearAuthLinkFromUrl, initialAuthLink } from "./auth/authLink.js";
+import { RecoveryButton, RecoveryField, RecoveryLayout, RecoveryLink, RecoveryMessage } from "./auth/RecoveryLayout.jsx";
 import { useSupportEmail } from "./support/supportContact.jsx";
 import "./auth/login.css";
 
@@ -263,8 +265,6 @@ function Forgot({ go }) {
   const [sent, setSent] = React.useState(false);
   const [emailError, setEmailError] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
-  const [doc, setDoc] = React.useState(null);
-  const closeDoc = React.useCallback(() => setDoc(null), []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -286,29 +286,25 @@ function Forgot({ go }) {
   };
 
   return (
-    <SecureSignupLayout
-      onLogin={() => go("login")}
-      onDoc={setDoc}
+    <RecoveryLayout
       label="Recuperar senha"
-      asideTitle="Lembrou da senha?"
-      asideCopy="Volte para o login e continue sua preparação para o Revalida."
-      asideButton="Entrar"
+      title="Recuperar senha"
+      sub="Informe seu e-mail para receber as instruções de recuperação."
+      aside={{ title: "Lembrou da senha?", copy: "Volte para o login e continue sua preparação para o Revalida.", button: "Entrar", onButton: () => go("login") }}
     >
-      <form onSubmit={submit} className="lg-auth-fields" noValidate>
-        <div><h2 className="lg-h2">Recuperar senha</h2><p className="lg-sub">Informe seu e-mail para receber as instruções de recuperação.</p></div>
+      <form onSubmit={submit} className="rc-fields" noValidate>
         {sent && (
-          <div className="lg-msg lg-msg--success" role="status">
+          <RecoveryMessage tone="success">
             Se houver uma conta com este e-mail, as instruções chegam em instantes. Confira também o spam.
-          </div>
+          </RecoveryMessage>
         )}
-        <SecureField name="email" label="E-mail cadastrado" type="email" autoComplete="email" error={emailError} />
-        <button type="submit" className="lg-btn lg-btn-primary" disabled={loading}>
-          {loading ? <><span className="lg-spin" />ENVIANDO…</> : "ENVIAR INSTRUÇÕES"}
-        </button>
-        <button type="button" className="lg-link-btn" onClick={() => go("login")}>Voltar para o login</button>
+        <RecoveryField id="secure-email" name="email" label="E-mail cadastrado" type="email" autoComplete="email" icon="mail" placeholder="voce@exemplo.com" error={emailError} />
+        <div className="rc-actions">
+          <RecoveryButton type="submit" loading={loading} loadingText="ENVIANDO…">ENVIAR INSTRUÇÕES</RecoveryButton>
+          <RecoveryLink back onClick={() => go("login")}>Voltar para o login</RecoveryLink>
+        </div>
       </form>
-      {doc && <DocumentModal doc={doc} onClose={closeDoc} />}
-    </SecureSignupLayout>
+    </RecoveryLayout>
   );
 }
 
@@ -323,8 +319,6 @@ export function NewPasswordScreen() {
   const [expired, setExpired] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [done, setDone] = React.useState(false);
-  const [doc, setDoc] = React.useState(null);
-  const closeDoc = React.useCallback(() => setDoc(null), []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -362,62 +356,60 @@ export function NewPasswordScreen() {
   };
 
   return (
-    <SecureSignupLayout
-      onLogin={() => {}}
-      onDoc={setDoc}
+    <RecoveryLayout
       label="Criar nova senha"
-      asideTitle="Defina sua nova senha"
-      asideCopy="Escolha uma senha que só você conheça. Depois é só continuar sua preparação para o Revalida."
-      asideButton={null}
+      title="Criar nova senha"
+      sub={done || expired ? null : "Escreva a nova senha duas vezes para confirmar."}
+      aside={done || expired ? null : { title: "Defina sua nova senha", copy: "Escolha uma senha que só você conheça. Depois é só continuar sua preparação para o Revalida." }}
     >
-      <form onSubmit={submit} className="lg-auth-fields" noValidate>
-        <div><h2 className="lg-h2">Criar nova senha</h2><p className="lg-sub">Escreva a nova senha duas vezes para confirmar.</p></div>
-        {error && <div className="lg-msg lg-msg--error" role="alert">{error}</div>}
-        {expired && <div className="lg-msg lg-msg--error" role="alert">Esse link venceu. Peça um novo.</div>}
-        {done && <div className="lg-msg lg-msg--success" role="status">Senha alterada com sucesso. Você já está dentro da sua conta.</div>}
+      <form onSubmit={submit} className="rc-fields" noValidate>
+        {error && <RecoveryMessage tone="danger">{error}</RecoveryMessage>}
+        {expired && <RecoveryMessage tone="danger">Esse link venceu. Peça um novo.</RecoveryMessage>}
+        {done && <RecoveryMessage tone="success">Senha alterada com sucesso. Você já está dentro da sua conta.</RecoveryMessage>}
         {done ? (
-          <button type="button" className="lg-btn lg-btn-primary" onClick={() => finishRecovery()}>ENTRAR NO APP</button>
+          <RecoveryButton onClick={() => finishRecovery()}>ENTRAR NO APP</RecoveryButton>
         ) : expired ? (
-          <button type="button" className="lg-btn lg-btn-primary" onClick={askAgain}>PEDIR NOVO LINK</button>
+          <RecoveryButton onClick={askAgain}>PEDIR NOVO LINK</RecoveryButton>
         ) : (
           <>
-            <SecureField name="pw" label="Nova senha" type="password" hint={`Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`} autoComplete="new-password" error={errors.pw} />
-            <SecureField name="pw2" label="Conferir nova senha" type="password" autoComplete="new-password" error={errors.pw2} />
-            <button type="submit" className="lg-btn lg-btn-primary" disabled={loading}>{loading ? <><span className="lg-spin" />SALVANDO…</> : "SALVAR NOVA SENHA"}</button>
-            <button type="button" className="lg-link-btn" onClick={async () => { try { await signOut(); } catch { /* já estava fora */ } finishRecovery(); }}>Agora não, sair</button>
+            <RecoveryField id="secure-pw" name="pw" label="Nova senha" type="password" icon="lock" hint={`Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`} autoComplete="new-password" error={errors.pw} />
+            <RecoveryField id="secure-pw2" name="pw2" label="Conferir nova senha" type="password" icon="lock" autoComplete="new-password" error={errors.pw2} />
+            <div className="rc-actions">
+              <RecoveryButton type="submit" loading={loading} loadingText="SALVANDO…">SALVAR NOVA SENHA</RecoveryButton>
+              <RecoveryLink onClick={async () => { try { await signOut(); } catch { /* já estava fora */ } finishRecovery(); }}>Agora não, sair</RecoveryLink>
+            </div>
           </>
         )}
       </form>
-      {doc && <DocumentModal doc={doc} onClose={closeDoc} />}
-    </SecureSignupLayout>
+    </RecoveryLayout>
   );
 }
 
 /** Link do e-mail vencido ou já usado: aviso claro e botão para pedir outro. */
 function ExpiredLink({ go }) {
-  const [doc, setDoc] = React.useState(null);
-  const closeDoc = React.useCallback(() => setDoc(null), []);
   const askAgain = () => {
     clearAuthLinkFromUrl();
     go("forgot");
   };
+  const backToLogin = () => {
+    clearAuthLinkFromUrl();
+    go("login");
+  };
   return (
-    <SecureSignupLayout
-      onLogin={() => { clearAuthLinkFromUrl(); go("login"); }}
-      onDoc={setDoc}
+    <RecoveryLayout
       label="Link vencido"
-      asideTitle="Lembrou da senha?"
-      asideCopy="Volte para o login e continue sua preparação para o Revalida."
-      asideButton="Entrar"
+      title="Link vencido"
+      sub="Por segurança, cada link vale por pouco tempo e só pode ser usado uma vez."
+      aside={{ title: "Lembrou da senha?", copy: "Volte para o login e continue sua preparação para o Revalida.", button: "Entrar", onButton: backToLogin }}
     >
-      <div className="lg-auth-fields">
-        <div><h2 className="lg-h2">Link vencido</h2><p className="lg-sub">Por segurança, cada link vale por pouco tempo e só pode ser usado uma vez.</p></div>
-        <div className="lg-msg lg-msg--error" role="alert">Esse link venceu. Peça um novo.</div>
-        <button type="button" className="lg-btn lg-btn-primary" onClick={askAgain}>PEDIR NOVO LINK</button>
-        <button type="button" className="lg-link-btn" onClick={() => { clearAuthLinkFromUrl(); go("login"); }}>Voltar para o login</button>
+      <div className="rc-fields">
+        <RecoveryMessage tone="danger">Esse link venceu. Peça um novo.</RecoveryMessage>
+        <div className="rc-actions">
+          <RecoveryButton onClick={askAgain}>PEDIR NOVO LINK</RecoveryButton>
+          <RecoveryLink back onClick={backToLogin}>Voltar para o login</RecoveryLink>
+        </div>
       </div>
-      {doc && <DocumentModal doc={doc} onClose={closeDoc} />}
-    </SecureSignupLayout>
+    </RecoveryLayout>
   );
 }
 
