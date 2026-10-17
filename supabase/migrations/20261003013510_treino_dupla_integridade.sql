@@ -96,7 +96,9 @@ declare
   r record;
 begin
   for r in select id, member_ids from public.checklist_rooms where phase <> 'closed' order by created_at, id loop
-    if exists (select 1 from public.study_room_claims c where c.user_id = any (r.member_ids) and c.room_id <> r.id) then
+    -- (Sala com membro de conta já excluída, ou que disputa a pessoa com outra sala mais antiga, fecha.)
+    if exists (select 1 from unnest(r.member_ids) x where not exists (select 1 from auth.users u where u.id = x))
+       or exists (select 1 from public.study_room_claims c where c.user_id = any (r.member_ids) and c.room_id <> r.id) then
       update public.checklist_rooms
          set phase = 'closed', closed_reason = 'sem_sinal', call_link = null, rev = rev + 1
        where id = r.id;

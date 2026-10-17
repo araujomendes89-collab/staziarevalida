@@ -529,11 +529,21 @@ describe("Migração 013530 — administração dos créditos do Stazia Match", 
     expect(livroComp.map((l: any) => l.kind)).toEqual(["consume", "refund", "grant"]);
     expect(await estado(comp)).toMatchObject({ usados_hoje: 0, bonus: 2, disponivel: 4 });
     expect((await registro("credito.estornar", comp))[0].details).toMatchObject({ compensou: true, balde: "daily", n: 2 });
-    // Repetir não compensa de novo.
+    // Repetir não compensa de novo: devolve a MESMA concessão (idempotente pela chave compensa:<id>), sem lançar outra.
     const e3 = await estornar(consComp.id, "Erro de ontem", true);
-    expect(e3).toMatchObject({ already: true, compensacao: null });
+    expect(e3).toMatchObject({ already: true });
+    expect(e3.compensacao).toMatchObject({ already: true, ledger_id: e2.compensacao.ledger_id });
     expect((await livro(comp)).filter((l: any) => l.kind === "grant")).toHaveLength(1);
     expect((await estado(comp)).bonus).toBe(2);
+
+    // Estorno simples primeiro e a compensação pedida depois (achado da revisão): concede uma vez, e só uma.
+    const tarde = await novo("pro");
+    const ct = await consumir(tarde, 1, `tarde:${tarde}`, "match", ontem());
+    await estornar(ct.ledger_id, "Sem compensar", false);
+    const et = await estornar(ct.ledger_id, "Agora compensar", true);
+    expect(et).toMatchObject({ already: true });
+    expect(et.compensacao).toMatchObject({ already: false, bucket: "bonus" });
+    expect((await livro(tarde)).filter((l: any) => l.kind === "grant")).toHaveLength(1);
 
     // Mesmo dia + compensar: o uso de hoje já foi reduzido, então NÃO há compensação. E bônus de dia passado também não compensa.
     const hoje = await novo("pro");

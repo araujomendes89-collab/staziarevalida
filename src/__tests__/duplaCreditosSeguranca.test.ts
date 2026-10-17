@@ -217,6 +217,26 @@ describe("Créditos · segurança (§47 do documento) e jornada completa", () =>
     await expect(d.sql(`update public.checklist_rooms set member_ids = array[$2::uuid, $3::uuid] where id = $1`, [sala, U.ana, U.carla])).rejects.toThrow(/Os membros de uma sala aberta não mudam\./);
   });
 
+  it("uso de hoje da Administração conta também o que saiu de bônus; o preenchimento das reservas fecha sala com membro de conta excluída", async () => {
+    await cota({ trial: 0 });
+    await d.sql(`select public.credit_grant($1::uuid, 'match', 2, 'teste', 'hoje-bonus-' || $1::text, 'bonus')`, [U.carla]);
+    await d.sql(`select public.credit_consume($1::uuid, 'match', 1, 'room', gen_random_uuid(), 'hoje-consumo-' || $1::text)`, [U.carla]);
+    expect((await d.rpc(U.admin, "app_admin_credit_today")).match).toMatchObject({ creditos: 1, alunos: 1 });
+
+    // sala aberta de uma conta que não existe mais, criada com o gatilho desligado (como estaria antes da migração)
+    const fantasma = "00000000-0000-4000-8000-0000000fffff";
+    await d.sql(`alter table public.checklist_rooms disable trigger checklist_rooms_claims`);
+    const [sala] = await d.sql<{ id: string }>(`insert into public.checklist_rooms (member_ids, phase) values (array[$1::uuid, $2::uuid], 'roles') returning id`, [U.diego, fantasma]);
+    await d.sql(`alter table public.checklist_rooms enable trigger checklist_rooms_claims`);
+    await d.sql(`delete from public.study_room_claims`);
+    const fs = await import("fs");
+    const path = await import("path");
+    for (const f of ["20261003013510_treino_dupla_integridade.sql", "20261003013520_treino_dupla_creditos_inicio.sql"]) {
+      await d.db.exec(fs.readFileSync(path.join(__dirname, "../../supabase/migrations", f), "utf8"));
+    }
+    expect(await d.sql(`select phase, closed_reason from public.checklist_rooms where id = $1`, [sala.id])).toEqual([{ phase: "closed", closed_reason: "sem_sinal" }]);
+  });
+
   // ------------------------------------------------------------------ a jornada completa (M5c, no banco)
   it("jornada: match, sala, início debita os dois, recarregar não debita, sem crédito não inicia e ninguém paga, cota esgotada, concessão, estorno, extrato e conciliação em zero", async () => {
     const respostas: unknown[] = [];

@@ -213,11 +213,12 @@ begin
     raise exception 'Lançamento não encontrado.' using errcode = '22023';
   end if;
   v_res := public.credit_refund(p_ledger_id, v_reason);
+  -- A compensação é idempotente pela chave 'compensa:<id>': pedir de novo (ou depois do estorno simples) não concede duas vezes.
+  if coalesce(p_compensar, false) and l.bucket = 'daily' and not coalesce((v_res ->> 'same_day')::boolean, false) then
+    v_comp := public.credit_grant(l.user_id, l.pool, l.amount, 'Compensação do estorno do lançamento ' || l.id::text || ': ' || v_reason,
+                                  'compensa:' || l.id::text, 'bonus');
+  end if;
   if not coalesce((v_res ->> 'already')::boolean, false) then
-    if coalesce(p_compensar, false) and l.bucket = 'daily' and not coalesce((v_res ->> 'same_day')::boolean, false) then
-      v_comp := public.credit_grant(l.user_id, l.pool, l.amount, 'Compensação do estorno do lançamento ' || l.id::text || ': ' || v_reason,
-                                    'compensa:' || l.id::text, 'bonus');
-    end if;
     perform public.admin_log('credito.estornar', l.user_id::text,
                              jsonb_build_object('pool', l.pool, 'consumo', l.id, 'n', l.amount, 'balde', l.bucket, 'dia', l.day,
                                                 'motivo', v_reason, 'compensou', v_comp is not null));
@@ -278,13 +279,20 @@ begin
   return jsonb_build_object(
     'day', v_day,
     'ativa', public.credit_ativa(),
+    -- (Do livro, em TODOS os baldes: consumo menos estorno do dia. Só a cota diária não conta o que saiu de bônus ou comprados.)
     'match', jsonb_build_object(
-      'creditos', coalesce((select sum(d.used) from public.credit_daily d where d.pool = 'match' and d.day = v_day), 0)::integer,
-      'alunos', (select count(distinct d.user_id) from public.credit_daily d where d.pool = 'match' and d.day = v_day and d.used > 0)::integer,
+      'creditos', coalesce((select sum(case g.kind when 'consume' then g.amount when 'refund' then -g.amount else 0 end)
+                              from public.credit_ledger g where g.pool = 'match' and g.day = v_day), 0)::integer,
+      'alunos', (select count(*) from (select g.user_id from public.credit_ledger g where g.pool = 'match' and g.day = v_day
+                                        group by g.user_id
+                                       having sum(case g.kind when 'consume' then g.amount when 'refund' then -g.amount else 0 end) > 0) q)::integer,
       'salas', (select count(distinct c.room_id) from public.study_room_charges c where c.usage_date = v_day)::integer),
     'ia', jsonb_build_object(
-      'creditos', coalesce((select sum(d.used) from public.credit_daily d where d.pool = 'ia' and d.day = v_day), 0)::integer,
-      'alunos', (select count(distinct d.user_id) from public.credit_daily d where d.pool = 'ia' and d.day = v_day and d.used > 0)::integer)
+      'creditos', coalesce((select sum(case g.kind when 'consume' then g.amount when 'refund' then -g.amount else 0 end)
+                              from public.credit_ledger g where g.pool = 'ia' and g.day = v_day), 0)::integer,
+      'alunos', (select count(*) from (select g.user_id from public.credit_ledger g where g.pool = 'ia' and g.day = v_day
+                                        group by g.user_id
+                                       having sum(case g.kind when 'consume' then g.amount when 'refund' then -g.amount else 0 end) > 0) q)::integer)
   );
 end
 $$;
