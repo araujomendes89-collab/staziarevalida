@@ -208,7 +208,7 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     if (body.command === "next") {
       const s = await c.backend.rpc("app_tutor_next_question", { p_session_id: id });
       // a passagem fixa é só a reserva: a IA troca antes de a tela reler a conversa (sem ela, fica a reserva)
-      await tutorOpening(c.backend, id);
+      await tutorOpening(c.backend, id, { rapido: true });
       return { intent: "next", message: null, phrase: null, question_state: s?.question ? "open" : null };
     }
     if (body.command === "answer") {

@@ -24,6 +24,7 @@ import { NO_REPEAT_RULE, TONE_EXAMPLES, personalityLayer, sampleExamples, type P
 import { recentExpressions, usedStarts } from "../../server/tutor/emotion";
 import { BASE_TUTOR_PROMPT, composeRealtimeInstructions } from "../../server/tutor/prompts";
 import { naturalOpening, openingViolations, tooSimilar } from "../../server/tutor/opening";
+import { tutorTurn } from "../../server/tutor/engine";
 import { openNexus } from "../../server/tutor/nexus";
 import { aceitarTermos } from "./helpers/aceites";
 
@@ -177,6 +178,8 @@ beforeAll(async () => {
   await sql(`update public.ch_flags set value = true where key in ('enabled', 'ai_enabled')`);
   await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, requires_pro: true, max_profanity: "moderate" }, "Testes da abertura natural do Tutor.");
   await sql(`update public.profiles set full_name = 'Ana Souza' where id = $1`, [ANA]).catch(() => undefined);
+  // muitas aberturas no mesmo minuto neste arquivo: o limite de frequência 'tutor_opening' tem teste próprio (tutorNaturalFichasBanco)
+  await sql(`update public.tutor_config set voice_rate_limits = voice_rate_limits || '{"tutor_opening_per_minute": 100000, "tutor_opening_per_day": 100000}'::jsonb`);
   process.env.TUTOR_AI_PROVIDER = "mock";
   process.env.TUTOR_SETTINGS_TTL_MS = "0";
   delete process.env.DETERMINISTIC_TUTOR;
@@ -315,6 +318,47 @@ describe("abertura e passagem criadas pela IA (servidor e banco local)", () => {
     const last = (await sql(`select content, meta from public.tutor_messages where session_id = $1 order by id desc limit 1`, [sid]))[0];
     expect(last).toMatchObject({ content: o!.content, meta: { opening: true, generated: true } });
     expect((await sql(`select kind from public.tutor_recent_openings where session_id = $1 order by id`, [sid])).map((r: any) => r.kind)).toEqual(["abertura", "passagem"]);
+  });
+
+  it("revisão: a passagem é preparada junto com a reação à resposta e entra na hora em que o aluno pede a próxima (sem esperar a IA)", async () => {
+    const sid = await start(BIA, "questao", "tranquila");
+    const wrong = (await sql(`select case when q.correct_option = 'A' then 'B' else 'A' end o from public.tutor_sessions t join public.questions q on q.id = t.question_id where t.id = $1`, [sid]))[0].o;
+    await rpc(BIA, "app_tutor_answer", sid, wrong, 2, 40_000, null);
+    calls.length = 0;
+    respond = (req) => req.schemaName === "staziamed_tutor_abertura"
+      ? { fala: "Essa pegou, mas a próxima é outra conversa: lê com calma e me conta o que salta primeiro." }
+      : { reply: "Marcou essa: o que no caso te levou até ela?", grounding: "GENERAL", citations: [], justification: "NONE", reveals_answer: false, suggested_replies: [],
+          evaluation: { error_type: "unknown", knowledge_gap: "", severity: 2, unsafe: false, reasoning_quality: "na", recommended_action: "socratic_question", answer_correct: "na", self_corrected: false } };
+    await tutorTurn(deps, BIA, sid, { type: "react" });
+    const prepReq = calls.filter((c) => c.schemaName === "staziamed_tutor_abertura");
+    expect(prepReq).toHaveLength(1);
+    expect(prepReq[0].input).toMatch(/"questao_anterior":"errou"/);
+    expect(prepReq[0].input).toMatch(/passagem para a próxima questão/);
+    expect((await sql(`select content from public.tutor_natural_prep where session_id = $1`, [sid]))[0].content).toMatch(/Essa pegou/);
+    // a mesma questão não é preparada duas vezes
+    calls.length = 0;
+    await tutorTurn(deps, BIA, sid, { type: "message", text: "acho que confundi os critérios" }).catch(() => undefined);
+    expect(calls.filter((c) => c.schemaName === "staziamed_tutor_abertura")).toHaveLength(0);
+    // próxima: a fala pronta entra sem chamar a IA
+    await rpc(BIA, "app_tutor_next_question", sid);
+    calls.length = 0;
+    const o = await naturalOpening(deps, BIA, sid, 2000);
+    expect(o?.content).toBe("Essa pegou, mas a próxima é outra conversa: lê com calma e me conta o que salta primeiro.");
+    expect(calls).toHaveLength(0);
+    const last = (await sql(`select meta from public.tutor_messages where session_id = $1 order by id desc limit 1`, [sid]))[0];
+    expect(last.meta).toMatchObject({ generated: true, origem: "preparada" });
+    expect(await sql(`select 1 from public.tutor_natural_prep where session_id = $1`, [sid])).toEqual([]);
+    // o custo da preparação ficou no registro, sem gastar a cota de interações
+    expect((await sql(`select interactions, meta from public.ai_usage_ledger where session_id = $1 and meta ->> 'kind' = 'passagem_preparada'`, [sid]))[0]).toMatchObject({ interactions: 0, meta: { used: true } });
+  });
+
+  it("revisão: dois pedidos juntos para a mesma abertura chamam a IA uma vez só", async () => {
+    const sid = await start(ANA, "livre", "durao", "Sepse");
+    calls.length = 0;
+    respond = () => ({ fala: "Sepse no plantão de hoje: qual sinal você caça primeiro?" });
+    const [a, b] = await Promise.all([naturalOpening(deps, ANA, sid), naturalOpening(deps, ANA, sid)]);
+    expect([a, b].filter(Boolean)).toHaveLength(1);
+    expect(calls).toHaveLength(1);
   });
 
   it("a Nexus devolve a abertura nova junto com o jeito; no meio da conversa (skip) nada é pedido; a rota /opening só troca a conversa do próprio aluno", async () => {

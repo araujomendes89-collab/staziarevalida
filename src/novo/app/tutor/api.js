@@ -30,9 +30,10 @@ export const tutorAvailable = (backend) => Boolean(backend?.accessToken);
  * Abertura e passagem naturais: depois de app_tutor_start ou app_tutor_next_question, o servidor troca a fala sorteada (reserva) por
  * uma criada agora pela IA. Devolve { id, content } ou null (a reserva fica). Nunca lança: a conversa segue com a reserva.
  */
-export async function tutorOpening(backend, sessionId) {
+export async function tutorOpening(backend, sessionId, { rapido = false } = {}) {
   try {
-    const r = await parse(await fetch(`${BASE}/opening`, { method: "POST", headers: await headers(backend, { "Content-Type": "application/json" }), body: JSON.stringify({ session_id: sessionId }) }));
+    // rapido: a tela está esperando a fala para seguir (o servidor espera pouco e, depois, fica a reserva)
+    const r = await parse(await fetch(`${BASE}/opening`, { method: "POST", headers: await headers(backend, { "Content-Type": "application/json" }), body: JSON.stringify({ session_id: sessionId, ...(rapido ? { rapido: true } : {}) }) }));
     return r?.opening?.id != null && typeof r.opening.content === "string" ? r.opening : null;
   } catch {
     return null;

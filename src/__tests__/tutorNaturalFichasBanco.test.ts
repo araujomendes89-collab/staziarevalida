@@ -27,7 +27,13 @@ const asRole = async (role: "anon" | "authenticated", uid: string | null, q: str
     return (await tx.query(q, p)).rows;
   });
 const state = async (uid: string, sid: string) => (await rows(`select public.ch_worker_tutor_opening_state($1, $2) r`, [uid, sid]))[0].r;
-const setOpening = async (uid: string, sid: string, mid: number, text: string | null, usage: Record<string, unknown> = { calls: 0 }) =>
+const claim = async (uid: string, sid: string, mid: number) => (await rows(`select public.ch_worker_tutor_claim_opening($1, $2, $3) r`, [uid, sid, mid]))[0].r;
+/** Troca a reserva como o servidor faz: a fala já reservada (aqui marcada direto, sem gastar o limite de frequência do teste). */
+const setOpening = async (uid: string, sid: string, mid: number, text: string | null, usage: Record<string, unknown> = { calls: 0 }) => {
+  await db.query(`update public.tutor_messages set meta = meta || '{"natural_claimed": true}' where id = $1 and session_id = $2 and coalesce((meta ->> 'opening')::boolean, false)`, [mid, sid]);
+  return setOpeningSemReserva(uid, sid, mid, text, usage);
+};
+const setOpeningSemReserva = async (uid: string, sid: string, mid: number, text: string | null, usage: Record<string, unknown> = { calls: 0 }) =>
   (await rows(`select public.ch_worker_tutor_set_opening($1, $2, $3, $4, $5, $6) r`, [uid, sid, mid, text, JSON.stringify({ model: "modelo-teste", provider: "teste", prompt_version: "1.0.0" }), JSON.stringify(usage)]))[0].r;
 /** Conversa nova com a abertura de reserva, como app_tutor_start grava (meta.opening = true). */
 const newSession = async (uid: string, personality = "durona", created = "now()") => {
@@ -199,9 +205,42 @@ describe("abertura e passagem naturais (migração 013600)", () => {
     expect((await rows(`select count(*)::int n from public.tutor_recent_openings where user_id = $1 and kind = 'abertura'`, [VOZ]))[0].n).toBe(10);
   });
 
+  it("revisão: a fala é reservada uma vez antes da IA (pedidos juntos não chamam a IA de novo) e sem reserva não há troca", async () => {
+    const { sid, mid } = await newSession(ANA, "durao");
+    // sem reservar, a troca é recusada (outro pedido não grava por cima)
+    expect((await setOpeningSemReserva(ANA, sid, mid, "Sem reserva.")).ok).toBe(false);
+    const [a, b] = await Promise.all([claim(ANA, sid, mid), claim(ANA, sid, mid)]);
+    expect([a.ok, b.ok].sort()).toEqual([false, true]);
+    expect([a, b].find((x: any) => !x.ok).motivo).toBe("ja_tratada");
+    // reservada: o estado já não oferece a fala para outro pedido; outro aluno não reserva
+    expect((await state(ANA, sid)).message).toBeNull();
+    expect((await claim(BIA, sid, mid)).ok).toBe(false);
+    expect((await setOpeningSemReserva(ANA, sid, mid, "Agora entra.")).ok).toBe(true);
+    await expect(asRole("authenticated", ANA, `select public.ch_worker_tutor_claim_opening($1, $2, $3)`, [ANA, sid, mid])).rejects.toThrow(/permission denied/);
+  });
+
+  it("revisão: limite de frequência 'tutor_opening' (8 por minuto): passou, a fala fica marcada como tentada e a reserva vale", async () => {
+    const LIM = id(16);
+    await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'lim@t.dev', '{}')`, [LIM]);
+    for (let i = 0; i < 8; i++) {
+      const s = await newSession(LIM, "durona");
+      expect((await claim(LIM, s.sid, s.mid)).ok).toBe(true);
+    }
+    const s = await newSession(LIM, "durona");
+    expect(await claim(LIM, s.sid, s.mid)).toEqual({ ok: false, motivo: "limite" });
+    expect((await rows(`select meta from public.tutor_messages where id = $1`, [s.mid]))[0].meta).toMatchObject({ natural_tried: true, natural_limit: true });
+    // os tipos antigos continuam; tipo desconhecido segue recusado
+    expect((await rows(`select public.ch_worker_tutor_rate_hit($1, 'voice_tool') r`, [LIM]))[0].r).toEqual({ ok: true });
+    await expect(rows(`select public.ch_worker_tutor_rate_hit($1, 'qualquer') r`, [LIM])).rejects.toThrow(/Limite desconhecido/);
+  });
+
   it("desfazer apaga as funções e a tabela; a migração entra de novo", async () => {
     await db.exec(UNDO);
     expect((await rows(`select to_regclass('public.tutor_recent_openings') r`))[0].r).toBeNull();
+    expect((await rows(`select to_regclass('public.tutor_natural_prep') r`))[0].r).toBeNull();
+    expect(await rows(`select 1 from pg_proc where proname in ('ch_worker_tutor_claim_opening', 'ch_worker_tutor_passage_prep_state', 'ch_worker_tutor_passage_prep_save')`)).toEqual([]);
+    // o limite volta aos 4 tipos de antes
+    await expect(rows(`select public.ch_worker_tutor_rate_hit($1, 'tutor_opening') r`, [ANA])).rejects.toThrow(/Limite desconhecido/);
     expect(await rows(`select 1 from pg_proc where proname in ('ch_worker_tutor_opening_state', 'ch_worker_tutor_set_opening', 'ch_worker_tutor_voice_openings', 'ch_worker_tutor_voice_opening_save')`)).toEqual([]);
     await db.exec(UNDO); // desfazer também pode rodar 2x
     await db.exec(SQL);

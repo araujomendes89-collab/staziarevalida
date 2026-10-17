@@ -27,6 +27,10 @@ import { lerRegistro, notaDoRegistro, palavraoContido } from "./leituraDoAluno";
 import { nomeSeguro } from "./sigilo";
 import { deterministicTutor, tutorSettings } from "./settings";
 import { buscarOuReserva, vetorEmParalelo } from "./conhecimento/buscar";
+import { prepararPassagem } from "./opening";
+
+/** Quanto a reação à resposta ainda espera a passagem preparada terminar (ela roda junto; quase sempre já terminou). */
+const PREP_EXTRA_WAIT_MS = 1000;
 
 export interface TutorDeps {
   db: ContentDb;
@@ -358,6 +362,10 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       task = a && a.is_correct && a.lucky_guess && !a.justification && ctx.session.question_state === "answered" ? { type: "justify" } : { type: "message", interrupted: action.interrupted?.slice(0, 300) || null };
     }
 
+    // passagem preparada (revisão de 17/10): logo depois da resposta, a fala de passagem para a próxima questão é pedida JUNTO com a
+    // reação (não soma tempo); quando o aluno pedir a próxima, ela entra na hora (opening.ts). Só nos modos com sequência de questões.
+    const prep = task.type === "react" && (ctx.session.mode === "questao" || ctx.session.mode === "erros") ? prepararPassagem(deps, userId, sessionId) : null;
+
     // cérebro do Tutor: o vetor da pergunta (só com TUTOR_CONHECIMENTO_VETOR=1) começa já, junto com o resto do preparo do turno
     const weak = ctx.session.context?.type === "weak_points" ? (ctx.memory?.weak_subareas ?? []).slice(0, 3).map((w) => w.subarea).join(" ") : "";
     const termosBusca = [q?.topic, q?.subtopic, ctx.session.topic, ctx.session.context?.label, weak, task.type === "message" && !q ? studentText : ""];
@@ -581,6 +589,8 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       await release();
       throw error;
     }
+    // a passagem preparada quase sempre já terminou; se não, espera no máximo um pouco (na Vercel, trabalho depois da resposta pode parar)
+    if (prep) await Promise.race([prep, new Promise((r) => setTimeout(r, PREP_EXTRA_WAIT_MS))]);
     return {
       message: {
         id: saved.id, role: "tutor", content: reply, spoken: spokenText(reply), grounding: String(meta.grounding), sources: meta.sources as { ref: string; label: string }[], hint_level: hintLevel,
