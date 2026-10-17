@@ -32,9 +32,9 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Reações de voz por professor", () => {
-  it("lista as 16 reações do catálogo com o que cada serviço de voz entende; nada marcado no Tranquilo", async () => {
+  it("lista as 16 reações do catálogo com o que cada serviço de voz entende; nada marcado no Tranquilo / Tranquila", async () => {
     render(<VoiceReactionsPanel />);
-    const list = await screen.findByRole("list", { name: "Reações de Tranquilo" });
+    const list = await screen.findByRole("list", { name: "Reações de Tranquilo / Tranquila" });
     expect(within(list).getAllByRole("checkbox")).toHaveLength(REACTIONS.length);
     for (const box of within(list).getAllByRole("checkbox")) expect(box).not.toBeChecked();
     expect(within(list).getAllByText("ElevenLabs: [shouts]")).toHaveLength(1);
@@ -58,7 +58,7 @@ describe("Reações de voz por professor", () => {
     const list = screen.getByRole("list", { name: "Reações de Explosiva · N3 Estressada" });
     fireEvent.click(within(list).getByRole("checkbox", { name: "Suspiro (Explosiva · N3 Estressada)" }));
     fireEvent.change(within(list).getByLabelText("Frequência máxima"), { target: { value: "3" } });
-    fireEvent.click(screen.getByRole("switch", { name: /Durona Explosiva disponível/ }));
+    fireEvent.click(screen.getByRole("switch", { name: /Durona Explosiva \(e Durão\) disponível/ }));
     // sem motivo não salva
     fireEvent.click(screen.getByRole("button", { name: "Salvar reações" }));
     expect(await screen.findByText(/Escreva o motivo/)).toBeInTheDocument();
@@ -96,7 +96,7 @@ describe("Reações de voz por professor", () => {
       throw new Error("Acesso restrito a administradores.");
     });
     render(<VoiceReactionsPanel />);
-    await screen.findByRole("list", { name: "Reações de Tranquilo" });
+    await screen.findByRole("list", { name: "Reações de Tranquilo / Tranquila" });
     fireEvent.change(screen.getByLabelText("Motivo da mudança"), { target: { value: "Motivo de teste longo" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar reações" }));
     expect(await screen.findByText("Acesso restrito a administradores.")).toBeInTheDocument();

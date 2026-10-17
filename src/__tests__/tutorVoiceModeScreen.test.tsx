@@ -308,7 +308,7 @@ describe("Painel de administração da voz", () => {
     fireEvent.change(screen.getByLabelText("Provedor da voz"), { target: { value: "live" } });
     fireEvent.change(screen.getByLabelText("Voz"), { target: { value: "cedar" } });
     fireEvent.change(screen.getByLabelText("Limite de cada conversa por voz (minutos)"), { target: { value: "20" } });
-    fireEvent.change(screen.getByLabelText("Nível da Durona"), { target: { value: "moderada" } });
+    fireEvent.change(screen.getByLabelText("Nível da Durona e do Durão"), { target: { value: "moderada" } });
     fireEvent.change(screen.getByLabelText("Pronúncias (uma por linha: termo = como falar)"), { target: { value: "INEP = inépi\nlixo sem igual" } });
     fireEvent.click(screen.getByRole("switch", { name: /^Piadas internas/ }));
     // professores usam o mesmo motivo (sem motivo, ficam travados)

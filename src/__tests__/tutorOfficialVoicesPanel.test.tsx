@@ -15,7 +15,7 @@ vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend }) }));
 vi.mock("../novo/app/tutor/voice/StaziaVoiceOrb.jsx", () => ({ StaziaVoiceOrb: () => <div data-testid="original-orb" />, orbEmotion: () => ({ emotion: "neutral", intensity: 0.2 }) }));
 vi.mock("../novo/app/tutor/voice/audioUnlock.js", () => ({ unlockAudio: () => null }));
 
-const LABEL = { tranquilo: "Tranquilo", durona: "Durona", direto: "Direto" } as const;
+const LABEL = { stazi: "Stazi", stazia: "Stazia" } as const;
 type Id = keyof typeof LABEL;
 const row = (id: Id, over: Record<string, unknown> = {}, heard: boolean | string[] = false) => ({
   id, label: LABEL[id], configured: true, unique: true, ready: true, approved: false, approved_at: null, fingerprint: `${id}-versao`, pending: null, detail: null, can_approve: false,
@@ -30,7 +30,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const calls = (suffix: string) => fetcher.mock.calls.filter(([url]) => String(url).endsWith(suffix));
 
 beforeEach(() => {
-  current = panel([row("tranquilo"), row("durona"), row("direto")]);
+  current = panel([row("stazi"), row("stazia")]);
   play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
   vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
   vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: vi.fn(() => "blob:voz-do-nexus"), revokeObjectURL: vi.fn() }));
@@ -45,21 +45,22 @@ afterEach(() => {
 const rowOf = async (label: string) => (await screen.findByRole("group", { name: `Voz ${label}` }));
 
 describe("Vozes do Nexus", () => {
-  it("lista as três vozes com os cenários de cada uma; tocar um cenário manda só personalidade e cenário", async () => {
+  it("lista as duas vozes (uma por personagem) com os cenários de cada uma; tocar um cenário manda só voz e cenário", async () => {
     render(<OfficialVoicesPanel />);
     expect(await screen.findByRole("heading", { name: "Vozes do Nexus" })).toBeInTheDocument();
-    for (const id of ["tranquilo", "durona", "direto"] as Id[]) {
+    for (const id of ["stazi", "stazia"] as Id[]) {
       const r = await rowOf(LABEL[id]);
       expect(within(r).getAllByRole("button", { name: new RegExp(`^Ouvir ${LABEL[id]}:`) })).toHaveLength(scenariosFor(id).length);
     }
-    expect(screen.getByRole("button", { name: "Ouvir Durona: Alívio com palavrão" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Ouvir Direto: Alívio com palavrão" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Ouvir Stazia: Alívio com palavrão" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ouvir Stazi: Alívio com palavrão" })).toBeInTheDocument(); // o Durão fala com a voz do Stazi
+    expect(screen.queryByRole("group", { name: /Voz Direto/ })).toBeNull();
     expect(screen.queryByText(/três vozes/i)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Ouvir Durona: Erro repetido" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ouvir Stazia: Erro repetido" }));
     await waitFor(() => expect(play).toHaveBeenCalledTimes(1));
     const [url, init] = calls("/preview")[0] as any;
     expect(url).toBe("/api/tutor/voices/preview");
-    expect(JSON.parse(init.body)).toEqual({ personality: "durona", scenario: "repeticao" });
+    expect(JSON.parse(init.body)).toEqual({ personality: "stazia", scenario: "repeticao" });
     expect(init.headers.Authorization).toBe("Bearer admin-session-token");
     expect(screen.getByTestId("original-orb")).toBeInTheDocument();
     expect(screen.getByLabelText("Audição da voz oficial")).toHaveAttribute("src", "blob:voz-do-nexus");
@@ -68,54 +69,54 @@ describe("Vozes do Nexus", () => {
   });
 
   it("'Aprovar esta voz' só ativo com todos os cenários ouvidos nesta versão e para quem aprova; depois aparece 'Revogar'", async () => {
-    current = panel([row("tranquilo", {}, ["apresentacao", "erro"]), row("durona", { can_approve: true }, true), row("direto")]);
+    current = panel([row("stazi", {}, ["apresentacao", "erro"]), row("stazia", { can_approve: true }, true)]);
     render(<OfficialVoicesPanel />);
-    const durona = await rowOf("Durona");
-    expect(within(durona).getByRole("button", { name: "Ouvir Durona: Alívio com palavrão" })).toHaveAttribute("aria-pressed", "true");
-    const tranquilo = await rowOf("Tranquilo");
-    expect(within(tranquilo).getByRole("button", { name: "Ouvir Tranquilo: Apresentação" })).toHaveAttribute("aria-pressed", "true");
-    expect(within(tranquilo).getByRole("button", { name: "Ouvir Tranquilo: Erro repetido" })).toHaveAttribute("aria-pressed", "false");
-    expect(within(tranquilo).getByRole("button", { name: "Aprovar esta voz: Tranquilo" })).toBeDisabled();
-    const approved = panel([row("tranquilo"), row("durona", { approved: true, approved_at: "2026-10-08T15:00:00Z" }, true), row("direto")]);
+    const stazia = await rowOf("Stazia");
+    expect(within(stazia).getByRole("button", { name: "Ouvir Stazia: Alívio com palavrão" })).toHaveAttribute("aria-pressed", "true");
+    const stazi = await rowOf("Stazi");
+    expect(within(stazi).getByRole("button", { name: "Ouvir Stazi: Apresentação" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(stazi).getByRole("button", { name: "Ouvir Stazi: Erro repetido" })).toHaveAttribute("aria-pressed", "false");
+    expect(within(stazi).getByRole("button", { name: "Aprovar esta voz: Stazi" })).toBeDisabled();
+    const approved = panel([row("stazi"), row("stazia", { approved: true, approved_at: "2026-10-08T15:00:00Z" }, true)]);
     fetcher.mockImplementationOnce(async () => json(approved));
-    fireEvent.click(within(durona).getByRole("button", { name: "Aprovar esta voz: Durona" }));
+    fireEvent.click(within(stazia).getByRole("button", { name: "Aprovar esta voz: Stazia" }));
     await waitFor(() => expect(calls("/approve")).toHaveLength(1));
-    expect(JSON.parse((calls("/approve")[0] as any)[1].body)).toEqual({ personality: "durona" });
-    expect(await within(await rowOf("Durona")).findByRole("button", { name: "Revogar: Durona" })).toBeInTheDocument();
-    expect(within(await rowOf("Durona")).getByText("Aprovada")).toBeInTheDocument();
-    expect(within(await rowOf("Durona")).queryByRole("button", { name: /Aprovar esta voz/ })).toBeNull();
+    expect(JSON.parse((calls("/approve")[0] as any)[1].body)).toEqual({ personality: "stazia" });
+    expect(await within(await rowOf("Stazia")).findByRole("button", { name: "Revogar: Stazia" })).toBeInTheDocument();
+    expect(within(await rowOf("Stazia")).getByText("Aprovada")).toBeInTheDocument();
+    expect(within(await rowOf("Stazia")).queryByRole("button", { name: /Aprovar esta voz/ })).toBeNull();
   });
 
   it("quem não está na lista de aprovação ouve, mas não aprova nem revoga", async () => {
-    current = panel([row("tranquilo"), row("durona", { approved: true }), row("direto", { can_approve: false }, true)], false);
+    current = panel([row("stazi", { approved: true }), row("stazia", { can_approve: false }, true)], false);
     render(<OfficialVoicesPanel />);
-    expect(within(await rowOf("Direto")).getByRole("button", { name: "Aprovar esta voz: Direto" })).toBeDisabled();
+    expect(within(await rowOf("Stazia")).getByRole("button", { name: "Aprovar esta voz: Stazia" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: /^Revogar/ })).toBeNull();
     expect(screen.getByText(/Só quem está na lista de aprovação do servidor aprova ou revoga/)).toBeInTheDocument();
-    expect(within(await rowOf("Direto")).getByRole("button", { name: "Ouvir Direto: Apresentação" })).toBeEnabled();
+    expect(within(await rowOf("Stazia")).getByRole("button", { name: "Ouvir Stazia: Apresentação" })).toBeEnabled();
   });
 
   it("revogar uma voz muda só aquela linha", async () => {
-    current = panel([row("tranquilo"), row("durona", { approved: true }, true), row("direto", { approved: true }, true)]);
+    current = panel([row("stazi", { approved: true }, true), row("stazia", { approved: true }, true)]);
     render(<OfficialVoicesPanel />);
-    const durona = await rowOf("Durona");
-    fetcher.mockImplementationOnce(async () => json(panel([row("tranquilo"), row("durona", {}, true), row("direto", { approved: true }, true)])));
-    fireEvent.click(within(durona).getByRole("button", { name: "Revogar: Durona" }));
+    const stazia = await rowOf("Stazia");
+    fetcher.mockImplementationOnce(async () => json(panel([row("stazi", { approved: true }, true), row("stazia", {}, true)])));
+    fireEvent.click(within(stazia).getByRole("button", { name: "Revogar: Stazia" }));
     await waitFor(() => expect(calls("/revoke")).toHaveLength(1));
-    expect(JSON.parse((calls("/revoke")[0] as any)[1].body)).toEqual({ personality: "durona" });
-    expect(await within(await rowOf("Durona")).findByText("Aguardando audição e aprovação")).toBeInTheDocument();
-    expect(within(await rowOf("Direto")).getByText("Aprovada")).toBeInTheDocument();
+    expect(JSON.parse((calls("/revoke")[0] as any)[1].body)).toEqual({ personality: "stazia" });
+    expect(await within(await rowOf("Stazia")).findByText("Aguardando audição e aprovação")).toBeInTheDocument();
+    expect(within(await rowOf("Stazi")).getByText("Aprovada")).toBeInTheDocument();
   });
 
   it("sem chave ou sem voz cadastrada: cenários desativados e o motivo à vista em português simples, sem voz simulada", async () => {
     current = {
-      ...panel([row("tranquilo", { ready: false, configured: false, pending: "A voz de Tranquilo ainda não foi cadastrada no servidor.", detail: "Configure ELEVENLABS_VOICE_TRANQUILO com o voice_id salvo." }), row("durona", { ready: false }), row("direto", { ready: false })]),
+      ...panel([row("stazi", { ready: false, configured: false, pending: "A voz de Stazi ainda não foi cadastrada no servidor.", detail: "Configure ELEVENLABS_VOICE_STAZI com o voice_id salvo." }), row("stazia", { ready: false })]),
       pending: "A chave de acesso da voz do professor ainda não foi configurada no servidor.", detail: "Configure ELEVENLABS_API_KEY no servidor.",
     };
     render(<OfficialVoicesPanel />);
     expect(await screen.findByText("A chave de acesso da voz do professor ainda não foi configurada no servidor.")).toBeInTheDocument();
-    expect(within(await rowOf("Tranquilo")).getByText("Voz ainda não cadastrada")).toBeInTheDocument();
-    expect(within(await rowOf("Tranquilo")).getByText("A voz de Tranquilo ainda não foi cadastrada no servidor.")).toBeInTheDocument();
+    expect(within(await rowOf("Stazi")).getByText("Voz ainda não cadastrada")).toBeInTheDocument();
+    expect(within(await rowOf("Stazi")).getByText("A voz de Stazi ainda não foi cadastrada no servidor.")).toBeInTheDocument();
     // o nome da variável do servidor fica no detalhe técnico, escondido (a seção começa fechada)
     const detalhes = screen.getAllByText("Detalhe técnico (para quem configura o servidor)");
     expect(detalhes).toHaveLength(2);
@@ -129,14 +130,14 @@ describe("Vozes do Nexus", () => {
   it("falha da audição aparece como erro; navegador que bloqueia o som deixa o player manual", async () => {
     fetcher.mockImplementation(async (url: string) => (String(url).endsWith("/preview") ? json({ error: "Créditos indisponíveis." }, 502) : json(current)));
     render(<OfficialVoicesPanel />);
-    fireEvent.click(await screen.findByRole("button", { name: "Ouvir Direto: Apresentação" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Ouvir Stazi: Apresentação" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Créditos indisponíveis.");
     expect(play).not.toHaveBeenCalled();
     cleanup();
     fetcher.mockImplementation(async (url: string) => (String(url).endsWith("/preview") ? new Response(new Uint8Array([73]), { headers: { "Content-Type": "audio/mpeg" } }) : json(current)));
     play.mockRejectedValueOnce(new Error("NotAllowedError"));
     render(<OfficialVoicesPanel />);
-    fireEvent.click(await screen.findByRole("button", { name: "Ouvir Tranquilo: Apresentação" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Ouvir Stazia: Apresentação" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("reprodução automática");
     expect(screen.getByLabelText("Audição da voz oficial")).toHaveAttribute("controls");
   });

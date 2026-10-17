@@ -301,9 +301,10 @@ function retirementReason(entry) {
 const topic = (d) => d.topic && `Tema: ${d.topic}`;
 
 // ---------------------------------------------------------------- outras partes
-const VOICE_NAME = { tranquilo: "Tranquilo", durona: "Durona", direto: "Direto" };
+// vozes: as de hoje são por personagem (stazi, stazia); as antigas seguem para ler registros de antes de 17/10/2026
+const VOICE_NAME = { stazi: "Stazi", stazia: "Stazia", tranquilo: "Tranquilo", durona: "Durona", direto: "Direto" };
 // código do professor (tutor_personalities.id) → nome que a tela do Tutor mostra
-const PROFESSOR_NAME = { acolhedor: "Tranquilo", direto: "Direto", durona: "Durona" };
+const PROFESSOR_NAME = { durao: "Durão", acolhedor: "Tranquilo", durona: "Durona", tranquila: "Tranquila", direto: "Direto" };
 const reasonOf = (d) => (typeof d.reason === "string" && d.reason.trim() ? `Motivo: ${d.reason.trim()}` : "");
 const duration = (seconds) => {
   const s = Math.round(Number(seconds) || 0);
