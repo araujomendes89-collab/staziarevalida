@@ -140,3 +140,61 @@ begin
 end
 $$;
 revoke execute on function public.ch_worker_tutor_set_opening(uuid, uuid, bigint, text, jsonb, jsonb) from public, anon, authenticated;
+
+-- =============================================================================
+-- VOZ AO VIVO (parte 2 do "Tutor natural", 17/10/2026): na voz ao vivo a abertura é criada na hora pelo próprio modelo de voz.
+--   * ch_worker_tutor_voice_openings(p_user, p_session_id): as 5 últimas aberturas que o aluno ouviu desta personalidade (as mesmas da
+--     abertura por texto) e a hora de Brasília, para o servidor mandar nas instruções da ligação ("não repita, não comece igual").
+--   * ch_worker_tutor_voice_opening_save(p_user, p_voice_call, p_text): guarda a PRIMEIRA fala do professor de cada ligação na mesma
+--     memória (uma por ligação: tutor_recent_openings.voice_call_id único); as outras falas da ligação não entram. Devolve se gravou.
+-- =============================================================================
+alter table public.tutor_recent_openings add column if not exists voice_call_id uuid references public.tutor_voice_calls (id) on delete set null;
+create unique index if not exists tutor_recent_openings_voice_call_uq on public.tutor_recent_openings (voice_call_id) where voice_call_id is not null;
+
+create or replace function public.ch_worker_tutor_voice_openings(p_user uuid, p_session_id uuid) returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  s public.tutor_sessions;
+begin
+  select * into s from public.tutor_sessions where id = p_session_id and user_id = p_user;
+  if not found then return null; end if;
+  return jsonb_build_object(
+    'recent', coalesce((select jsonb_agg(r.content order by r.created_at desc, r.id desc) from (
+                select o.id, o.content, o.created_at from public.tutor_recent_openings o
+                where o.user_id = p_user and o.personality_id = s.personality_id and o.kind = 'abertura'
+                order by o.created_at desc, o.id desc limit 5) r), '[]'::jsonb),
+    'local_hour', extract(hour from (now() at time zone 'America/Sao_Paulo'))::int
+  );
+end
+$$;
+revoke execute on function public.ch_worker_tutor_voice_openings(uuid, uuid) from public, anon, authenticated;
+
+create or replace function public.ch_worker_tutor_voice_opening_save(p_user uuid, p_voice_call uuid, p_text text) returns boolean
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  v public.tutor_voice_calls;
+  s public.tutor_sessions;
+  v_text text := left(nullif(btrim(regexp_replace(coalesce(p_text, ''), '\s+', ' ', 'g')), ''), 600);
+  v_n int;
+begin
+  if v_text is null then return false; end if;
+  select * into v from public.tutor_voice_calls where id = p_voice_call and user_id = p_user;
+  if not found then return false; end if;
+  select * into s from public.tutor_sessions where id = v.session_id and user_id = p_user;
+  if not found then return false; end if;
+  insert into public.tutor_recent_openings (user_id, personality_id, session_id, kind, content, voice_call_id)
+  values (p_user, s.personality_id, s.id, 'abertura', v_text, v.id)
+  on conflict (voice_call_id) where voice_call_id is not null do nothing;
+  get diagnostics v_n = row_count;
+  if v_n = 0 then return false; end if;
+  -- guarda só as 10 últimas por aluno, personalidade e tipo (a mesma regra da abertura por texto)
+  delete from public.tutor_recent_openings o
+  where o.user_id = p_user and o.personality_id = s.personality_id and o.kind = 'abertura'
+    and o.id not in (select k.id from public.tutor_recent_openings k where k.user_id = p_user and k.personality_id = s.personality_id and k.kind = 'abertura'
+                     order by k.created_at desc, k.id desc limit 10);
+  return true;
+end
+$$;
+revoke execute on function public.ch_worker_tutor_voice_opening_save(uuid, uuid, text) from public, anon, authenticated;

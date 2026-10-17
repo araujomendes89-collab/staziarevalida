@@ -164,10 +164,45 @@ describe("abertura e passagem naturais (migração 013600)", () => {
     expect(await rows(`select 1 from public.tutor_recent_openings where user_id = $1`, [DEL])).toEqual([]);
   });
 
+  it("voz ao vivo: a primeira fala de cada ligação entra na memória (uma por ligação) e a próxima ligação recebe a lista", async () => {
+    const VOZ = id(15);
+    await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'voz@t.dev', '{}')`, [VOZ]);
+    const { sid } = await newSession(VOZ, "tranquila");
+    const call = async () => (await rows(`insert into public.tutor_voice_calls (user_id, session_id, lease_until) values ($1, $2, now() + interval '2 minutes') returning id`, [VOZ, sid]))[0].id as string;
+    const save = async (uid: string, vc: string, t: string | null) => (await rows(`select public.ch_worker_tutor_voice_opening_save($1, $2, $3) r`, [uid, vc, t]))[0].r;
+    const voiceState = async (uid: string, s: string) => (await rows(`select public.ch_worker_tutor_voice_openings($1, $2) r`, [uid, s]))[0].r;
+    const v1 = await call();
+    expect(await save(VOZ, v1, "  Boa noite.   Hoje a gente   olha sepse com calma.  ")).toBe(true);
+    expect(await save(VOZ, v1, "Segunda fala da mesma ligação.")).toBe(false); // só a primeira
+    expect(await save(BIA, v1, "Fala de outro aluno.")).toBe(false); // ligação de outra pessoa
+    expect(await save(VOZ, v1, "   ")).toBe(false);
+    await db.query(`update public.tutor_voice_calls set status = 'ended' where id = $1`, [v1]);
+    const v2 = await call();
+    expect(await save(VOZ, v2, "Que bom te ver de volta.")).toBe(true);
+    const st = await voiceState(VOZ, sid);
+    expect(st.recent).toEqual(["Que bom te ver de volta.", "Boa noite. Hoje a gente olha sepse com calma."]);
+    expect(typeof st.local_hour).toBe("number");
+    expect(await voiceState(BIA, sid)).toBeNull();
+    // fechadas para o aluno; só o servidor
+    await expect(asRole("authenticated", VOZ, `select public.ch_worker_tutor_voice_openings($1, $2)`, [VOZ, sid])).rejects.toThrow(/permission denied/);
+    await expect(asRole("authenticated", VOZ, `select public.ch_worker_tutor_voice_opening_save($1, $2, 'x')`, [VOZ, v2])).rejects.toThrow(/permission denied/);
+    for (const fn of ["ch_worker_tutor_voice_openings(uuid,uuid)", "ch_worker_tutor_voice_opening_save(uuid,uuid,text)"]) {
+      const def = (await rows(`select prosecdef, proconfig from pg_proc where oid = $1::regprocedure`, [`public.${fn}`]))[0];
+      expect(def.prosecdef).toBe(true);
+      expect(def.proconfig).toEqual(['search_path=""']);
+    }
+    // guarda só as 10 últimas aberturas por aluno e personalidade
+    for (let i = 0; i < 12; i++) {
+      await db.query(`update public.tutor_voice_calls set status = 'ended' where user_id = $1 and status = 'active'`, [VOZ]);
+      await save(VOZ, await call(), `Abertura número ${i}.`);
+    }
+    expect((await rows(`select count(*)::int n from public.tutor_recent_openings where user_id = $1 and kind = 'abertura'`, [VOZ]))[0].n).toBe(10);
+  });
+
   it("desfazer apaga as funções e a tabela; a migração entra de novo", async () => {
     await db.exec(UNDO);
     expect((await rows(`select to_regclass('public.tutor_recent_openings') r`))[0].r).toBeNull();
-    expect(await rows(`select 1 from pg_proc where proname in ('ch_worker_tutor_opening_state', 'ch_worker_tutor_set_opening')`)).toEqual([]);
+    expect(await rows(`select 1 from pg_proc where proname in ('ch_worker_tutor_opening_state', 'ch_worker_tutor_set_opening', 'ch_worker_tutor_voice_openings', 'ch_worker_tutor_voice_opening_save')`)).toEqual([]);
     await db.exec(UNDO); // desfazer também pode rodar 2x
     await db.exec(SQL);
     const { sid } = await newSession(ANA, "durao");
