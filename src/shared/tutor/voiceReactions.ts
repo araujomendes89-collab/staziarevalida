@@ -76,14 +76,16 @@ export const TAGGED_PROVIDERS: VoiceProviderId[] = ["elevenlabs", "gemini_tts"];
 export type ProfileLevel = "padrao" | "n1" | "n2" | "n3" | "n4";
 export type PublicPersonality = "tranquilo" | "direto" | "durona";
 
-/** Os perfis que o dono configura: os 3 professores e os 4 níveis da Durona Explosiva. */
+/**
+ * Os perfis que o dono configura: Tranquilo/Tranquila, a Durona/o Durão e os 4 níveis da Explosiva. Cada regra vale para o par
+ * (Durão e Durona usam as mesmas; Tranquilo e Tranquila também). O Direto saiu em 17/10/2026 e não aparece mais aqui.
+ */
 export const REACTION_PROFILES: { key: string; personality: PublicPersonality; level: ProfileLevel; label: string; note: string }[] = [
-  { key: "tranquilo", personality: "tranquilo", level: "padrao", label: "Tranquilo", note: "calmo e socrático" },
-  { key: "direto", personality: "direto", level: "padrao", label: "Direto", note: "objetivo, seco" },
-  { key: "durona", personality: "durona", level: "padrao", label: "Durona (como está hoje)", note: "a Durona atual, sem o modo Explosiva" },
+  { key: "tranquilo", personality: "tranquilo", level: "padrao", label: "Tranquilo / Tranquila", note: "calmos e socráticos" },
+  { key: "durona", personality: "durona", level: "padrao", label: "Durona / Durão (como está hoje)", note: "a Durona e o Durão atuais, sem o modo Explosiva" },
   { key: "durona:n1", personality: "durona", level: "n1", label: "Explosiva · N1 Direta", note: "sem palavrão" },
   { key: "durona:n2", personality: "durona", level: "n2", label: "Explosiva · N2 Sarcástica", note: "ironia leve" },
-  { key: "durona:n3", personality: "durona", level: "n3", label: "Explosiva · N3 Estressada", note: "palavrão ocasional; PADRÃO de quem escolhe a Durona (precisa da declaração de 18+ do Termo)" },
+  { key: "durona:n3", personality: "durona", level: "n3", label: "Explosiva · N3 Estressada", note: "palavrão ocasional; PADRÃO de quem escolhe a Durona ou o Durão (precisa da declaração de 18+ do Termo)" },
   { key: "durona:n4", personality: "durona", level: "n4", label: "Explosiva · N4 Explosiva", note: "teatral e ácida; o aluno escolhe (precisa da declaração de 18+ do Termo)" },
 ];
 export const profileKey = (personality: string, level: string) => (level === "padrao" ? personality : `${personality}:${level}`);

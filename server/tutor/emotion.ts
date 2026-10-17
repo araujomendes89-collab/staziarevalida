@@ -42,6 +42,12 @@ export interface PersonaEngine {
   relief?: "relieved" | "celebrate";
 }
 
+/**
+ * Os quatro professores de hoje (17/10/2026) vêm de duas famílias de motor: Durão é a Durona no masculino e Tranquila é uma
+ * versão feminina do Tranquilo (id acolhedor). Tudo que olhava o id "durona" ou "acolhedor" olha a família.
+ */
+export const familyOf = (personaId: string): string => (personaId === "durao" ? "durona" : personaId === "tranquila" ? "acolhedor" : personaId);
+
 export const PERSONA_ENGINE: Record<string, PersonaEngine> = {
   acolhedor: { frustration_multiplier: 0.45, sarcasm_max: 40, aggression_max: 15, patience_base: 70, warmth_base: 60, language_max: 1, language_base: 1 },
   preguicoso: { frustration_multiplier: 0.45, sarcasm_max: 40, aggression_max: 15, patience_base: 70, warmth_base: 60, language_max: 1, language_base: 1 },
@@ -58,9 +64,9 @@ export const DURONA_LEVELS: Record<DuronaLevel, Partial<PersonaEngine>> = {
 };
 
 export const engineFor = (personaId: string, fromDb?: Partial<PersonaEngine> | null, duronaLevel?: DuronaLevel | null): PersonaEngine => ({
-  ...(PERSONA_ENGINE[personaId] ?? PERSONA_ENGINE.direto),
+  ...(PERSONA_ENGINE[familyOf(personaId)] ?? PERSONA_ENGINE.direto),
   ...Object.fromEntries(Object.entries(fromDb ?? {}).filter(([, v]) => typeof v === "number")),
-  ...(personaId === "durona" && duronaLevel ? DURONA_LEVELS[duronaLevel] ?? {} : {}),
+  ...(familyOf(personaId) === "durona" && duronaLevel ? DURONA_LEVELS[duronaLevel] ?? {} : {}),
 });
 
 export interface TutorState {
@@ -347,6 +353,10 @@ const ESCALATION: Record<string, string[]> = {
   ],
 };
 
+/** Os mesmos degraus no masculino (Durão) e no feminino (Tranquila): só concordância, o tom é o da família. */
+ESCALATION.durao = ESCALATION.durona.map((l) => l.replace("irritada de verdade", "irritado de verdade"));
+ESCALATION.tranquila = ESCALATION.acolhedor.map((l) => l.replace(/^Tranquilo:/, "Tranquila:"));
+
 const MOOD_PT: Record<Mood, string> = {
   neutral: "neutro", pleased: "satisfeito", encouraged: "animado com a melhora", impatient: "impaciente", irritated: "irritado",
   angry: "muito irritado", impressed: "impressionado", disappointed: "decepcionado", firm: "firme", relieved: "aliviado",
@@ -380,7 +390,7 @@ const RELIEF_NOW: Record<"relieved" | "celebrate", { moderate: string; light: st
 /** Bloco de ESTADO do professor para o prompt (sistema). `profanity` é o teto de palavrão da conversa (painel e professor). */
 export function stateLayer(personaId: string, s: TutorState, engine: PersonaEngine, profanity: "off" | "mild" | "moderate" = "moderate"): string {
   const li = languageIntensity(s, engine);
-  const scale = ESCALATION[personaId] ?? ESCALATION.direto;
+  const scale = ESCALATION[personaId] ?? ESCALATION[familyOf(personaId)] ?? ESCALATION.direto;
   const now = (s.turnEvents ?? []).filter((e): e is "relieved" | "celebrate" => e === "relieved" || e === "celebrate");
   const eventText = (e: string) => (now.includes(e as "relieved") ? RELIEF_NOW[e as "relieved"][profanity === "moderate" ? "moderate" : "light"] : EVENT_PT[e] ?? e);
   const swearNow = now.length > 0 && profanity === "moderate";
@@ -396,7 +406,8 @@ export function stateLayer(personaId: string, s: TutorState, engine: PersonaEngi
 }
 
 /** Para o avatar (mascote) e a voz: o front mostra só a mensagem; isto anima e dá a prosódia. */
-export function avatarOf(personaId: string, s: TutorState) {
+export function avatarOf(rawPersonaId: string, s: TutorState) {
+  const personaId = familyOf(rawPersonaId);
   const intensity = s.mood === "impressed" || s.mood === "pleased" ? clamp(s.enthusiasm) : clamp(s.frustration);
   const animation: Record<Mood, string> = {
     neutral: "neutral", pleased: "happy", encouraged: "proud", impatient: personaId === "durona" ? "eye_roll" : "skeptical",

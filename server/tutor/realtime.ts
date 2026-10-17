@@ -24,7 +24,7 @@
  *   OPENAI_REALTIME_TRANSCRIBE_MODEL opcional (Realtime): transcrição da fala do aluno
  */
 import { createHash } from "crypto";
-import { engineFor, languageIntensity, normalize, profanityForIntensity, stateLayer, type PersonaEngine, type TutorState } from "./emotion";
+import { engineFor, familyOf, languageIntensity, normalize, profanityForIntensity, stateLayer, type PersonaEngine, type TutorState } from "./emotion";
 import { PROFESSOR_CHANGED, trialOverMessage, TutorError, consentError, termsOrFail, type Entitlement, type TutorDeps } from "./engine";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings as SessionPrefs } from "./personality";
 import { composeLiveInstructions, composeRealtimeInstructions, type TutorMode } from "./prompts";
@@ -506,7 +506,7 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
     const max = profanityLevel(ctx.personality.params, ctx.session.settings.profanity ?? "off", ctx.config.max_profanity);
     const RANK = { off: 0, mild: 1, moderate: 2 } as const;
     // Durona "sem filtro cosmético": o teto do professor vale direto (os limites contra ataque pessoal continuam)
-    profanity = settings.durona_level === "sem_filtro" && ctx.personality.id === "durona" ? max : RANK[byState] < RANK[max] ? byState : max;
+    profanity = settings.durona_level === "sem_filtro" && familyOf(ctx.personality.id) === "durona" ? max : RANK[byState] < RANK[max] ? byState : max;
   }
   // sem a lista de fontes que o aluno não pode ver a fala não é conferida: recusa (503) e NÃO grava a fala no histórico
   const supportTerms = await termsOrFail(deps);

@@ -372,12 +372,12 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       args = {};
     }
     const persona = await deps!.db.service<{ personality: { id: string } } | null>("ch_worker_tutor_context", { p_user: req.user!.id, p_session_id: v.session_id });
-    const output = await runTutorTool({ deps: deps!, userId: req.user!.id, sessionId: v.session_id, personaId: persona?.personality.id ?? "direto", remember: (t) => rememberEvidence(id, t) }, name, args);
+    const output = await runTutorTool({ deps: deps!, userId: req.user!.id, sessionId: v.session_id, personaId: persona?.personality.id ?? "acolhedor", remember: (t) => rememberEvidence(id, t) }, name, args);
     // voz do Gemini pelo Vertex: depois da correção, o tom novo do professor vem do Personality Engine (acerto ou erro)
     if (name === "submit_answer" && v.provider === "gemini" && geminiVoiceConfig().via === "vertex" && output && typeof output === "object" && "result" in output) {
       try {
         const correct = Boolean((output as { result?: { is_correct?: boolean } }).result?.is_correct);
-        const d = await planPersonaTurn(deps!, { userId: req.user!.id, personality: persona?.personality.id ?? "direto", provider: "gemini_live", memory: null, facts: [correct ? "correct" : "wrong"] });
+        const d = await planPersonaTurn(deps!, { userId: req.user!.id, personality: persona?.personality.id ?? "acolhedor", provider: "gemini_live", memory: null, facts: [correct ? "correct" : "wrong"] });
         (output as Record<string, unknown>).tom_do_professor = personaPromptLayer(d);
       } catch {
         // sem o motor no banco: fica o "tone" de sempre

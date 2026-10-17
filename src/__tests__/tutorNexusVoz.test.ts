@@ -24,7 +24,7 @@ import { aceitarTermos } from "./helpers/aceites";
 
 const ENV = {
   ELEVENLABS_API_KEY: "chave-falsa-de-teste-" + "x".repeat(40), TUTOR_VOICE_ALLOW_EXTERNAL: "1",
-  ELEVENLABS_VOICE_TRANQUILO: "vozTranquiloTeste01", ELEVENLABS_VOICE_DURONA: "vozDuronaTeste0001", ELEVENLABS_VOICE_DIRETO: "vozDiretoTeste0001",
+  ELEVENLABS_VOICE_STAZI: "vozStaziTeste000001", ELEVENLABS_VOICE_STAZIA: "vozStaziaTeste00001",
 };
 const KEY = "sk-teste-" + "k".repeat(40);
 const STT = { ready: true, model: "gpt-4o-mini-transcribe", key: KEY, pending: null };
@@ -64,7 +64,7 @@ const say = (uid: string, call: string, body: Record<string, unknown>, turn = `t
 const start = async (uid: string, mode: "livre" | "questao", personality = "durona") => (await rpc(uid, "app_tutor_start", mode, null, null, null, personality)).id as string;
 const requests = async (uid: string) => (await sql(`select coalesce(sum(requests), 0)::int n from public.ai_usage where user_id = $1`, [uid]))[0].n as number;
 const approveAll = async () => {
-  for (const v of ["tranquilo", "durona", "direto"] as const) {
+  for (const v of ["stazi", "stazia"] as const) {
     await sql(`insert into public.tutor_voice_approvals (voice, fingerprint) values ($1, $2) on conflict (voice) do update set fingerprint = excluded.fingerprint, revoked_at = null, sample_path = null`, [v, voiceFingerprint(v, ENV)]);
   }
 };
@@ -116,7 +116,7 @@ describe("Nexus: os jeitos e a abertura", () => {
     const r = await open(PAGO, await start(PAGO, "livre"));
     expect(r).toMatchObject({ status: 200, json: { jeito: "eleven", mic: true, reason: null, minutes_today: 5 } });
     expect((await sql(`select provider, status from public.tutor_voice_calls where id = $1`, [r.json.voice_call_id]))[0]).toEqual({ provider: "tts", status: "active" });
-    await sql(`delete from public.tutor_voice_approvals where voice = 'durona'`);
+    await sql(`delete from public.tutor_voice_approvals where voice = 'stazia'`);
     expect((await open(ADMIN, await start(ADMIN, "livre"))).json).toMatchObject({ jeito: "eleven", reason: null });
     const aluno = await open(PAGO, await start(PAGO, "livre"), true);
     expect(aluno.json).toMatchObject({ jeito: "reserva", voice_call_id: null, mic: true, reason: "not_approved" });
@@ -150,22 +150,23 @@ describe("Nexus: os jeitos e a abertura", () => {
     await config({ voice_enabled: true });
     deps.stt = { ...STT, ready: false, key: null };
     expect((await open(PAGO, s)).json).toMatchObject({ jeito: "eleven", mic: false });
-    await sql(`delete from public.tutor_voice_approvals where voice = 'durona'`);
+    await sql(`delete from public.tutor_voice_approvals where voice = 'stazia'`);
     expect((await open(PAGO, s, true)).json).toMatchObject({ jeito: "reserva", mic: true });
   });
 
   it("/nexus: por professor, se a voz do professor vale e se há amostra; minutos = caracteres restantes ÷ 900", async () => {
-    await sql(`update public.tutor_voice_approvals set sample_path = 'durona/' || fingerprint || '.mp3' where voice = 'durona'`);
-    await sql(`delete from public.tutor_voice_approvals where voice = 'direto'`);
+    await sql(`update public.tutor_voice_approvals set sample_path = 'stazia/' || fingerprint || '.mp3' where voice = 'stazia'`);
+    await sql(`delete from public.tutor_voice_approvals where voice = 'stazi'`);
     await sql(`insert into public.tutor_tts_usage (user_id, chars, status) values ($1, 1000, 'spent')`, [PAGO]);
     const r = await api(PAGO, "GET", "/nexus");
     expect(r.status).toBe(200);
     expect(r.json).toMatchObject({ voice_enabled: true, stt: true, reserve: true, minutes_today: 3 });
     expect(r.json.reserve_minutes).toBeGreaterThan(0);
     expect(r.json.professors).toEqual([
-      { id: "acolhedor", eleven: true, sample: false, reason: null },
+      { id: "durao", eleven: false, sample: false, reason: "not_approved" },
+      { id: "acolhedor", eleven: false, sample: false, reason: "not_approved" },
       { id: "durona", eleven: true, sample: true, reason: null },
-      { id: "direto", eleven: false, sample: false, reason: "not_approved" },
+      { id: "tranquila", eleven: true, sample: true, reason: null },
     ]);
   });
 
@@ -311,6 +312,6 @@ describe("Nexus: o turno", () => {
     const old = (await sql(`insert into public.tutor_sessions (user_id, mode, title, personality_id, intensity, legacy_persona) values ($1, 'livre', 'antiga', 'acolhedor', 3, '{"name":"Acolhedor","emoji":"🤗"}') returning id`, [PAGO]))[0].id;
     expect(await open(PAGO, old)).toEqual({ status: 409, json: { error: PROFESSOR_CHANGED } });
     const raw = JSON.stringify([(await api(PAGO, "GET", "/nexus")).json, (await open(PAGO, await start(PAGO, "livre"))).json]);
-    for (const secret of [KEY, ENV.ELEVENLABS_API_KEY, ENV.ELEVENLABS_VOICE_DURONA]) expect(raw).not.toContain(secret);
+    for (const secret of [KEY, ENV.ELEVENLABS_API_KEY, ENV.ELEVENLABS_VOICE_STAZIA]) expect(raw).not.toContain(secret);
   });
 });

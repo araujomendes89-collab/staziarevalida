@@ -73,8 +73,8 @@ export const minutesOf = (chars: number) => Math.floor(Math.max(0, chars) / CHAR
  * "Voz reserva" ou "Por escrito", sem nomear fornecedor. */
 export type Jeito = "eleven" | "reserva" | "escrito";
 
-/** Os três professores, na ordem dos cartões. */
-export const NEXUS_PROFESSORS = ["acolhedor", "durona", "direto"] as const;
+/** Os quatro professores, na ordem dos cartões: Stazi (Durão, Tranquilo) e Stazia (Durona, Tranquila). */
+export const NEXUS_PROFESSORS = ["durao", "acolhedor", "durona", "tranquila"] as const;
 
 export interface NexusStatus {
   voice_enabled: boolean;

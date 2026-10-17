@@ -10,27 +10,35 @@ export interface Approval { fingerprint: string; approved_at: string; sample_pat
  * que a tela mostra escondido, para quem configura o servidor (VZ04).
  */
 export interface ReadinessRow { id: OfficialVoice; label: string; configured: boolean; unique: boolean; ready: boolean; approved: boolean; fingerprint: string; pending: string | null; detail: string | null }
+/** Uma voz por personagem (17/10/2026): ELEVENLABS_VOICE_STAZI e ELEVENLABS_VOICE_STAZIA. */
 const ENV_NAMES = {
-  direto: "ELEVENLABS_VOICE_DIRETO", durona: "ELEVENLABS_VOICE_DURONA",
-  tranquilo: "ELEVENLABS_VOICE_TRANQUILO",
+  stazi: "ELEVENLABS_VOICE_STAZI", stazia: "ELEVENLABS_VOICE_STAZIA",
 } as const;
-const LEGACY_ENV_NAMES: Partial<Record<OfficialVoice, string>> = {
-  durona: "ELEVENLABS_VOICE_DURAO",
-  tranquilo: "ELEVENLABS_VOICE_PREGUICOSO",
+/**
+ * Reserva de compatibilidade: as variáveis dos três professores de antes valem enquanto as novas não existirem (a Stazia herda a
+ * da Durona, o Stazi a do Tranquilo). A do Direto saiu: o Direto não tem mais voz.
+ */
+const LEGACY_ENV_NAMES: Record<OfficialVoice, string[]> = {
+  stazi: ["ELEVENLABS_VOICE_TRANQUILO", "ELEVENLABS_VOICE_PREGUICOSO"],
+  stazia: ["ELEVENLABS_VOICE_DURONA", "ELEVENLABS_VOICE_DURAO"],
 };
 export const OFFICIAL_VOICE_KEYS = Object.keys(OFFICIAL_VOICES) as OfficialVoice[];
 export const validVoiceId = (value: unknown): value is string => typeof value === "string" && /^[a-zA-Z0-9_-]{10,128}$/.test(value);
 
-/** Alias explícito: mantém o ID e o comportamento da Durona já existente no banco. */
+/**
+ * A voz oficial de cada personalidade vem do PERSONAGEM: Stazi (Durão e Tranquilo) e Stazia (Durona e Tranquila). Aceita também
+ * o próprio id do personagem e os ids antigos (tranquilo, preguiçoso, durona), que continuam resolvendo para a voz do personagem.
+ * O Direto saiu e não tem voz.
+ */
 export function officialVoiceForPersonality(id: string | undefined): OfficialVoice | null {
-  // IDs antigos continuam resolvendo para a voz, mas não aparecem como perfis separados.
-  if (id === "acolhedor" || id === "preguicoso") return "tranquilo";
+  if (id === "durao" || id === "acolhedor" || id === "preguicoso" || id === "tranquilo") return "stazi";
+  if (id === "durona" || id === "tranquila") return "stazia";
   return OFFICIAL_VOICE_KEYS.includes(id as OfficialVoice) ? id as OfficialVoice : null;
 }
 
 export function elevenLabsConfiguration(env: NodeJS.ProcessEnv = process.env) {
   const voices = Object.fromEntries(OFFICIAL_VOICE_KEYS.map((id) => [id,
-    ((env[ENV_NAMES[id]] || (LEGACY_ENV_NAMES[id] ? env[LEGACY_ENV_NAMES[id]!] : "")) ?? "").trim(),
+    ((env[ENV_NAMES[id]] || LEGACY_ENV_NAMES[id].map((name) => env[name]).find(Boolean) || "") ?? "").trim(),
   ])) as Record<OfficialVoice, string>;
   return {
     voices,
@@ -54,7 +62,7 @@ export function fingerprintParts(id: OfficialVoice, env: NodeJS.ProcessEnv = pro
 export const fingerprintOf = (parts: unknown) => createHash("sha256").update(JSON.stringify(parts)).digest("hex");
 export const voiceFingerprint = (id: OfficialVoice, env: NodeJS.ProcessEnv = process.env) => fingerprintOf(fingerprintParts(id, env));
 
-/** Situação de cada voz. Cada uma vale sozinha: aprovada a Durona, ela fala, mesmo sem as outras. */
+/** Situação de cada voz. Cada uma vale sozinha: aprovada a da Stazia, ela fala, mesmo sem a do Stazi. */
 export function elevenLabsReadiness(env: NodeJS.ProcessEnv = process.env, approvals: Partial<Record<OfficialVoice, Approval>> = {}): {
   model: string; keyConfigured: boolean; pending: string | null; detail: string | null; rows: ReadinessRow[];
 } {
@@ -77,7 +85,7 @@ export function elevenLabsReadiness(env: NodeJS.ProcessEnv = process.env, approv
     const approval = approvals[id];
     const approved = Boolean(configured && unique && approval?.fingerprint === fingerprint && Number.isFinite(Date.parse(approval.approved_at)));
     const own: [string | null, string | null] = !configured ? [`A voz de ${OFFICIAL_VOICES[id].label} ainda não foi cadastrada no servidor.`, `Configure ${ENV_NAMES[id]} com o voice_id salvo.`]
-      : !unique ? ["Cada professor precisa de uma voz própria: há vozes repetidas.", `Os voice_id de ${OFFICIAL_VOICE_KEYS.map((other) => ENV_NAMES[other]).join(", ").replace(/, ([^,]*)$/, " e $1")} devem ser diferentes entre si.`]
+      : !unique ? ["Cada personagem precisa de uma voz própria: há vozes repetidas.", `Os voice_id de ${OFFICIAL_VOICE_KEYS.map((other) => ENV_NAMES[other]).join(", ").replace(/, ([^,]*)$/, " e $1")} devem ser diferentes entre si.`]
       : [null, null];
     return { id, label: OFFICIAL_VOICES[id].label, configured, unique, approved, fingerprint,
       ready: !pending && configured && unique,

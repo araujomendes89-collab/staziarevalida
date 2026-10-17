@@ -107,22 +107,22 @@ describe("Tutor Nexus no banco", () => {
     expect((await sql(`select personality_id, profanity from public.tutor_preferences where user_id = $1`, [ALUNA]))[0]).toEqual({ personality_id: "acolhedor", profanity: "off" });
   });
 
-  it("só os três professores ativos: desligado ou inexistente recusa sem criar conversa", async () => {
+  it("só os quatro professores ativos: desligado ou inexistente recusa sem criar conversa", async () => {
     const count = async () => (await sql(`select count(*)::int n from public.tutor_sessions where user_id = $1`, [ALUNA]))[0].n;
     const before = await count();
-    for (const p of ["preguicoso", "xyz"]) {
+    for (const p of ["preguicoso", "direto", "xyz"]) {
       await expect(rpc(ALUNA, "app_tutor_start", "livre", null, null, null, p), p).rejects.toThrow(/Professor não encontrado/);
     }
-    await rpc(ADMIN, "app_admin_tutor_set_personality", "direto", false, "Desligado para o teste do Tutor Nexus.");
-    await expect(rpc(ALUNA, "app_tutor_start", "livre", null, null, null, "direto")).rejects.toThrow(/Professor não encontrado/);
-    await rpc(ADMIN, "app_admin_tutor_set_personality", "direto", true, "Religado depois do teste do Tutor Nexus.");
+    await rpc(ADMIN, "app_admin_tutor_set_personality", "durao", false, "Desligado para o teste do Tutor Nexus.");
+    await expect(rpc(ALUNA, "app_tutor_start", "livre", null, null, null, "durao")).rejects.toThrow(/Professor não encontrado/);
+    await rpc(ADMIN, "app_admin_tutor_set_personality", "durao", true, "Religado depois do teste do Tutor Nexus.");
     expect(await count()).toBe(before);
   });
 
   it("sem p_personality vale a preferência salva; o aceite pendente continua vindo antes do professor", async () => {
-    await rpc(ALUNA, "app_tutor_save_preferences", { personality_id: "direto" });
-    expect((await rpc(ALUNA, "app_tutor_start", "livre", null, null, null)).personality.id).toBe("direto");
-    expect((await rpc(ALUNA, "app_tutor_start", "livre", null, null, null, null)).personality.id).toBe("direto");
+    await rpc(ALUNA, "app_tutor_save_preferences", { personality_id: "tranquila" });
+    expect((await rpc(ALUNA, "app_tutor_start", "livre", null, null, null)).personality.id).toBe("tranquila");
+    expect((await rpc(ALUNA, "app_tutor_start", "livre", null, null, null, null)).personality.id).toBe("tranquila");
     await expect(rpc(NOVA, "app_tutor_start", "livre", null, null, null, "xyz")).rejects.toThrow(/Aceite do Tutor pendente/);
   });
 
@@ -168,33 +168,33 @@ describe("Tutor Nexus no banco", () => {
   it("aprovação só de administrador e só depois de ouvir todos os cenários da mesma versão nas últimas 24 h; revogar uma não mexe nas outras", async () => {
     const aprovar = (voice: string, fp = FP, user = ADMIN) => worker("ch_worker_tutor_voice_approve", user, voice, fp, `{${CENARIOS.join(",")}}`, `tutor-voice-samples/${voice}/${fp}.mp3`);
     const ouvir = (voice: string, scenario: string, fp = FP, user = ADMIN) => worker("ch_worker_tutor_voice_listened", user, voice, fp, scenario);
-    await expect(aprovar("durona")).rejects.toThrow(/Ouça todos os cenários desta voz antes de aprovar/);
-    await ouvir("durona", "apresentacao");
-    await expect(aprovar("durona")).rejects.toThrow(/Ouça todos os cenários/);
-    await ouvir("durona", "correcao", FP2); // outra versão da voz não conta
-    await expect(aprovar("durona")).rejects.toThrow(/Ouça todos os cenários/);
-    await ouvir("durona", "correcao");
-    await sql(`update public.tutor_voice_listen_log set heard_at = now() - interval '25 hours' where voice = 'durona' and scenario = 'correcao' and fingerprint = $1`, [FP]);
-    await expect(aprovar("durona")).rejects.toThrow(/Ouça todos os cenários/);
-    await ouvir("durona", "correcao");
-    const painel = await aprovar("durona");
-    expect(painel.approvals.durona).toMatchObject({ fingerprint: FP, revoked_at: null, sample_path: `tutor-voice-samples/durona/${FP}.mp3` });
-    expect(painel.heard).toEqual(expect.arrayContaining([{ voice: "durona", fingerprint: FP, scenario: "apresentacao" }, { voice: "durona", fingerprint: FP, scenario: "correcao" }]));
+    await expect(aprovar("stazia")).rejects.toThrow(/Ouça todos os cenários desta voz antes de aprovar/);
+    await ouvir("stazia", "apresentacao");
+    await expect(aprovar("stazia")).rejects.toThrow(/Ouça todos os cenários/);
+    await ouvir("stazia", "correcao", FP2); // outra versão da voz não conta
+    await expect(aprovar("stazia")).rejects.toThrow(/Ouça todos os cenários/);
+    await ouvir("stazia", "correcao");
+    await sql(`update public.tutor_voice_listen_log set heard_at = now() - interval '25 hours' where voice = 'stazia' and scenario = 'correcao' and fingerprint = $1`, [FP]);
+    await expect(aprovar("stazia")).rejects.toThrow(/Ouça todos os cenários/);
+    await ouvir("stazia", "correcao");
+    const painel = await aprovar("stazia");
+    expect(painel.approvals.stazia).toMatchObject({ fingerprint: FP, revoked_at: null, sample_path: `tutor-voice-samples/stazia/${FP}.mp3` });
+    expect(painel.heard).toEqual(expect.arrayContaining([{ voice: "stazia", fingerprint: FP, scenario: "apresentacao" }, { voice: "stazia", fingerprint: FP, scenario: "correcao" }]));
 
-    await expect(ouvir("durona", "apresentacao", FP, ALUNA)).rejects.toThrow(/Acesso restrito a administradores/);
-    await expect(aprovar("direto", FP, ALUNA)).rejects.toThrow(/Acesso restrito a administradores/);
+    await expect(ouvir("stazia", "apresentacao", FP, ALUNA)).rejects.toThrow(/Acesso restrito a administradores/);
+    await expect(aprovar("stazi", FP, ALUNA)).rejects.toThrow(/Acesso restrito a administradores/);
     await expect(worker("ch_worker_tutor_voice_panel", ALUNA)).rejects.toThrow(/Acesso restrito a administradores/);
     await expect(ouvir("xyz", "apresentacao")).rejects.toThrow(/Voz inválida/);
 
-    for (const c of CENARIOS) await ouvir("direto", c);
-    await aprovar("direto");
-    const depois = await worker("ch_worker_tutor_voice_revoke", ADMIN, "durona");
-    expect(depois.approvals.durona.revoked_at).not.toBeNull();
-    expect(depois.approvals.direto).toMatchObject({ fingerprint: FP, revoked_at: null });
+    for (const c of CENARIOS) await ouvir("stazi", c);
+    await aprovar("stazi");
+    const depois = await worker("ch_worker_tutor_voice_revoke", ADMIN, "stazia");
+    expect(depois.approvals.stazia.revoked_at).not.toBeNull();
+    expect(depois.approvals.stazi).toMatchObject({ fingerprint: FP, revoked_at: null });
     const log = (await sql(`select action, actor_id from public.admin_audit_log where action like 'tutor.voice.%' order by id`)).map((r: any) => [r.action, r.actor_id]);
     expect(log).toEqual([["tutor.voice.approve", ADMIN], ["tutor.voice.approve", ADMIN], ["tutor.voice.revoke", ADMIN]]);
     // aprovar de novo zera a revogação
-    expect((await aprovar("durona")).approvals.durona.revoked_at).toBeNull();
+    expect((await aprovar("stazia")).approvals.stazia.revoked_at).toBeNull();
   });
 
   it("aprovações e audições: o navegador não lê nem grava; as funções novas são só do servidor", async () => {
@@ -204,9 +204,9 @@ describe("Tutor Nexus no banco", () => {
       await expect(as(uid, (q) => q(`insert into public.tutor_voice_approvals (voice, fingerprint) values ('tranquilo', $1)`, [FP]))).rejects.toThrow();
       for (const call of [
         `select public.ch_worker_tutor_voice_panel('${ADMIN}')`,
-        `select public.ch_worker_tutor_voice_listened('${ADMIN}', 'durona', '${FP}', 'apresentacao')`,
-        `select public.ch_worker_tutor_voice_approve('${ADMIN}', 'durona', '${FP}', '{apresentacao}', null)`,
-        `select public.ch_worker_tutor_voice_revoke('${ADMIN}', 'durona')`,
+        `select public.ch_worker_tutor_voice_listened('${ADMIN}', 'stazia', '${FP}', 'apresentacao')`,
+        `select public.ch_worker_tutor_voice_approve('${ADMIN}', 'stazia', '${FP}', '{apresentacao}', null)`,
+        `select public.ch_worker_tutor_voice_revoke('${ADMIN}', 'stazia')`,
       ]) {
         await expect(as(uid, (q) => q(call)), call).rejects.toThrow(/permission denied/);
       }

@@ -17,7 +17,7 @@ const GKEY = "AIza" + "g".repeat(40);
 const BASE = {
   OPENAI_API_KEY: OKEY, OPENAI_REALTIME_MODEL: "gpt-realtime-2.1", OPENAI_LIVE_MODEL: "gpt-live-1", GEMINI_API_KEY: GKEY,
   ELEVENLABS_API_KEY: "chave-falsa-de-teste-" + "x".repeat(40),
-  ELEVENLABS_VOICE_TRANQUILO: "vozTranquiloTeste01", ELEVENLABS_VOICE_DURONA: "vozDuronaTeste0001", ELEVENLABS_VOICE_DIRETO: "vozDiretoTeste0001",
+  ELEVENLABS_VOICE_STAZI: "vozStaziTeste000001", ELEVENLABS_VOICE_STAZIA: "vozStaziaTeste00001",
 } as NodeJS.ProcessEnv;
 const EQUIPE = { ...BASE, TUTOR_VOICE_ALLOW_EXTERNAL: "1" } as NodeJS.ProcessEnv;
 const AS_DUAS = { ...EQUIPE, TUTOR_LIVE_VOICE_ALLOW_EXTERNAL: "1" } as NodeJS.ProcessEnv;
