@@ -1,0 +1,13 @@
+{
+ "quando": "2026-10-17T20:29:09.254Z",
+ "pedido": {
+  "method": "DELETE",
+  "path": "/subscriptions/sub_kcjrcccayp7mfz68"
+ },
+ "status": 200,
+ "resposta": {
+  "deleted": true,
+  "id": "sub_kcjrcccayp7mfz68"
+ },
+ "nota": "Resposta REAL do sandbox do Asaas (17/10/2026), dados fictícios; chaves e tokens ocultos."
+}

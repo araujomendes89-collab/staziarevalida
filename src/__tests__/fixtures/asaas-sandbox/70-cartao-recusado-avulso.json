@@ -1,0 +1,41 @@
+{
+ "quando": "2026-10-17T20:28:34.428Z",
+ "pedido": {
+  "method": "POST",
+  "path": "/payments",
+  "body": {
+   "customer": "cus_000009547247",
+   "billingType": "CREDIT_CARD",
+   "value": 99.9,
+   "dueDate": "2026-10-17",
+   "description": "TESTE cartão recusado",
+   "externalReference": "staziamed-teste:cartao-recusado",
+   "creditCard": {
+    "holderName": "ALUNO TESTE STAZIAMED",
+    "number": "<cartão de teste do sandbox>",
+    "expiryMonth": "12",
+    "expiryYear": "2030",
+    "ccv": "<oculto>"
+   },
+   "creditCardHolderInfo": {
+    "name": "Aluno Teste StaziaMed",
+    "email": "aluno.teste.staziamed@example.com",
+    "cpfCnpj": "36638544691",
+    "postalCode": "80010000",
+    "addressNumber": "100",
+    "mobilePhone": "41999999999"
+   },
+   "remoteIp": "177.10.10.10"
+  }
+ },
+ "status": 400,
+ "resposta": {
+  "errors": [
+   {
+    "code": "invalid_action",
+    "description": "Transação não autorizada. Verifique os dados do cartão de crédito e tente novamente."
+   }
+  ]
+ },
+ "nota": "Resposta REAL do sandbox do Asaas (17/10/2026), dados fictícios; chaves e tokens ocultos."
+}

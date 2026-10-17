@@ -1,0 +1,50 @@
+{
+ "quando": "2026-10-17T20:28:18.928Z",
+ "pedido": {
+  "method": "POST",
+  "path": "/subscriptions",
+  "body": {
+   "customer": "cus_000009547247",
+   "billingType": "PIX",
+   "value": 99.9,
+   "nextDueDate": "2026-11-16",
+   "cycle": "MONTHLY",
+   "description": "TESTE assinatura por Pix (para ver quando gera a cobrança)",
+   "externalReference": "staziamed-teste:sub-pix",
+   "fine": {
+    "value": 0
+   },
+   "interest": {
+    "value": 0
+   }
+  }
+ },
+ "status": 200,
+ "resposta": {
+  "object": "subscription",
+  "id": "sub_7btwg49ctews4niw",
+  "dateCreated": "2026-10-17",
+  "customer": "cus_000009547247",
+  "paymentLink": null,
+  "value": 99.9,
+  "nextDueDate": "2026-12-16",
+  "cycle": "MONTHLY",
+  "description": "TESTE assinatura por Pix (para ver quando gera a cobrança)",
+  "billingType": "PIX",
+  "deleted": false,
+  "status": "ACTIVE",
+  "externalReference": "staziamed-teste:sub-pix",
+  "checkoutSession": null,
+  "sendPaymentByPostalService": false,
+  "fine": {
+   "value": 0,
+   "type": "PERCENTAGE"
+  },
+  "interest": {
+   "value": 0,
+   "type": "PERCENTAGE"
+  },
+  "split": null
+ },
+ "nota": "Resposta REAL do sandbox do Asaas (17/10/2026), dados fictícios; chaves e tokens ocultos."
+}
