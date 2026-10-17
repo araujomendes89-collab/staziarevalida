@@ -1,0 +1,71 @@
+/* Central de Notificações (013830): sino do cabeçalho e painel. Só tokens do design system; alvos de toque >= 44 px. */
+.ntf-sino{position:relative;flex:none;display:inline-grid;place-items:center;width:44px;height:44px;padding:0;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-primary);cursor:pointer;transition:background-color var(--dur-fast),border-color var(--dur-fast)}
+.ntf-sino:hover{background:var(--action-ghost-hover);border-color:var(--border-strong)}
+.ntf-sino:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.ntf-sino.is-aberto{background:var(--surface-brand-soft);border-color:color-mix(in oklab,var(--border-brand) 45%,transparent);color:var(--text-brand)}
+.ntf-bolinha{position:absolute;top:-3px;right:-4px;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:999px;background:var(--danger-solid);color:#fff;font:800 11.5px/20px var(--font-sans);text-align:center;font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px var(--bg-app)}
+/* barra do logo do celular e "‹ Mais | Título": um pouco menor, para caber ao lado da fase e da conta */
+.smn-mtop .ntf-sino,.smn-stop .ntf-sino{width:40px;height:40px;border-color:transparent;background:transparent}
+.smn-sbar .ntf-sino{position:absolute;right:8px;top:6px;width:44px;height:44px;border-color:transparent;background:transparent}
+
+/* ---------- painel ---------- */
+.ntf-painel{position:fixed;z-index:80;display:flex;flex-direction:column;max-height:min(640px,calc(100vh - 96px));border-radius:22px;background:var(--surface-card);border:1px solid var(--border-default);box-shadow:var(--shadow-lg);color:var(--text-primary);font-family:var(--font-sans);animation:ntf-in var(--dur-base,.2s) var(--ease-out,ease-out)}
+.ntf-painel:not(.ntf-painel--celular)::before{content:"";position:absolute;top:-7px;left:calc(var(--ntf-seta,380px) - 7px);width:12px;height:12px;transform:rotate(45deg);background:var(--surface-card);border-left:1px solid var(--border-default);border-top:1px solid var(--border-default)}
+@keyframes ntf-in{from{transform:translateY(-6px);opacity:0}to{transform:none;opacity:1}}
+.ntf-fundo{position:fixed;inset:0;z-index:79;background:rgba(8,18,43,.48)}
+.ntf-painel--celular{left:0;right:0;bottom:0;top:auto;height:calc(100dvh - 48px);max-height:none;border-radius:28px 28px 0 0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom);animation:ntf-sobe var(--dur-base,.24s) var(--ease-out,ease-out)}
+@keyframes ntf-sobe{from{transform:translateY(32px);opacity:.4}to{transform:none;opacity:1}}
+.ntf-alca{display:block;width:40px;height:5px;margin:10px auto 2px;border-radius:999px;background:var(--border-default)}
+.ntf-cab{display:flex;align-items:center;gap:6px;padding:14px 8px 10px 20px;border-bottom:1px solid var(--border-subtle)}
+.ntf-painel--celular .ntf-cab{padding-top:6px}
+.ntf-cab h2{flex:1;margin:0;font:800 19px/1.2 var(--font-sans);letter-spacing:-.02em;outline:none}
+.ntf-todas{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:12px;background:transparent;color:var(--action-primary);font:700 13px var(--font-sans);cursor:pointer;white-space:nowrap}
+.ntf-todas:hover{background:var(--action-ghost-hover)}
+.ntf-x{flex:none;width:44px;height:44px;border-radius:12px;border:0;background:transparent;color:var(--text-secondary);display:grid;place-items:center;cursor:pointer}
+.ntf-x:hover{background:var(--action-ghost-hover)}
+.ntf-todas:focus-visible,.ntf-x:focus-visible,.ntf-marcar:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.ntf-lista{flex:1;min-height:0;margin:0;padding:8px;list-style:none;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:4px}
+.ntf-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.ntf-item{display:flex;gap:12px;padding:14px 12px;border-radius:16px}
+.ntf-item.is-nova{background:color-mix(in oklab,var(--surface-brand-soft) 70%,transparent)}
+.ntf-corpo{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.ntf-linha{display:flex;align-items:flex-start;gap:8px}
+.ntf-linha h3{flex:1;margin:0;font:700 14.5px/1.35 var(--font-sans);color:var(--text-primary);text-wrap:pretty}
+.ntf-item:not(.is-nova) .ntf-linha h3{font-weight:600;color:var(--text-secondary)}
+.ntf-ponto{flex:none;width:9px;height:9px;margin-top:5px;border-radius:50%;background:var(--action-primary)}
+.ntf-corpo p{margin:0;font:400 13.5px/1.5 var(--font-sans);color:var(--text-secondary);text-wrap:pretty;overflow-wrap:anywhere}
+.ntf-rodape{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:4px}
+.ntf-rodape time{font:500 12.5px var(--font-sans);color:var(--text-tertiary)}
+.ntf-acoes{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+.ntf-marcar{min-height:36px;padding:0 10px;border:0;border-radius:10px;background:transparent;color:var(--text-secondary);font:600 12.5px var(--font-sans);cursor:pointer}
+.ntf-marcar:hover{background:var(--action-ghost-hover);color:var(--text-primary)}
+
+.ntf-vazio{margin:auto;display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:40px 24px}
+.ntf-vazio b{font:700 16px var(--font-sans);color:var(--text-primary)}
+.ntf-vazio span{max-width:300px;font:400 13.5px/1.5 var(--font-sans);color:var(--text-secondary);text-wrap:pretty}
+
+.ntf-esqueleto{display:flex;gap:12px;padding:14px 12px}
+.ntf-esq-ic{flex:none;width:40px;height:40px;border-radius:12px;background:var(--surface-sunken)}
+.ntf-esq-linhas{flex:1;display:flex;flex-direction:column;gap:8px;padding-top:2px}
+.ntf-esq-linhas span{height:11px;border-radius:6px;background:var(--surface-sunken);animation:ntf-pulsa 1.4s ease-in-out infinite}
+.ntf-esq-linhas span:nth-child(1){width:70%}
+.ntf-esq-linhas span:nth-child(2){width:95%}
+.ntf-esq-linhas span:nth-child(3){width:40%}
+@keyframes ntf-pulsa{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.ntf-painel,.ntf-painel--celular,.ntf-esq-linhas span{animation:none}}
+/* Plano de Hoje: o sino ao lado de "Personalizar plano" */
+.smn-ph-acts{display:inline-flex;align-items:center;gap:10px;flex:none}
+
+/* Administração > Comunicados: prévia e lista de enviados */
+.ntf-previa{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:18px;background:var(--surface-subtle);border:1px dashed var(--border-strong)}
+.ntf-previa-t{font:700 12px var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary)}
+.ntf-previa-caixa{max-width:420px;padding:8px;border-radius:18px;background:var(--surface-card);border:1px solid var(--border-default);box-shadow:var(--shadow-sm)}
+.ntf-previa-p{margin:0;font:400 14px/1.5 var(--font-sans);color:var(--text-secondary)}
+.ntf-previa-p b{color:var(--text-primary)}
+.ntf-enviados{margin:0;padding:0;list-style:none;display:flex;flex-direction:column}
+.ntf-enviados li{display:flex;flex-direction:column;gap:3px;padding:12px 2px;border-top:1px solid var(--border-subtle)}
+.ntf-enviados li:first-child{border-top:0}
+.ntf-enviados b{font:700 14.5px var(--font-sans);color:var(--text-primary)}
+.ntf-enviados span{font:400 13.5px/1.5 var(--font-sans);color:var(--text-secondary);overflow-wrap:anywhere}
+.ntf-enviados small{font:500 12.5px var(--font-sans);color:var(--text-tertiary)}

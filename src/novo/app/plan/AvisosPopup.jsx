@@ -1,9 +1,11 @@
 // Pop-up dos avisos de cobrança (planos etapa 4, app_meus_avisos da 013760): renovação 7/3/1 dia antes, pagamento que não passou,
 // acesso pausado e acesso liberado. O mesmo texto vai por e-mail. Aparece ao abrir o app (e ao voltar para a aba) quando há aviso
 // não visto; "Entendi" marca como visto (só os próprios: o banco confere). Sem avisos (cobrança desligada), nada aparece.
+// Central de Notificações (013830): cada aviso daqui também fica guardado no sino; marcar como visto aqui conta como lido lá.
 import React from "react";
 import { Button, IconTile } from "../../ds";
 import { useSession } from "../session.jsx";
+import { useNotificacoes } from "../notificacoes/NotificacoesProvider.jsx";
 import "./planos.css";
 
 const ARTE = {
@@ -16,6 +18,7 @@ const BOTAO = { planos: "Abrir Meu plano", perfil: "Abrir Minha conta", aceite: 
 
 export function AvisosPopup({ go, ativo = true }) {
   const { backend } = useSession();
+  const central = useNotificacoes();
   const [avisos, setAvisos] = React.useState([]);
   const [tick, setTick] = React.useState(0);
   const botao = React.useRef(null);
@@ -57,6 +60,7 @@ export function AvisosPopup({ go, ativo = true }) {
     } catch {
       // aparece de novo na próxima vez; nada se perde
     }
+    central?.recarregar();
     if (abrir) go(a.rota === "perfil" ? "perfil" : a.rota === "aceite" ? "aceite" : "planos", a.rota === "perfil" ? { secao: "assinatura" } : undefined);
   };
   return (

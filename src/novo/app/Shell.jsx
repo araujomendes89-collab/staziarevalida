@@ -15,6 +15,7 @@ import { MaisPage } from "./shell/MaisPage.jsx";
 import { useLayout, useMQ, useMobile } from "./shell/useLayout.js";
 import "./shell/shell.css";
 import { SaldoChip } from "./home/SaldoChip.jsx";
+import { Sino } from "./notificacoes/Sino.jsx";
 
 export { useMQ, useMobile, useLayout };
 
@@ -454,6 +455,7 @@ function MobileTopBar({ theme, go, phase, setPhase, phase2Locked, info }) {
       </button>
       <span style={{ flex: 1 }} />
       <PhasePill phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} />
+      <Sino />
       <button type="button" className="smn-hdr-btn" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`} data-tour="conta">
         <Avatar name={info.name} size={36} />
       </button>
@@ -474,6 +476,7 @@ function SimpleTopHeader({ title, sub, theme, go, phase, info }) {
           <StreakChip info={info} go={go} />
           <SaldoChip go={go} />
         </span>
+        <Sino />
         <button type="button" className="smn-hdr-btn" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`} data-tour="conta">
           <Avatar name={info.name} size={36} />
         </button>
@@ -511,6 +514,7 @@ function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, tablet, pha
           {!mobile && (
             <div className="smn-ph-r">
               {sub && <span className="smn-ph-date">{sub}</span>}
+              <Sino />
               {tablet ? <PhasePill phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} /> : <PhaseSwitch phase={phase} setPhase={setPhase} mobile={false} phase2Locked={phase2Locked} />}
             </div>
           )}
@@ -539,10 +543,13 @@ function PageHeader({ kind, title, sub, theme, setTheme, go, mobile, tablet, pha
           {!mobile && sub && <div className="smn-ph-eyebrow">{sub}</div>}
           <h1 className="smn-ph-h1">{title}</h1>
         </div>
-        <button type="button" className="smn-ph-btn" onClick={open} aria-haspopup="dialog">
-          <Icon name="sliders-horizontal" size={18} />
-          {mobile ? "Ajustar" : "Personalizar plano"}
-        </button>
+        <span className="smn-ph-acts">
+          {!mobile && <Sino />}
+          <button type="button" className="smn-ph-btn" onClick={open} aria-haspopup="dialog">
+            <Icon name="sliders-horizontal" size={18} />
+            {mobile ? "Ajustar" : "Personalizar plano"}
+          </button>
+        </span>
       </div>
     </header>
   );
@@ -569,6 +576,7 @@ function SubBar({ title, back, onBack }) {
         {back}
       </button>
       <h1 className="smn-sbar-h1">{title}</h1>
+      <Sino />
     </header>
   );
 }
@@ -604,6 +612,7 @@ function Header({ title, sub, theme, setTheme, go, mobile, tablet, phase, setPha
         <span className="smn-gh-acts" ref={setSlot} />
         {actions}
         <StreakChip info={info} go={go} />
+        <Sino />
         {tablet ? <PhasePill phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} /> : <PhaseSwitch phase={phase} setPhase={setPhase} mobile={false} phase2Locked={phase2Locked} />}
       </div>
     </header>

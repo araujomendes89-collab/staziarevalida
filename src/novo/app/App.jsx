@@ -48,6 +48,7 @@ import { TourNoPainel } from "./onboarding/Tour.jsx";
 import { DicaPrimeiroUso } from "./onboarding/Inicio.jsx";
 import { AmostraFaixa, CadeadoDialog } from "./plan/cadeado.jsx";
 import { AvisosPopup } from "./plan/AvisosPopup.jsx";
+import { NotificacoesProvider } from "./notificacoes/NotificacoesProvider.jsx";
 
 // [título, subtítulo] de cada rota (o início é montado com nome e data reais).
 const TITLES = {
@@ -282,12 +283,15 @@ function Splash({ children }) {
   );
 }
 
+/** Aluno de verdade: não é equipe (admin/editor) nem revisor médico. Só o aluno tem o pop-up de cobrança e o sino de notificações. */
+const ehAluno = (boot) => Boolean(boot) && !isStaffRole(boot.role) && !boot.reviewer_areas?.length;
+
 /** Planos etapa 4, acima de todas as rotas (inclusive o treino, fora do menu): a mensagem "assine para liberar" quando o banco
  * recusa por plano e o pop-up dos avisos de cobrança (só aluno). Sem cadeados e sem cobrança ligados, nada aparece. */
 function AvisosGlobais({ boot }) {
   const navigate = useNavigate();
   const go = (rota, query) => navigate(`/${rota}` + (query ? `?${new URLSearchParams(query)}` : ""));
-  const aluno = !isStaffRole(boot?.role) && !boot?.reviewer_areas?.length;
+  const aluno = ehAluno(boot);
   return (
     <>
       <CadeadoDialog go={go} />
@@ -345,15 +349,18 @@ function Root() {
   if (deveMostrarNivelamento(session.boot)) return <Nivelamento modo="primeira" go={() => {}} />;
 
   // Comemorações do Stazi acima de todas as rotas (inclusive o treino/simulado, que fica fora do menu)
+  // Central de Notificações (013830): o sino do cabeçalho e o pop-up de cobrança leem o mesmo estado (só para aluno)
   return (
     <CelebracoesProvider rota={pathname}>
-      <AvisosGlobais boot={session.boot} />
-      <Routes>
-        {/* /novo/login: sem sessão, qualquer endereço mostra o login; com sessão, volta para o início */}
-        <Route path="/login" element={<Navigate to="/" replace />} />
-        <Route path="/:route?" element={<Screen />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <NotificacoesProvider ativo={ehAluno(session.boot)}>
+        <AvisosGlobais boot={session.boot} />
+        <Routes>
+          {/* /novo/login: sem sessão, qualquer endereço mostra o login; com sessão, volta para o início */}
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/:route?" element={<Screen />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </NotificacoesProvider>
     </CelebracoesProvider>
   );
 }
