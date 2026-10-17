@@ -22,6 +22,9 @@ import { effectiveParams, personalityLayer, profanityLevel, type Personality, ty
 import { NO_EVALUATION, TUTOR_PROMPT_LAYERS, TUTOR_SCHEMA, TUTOR_VERSION, composeSystem, taskInstruction, type TutorMode, type TutorOutput, type TutorTask } from "./prompts";
 import { ComplementarTermsUnavailable, labelIsSupportMaterial, loadComplementarTerms } from "../contentHub/complementarGuard";
 import { fallbackReply, safetyCheck, spokenText, type BaseBlock, type SafetyResult, type Violation } from "./safety";
+import { protegerFala, sugestoesSemSigilo, violacoesDeSigilo } from "./escudo";
+import { lerRegistro, notaDoRegistro } from "./leituraDoAluno";
+import { nomeSeguro } from "./sigilo";
 import { deterministicTutor, tutorSettings } from "./settings";
 
 export interface TutorDeps {
@@ -384,11 +387,11 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     // a conferência aceita um degrau acima do pedido (a reação à gravidade real do erro pode subir o tom)
     const checkLevel = RANK[profanityForIntensity(Math.min(5, li + 1))] < RANK[personaMax] ? profanityForIntensity(Math.min(5, li + 1)) : personaMax;
     const mood = { label: before.mood, text: stateLayer(ctx.personality.id, before, engine, profanity), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado", strong: li >= 3 };
-    const system = composeSystem({ mode: ctx.session.mode, browserVoice: Boolean(action.voice), persona: personalityLayer(ctx.personality, eff, profanity, 3, null, mood) });
+    const system = composeSystem({ mode: ctx.session.mode, browserVoice: Boolean(action.voice), persona: personalityLayer(ctx.personality, eff, profanity, 3, null, mood), personaId: ctx.personality.id });
 
     const mem = ctx.memory;
     const studentCtx = {
-      nome: ctx.student?.first_name ?? null,
+      nome: nomeSeguro(ctx.student?.first_name),
       dias_para_a_prova: ctx.student?.days_to_exam ?? null,
       dominio_por_area: (ctx.mastery?.areas ?? []).filter((a) => a.level !== "SEM_DADOS").map((a) => ({ area: a.area, nivel: a.level })),
       pontos_fracos: (mem?.weak_subareas ?? []).slice(0, 5).map((w) => `${w.subarea} (${w.accuracy}%)`),
@@ -410,11 +413,13 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       piadas_internas: (settings.inside_jokes ? mem?.inside_jokes ?? [] : []).map((j) => (j.beaten ? `${j.topic}: já foi o "inimigo" dele (${j.strength} erros) e ele superou` : `${j.topic}: o assunto que mais o derruba (${j.strength} erros); dá para virar uma referência recorrente, com leveza e de vez em quando`)),
       evite_repetir: recentExpressions(ctx.history.filter((h) => h.role === "tutor").map((h) => h.content)),
     };
+    // leitura do aluno por software (sem IA): uma linha interna na tarefa quando há sinal claro (leituraDoAluno.ts)
+    const leitura = task.type === "message" ? notaDoRegistro(lerRegistro(studentText)) : "";
     const conversation = ctx.history.map((h) => `${h.role === "student" ? "Aluno" : "Tutor"}: ${h.content.slice(0, 600)}`).join("\n");
     const baseInput =
       `Responda no formato "tutor".\n<base>\n${JSON.stringify(blocks.map((b) => ({ ref: b.ref, tipo: b.kind, rotulo: b.label, texto: b.text })))}\n</base>\n` +
       `<contexto_do_aluno>\n${JSON.stringify(studentCtx)}\n</contexto_do_aluno>\n<estado_do_professor>\n${JSON.stringify(teacher)}\n</estado_do_professor>\n<conversa>\n${conversation}\n</conversa>\n<aluno>\n${asDocument(studentText)}\n</aluno>\n` +
-      `<tarefa>\n${taskInstruction(task)}\n</tarefa>`;
+      `<tarefa>\n${taskInstruction(task)}${leitura ? `\n${leitura}` : ""}\n</tarefa>`;
 
     const safetyCtx = {
       blocks,
@@ -446,6 +451,9 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     let violations: Violation[] = [];
     let model = provider.model;
     let providerName = provider.name;
+    // sigilo (escudo.ts): o que pode ser repetido sem ser vazamento é o que o aluno disse, a conversa e a base
+    const sigiloCtx = { instrucoes: system, permitidos: [studentText, ...ctx.history.map((h) => h.content), ...blocks.map((b) => b.text)], pergunta: studentText };
+    let ultima: { out: TutorOutput; check: SafetyResult } | null = null;
     for (let attempt = 0; attempt < 2; attempt++) {
       const input = attempt === 0 ? baseInput : `${baseInput}\n<correcao_obrigatoria>\nSua resposta anterior foi barrada. Refaça sem estes problemas:\n${violations.map((x) => `- ${x.detail}`).join("\n")}\n</correcao_obrigatoria>`;
       let r;
@@ -474,7 +482,8 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       usage.model = r.model;
       usage.provider = r.provider;
       const c = safetyCheck(r.output, safetyCtx);
-      violations = c.violations;
+      violations = [...c.violations, ...violacoesDeSigilo(r.output, sigiloCtx)];
+      ultima = { out: r.output, check: c };
       if (!violations.length) {
         out = r.output;
         check = c;
@@ -482,8 +491,10 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       }
     }
 
+    // barrada só por sigilo nas duas tentativas: a resposta fica, reescrita no personagem (não vira a resposta fixa)
+    if (!out && ultima && violations.length && violations.every((x) => x.code === "sigilo")) ({ out, check } = ultima);
     const replaced = !out;
-    const reply = out ? out.reply.trim() : fallbackReply(violations);
+    const reply = protegerFala(out ? out.reply.trim() : fallbackReply(violations), ctx.personality.id, sigiloCtx).texto;
     // a resolução (dica 5 ou pedido explícito) revela a resposta mesmo se a IA esquecer de marcar
     const reveals = hintLevel === 5 && (Boolean(out?.reveals_answer) || task.type === "reveal" || replaced);
     const ev = out?.evaluation ?? NO_EVALUATION;
@@ -524,7 +535,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const meta: Record<string, unknown> = {
       grounding: replaced ? "insufficient" : check!.grounding,
       sources: replaced ? [] : check!.sources,
-      suggested: replaced ? [] : out!.suggested_replies,
+      suggested: replaced ? [] : sugestoesSemSigilo(out!.suggested_replies),
       notice: replaced ? "Resposta substituída: a primeira versão trazia informação que não pôde ser conferida." : null,
       model, provider: providerName, prompt_version: TUTOR_VERSION, simulated: provider.isMock,
       personality: { id: ctx.personality.id, profanity, mood: before.mood, language_intensity: li, frustration: before.frustration, enthusiasm: before.enthusiasm },

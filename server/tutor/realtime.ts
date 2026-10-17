@@ -30,6 +30,8 @@ import { effectiveParams, personalityLayer, profanityLevel, type Personality, ty
 import { composeLiveInstructions, composeRealtimeInstructions, type TutorMode } from "./prompts";
 import { redactSupportMaterial } from "../contentHub/complementarGuard";
 import { safetyCheck, type BaseBlock } from "./safety";
+import { conferirTranscricao } from "./escudo";
+import { nomeSeguro } from "./sigilo";
 import { realKey } from "./speech";
 import { REALTIME_TOOLS } from "./tools";
 import { selarBilhete } from "../vozPonte/bilhete";
@@ -128,7 +130,8 @@ const MEMORY_KIND: Record<string, string> = { inside_joke: "piada interna", fact
 /** Contexto inicial da sessão de voz (sem gabarito: os fatos vêm das ferramentas ou do servidor). */
 export function sessionContext(ctx: VoiceContext, extras: VoiceExtras | null, opts: { live: boolean; continuity: boolean }): string {
   const lines = [`SESSÃO: ${ctx.session.title}.`];
-  if (ctx.student?.first_name) lines.push(`O aluno se chama ${ctx.student.first_name}.`);
+  const nome = nomeSeguro(ctx.student?.first_name); // nome é dado: sem instrução escondida
+  if (nome) lines.push(`O aluno se chama ${nome}.`);
   if (ctx.question) {
     lines.push(ctx.session.question_state === "open"
       ? opts.live
@@ -258,7 +261,7 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
   const tryLive = async (): Promise<VoiceStart> => {
     const r = await reserve(live.model!);
     try {
-      const instructions = composeLiveInstructions({ mode: ctx.session.mode, persona, context: sessionContext(ctx, extras, { live: true, continuity }), pronunciations: settings.pronunciations });
+      const instructions = composeLiveInstructions({ mode: ctx.session.mode, persona, context: sessionContext(ctx, extras, { live: true, continuity }), pronunciations: settings.pronunciations, personaId: ctx.personality.id });
       const s = await createLiveSession({ key: live.key!, model: live.model!, instructions, voice, sdp: sdp!, userId, fetchImpl });
       await deps.db.service("ch_worker_tutor_voice_attach", { p_user: userId, p_voice_call: r.voice_call_id, p_call_id: s.sessionId, p_provider: "live" });
       return { provider: "live", voice_call_id: r.voice_call_id, sdp: s.sdp, live_session_id: s.sessionId, model: live.model!, lease_seconds: r.lease_seconds, entitlement: r.entitlement, ...base };
@@ -270,7 +273,7 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
 
   const tryRealtime = async (): Promise<VoiceStart> => {
     const r = await reserve(rt.model!);
-    const instructions = composeRealtimeInstructions({ mode: ctx.session.mode, persona, context: sessionContext(ctx, extras, { live: false, continuity }), pronunciations: settings.pronunciations });
+    const instructions = composeRealtimeInstructions({ mode: ctx.session.mode, persona, context: sessionContext(ctx, extras, { live: false, continuity }), pronunciations: settings.pronunciations, personaId: ctx.personality.id });
     const session = {
       type: "realtime",
       model: rt.model,
@@ -313,7 +316,7 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
   const tryGemini = async (): Promise<VoiceStart> => {
     const r = await reserve(gemini.model);
     try {
-      const instructions = composeRealtimeInstructions({ mode: ctx.session.mode, persona, context: sessionContext(ctx, extras, { live: false, continuity }), pronunciations: settings.pronunciations });
+      const instructions = composeRealtimeInstructions({ mode: ctx.session.mode, persona, context: sessionContext(ctx, extras, { live: false, continuity }), pronunciations: settings.pronunciations, personaId: ctx.personality.id });
       const gVoice = geminiVoiceFor(settings, ctx.personality as { voice?: { gemini?: string } });
       // a chave vence junto com o que a ligação pode durar: limite da conversa ou o tempo de voz que o aluno ainda tem hoje
       const left = Number((r.entitlement as { voice?: { remaining_s?: number } } | null)?.voice?.remaining_s);
@@ -327,7 +330,7 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
         } catch (error) {
           deps.log?.(`[tutor] voz: Personality Engine indisponível, usando a persona de sempre: ${(error as Error).message.slice(0, 120)}`);
         }
-        const instrucoes = composeRealtimeInstructions({ mode: ctx.session.mode, persona: personaVoz, context: sessionContext(ctx, extras, { live: false, continuity }), pronunciations: settings.pronunciations });
+        const instrucoes = composeRealtimeInstructions({ mode: ctx.session.mode, persona: personaVoz, context: sessionContext(ctx, extras, { live: false, continuity }), pronunciations: settings.pronunciations, personaId: ctx.personality.id });
         const b = selarBilhete({
           vc: r.voice_call_id, u: userId, modelo: gemini.model, voz: gVoice, instrucoes,
           ferramentas: REALTIME_TOOLS.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })), maxSegundos: maxSeconds,
@@ -488,7 +491,7 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
     await deps.db.service("ch_worker_tutor_append", { p_user: userId, p_session_id: v.session_id, p_student: clean, p_tutor: null, p_meta: { realtime: true }, p_usage: {} });
     return { correction: null };
   }
-  const ctx = await deps.db.service<{ question: any; history: { content: string }[]; config: { max_profanity: ProfanityLevel }; session: { settings: SessionPrefs; question_state: string; emotion: (Partial<TutorState> & Record<string, unknown>) | null }; personality: Personality & { engine?: Partial<PersonaEngine> | null } } | null>(
+  const ctx = await deps.db.service<{ question: any; history: { role?: string; content: string }[]; config: { max_profanity: ProfanityLevel }; session: { settings: SessionPrefs; question_state: string; emotion: (Partial<TutorState> & Record<string, unknown>) | null }; personality: Personality & { engine?: Partial<PersonaEngine> | null } } | null>(
     "ch_worker_tutor_context", { p_user: userId, p_session_id: v.session_id });
   const settings = await tutorSettings(deps);
   const q = ctx?.question;
@@ -518,11 +521,17 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
   // valores e documentos ditos sem ferramenta não são conferíveis aqui (as ferramentas trazem fontes): o que importa barrar na voz
   // é gabarito antes da hora, ataque pessoal, palavrão acima do liberado e contestar o gabarito
   const serious = check.violations.filter((x) => ["answer_leak", "personal_attack", "profanity", "challenges_official_answer", "ungrounded_number", "invented_reference", "currency_claim", "cites_support_material"].includes(x.code));
+  // sigilo (escudo.ts): a fala já foi dita; grava sem o vazamento, avisa a equipe pelo registro e a próxima fala corrige sem repetir
+  const sigilo = conferirTranscricao(clean, ctx?.personality.id, { pergunta: [...(ctx?.history ?? [])].reverse().find((h) => h.role === "student")?.content ?? null, permitidos: [...(ctx?.history ?? []).map((h) => h.content), ...blocks.map((b) => b.text)] });
+  if (sigilo.vazou) {
+    serious.push({ code: "sigilo", detail: sigilo.categorias.join(",") });
+    deps.log?.(`[tutor] voz: sigilo na fala do professor (${sigilo.categorias.join(", ")}), chamada ${voiceCallId}`);
+  }
   await deps.db.service("ch_worker_tutor_append", {
     p_user: userId, p_session_id: v.session_id, p_student: null,
     // a fala que cita a apostila é gravada SEM a citação (o aluno relê e ouve de novo o que está gravado)
-    p_tutor: serious.some((x) => x.code === "cites_support_material") ? (redactSupportMaterial(clean, supportTerms) || "(trecho retirado)") : clean,
-    p_meta: { realtime: true, grounding: "general", ...(serious.length ? { violations: serious.map((x) => x.code) } : {}) }, p_usage: {},
+    p_tutor: serious.some((x) => x.code === "cites_support_material") ? (redactSupportMaterial(sigilo.gravar, supportTerms) || "(trecho retirado)") : sigilo.gravar,
+    p_meta: { realtime: true, grounding: "general", ...(serious.length ? { violations: serious.map((x) => x.code) } : {}), ...(sigilo.vazou ? { sigilo: sigilo.categorias } : {}) }, p_usage: {},
   });
   if (!serious.length) return { correction: null };
   const leak = serious.some((x) => x.code === "answer_leak");
@@ -534,6 +543,7 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
       facts ? "você disse um valor, documento ou conduta que não veio das ferramentas; diga que não tem isso confirmado na base e retire." : "",
       serious.some((x) => x.code === "personal_attack" || x.code === "profanity") ? "você passou do tom permitido; retome no limite (a bronca é para a resposta, nunca para a pessoa)." : "",
       serious.some((x) => x.code === "challenges_official_answer") ? "o gabarito oficial não está errado; corrija isso." : "",
+      sigilo.correcao ?? "",
       serious.some((x) => x.code === "cites_support_material") ? "você citou o nome de um material de apoio (apostila ou livro); o aluno não vê essa fonte: nunca cite nome, autor, arquivo ou página desse material, diga o conteúdo com as suas palavras." : "",
     ].filter(Boolean).join(" "),
   };

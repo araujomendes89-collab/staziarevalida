@@ -8,6 +8,7 @@ import { TUTOR_CONSENT_PENDING, TutorError, consentError, resolveTutorProvider, 
 import { speechProviderFor, tutorSpeech } from "./speech";
 import { endVoice, purgeVoiceTranscripts, recordVoiceMetrics, recordVoiceUsage, rememberEvidence, renewVoice, startVoice, sweepVoice, voiceCall, voiceReady, voiceTranscript, type EndReason } from "./realtime";
 import { runTutorTool, TOOL_NAMES } from "./tools";
+import { limparRetornoFerramenta } from "./sigilo";
 import { delegateVoice, sayVoice, type Letter } from "./delegate";
 import { tutorSettings } from "./settings";
 import { questionHint, questionHintEnabled } from "./questionHint";
@@ -383,7 +384,8 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
         // sem o motor no banco: fica o "tone" de sempre
       }
     }
-    return { output };
+    // o que a ferramenta devolve é dado para a voz: sai sem chave, endereço ou nome interno do banco (sigilo.ts)
+    return { output: limparRetornoFerramenta(output) };
   }));
 
   // corpo grande demais no express.raw da transcrição: o mesmo aviso, em JSON

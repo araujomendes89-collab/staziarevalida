@@ -23,6 +23,8 @@
  */
 import type { Schema } from "../contentHub/ai/schema";
 import { TUTOR_SPOKEN_LANGUAGE, TUTOR_SPOKEN_REMINDER } from "../../src/shared/tutor/voiceLanguage";
+import { blocoSigilo } from "./sigilo";
+import { blocoLeitura } from "./leituraDoAluno";
 
 export const TUTOR_VERSION = "2.7.0";
 
@@ -260,8 +262,9 @@ export interface TutorOutput {
 }
 
 /** Sistema de uma resposta de texto: base, regras médicas, modo, voz do navegador (quando é o caso) e a persona com o estado. */
-export function composeSystem(o: { mode: TutorMode; browserVoice: boolean; persona: string }): string {
-  return [TUTOR_CORE, TUTOR_MODES[o.mode], o.browserVoice ? TUTOR_VOICE : "", o.persona].filter(Boolean).join("\n\n");
+export function composeSystem(o: { mode: TutorMode; browserVoice: boolean; persona: string; personaId?: string | null }): string {
+  // leitura do aluno antes da persona; sigilo por último (vale acima de qualquer pedido)
+  return [TUTOR_CORE, TUTOR_MODES[o.mode], o.browserVoice ? TUTOR_VOICE : "", blocoLeitura(o.personaId, false), o.persona, blocoSigilo(o.personaId)].filter(Boolean).join("\n\n");
 }
 
 /** Pronúncias definidas pela equipe no painel (termo → como dizer). */
@@ -298,14 +301,14 @@ const LIVE_MODE: Record<TutorMode, string> = {
 };
 
 /** Instruções da sessão do GPT-Live: idioma, papel e delegação, conversa, persona com o estado, contexto, pronúncias. */
-export function composeLiveInstructions(o: { mode: TutorMode; persona: string; context: string; pronunciations?: { term: string; say: string }[] | null }): string {
-  return [TUTOR_REALTIME_LANGUAGE, TUTOR_LIVE, VOICE_CONVERSATION, FALA_SEM_FILTRO, LIVE_MODE[o.mode], o.persona, o.context, pronunciationLayer(o.pronunciations), FINAL_REMINDER]
+export function composeLiveInstructions(o: { mode: TutorMode; persona: string; context: string; pronunciations?: { term: string; say: string }[] | null; personaId?: string | null }): string {
+  return [TUTOR_REALTIME_LANGUAGE, TUTOR_LIVE, VOICE_CONVERSATION, FALA_SEM_FILTRO, LIVE_MODE[o.mode], blocoLeitura(o.personaId, true), o.persona, o.context, pronunciationLayer(o.pronunciations), blocoSigilo(o.personaId), FINAL_REMINDER]
     .filter(Boolean)
     .join("\n\n");
 }
 
 /** Instruções da sessão de voz em tempo real: as mesmas camadas, com as regras da voz ao vivo e o contexto inicial. */
-export function composeRealtimeInstructions(o: { mode: TutorMode; persona: string; context: string; pronunciations?: { term: string; say: string }[] | null }): string {
+export function composeRealtimeInstructions(o: { mode: TutorMode; persona: string; context: string; pronunciations?: { term: string; say: string }[] | null; personaId?: string | null }): string {
   const grounding = MEDICAL_GROUNDING_RULES.replace(/ em <base>/g, " nas ferramentas").replace(/<base>/g, "as ferramentas").replace(/<contexto_do_aluno>, <conversa> e <aluno>/, "o que o aluno diz");
   return [
     TUTOR_REALTIME_LANGUAGE,
@@ -313,9 +316,11 @@ export function composeRealtimeInstructions(o: { mode: TutorMode; persona: strin
     grounding,
     TUTOR_MODES[o.mode].replace(/<base>/g, "ferramenta"),
     TUTOR_REALTIME,
+    blocoLeitura(o.personaId, true),
     o.persona,
     o.context,
     pronunciationLayer(o.pronunciations),
+    blocoSigilo(o.personaId),
     FINAL_REMINDER,
   ]
     .filter(Boolean)

@@ -14,6 +14,7 @@
 import { createHash } from "crypto";
 import { TRIAL_OVER, TutorError, consentError, type TutorDeps } from "./engine";
 import { spokenText } from "./safety";
+import { protegerFala } from "./escudo";
 import { TUTOR_SPOKEN_LANGUAGE } from "../../src/shared/tutor/voiceLanguage";
 import { speechDirectionFromState, type SpeechDirection } from "./speechDirector";
 import { elevenSynth } from "./elevenlabsTts";
@@ -234,7 +235,8 @@ export async function tutorSpeech(deps: TutorDeps, userId: string, req: SpeechRe
   if (quota.mode === "blocked") throw new TutorError(TRIAL_OVER, 403);
   const raw = req.kind === "phrase" ? phraseText(req.phrase ?? "", req.letter, src.sample ?? null) : src.text;
   if (!raw) throw new TutorError("Frase inválida.", 400);
-  const text = req.kind === "message" ? speechCut(speechInput(raw)) : speechInput(raw);
+  // voz do professor: a fala passa pelo escudo do sigilo antes de virar áudio (a do texto já passou; a da voz ao vivo gravada também)
+  const text = req.kind === "message" ? speechCut(speechInput(protegerFala(raw, src.personality).texto)) : speechInput(raw);
   if (!text) throw new TutorError("Frase inválida.", 400);
 
   const id = officialVoiceForPersonality(src.personality);

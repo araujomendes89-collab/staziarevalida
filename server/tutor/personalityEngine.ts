@@ -26,6 +26,7 @@
  */
 import { PERSONALITY_LIMITS, type ProfanityLevel } from "./personality";
 import { characterOf } from "./emotion";
+import { lerRegistro, sinaisDoRegistro } from "./leituraDoAluno";
 import {
   REACTIONS, reactionInfo, TAGGED_PROVIDERS,
   type ProfileLevel, type PublicPersonality, type ReactionId, type ReactionRule, type VoiceProviderId,
@@ -303,6 +304,8 @@ export function signalsFromText(text: string): Signal[] {
   if (SERIOUS.test(t)) out.push("seriousness_request");
   if (JOKE.test(t) || JOKE.test(text)) out.push("joke");
   if (/\?\s*$/.test(text.trim())) out.push("question");
+  // leitura do aluno (leituraDoAluno.ts): ansiedade, frustração, desânimo, brincadeira e seriedade que os padrões acima não pegam
+  for (const s of sinaisDoRegistro(lerRegistro(text))) if (!out.includes(s)) out.push(s);
   return out;
 }
 
