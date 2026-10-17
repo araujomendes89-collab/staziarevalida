@@ -34,7 +34,8 @@ const MOTIVO = {
   teste_repetido_telefone: "WhatsApp já usado em outro teste",
   fora_do_plano: "fora do plano pago",
   fora_da_escolha_do_teste: "fora da fase escolhida no teste",
-  pagamento_pendente: "pagamento pendente (tolerância de 3 dias)",
+  pagamento_pendente: "pagamento pendente (vale até o fim do período; sem tolerância)",
+  pagamento_nao_confirmado: "renovação sem pagamento confirmado",
 };
 const MODOS_CONTEUDO = [
   { value: "por_dia", label: "Limite por dia" },
@@ -182,7 +183,7 @@ export function DireitosPorFase({ data, setData }) {
       <Secao titulo="Chaves" texto="Toda mudança fica no Registro.">
         <Switch
           label="Cadeados ligados"
-          description="Desligado = modo sombra (a regra nova só informa). Ligar nesta etapa ainda não tranca nada; vale a partir das próximas etapas."
+          description="Desligado = modo sombra (a regra nova só informa; as cotas e acessos de hoje continuam). Ligado = a carteira de IA decide os créditos e minutos, e os cadeados do banco passam a valer (questões, simulados, flashcards, estações). As telas com cadeado e a mensagem de compra vêm na etapa 4."
           checked={form.config.cadeados_ligados}
           onChange={(e) => setCfg({ cadeados_ligados: e.target.checked })}
         />

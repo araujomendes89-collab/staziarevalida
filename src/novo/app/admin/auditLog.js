@@ -37,6 +37,11 @@ export const ACTION_LABEL = {
   "direitos.save": "Planos por fase, franquias e amostras salvos", // 013640
   "direitos.modo": "Cadeados: modo sombra ou ligado alterado", // 013640
   "direitos.segunda_fase": "Segunda fase aberta ou fechada aos alunos (regra nova)", // 013640
+  "carteira.save": "Carteira de IA: teto, reservas, pacotes ou planos à venda salvos", // 013680
+  "carteira.cortesia": "Créditos de IA de cortesia dados a um aluno", // 013680
+  "carteira.cortesia_cancelada": "Cortesia de créditos de IA cancelada", // 013680
+  "direitos.fase_dada": "Plano por fase dado pela equipe (regra nova)", // 013690
+  "direitos.fase_tirada": "Plano por fase tirado pela equipe (regra nova)", // 013690
   "settings.save": "Configurações salvas",
   "settings.sessao_unica": "Sessão única (uma conta, um aparelho por vez) alterada",
   "support.contact": "Contato de suporte alterado",

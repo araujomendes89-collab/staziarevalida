@@ -11,9 +11,11 @@ import { aiAllowed, registerPrompts, type PromptEntry } from "../contentHub/ai/r
 import type { Identity } from "../contentHub/infra";
 import { TutorError, consentError, resolveTutorProvider, trialOverMessage, type Entitlement, type TutorDeps } from "./engine";
 import { tutorSettings } from "./settings";
+import { reservarCarteira } from "../planos/carteira";
 
 export const HINT_OFF = "A dica do Tutor ainda não está liberada.";
 export const HINT_VERSION = "1";
+export const HINT_LIMIT = "Você já usou as dicas de hoje. Amanhã tem mais.";
 /** Dica de reserva (sem IA): vale para qualquer questão e não revela nada. */
 export const HINT_FALLBACK = "Releia a última frase do enunciado e diga com suas palavras o que ela pede. Depois, sublinhe os dados do caso que mudam a conduta e só então olhe as alternativas.";
 const DAILY_DEFAULT = 15;
@@ -80,15 +82,25 @@ export async function questionHint(deps: TutorDeps, user: Identity, questionId: 
     deps.log?.(`[tutor] dica: IA não configurada: ${status.pending}`);
     throw new TutorError("O Tutor está indisponível no momento.", 503);
   }
-  // teto diário por aluno (por processo; a cota de texto do Tutor não é gasta pela dica)
+  // Teto por aluno, agora NO BANCO (carteira de créditos, etapa 2): com a chave desligada vale o mesmo teto por dia de hoje
+  // (TUTOR_QUESTION_HINT_DAILY, padrão 15), contado no banco e não mais na memória de cada servidor; com a chave ligada, a dica
+  // gasta créditos de IA. Banco sem a carteira (migração não aplicada): o contador antigo na memória, como antes.
+  // A cota de texto do Tutor não é gasta pela dica.
+  const wallet = await reservarCarteira(deps.db, { user: user.id, recurso: "dica_questao", limiteAntigo: dailyLimit(), log: deps.log });
+  if (!wallet.ok) {
+    if (wallet.reason === "disabled") throw new TutorError("O Tutor ainda não está ligado.", 503);
+    if (wallet.modo === "ligado") throw new TutorError(wallet.mensagem || HINT_LIMIT, wallet.reason === "trancado" ? 403 : wallet.reason === "teto_global" ? 503 : 429);
+    throw new TutorError(HINT_LIMIT, 429);
+  }
   const mark = usedToday.get(user.id);
   const n = mark && mark.day === today() ? mark.n : 0;
-  if (n >= dailyLimit()) throw new TutorError("Você já usou as dicas de hoje. Amanhã tem mais.", 429);
+  if (wallet.modo === "legado" && n >= dailyLimit()) throw new TutorError(HINT_LIMIT, 429);
 
   if (!registered.has(deps.db)) {
     await registerPrompts(deps.db, [PROMPT]);
     registered.add(deps.db);
   }
+  let custo = 0;
   const body = JSON.stringify({ enunciado: ctx.statement, alternativas: ctx.options.map((o) => ({ letra: o.id, texto: o.text })) });
   let problem: string | null = null;
   let hint: string | null = null;
@@ -96,6 +108,7 @@ export async function questionHint(deps: TutorDeps, user: Identity, questionId: 
     const input = `<questao>\n${body}\n</questao>\n` + (problem ? `Sua dica anterior foi barrada porque ${problem}. Refaça sem isso.` : "Escreva a dica.");
     try {
       const r = await provider.generate<{ hint: string }>({ promptId: PROMPT.id, promptVersion: HINT_VERSION, system: SYSTEM, input, schema: SCHEMA, schemaName: "staziamed_dica", maxOutputTokens: 400, effort: "low" });
+      custo += (r as { costUsd?: number }).costUsd ?? 0;
       const text = String(r.output?.hint ?? "").trim();
       problem = hintLeak(text);
       if (!problem && text) hint = text;
@@ -105,10 +118,12 @@ export async function questionHint(deps: TutorDeps, user: Identity, questionId: 
         continue;
       }
       deps.log?.(`[tutor] dica: falha do provedor: ${(error as Error).message.slice(0, 200)}`);
+      await wallet.devolver(); // erro do provedor não gasta a dica do aluno
       throw new TutorError("O Tutor não conseguiu dar a dica agora. Tente de novo em instantes.", 502);
     }
   }
-  usedToday.set(user.id, { day: today(), n: n + 1 });
+  if (wallet.modo === "legado") usedToday.set(user.id, { day: today(), n: n + 1 });
+  else await wallet.confirmar(custo);
   return hint ? { hint, source: "ia" } : { hint: HINT_FALLBACK, source: "reserva" };
 }
 
