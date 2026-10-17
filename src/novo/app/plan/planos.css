@@ -101,7 +101,15 @@
 .bl-fim--falhou { background: var(--danger-bg); border-color: var(--danger-border); }
 .bl-pendente { padding: 18px; display: flex; gap: 14px; align-items: flex-start; border-color: var(--danger-border); }
 .bl-pendente p { margin: 0 0 10px; color: var(--text-secondary); }
-@media (max-width: 519px) { .bl-pix .bl-qr { width: 100%; max-width: 240px; height: auto; aspect-ratio: 1; align-self: center; } .bl-fim, .bl-pendente { flex-direction: column; } }
+/* celular: quem paga pelo próprio celular usa o copia-e-cola; o QR fica embaixo (para pagar com outro aparelho) */
+@media (max-width: 519px) {
+  .bl-pix { flex-direction: column; align-items: stretch; }
+  .bl-pix__txt { order: -1; }
+  .bl-pix .bl-qr { width: 100%; max-width: 220px; height: auto; aspect-ratio: 1; align-self: center; }
+  .bl-copia { flex-direction: column; align-items: stretch; }
+  .bl-copia code { white-space: normal; word-break: break-all; max-height: 4.6em; }
+  .bl-fim, .bl-pendente { flex-direction: column; }
+}
 
 /* cadeado e pop-up de avisos */
 .cdz-overlay { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--surface-overlay, rgba(13, 28, 66, .55)); }
