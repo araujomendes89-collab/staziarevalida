@@ -59,7 +59,8 @@ export function LoginNovo({ go }) {
   const { status, message, emailInvalid, setFocus, emailOk, showPw, loading, success, error } = f;
   // no pacote a primeira etapa já aparece acesa; o resto segue o estado real do formulário
   const steps = f.steps.every((s) => !s) ? ["is-active", "", ""] : f.steps;
-  const bad = (field) => error && (field === "email" ? emailInvalid || message === LOGIN_TEXT.error : !emailInvalid);
+  // e-mail ainda não confirmado: a senha estava certa, nenhum campo fica vermelho
+  const bad = (field) => error && !f.unconfirmedEmail && (field === "email" ? emailInvalid || message === LOGIN_TEXT.error : !emailInvalid);
 
   return (
     <div className={`ln-root ln-root--${size}`}>
@@ -125,6 +126,11 @@ export function LoginNovo({ go }) {
                     </Svg>
                     <span>{message}</span>
                   </p>
+                )}
+                {error && f.unconfirmedEmail && (
+                  <button type="button" className="ln-small ln-resend" onClick={() => go("confirm", { email: f.unconfirmedEmail, origin: "login" })}>
+                    Reenviar link de confirmação
+                  </button>
                 )}
                 {success && (
                   <p className="ln-msg ln-msg--success" role="status">

@@ -39,6 +39,11 @@ export interface Backend {
    * `needsEmailConfirmation`: a conta foi criada, mas o login depende de confirmar o e-mail.
    */
   signUp(name: string, email: string, password: string, extra?: SignUpExtra): Promise<{ needsEmailConfirmation: boolean }>;
+  /**
+   * Manda de novo o e-mail "Confirme seu e-mail" (cadastro com a confirmação ligada no Supabase). Só existe no Supabase;
+   * no banco local a conta já nasce confirmada. Pedido repetido cedo demais: BackendError "rate_limited".
+   */
+  readonly resendConfirmation?: (email: string) => Promise<void>;
   signInWithGoogle(): Promise<void>;
   resetPassword(email: string): Promise<void>;
   /** Troca a senha de quem está logado. */
@@ -79,6 +84,8 @@ export type BackendErrorCode =
   | "same_password"
   | "link_expired"
   | "invalid_email"
+  | "email_not_confirmed"
+  | "rate_limited"
   | "google_unavailable"
   | "network"
   | "unknown";
@@ -110,6 +117,23 @@ export function signUpMetadata(extra: SignUpExtra = {}): Record<string, string> 
   if (extra.declaresAdult === true) meta.declares_adult = "true";
   if (extra.declaresPhysician === true) meta.declares_physician = "true";
   return meta;
+}
+
+/**
+ * Marca que o link do e-mail é o de confirmar o cadastro (e não o de recuperar senha): vai no endereço de volta
+ * (`/novo?confirmacao=1`). Com o link vencido o Supabase não diz de que tipo ele era; é esta marca que leva à tela certa.
+ */
+export const CONFIRM_LINK_PARAM = "confirmacao";
+
+/** Endereço de volta do e-mail de confirmação: o mesmo do app, com a marca acima. */
+export function confirmRedirect(redirectTo: string): string {
+  try {
+    const url = new URL(redirectTo);
+    url.searchParams.set(CONFIRM_LINK_PARAM, "1");
+    return url.toString();
+  } catch {
+    return redirectTo;
+  }
 }
 
 const RPC_NAME = /^app_[a-z0-9_]+$/;

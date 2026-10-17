@@ -22,7 +22,8 @@ describe("authLink: o que o endereço conta sobre o link do e-mail", () => {
   it("outros erros (ex.: quem cancela o Google) e abertura comum não são link vencido", () => {
     expect(at("#error=access_denied&error_description=The+user+cancelled").kind).toBe(null);
     expect(at("", "").kind).toBe(null);
-    expect(at("#access_token=a&type=signup").kind).toBe(null);
+    // o link de confirmar o cadastro não é vencido nem de recuperação: é "signup" (ver confirmacaoEmail.test.tsx)
+    expect(at("#access_token=a&type=signup").kind).toBe("signup");
   });
 });
 

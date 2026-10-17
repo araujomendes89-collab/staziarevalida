@@ -30,6 +30,9 @@ export const LOGIN_STEPS = [
 /** Erros que não são de e-mail/senha: mantém a explicação de antes (rede, Google indisponível…). */
 export const OTHER_ERRORS = {
   invalid_email: "Informe um e-mail válido.",
+  // senha certa, mas o cadastro ainda espera a confirmação do e-mail (Supabase: "Email not confirmed")
+  email_not_confirmed: "Falta confirmar seu e-mail. Abra o link que enviamos quando você criou a conta ou peça um novo.",
+  rate_limited: "Muitas tentativas seguidas. Espere um minuto e tente de novo.",
   google_unavailable: "O login com Google não está disponível neste ambiente.",
   network: "Falha de conexão. Verifique sua internet e tente de novo.",
   unknown: "Não foi possível concluir. Tente novamente.",
@@ -56,6 +59,8 @@ export function useLoginForm() {
   const [emailOk, setEmailOk] = React.useState(false);
   const [showPw, setShowPw] = React.useState(false);
   const [needsMaster, setNeedsMaster] = React.useState(false);
+  // e-mail que entrou com a senha certa mas ainda não confirmou o cadastro (a tela oferece reenviar o link)
+  const [unconfirmedEmail, setUnconfirmedEmail] = React.useState(null);
   const alive = React.useRef(true);
   const emailRef = React.useRef(null);
 
@@ -71,6 +76,7 @@ export function useLoginForm() {
   }, [backend]);
 
   const fail = (text, email = false) => {
+    setUnconfirmedEmail(null);
     setStatus("error");
     setMessage(text);
     setEmailInvalid(email);
@@ -98,7 +104,9 @@ export function useLoginForm() {
       // a sessão troca para o app quando os dados de abertura chegam; até lá, a tela confirma o acesso
       if (alive.current) setStatus("success");
     } catch (err) {
-      if (alive.current) fail(errorText(err));
+      if (!alive.current) return;
+      fail(errorText(err));
+      if (err?.code === "email_not_confirmed") setUnconfirmedEmail(email);
     }
   };
 
@@ -123,6 +131,7 @@ export function useLoginForm() {
     showPw,
     togglePw: () => setShowPw((v) => !v),
     needsMaster,
+    unconfirmedEmail,
     emailRef,
     submit,
     google,

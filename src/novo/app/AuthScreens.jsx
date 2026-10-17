@@ -9,6 +9,7 @@ import { PASSWORD_MIN_LENGTH } from "../data";
 import { useMobile } from "./Shell.jsx";
 import { useSession, rememberChoice } from "./session.jsx";
 import { LoginScreen } from "./auth/LoginScreen.jsx";
+import { ConfirmEmailScreen, ConfirmLinkExpired } from "./auth/ConfirmEmail.jsx";
 import { PhoneField } from "./legal/PhoneField.jsx";
 import { DocumentModal } from "./legal/DocumentModal.jsx";
 import { COUNTRIES, normalizePhone, phoneError } from "./legal/phone.js";
@@ -26,6 +27,8 @@ const ERROR_TEXT = {
   same_password: "Escolha uma senha diferente da anterior.",
   link_expired: "Esse link venceu. Peça um novo.",
   invalid_email: "Informe um e-mail válido.",
+  email_not_confirmed: "Falta confirmar seu e-mail. Abra o link que enviamos quando você criou a conta.",
+  rate_limited: "Muitos e-mails enviados agora. Espere um minuto e tente de novo.",
   google_unavailable: "O login com Google não está disponível neste ambiente.",
   network: "Falha de conexão. Verifique sua internet e tente de novo.",
   unknown: "Não foi possível concluir. Tente novamente.",
@@ -72,7 +75,7 @@ function AuthLayout({ children, aside }) {
 
 const asideButtonStyle = { background: "transparent", color: "#fff", borderColor: "rgba(255,255,255,.4)" };
 
-function SecureField({ name, label, type = "text", autoComplete, hint, error }) {
+function SecureField({ name, label, type = "text", autoComplete, hint, error, defaultValue }) {
   return (
     <div className="lg-field">
       <label className="lg-label" htmlFor={`secure-${name}`}>{label}</label>
@@ -81,6 +84,7 @@ function SecureField({ name, label, type = "text", autoComplete, hint, error }) 
         name={name}
         type={type}
         autoComplete={autoComplete}
+        defaultValue={defaultValue}
         className={`lg-input lg-input--plain${error ? " is-error" : ""}`}
         aria-invalid={error ? "true" : "false"}
         aria-describedby={error ? `secure-${name}-error` : undefined}
@@ -129,7 +133,10 @@ function Signup({ go }) {
   const { backend } = useSession();
   const [errors, setErrors] = React.useState({});
   const [error, setError] = React.useState(null);
-  const [confirmEmail, setConfirmEmail] = React.useState(false);
+  // Supabase com "Confirm email" ligado: a conta nasce sem sessão e a tela "Confirme seu e-mail" toma o lugar do formulário
+  const [confirmEmail, setConfirmEmail] = React.useState(null);
+  // o que a pessoa já escreveu, para "Usar outro e-mail" voltar ao formulário preenchido (as senhas não ficam guardadas)
+  const [saved, setSaved] = React.useState({ name: "", email: "" });
   const [loading, setLoading] = React.useState(false);
   const [phone, setPhone] = React.useState({ code: "+55", number: "" });
   const [accepted, setAccepted] = React.useState(false);
@@ -178,11 +185,27 @@ function Signup({ go }) {
         userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
         ...(PEDE_DECLARACOES ? { declaresAdult: adult, declaresPhysician: physician } : {}),
       });
-      if (result.needsEmailConfirmation) setConfirmEmail(true);
+      setSaved({ name, email });
+      if (result?.needsEmailConfirmation) {
+        setLoading(false);
+        setConfirmEmail(email);
+        window.scrollTo(0, 0);
+        return;
+      }
     } catch (err) {
+      setSaved({ name, email });
       setError(messageFor(err));
     }
     setLoading(false);
+  };
+  // volta ao formulário com nome, e-mail, WhatsApp e aceites preenchidos; o foco vai para o e-mail
+  const changeEmail = () => {
+    setConfirmEmail(null);
+    setTimeout(() => {
+      const field = document.getElementById(FIELD_IDS.email);
+      field?.focus();
+      field?.select?.();
+    }, 0);
   };
   const google = async () => {
     setError(null);
@@ -201,14 +224,17 @@ function Signup({ go }) {
     }
   };
 
+  if (confirmEmail) {
+    return <ConfirmEmailScreen email={confirmEmail} origin="cadastro" onChangeEmail={changeEmail} onLogin={() => go("login")} />;
+  }
+
   return (
     <SecureSignupLayout onLogin={() => go("login")} onDoc={setDoc}>
       <form onSubmit={submit} className="lg-auth-fields" noValidate>
         <div><h2 className="lg-h2">Criar conta</h2><p className="lg-sub">Crie sua conta e comece sua jornada.</p></div>
         {error && <div className="lg-msg lg-msg--error" role="alert">{error}</div>}
-        {confirmEmail && <div className="lg-msg lg-msg--success" role="status">Enviamos um link de confirmação. Depois de confirmar, é só entrar.</div>}
-        <SecureField name="name" label="Nome completo" autoComplete="name" error={errors.name} />
-        <SecureField name="email" label="E-mail" type="email" autoComplete="email" error={errors.email} />
+        <SecureField name="name" label="Nome completo" autoComplete="name" error={errors.name} defaultValue={saved.name} />
+        <SecureField name="email" label="E-mail" type="email" autoComplete="email" error={errors.email} defaultValue={saved.email} />
         <PhoneField code={phone.code} number={phone.number} onChange={setPhone} error={errors.phone} codeError={errors.code} />
         <SecureField name="pw" label="Senha" type="password" hint={`Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`} autoComplete="new-password" error={errors.pw} />
         <SecureField name="pw2" label="Conferir senha" type="password" autoComplete="new-password" error={errors.pw2} />
@@ -484,12 +510,22 @@ function MasterSetup({ go }) {
 /** Fluxo de entrada: login → cadastro → recuperar senha (e, no 1º acesso local, conta master). */
 export function AuthFlow({ link = initialAuthLink } = {}) {
   // link do e-mail vencido ou já usado: abre direto o aviso "Esse link venceu. Peça um novo."
-  const [screen, setScreen] = React.useState(link?.kind === "expired" ? "expired" : "login");
-  const go = (next) => {
+  // (o de confirmar o cadastro tem a própria tela: quem já confirmou só entra, quem não confirmou pede outro link)
+  const [screen, setScreen] = React.useState(link?.kind === "expired" ? (link.signup ? "expired-confirm" : "expired") : "login");
+  // dados da próxima tela (ex.: o e-mail que ainda não foi confirmado, vindo do login)
+  const [data, setData] = React.useState(null);
+  const go = (next, nextData = null) => {
     setScreen(next);
+    setData(nextData);
     window.scrollTo(0, 0);
   };
   if (screen === "signup") return <Signup go={go} />;
+  if (screen === "confirm" && data?.email) {
+    return <ConfirmEmailScreen email={data.email} origin={data.origin ?? "login"} onChangeEmail={() => go("signup")} onLogin={() => go("login")} />;
+  }
+  if (screen === "expired-confirm") {
+    return <ConfirmLinkExpired onLogin={() => { clearAuthLinkFromUrl(); go("login"); }} />;
+  }
   if (screen === "forgot") return <Forgot go={go} />;
   if (screen === "expired") return <ExpiredLink go={go} />;
   if (screen === "master") return <MasterSetup go={go} />;

@@ -1,12 +1,14 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { signedUploadWithProgress } from "./signedUploadXhr";
-import { assertRpcCall, BackendError, signUpMetadata, type AuthUser, type Backend, type BackendErrorCode } from "./backend";
+import { assertRpcCall, BackendError, confirmRedirect, signUpMetadata, type AuthUser, type Backend, type BackendErrorCode } from "./backend";
 
 function toBackendError(error: { message?: string; code?: string; status?: number } | null): BackendError {
   const message = error?.message ?? "";
   const code = error?.code ?? "";
   let mapped: BackendErrorCode = "unknown";
-  if (code === "invalid_credentials" || /invalid login credentials/i.test(message)) mapped = "invalid_credentials";
+  if (code === "email_not_confirmed" || /email not confirmed/i.test(message)) mapped = "email_not_confirmed";
+  else if (code === "over_email_send_rate_limit" || code === "over_request_rate_limit" || error?.status === 429 || /rate limit|only request this after/i.test(message)) mapped = "rate_limited";
+  else if (code === "invalid_credentials" || /invalid login credentials/i.test(message)) mapped = "invalid_credentials";
   else if (code === "user_already_exists" || /already registered/i.test(message)) mapped = "email_taken";
   else if (code === "same_password" || /different from the old password/i.test(message)) mapped = "same_password";
   else if (code === "weak_password" || /password should be/i.test(message)) mapped = "weak_password";
@@ -47,10 +49,19 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
       const { data, error } = await client.auth.signUp({
         email,
         password,
-        options: { data: { name, ...signUpMetadata(extra) }, emailRedirectTo: redirectTo },
+        options: { data: { name, ...signUpMetadata(extra) }, emailRedirectTo: confirmRedirect(redirectTo) },
       });
       if (error) throw toBackendError(error);
+      // Com a confirmação ligada, o Supabase não dá erro para e-mail que já tem conta confirmada: devolve uma conta sem
+      // identidades e não manda e-mail nenhum. Aqui isso vira o mesmo aviso de sempre ("Já existe uma conta com este e-mail").
+      if (!data.session && Array.isArray(data.user?.identities) && data.user.identities.length === 0) {
+        throw new BackendError("email_taken", "User already registered");
+      }
       return { needsEmailConfirmation: !data.session };
+    },
+    async resendConfirmation(email) {
+      const { error } = await client.auth.resend({ type: "signup", email, options: { emailRedirectTo: confirmRedirect(redirectTo) } });
+      if (error) throw toBackendError(error);
     },
     async signInWithGoogle() {
       const { error } = await client.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });

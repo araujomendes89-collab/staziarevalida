@@ -1,0 +1,51 @@
+/* Confirme seu e-mail / Link de confirmação vencido (17/10/2026): mesmo padrão do login no ar (login-novo.css, classes ln-).
+   Aqui só o que o login não tem: ícone do envelope, lista de dicas, links de voltar e os do rodapé como botões. Classes ce-.
+   Textos pequenos com contraste >= 4,5:1 no claro e no escuro. */
+.ce-root .ce-form { gap: 16px; }
+.ce-mark {
+  width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; margin-top: 4px;
+  background: #ebf5ff; color: #0a6fd8; border: 1px solid #cfe6ff;
+}
+:root[data-theme="dark"] .ce-mark { background: rgba(95, 178, 255, .12); color: #5fb2ff; border-color: rgba(95, 178, 255, .35); }
+
+.ce-body { display: flex; flex-direction: column; gap: 10px; }
+.ce-root .ce-msg { margin: 0; align-items: flex-start; flex-wrap: nowrap; line-height: 1.5; font-weight: 600; }
+.ce-root .ce-msg svg { margin-top: 2px; }
+.ce-root .ln-msg--info { border: 1px solid #b3dcff; }
+.ce-email { font-weight: 800; overflow-wrap: anywhere; }
+:root[data-theme="dark"] .ce-root .ln-msg--error { background: rgba(255, 107, 107, .12); color: #ffb4b4; border-color: rgba(255, 140, 140, .35); }
+:root[data-theme="dark"] .ce-root .ln-msg--success { background: rgba(79, 211, 154, .12); color: #8be3b8; border-color: rgba(79, 211, 154, .35); }
+:root[data-theme="dark"] .ce-root .ln-msg--info { background: rgba(95, 178, 255, .12); color: #a9d6ff; border-color: rgba(95, 178, 255, .35); }
+
+.ce-tips { margin: 0; padding: 0 0 0 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; color: var(--ln-body); }
+.ce-tips li::marker { color: var(--ln-blue); }
+.ce-sub { line-height: 1.55; }
+
+.ce-actions { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.ce-actions .ln-btn--primary { margin-bottom: 6px; }
+/* esperando para reenviar: o botão fica claramente apagado (o "carregando" continua igual ao do login) */
+.ce-root .ln-btn--primary:disabled:not([aria-busy="true"]) { cursor: not-allowed; opacity: .55; box-shadow: none; filter: none; }
+.ce-link { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border-radius: 10px; }
+.ce-link:hover { text-decoration: none; background: rgba(10, 111, 216, .07); }
+.ce-link:hover span { text-decoration: underline; text-underline-offset: 3px; }
+
+.ce-resend-form { display: flex; flex-direction: column; gap: 12px; padding-top: 16px; border-top: 1px solid var(--ln-line-soft); }
+.ce-root .ce-btn-ghost {
+  min-height: 50px; border: 1px solid #b3dcff; background: var(--ln-input); color: var(--ln-blue);
+  font: 700 17px var(--ln-title); letter-spacing: .08em;
+}
+.ce-btn-ghost:hover { border-color: var(--ln-blue); }
+.ce-btn-ghost:disabled { cursor: progress; opacity: .7; }
+.ce-field-error { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #b42318; }
+:root[data-theme="dark"] .ce-field-error { color: #ffb4b4; }
+
+/* rodapé: Termos e Privacidade abrem o documento por cima da tela */
+.ce-foot-link {
+  min-height: 24px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.ln-root--m .ce-foot-link { min-height: 44px; }
+.ln-root--m .ce-foot { gap: 0 14px; }
+
+/* celular: o cartão branco vai até o fim da tela */
+.ln-root--m.ce-root .ln-main { align-items: stretch; }
+.ln-root--m.ce-root .ln-side { padding-block: 32px 28px; }

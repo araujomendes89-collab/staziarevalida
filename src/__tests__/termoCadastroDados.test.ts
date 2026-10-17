@@ -260,7 +260,7 @@ describe("Cadastro — Supabase (produção)", () => {
     expect(supabase.signUp).toHaveBeenLastCalledWith({
       email: "nina@teste.dev",
       password: "senha-segura",
-      options: { data: { name: "Nina Alves", phone: PHONE, terms_version: "2.0", user_agent: "UA/Nina", declares_adult: "true", declares_physician: "true" }, emailRedirectTo: REDIRECT },
+      options: { data: { name: "Nina Alves", phone: PHONE, terms_version: "2.0", user_agent: "UA/Nina", declares_adult: "true", declares_physician: "true" }, emailRedirectTo: `${REDIRECT}?confirmacao=1` },
     });
     expect(result).toEqual({ needsEmailConfirmation: true }); // sem sessão: o e-mail precisa ser confirmado
   });
@@ -273,7 +273,7 @@ describe("Cadastro — Supabase (produção)", () => {
     expect(supabase.signUp).toHaveBeenLastCalledWith({
       email: "otto@teste.dev",
       password: "senha-segura",
-      options: { data: { name: "Otto Reis" }, emailRedirectTo: REDIRECT },
+      options: { data: { name: "Otto Reis" }, emailRedirectTo: `${REDIRECT}?confirmacao=1` },
     });
     expect(result).toEqual({ needsEmailConfirmation: false });
   });

@@ -63,10 +63,13 @@ export function SessionProvider({ children }) {
           }
         };
 
-        // abrir o link de recuperar senha não pode derrubar a sessão que o link acabou de criar
-        if (initialAuthLink.kind !== "recovery" && sessionExpiredOnBrowserClose()) await backend.signOut();
+        // abrir o link de recuperar senha (ou o de confirmar o cadastro) não pode derrubar a sessão que o link acabou de criar
+        const linkSession = initialAuthLink.kind === "recovery" || initialAuthLink.kind === "signup";
+        if (!linkSession && sessionExpiredOnBrowserClose()) await backend.signOut();
         stop = backend.onAuthChange(load);
         await load(await backend.getUser());
+        // e-mail confirmado: o Supabase já leu o link; tira do endereço a marca ?confirmacao=1 que sobrou
+        if (initialAuthLink.kind === "signup") clearAuthLinkFromUrl();
       } catch (error) {
         if (alive) setState((s) => ({ ...s, status: "error", error }));
       }

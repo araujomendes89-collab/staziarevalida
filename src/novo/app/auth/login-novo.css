@@ -70,6 +70,9 @@
 .ln-msg--error { background: #fdeeee; color: #a11f1f; border: 1px solid #f5c0c0; }
 .ln-msg--success { background: #eaf7ef; color: #126632; border: 1px solid #b9e3c8; }
 .ln-msg--info { background: #ebf5ff; color: #0b4f9c; flex-wrap: wrap; }
+/* "Reenviar link de confirmação" embaixo do aviso de e-mail não confirmado (44 px de toque) */
+.ln-resend { align-self: flex-start; margin-top: 8px; min-height: 44px; }
+:root[data-theme="dark"] .ln-root .ln-small { background: transparent; border-color: #2b5a8f; color: #5fb2ff; }
 .ln-small { min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid #b3dcff; background: #fff; color: #0a6fd8; font-weight: 700; cursor: pointer; }
 
 .ln-field { display: flex; flex-direction: column; gap: 7px; }

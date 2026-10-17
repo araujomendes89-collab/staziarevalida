@@ -91,8 +91,8 @@ function Backdrop() {
 
 export function LoginAtual({ go }) {
   const supportEmail = useSupportEmail();
-  const { status, message, emailInvalid, focus, setFocus, emailOk, onEmailInput, showPw, togglePw, needsMaster, emailRef, submit, google, loading, success, error, steps } = useLoginForm();
-  const inputCls = (bad) => `lg-input${error && bad ? " is-error" : ""}`;
+  const { status, message, emailInvalid, focus, setFocus, emailOk, onEmailInput, showPw, togglePw, needsMaster, unconfirmedEmail, emailRef, submit, google, loading, success, error, steps } = useLoginForm();
+  const inputCls = (bad) => `lg-input${error && bad && !unconfirmedEmail ? " is-error" : ""}`;
 
   return (
     <div className="lg-root">
@@ -126,6 +126,11 @@ export function LoginAtual({ go }) {
                     </svg>
                     <span>{message}</span>
                   </div>
+                )}
+                {error && unconfirmedEmail && (
+                  <button type="button" className="lg-link-btn lg-link-btn--strong" onClick={() => go("confirm", { email: unconfirmedEmail, origin: "login" })}>
+                    Reenviar link de confirmação
+                  </button>
                 )}
                 {success && (
                   <div className="lg-msg lg-msg--success" role="status">

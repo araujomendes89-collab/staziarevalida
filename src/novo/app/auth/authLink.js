@@ -1,7 +1,9 @@
 // O que o endereço da página conta sobre o link do e-mail (recuperar senha). O Supabase troca o link por uma sessão e apaga os
 // dados do endereço logo em seguida; por isso o app lê o endereço UMA vez, assim que carrega, antes de tudo (initialAuthLink).
 //   kind "recovery": link de recuperação válido (a pessoa precisa criar a nova senha)
-//   kind "expired":  link vencido ou já usado (a pessoa precisa pedir outro)
+//   kind "signup":   link de confirmação do cadastro válido (a pessoa entra direto no app)
+//   kind "expired":  link vencido ou já usado (a pessoa precisa pedir outro); `signup: true` quando era o de confirmar o cadastro
+//                    (marca ?confirmacao=1 no endereço de volta, ver confirmRedirect em data/backend.ts)
 //   kind null:       abertura comum
 
 const EXPIRED_CODES = new Set(["otp_expired", "flow_state_expired", "flow_state_not_found"]);
@@ -19,8 +21,10 @@ export function readAuthLink(location) {
   const code = get("error_code");
   const description = `${get("error_description") ?? ""}`;
   const failed = Boolean(get("error") || code);
-  if (failed && (EXPIRED_CODES.has(code) || /expired|invalid|already|used/i.test(description))) return { kind: "expired" };
+  const signupLink = search.get("confirmacao") === "1";
+  if (failed && (EXPIRED_CODES.has(code) || /expired|invalid|already|used/i.test(description))) return signupLink ? { kind: "expired", signup: true } : { kind: "expired" };
   if (get("type") === "recovery") return { kind: "recovery" };
+  if (get("type") === "signup" || (signupLink && get("access_token"))) return { kind: "signup" };
   return { kind: null };
 }
 
@@ -30,7 +34,7 @@ export function clearAuthLinkFromUrl() {
     if (typeof window === "undefined" || !window.history?.replaceState) return;
     const { pathname, search, hash } = window.location;
     const keep = new URLSearchParams(search.replace(/^\?/, ""));
-    for (const name of ["error", "error_code", "error_description", "type", "code", "access_token", "refresh_token"]) keep.delete(name);
+    for (const name of ["error", "error_code", "error_description", "type", "code", "access_token", "refresh_token", "confirmacao"]) keep.delete(name);
     const rest = keep.toString();
     const cleanHash = /(^#|&)(access_token|error|error_code|type)=/.test(hash) ? "" : hash;
     window.history.replaceState(window.history.state, "", pathname + (rest ? `?${rest}` : "") + cleanHash);
