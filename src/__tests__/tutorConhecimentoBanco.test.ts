@@ -10,13 +10,15 @@
  *   e. aula recolhida some da busca NA HORA, antes da limpeza
  *   f. outro aluno não usa a conversa nem a ligação de ninguém; flashcard pessoal nunca entra
  *   g. tabelas e funções fechadas para anon/authenticated
+ *   h. (revisão de 17/10) a questão aberta em OUTRA conversa e a de treino de questões em andamento também ficam travadas;
+ *      acento não atrapalha a busca por palavras; pergunta sem conteúdo no índice volta vazia ("não encontrei no material aprovado")
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
 import { PGlite } from "@electric-sql/pglite";
 import { sincronizar } from "../../server/tutor/conhecimento/indexador";
-import { buscarConhecimento, paraFerramenta } from "../../server/tutor/conhecimento/buscar";
+import { buscarConhecimento, NOTA_SEM_RESULTADO, paraFerramenta } from "../../server/tutor/conhecimento/buscar";
 import { pacoteDoTema } from "../../server/tutor/conhecimento/pacote";
 import { normalizar } from "../../server/tutor/conhecimento/consulta";
 import type { Embedder } from "../../server/contentHub/embeddings";
@@ -82,7 +84,7 @@ const SENTINELAS = [
 const todosOsTextos = async () => (await rows<{ t: string }>(`select titulo || ' ' || coalesce(secao, '') || ' ' || texto as t from public.tutor_kb_trechos`)).map((r) => r.t).join("\n");
 const textoDe = (r: { trechos: { texto: string; titulo: string }[] }) => r.trechos.map((t) => `${t.titulo} ${t.texto}`).join("\n");
 
-const S = { aberta: id(301), livre: id(302), bia: id(303) };
+const S = { aberta: id(301), livre: id(302), bia: id(303), refaz: id(304) };
 const VC = { ana: id(401), bia: id(402) };
 const L = { pub: id(501), recolhida: id(502) };
 const V = { pub: id(511), recolhida: id(512) };
@@ -179,11 +181,14 @@ beforeAll(async () => {
   await pg.exec(`set session_replication_role = origin`);
 
   await sincronizar(db, { embedder, dirMapas: null });
+  // os vetores daqui são de mentira (saco de palavras): a semelhança deles é bem menor que a do Gemini; o corte real (0,74) está
+  // conferido no teste "h. corte de semelhança" e calibrado na bancada com o conteúdo real
+  await pg.query(`update public.tutor_kb_regras set semelhanca_minima = 0.3`);
 }, 300_000);
 
 describe("cérebro do Tutor: índice do conhecimento aprovado (migração 013620)", () => {
   it("g. tudo fechado: RLS sem política, nada para anon/authenticated, funções SECURITY DEFINER com search_path vazio", async () => {
-    for (const t of ["tutor_kb_trechos", "tutor_kb_vetores", "tutor_kb_rotulos", "tutor_kb_consultas", "tutor_kb_entregas", "tutor_kb_regras"]) {
+    for (const t of ["tutor_kb_trechos", "tutor_kb_vetores", "tutor_kb_rotulos", "tutor_kb_consultas", "tutor_kb_entregas", "tutor_kb_regras", "tutor_kb_cobertura"]) {
       expect((await rows(`select relrowsecurity from pg_class where oid = $1::regclass`, [`public.${t}`]))[0].relrowsecurity).toBe(true);
       await expect(asRole("authenticated", ANA, `select * from public.${t}`)).rejects.toThrow(/permission denied/);
       await expect(asRole("anon", null, `select * from public.${t}`)).rejects.toThrow(/permission denied/);
@@ -222,6 +227,7 @@ describe("cérebro do Tutor: índice do conhecimento aprovado (migração 013620
     expect(qs).toEqual(["q-aberta", "q-equiv", "q-nao-resp", "q-rel", "q-resp", "q-simulado", "sz-inedita-humana"]);
     for (const t of Object.values<any>(sit.por_tipo)) expect(t.com_vetor).toBe(t.trechos);
     expect(sit.rotulos).toBeGreaterThan(5);
+    expect(sit.cobertura).toMatchObject({ completa: true }); // todos os tipos com vetor: a busca soma palavras + significado
   });
 
   it("o banco recusa gravar trecho de origem não aprovada ou de versão diferente da aprovada", async () => {
@@ -344,6 +350,75 @@ describe("cérebro do Tutor: índice do conhecimento aprovado (migração 013620
     expect(r1.vetor).toBe("recebido");
     expect(r2.vetor).toBe("cache");
     expect(r2.trechos.map((t) => t.id)).toEqual(r1.trechos.map((t) => t.id));
+  });
+
+  it("h. questão aberta em OUTRA conversa do Tutor fica travada (a busca de uma conversa não libera a questão que ele resolve noutra)", async () => {
+    const pergunta = "anafilaxia adrenalina explicação LIBERADA-RESPONDIDA";
+    const busca = () => buscarConhecimento(deps, { userId: ANA, sessionId: S.livre, pergunta, vetor: vetor(pergunta), via: "texto", limite: 8 });
+    expect(textoDe(await busca())).toContain("LIBERADA-RESPONDIDA");
+    // a Ana refaz a q-resp (já respondida antes) numa conversa nova: enquanto estiver aberta lá, a explicação não sai em lugar nenhum
+    await pg.query(`insert into public.tutor_sessions (id, user_id, mode, title, topic, question_id, question_state, personality_id, intensity)
+                    values ($1, $2, 'questao', 'Refazer', 'Anafilaxia', 'q-resp', 'open', 'amigavel', 2)`, [S.refaz, ANA]);
+    expect(textoDe(await busca())).not.toContain("LIBERADA-RESPONDIDA");
+    // e a aberta da S.aberta não sai pela S.livre (nem com a regra 3 desligada)
+    await pg.query(`update public.tutor_kb_regras set questoes_so_respondidas = false`);
+    const outra = textoDe(await buscarConhecimento(deps, { userId: ANA, sessionId: S.livre, pergunta: "anafilaxia adrenalina explicação SENTINELA-GABARITO-ABERTA", vetor: vetor("anafilaxia adrenalina explicação SENTINELA-GABARITO-ABERTA"), via: "texto", limite: 8 }));
+    expect(outra).not.toContain("SENTINELA-GABARITO-ABERTA");
+    await pg.query(`update public.tutor_kb_regras set questoes_so_respondidas = true`);
+    await pg.query(`update public.tutor_sessions set question_state = 'answered' where id = $1`, [S.refaz]);
+    expect(textoDe(await busca())).toContain("LIBERADA-RESPONDIDA");
+    await pg.query(`delete from public.tutor_sessions where id = $1`, [S.refaz]);
+  });
+
+  it("h. treino de QUESTÕES em andamento: a questão ainda não respondida nele fica travada, mesmo com a regra 3 desligada", async () => {
+    await pg.query(`update public.tutor_kb_regras set questoes_so_respondidas = false`);
+    const pergunta = "anafilaxia adrenalina explicação SENTINELA-NAO-RESPONDIDA";
+    const busca = async () => textoDe(await buscarConhecimento(deps, { userId: ANA, sessionId: S.livre, pergunta, vetor: vetor(pergunta), via: "texto", limite: 8 }));
+    expect(await busca()).toContain("SENTINELA-NAO-RESPONDIDA");
+    const ps = (await rows(`insert into public.practice_sessions (user_id, kind, question_ids) values ($1, 'questoes', '{q-nao-resp,q-resp}') returning id`, [ANA]))[0].id;
+    expect(await busca()).not.toContain("SENTINELA-NAO-RESPONDIDA");
+    // respondeu dentro do treino: liberada (no treino de questões o gabarito sai a cada resposta)
+    await pg.query(`insert into public.question_attempts (user_id, question_id, selected_option, session_id) values ($1, 'q-nao-resp', 'B', $2)`, [ANA, ps]);
+    expect(await busca()).toContain("SENTINELA-NAO-RESPONDIDA");
+    // simulado continua travado mesmo com a resposta dada nele (o resultado só sai no fim)
+    expect((await rows(`select 'q-simulado' = any (public.tutor_kb_questoes_travadas($1, $2)) as t`, [ANA, S.livre]))[0].t).toBe(true);
+    await pg.query(`delete from public.question_attempts where session_id = $1`, [ps]);
+    await pg.query(`delete from public.practice_sessions where id = $1`, [ps]);
+    await pg.query(`update public.tutor_kb_regras set questoes_so_respondidas = true`);
+  });
+
+  it("h. acento: a busca por palavras acha 'saturação', 'oxigênio' e 'hidratação' escritos com ou sem acento", async () => {
+    // só palavras com acento no texto (a primeira versão do índice guardava com acento e a pergunta chegava sem: 0 trechos)
+    for (const p of ["saturação de oxigênio", "saturacao de oxigenio"]) {
+      const r = await buscarConhecimento(deps, { userId: ANA, sessionId: S.livre, pergunta: p, via: "texto" });
+      expect(r.vetor, p).toBe("nenhum");
+      expect(r.trechos.some((t) => t.tipo === "aula" && /satura/.test(t.texto)), p).toBe(true);
+    }
+    const d = await buscarConhecimento(deps, { userId: ANA, sessionId: S.livre, pergunta: "hidratação", via: "texto" });
+    expect(d.trechos[0]?.texto).toContain("10 mL/kg");
+  });
+
+  it("h. mínimo de relevância: pergunta sem conteúdo no índice volta vazia, com a nota de 'não encontrei'", async () => {
+    for (const p of ["conduta no infarto com supradesnível de ST", "qual antibiótico na pneumonia comunitária ambulatorial", "tratamento da malária por vivax"]) {
+      for (const v of [null, vetor(p)]) {
+        const r = await buscarConhecimento(deps, { userId: ANA, sessionId: S.livre, pergunta: p, vetor: v, via: "texto" });
+        expect(r.trechos, `${p} ${v ? "com" : "sem"} vetor`).toEqual([]);
+        expect(paraFerramenta(r)).toEqual({ passages: [], note: NOTA_SEM_RESULTADO });
+      }
+    }
+    // termo genérico sozinho não traz trecho de outro assunto: "dose" não é mais termo forte
+    const r = await buscarConhecimento(deps, { userId: ANA, sessionId: S.livre, pergunta: "dose grave no caso novo de raiva", via: "texto" });
+    expect(r.trechos).toEqual([]);
+  });
+
+  it("h. corte de semelhança: o padrão é 0,74; trecho que só bate pelo significado abaixo do corte não entra", async () => {
+    await pg.query(`update public.tutor_kb_regras set semelhanca_minima = 0.74`);
+    expect((await rows(`select column_default from information_schema.columns where table_name = 'tutor_kb_regras' and column_name = 'semelhanca_minima'`))[0].column_default).toMatch(/0\.74/);
+    // "urticária hipotensão picada de abelha" bate pelo significado (saco de palavras) com os enunciados, mas abaixo de 0,74
+    const p = "paciente urticária hipotensão picada abelha";
+    const r = await buscarConhecimento(deps, { userId: ANA, sessionId: S.livre, pergunta: "", vetor: vetor(p), via: "texto" });
+    for (const t of r.trechos) expect(t.semelhanca ?? 1).toBeGreaterThanOrEqual(0.74);
+    await pg.query(`update public.tutor_kb_regras set semelhanca_minima = 0.3`);
   });
 
   it("desfazer apaga tudo e a migração pode ser aplicada de novo", async () => {

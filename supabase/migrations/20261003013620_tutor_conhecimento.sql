@@ -16,6 +16,8 @@
 --     questão aberta, as equivalentes e relacionadas, as questões de simulado/prova em andamento, as que o aluno ainda não respondeu
 --     (regra padrão) e as Inéditas fora do plano; junta palavras e significado (RRF, k = 60) usando o índice HNSW de verdade (sem
 --     filtro de distância no where) e devolve a citação pronta. Registra os trechos entregues (tutor_kb_entregas).
+--     Mínimo de relevância: por palavras, o trecho precisa ter os termos da pergunta (e o mais raro); por significado, semelhança
+--     >= regras.semelhanca_minima. Nada passou: lista vazia ("não encontrei no material aprovado"). Palavras sem acento dos dois lados.
 --   * ch_worker_tutor_kb_pacote: o MATERIAL DO TEMA da abertura da conversa, sem chamar o Google (vetor da questão ou do tema,
 --     guardado na indexação). Nunca leva explicação de questão nem estação.
 --   * public.tutor_kb_regras: as decisões do dono (padrões conservadores até ele decidir).
@@ -38,6 +40,10 @@ create table if not exists public.tutor_kb_regras (
   pacote_tokens integer not null default 4000 check (pacote_tokens between 0 and 40000),
   updated_at timestamptz not null default now()
 );
+-- calibração técnica (não é decisão do dono): semelhança mínima para um trecho entrar SÓ pelo significado (0,74). Um trecho que
+-- bate por palavras e tem vetor precisa de 0,04 a menos (0,70). Medido na bancada com o conteúdo real e 33 perguntas
+-- (cerebro/correcao/bancada-*.json): de outro assunto ficaram entre 0,63 e 0,73; os certos, de 0,73 a 0,84.
+alter table public.tutor_kb_regras add column if not exists semelhanca_minima real not null default 0.74 check (semelhanca_minima between 0 and 1);
 insert into public.tutor_kb_regras (id) values (true) on conflict (id) do nothing;
 alter table public.tutor_kb_regras enable row level security;
 
@@ -61,12 +67,25 @@ create table if not exists public.tutor_kb_trechos (
   nivel_revisao text not null check (nivel_revisao in ('oficial', 'humana', 'dois_revisores_ia', 'ia')),
   plano_minimo text,                       -- null = todos; outros valores ficam travados até o cadeado do plano existir
   hash text not null check (hash ~ '^[0-9a-f]{64}$'),
-  tsv tsvector generated always as (to_tsvector('portuguese', titulo || ' ' || coalesce(secao, '') || ' ' || texto)) stored,
+  -- sem acento dos dois lados (fold_text aqui, consulta.ts normalizar na pergunta): "sífilis" e "sifilis" viram a mesma palavra
+  tsv tsvector generated always as (to_tsvector('portuguese', public.fold_text(titulo || ' ' || coalesce(secao, '') || ' ' || texto))) stored,
   criado_em timestamptz not null default now(),
   unique (tipo, origem_id, parte),
   check ((tipo = 'questao') = (questao_id is not null)),
   check ((tipo = 'estacao') = (estacao_id is not null))
 );
+-- banco que recebeu a primeira versão desta migração (tsv com acento): refaz a coluna sem acento
+do $tsv$
+begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'tutor_kb_trechos' and column_name = 'tsv'
+               and coalesce(generation_expression, '') not like '%fold_text%') then
+    drop index if exists public.tutor_kb_trechos_tsv_idx;
+    alter table public.tutor_kb_trechos drop column tsv;
+    alter table public.tutor_kb_trechos add column tsv tsvector generated always as
+      (to_tsvector('portuguese', public.fold_text(titulo || ' ' || coalesce(secao, '') || ' ' || texto))) stored;
+  end if;
+end
+$tsv$;
 create index if not exists tutor_kb_trechos_tsv_idx on public.tutor_kb_trechos using gin (tsv);
 create index if not exists tutor_kb_trechos_temas_idx on public.tutor_kb_trechos using gin (tema_ids);
 create index if not exists tutor_kb_trechos_questao_idx on public.tutor_kb_trechos (questao_id) where questao_id is not null;
@@ -114,6 +133,17 @@ create table if not exists public.tutor_kb_entregas (
 create index if not exists tutor_kb_entregas_sessao_idx on public.tutor_kb_entregas (sessao_id, criado_em desc);
 alter table public.tutor_kb_entregas enable row level security;
 
+-- cobertura dos vetores por tipo (o indexador refaz no fim de cada rodada). Enquanto algum tipo não tiver vetor em quase todos os
+-- trechos, a busca NÃO soma pontos de palavras e de significado (senão uma fonte, que tem vetor, sempre passa na frente de uma aula,
+-- que ainda não tem): cada trecho vale pela melhor das duas posições.
+create table if not exists public.tutor_kb_cobertura (
+  model text primary key,
+  completa boolean not null default false,
+  por_tipo jsonb not null default '{}'::jsonb,
+  atualizado_em timestamptz not null default now()
+);
+alter table public.tutor_kb_cobertura enable row level security;
+
 -- pgvector, quando o banco tiver (Supabase): índices HNSW pelo cosseno sobre o vetor convertido (como a migração 5000)
 do $vec$
 declare v_schema text;
@@ -157,7 +187,7 @@ declare
   uuid_ok constant boolean := coalesce(p_origem, '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
 begin
   select * into r from public.tutor_kb_regras where id;
-  if not found then r := row(true, true, 'humana', true, 4000, now())::public.tutor_kb_regras; end if;
+  if not found then r := row(true, true, 'humana', true, 4000, now(), 0.74)::public.tutor_kb_regras; end if;
   case p_tipo
     when 'fonte' then
       if not uuid_ok then return null; end if;
@@ -483,7 +513,25 @@ as $$
     'rotulos', (select count(*) from public.tutor_kb_rotulos r where r.model = p_model),
     'consultas_em_cache', (select count(*) from public.tutor_kb_consultas),
     'regras', (select to_jsonb(r) - 'id' from public.tutor_kb_regras r where r.id),
-    'indice_vetorial', exists (select 1 from pg_extension where extname = 'vector'))
+    'indice_vetorial', exists (select 1 from pg_extension where extname = 'vector'),
+    'cobertura', (select to_jsonb(c) - 'model' from public.tutor_kb_cobertura c where c.model = p_model))
+$$;
+
+-- Refaz a cobertura dos vetores (o indexador chama no fim de cada rodada). Completa = todo tipo com trechos tem vetor em >= 95% deles.
+create or replace function public.ch_worker_tutor_kb_cobertura(p_model text default 'gemini-embedding-2') returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare pt jsonb; ok boolean;
+begin
+  select coalesce(jsonb_object_agg(x.tipo, jsonb_build_object('trechos', x.n, 'com_vetor', x.v)), '{}'::jsonb), coalesce(bool_and(x.v >= 0.95 * x.n), false)
+    into pt, ok
+    from (select t.tipo, count(*) as n,
+                 count(*) filter (where exists (select 1 from public.tutor_kb_vetores v where v.trecho_id = t.id and v.model = p_model and v.hash = t.hash)) as v
+            from public.tutor_kb_trechos t group by t.tipo) x;
+  insert into public.tutor_kb_cobertura as c (model, completa, por_tipo) values (p_model, ok, pt)
+  on conflict (model) do update set completa = excluded.completa, por_tipo = excluded.por_tipo, atualizado_em = now();
+  return jsonb_build_object('completa', ok, 'por_tipo', pt);
+end
 $$;
 
 -- ---------------------------------------------------------------- vizinhos por significado (índice de verdade)
@@ -538,22 +586,33 @@ begin
     exception when others then null;
     end;
   end if;
-  return websearch_to_tsquery('portuguese', coalesce(p_consulta, ''));
+  -- o índice é sem acento (fold_text): a pergunta crua também
+  return websearch_to_tsquery('portuguese', public.fold_text(coalesce(p_consulta, '')));
 end
 $$;
 
--- Questões que o aluno NÃO pode ver explicadas agora: a aberta, as equivalentes e relacionadas a ela, e as de simulado/prova
--- em andamento.
+-- Questões que o aluno NÃO pode ver explicadas agora, em QUALQUER lugar do app (não só na conversa da busca):
+--   * a questão aberta de cada conversa do Tutor dele (ele pode resolver numa conversa e perguntar noutra);
+--   * as de simulado/prova em andamento (todas, respondidas ou não: o resultado só sai no fim);
+--   * as de treino de questões em andamento que ele ainda não respondeu naquele treino;
+--   * e, para todas essas, as equivalentes e as relacionadas.
+-- p_sessao fica na assinatura por compatibilidade (a conversa da busca já entra por ser do aluno).
 create or replace function public.tutor_kb_questoes_travadas(p_user uuid, p_sessao uuid) returns text[]
   language sql stable security definer set search_path = ''
 as $$
-  with s as (select t.question_id from public.tutor_sessions t where t.id = p_sessao and t.user_id = p_user and t.question_id is not null and t.question_state = 'open')
+  with abertas as (
+    select t.question_id as id from public.tutor_sessions t
+     where t.user_id = p_user and t.question_id is not null and t.question_state = 'open'
+    union
+    select x.id from public.practice_sessions ps cross join lateral unnest(ps.question_ids) as x (id)
+     where ps.user_id = p_user and ps.finished_at is null
+       and (ps.kind in ('simulado', 'prova')
+            or not exists (select 1 from public.question_attempts a where a.session_id = ps.id and a.question_id = x.id)))
   select coalesce(array_agg(distinct z.id), '{}') from (
-    select s.question_id as id from s
-    union select e2.question_id from s join public.question_equivalents e1 on e1.question_id = s.question_id join public.question_equivalents e2 on e2.group_id = e1.group_id
-    union select r.question_b from s join public.question_relations r on r.question_a = s.question_id
-    union select r.question_a from s join public.question_relations r on r.question_b = s.question_id
-    union select unnest(ps.question_ids) from public.practice_sessions ps where ps.user_id = p_user and ps.finished_at is null and ps.kind in ('simulado', 'prova')
+    select a.id from abertas a
+    union select e2.question_id from abertas a join public.question_equivalents e1 on e1.question_id = a.id join public.question_equivalents e2 on e2.group_id = e1.group_id
+    union select r.question_b from abertas a join public.question_relations r on r.question_a = a.id
+    union select r.question_a from abertas a join public.question_relations r on r.question_b = a.id
   ) z where z.id is not null
 $$;
 
@@ -585,6 +644,26 @@ declare
   ids uuid[] := '{}';
   grupos jsonb := '{}'::jsonb;
   k integer := 0;
+  -- mínimo de relevância
+  v_termos tsquery[] := '{}';   -- cada termo da pergunta que existe no índice (sem repetir a mesma raiz)
+  v_rara tsquery;                -- o termo mais raro: é ele que diz do que a pergunta trata
+  v_rara_df integer;
+  v_n integer := 0;
+  v_desconhecidos integer := 0;  -- termo de 5+ letras que não existe no índice (ex.: "vivax", "supradesnivel"): o assunto não está lá
+  v_viz_ids text[];
+  v_viz_dist float8[];
+  v_dist_max float8;             -- distância do vizinho mais longe: quem tem vetor e ficou fora dos vizinhos está mais longe que isso
+  v_tem_vetor boolean;
+  v_precisa integer := 0;
+  v_intencao tsquery;            -- "tratamento/conduta/dose" ou "diagnóstico/critério": sobe o trecho que fala disso, sem virar termo
+  v_completa boolean := false;   -- todos os tipos com vetor: soma palavras + significado; senão, a melhor das duas posições
+  v_c text;
+  v_x text;
+  v_tq tsquery;
+  v_df integer;
+  v_bate integer;
+  v_ok_palavras boolean;
+  v_ok_significado boolean;
 begin
   if coalesce(p_via, '') not in ('texto', 'voz', 'ponte', 'avaliacao') then raise exception 'Via inválida.' using errcode = '22023'; end if;
   select * into s from public.tutor_sessions t where t.user_id = p_user and t.id = coalesce(p_sessao, (select v.session_id from public.tutor_voice_calls v where v.id = p_voice_call and v.user_id = p_user));
@@ -602,7 +681,7 @@ begin
     end if;
   end if;
   select * into r from public.tutor_kb_regras where id;
-  if not found then r := row(true, true, 'humana', true, 4000, now())::public.tutor_kb_regras; end if;
+  if not found then r := row(true, true, 'humana', true, 4000, now(), 0.74)::public.tutor_kb_regras; end if;
 
   -- vetor: o recebido (e guardado no cache) ou o do cache
   v_vetor := public.tutor_kb_vetor_de(p_vetor);
@@ -624,16 +703,58 @@ begin
   -- a questão da conversa já respondida (ou revelada) também conta como respondida
   if s.question_id is not null and s.question_state in ('answered', 'revealed') then v_respondidas := v_respondidas || s.question_id; end if;
 
+  -- MÍNIMO DE RELEVÂNCIA (sem ele a busca sempre devolvia 5 trechos, de qualquer assunto, como se fossem a resposta):
+  --  * por palavras: o trecho precisa ter os termos da pergunta (os dois, se forem 1 ou 2; metade, se forem mais) e o termo mais
+  --    raro ou quase todos. Termo que não existe no índice não conta (palavra solta da transcrição).
+  --  * por significado: semelhança >= regras.semelhanca_minima.
+  --  Nenhum passou: lista vazia, e a ferramenta diz "nada encontrado no material aprovado".
+  for v_x in select distinct btrim(z) from regexp_split_to_table(coalesce(p_tsquery, ''), '\|') as z where btrim(z) ~ '^[a-z0-9]+$' loop
+    begin
+      v_tq := to_tsquery('portuguese', v_x);
+    exception when others then continue;
+    end;
+    continue when v_tq is null or numnode(v_tq) = 0 or v_tq::text = any (select y::text from unnest(v_termos) as y);
+    select count(*) into v_df from public.tutor_kb_trechos t where t.tsv @@ v_tq;
+    if v_df = 0 then
+      if char_length(v_x) >= 5 then v_desconhecidos := v_desconhecidos + 1; end if;
+      continue;
+    end if;
+    v_termos := v_termos || v_tq;
+    if v_rara is null or v_df < v_rara_df then v_rara := v_tq; v_rara_df := v_df; end if;
+  end loop;
+  v_n := coalesce(array_length(v_termos, 1), 0) + v_desconhecidos;
+  v_precisa := case when v_n <= 2 then v_n else greatest(2, ceil(v_n / 2.0)::integer) end;
+  -- vizinhos por significado (índice HNSW): uma vez só, guardados para a fusão e para o portão de semelhança
+  if v_vetor is not null then
+    select array_agg(z.id order by z.distancia, z.id), array_agg(z.distancia order by z.distancia, z.id), max(z.distancia)
+      into v_viz_ids, v_viz_dist, v_dist_max
+      from public.tutor_kb_vizinhos(v_vetor, v_model, 120) z;
+  end if;
+
+  v_c := public.fold_text(coalesce(p_consulta, ''));
+  if v_c ~ '\m(tratamento|tratar|conduta|manejo|dose|doses|posologia|esquema|prescrever|medicamento|medicacao|antibiotico|droga)' then
+    v_intencao := to_tsquery('portuguese', 'tratamento | tratar | conduta | esquema | dose | mg | administrar | prescrever | iniciar');
+  end if;
+  if v_c ~ '\m(diagnostico|diagnosticar|criterio|criterios|classificacao|exame|exames|confirmar)' then
+    v_intencao := case when v_intencao is null then to_tsquery('portuguese', 'diagnostico | criterio | exame | classificacao | confirmar')
+                       else v_intencao || to_tsquery('portuguese', 'diagnostico | criterio | exame | classificacao | confirmar') end;
+  end if;
+  if v_vetor is not null then
+    select coalesce(cb.completa, false) into v_completa from public.tutor_kb_cobertura cb where cb.model = v_model;
+    v_completa := coalesce(v_completa, false);
+  end if;
+
   for c in
     with lex as (
-      select t.id::text as id, row_number() over (order by ts_rank(t.tsv, q) desc, t.id) as rk
-        from public.tutor_kb_trechos t where q is not null and t.tsv @@ q
-       order by ts_rank(t.tsv, q) desc, t.id limit 60),
+      select x.id, row_number() over (order by x.nota desc, x.id) as rk
+        from (select t.id::text as id, ts_rank(t.tsv, q) * (case when v_intencao is not null and t.tsv @@ v_intencao then 1.5 else 1 end) as nota
+                from public.tutor_kb_trechos t where q is not null and t.tsv @@ q) x
+       order by x.nota desc, x.id limit 60),
     sem as (
-      select z.id, row_number() over (order by z.distancia, z.id) as rk, z.distancia
-        from public.tutor_kb_vizinhos(v_vetor, v_model, 120) z),
+      select z.id, z.rk, z.distancia from unnest(v_viz_ids, v_viz_dist) with ordinality as z (id, distancia, rk)),
     fused as (
-      select u.id, sum(1.0 / (60 + u.rk)) as score, bool_or(u.via = 'p') as por_palavras, bool_or(u.via = 's') as por_significado, min(u.distancia) as distancia
+      select u.id, case when v_completa then sum(1.0 / (60 + u.rk)) else max(1.0 / (60 + u.rk)) end as score,
+             bool_or(u.via = 'p') as por_palavras, bool_or(u.via = 's') as por_significado, min(u.distancia) as distancia
         from (select id, rk, 'p' as via, null::float8 as distancia from lex union all select id, rk, 's', distancia from sem) u
        group by u.id)
     select t.*, f.score, f.por_palavras, f.por_significado, f.distancia
@@ -642,6 +763,28 @@ begin
      limit 180
   loop
     exit when k >= n;
+    -- mínimo de relevância (acima)
+    v_ok_significado := c.distancia is not null and (1 - c.distancia) >= r.semelhanca_minima;
+    v_ok_palavras := false;
+    if c.por_palavras then
+      if v_n = 0 then
+        v_ok_palavras := true; -- consulta sem termos (só a frase crua): o que bateu por palavras vale
+      elsif v_rara is not null then
+        select count(*) into v_bate from unnest(v_termos) as y where c.tsv @@ y;
+        v_ok_palavras := v_bate >= v_precisa and (c.tsv @@ v_rara or v_bate >= v_n - 1);
+      end if;
+      -- portão de semelhança para quem bateu por palavras e TEM vetor: o significado desmente a palavra solta (ex.: "pneumonia
+      -- comunitária" num trecho de critérios de infecção hospitalar). Fora dos vizinhos = mais longe que o mais longe deles.
+      if v_ok_palavras and v_vetor is not null then
+        if c.distancia is not null then
+          v_ok_palavras := (1 - c.distancia) >= r.semelhanca_minima - 0.04;
+        elsif v_dist_max is not null and (1 - v_dist_max) < r.semelhanca_minima - 0.04 then
+          select exists (select 1 from public.tutor_kb_vetores v where v.trecho_id = c.id and v.model = v_model and v.hash = c.hash) into v_tem_vetor;
+          v_ok_palavras := not v_tem_vetor;
+        end if;
+      end if;
+    end if;
+    continue when not (v_ok_palavras or v_ok_significado);
     -- regras do aluno (baratas primeiro)
     continue when c.tipo = 'estacao' and s.context_id is not null and c.estacao_id = s.context_id;
     continue when not public.tutor_kb_plano_libera(p_user, c.plano_minimo);
@@ -668,7 +811,7 @@ begin
       'ref', 'C' || k, 'id', c.id, 'tipo', c.tipo, 'titulo', c.titulo, 'ano', c.ano, 'secao', c.secao, 'pagina', c.pagina,
       'citacao', c.titulo || coalesce(' (' || c.ano || ')', '') || coalesce(', seção "' || c.secao || '"', '') || coalesce(', p. ' || c.pagina, ''),
       'texto', c.texto, 'nivel', c.nivel_revisao,
-      'por', case when c.por_palavras and c.por_significado then 'ambos' when c.por_significado then 'significado' else 'palavras' end,
+      'por', case when v_ok_palavras and v_ok_significado then 'ambos' when v_ok_significado then 'significado' else 'palavras' end,
       'semelhanca', case when c.distancia is null then null else round((1 - c.distancia)::numeric, 3) end));
   end loop;
 
@@ -712,7 +855,7 @@ begin
     raise exception 'A conversa por voz foi encerrada.' using errcode = 'P0001';
   end if;
   select * into r from public.tutor_kb_regras where id;
-  if not found then r := row(true, true, 'humana', true, 4000, now())::public.tutor_kb_regras; end if;
+  if not found then r := row(true, true, 'humana', true, 4000, now(), 0.74)::public.tutor_kb_regras; end if;
   orc := least(greatest(coalesce(p_orcamento_chars, r.pacote_tokens * 4), 0), 160000);
   if orc = 0 then return jsonb_build_object('ok', true, 'trechos', '[]'::jsonb, 'chars', 0, 'vetor', 'nenhum'); end if;
 
@@ -788,7 +931,8 @@ begin
            where n.nspname = 'public' and (p.proname like 'tutor\_kb\_%' or p.proname like 'ch\_worker\_tutor\_kb\_%') loop
     execute format('revoke execute on function %s from public, anon, authenticated', f);
   end loop;
-  revoke all on table public.tutor_kb_regras, public.tutor_kb_trechos, public.tutor_kb_vetores, public.tutor_kb_rotulos, public.tutor_kb_consultas, public.tutor_kb_entregas
+  revoke all on table public.tutor_kb_regras, public.tutor_kb_trechos, public.tutor_kb_vetores, public.tutor_kb_rotulos, public.tutor_kb_consultas, public.tutor_kb_entregas,
+                    public.tutor_kb_cobertura
     from anon, authenticated;
 end
 $revoke$;
