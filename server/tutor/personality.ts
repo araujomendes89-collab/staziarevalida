@@ -181,7 +181,9 @@ export function sampleExamples(list: string[], k = TONE_EXAMPLES, seed: string |
  */
 export const NO_REPEAT_RULE =
   "Toda fala é criada agora, para este aluno e este momento. Não repita frase, bordão nem começo de fala que já apareceu nesta conversa, " +
-  "nem as falas de referência; a mesma emoção, dita de outro jeito.";
+  "nem as falas de referência; a mesma emoção, dita de outro jeito. Varie também o FIM da fala, o jeito de passar a vez: às vezes uma pergunta direta sem " +
+  "transição, às vezes devolve sem perguntar, às vezes só reage e para. Nenhuma forma de passar a vez se repete na conversa (no texto, as já usadas vêm em " +
+  "transicoes_ja_usadas), e estas nunca viram fórmula: «agora me diz», «agora me responde», «me conta», «mandou bem», «fecha com chave de ouro», «o que você faz».";
 
 /**
  * Texto da camada de personalidade (só ESTILO): quem é o personagem, como ele está agora e como ele soa.

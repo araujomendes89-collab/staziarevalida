@@ -17,7 +17,7 @@ import { asDocument } from "../contentHub/ai/prompts";
 import { AiInvalidOutput, resolveProviderKind, withFallback, type StructuredRequest } from "../contentHub/ai/provider";
 import { aiAllowed, registerPrompts, type PromptEntry } from "../contentHub/ai/registry";
 import type { ContentDb } from "../contentHub/infra";
-import { avatarOf, engineFor, languageIntensity, leituraDoRegistro, normalize, profanityForIntensity, recentExpressions, stateLayer, step, usedStarts, type Happening, type PersonaEngine, type TutorState } from "./emotion";
+import { avatarOf, engineFor, languageIntensity, leituraDoRegistro, normalize, profanityForIntensity, recentExpressions, stateLayer, step, transitionsUsed, usedStarts, type Happening, type PersonaEngine, type TutorState } from "./emotion";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
 import { NO_EVALUATION, TUTOR_PROMPT_LAYERS, TUTOR_SCHEMA, TUTOR_VERSION, composeSystem, taskInstruction, type TutorMode, type TutorOutput, type TutorTask } from "./prompts";
 import { ComplementarTermsUnavailable, labelIsSupportMaterial, loadComplementarTerms } from "../contentHub/complementarGuard";
@@ -442,6 +442,8 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       piadas_internas: (settings.inside_jokes ? mem?.inside_jokes ?? [] : []).map((j) => (j.beaten ? `${j.topic}: já foi o "inimigo" dele (${j.strength} erros) e ele superou` : `${j.topic}: o assunto que mais o derruba (${j.strength} erros); dá para virar uma referência recorrente, com leveza e de vez em quando`)),
       evite_repetir: recentExpressions(ctx.history.filter((h) => h.role === "tutor").map((h) => h.content)),
       comecos_ja_usados: usedStarts(ctx.history.filter((h) => h.role === "tutor").map((h) => h.content)),
+      // revisão de 17/10: como você já passou a vez nesta conversa («agora me diz», «me conta»…): não repita a forma
+      transicoes_ja_usadas: transitionsUsed(ctx.history.filter((h) => h.role === "tutor").map((h) => h.content)),
     };
     // leitura do aluno por software (sem IA): uma linha interna na tarefa quando há sinal claro (leituraDoAluno.ts)
     const leitura = lido ? notaDoRegistro(lido) : "";

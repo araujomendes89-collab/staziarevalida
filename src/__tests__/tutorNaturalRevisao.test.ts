@@ -121,3 +121,17 @@ describe("reserva fixa por situação (a frase do dado sem fonte não responde m
     expect(dados.size).toBe(3);
   });
 });
+
+describe("o jeito de passar a vez não vira bordão («Agora me diz: …?» no fim de toda fala)", () => {
+  it("as formas já usadas na conversa vão ao professor e a regra de não repetir cobre o fim da fala", async () => {
+    const { transitionsUsed, passaComAgora, recentExpressions } = await import("../../server/tutor/emotion");
+    const { NO_REPEAT_RULE } = await import("../../server/tutor/personality");
+    const falas = ["Isso! Agora me diz: qual a conduta?", "Boa. Agora me responde o critério.", "Me conta o que você viu.", "Pra fechar com chave de ouro: e o tratamento?"];
+    expect(transitionsUsed(falas)).toEqual(expect.arrayContaining(["agora me diz", "agora me responde", "fechar com chave de ouro"]));
+    expect(passaComAgora("Agora me diz: e daí?")).toBe(true);
+    expect(passaComAgora("Agora sim, cravou.")).toBe(false);
+    expect(recentExpressions(["Fecha com chave de ouro, vai.", "Me conta, o que você faz aqui?"])).toEqual(expect.arrayContaining(["chave de ouro", "o que você faz"]));
+    expect(NO_REPEAT_RULE).toMatch(/transicoes_ja_usadas/);
+    for (const v of ["agora me diz", "me conta", "mandou bem", "fecha com chave de ouro", "o que você faz"]) expect(NO_REPEAT_RULE).toContain(`«${v}»`);
+  });
+});
