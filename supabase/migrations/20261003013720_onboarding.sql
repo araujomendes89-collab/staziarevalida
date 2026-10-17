@@ -265,7 +265,7 @@ revoke execute on function public.onboarding_garantir(uuid) from public, anon, a
 
 -- ---------------------------------------------------------------- nivelamento adiado (interna): só para quem ele vale
 -- Usa a função do próprio nivelamento (app_nivelamento_adiar, como o botão "Depois"); quem já terminou não muda.
-create or replace function public.onboarding_adiar_nivelamento(p_user uuid) returns void
+create or replace function public.onboarding_adiar_diagnostico(p_user uuid) returns void
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -277,7 +277,7 @@ begin
   perform public.app_nivelamento_adiar();
 end
 $$;
-revoke execute on function public.onboarding_adiar_nivelamento(uuid) from public, anon, authenticated;
+revoke execute on function public.onboarding_adiar_diagnostico(uuid) from public, anon, authenticated;
 
 -- ---------------------------------------------------------------- grava UM passo (o aluno logado)
 -- p_passo: apresentacao | fase | prova | rotina | dificuldades | jeito | tutor | lembretes | nivelamento | trilha | concluir | pular
@@ -491,7 +491,7 @@ begin
       v_txt := 'nao_se_aplica';
     else
       v_txt := 'pulado';
-      perform public.onboarding_adiar_nivelamento(v_user);
+      perform public.onboarding_adiar_diagnostico(v_user);
     end if;
     update public.aluno_onboarding set nivelamento = v_txt, nivelamento_em = now() where user_id = v_user;
 
@@ -500,7 +500,7 @@ begin
 
   elsif p_passo = 'concluir' then
     if o.nivelamento is null and v_aplicavel then
-      perform public.onboarding_adiar_nivelamento(v_user);
+      perform public.onboarding_adiar_diagnostico(v_user);
     end if;
     update public.aluno_onboarding set
       status = 'completed', concluido_em = coalesce(concluido_em, now()),
@@ -511,7 +511,7 @@ begin
 
   elsif p_passo = 'pular' then
     -- pular tudo: entra direto no app (o nivelamento fica para depois, oferecido no Início); nada do que foi salvo se perde
-    if v_aplicavel then perform public.onboarding_adiar_nivelamento(v_user); end if;
+    if v_aplicavel then perform public.onboarding_adiar_diagnostico(v_user); end if;
     update public.aluno_onboarding set status = 'skipped', pulado_em = coalesce(pulado_em, now())
     where user_id = v_user and status <> 'completed';
   end if;

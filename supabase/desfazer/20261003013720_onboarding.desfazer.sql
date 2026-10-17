@@ -10,7 +10,7 @@
 drop function if exists public.app_onboarding_dica_vista(text);
 drop function if exists public.app_onboarding_tour(text, integer);
 drop function if exists public.app_onboarding_salvar(text, jsonb);
-drop function if exists public.onboarding_adiar_nivelamento(uuid);
+drop function if exists public.onboarding_adiar_diagnostico(uuid);
 drop function if exists public.onboarding_garantir(uuid);
 drop function if exists public.app_onboarding_estado();
 drop function if exists public.onboarding_estado_de(uuid);

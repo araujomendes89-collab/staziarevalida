@@ -41,6 +41,9 @@ import { MissionsScreen } from "./play/MissionsScreen.jsx";
 import { AchievementsScreen } from "./play/AchievementsScreen.jsx";
 import { Nivelamento, deveMostrarNivelamento } from "./nivelamento/Nivelamento.jsx";
 import { CelebracoesProvider } from "./play/celebracoes/CelebracoesProvider.jsx";
+import { Onboarding, deveMostrarOnboarding } from "./onboarding/Onboarding.jsx";
+import { TourNoPainel } from "./onboarding/Tour.jsx";
+import { DicaPrimeiroUso } from "./onboarding/Inicio.jsx";
 
 // [título, subtítulo] de cada rota (o início é montado com nome e data reais).
 const TITLES = {
@@ -73,7 +76,7 @@ const TITLES = {
   admin: ["Administração", "Gestão da plataforma"],
 };
 const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps", "paciente", "desempenho2"];
-const ROUTES = new Set(["home", "home2", "sessao", "estacao", "nivelamento", ...Object.keys(TITLES)]);
+const ROUTES = new Set(["home", "home2", "sessao", "estacao", "nivelamento", "apresentacao", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
 const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "mapas", "planos", "nivelamento"]);
@@ -152,6 +155,8 @@ function Screen() {
   if (route === "sessao") forgetShellCounts(backend);
   if (route === "sessao") return <TutorDockProvider go={go}><PracticeSession go={go} /></TutorDockProvider>;
   if (route === "nivelamento" && query.get("etapa") === "questoes") return <Nivelamento modo="rota" go={go} />;
+  // "Refazer apresentação" (Conta → Ajuda) e o convite/Primeiros passos do Início: o onboarding em tela cheia, sem obrigar
+  if (route === "apresentacao") return <Onboarding modo="refazer" inicio={query.get("inicio")} go={go} />;
   // a tela de uma estação abre sem a moldura: o aviso de "em reconstrução" entra aqui, antes dela
   if (route === "estacao")
     return (
@@ -241,6 +246,8 @@ function Screen() {
       }}
     >
       {!CONNECTED.has(route) && <ReconstructionNotice />}
+      <DicaPrimeiroUso route={route} />
+      <TourNoPainel route={route} />
       {route === "flash" && reviewSwitch("flash")}
       {route === "erros" && reviewSwitch("erros")}
       {body}
@@ -301,6 +308,8 @@ function Root() {
   if (session.recovery) return <NewPasswordScreen />;
   // Aluno sem aceite do Termo vigente ou sem WhatsApp: a tela de aceite vem antes de qualquer rota (o servidor decide em gate_required)
   if (session.boot?.legal?.gate_required) return <AcceptanceScreen />;
+  // Conta nova: o onboarding (apresentação, configuração, nivelamento, plano) antes do app; o servidor decide (013720)
+  if (deveMostrarOnboarding(session.boot)) return <Onboarding modo="primeira" />;
   if (deveMostrarNivelamento(session.boot)) return <Nivelamento modo="primeira" go={() => {}} />;
 
   // Comemorações do Stazi acima de todas as rotas (inclusive o treino/simulado, que fica fora do menu)

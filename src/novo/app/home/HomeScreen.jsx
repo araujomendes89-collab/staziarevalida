@@ -21,6 +21,7 @@ import { usePlayLoad } from "../play/usePlay.js";
 import { inicioCelular } from "../shell/cascaConfig.js";
 import { NivelamentoConvite } from "../nivelamento/NivelamentoConvite.jsx";
 import { CONVITE } from "../nivelamento/textos.js";
+import { ConviteOnboarding, PrimeirosPassosCartao, PrimeirosPassosFaixa, useOnboardingAtual } from "../onboarding/Inicio.jsx";
 
 const DIAGNOSTIC_SIZE = 10;
 const R = { borderRadius: 24 };
@@ -55,7 +56,7 @@ function TrialBanner({ trial, attempts, go }) {
   );
 }
 
-function HomeNew({ go, mobile, home, profile, startDiagnostic, busy, extra, boot }) {
+function HomeNew({ go, mobile, home, profile, startDiagnostic, busy, extra, boot, onboarding }) {
   const niv = boot.nivelamento;
   const nivAplicavel = niv?.aplicavel;
   const nivPendente = nivAplicavel && (niv.situacao === "novo" || niv.situacao === "adiado" || niv.situacao === "bloco1");
@@ -72,10 +73,11 @@ function HomeNew({ go, mobile, home, profile, startDiagnostic, busy, extra, boot
   return (
     <>
       {/* pendente: o cartão grande abaixo já é o convite; com a parte 1 feita, o cartão do nivelamento oferece as outras 15 */}
+      <ConviteOnboarding estado={onboarding} go={go} />
       {niv?.convite && !nivPendente && <NivelamentoConvite estado={niv} go={go} />}
       {home.trial && <TrialBanner trial={home.trial} attempts={home.attempts} go={go} />}
       <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "minmax(0,1.55fr) minmax(0,1fr)", gap: 20 }}>
-        <div style={{ padding: mobile ? 24 : 36, borderRadius: 24, background: "var(--navy-900)", color: "#fff", display: "flex", flexDirection: "column", gap: 14 }}>
+        <div data-tour="plano-de-hoje" style={{ padding: mobile ? 24 : 36, borderRadius: 24, background: "var(--navy-900)", color: "#fff", display: "flex", flexDirection: "column", gap: 14 }}>
           <span className="sm-overline" style={{ color: "var(--teal-300)" }}>
             Comece aqui
           </span>
@@ -94,6 +96,8 @@ function HomeNew({ go, mobile, home, profile, startDiagnostic, busy, extra, boot
           </div>
         </div>
         <Card style={R} padding={28}>
+          {/* Primeiros passos confirmados por ação real (onboarding, migração 013720); sem ele, a lista de antes */}
+          {onboarding?.aplicavel ? <PrimeirosPassosCartao estado={onboarding} go={go} /> : <>
           <span className="sm-overline" style={{ color: "var(--text-secondary)" }}>
             Primeiros passos · {steps.filter(([, done]) => done).length} de {steps.length}
           </span>
@@ -112,6 +116,7 @@ function HomeNew({ go, mobile, home, profile, startDiagnostic, busy, extra, boot
               <Icon name="chevron-right" size={18} style={{ color: "var(--text-tertiary)" }} />
             </button>
           ))}
+          </>}
         </Card>
       </div>
       {extra}
@@ -300,7 +305,7 @@ function HomeSimples({ hero, busy, sum, arenaOn, trail, startNode, top, setExpla
   return (
     <div className="ih ih--m ih--simples">
       {top}
-      <section className="ihs-next" aria-label={hero.kicker}>
+      <section className="ihs-next" aria-label={hero.kicker} data-tour="plano-de-hoje">
         <span className="ihs-k">{hero.kicker === "Continue de onde parou" ? "Próximo passo" : hero.kicker}</span>
         <h2>{hero.title}</h2>
         <span className="ihs-sub">{hero.sub}</span>
@@ -347,7 +352,7 @@ function HomeSimples({ hero, busy, sum, arenaOn, trail, startNode, top, setExpla
   );
 }
 
-function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas, arenaOn }) {
+function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas, arenaOn, onboarding }) {
   const compact = useLayout() === "mobile";
   const { backend } = useSession();
   const trail = usePlayLoad(() => (arenaOn ? backend.rpc("app_trail", { p_area: null }) : Promise.resolve({ enabled: false })), [backend, arenaOn]);
@@ -406,7 +411,7 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas
   ) : null;
 
   const heroEl = (
-    <section className="ih-hero" aria-label={hero.kicker}>
+    <section className="ih-hero" aria-label={hero.kicker} data-tour={plan.tasks.length > 0 ? undefined : "plano-de-hoje"}>
       <div className="ih-hero-main">
         <Ring value={hero.ring.value} total={hero.ring.total} size={compact ? 80 : 116} stroke={compact ? 7 : 9}>
           <span className="ih-ring-n">
@@ -520,7 +525,7 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas
 
   const planEl = plan.tasks.length > 0 && (
     compact ? (
-      <section aria-label="Plano de hoje" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <section aria-label="Plano de hoje" style={{ display: "flex", flexDirection: "column", gap: 10 }} data-tour="plano-de-hoje">
         <div className="ih-sec-h">
           <h2>Plano de hoje</h2>
           <span className="ih-count">{plan.done} de {plan.total}</span>
@@ -528,7 +533,7 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas
         <div className="ih-list">{plan.tasks.map(rowOf)}</div>
       </section>
     ) : (
-      <section className="ih-card" aria-label="Plano de hoje">
+      <section className="ih-card" aria-label="Plano de hoje" data-tour="plano-de-hoje">
         <div className="ih-card-h">
           <h2>Plano de hoje</h2>
           <span className="ih-count">{plan.done} de {plan.total}</span>
@@ -540,6 +545,8 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas
 
   const top = (
     <>
+      <ConviteOnboarding estado={onboarding} go={go} />
+      <PrimeirosPassosFaixa estado={onboarding} go={go} />
       {home.trial && trialEnding(home.trial) && <TrialBanner trial={home.trial} attempts={home.attempts} go={go} />}
       {playOn && s.error && <PlayError retry={s.reload} />}
       {play.error && <Banner tone="danger">{play.error}</Banner>}
@@ -621,6 +628,7 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas
 
 export function HomeScreen({ go, mobile }) {
   const { backend, boot } = useSession();
+  const onboarding = useOnboardingAtual();
   const play = usePlayHome(go);
   const radar = useRadarAvisos(boot.role === "admin");
   const [data, setData] = React.useState(null);
@@ -690,11 +698,11 @@ export function HomeScreen({ go, mobile }) {
         </Banner>
       )}
       {home.attempts < DIAGNOSTIC_SIZE ? (
-        <HomeNew go={go} mobile={mobile} home={home} profile={boot.profile} startDiagnostic={startDiagnostic} busy={busy} extra={ineditasCard} boot={boot} />
+        <HomeNew go={go} mobile={mobile} home={home} profile={boot.profile} startDiagnostic={startDiagnostic} busy={busy} extra={ineditasCard} boot={boot} onboarding={onboarding} />
       ) : (
         <>
           {boot.nivelamento?.convite && <NivelamentoConvite estado={boot.nivelamento} go={go} />}
-          <HomeActive go={go} home={home} plan={plan} startTask={startTask} busy={busy} play={play} startNode={play.startNode} ineditas={data.ineditas} arenaOn={boot.play?.enabled !== false} />
+          <HomeActive go={go} home={home} plan={plan} startTask={startTask} busy={busy} play={play} startNode={play.startNode} ineditas={data.ineditas} arenaOn={boot.play?.enabled !== false} onboarding={onboarding} />
         </>
       )}
     </>

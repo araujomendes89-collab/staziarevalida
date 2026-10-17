@@ -416,8 +416,43 @@ function PrivacySection() {
   );
 }
 
+/**
+ * Apresentação e tour (onboarding, migração 013720): "Refazer apresentação" abre o onboarding inteiro (as respostas atuais vêm
+ * preenchidas; nada é apagado) e "Conhecer funcionalidades" liga o tour no painel. Sem a função no banco, o bloco não aparece.
+ */
+function GuiaSection({ go }) {
+  const { backend, boot, setOnboarding } = useSession();
+  const [ocupado, setOcupado] = React.useState(false);
+  const [erro, setErro] = React.useState(null);
+  if (!boot.onboarding) return null;
+  const tour = async () => {
+    setOcupado(true);
+    setErro(null);
+    try {
+      setOnboarding(await backend.rpc("app_onboarding_tour", { p_status: "em_andamento", p_passo: 0 }));
+      go("home");
+    } catch {
+      setErro("Não foi possível abrir o tour agora. Tente de novo.");
+      setOcupado(false);
+    }
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 20, borderTop: "1px solid var(--border-subtle)" }}>
+      <div>
+        <div style={{ font: "var(--type-label)" }}>Apresentação e tour</div>
+        <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Reveja como o app funciona ou ajuste as respostas do seu estudo (prova, rotina, Tutor e lembretes).</div>
+      </div>
+      {erro && <Banner tone="danger">{erro}</Banner>}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+        <Button variant="secondary" icon="play" onClick={() => go("apresentacao")}>Refazer apresentação</Button>
+        <Button variant="secondary" icon="route" onClick={tour} loading={ocupado}>Conhecer funcionalidades</Button>
+      </div>
+    </div>
+  );
+}
+
 /** Ajuda e suporte: o e-mail da equipe (configuração única da Administração) e o botão de relatar um problema. */
-function HelpSection({ email }) {
+function HelpSection({ email, go }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <SectionHeader title="Ajuda e suporte" subtitle="Dúvida, problema ou sugestão? Fale com a equipe do StaziaMed" />
@@ -435,6 +470,7 @@ function HelpSection({ email }) {
         </div>
         <ReportProblem email={email} />
       </div>
+      <GuiaSection go={go} />
     </div>
   );
 }
@@ -551,7 +587,7 @@ export function AccountScreen({ go }) {
       {id === "estudo" && <StudySection />}
       {id === "seg" && <SecuritySection />}
       {id === "priv" && <PrivacySection />}
-      {id === "ajuda" && <HelpSection email={supportEmail} />}
+      {id === "ajuda" && <HelpSection email={supportEmail} go={go} />}
     </>
   );
   const planBadgeNode = plan && (

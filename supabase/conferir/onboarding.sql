@@ -13,7 +13,7 @@ select p.proname, p.prosecdef security_definer, p.proconfig,
        has_function_privilege('anon', p.oid, 'execute') visitante_executa                 -- tem de ser false
 from pg_proc p where p.pronamespace = 'public'::regnamespace
   and p.proname in ('app_onboarding_estado', 'app_onboarding_salvar', 'app_onboarding_tour', 'app_onboarding_dica_vista',
-                    'onboarding_estado_de', 'onboarding_garantir', 'onboarding_adiar_nivelamento', 'onboarding_conta_antiga', 'onboarding_ordem')
+                    'onboarding_estado_de', 'onboarding_garantir', 'onboarding_adiar_diagnostico', 'onboarding_conta_antiga', 'onboarding_ordem')
 order by 1;
 
 -- 3) como estão os alunos (contagens, sem dados pessoais)

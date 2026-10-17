@@ -52,11 +52,14 @@ export function SessionProvider({ children }) {
             return;
           }
           try {
-            const [boot, nivelamento] = await Promise.all([
+            const [boot, nivelamento, onboarding] = await Promise.all([
               backend.rpc("app_bootstrap"),
-              backend.rpc("app_nivelamento_estado").catch(() => null)
+              backend.rpc("app_nivelamento_estado").catch(() => null),
+              // onboarding (migração 013720): sem a função no banco, o app abre como antes
+              backend.rpc("app_onboarding_estado").catch(() => null),
             ]);
             boot.nivelamento = nivelamento;
+            boot.onboarding = onboarding;
             if (alive) setState({ status: "ready", backend, user, boot, error: null, recovery: recoveryRef.current });
           } catch (error) {
             if (alive) setState({ status: "error", backend, user, boot: null, error, recovery: recoveryRef.current });
@@ -88,16 +91,22 @@ export function SessionProvider({ children }) {
       /** Recarrega os dados de abertura (ex.: depois de responder questões). */
       async refresh() {
         if (!backend || !state.user) return;
-        const [boot, nivelamento] = await Promise.all([
+        const [boot, nivelamento, onboarding] = await Promise.all([
           backend.rpc("app_bootstrap"),
-          backend.rpc("app_nivelamento_estado").catch(() => null)
+          backend.rpc("app_nivelamento_estado").catch(() => null),
+          backend.rpc("app_onboarding_estado").catch(() => null),
         ]);
         boot.nivelamento = nivelamento;
+        boot.onboarding = onboarding;
         setState((s) => ({ ...s, boot }));
+      },
+      /** Troca o retrato do onboarding pelo que o banco acabou de devolver (app_onboarding_salvar / _tour / _dica_vista). */
+      setOnboarding(onboarding) {
+        if (onboarding) setState((s) => (s.boot ? { ...s, boot: { ...s.boot, onboarding } } : s));
       },
       async updateProfile(patch) {
         const boot = await backend.rpc("app_update_profile", { p_patch: patch });
-        setState((s) => ({ ...s, boot: { ...boot, nivelamento: boot.nivelamento ?? s.boot?.nivelamento } }));
+        setState((s) => ({ ...s, boot: { ...boot, nivelamento: boot.nivelamento ?? s.boot?.nivelamento, onboarding: s.boot?.onboarding } }));
       },
       /**
        * Registra o aceite de um documento (document: "termo_uso" ou "tutor_ia"; origin: "google", "tela_aceite" ou "tutor") e
@@ -117,7 +126,7 @@ export function SessionProvider({ children }) {
         const boot = declarations
           ? await backend.rpc("app_accept_terms_declared", { ...args, p_adult: declarations.adult === true, p_physician: declarations.physician === true })
           : await backend.rpc("app_accept_terms", args);
-        setState((s) => ({ ...s, boot: { ...boot, nivelamento: boot.nivelamento ?? s.boot?.nivelamento } }));
+        setState((s) => ({ ...s, boot: { ...boot, nivelamento: boot.nivelamento ?? s.boot?.nivelamento, onboarding: s.boot?.onboarding } }));
       },
       async signOut() {
         await backend.signOut();

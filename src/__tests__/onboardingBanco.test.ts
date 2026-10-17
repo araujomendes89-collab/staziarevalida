@@ -328,14 +328,14 @@ describe("RLS e permissões", () => {
     await expect(como(NOVO2, `delete from public.aluno_onboarding where user_id = $1`, [NOVO2])).rejects.toThrow(/permission denied/);
     await expect(como(NOVO2, `select public.onboarding_estado_de($1)`, [NOVO])).rejects.toThrow(/permission denied/);
     await expect(como(NOVO2, `select public.onboarding_garantir($1)`, [NOVO])).rejects.toThrow(/permission denied/);
-    await expect(como(NOVO2, `select public.onboarding_adiar_nivelamento($1)`, [NOVO])).rejects.toThrow(/permission denied/);
+    await expect(como(NOVO2, `select public.onboarding_adiar_diagnostico($1)`, [NOVO])).rejects.toThrow(/permission denied/);
     // o administrador lê as linhas (suporte), como nas tabelas da 13640
     expect((await como(ADMIN, `select count(*)::int n from public.aluno_onboarding`))[0].n).toBeGreaterThan(3);
   });
   it("todas as funções novas: security definer com search_path vazio", async () => {
     const f = await q(`select proname, prosecdef, proconfig from pg_proc where pronamespace = 'public'::regnamespace and proname in
       ('app_onboarding_estado', 'app_onboarding_salvar', 'app_onboarding_tour', 'app_onboarding_dica_vista', 'onboarding_estado_de',
-       'onboarding_garantir', 'onboarding_adiar_nivelamento', 'onboarding_conta_antiga') order by 1`);
+       'onboarding_garantir', 'onboarding_adiar_diagnostico', 'onboarding_conta_antiga') order by 1`);
     expect(f).toHaveLength(8);
     for (const x of f) expect(x).toMatchObject({ prosecdef: true, proconfig: ['search_path=""'] });
   });
