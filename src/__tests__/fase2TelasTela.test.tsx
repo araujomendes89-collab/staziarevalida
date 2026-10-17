@@ -4,7 +4,7 @@
  *  - Fase2Home (Início com estado honesto, contadores e retomada)
  *  - Fase2Stations (Catálogo com filtros de texto, área, status de conclusão, Pro e erro de carga)
  *  - Fase2Player (Ciclo leitura -> atendimento com impressos sob demanda -> PEP com marcações -> tela final)
- *  - Fase2Peps (Lista de avaliações com abertura restrita a treinos solo e notas formatadas)
+ *  - Fase2Peps (Lista de avaliações: sozinho abre o PEP; em dupla vem do histórico da 013400 e abre o resultado)
  *  - Fase2Performance (Desempenho prático real sem variações inventadas)
  *  - Fase2Patient (Paciente IA em breve, estático e sem tráfego de rede)
  *  - Fase2Theory (Teoria em preparação com links para a 1ª fase, sem termos de rascunho)
@@ -510,6 +510,7 @@ describe("Telas da 2ª Fase (React Testing Library)", () => {
       backend.rpc.mockImplementation(async (fn: string) => {
         if (fn === "app_fase2_peps") return [];
         if (fn === "app_fase2_performance") return { count: 0 };
+        if (fn === "app_dupla_history") return [];
         throw new Error(`rpc inesperada: ${fn}`);
       });
 
@@ -525,7 +526,7 @@ describe("Telas da 2ª Fase (React Testing Library)", () => {
       expect(go).toHaveBeenCalledWith("estacoes");
     });
 
-    it("com lista mostra origem Sozinho/Em dupla, nota formatada e só abre tentativa nas linhas Sozinho", async () => {
+    it("com lista mostra origem Sozinho/Em dupla, nota formatada; Sozinho abre a tentativa e Em dupla abre o resultado", async () => {
       backend.rpc.mockImplementation(async (fn: string) => {
         if (fn === "app_fase2_peps") {
           return [
@@ -550,6 +551,17 @@ describe("Telas da 2ª Fase (React Testing Library)", () => {
           ];
         }
         if (fn === "app_fase2_performance") return { count: 2 };
+        // a linha "dupla" do app_fase2_peps é ignorada: as rodadas em dupla vêm do histórico (013400)
+        if (fn === "app_dupla_history") {
+          return [
+            {
+              room_id: "sala-1", round: 1, role: "candidate", status: "concluida", revised: false, finished_at: "2026-10-14T10:00:00Z",
+              partner: { public_name: "Bruno" },
+              station: { number: 4, area: "Pediatria", area_code: "PED", name: "Bronquiolite viral aguda", edition: "2020" },
+              score: 7, max_score: 10, pct: 70,
+            },
+          ];
+        }
         throw new Error(`rpc inesperada: ${fn}`);
       });
 
@@ -575,9 +587,10 @@ describe("Telas da 2ª Fase (React Testing Library)", () => {
       fireEvent.click(rowSolo);
       expect(go).toHaveBeenCalledWith("estacao", { tentativa: "att-solo-01" });
 
-      // Linha 'Em dupla' fica desativada
+      // Linha 'Em dupla' liberada abre o resultado da rodada (só leitura)
       const rowDupla = screen.getByRole("button", { name: /Bronquiolite viral aguda/i });
-      expect(rowDupla).toBeDisabled();
+      expect(rowDupla).not.toBeDisabled();
+      expect(screen.getAllByText(/Bronquiolite viral aguda/)).toHaveLength(1);
     });
   });
 

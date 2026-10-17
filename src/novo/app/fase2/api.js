@@ -46,5 +46,15 @@ export function fase2Api(backend) {
     performance() {
       return backend.rpc("app_fase2_performance");
     },
+
+    // Treino em Dupla (migração 013400): rodadas em que a pessoa foi candidata ou avaliadora, e o resultado de uma delas,
+    // inclusive depois de a sala fechar.
+    duplaHistory(limit = 100) {
+      return backend.rpc("app_dupla_history", { p_limit: limit });
+    },
+
+    duplaHistoryResult(roomId, round) {
+      return backend.rpc("app_dupla_history_result", { p_room_id: roomId, p_round: round });
+    },
   };
 }

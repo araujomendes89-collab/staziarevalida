@@ -5,6 +5,8 @@
 // escolha dos papéis e de uma estação DIFERENTE (decisão do dono de 16/10: não há inverter papéis na mesma estação, porque o
 // novo candidato já viu o tema como avaliador; o banco recusa estação já treinada na sala). "Encerrar treino" pede
 // confirmação. O nome da estação aparece aos dois só aqui, no resultado.
+// Só leitura (`readOnly`, decisão do dono de 17/10): o mesmo resultado aberto pelo histórico (Meus PEPs), inclusive depois de a
+// sala fechar; sem as ações da sala (encerrar, outra estação, pedir ou rever a revisão), com "Voltar" (`onBack`).
 import React from "react";
 import { Avatar, Badge, Banner, Button, Dialog, Tabs, Textarea } from "../../../ds";
 import { formatDecimal, formatDuration } from "../../../ds/format.js";
@@ -90,7 +92,7 @@ function ReviewRequest({ actions, requested }) {
   );
 }
 
-export function ResultPhase({ room, result, actions, askLeave }) {
+export function ResultPhase({ room, result, actions, askLeave, readOnly = false, onBack }) {
   const [filter, setFilter] = React.useState("all");
   const [nexting, setNexting] = React.useState(false);
   if (!result) return null;
@@ -98,7 +100,7 @@ export function ResultPhase({ room, result, actions, askLeave }) {
   const requested = Boolean(review.requested_at);
   const revised = Boolean(review.revised_at);
   const candidateName = result.candidate?.public_name;
-  const station = result.station || room.station;
+  const station = result.station || room?.station;
   const vars = areaVars(station?.area_code);
   const isCandidate = result.viewer === "candidate";
 
@@ -129,25 +131,33 @@ export function ResultPhase({ room, result, actions, askLeave }) {
             {station?.name}
           </h1>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Button variant="ghost" onClick={() => (askLeave ? askLeave("encerrar") : actions.leave())}>
-            Encerrar treino
-          </Button>
-          <Button
-            icon="clipboard-list"
-            disabled={nexting}
-            onClick={async () => {
-              setNexting(true);
-              await actions.nextStation();
-              setNexting(false);
-            }}
-          >
-            Treinar outra estação
-          </Button>
-        </div>
+        {readOnly ? (
+          onBack && (
+            <Button variant="ghost" icon="arrow-left" onClick={onBack}>
+              Voltar para Meus PEPs
+            </Button>
+          )
+        ) : (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Button variant="ghost" onClick={() => (askLeave ? askLeave("encerrar") : actions.leave())}>
+              Encerrar treino
+            </Button>
+            <Button
+              icon="clipboard-list"
+              disabled={nexting}
+              onClick={async () => {
+                setNexting(true);
+                await actions.nextStation();
+                setNexting(false);
+              }}
+            >
+              Treinar outra estação
+            </Button>
+          </div>
+        )}
       </header>
 
-      {!isCandidate && requested && !revised && (
+      {!readOnly && !isCandidate && requested && !revised && (
         <Banner
           tone="warning"
           title={`${candidateName || "O candidato"} pediu revisão da nota`}
@@ -314,7 +324,7 @@ export function ResultPhase({ room, result, actions, askLeave }) {
               </p>
             </div>
           ))}
-          {isCandidate && (
+          {isCandidate && !readOnly && (
             <div style={{ paddingTop: 12, borderTop: "1px solid var(--border-subtle)" }}>
               <ReviewRequest actions={actions} requested={requested} />
             </div>
