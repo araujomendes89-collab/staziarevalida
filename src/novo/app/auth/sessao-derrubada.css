@@ -1,0 +1,3 @@
+/* "Sua conta foi aberta em outro aparelho": só a lista de dicas; o resto vem de login-novo.css e recuperar-senha.css. */
+.sd-tips { margin: 0; padding: 0 0 0 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; color: var(--ln-body); }
+.sd-tips li::marker { color: var(--ln-blue); }

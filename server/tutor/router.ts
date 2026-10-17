@@ -21,6 +21,7 @@ import { elevenAccessOf, nexusStatus, openNexus, type TtsQuota } from "./nexus";
 import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, STT_BLOCK, STT_BUSY, STT_PER_MINUTE, audioFitsSeconds, sttAccessOf, sttConfig, transcribe } from "./stt";
 import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 import { rateHit } from "./limits";
+import { SESSAO_DERRUBADA_CODIGO, SESSAO_DERRUBADA_MENSAGEM, sessaoDerrubada } from "../auth/sessaoUnica";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -77,6 +78,8 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     try {
       const user = await deps.db.authenticate(req);
       if (!user) return fail(res, 401, "Entre na sua conta.");
+      // sessão única: a conta foi aberta em outro aparelho → esta sessão não gasta IA (o app mostra o aviso e sai)
+      if (await sessaoDerrubada(deps.db, user, req)) return res.status(401).json({ error: SESSAO_DERRUBADA_MENSAGEM, code: SESSAO_DERRUBADA_CODIGO });
       req.user = user;
       next();
     } catch (error) {

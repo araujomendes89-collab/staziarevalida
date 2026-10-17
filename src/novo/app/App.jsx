@@ -6,6 +6,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, usePa
 import { Banner, Button, EmptyState, SegmentedControl } from "../ds";
 import { AppShell, useMobile } from "./Shell.jsx";
 import { AuthFlow, NewPasswordScreen } from "./AuthScreens.jsx";
+import { SessaoDerrubadaScreen } from "./auth/SessaoDerrubada.jsx";
 import { LegalPage } from "./legal/LegalPage.jsx";
 import { AcceptanceScreen, precisaTelaDeAceite } from "./legal/AcceptanceScreen.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
@@ -296,6 +297,8 @@ function Root() {
       </Splash>
     );
   }
+  // sessão única: a conta foi aberta em outro aparelho e este saiu; o aviso vem antes do login
+  if (session.status === "signed-out" && session.derrubada) return <SessaoDerrubadaScreen aviso={session.derrubada} onEntrar={session.entrarNovamente} />;
   if (session.status === "signed-out") return <AuthFlow />;
   // Veio pelo link de recuperar senha: antes de qualquer tela do app, a pessoa cria a nova senha
   if (session.recovery) return <NewPasswordScreen />;

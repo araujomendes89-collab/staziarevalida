@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { signedUploadWithProgress } from "./signedUploadXhr";
-import { assertRpcCall, BackendError, confirmRedirect, signUpMetadata, type AuthUser, type Backend, type BackendErrorCode } from "./backend";
+import { assertRpcCall, BackendError, confirmRedirect, sessionIdFromToken, signUpMetadata, type AuthUser, type Backend, type BackendErrorCode } from "./backend";
 
 function toBackendError(error: { message?: string; code?: string; status?: number } | null): BackendError {
   const message = error?.message ?? "";
@@ -32,6 +32,10 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
     async accessToken() {
       const { data } = await client.auth.getSession();
       return data.session?.access_token ?? null;
+    },
+    async sessionId() {
+      const { data } = await client.auth.getSession();
+      return sessionIdFromToken(data.session?.access_token);
     },
     onAuthChange(callback) {
       // O Supabase pede para não chamar a própria API dentro deste callback (trava a fila de
@@ -75,8 +79,9 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
       const { error } = await client.auth.updateUser({ password });
       if (error) throw toBackendError(error);
     },
-    async signOut() {
-      const { error } = await client.auth.signOut();
+    async signOut(opts) {
+      // localOnly: só este navegador (o padrão do Supabase encerra o login em todos os aparelhos)
+      const { error } = await client.auth.signOut(opts?.localOnly ? { scope: "local" } : undefined);
       if (error) throw toBackendError(error);
     },
     async rpc<T>(fn: string, args: Record<string, unknown> = {}) {
@@ -105,6 +110,16 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
       }
       const { error } = await client.storage.from(bucket).uploadToSignedUrl(path, token, file, { contentType });
       if (error) throw new BackendError(/fetch|network/i.test(error.message) ? "network" : "unknown", error.message);
+    },
+    subscribeSessao(userId, onChange) {
+      // Só a própria linha (filtro + RLS). Qualquer mudança só dispara uma conferência (app_session_check).
+      const channel = client
+        .channel(`sessao-unica-${userId}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "app_sessao_vigente", filter: `user_id=eq.${userId}` }, () => onChange())
+        .subscribe();
+      return () => {
+        client.removeChannel(channel).catch(() => {});
+      };
     },
     subscribeStats(userId, onChange) {
       // Só a própria linha (filtro + RLS): nunca chega dado de outro aluno.
