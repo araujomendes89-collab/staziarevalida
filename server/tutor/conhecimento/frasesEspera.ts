@@ -64,7 +64,7 @@ export const FRASES_ESPERA: Readonly<Record<PersonaEspera, readonly string[]>> =
     "Calma, deixa eu checar direitinho aqui.",
     "Um momentinho, tô conferindo com atenção.",
     "Deixa eu ver o que a fonte diz, sem pressa.",
-    "Respira um pouquinho comigo que eu tô conferindo.",
+    "Um minutinho, já te conto o que a fonte diz.",
     "Vou dar uma olhada cuidadosa aqui antes, tá?",
   ],
 };
