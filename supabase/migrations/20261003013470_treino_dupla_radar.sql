@@ -29,6 +29,11 @@
 --  7) Painel: app_admin_dupla_radar() lê e app_admin_save_dupla_radar(jsonb) grava o bloco "convites" SEM tocar no resto da
 --     chave "treino_dupla" (aberto, planos e o que outras frentes guardarem ali).
 --  8) Chat: "guarda_denuncia_dias" da chave treino_dupla_chat passa de vazio para 180 (só se estiver vazio).
+--  9) Nome de usuário único com @ (study_profiles.handle), pedido do dono de 17/10: gerado sozinho ("revalida.k7m2"), único sem
+--     diferença de maiúsculas, 3 a 20 caracteres (a-z 0-9 . _, sem ponto no começo nem no fim), com lista de reservados e o mesmo
+--     filtro de palavras do chat; a pessoa pode trocar. Trocar o @ NÃO muda o nome público, o user_id, matches, salas, chat,
+--     histórico nem créditos. Cada troca fica registrada (study_handle_log: quem, de, para, quando) e a equipe lê por
+--     app_admin_dupla_handle_log. Sem limite de trocas por enquanto (decisão pendente do dono). Perfis que já existem ganham um @.
 --
 -- FUNÇÕES REDEFINIDAS E A BASE DE CADA UMA: nenhuma. Todas as funções desta migração são novas. Usadas sem mudar:
 --   dupla_assert_access, dupla_allowed (013300); dupla_sweep, dupla_public_name, dupla_station_meta (013310); dupla_compat,
@@ -44,12 +49,14 @@
 --    convite_recusado / convite_expirado); quem saiu da própria sala não fica de castigo.
 --  - 'sozinho' (treino sozinho) é uma situação do perfil criada por outra frente; aqui só é LIDA: antes de ela existir, nunca
 --    aparece e nada muda.
---  - Mensagens novas (para o dono aprovar): 'Você já tem um convite aguardando resposta.', 'Muitos convites seguidos. Tente de
+--  - Mensagens novas (para o dono aprovar): 'Disponível.', 'Esse @ já está em uso.', 'Esse @ não está disponível.', 'Esse @ contém uma palavra não permitida.', 'Use de 3 a 20 caracteres: …', 'Você já tem um convite aguardando resposta.', 'Muitos convites seguidos. Tente de
 --    novo em N min.', 'Você convidou X há pouco. Tente de novo em N min.', 'X não pode receber convites agora.', 'Você já está
 --    em uma sala aberta. Saia dela antes de convidar.', 'Estação exclusiva dos planos Pro e Elite.', 'Configuração dos
 --    convites inválida.'.
 --
--- COMO DESFAZER: apagar as funções criadas aqui (dupla_radar_settings(), dupla_blocked(uuid, uuid), dupla_hides(uuid, uuid),
+-- COMO DESFAZER: apagar a tabela study_handle_log, o gatilho study_profiles_handle_fill e as funções dupla_handle_*,
+--   dupla_has_banned_word, app_dupla_handle_check, app_dupla_set_handle e app_admin_dupla_handle_log; o índice
+--   study_profiles_handle_key e a coluna study_profiles.handle podem ficar. Apagar as funções criadas aqui (dupla_radar_settings(), dupla_blocked(uuid, uuid), dupla_hides(uuid, uuid),
 --   app_dupla_radar(text, text), dupla_place(text), dupla_near(jsonb, jsonb), app_dupla_invite(uuid, text), app_admin_dupla_radar(), app_admin_save_dupla_radar(jsonb)); tirar o
 --   índice study_invites_from_idx e a restrição study_invites_kind_check; as colunas study_invites.kind e
 --   study_profiles.allow_direct_invites podem ficar (inofensivas); recolocar as funções da 013480 pelas da 013310/013320.
@@ -64,8 +71,255 @@ alter table public.study_invites drop constraint if exists study_invites_kind_ch
 alter table public.study_invites add constraint study_invites_kind_check check (kind in ('match', 'direto'));
 create index if not exists study_invites_from_idx on public.study_invites (from_user, created_at desc);
 
+-- ---------------------------------------------------------------- 1b) nome de usuário com @ (handle)
+-- Troca de @ registrada para a equipe (quem, de, para, quando). Sem política: só as funções leem e gravam. Apaga com a conta.
+create table if not exists public.study_handle_log (
+  id bigint generated always as identity primary key,
+  user_id uuid references auth.users (id) on delete cascade,
+  old_handle text,
+  new_handle text not null,
+  changed_at timestamptz not null default now()
+);
+create index if not exists study_handle_log_when_idx on public.study_handle_log (changed_at desc);
+alter table public.study_handle_log enable row level security;
+
+alter table public.study_profiles add column if not exists handle text;
+
+-- Palavra proibida do chat (as mesmas de treino_dupla_chat.palavras): palavra inteira, sem acento, com números no lugar de
+-- letras, ponto/sublinhado/espaço entre as letras e plural com "s". Sem a chave do chat, nada é proibido (não derruba o perfil).
+create or replace function public.dupla_has_banned_word(p_text text) returns boolean
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  s jsonb;
+  w text;
+  p text;
+  pat text;
+begin
+  select c.value into s from public.app_settings c where c.key = 'treino_dupla_chat';
+  if s is null or jsonb_typeof(s -> 'palavras') is distinct from 'array' then
+    return false;
+  end if;
+  w := translate(public.dupla_chat_normalize(coalesce(p_text, '')), '013457@$', 'oieastas');
+  for p in select jsonb_array_elements_text(s -> 'palavras') loop
+    pat := regexp_replace(translate(public.dupla_chat_normalize(p), '013457@$', 'oieastas'), '[^a-z0-9]', '', 'g');
+    continue when pat = '';
+    pat := '(^|[^a-z0-9])' || array_to_string(regexp_split_to_array(pat, ''), '[^a-z0-9]*') || 's?($|[^a-z0-9])';
+    if w ~ pat then
+      return true;
+    end if;
+  end loop;
+  return false;
+end
+$$;
+
+-- "@Ana.Silva " -> "ana.silva" (sem o @ do começo, sem espaços nas pontas, minúsculas).
+create or replace function public.dupla_handle_clean(p_text text) returns text
+  language sql immutable security definer set search_path = ''
+as $$
+  select lower(regexp_replace(btrim(coalesce(p_text, '')), '^@+', ''))
+$$;
+
+-- Por que este @ não serve: 'formato' | 'reservado' | 'palavra' | 'em_uso' (de outra pessoa, sem diferença de maiúsculas); nulo = serve.
+create or replace function public.dupla_handle_problem(p_handle text, p_uid uuid) returns text
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  v text := public.dupla_handle_clean(p_handle);
+  s text;
+begin
+  if v !~ '^[a-z0-9._]{3,20}$' or v ~ '^\.|\.$' then
+    return 'formato';
+  end if;
+  s := replace(replace(v, '.', ''), '_', '');
+  if s like '%stazia%' or s ~ '^(admin|administrador|administracao|suporte|support|equipe|revisor|revisora|moderador|moderadora|moderacao|oficial|sistema|staff|atendimento|ajuda|contato|inep|root|null|undefined|todos|everyone)[0-9]*$' then
+    return 'reservado';
+  end if;
+  if public.dupla_has_banned_word(v) then
+    return 'palavra';
+  end if;
+  if exists (select 1 from public.study_profiles x where lower(x.handle) = v and x.user_id is distinct from p_uid) then
+    return 'em_uso';
+  end if;
+  return null;
+end
+$$;
+
+create or replace function public.dupla_handle_message(p_code text) returns text
+  language sql immutable security definer set search_path = ''
+as $$
+  select case p_code
+    when 'formato' then 'Use de 3 a 20 caracteres: letras minúsculas, números, ponto ou sublinhado, sem ponto no começo nem no fim.'
+    when 'reservado' then 'Esse @ não está disponível.'
+    when 'palavra' then 'Esse @ contém uma palavra não permitida.'
+    when 'em_uso' then 'Esse @ já está em uso.'
+  end
+$$;
+
+-- Gera um @ neutro e livre ("revalida.k7m2"): sem nome, e-mail ou dado da pessoa. Tenta de novo se já existir ou se cair em palavra
+-- proibida; depois de muitas tentativas aumenta o sufixo. Trava a geração para duas contas novas não sortearem o mesmo.
+create or replace function public.dupla_handle_generate() returns text
+  language plpgsql volatile security definer set search_path = ''
+as $$
+declare
+  c_alpha constant text := 'abcdefghjkmnpqrstuvwxyz23456789';
+  v_len integer := 4;
+  v_total integer := 0;
+  v_try integer := 0;
+  v text;
+  i integer;
+begin
+  perform pg_advisory_xact_lock(hashtextextended('dupla-handle-gerar', 0));
+  loop
+    v_total := v_total + 1;
+    v_try := v_try + 1;
+    if v_total > 500 then
+      raise exception 'Não foi possível gerar o nome de usuário. Tente de novo.' using errcode = '55000';
+    end if;
+    if v_try > 20 then
+      v_len := least(v_len + 1, 8);
+      v_try := 1;
+    end if;
+    v := 'revalida.';
+    for i in 1..v_len loop
+      v := v || substr(c_alpha, 1 + floor(random() * length(c_alpha))::integer, 1);
+    end loop;
+    exit when public.dupla_handle_problem(v, null) is null;
+  end loop;
+  return v;
+end
+$$;
+
+-- Perfil novo sem @ ganha um sorteado; com @, ele vai em minúsculas.
+create or replace function public.study_profiles_handle_fill() returns trigger
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  if new.handle is null or btrim(new.handle) = '' then
+    new.handle := public.dupla_handle_generate();
+  else
+    new.handle := public.dupla_handle_clean(new.handle);
+  end if;
+  return new;
+end
+$$;
+drop trigger if exists study_profiles_handle_fill on public.study_profiles;
+create trigger study_profiles_handle_fill before insert on public.study_profiles
+  for each row execute function public.study_profiles_handle_fill();
+
+-- Perfis que já existiam ganham o seu (um por vez: cada sorteio enxerga os anteriores). Só quem ainda não tem.
+do $$
+declare
+  r record;
+begin
+  for r in select user_id from public.study_profiles where handle is null order by created_at, user_id loop
+    update public.study_profiles set handle = public.dupla_handle_generate() where user_id = r.user_id;
+  end loop;
+end
+$$;
+
+alter table public.study_profiles alter column handle set not null;
+alter table public.study_profiles drop constraint if exists study_profiles_handle_check;
+alter table public.study_profiles
+  add constraint study_profiles_handle_check check (handle ~ '^[a-z0-9._]{3,20}$' and handle !~ '^\.|\.$');
+create unique index if not exists study_profiles_handle_key on public.study_profiles (lower(handle));
+
+-- Disponível? { ok, handle, code, message }. Para a tela mostrar "Disponível" ou "Já em uso" enquanto a pessoa digita. O @ que
+-- já é dela vale ("Este já é o seu @.").
+create or replace function public.app_dupla_handle_check(p_handle text) returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := public.dupla_assert_access();
+  v text := public.dupla_handle_clean(p_handle);
+  v_code text;
+  v_next timestamptz := public.dupla_handle_next_change(v_uid);
+begin
+  if exists (select 1 from public.study_profiles x where x.user_id = v_uid and x.handle = v) then
+    return jsonb_build_object('ok', true, 'handle', v, 'code', null, 'message', 'Este já é o seu @.', 'next_change_at', v_next,
+                              'next_change_message', case when v_next is not null then public.dupla_handle_wait_message(v_next) end);
+  end if;
+  v_code := public.dupla_handle_problem(v, v_uid);
+  return jsonb_build_object('ok', v_code is null and v_next is null, 'handle', v, 'code', case when v_code is null and v_next is not null then 'espera' else v_code end,
+                            'message', case when v_code is not null then public.dupla_handle_message(v_code)
+                                            when v_next is not null then public.dupla_handle_wait_message(v_next)
+                                            else 'Disponível.' end,
+                            'next_change_at', v_next,
+                            'next_change_message', case when v_next is not null then public.dupla_handle_wait_message(v_next) end);
+end
+$$;
+
+-- Quando a pessoa poderá trocar o @ de novo: 15 dias depois da última troca REGISTRADA (o @ sorteado ao criar o perfil não é troca).
+-- Nulo = já pode.
+create or replace function public.dupla_handle_next_change(p_uid uuid) returns timestamptz
+  language sql stable security definer set search_path = ''
+as $$
+  select case when max(l.changed_at) + interval '15 days' > now() then max(l.changed_at) + interval '15 days' end
+    from public.study_handle_log l where l.user_id = p_uid
+$$;
+
+create or replace function public.dupla_handle_wait_message(p_at timestamptz) returns text
+  language sql immutable security definer set search_path = ''
+as $$
+  select 'Você poderá trocar de novo em ' || to_char(p_at at time zone 'America/Sao_Paulo', 'DD/MM') || '.'
+$$;
+
+-- Troca o @ da pessoa (o nome público, o user_id e tudo o que depende dele ficam como estão), no máximo 1 vez a cada 15 dias, e
+-- registra a troca. O link de convite do @ antigo deixa de valer.
+-- → { handle }
+create or replace function public.app_dupla_set_handle(p_handle text) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := public.dupla_assert_access();
+  v text := public.dupla_handle_clean(p_handle);
+  v_old text;
+  v_code text;
+  v_next timestamptz;
+begin
+  perform pg_advisory_xact_lock(hashtextextended('dupla-handle:' || v, 0));
+  select handle into v_old from public.study_profiles where user_id = v_uid;
+  if not found then
+    raise exception 'Crie seu perfil de estudo antes de escolher um @.' using errcode = '22023';
+  end if;
+  if v = v_old then
+    return jsonb_build_object('handle', v);
+  end if;
+  v_code := public.dupla_handle_problem(v, v_uid);
+  if v_code is not null then
+    raise exception '%', public.dupla_handle_message(v_code) using errcode = '22023';
+  end if;
+  v_next := public.dupla_handle_next_change(v_uid);
+  if v_next is not null then
+    raise exception '%', public.dupla_handle_wait_message(v_next) using errcode = '42501';
+  end if;
+  begin
+    update public.study_profiles set handle = v where user_id = v_uid;
+  exception when unique_violation then
+    raise exception 'Esse @ já está em uso.' using errcode = '23505';
+  end;
+  insert into public.study_handle_log (user_id, old_handle, new_handle) values (v_uid, v_old, v);
+  return jsonb_build_object('handle', v);
+end
+$$;
+
+-- Equipe (administrador e editor): as trocas de @, da mais nova para a mais antiga. Sem e-mail. → { items: [...] }
+create or replace function public.app_admin_dupla_handle_log(p_limit integer default 50) returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+begin
+  perform public.assert_staff();
+  return jsonb_build_object('items', coalesce((
+    select jsonb_agg(jsonb_build_object('id', t.id, 'user_id', t.user_id, 'public_name', public.dupla_public_name(t.user_id),
+                                        'old_handle', t.old_handle, 'new_handle', t.new_handle, 'changed_at', t.changed_at)
+                     order by t.changed_at desc, t.id desc)
+      from (select * from public.study_handle_log l order by l.changed_at desc, l.id desc limit greatest(1, least(coalesce(p_limit, 50), 200))) t
+  ), '[]'::jsonb));
+end
+$$;
+
 -- ---------------------------------------------------------------- 2) ajustes (com padrões)
--- Interna. { pendentes (sempre 1), por_hora, por_dia, espera_min }; os três últimos nulos = sem limite. Valor de tipo errado ou fora
+-- Interna. { pendentes (sempre 1), por_hora, por_dia, espera_min, pedidos_por_dia }; os quatro últimos nulos = sem limite. Valor de tipo errado ou fora
 -- da faixa vira "sem limite" (nunca derruba o radar).
 create or replace function public.dupla_radar_settings() returns jsonb
   language plpgsql stable security definer set search_path = ''
@@ -75,6 +329,7 @@ declare
   v_hora integer;
   v_dia integer;
   v_espera integer;
+  v_pedidos integer;
   x jsonb;
 begin
   select c.value into v from public.app_settings c where c.key = 'treino_dupla';
@@ -85,8 +340,10 @@ begin
     if x is not null and jsonb_typeof(x) = 'number' and (x #>> '{}') ~ '^\d{1,4}$' and (x #>> '{}')::integer between 1 and 200 then v_dia := (x #>> '{}')::integer; end if;
     x := v #> '{convites,espera_min}';
     if x is not null and jsonb_typeof(x) = 'number' and (x #>> '{}') ~ '^\d{1,4}$' and (x #>> '{}')::integer between 1 and 1440 then v_espera := (x #>> '{}')::integer; end if;
+    x := v #> '{convites,pedidos_por_dia}';
+    if x is not null and jsonb_typeof(x) = 'number' and (x #>> '{}') ~ '^\d{1,4}$' and (x #>> '{}')::integer between 1 and 200 then v_pedidos := (x #>> '{}')::integer; end if;
   end if;
-  return jsonb_build_object('pendentes', 1, 'por_hora', v_hora, 'por_dia', v_dia, 'espera_min', v_espera);
+  return jsonb_build_object('pendentes', 1, 'por_hora', v_hora, 'por_dia', v_dia, 'espera_min', v_espera, 'pedidos_por_dia', v_pedidos);
 end
 $$;
 
@@ -158,7 +415,7 @@ $$;
 -- quem informou cidade; primeiro a mesma cidade, depois o mesmo estado; dentro de cada grupo, livres e compatibilidade). A cidade
 -- vem só do que a própria pessoa informou e já está no cartão público; sem GPS. Quem olha sem cidade no perfil recebe
 -- needs_city = true e a lista vazia na aba 'perto'. Cada pessoa traz near = 'cidade' | 'estado' | null.
--- → { needs_city, people: [{ near, user_id, public_name, school, city, exam, bio, goal, areas, role_pref, pace, days, shifts, stats, compat,
+-- → { needs_city, people: [{ near, user_id, public_name, handle, school, city, exam, bio, goal, areas, role_pref, pace, days, shifts, stats, compat,
 --                reasons, online, state: livre|em_sala|sozinho, can_invite, why_not }],
 --     online, open_room, me: { radar_visible, allow_direct_invites }, server_now }
 create or replace function public.app_dupla_radar(p_station_id text default null, p_aba text default 'online') returns jsonb
@@ -214,6 +471,7 @@ begin
           'near', n.near,
           'user_id', p.user_id,
           'public_name', p.public_name,
+          'handle', p.handle,
           'school', case when p.show_school then p.school end,
           'city', p.city,
           'exam', p.exam,
@@ -286,11 +544,12 @@ $$;
 -- sugeridos por dupla_assign) e o convite de 60 s (kind 'direto'). Quem convida entra na sala; quem recebe vê o aviso.
 -- Trava a minha fila e o par antes de ler (dois convites juntos para a mesma pessoa: um só passa).
 -- → { room_id, partner: { user_id, public_name }, expires_at }
-create or replace function public.app_dupla_invite(p_to uuid, p_station_id text default null) returns jsonb
+-- O miolo (dupla_invite_core) também serve ao convite por link e à resposta a um pedido de treino (p_free = true): aí a pessoa
+-- convidada pode estar com o radar desligado (o link é compartilhado por ela) e os limites de quantidade não se aplicam.
+create or replace function public.dupla_invite_core(v_uid uuid, p_to uuid, p_station_id text, p_free boolean) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
-  v_uid uuid := public.dupla_assert_access();
   me public.study_profiles;
   other public.study_profiles;
   cfg jsonb := public.dupla_radar_settings();
@@ -334,7 +593,7 @@ begin
 
   -- Quem recebe: online, livre, com radar e convites ligados, sem outro convite esperando e sem bloqueio entre os dois.
   if not public.dupla_allowed(p_to)
-     or not other.radar_visible
+     or (not other.radar_visible and not p_free)
      or not other.allow_direct_invites
      or coalesce(other.last_seen_at, '-infinity'::timestamptz) <= now() - interval '2 minutes'
      or other.status in ('fora', 'em_estacao', 'sozinho')
@@ -361,19 +620,19 @@ begin
   -- Limites (o fechamento preguiçoso acima já cancelou os vencidos). O de 1 pendente é fixo; os outros só valem se o dono preencher.
   select count(*), min(i.created_at) into v_n, v_old from public.study_invites i
    where i.from_user = v_uid and i.kind = 'direto' and i.created_at > now() - interval '1 hour';
-  if cfg ->> 'por_hora' is not null and v_n >= (cfg ->> 'por_hora')::integer then
+  if not p_free and cfg ->> 'por_hora' is not null and v_n >= (cfg ->> 'por_hora')::integer then
     v_min := greatest(1, ceil(extract(epoch from (v_old + interval '1 hour' - now())) / 60.0)::integer);
     raise exception 'Muitos convites seguidos. Tente de novo em % min.', v_min using errcode = '42501';
   end if;
   select count(*), min(i.created_at) into v_n, v_old from public.study_invites i
    where i.from_user = v_uid and i.kind = 'direto' and i.created_at > now() - interval '24 hours';
-  if cfg ->> 'por_dia' is not null and v_n >= (cfg ->> 'por_dia')::integer then
+  if not p_free and cfg ->> 'por_dia' is not null and v_n >= (cfg ->> 'por_dia')::integer then
     v_min := greatest(1, ceil(extract(epoch from (v_old + interval '24 hours' - now())) / 60.0)::integer);
     raise exception 'Muitos convites seguidos. Tente de novo em % min.', v_min using errcode = '42501';
   end if;
 
   -- Depois de recusa ou vencimento, espera antes de reconvidar a mesma pessoa.
-  if cfg ->> 'espera_min' is not null then
+  if not p_free and cfg ->> 'espera_min' is not null then
     select max(i.created_at) into v_recusa
       from public.study_invites i
       join public.checklist_rooms r on r.id = i.room_id
@@ -405,8 +664,16 @@ begin
 end
 $$;
 
+create or replace function public.app_dupla_invite(p_to uuid, p_station_id text default null) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  return public.dupla_invite_core(public.dupla_assert_access(), p_to, p_station_id, false);
+end
+$$;
+
 -- ---------------------------------------------------------------- 6) painel (só administrador)
--- Os valores em vigor (vazio = sem limite). → { convites: { pendentes (fixo 1), por_hora, por_dia, espera_min } }
+-- Os valores em vigor (vazio = sem limite). → { convites: { pendentes (fixo 1), por_hora, por_dia, espera_min, pedidos_por_dia } }
 create or replace function public.app_admin_dupla_radar() returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
@@ -416,7 +683,7 @@ begin
 end
 $$;
 
--- Grava SÓ o bloco "convites" de app_settings.treino_dupla (por_hora, por_dia, espera_min; nulo ou vazio = sem limite); o resto
+-- Grava SÓ o bloco "convites" de app_settings.treino_dupla (por_hora, por_dia, espera_min, pedidos_por_dia; nulo ou vazio = sem limite); o resto
 -- da chave (aberto, planos, outras frentes) fica como está. → o mesmo de app_admin_dupla_radar()
 create or replace function public.app_admin_save_dupla_radar(p_config jsonb) returns jsonb
   language plpgsql security definer set search_path = ''
@@ -431,7 +698,7 @@ begin
     raise exception 'Configuração dos convites inválida.' using errcode = '22023';
   end if;
   c := p_config -> 'convites';
-  foreach k in array array['por_hora', 'por_dia', 'espera_min'] loop
+  foreach k in array array['por_hora', 'por_dia', 'espera_min', 'pedidos_por_dia'] loop
     if c -> k is null or jsonb_typeof(c -> k) = 'null' then
       v_new := v_new || jsonb_build_object(k, null);
     elsif jsonb_typeof(c -> k) <> 'number' or (c ->> k) !~ '^\d{1,4}$' then
@@ -442,7 +709,8 @@ begin
   end loop;
   if (v_new ->> 'por_hora') is not null and (v_new ->> 'por_hora')::integer not between 1 and 60
      or (v_new ->> 'por_dia') is not null and (v_new ->> 'por_dia')::integer not between 1 and 200
-     or (v_new ->> 'espera_min') is not null and (v_new ->> 'espera_min')::integer not between 1 and 1440 then
+     or (v_new ->> 'espera_min') is not null and (v_new ->> 'espera_min')::integer not between 1 and 1440
+     or (v_new ->> 'pedidos_por_dia') is not null and (v_new ->> 'pedidos_por_dia')::integer not between 1 and 200 then
     raise exception 'Configuração dos convites inválida.' using errcode = '22023';
   end if;
 
@@ -473,8 +741,20 @@ revoke execute on function public.app_dupla_radar(text, text) from public, anon;
 revoke execute on function public.dupla_place(text) from public, anon, authenticated;
 revoke execute on function public.dupla_near(jsonb, jsonb) from public, anon, authenticated;
 revoke execute on function public.app_dupla_invite(uuid, text) from public, anon;
+revoke execute on function public.dupla_invite_core(uuid, uuid, text, boolean) from public, anon, authenticated;
 revoke execute on function public.app_admin_dupla_radar() from public, anon;
 revoke execute on function public.app_admin_save_dupla_radar(jsonb) from public, anon;
+revoke execute on function public.app_dupla_handle_check(text) from public, anon;
+revoke execute on function public.app_dupla_set_handle(text) from public, anon;
+revoke execute on function public.app_admin_dupla_handle_log(integer) from public, anon;
+revoke execute on function public.dupla_has_banned_word(text) from public, anon, authenticated;
+revoke execute on function public.dupla_handle_clean(text) from public, anon, authenticated;
+revoke execute on function public.dupla_handle_problem(text, uuid) from public, anon, authenticated;
+revoke execute on function public.dupla_handle_message(text) from public, anon, authenticated;
+revoke execute on function public.dupla_handle_next_change(uuid) from public, anon, authenticated;
+revoke execute on function public.dupla_handle_wait_message(timestamptz) from public, anon, authenticated;
+revoke execute on function public.dupla_handle_generate() from public, anon, authenticated;
+revoke execute on function public.study_profiles_handle_fill() from public, anon, authenticated;
 revoke execute on function public.dupla_radar_settings() from public, anon, authenticated;
 revoke execute on function public.dupla_blocked(uuid, uuid) from public, anon, authenticated;
 revoke execute on function public.dupla_hides(uuid, uuid) from public, anon, authenticated;

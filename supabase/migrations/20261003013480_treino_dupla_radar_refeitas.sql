@@ -61,6 +61,7 @@ begin
         jsonb_build_object(
           'user_id', p.user_id,
           'public_name', p.public_name,
+          'handle', p.handle,
           'school', case when p.show_school then p.school end,
           'city', p.city,
           'exam', p.exam,
@@ -298,6 +299,8 @@ declare
   v_show_school boolean;
   v_show_stats boolean;
   v_direct boolean;
+  v_handle text;
+  v_hcode text;
   c_areas constant text[] := array['CM', 'CR', 'GO', 'PED', 'MFC'];
   c_days constant text[] := array['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
   c_shifts constant text[] := array['Manhã', 'Tarde', 'Noite'];
@@ -307,7 +310,7 @@ begin
   end if;
   -- Tipos básicos: texto (ou nulo), listas e verdadeiro/falso. Chaves que não são do perfil são ignoradas.
   for k, val in select e.key, e.value from jsonb_each(p_profile) e loop
-    if k in ('public_name', 'school', 'city', 'goal', 'exam', 'bio', 'role_pref', 'pace') and jsonb_typeof(val) not in ('string', 'null') then
+    if k in ('public_name', 'school', 'city', 'goal', 'exam', 'bio', 'role_pref', 'pace', 'handle') and jsonb_typeof(val) not in ('string', 'null') then
       raise exception 'Dados do perfil inválidos.' using errcode = '22023';
     elsif k in ('areas', 'days', 'shifts') and jsonb_typeof(val) <> 'array' then
       raise exception 'Dados do perfil inválidos.' using errcode = '22023';
@@ -323,6 +326,9 @@ begin
     raise exception 'Informe como você quer aparecer para os colegas.' using errcode = '22023';
   elsif char_length(v_name) > 40 then
     raise exception 'Nome: máximo de 40 caracteres.' using errcode = '22001';
+  end if;
+  if public.dupla_has_banned_word(v_name) then
+    raise exception 'Esse nome contém uma palavra não permitida. Escolha outro.' using errcode = '22023';
   end if;
 
   v_bio := case when p_profile ? 'bio' then btrim(coalesce(p_profile ->> 'bio', '')) else coalesce(cur.bio, '') end;
@@ -379,18 +385,34 @@ begin
   v_radar := case when p_profile ? 'radar_visible' then (p_profile ->> 'radar_visible')::boolean else coalesce(cur.radar_visible, true) end;
   v_show_school := case when p_profile ? 'show_school' then (p_profile ->> 'show_school')::boolean else coalesce(cur.show_school, true) end;
   v_show_stats := case when p_profile ? 'show_stats' then (p_profile ->> 'show_stats')::boolean else coalesce(cur.show_stats, true) end;
+  -- @: só muda se veio no pedido; novo perfil sem @ ganha um sorteado pelo gatilho. Trava o @ para dois pedidos juntos não o levarem.
+  v_handle := case when p_profile ? 'handle' then public.dupla_handle_clean(p_profile ->> 'handle') else cur.handle end;
+  if v_handle is not null and v_handle is distinct from cur.handle then
+    perform pg_advisory_xact_lock(hashtextextended('dupla-handle:' || v_handle, 0));
+    v_hcode := public.dupla_handle_problem(v_handle, v_uid);
+    if v_hcode is not null then
+      raise exception '%', public.dupla_handle_message(v_hcode) using errcode = '22023';
+    end if;
+    -- No máximo 1 troca a cada 15 dias (o @ sorteado na criação do perfil não conta). Perfil novo escolhendo o @ não é troca.
+    if cur.handle is not null and public.dupla_handle_next_change(v_uid) is not null then
+      raise exception '%', public.dupla_handle_wait_message(public.dupla_handle_next_change(v_uid)) using errcode = '42501';
+    end if;
+  end if;
   v_direct := case when p_profile ? 'allow_direct_invites' then (p_profile ->> 'allow_direct_invites')::boolean else coalesce(cur.allow_direct_invites, true) end;
 
   insert into public.study_profiles (user_id, public_name, school, city, goal, exam, bio, areas, role_pref, pace, days, shifts,
-                                     radar_visible, show_school, show_stats, allow_direct_invites)
+                                     radar_visible, show_school, show_stats, allow_direct_invites, handle)
   values (v_uid, v_name, v_school, v_city, v_goal, v_exam, v_bio, v_areas, v_role, v_pace, v_days, v_shifts,
-          v_radar, v_show_school, v_show_stats, v_direct)
+          v_radar, v_show_school, v_show_stats, v_direct, v_handle)
   on conflict (user_id) do update set
     public_name = excluded.public_name, school = excluded.school, city = excluded.city, goal = excluded.goal,
     exam = excluded.exam, bio = excluded.bio, areas = excluded.areas, role_pref = excluded.role_pref, pace = excluded.pace,
     days = excluded.days, shifts = excluded.shifts, radar_visible = excluded.radar_visible,
     show_school = excluded.show_school, show_stats = excluded.show_stats,
-    allow_direct_invites = excluded.allow_direct_invites;
+    allow_direct_invites = excluded.allow_direct_invites, handle = coalesce(excluded.handle, public.study_profiles.handle);
+  if cur.handle is not null and v_handle is distinct from cur.handle then
+    insert into public.study_handle_log (user_id, old_handle, new_handle) values (v_uid, cur.handle, v_handle);
+  end if;
 
   return public.app_dupla_profile();
 end

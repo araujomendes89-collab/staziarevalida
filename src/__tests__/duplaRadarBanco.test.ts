@@ -123,7 +123,7 @@ describe("Migrações 013470 e 013480 — radar e convite direto", () => {
     const cru = JSON.stringify(r);
     expect(cru).not.toMatch(/@|teste\.dev|email|phone|telefone|photo|avatar/i);
     expect(Object.keys(oculto).sort()).toEqual(
-      ["areas", "bio", "can_invite", "city", "compat", "days", "exam", "goal", "near", "online", "pace", "public_name", "reasons", "role_pref", "school", "shifts", "state", "stats", "user_id", "why_not"].sort()
+      ["areas", "bio", "can_invite", "city", "compat", "days", "exam", "goal", "handle", "near", "online", "pace", "public_name", "reasons", "role_pref", "school", "shifts", "state", "stats", "user_id", "why_not"].sort()
     );
   });
 
@@ -423,7 +423,7 @@ describe("Migrações 013470 e 013480 — radar e convite direto", () => {
       await d.sql(`delete from public.checklist_rooms`);
     }
     const cfg = await d.rpc(U.admin, "app_admin_dupla_radar");
-    expect(cfg).toEqual({ convites: { pendentes: 1, por_hora: null, por_dia: null, espera_min: null } });
+    expect(cfg).toEqual({ convites: { pendentes: 1, por_hora: null, por_dia: null, espera_min: null, pedidos_por_dia: null } });
   });
 
   it("por hora e por dia: a mensagem diz em quantos minutos tentar de novo", async () => {
@@ -504,7 +504,7 @@ describe("Migrações 013470 e 013480 — radar e convite direto", () => {
     for (const uid of quem) await expect(d.rpc(uid, "app_admin_save_dupla_radar", { p_config: { convites: {} } })).rejects.toThrow();
     for (const uid of quem) await expect(d.rpc(uid, "app_admin_dupla_radar")).rejects.toThrow();
     const salvo = await d.rpc(U.admin, "app_admin_save_dupla_radar", { p_config: { convites: { por_hora: 4, por_dia: 15, espera_min: null } } });
-    expect(salvo).toEqual({ convites: { pendentes: 1, por_hora: 4, por_dia: 15, espera_min: null } });
+    expect(salvo).toEqual({ convites: { pendentes: 1, por_hora: 4, por_dia: 15, espera_min: null, pedidos_por_dia: null } });
     const [{ value }] = await d.sql<any>(`select value from public.app_settings where key = 'treino_dupla'`);
     expect(value).toMatchObject({ aberto: true, planos: ["trial", "pro", "elite"], sozinho: { aberto: false, ia: { limite_dia: null } }, convites: { por_hora: 4, por_dia: 15, espera_min: null } });
     expect((await d.sql<any>(`select count(*)::int as n from public.admin_audit where action = 'dupla.convites'`).catch(() => [{ n: 1 }]))[0].n).toBeGreaterThanOrEqual(1);
@@ -514,7 +514,7 @@ describe("Migrações 013470 e 013480 — radar e convite direto", () => {
       { convites: { por_hora: "5", por_dia: 1, espera_min: 1 } }, { convites: { por_hora: 1.5, por_dia: 1, espera_min: 1 } }, { convites: [] }, {}, null,
     ]) await expect(d.rpc(U.admin, "app_admin_save_dupla_radar", { p_config: ruim }), JSON.stringify(ruim)).rejects.toThrow(/Configuração dos convites inválida\./);
     // salvar vazio apaga os limites
-    expect(await d.rpc(U.admin, "app_admin_save_dupla_radar", { p_config: { convites: { por_hora: null, por_dia: null, espera_min: null } } })).toEqual({ convites: { pendentes: 1, por_hora: null, por_dia: null, espera_min: null } });
+    expect(await d.rpc(U.admin, "app_admin_save_dupla_radar", { p_config: { convites: { por_hora: null, por_dia: null, espera_min: null } } })).toEqual({ convites: { pendentes: 1, por_hora: null, por_dia: null, espera_min: null, pedidos_por_dia: null } });
   });
 
   it("o painel antigo (aberto e planos) não apaga os limites dos convites preenchidos", async () => {
