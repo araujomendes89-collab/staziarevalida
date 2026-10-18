@@ -15,6 +15,7 @@ import { AdminLessons } from "./AdminLessons.jsx";
 import { AdminReports, AdminSupportContact } from "./AdminSupport.jsx";
 import { AdminUpdates } from "./AdminUpdates.jsx";
 import { AdminComunicados } from "./AdminComunicados.jsx";
+import { AdminListaInteresse } from "./AdminListaInteresse.jsx";
 import { AdminPodcasts } from "./AdminPodcasts.jsx";
 import { AdminAI } from "./ai/AdminAI.jsx";
 import { OfficialVoicesPanel } from "./OfficialVoicesPanel.jsx";
@@ -35,6 +36,8 @@ const TABS = [
   { value: "planos", label: "Planos", icon: "crown" },
   // Central de Notificações (013830): comunicados aos alunos, só administrador
   { value: "comunicados", label: "Comunicados", icon: "megaphone", admin: true },
+  // Lista de interesse da 2ª fase (013960): WhatsApp, e-mail, link do grupo e o aviso; só administrador
+  { value: "interesse", label: "Lista de interesse", icon: "list-checks", admin: true },
   { value: "estacoes", label: "Estações", icon: "clipboard-list", staff: true, reviewer: true },
   { value: "conteudo", label: "Central de Conteúdo", icon: "library", staff: true, reviewer: true },
   { value: "radar", label: "Fila do Radar", icon: "radar", admin: true },
@@ -71,6 +74,7 @@ export function AdminScreen() {
       {tab === "atualizacoes" && <AdminUpdates />}
       {tab === "planos" && <AdminPlans />}
       {tab === "comunicados" && isAdmin && <AdminComunicados />}
+      {tab === "interesse" && isAdmin && <AdminListaInteresse />}
       {tab === "estacoes" && <AdminStations />}
       {tab === "conteudo" && <ContentHub isAdmin={isAdmin} isStaff={isStaff} />}
       {tab === "radar" && isAdmin && <RadarFila />}

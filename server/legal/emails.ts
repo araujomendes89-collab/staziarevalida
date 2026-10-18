@@ -4,7 +4,9 @@
  * botão #0B6F68, "Equipe StaziaMed — Tecnologia que transforma.").
  *   - aviso de conta inativa (Política 3.0, seção 5; Regulamento 1.0, 4.3);
  *   - comunicado da equipe (013940; decisão do dono 18/10): só para quem aceitou receber novidades, com o texto formatado da versão
- *     atual (montado em ./comunicado.ts) e o rodapé de descadastro (link de um clique + confirmação, e cabeçalho List-Unsubscribe).
+ *     atual (montado em ./comunicado.ts) e o rodapé de descadastro (link de um clique + confirmação, e cabeçalho List-Unsubscribe);
+ *   - lista de interesse da 2ª fase (013960): confirmação do e-mail (dupla confirmação) e o aviso "a 2ª fase abriu", os dois com o
+ *     link de sair da lista (um clique + confirmação; o aviso também com List-Unsubscribe). Páginas em server/interesse/router.ts.
  * O contrato NÃO vai por e-mail (decisão do dono, 18/10/2026: "Contrato não é enviado ao cliente, fica dentro do app dele."):
  * o contrato aceito fica só em Minha Conta → Documentos.
  * Só texto vindo do banco; tudo que entra no HTML passa por esc().
@@ -13,7 +15,7 @@ import { docDoComunicado, htmlDoEmail, textoSimplesDoDoc } from "./comunicado";
 
 export interface ItemFila {
   id: number;
-  kind: "aviso_inatividade" | "comunicado";
+  kind: "aviso_inatividade" | "comunicado" | "interesse_confirmar" | "interesse_aviso";
   tentativas: number;
   email: string | null;
   nome: string | null;
@@ -28,6 +30,12 @@ export interface ItemFila {
     rico?: unknown;
     link?: string | null;
     descadastro?: string;
+    // lista de interesse (montado pela fila na hora do envio): códigos dos links de confirmar, sair e do grupo
+    fase?: string;
+    confirmar?: string;
+    sair?: string;
+    grupo?: string;
+    tem_grupo?: boolean;
   };
 }
 
@@ -140,6 +148,8 @@ export function renderAvisoInatividade(item: ItemFila, baseUrl: string | null): 
 
 export function renderItem(item: ItemFila, baseUrl: string | null): EmailPronto {
   if (item.kind === "comunicado") return renderComunicado(item, baseUrl);
+  if (item.kind === "interesse_confirmar") return renderInteresseConfirmar(item, baseUrl);
+  if (item.kind === "interesse_aviso") return renderInteresseAviso(item, baseUrl);
   return renderAvisoInatividade(item, baseUrl);
 }
 
@@ -187,4 +197,88 @@ export function renderComunicado(item: ItemFila, baseUrl: string | null): EmailP
     html,
     headers: { "List-Unsubscribe": `<${sair}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
   };
+}
+
+// ---------------------------------------------------------------- lista de interesse da 2ª fase (013960)
+const CODIGO = /^[0-9a-f]{64}$/;
+/** Endereços das páginas da lista (server/interesse/router.ts). Só o código aleatório vai no link, nunca o e-mail nem o WhatsApp. */
+export const linkInteresse = (baseUrl: string | null, pagina: "confirmar" | "sair" | "grupo", token: string) =>
+  `${base(baseUrl)}/api/interesse/${pagina}?t=${encodeURIComponent(token)}`;
+const RODAPE_INTERESSE =
+  "Você recebe este e-mail porque pediu, no site do StaziaMed, para ser avisado quando a 2ª fase abrir. Usamos este endereço só para isso. Não responda: esta caixa não é lida.";
+
+/** Confirmação do e-mail (dupla confirmação): o botão leva à página com "Confirmar"; sem confirmar, não mandamos mais nada. */
+export function renderInteresseConfirmar(item: ItemFila, baseUrl: string | null): EmailPronto {
+  const { confirmar, sair } = item.payload ?? {};
+  if (!confirmar || !CODIGO.test(confirmar) || !sair || !CODIGO.test(sair)) throw new Error("Confirmação sem link.");
+  const nome = primeiroNome(item.nome);
+  const ola = nome ? `Olá, ${nome}!` : "Olá!";
+  const subject = "Confirme seu e-mail para o aviso da 2ª fase · StaziaMed";
+  const ok = linkInteresse(baseUrl, "confirmar", confirmar);
+  const fora = linkInteresse(baseUrl, "sair", sair);
+  const html = moldura(subject, [
+    p(esc(ola)),
+    p("Recebemos um pedido para avisar este e-mail quando a 2ª fase do StaziaMed abrir."),
+    p("Para confirmar que o e-mail é seu, toque no botão abaixo. O link vale por 7 dias.", true),
+    botao(ok, "Confirmar meu e-mail"),
+    p("Não foi você? É só ignorar: sem a confirmação, não mandamos mais nada para este endereço e ele sai da lista em até 30 dias.", false, true),
+    p(`Quer sair da lista agora? <a href="${esc(fora)}" style="color:#0B6F68;">Sair da lista de interesse</a> (um clique e uma confirmação).`, false, true),
+    p(`${esc(RODAPE_INTERESSE)} Dúvidas: ${mail(SUPORTE)}.`, true, true),
+  ]);
+  const text = [
+    ola,
+    "",
+    "Recebemos um pedido para avisar este e-mail quando a 2ª fase do StaziaMed abrir.",
+    "Para confirmar que o e-mail é seu, abra o link abaixo (vale por 7 dias):",
+    ok,
+    "",
+    "Não foi você? É só ignorar: sem a confirmação, não mandamos mais nada para este endereço e ele sai da lista em até 30 dias.",
+    `Quer sair da lista agora? ${fora}`,
+    "",
+    `${RODAPE_INTERESSE} Dúvidas: ${SUPORTE}.`,
+    "",
+    "Equipe StaziaMed",
+    "Tecnologia que transforma.",
+    "www.staziamed.com.br",
+    "",
+  ].join("\n");
+  return { subject, text, html };
+}
+
+/** O aviso "a 2ª fase abriu" (só para e-mail confirmado; uma vez por pessoa). */
+export function renderInteresseAviso(item: ItemFila, baseUrl: string | null): EmailPronto {
+  const { sair, grupo, tem_grupo } = item.payload ?? {};
+  if (!sair || !CODIGO.test(sair)) throw new Error("Aviso sem link de sair da lista.");
+  const nome = primeiroNome(item.nome);
+  const ola = nome ? `Olá, ${nome}!` : "Olá!";
+  const subject = "A 2ª fase do StaziaMed abriu";
+  const fora = linkInteresse(baseUrl, "sair", sair);
+  const linkGrupo = tem_grupo && grupo && CODIGO.test(grupo) ? linkInteresse(baseUrl, "grupo", grupo) : null;
+  const html = moldura(subject, [
+    p(esc(ola)),
+    p("Você pediu para ser avisado quando a 2ª fase do StaziaMed abrisse. <strong>Ela abriu.</strong>"),
+    p("Veja como funciona e como entrar no site:", true),
+    botao(SITE, "Conhecer a 2ª fase"),
+    ...(linkGrupo ? [p(`Avisos e novidades da 2ª fase também no <a href="${esc(linkGrupo)}" style="color:#0B6F68;">grupo do WhatsApp</a>.`)] : []),
+    p("Este é o único aviso por e-mail que você pediu: depois dele, não mandamos mais nada por esta lista.", false, true),
+    p(`${esc(RODAPE_INTERESSE)} Dúvidas: ${mail(SUPORTE)}.`, false, true),
+    p(`Não quer mais receber? <a href="${esc(fora)}" style="color:#0B6F68;">Sair da lista de interesse</a> (um clique e uma confirmação).`, true, true),
+  ]);
+  const text = [
+    ola,
+    "",
+    "Você pediu para ser avisado quando a 2ª fase do StaziaMed abrisse. Ela abriu.",
+    `Veja como funciona e como entrar: ${SITE}`,
+    ...(linkGrupo ? [`Grupo do WhatsApp da 2ª fase: ${linkGrupo}`] : []),
+    "",
+    "Este é o único aviso por e-mail que você pediu: depois dele, não mandamos mais nada por esta lista.",
+    `${RODAPE_INTERESSE} Dúvidas: ${SUPORTE}.`,
+    `Não quer mais receber? Sair da lista: ${fora}`,
+    "",
+    "Equipe StaziaMed",
+    "Tecnologia que transforma.",
+    "www.staziamed.com.br",
+    "",
+  ].join("\n");
+  return { subject, text, html, headers: { "List-Unsubscribe": `<${fora}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } };
 }

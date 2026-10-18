@@ -3,7 +3,7 @@
  *   GET /api/legal/email   a cada 5 minutos: manda os e-mails da fila (aviso de conta inativa). O contrato NÃO vai por e-mail
  *                          (decisão do dono, 18/10/2026): fica só em Minha Conta → Documentos.
  *                          Sem as variáveis SMTP_*: não faz nada ({ desligado: true }) e os e-mails ficam na fila.
- *   GET /api/legal/diaria  uma vez por dia: rotina de contas inativas e expurgo dos aceites (013810). As duas nascem DESLIGADAS
+ *   GET /api/legal/diaria  uma vez por dia: rotina de contas inativas e expurgo dos aceites (013810) e limpeza da lista de interesse (013960, sempre ligada). As duas primeiras nascem DESLIGADAS
  *                          (chaves em public.app_rotinas_conta_config): desligadas, só devolvem o relatório do que fariam.
  *   GET/POST /api/legal/descadastro?t=CÓDIGO  (013940) a ÚNICA rota pública: o link "Descadastrar" do e-mail de comunicado.
  *                          GET mostra a página com o botão de confirmar (abrir o link não muda nada: programas de e-mail abrem
@@ -98,7 +98,8 @@ export async function enviarFila(deps: LegalDeps): Promise<ResultadoEnvio> {
 /** Rotina diária: contas inativas e expurgo (cada uma no seu modo; desligadas = ensaio). Uma falha não impede a outra. */
 export async function rotinaDiaria(deps: LegalDeps): Promise<Record<string, unknown>> {
   const out: Record<string, unknown> = {};
-  for (const [nome, fn] of [["contas_inativas", "ch_worker_contas_inativas"], ["expurgo_aceites", "ch_worker_expurgo_aceites"]] as const) {
+  // 013960: limpeza da lista de interesse (e-mail não confirmado em 30 dias sai; quem saiu da lista é apagado 30 dias depois)
+  for (const [nome, fn] of [["contas_inativas", "ch_worker_contas_inativas"], ["expurgo_aceites", "ch_worker_expurgo_aceites"], ["lista_interesse", "ch_worker_interesse_limpar"]] as const) {
     try {
       const res = await deps.db.service<Record<string, unknown>>(fn);
       out[nome] = res;

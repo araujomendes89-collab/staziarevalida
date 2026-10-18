@@ -53,6 +53,7 @@ import { createProviderFromEnv } from "./server/billing/providerFromEnv";
 import { createBillingRouter, createWebhookHandler, type BillingRoutesDeps } from "./server/billing/router";
 import { createAvisos } from "./server/avisos/avisos";
 import { createLegalRouter, startLegalScheduler, type LegalDeps } from "./server/legal/router";
+import { createInteresseRouter } from "./server/interesse/router";
 // Um módulo de e-mail só (Pacote 2): o de server/email cobre o de server/avisos (mesmas variáveis SMTP_*, mesmo Mailer, mais anexos)
 import { createSmtpMailer, smtpConfigFromEnv } from "./server/email/smtp";
 import { createEmailsCobranca } from "./server/avisos/emailsCobranca";
@@ -166,6 +167,9 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
     ? { db: hub.deps.db, mailer: smtp ? createSmtpMailer(smtp) : null, baseUrl: (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "") || null, log: (m: string) => console.log(m) }
     : null;
   app.use("/api/legal", createLegalRouter(legalDeps));
+  // Lista de interesse da 2ª fase (013960): inscrição pública do site (WhatsApp + e-mail opcional com dupla confirmação), botão do grupo
+  // do WhatsApp, confirmar/sair e a área da Administração (só administrador). Os e-mails saem pela mesma fila de /api/legal/email.
+  app.use("/api/interesse", createInteresseRouter(hub.deps ? { db: hub.deps.db, baseUrl: (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "") || null, log: (m: string) => console.log(m) } : null));
   // Aulas: slides e áudios ficam no depósito privado; o banco decide quem vê
   app.use("/api/lessons", createLessonsRouter(hub.deps ? { db: hub.deps.db, storage: lessonsStorage(hub.deps.db.mode), log: (m: string) => console.log(m) } : null, hub.pending));
   // Figuras das questões (PNG/JPG, até 5 MB, uma por questão): depósito privado; o banco decide quem envia (equipe) e quem vê
