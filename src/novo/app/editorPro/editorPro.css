@@ -182,3 +182,36 @@
 .ep-container--compacto:focus-within { border-color: var(--border-brand); }
 .ep-container--compacto:not(:focus-within):not(.ep-container--painel) > .ep-toolbar { display: none; }
 .ep-container--compacto:not(:focus-within):not(.ep-container--painel) .ep-folha { border-radius: 10px; }
+
+/* Celular (até 600 px; só na Administração; pedido do dono 18/10): barra curta + "Mais". Tudo aqui fica preso a
+   .ep-container--estreito, que o EditorDocumento só põe até 600 px: no computador a barra continua igual.
+   A barra nunca passa da largura da tela: o que não couber rola de lado dentro dela. Área de toque mínima de 44 px. */
+.ep-container--estreito { max-width: 100%; min-width: 0; }
+.ep-container--estreito .ep-toolbar { min-width: 0; padding: 6px; }
+.ep-container--estreito .ep-toolbar[hidden] { display: none; }
+.ep-rapida { display: flex; align-items: center; gap: 1px; padding: 4px; min-width: 0; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; border-bottom: 1px solid var(--border-subtle); background: var(--surface-card); }
+.ep-container--estreito .ep-btn { flex: none; min-width: 44px; min-height: 44px; padding: 0 10px; border-radius: 8px; }
+.ep-container--estreito .ep-btn:focus-visible,
+.ep-container--estreito .ep-tab:focus-visible,
+.ep-container--estreito .ep-select:focus-visible,
+.ep-container--estreito .ep-painel-fechar:focus-visible,
+.ep-mais:focus-visible { outline: 2px solid var(--border-brand); outline-offset: -2px; box-shadow: var(--focus-ring); }
+.ep-mais { flex: none; margin-left: auto; position: sticky; right: 0; display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 44px; min-height: 44px; padding: 0 12px; border: 1px solid var(--border-default); border-radius: 10px; background: var(--surface-card); color: var(--text-primary); font: 600 14px var(--font-sans); cursor: pointer; }
+.ep-mais.ep-ativo { background: var(--selected-bg, var(--surface-brand-soft)); border-color: var(--selected-border, var(--border-brand)); }
+.ep-rapida-estado { padding: 4px 10px; font: 12px var(--font-sans); color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle); background: var(--surface-card); }
+.ep-rapida-estado:empty { display: none; }
+.ep-container--estreito .ep-tablist { gap: 2px; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
+.ep-container--estreito .ep-tab { flex: none; white-space: nowrap; min-height: 44px; padding: 0 12px; }
+.ep-container--estreito .ep-paineis-btn { flex: none; }
+.ep-container--estreito .ep-tools { flex-wrap: nowrap; gap: 12px; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: 4px; }
+.ep-container--estreito .ep-grupo { flex: none; }
+.ep-container--estreito .ep-grupo-itens { flex-wrap: nowrap; align-items: center; }
+.ep-container--estreito .ep-select { min-height: 44px; max-width: 70vw; }
+.ep-container--estreito .ep-painel-fechar { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+.ep-container--compacto:not(:focus-within):not(.ep-container--painel) > .ep-rapida { display: none; }
+/* barra curta estreita (ex.: campo de 293 px num celular de 375 px): o "Mais" fica só com a palavra, para os 6 botões caberem sem rolar */
+.ep-rapida { container-type: inline-size; }
+@container (max-width: 320px) {
+  .ep-mais { padding: 0 10px; }
+  .ep-mais .sm-icon { display: none; }
+}
