@@ -1,6 +1,7 @@
 // @vitest-environment node
 /**
- * Conversa da Nexus pela voz (spec §5, §8 e §16): os três jeitos (voz do professor, voz reserva ao vivo, por escrito), a
+ * Conversa da Nexus pela voz (spec §5, §8 e §16): os três jeitos (voz ao vivo primeiro desde 18/10; reserva: voz do professor em
+ * cascata; por escrito), a
  * abertura (/voice/open), o estado por professor (/nexus) e o turno (/voice/say): a letra só marca, "confirmo" (ou o toque
  * em Responder) responde, o banco corrige, cada resposta do motor gasta 1 interação, a trava de turno e o client_turn_id
  * impedem resposta dobrada. Sem rede: IA simulada, voz ao vivo só configurada.
@@ -102,7 +103,8 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   respond = () => reply("Bora. Me diz o que pesa mais no caso.");
-  Object.assign(deps, { stt: STT, realtime: RT, live: LIVE_OFF, gemini: GEMINI_OFF, elevenEnv: ENV });
+  // a voz ao vivo começa desligada (os testes do turno são da cascata); os testes dos jeitos ligam quando precisam
+  Object.assign(deps, { stt: STT, realtime: RT_OFF, live: LIVE_OFF, gemini: GEMINI_OFF, elevenEnv: ENV });
   await sql(`update public.tutor_voice_calls set status = 'ended', ended_at = now(), termination_reason = 'student' where status = 'active'`);
   await sql(`delete from public.tutor_tts_usage`);
   await approveAll();
@@ -111,46 +113,53 @@ beforeEach(async () => {
 });
 
 describe("Nexus: os jeitos e a abertura", () => {
-  it("voz aprovada e com limite: 'eleven' com chamada tts; equipe com voz não aprovada também; aluno sem aprovação vai para a reserva", async () => {
+  it("voz ao vivo primeiro (aluno e equipe), sem chamada tts; sem a voz ao vivo, a voz do professor; aluno sem aprovação: por escrito", async () => {
+    deps.realtime = RT;
+    const vivo = await open(PAGO, await start(PAGO, "livre"));
+    expect(vivo).toMatchObject({ status: 200, json: { jeito: "aovivo", voice_call_id: null, mic: true } });
+    expect(vivo.json.live_minutes).toBeGreaterThan(0);
+    expect(vivo.json.reserve_minutes).toBe(vivo.json.live_minutes);
+    // equipe também cai na voz ao vivo (antes caía na cascata porque a voz do professor sempre "valia" para a equipe)
+    expect((await open(ADMIN, await start(ADMIN, "livre"))).json).toMatchObject({ jeito: "aovivo", voice_call_id: null });
+    expect((await sql(`select count(*)::int n from public.tutor_voice_calls where status = 'active' and provider = 'tts'`))[0].n).toBe(0);
+    // sem a voz ao vivo (trava do servidor): a cascata
+    deps.realtime = RT_OFF;
     const r = await open(PAGO, await start(PAGO, "livre"));
-    expect(r).toMatchObject({ status: 200, json: { jeito: "eleven", mic: true, reason: null, minutes_today: 5 } });
+    expect(r).toMatchObject({ status: 200, json: { jeito: "eleven", mic: true, reason: null, minutes_today: 5, live_minutes: expect.any(Number) } });
     expect((await sql(`select provider, status from public.tutor_voice_calls where id = $1`, [r.json.voice_call_id]))[0]).toEqual({ provider: "tts", status: "active" });
     await sql(`delete from public.tutor_voice_approvals where voice = 'stazia'`);
     expect((await open(ADMIN, await start(ADMIN, "livre"))).json).toMatchObject({ jeito: "eleven", reason: null });
     const aluno = await open(PAGO, await start(PAGO, "livre"), true);
-    expect(aluno.json).toMatchObject({ jeito: "reserva", voice_call_id: null, mic: true, reason: "not_approved" });
-    expect(aluno.json.reserve_minutes).toBeGreaterThan(0);
+    expect(aluno.json).toMatchObject({ jeito: "escrito", mic: true, reason: "not_approved" });
   });
 
-  it("'só equipe', limite do aluno ou teto da conta: reserva enquanto houver tempo ao vivo; sem as duas vozes: 'escrito' com chamada e microfone", async () => {
+  it("sem minutos ao vivo: a voz do professor (se valer); 'só equipe', limite do aluno ou teto da conta: por escrito", async () => {
+    deps.realtime = RT;
     const s = await start(PAGO, "livre");
+    // minutos ao vivo gastos (a carteira de voz do plano): a voz ao vivo não é oferecida
+    await sql(`insert into public.tutor_voice_calls (user_id, session_id, status, lease_until, consumed_seconds, ended_at, provider) values ($1, $2, 'ended', now(), 100000, now(), 'realtime')`, [PAGO, s]);
+    expect((await open(PAGO, s)).json).toMatchObject({ jeito: "eleven", live_minutes: 0, reserve_minutes: 0 });
+    await sql(`update public.tutor_voice_calls set status = 'ended', ended_at = now() where status = 'active' and provider = 'tts'`);
     await config({ tts_team_only: true });
-    expect((await open(PAGO, s)).json).toMatchObject({ jeito: "reserva", voice_call_id: null, reason: "team_only" });
+    expect((await open(PAGO, s)).json).toMatchObject({ jeito: "escrito", reason: "team_only" });
     await config({ tts_team_only: false, tts_paid_daily_chars: 0 });
-    expect((await open(PAGO, s)).json).toMatchObject({ jeito: "reserva", reason: "student_limit", minutes_today: 0 });
+    expect((await open(PAGO, s, true)).json).toMatchObject({ jeito: "escrito", reason: "student_limit", minutes_today: 0 });
     await config({ tts_paid_daily_chars: 4500, tts_account_daily_chars: 0 });
-    expect((await open(PAGO, s)).json).toMatchObject({ jeito: "reserva", reason: "account_day" });
-    deps.realtime = RT_OFF;
-    const escrito = await open(PAGO, s);
+    const escrito = await open(PAGO, s, true);
     expect(escrito.json).toMatchObject({ jeito: "escrito", mic: true, reason: "account_day" });
     expect((await sql(`select provider from public.tutor_voice_calls where id = $1`, [escrito.json.voice_call_id]))[0].provider).toBe("tts");
-    // com a voz ao vivo configurada, mas sem tempo ao vivo hoje: também 'escrito'
-    deps.realtime = RT;
-    await sql(`update public.tutor_voice_calls set status = 'ended', ended_at = now() where status = 'active'`);
-    await sql(`insert into public.tutor_voice_calls (user_id, session_id, status, lease_until, consumed_seconds, ended_at, provider) values ($1, $2, 'ended', now(), 100000, now(), 'realtime')`, [PAGO, s]);
-    expect((await open(PAGO, s)).json).toMatchObject({ jeito: "escrito", reserve_minutes: 0 });
     await sql(`delete from public.tutor_voice_calls where user_id = $1 and provider = 'realtime'`, [PAGO]);
   });
 
-  it("'Conversa por voz' desligada: 'escrito' sem chamada e sem microfone; trava da transcrição desligada: microfone só na reserva", async () => {
+  it("'Conversa por voz' desligada: 'escrito' sem chamada e sem microfone; trava da transcrição desligada: microfone só na voz ao vivo", async () => {
     const s = await start(PAGO, "livre");
     await config({ voice_enabled: false });
     expect((await open(PAGO, s)).json).toMatchObject({ jeito: "escrito", voice_call_id: null, mic: false });
     await config({ voice_enabled: true });
     deps.stt = { ...STT, ready: false, key: null };
     expect((await open(PAGO, s)).json).toMatchObject({ jeito: "eleven", mic: false });
-    await sql(`delete from public.tutor_voice_approvals where voice = 'stazia'`);
-    expect((await open(PAGO, s, true)).json).toMatchObject({ jeito: "reserva", mic: true });
+    deps.realtime = RT;
+    expect((await open(PAGO, s, true)).json).toMatchObject({ jeito: "aovivo", mic: true });
   });
 
   it("/nexus: por professor, se a voz do professor vale e se há amostra; minutos = caracteres restantes ÷ 900", async () => {
@@ -159,8 +168,11 @@ describe("Nexus: os jeitos e a abertura", () => {
     await sql(`insert into public.tutor_tts_usage (user_id, chars, status) values ($1, 1000, 'spent')`, [PAGO]);
     const r = await api(PAGO, "GET", "/nexus");
     expect(r.status).toBe(200);
-    expect(r.json).toMatchObject({ voice_enabled: true, stt: true, reserve: true, minutes_today: 3 });
-    expect(r.json.reserve_minutes).toBeGreaterThan(0);
+    expect(r.json).toMatchObject({ voice_enabled: true, stt: true, live: false, reserve: false, minutes_today: 3 });
+    deps.realtime = RT;
+    const vivo = await api(PAGO, "GET", "/nexus");
+    expect(vivo.json).toMatchObject({ live: true, reserve: true });
+    expect(vivo.json.live_minutes).toBeGreaterThan(0);
     expect(r.json.professors).toEqual([
       { id: "durao", eleven: false, sample: false, reason: "not_approved" },
       { id: "acolhedor", eleven: false, sample: false, reason: "not_approved" },
@@ -169,11 +181,15 @@ describe("Nexus: os jeitos e a abertura", () => {
     ]);
   });
 
-  it("pular a voz do professor (ela parou no meio) ou as duas (a reserva não roda): reserva ou 'escrito' com chamada", async () => {
+  it("no meio da conversa: 'aovivo' pula a voz ao vivo (vai à cascata), 'eleven' pula a voz do professor, 'voice' pula as duas", async () => {
+    deps.realtime = RT;
     const s = await start(PAGO, "livre");
-    expect((await open(PAGO, s)).json.jeito).toBe("eleven");
+    expect((await open(PAGO, s)).json.jeito).toBe("aovivo");
     const skip = (what: unknown) => api(PAGO, "POST", "/voice/open", { session_id: s, force: true, skip: what });
-    expect((await skip("eleven")).json).toMatchObject({ jeito: "reserva", voice_call_id: null });
+    const cascata = await skip("aovivo");
+    expect(cascata.json).toMatchObject({ jeito: "eleven" });
+    expect(cascata.json.voice_call_id).toBeTruthy();
+    expect((await skip("eleven")).json).toMatchObject({ jeito: "aovivo", voice_call_id: null });
     deps.realtime = RT_OFF;
     const escrito = await skip("eleven");
     expect(escrito.json).toMatchObject({ jeito: "escrito", mic: true });
@@ -183,6 +199,7 @@ describe("Nexus: os jeitos e a abertura", () => {
     expect(semVoz.json).toMatchObject({ jeito: "escrito", mic: true });
     expect((await sql(`select provider, status from public.tutor_voice_calls where id = $1`, [semVoz.json.voice_call_id]))[0]).toEqual({ provider: "tts", status: "active" });
     expect((await skip("tudo")).status).toBe(400);
+    expect((await skip("reserva")).status).toBe(400);
   });
 
   it("segunda aba: abrir de novo responde 409 busy; com force assume", async () => {
