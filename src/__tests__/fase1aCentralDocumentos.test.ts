@@ -650,13 +650,13 @@ describe("CC08: conferir o envio de um PDF grande sem baixar o arquivo inteiro",
 
 // ------------------------------------------------------------------------------------------------ CC10
 describe("CC10: o aviso depois do envio fala a verdade sobre quando começa", () => {
-  it("diz que o arquivo entrou na fila e que a tarefa passa a cada 1 minuto (não 'o processamento começou')", async () => {
+  it("diz que o arquivo entrou na fila e que a tarefa passa a cada 10 minutos (não 'o processamento começou')", async () => {
     const labels = fs.readFileSync(path.join(process.cwd(), "src/novo/app/admin/content/labels.js"), "utf8");
     const docs = fs.readFileSync(path.join(process.cwd(), "src/novo/app/admin/content/Documents.jsx"), "utf8");
     expect(docs).not.toContain("O processamento começou");
     expect(docs).toContain("PROCESSING_START_NOTICE");
-    expect(labels).toMatch(/Arquivo recebido e na fila\. O processamento pega o arquivo na próxima passada \(a tarefa passa a cada 1 minuto/);
+    expect(labels).toMatch(/Arquivo recebido e na fila\. O processamento pega o arquivo na próxima passada \(a tarefa passa a cada 10 minutos/);
     const script = fs.readFileSync(path.join(process.cwd(), "scripts/cloudrun/deploy-pdf-worker.sh"), "utf8");
-    expect(script).toContain('SCHEDULE="${SCHEDULE:-* * * * *}"');
+    expect(script).toContain('SCHEDULE="${SCHEDULE:-*/10 * * * *}"');
   });
 });

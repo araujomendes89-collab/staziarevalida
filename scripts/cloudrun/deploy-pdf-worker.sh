@@ -4,7 +4,7 @@
 #
 #   PROJECT=staziamed-revalida-prod scripts/cloudrun/deploy-pdf-worker.sh
 #
-# Opcionais: REGION (padrão southamerica-east1, São Paulo), SCHEDULE (padrão "* * * * *", a cada minuto: é o que o painel diz ao dono; fila vazia sai em segundos).
+# Opcionais: REGION (padrão southamerica-east1, São Paulo), SCHEDULE (padrão "*/10 * * * *", a cada 10 minutos: decisão do dono em 18/10/2026 para cortar custo; fila vazia sai em segundos).
 # Execuções podem rodar ao mesmo tempo: o agendador dispara a cada minuto e cada execução pega trabalho por até 50
 # (CONTENT_HUB_JOB_BUDGET_MIN); o --tasks=1 vale para cada execução, não para a tarefa toda. A fila no banco conta com isso
 # (ch_worker_claim com "skip locked"; desde a migração 9540, o pedido para uma etapa que está rodando fica guardado e vale
@@ -23,7 +23,7 @@ cd "$(dirname "$0")/../.."
 
 PROJECT="${PROJECT:?defina PROJECT=<id do projeto no Google Cloud>}"
 REGION="${REGION:-southamerica-east1}"
-SCHEDULE="${SCHEDULE:-* * * * *}"
+SCHEDULE="${SCHEDULE:-*/10 * * * *}"
 JOB=stazia-pdf-worker
 REPO=stazia
 RUN_SA="stazia-pdf-worker@${PROJECT}.iam.gserviceaccount.com"

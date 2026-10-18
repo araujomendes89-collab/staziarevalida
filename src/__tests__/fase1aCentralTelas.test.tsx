@@ -129,7 +129,7 @@ describe("Aviso depois do envio (CC10)", () => {
   it("diz que o arquivo entrou na fila e quando o processamento passa (1 minuto), sem prometer que já começou", async () => {
     expect(PROCESSING_START_NOTICE).not.toMatch(/processamento começou/i);
     expect(PROCESSING_START_NOTICE).toMatch(/na fila/);
-    expect(PROCESSING_START_NOTICE).toMatch(/a cada 1 minuto/);
+    expect(PROCESSING_START_NOTICE).toMatch(/a cada 10 minutos/);
     (globalThis as any).fetch = vi.fn(async (url: string) => {
       if (url.endsWith("/upload")) return json({ mode: "signed", bucket: "content-hub", key: "uploads/x.pdf", path: "uploads/x.pdf", token: "tk" });
       return json({ id: "d9", duplicate: false, sha256: "f".repeat(64), job: { id: "j" } }, 201);

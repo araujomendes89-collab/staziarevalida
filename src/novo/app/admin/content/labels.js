@@ -13,10 +13,10 @@ export const DOC_STATUS = {
 
 /**
  * Depois do envio (CC10): o arquivo entra na fila e o processamento (tarefa no Google Cloud Run) pega na próxima passada. O agendador
- * passa a cada 1 minuto (scripts/cloudrun/deploy-pdf-worker.sh); se a tarefa estiver ocupada com outro documento, entra na vez.
+ * passa a cada 10 minutos (scripts/cloudrun/deploy-pdf-worker.sh); se a tarefa estiver ocupada com outro documento, entra na vez.
  */
 export const PROCESSING_START_NOTICE =
-  "Arquivo recebido e na fila. O processamento pega o arquivo na próxima passada (a tarefa passa a cada 1 minuto; se estiver ocupada com outro documento, ele espera a vez) e PDF grande leva mais tempo para terminar.";
+  "Arquivo recebido e na fila. O processamento pega o arquivo na próxima passada (a tarefa passa a cada 10 minutos; se estiver ocupada com outro documento, ele espera a vez) e PDF grande leva mais tempo para terminar.";
 
 export const UNIT_STATUS = {
   draft: ["Rascunho", "neutral"],
