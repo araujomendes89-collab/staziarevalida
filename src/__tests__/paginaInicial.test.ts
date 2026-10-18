@@ -396,6 +396,28 @@ describe("página inicial: só promete o que existe (decisões do dono)", () => 
     expect(t).toMatch(/Coins são bônus e não têm valor em dinheiro/);
   });
 
+  it("preço do PRO em destaque (pedido do dono 18/10): herói, barra de baixo, selo Disponível agora e Economize R$ 30 no trimestral, sem exagero", () => {
+    const doc = pagina();
+    const heroi = doc.querySelector('.heroi__preco[data-quando="cobranca"]')!;
+    expect(heroi.textContent?.replace(/\s+/g, " ")).toBe("7 dias grátis, sem cartão · depois, PRO por R$ 99,90/mês");
+    expect(heroi.querySelector("strong")?.textContent?.replace(/\s+/g, " ")).toBe("R$ 99,90/mês");
+    // sem a cobrança ligada, o preço aparece como previsto (nada de "depois, PRO por" com a contratação fechada)
+    expect(doc.querySelector('.heroi__preco[data-ate-la="cobranca"]')?.textContent).toMatch(/PRO previsto: R\$\s99,90\/mês/);
+    const barra = doc.querySelector(".barra-fixa__preco")!;
+    expect(barra.textContent?.replace(/\s+/g, " ")).toBe("PRO R$ 99,90/mês");
+    expect(barra.getAttribute("data-quando")).toBe("cobranca");
+    expect(barra.getAttribute("href")).toBe("#planos");
+    expect(doc.querySelector('.pro__selo[data-quando="cobranca"]')?.textContent).toBe("Disponível agora");
+    expect(doc.querySelector("#preco-trimestral .pro__economia")?.textContent).toBe("Economize R$ 30");
+    expect(doc.querySelector("#preco-mensal .pro__economia")).toBeNull();
+    expect(doc.querySelector(".topo__nav .topo__link--planos")?.getAttribute("href")).toBe("#planos");
+    // nada que não dê para provar nem urgência falsa
+    expect(textoDe(doc)).not.toMatch(/mais escolhid|mais popular|mais vendid|recomendad|últimas vagas|só hoje|por tempo limitado|oferta|promoção/i);
+    // o celular estreito não aperta o botão: com o preço na barra, o atendimento sai da barra abaixo de 480 px
+    expect(css).toMatch(/@media \(max-width: 480px\) \{ html\[data-liberado~="cobranca"\] \.barra-fixa__atendimento \{ display: none; \} \}/);
+    expect(css).toMatch(/\.barra-fixa__acoes \.barra-fixa__cta \{ flex: 1 0 auto; white-space: nowrap; \}/);
+  });
+
   it("sem parcelamento: pagamento só à vista por Pix ou cartão (decisão de 17/10)", () => {
     expect(html).not.toMatch(/\d\s*[x×]\s*sem juros|parcel/i);
     const doc = pagina();

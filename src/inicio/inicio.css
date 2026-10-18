@@ -131,6 +131,8 @@ main:focus { outline: none; }
 .topo__logo-img { height: 48px; width: auto; }
 .topo__link { min-height: 44px; padding: 0 14px; display: inline-flex; align-items: center; font-size: 15px; font-weight: 700; color: var(--navy); text-decoration: none; border-radius: 999px; transition: background-color .2s; }
 .topo__link:hover { background: var(--cinza); color: var(--navy); }
+.topo__link--planos { color: var(--azul); background: #E8F0FC; }
+.topo__link--planos:hover { color: var(--azul); background: #DCE8FA; }
 .topo__nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0 auto; }
 .topo__acoes { display: flex; align-items: center; gap: 4px; }
 .topo__entrar, .topo__entrar:hover { color: var(--azul); font-weight: 800; }
@@ -164,7 +166,10 @@ main:focus { outline: none; }
 .heroi .h1 { margin-top: 18px; }
 .heroi__lede { color: var(--sobre-escuro); max-width: 560px; margin-top: 20px; }
 .heroi__botao { margin-top: 30px; }
-.heroi__marcas { list-style: none; padding: 0; margin: 20px 0 0; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 14.5px; color: var(--sobre-escuro); }
+/* preço do PRO logo abaixo do botão (pedido do dono 18/10: o preço precisa aparecer já no começo) */
+.heroi__preco { margin: 14px 0 0; font-size: 15.5px; line-height: 1.5; font-weight: 600; color: var(--sobre-escuro); }
+.heroi__preco strong { color: var(--turq); font-weight: 800; white-space: nowrap; }
+.heroi__marcas { list-style: none; padding: 0; margin: 16px 0 0; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 14.5px; color: var(--sobre-escuro); }
 .heroi__marcas li { display: inline-flex; align-items: center; gap: 8px; }
 .heroi__arte { flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; align-items: center; padding-bottom: 30px; }
 .heroi__arte picture { display: contents; }
@@ -317,14 +322,15 @@ html:not(.js) .metro__ponto, .metro__parada--acesa .metro__ponto { background: v
 .ciclos__economia { font-size: 14.5px; color: var(--texto2); }
 .ciclos__economia strong { color: var(--navy); }
 .planos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 28px; align-items: start; }
-.pro { background: var(--navy); color: #FFFFFF; border-radius: 24px; padding: 36px 30px 30px; position: relative; box-shadow: 0 22px 50px rgba(7, 31, 67, .26); }
+.pro { background: var(--navy); color: #FFFFFF; border-radius: 24px; padding: 36px 30px 30px; position: relative; box-shadow: 0 0 0 2px var(--turq), 0 22px 50px rgba(7, 31, 67, .26); }
 .pro__selo { position: absolute; top: -14px; left: 30px; font-size: 11.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; border-radius: 999px; padding: 8px 15px; background: var(--turq); color: var(--navy); }
 .pro__selo--ambar { background: var(--ambar); }
 .pro__sobre { margin-top: 6px; }
 .pro__nome { font-family: var(--fonte-titulo); font-size: 38px; font-weight: 800; margin: 6px 0 0; letter-spacing: 0; }
 .pro__fase { font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--navy); background: var(--turq); border-radius: 999px; padding: 4px 10px; vertical-align: middle; font-family: var(--fonte); }
 .pro__valor { display: flex; align-items: baseline; gap: 9px; margin-top: 16px; flex-wrap: wrap; }
-.pro__numero { font-family: var(--fonte-titulo); font-size: 56px; font-weight: 800; line-height: 1; }
+.pro__numero { font-family: var(--fonte-titulo); font-size: 66px; font-weight: 800; line-height: 1; }
+.pro__economia { align-self: center; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--navy); background: var(--turq); border-radius: 999px; padding: 5px 11px; white-space: nowrap; }
 .pro__mes { font-size: 16px; color: var(--sobre-escuro-2); }
 .pro__total { font-size: 16px; font-weight: 700; margin: 12px 0 0; }
 .pro__nota { font-size: 14.5px; line-height: 1.55; color: var(--sobre-escuro-2); margin: 6px 0 0; }
@@ -418,6 +424,9 @@ html:not(.js) .metro__ponto, .metro__parada--acesa .metro__ponto { background: v
 .barra-fixa__atendimento { color: var(--sobre-escuro); font-size: 14.5px; font-weight: 600; min-height: 48px; display: inline-flex; align-items: center; text-decoration: underline; text-underline-offset: 3px; }
 .barra-fixa__atendimento:hover { color: #FFFFFF; }
 .barra-fixa__cta { min-height: 48px; padding: 0 24px; font-size: 15.5px; }
+.barra-fixa__preco { color: #FFFFFF; font-size: 14.5px; font-weight: 600; text-decoration: none; white-space: nowrap; min-height: 48px; display: inline-flex; align-items: center; }
+.barra-fixa__preco strong { color: var(--turq); font-weight: 800; font-size: 16px; margin-left: .3em; }
+.barra-fixa__preco:hover { color: #FFFFFF; }
 
 /* ---------- página 404 (404.html usa esta folha) ---------- */
 .nao-achada { padding: 96px 20px 48px; display: flex; flex-direction: column; align-items: flex-start; gap: 18px; }
@@ -467,6 +476,10 @@ html:not(.js) .metro__ponto, .metro__parada--acesa .metro__ponto { background: v
   .barra-fixa__acoes { width: 100%; justify-content: space-between; gap: 12px; }
   .barra-fixa__acoes .botao { flex: 1; }
   .barra-fixa__atendimento { padding: 0 6px; }
+  .barra-fixa__acoes .barra-fixa__cta { flex: 1 0 auto; white-space: nowrap; }
+  .barra-fixa__preco { font-size: 13.5px; }
+  .barra-fixa__preco strong { font-size: 15px; }
+  .pro__numero { font-size: 58px; }
   .fase2__linha { flex-wrap: wrap; }
   /* refinamentos do celular */
   .aviso { font-size: 13px; padding-top: 8px; padding-bottom: 8px; }
@@ -487,6 +500,8 @@ html:not(.js) .metro__ponto, .metro__parada--acesa .metro__ponto { background: v
   .barra-fixa { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
 }
 @media (max-width: 520px) { .topo__entrar { display: none; } }
+/* celular estreito: com o preço na barra, o atendimento sai da barra (continua nas perguntas, no encerramento e no rodapé) */
+@media (max-width: 480px) { html[data-liberado~="cobranca"] .barra-fixa__atendimento { display: none; } }
 @media (max-width: 380px) { .h1 { font-size: 32px; } .topo__logo-img { height: 34px; } }
 
 /* ---------- reduzir movimento: nada anima ---------- */
