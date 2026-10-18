@@ -8,3 +8,8 @@
 /* tela larga (computador): botões Continuar/Compartilhar com largura de celular, centralizados */
 .cel-app .cz-acoes { left: max(0px, calc(50% - 250px)); right: max(0px, calc(50% - 250px)); }
 .cel-app-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; padding: 0; }
+/* celular: o brilho da comemoração pequena (390 px de largura, centrado) passava da borda nos aparelhos mais estreitos que ele.
+   No iPhone (Safari) um elemento fixo fora da tela deixa a página mais larga e ela rola para os lados: corta só na horizontal
+   (o brilho continua subindo acima da faixa). Hotfix 18/10/2026. */
+.cel-app .cz--micro,
+.cel-app .cz--pequena { overflow-x: clip; }
