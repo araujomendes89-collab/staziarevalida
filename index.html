@@ -150,39 +150,17 @@
               <source type="image/webp" srcset="/src/inicio/img/lontra-bracos-cruzados-112w.webp 112w, /src/inicio/img/lontra-bracos-cruzados-150w.webp 150w, /src/inicio/img/lontra-bracos-cruzados-190w.webp 190w, /src/inicio/img/lontra-bracos-cruzados-224w.webp 224w, /src/inicio/img/lontra-bracos-cruzados-380w.webp 380w" sizes="(max-width: 640px) 112px, (max-width: 900px) 150px, 190px" />
               <img class="heroi__lontra" src="/src/inicio/img/lontra-bracos-cruzados-190w.webp" width="190" height="312" alt="Lontra, mascote da StaziaMed, de braços cruzados" fetchpriority="high" decoding="async" />
             </picture>
-            <div class="painel-app" role="img" aria-label="Ilustração do painel do aplicativo: plano do dia, uma questão comentada e a sequência de estudos">
-              <div class="painel-app__topo">
-                <span class="sobrelinha sobrelinha--azul painel-app__rotulo">Hoje no seu plano</span>
-                <span class="chip">Sequência · 5 dias</span>
-              </div>
-              <div class="painel-app__lista">
-                <div class="painel-app__plano">
-                  <span class="painel-app__num">1</span>
-                  <span class="painel-app__plano-texto"><strong>Plano de Hoje</strong><span>pronto para começar</span></span>
-                  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5" fill="none" stroke="#1559C4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                </div>
-                <div class="painel-app__questao">
-                  <div class="painel-app__questao-topo">
-                    <span class="painel-app__questao-t">Questão comentada</span>
-                    <span class="painel-app__questao-p">Revalida INEP</span>
-                  </div>
-                  <div class="painel-app__linhas">
-                    <span class="traco traco--94"></span>
-                    <span class="traco traco--78"></span>
-                  </div>
-                  <div class="painel-app__alts">
-                    <span class="alt">A <span class="alt__traco"></span></span>
-                    <span class="alt alt--certa">B <span class="alt__traco"></span></span>
-                    <span class="alt">C <span class="alt__traco"></span></span>
-                    <span class="alt">D <span class="alt__traco"></span></span>
-                  </div>
-                  <div class="painel-app__tutor">
-                    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h16v11H9.5L4 20z" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linejoin="round" /></svg>
-                    Perguntar ao Tutor IA
-                  </div>
-                </div>
-              </div>
-              <p class="painel-app__nota">Ilustração do aplicativo. Os dados são de exemplo.</p>
+            <div class="painel-app">
+              <!-- [TELA T1] captura real do Início (app /novo, dados de exemplo), no mesmo espaço do desenho -->
+              <picture class="painel-app__tela">
+                <source media="(max-width: 640px)" type="image/avif" srcset="/src/inicio/img/telas/t1-celular-350w.avif 350w, /src/inicio/img/telas/t1-celular-700w.avif 700w" sizes="calc(100vw - 40px)" />
+                <source media="(max-width: 640px)" type="image/webp" srcset="/src/inicio/img/telas/t1-celular-350w.webp 350w, /src/inicio/img/telas/t1-celular-700w.webp 700w" sizes="calc(100vw - 40px)" />
+                <source media="(max-width: 1080px)" type="image/avif" srcset="/src/inicio/img/telas/t1-tablet-520w.avif 520w, /src/inicio/img/telas/t1-tablet-1040w.avif 1040w" sizes="520px" />
+                <source media="(max-width: 1080px)" type="image/webp" srcset="/src/inicio/img/telas/t1-tablet-520w.webp 520w, /src/inicio/img/telas/t1-tablet-1040w.webp 1040w" sizes="520px" />
+                <source type="image/avif" srcset="/src/inicio/img/telas/t1-computador-380w.avif 380w, /src/inicio/img/telas/t1-computador-760w.avif 760w" sizes="380px" />
+                <img src="/src/inicio/img/telas/t1-computador-380w.webp" srcset="/src/inicio/img/telas/t1-computador-380w.webp 380w, /src/inicio/img/telas/t1-computador-760w.webp 760w" sizes="380px" width="380" height="325" alt="Tela inicial do aplicativo StaziaMed com dados de exemplo: próximo passo de 25 questões de Preventiva/MFC e o início do Plano de hoje" decoding="async" />
+                </picture>
+              <p class="painel-app__nota">Tela do aplicativo. Os dados são de exemplo.</p>
               <div class="flutua flutua--arena">
                 <span class="flutua__rotulo">Stazia Arena</span>
                 <span class="flutua__frase">Estude, ganhe XP e Coins, suba de liga.</span>
@@ -231,17 +209,18 @@
               </ul>
             </div>
             <div class="demo__tela">
-              <!-- [TELA T2] espaço reservado para a captura real da Questão (mesmo tamanho do cartão abaixo) -->
-              <div class="tela-exemplo" role="img" aria-label="Ilustração da tela de questão do Revalida INEP: enunciado, alternativas e comentário">
-                <div class="tela-exemplo__topo"><span class="tela-exemplo__nome">Questão do Revalida INEP</span><span class="chip chip--cinza">Exemplo</span></div>
-                <div class="tela-exemplo__linhas">
-                  <div class="barra-linha"><span class="barra-linha__rotulo">Enunciado</span><span class="barra-linha__trilho"><span class="barra-linha__valor barra--90"></span></span></div>
-                  <div class="barra-linha"><span class="barra-linha__rotulo">Alternativa A</span><span class="barra-linha__trilho"><span class="barra-linha__valor barra--55"></span></span></div>
-                  <div class="barra-linha"><span class="barra-linha__rotulo">Alternativa B</span><span class="barra-linha__trilho"><span class="barra-linha__valor barra--100"></span></span></div>
-                  <div class="barra-linha"><span class="barra-linha__rotulo">Comentário</span><span class="barra-linha__trilho"><span class="barra-linha__valor barra--74"></span></span></div>
-                </div>
+              <!-- [TELA T2] captura real do app (/novo, dados de exemplo), recortada no tamanho do cartão do desenho -->
+              <div class="tela-real">
+                <picture class="tela-real__imagem">
+                <source media="(max-width: 640px)" type="image/avif" srcset="/src/inicio/img/telas/t2-celular-308w.avif 308w, /src/inicio/img/telas/t2-celular-616w.avif 616w" sizes="calc(100vw - 82px)" />
+                <source media="(max-width: 640px)" type="image/webp" srcset="/src/inicio/img/telas/t2-celular-308w.webp 308w, /src/inicio/img/telas/t2-celular-616w.webp 616w" sizes="calc(100vw - 82px)" />
+                <source media="(max-width: 1080px)" type="image/avif" srcset="/src/inicio/img/telas/t2-tablet-665w.avif 665w, /src/inicio/img/telas/t2-tablet-1330w.avif 1330w" sizes="calc(100vw - 103px)" />
+                <source media="(max-width: 1080px)" type="image/webp" srcset="/src/inicio/img/telas/t2-tablet-665w.webp 665w, /src/inicio/img/telas/t2-tablet-1330w.webp 1330w" sizes="calc(100vw - 103px)" />
+                <source type="image/avif" srcset="/src/inicio/img/telas/t2-computador-540w.avif 540w, /src/inicio/img/telas/t2-computador-1080w.avif 1080w" sizes="540px" />
+                <img src="/src/inicio/img/telas/t2-computador-540w.webp" srcset="/src/inicio/img/telas/t2-computador-540w.webp 540w, /src/inicio/img/telas/t2-computador-1080w.webp 1080w" sizes="540px" width="540" height="172" alt="Questão 42 do Revalida 2026/1 no aplicativo StaziaMed: caso clínico de uma menina de 5 anos mordida por um cão, com a pergunta sobre a profilaxia antirrábica" loading="lazy" decoding="async" />
+                </picture>
               </div>
-              <p class="demo__legenda">Ilustração do aplicativo. Os dados são de exemplo.</p>
+              <p class="demo__legenda">Tela do aplicativo: questão do Revalida 2026/1.</p>
             </div>
           </div>
 
@@ -257,17 +236,18 @@
               </ul>
             </div>
             <div class="demo__tela">
-              <!-- [TELA T3] espaço reservado para a captura real do Desempenho -->
-              <div class="tela-exemplo" role="img" aria-label="Ilustração do desempenho por área, com dados de exemplo">
-                <div class="tela-exemplo__topo"><span class="tela-exemplo__nome">Desempenho por área</span><span class="chip chip--cinza">Exemplo</span></div>
-                <div class="tela-exemplo__linhas">
-                  <div class="barra-linha"><span class="barra-linha__rotulo">Clínica Médica</span><span class="barra-linha__trilho"><span class="barra-linha__valor barra--72"></span></span></div>
-                  <div class="barra-linha"><span class="barra-linha__rotulo">Cirurgia</span><span class="barra-linha__trilho"><span class="barra-linha__valor barra--48"></span></span></div>
-                  <div class="barra-linha"><span class="barra-linha__rotulo">Pediatria</span><span class="barra-linha__trilho"><span class="barra-linha__valor barra--63"></span></span></div>
-                  <div class="barra-linha"><span class="barra-linha__rotulo">GO</span><span class="barra-linha__trilho"><span class="barra-linha__valor barra--55"></span></span></div>
-                </div>
+              <!-- [TELA T3] captura real do app (/novo, dados de exemplo), recortada no tamanho do cartão do desenho -->
+              <div class="tela-real">
+                <picture class="tela-real__imagem">
+                <source media="(max-width: 640px)" type="image/avif" srcset="/src/inicio/img/telas/t3-celular-308w.avif 308w, /src/inicio/img/telas/t3-celular-616w.avif 616w" sizes="calc(100vw - 82px)" />
+                <source media="(max-width: 640px)" type="image/webp" srcset="/src/inicio/img/telas/t3-celular-308w.webp 308w, /src/inicio/img/telas/t3-celular-616w.webp 616w" sizes="calc(100vw - 82px)" />
+                <source media="(max-width: 1080px)" type="image/avif" srcset="/src/inicio/img/telas/t3-tablet-665w.avif 665w, /src/inicio/img/telas/t3-tablet-1330w.avif 1330w" sizes="calc(100vw - 103px)" />
+                <source media="(max-width: 1080px)" type="image/webp" srcset="/src/inicio/img/telas/t3-tablet-665w.webp 665w, /src/inicio/img/telas/t3-tablet-1330w.webp 1330w" sizes="calc(100vw - 103px)" />
+                <source type="image/avif" srcset="/src/inicio/img/telas/t3-computador-540w.avif 540w, /src/inicio/img/telas/t3-computador-1080w.avif 1080w" sizes="540px" />
+                <img src="/src/inicio/img/telas/t3-computador-540w.webp" srcset="/src/inicio/img/telas/t3-computador-540w.webp 540w, /src/inicio/img/telas/t3-computador-1080w.webp 1080w" sizes="540px" width="540" height="172" alt="Tela de Desempenho do aplicativo StaziaMed com dados de exemplo: evolução da acurácia e acertos por grande área" loading="lazy" decoding="async" />
+                </picture>
               </div>
-              <p class="demo__legenda">Ilustração com dados de exemplo. Não representa resultado de alunos.</p>
+              <p class="demo__legenda">Tela do aplicativo com dados de exemplo. Não representa resultado de alunos.</p>
             </div>
           </div>
 
@@ -283,17 +263,18 @@
               </ul>
             </div>
             <div class="demo__tela">
-              <!-- [TELA T4] espaço reservado para a captura real do Plano de Hoje -->
-              <div class="tela-exemplo" role="img" aria-label="Ilustração do Plano de Hoje, com dados de exemplo">
-                <div class="tela-exemplo__topo"><span class="tela-exemplo__nome">Plano de Hoje</span><span class="chip chip--cinza">Exemplo</span></div>
-                <div class="tela-exemplo__linhas">
-                  <div class="barra-linha"><span class="barra-linha__rotulo">Plano de Hoje</span><span class="barra-linha__trilho"><span class="barra-linha__valor barra--100"></span></span></div>
-                  <div class="barra-linha"><span class="barra-linha__rotulo">Flashcards</span><span class="barra-linha__trilho"><span class="barra-linha__valor barra--40"></span></span></div>
-                  <div class="barra-linha"><span class="barra-linha__rotulo">Questões</span><span class="barra-linha__trilho"><span class="barra-linha__valor barra--25"></span></span></div>
-                  <div class="barra-linha"><span class="barra-linha__rotulo">Tutor IA</span><span class="barra-linha__trilho"><span class="barra-linha__valor barra--10"></span></span></div>
-                </div>
+              <!-- [TELA T4] captura real do app (/novo, dados de exemplo), recortada no tamanho do cartão do desenho -->
+              <div class="tela-real">
+                <picture class="tela-real__imagem">
+                <source media="(max-width: 640px)" type="image/avif" srcset="/src/inicio/img/telas/t4-celular-308w.avif 308w, /src/inicio/img/telas/t4-celular-616w.avif 616w" sizes="calc(100vw - 82px)" />
+                <source media="(max-width: 640px)" type="image/webp" srcset="/src/inicio/img/telas/t4-celular-308w.webp 308w, /src/inicio/img/telas/t4-celular-616w.webp 616w" sizes="calc(100vw - 82px)" />
+                <source media="(max-width: 1080px)" type="image/avif" srcset="/src/inicio/img/telas/t4-tablet-665w.avif 665w, /src/inicio/img/telas/t4-tablet-1330w.avif 1330w" sizes="calc(100vw - 103px)" />
+                <source media="(max-width: 1080px)" type="image/webp" srcset="/src/inicio/img/telas/t4-tablet-665w.webp 665w, /src/inicio/img/telas/t4-tablet-1330w.webp 1330w" sizes="calc(100vw - 103px)" />
+                <source type="image/avif" srcset="/src/inicio/img/telas/t4-computador-540w.avif 540w, /src/inicio/img/telas/t4-computador-1080w.avif 1080w" sizes="540px" />
+                <img src="/src/inicio/img/telas/t4-computador-540w.webp" srcset="/src/inicio/img/telas/t4-computador-540w.webp 540w, /src/inicio/img/telas/t4-computador-1080w.webp 1080w" sizes="540px" width="540" height="172" alt="Plano de Hoje no aplicativo StaziaMed com dados de exemplo: etapas do ciclo, com 25 questões para praticar e 10 questões erradas para revisar" loading="lazy" decoding="async" />
+                </picture>
               </div>
-              <p class="demo__legenda">Ilustração do aplicativo. Os dados são de exemplo.</p>
+              <p class="demo__legenda">Tela do aplicativo. Os dados são de exemplo.</p>
             </div>
           </div>
         </div>

@@ -516,6 +516,24 @@ describe("página inicial: script", () => {
     expect(encaixe.hidden).toBe(true);
   });
 
+  it("telas T1 a T4 são capturas reais do app no tamanho do desenho, com texto alternativo e aviso de dados de exemplo", () => {
+    const doc = pagina();
+    const imgs = [doc.querySelector(".painel-app__tela img"), ...doc.querySelectorAll(".tela-real img")] as HTMLImageElement[];
+    expect(imgs).toHaveLength(4);
+    for (const img of imgs) {
+      expect((img.getAttribute("alt") || "").length, img.outerHTML).toBeGreaterThan(40);
+      expect(img.getAttribute("alt")).toMatch(/aplicativo StaziaMed/);
+    }
+    expect([...doc.querySelectorAll(".demo__legenda")].map((p) => p.textContent)).toEqual([
+      "Tela do aplicativo: questão do Revalida 2026/1.", "Tela do aplicativo com dados de exemplo. Não representa resultado de alunos.", "Tela do aplicativo. Os dados são de exemplo.",
+    ]);
+    expect(doc.querySelector(".painel-app__nota")?.textContent).toMatch(/dados são de exemplo/);
+    // cada arquivo citado existe (AVIF e WebP, 1x e 2x, celular, tablet e computador)
+    const citados = new Set([...html.matchAll(/\/src\/inicio\/img\/[\w/.-]+\.(?:avif|webp|png)/g)].map((m) => m[0]));
+    expect(citados.size).toBeGreaterThanOrEqual(60);
+    for (const c of citados) expect(fs.existsSync(path.join(raiz, c)), c).toBe(true);
+  });
+
   it("perguntas abrem sem JavaScript (details), uma por vez, com a primeira aberta", () => {
     const doc = pagina();
     const perguntas = [...doc.querySelectorAll("details.pergunta")];
