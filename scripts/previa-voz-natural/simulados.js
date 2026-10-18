@@ -56,7 +56,7 @@ window.fetch = async (url, init = {}) => {
       const skip = body?.skip ?? null;
       const live = !soReserva && cenario !== "sem-minutos" && !skip;
       const jeito = live ? (window.__jeitoAoVivo ?? "aovivo") : skip === "voice" ? "escrito" : "eleven";
-      return json({ jeito, voice_call_id: jeito === "aovivo" || jeito === "reserva" ? null : CALL, mic: true, reason: null, minutes_today: 5, reserve_minutes: 8, live_minutes: 8 });
+      return json({ jeito, voice_call_id: jeito === "aovivo" || jeito === "reserva" ? null : CALL, mic: true, reason: null, minutes_today: 5, reserve_minutes: cenario === "sem-minutos" ? 0 : 8, live_minutes: cenario === "sem-minutos" ? 0 : 8 });
     }
     case "/voice/start":
       // depois que a ponte falhou neste aparelho, o servidor não tem outra voz ao vivo (nada de chamar a OpenAI de verdade aqui)
