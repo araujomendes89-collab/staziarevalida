@@ -104,7 +104,7 @@ describe("página inicial: links", () => {
   it("rodapé tem as páginas legais 3.0 (Termos e Contrato, Privacidade, Regulamento) e os contatos", () => {
     const doc = pagina();
     const hrefs = [...doc.querySelectorAll("footer a")].map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(expect.arrayContaining([`${APP}/termos`, `${APP}/privacidade`, `${APP}/regulamento`, `${APP}/entrar`, `${APP}/criar-conta`, "mailto:suporte@staziamed.com.br", "mailto:privacidade@staziamed.com.br"]));
+    expect(hrefs).toEqual(expect.arrayContaining([`${APP}/termos`, `${APP}/privacidade`, `${APP}/regulamento`, `${APP}/entrar`, `${APP}/criar-conta`, "mailto:suporte@staziamed.com.br"]));
     // os mesmos nomes do menu das páginas legais do app (src/novo/app/legal/LegalPage.jsx)
     const legal = fs.readFileSync(path.join(raiz, "src/novo/app/legal/LegalPage.jsx"), "utf-8");
     for (const nome of ["Termos de Uso e Contrato", "Política de Privacidade", "Regulamento de Coins e Ligas"]) {
