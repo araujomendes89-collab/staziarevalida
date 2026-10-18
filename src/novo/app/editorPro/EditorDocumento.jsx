@@ -19,9 +19,10 @@ import "./editorPro.css";
  * compacto: campo curto (alternativa, legenda...): folha sem margem de página.
  * somenteTexto: sem as ferramentas de formatação (ex.: roteiro de podcast, que vai para a voz): só desfazer, Revisão e Exibir.
  * semModulos: ids de módulos fora deste editor (extensões, botões e painéis). Ex.: ["imagens"] num campo de questão.
- * Celular (até 600 px; decisão do dono 18/10, só na Administração, que é onde o editor existe): uma barra curta com os botões
- * principais (desfazer, negrito, itálico, lista, link) e "Mais", que abre a barra completa; as abas e os grupos rolam de lado
- * dentro da caixa, sem estourar a largura da tela.
+ * Celular (até 600 px; pedido do dono 18/10, só na Administração, que é onde o editor existe): barra curta com os botões principais
+ * (negrito, itálico, lista com marcadores, lista numerada e link) e "Mais", que abre o resto da barra (abas, títulos, citação,
+ * tabela, desfazer/refazer, limpar...). Tudo rola de lado DENTRO da caixa, sem estourar a tela; botões com 44 px de toque; o "Mais"
+ * fecha com Esc e ao tocar fora. No computador a barra é a mesma de sempre. O conteúdo salvo não muda.
  */
 const ESTREITO = "(max-width: 600px)";
 function useEstreito() {
@@ -37,14 +38,35 @@ function useEstreito() {
   }, []);
   return estreito;
 }
-// Botões da barra curta do celular (na ordem); o link abre o painel "Hiperlink". O estado do rascunho (aulas) fica à vista no fim.
-const RAPIDOS = ["desfazer", "negrito", "italico", "lista"];
-const RAPIDOS_FIM = ["rascunho"];
+// Botões da barra curta do celular (na ordem); o link abre o painel "Hiperlink". Campo só texto (fala de podcast), que não tem
+// formatação: desfazer e refazer ficam à vista. O estado do rascunho (aulas) aparece numa linha embaixo da barra curta.
+const RAPIDOS = ["negrito", "italico", "lista", "numerada"];
+const RAPIDOS_SO_TEXTO = ["desfazer", "refazer"];
+const PAINEL_LINK = "hiperlink";
+const ESTADO = "rascunho";
 export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarConfig, contexto, somenteLeitura = false, rotulo, id, aoCriar, somenteTexto = false, compacto = false, semModulos = [] }) {
   const [aba, setAba] = React.useState("inicio");
   const [painel, setPainel] = React.useState(null);
   const estreito = useEstreito();
   const [mais, setMais] = React.useState(false);
+  const maisRef = React.useRef(null);
+  const barraRef = React.useRef(null);
+  const idBarra = `ep-mais-${React.useId().replace(/:/g, "")}`;
+  // "Mais" aberto: tocar fora dele (no texto, em outro campo, na página) fecha
+  React.useEffect(() => {
+    if (!estreito || !mais) return undefined;
+    const tocouFora = (e) => {
+      const alvo = e.target;
+      if (maisRef.current?.contains(alvo) || barraRef.current?.contains(alvo)) return;
+      setMais(false);
+    };
+    document.addEventListener("pointerdown", tocouFora, true);
+    document.addEventListener("mousedown", tocouFora, true);
+    return () => {
+      document.removeEventListener("pointerdown", tocouFora, true);
+      document.removeEventListener("mousedown", tocouFora, true);
+    };
+  }, [estreito, mais]);
   const ultimo = React.useRef(JSON.stringify(valor ?? null));
   const aoMudarRef = React.useRef(aoMudar);
   aoMudarRef.current = aoMudar;
@@ -97,6 +119,15 @@ export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarCo
     campo?.select?.();
   }, [focarPainel]);
   const aoTeclar = (e) => {
+    if (e.key === "Escape" && estreito && mais) {
+      // Esc fecha o "Mais"; se o foco estava dentro dele, volta para o botão "Mais"
+      const dentro = barraRef.current?.contains(document.activeElement);
+      setMais(false);
+      if (dentro) maisRef.current?.focus();
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
     const tecla = String(e.key || "").toLowerCase();
     const alvo = paineis().find((p) => !fora.includes(p.modulo) && typeof p.atalho === "string" && p.atalho.toLowerCase() === `mod-${tecla}`);
@@ -115,48 +146,63 @@ export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarCo
   if (!editor) return null;
 
   const permitido = (b) => !fora.includes(b.modulo) && (!somenteTexto || b.grupo === "historico" || b.aba === "revisao" || b.aba === "exibir");
-  const abas = ABAS.filter((a) => botoesDaAba(a.id).some(permitido));
+  // celular: os botões da barra curta não se repetem dentro do "Mais" (e uma aba que ficaria vazia some)
+  const doInicio = (ids) => (estreito ? ids.map((rid) => botoesDaAba("inicio").find((b) => b.id === rid)).filter((b) => b && permitido(b)) : []);
+  const principais = doInicio(RAPIDOS);
+  const rapidos = principais.length ? principais : doInicio(RAPIDOS_SO_TEXTO);
+  const estado = doInicio([ESTADO]);
+  const naBarraCurta = new Set([...rapidos, ...estado].map((b) => b.id));
+  const naBarra = (b) => permitido(b) && !naBarraCurta.has(b.id);
+  const abas = ABAS.filter((a) => botoesDaAba(a.id).some(naBarra));
   const abaAtiva = abas.some((a) => a.id === aba) ? aba : abas[0]?.id;
   const grupos = [];
-  for (const b of botoesDaAba(abaAtiva).filter(permitido)) {
+  for (const b of botoesDaAba(abaAtiva).filter(naBarra)) {
     const g = grupos[grupos.length - 1];
     if (g && g.id === b.grupo) g.botoes.push(b);
     else grupos.push({ id: b.grupo, botoes: [b] });
   }
   const listaPaineis = paineis().filter((p) => !fora.includes(p.modulo));
   const aberto = listaPaineis.find((p) => p.id === painel);
-  const doInicio = (ids) => (estreito ? ids.map((rid) => botoesDaAba("inicio").find((b) => b.id === rid)).filter((b) => b && permitido(b)) : []);
-  const rapidos = doInicio(RAPIDOS);
-  const rapidosFim = doInicio(RAPIDOS_FIM);
-  const painelLink = estreito && !somenteTexto ? listaPaineis.find((p) => p.id === "hiperlink") : null;
+  const painelLink = estreito && !somenteTexto ? listaPaineis.find((p) => p.id === PAINEL_LINK) : null;
+  const paineisDaBarra = painelLink ? listaPaineis.filter((p) => p.id !== PAINEL_LINK) : listaPaineis;
 
   return (
     <div className={`ep-container${compacto ? " ep-container--compacto" : ""}${aberto ? " ep-container--painel" : ""}${estreito ? " ep-container--estreito" : ""}`} id={id} onKeyDown={aoTeclar}>
       {estreito && (
         <div className="ep-rapida" role="toolbar" aria-label="Ferramentas principais">
           {rapidos.map(({ id: bid, Componente }) => <Componente key={bid} editor={editor} ctx={ctx} />)}
-          {painelLink && <Botao icon={painelLink.icone} label={painelLink.titulo} ativo={painel === painelLink.id} onClick={() => setPainel(painel === painelLink.id ? null : painelLink.id)} />}
-          {rapidosFim.map(({ id: bid, Componente }) => (
-            <span key={bid} className="ep-rapida-estado">
-              <Componente editor={editor} ctx={ctx} />
-            </span>
-          ))}
-          <button type="button" className={`ep-mais${mais ? " ep-ativo" : ""}`} aria-expanded={mais} aria-controls={id ? `${id}-barra` : undefined} onMouseDown={(e) => e.preventDefault()} onClick={() => setMais((m) => !m)}>
-            <Icon name={mais ? "chevron-up" : "ellipsis"} size={16} />
-            {mais ? "Menos" : "Mais"}
+          {painelLink && <Botao icon={painelLink.icone} label="Link" ativo={painel === painelLink.id} onClick={() => setPainel(painel === painelLink.id ? null : painelLink.id)} />}
+          <button
+            type="button"
+            ref={maisRef}
+            className={`ep-mais${mais ? " ep-ativo" : ""}`}
+            aria-label="Mais"
+            title="Mais ferramentas"
+            aria-expanded={mais}
+            aria-controls={idBarra}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setMais((m) => !m)}
+          >
+            <Icon name={mais ? "chevron-up" : "ellipsis"} size={18} />
+            <span>Mais</span>
           </button>
         </div>
       )}
-      <div className="ep-toolbar" id={id ? `${id}-barra` : undefined} hidden={estreito && !mais}>
+      {estreito && estado.length > 0 && (
+        <div className="ep-rapida-estado">
+          {estado.map(({ id: bid, Componente }) => <Componente key={bid} editor={editor} ctx={ctx} />)}
+        </div>
+      )}
+      <div className="ep-toolbar" ref={barraRef} {...(estreito ? { id: idBarra, role: "group", "aria-label": "Mais ferramentas", hidden: !mais } : {})}>
         <div className="ep-tablist" role="tablist" aria-label="Abas do editor">
           {abas.map((a) => (
             <button key={a.id} type="button" role="tab" aria-selected={abaAtiva === a.id} className={`ep-tab${abaAtiva === a.id ? " ep-tab--ativa" : ""}`} onClick={() => setAba(a.id)}>
               {a.rotulo}
             </button>
           ))}
-          {listaPaineis.length > 0 && (
+          {paineisDaBarra.length > 0 && (
             <div className="ep-paineis-btn">
-              {listaPaineis.map((p) => (
+              {paineisDaBarra.map((p) => (
                 <Botao key={p.id} icon={p.icone} label={p.titulo} ativo={painel === p.id} onClick={() => setPainel(painel === p.id ? null : p.id)} />
               ))}
             </div>
