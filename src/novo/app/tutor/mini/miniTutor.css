@@ -132,7 +132,7 @@
 .mt-puxador span { width: 40px; height: 4px; border-radius: var(--radius-pill); background: var(--border-strong); }
 .mt-espaco { height: 45dvh; }
 /* minimizada no celular: aba na borda direita, na margem ao lado das alternativas (não cobre o "riscar alternativa") */
-.mt--celular .mt-bolinha--aba { width: 36px; height: 56px; padding: 0 0 0 4px; display: grid; align-items: center; border-radius: 28px 0 0 28px; box-shadow: var(--shadow-md), 0 0 0 2px color-mix(in oklab, var(--ai) 55%, transparent); animation: mt-aba var(--dur-slow) var(--ease-out); }
+.mt--celular .mt-bolinha--aba { width: 36px; height: 56px; padding: 0 0 0 4px; display: grid; align-items: center; border-radius: 28px 0 0 28px; box-shadow: var(--shadow-md), 0 0 0 2px color-mix(in oklab, var(--ai) 55%, transparent); transform-origin: right center; animation: mt-aba var(--dur-slow) var(--ease-out); }
 .mt--celular .mt-bolinha--aba:hover { transform: none; }
 .mt--celular .mt-bolinha--aba .mt-bolinha__selo { right: 2px; bottom: 2px; width: 18px; height: 18px; }
 .mt--celular .mt-bolinha--aba .mt-bolinha__ponto { right: 4px; top: 4px; width: 10px; height: 10px; }
@@ -151,7 +151,9 @@ html.mt-reserva body { padding-right: var(--mt-reserva, 400px); transition: padd
 
 @keyframes mt-abre { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: none; } }
 @keyframes mt-sobe { from { transform: translateY(100%); } to { transform: none; } }
-@keyframes mt-aba { from { transform: translateX(100%); } to { transform: none; } }
+/* a aba entra crescendo a partir da borda direita, sem sair da tela: no iPhone (Safari), um elemento fixo que passa da borda,
+   mesmo durante a animação, deixa a página inteira mais larga que a tela e ela passa a rolar para os lados (hotfix 18/10/2026) */
+@keyframes mt-aba { from { opacity: 0; transform: scaleX(0.2); } to { opacity: 1; transform: none; } }
 @keyframes mt-surge { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
 @keyframes mt-ponto { 0%, 80%, 100% { opacity: 0.3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
 
