@@ -14,7 +14,8 @@ with falta (ordem, item) as (
       'ch_worker_billing_nota_salvar(text,text,jsonb)', 'ch_worker_billing_notas_pendentes(integer)', 'ch_worker_billing_notas_email_pegar(integer)',
       'ch_worker_billing_nota_email_marcar(bigint,boolean,text)', 'app_billing_historico()', 'app_admin_billing_pagamentos(uuid)',
       'app_admin_billing_devolucoes(integer)', 'ch_worker_alertas_dono_gerar()', 'ch_worker_alertas_dono_pegar(integer)',
-      'ch_worker_alerta_dono_marcar(bigint,boolean,text)', 'app_admin_alertas_dono()', 'app_admin_alertas_dono_salvar(jsonb)']) f
+      'ch_worker_alerta_dono_marcar(bigint,boolean,text)', 'app_admin_alertas_dono()', 'app_admin_alertas_dono_salvar(jsonb)',
+      'app_admin_billing_vendas()', 'app_admin_billing_vendas_ligar(boolean)', 'app_admin_billing_vendas_lista(date,date,text,text,integer)', 'billing_dias_uteis(timestamptz,integer)']) f
    where to_regprocedure('public.' || f) is null
   union all select 5, 'a devolução nova não está no banco (ch_worker_billing_devolvido sem a classificação)'
    where to_regprocedure('public.ch_worker_billing_devolvido(text,text,integer)') is not null
@@ -29,7 +30,8 @@ with falta (ordem, item) as (
      and (p.proname like 'ch\_worker\_billing\_%' or p.proname like 'ch\_worker\_alerta%' or p.proname in ('alertas_dono_criar', 'alertas_custo_alunos_hoje'))
      and (has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('anon', p.oid, 'execute'))
   union all select 9, 'visitante executando ' || f from unnest(array['app_admin_billing_pagamentos(uuid)', 'app_admin_billing_devolucoes(integer)',
-      'app_admin_alertas_dono()', 'app_admin_alertas_dono_salvar(jsonb)', 'app_billing_historico()']) f
+      'app_admin_alertas_dono()', 'app_admin_alertas_dono_salvar(jsonb)', 'app_billing_historico()',
+      'app_admin_billing_vendas()', 'app_admin_billing_vendas_ligar(boolean)', 'app_admin_billing_vendas_lista(date,date,text,text,integer)']) f
    where to_regprocedure('public.' || f) is not null and has_function_privilege('anon', ('public.' || f)::regprocedure, 'execute')
 )
 select case when count(*) = 0 then 'OK: ajustes da cobrança (013850) no banco' else 'FALTA: ' || string_agg(item, '; ' order by ordem, item) end as resultado,

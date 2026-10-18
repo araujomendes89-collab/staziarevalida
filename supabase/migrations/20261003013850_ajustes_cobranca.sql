@@ -21,6 +21,10 @@
 --    configurável na Administração (padrão suporte@staziamed.com.br). Gerados e enviados pela tarefa de hora em hora que já existe
 --    (/api/cobranca/cron).
 --
+-- 4. ADMINISTRAÇÃO (pedido de 17/10, noite): botão "Abrir vendas" / "Fechar vendas" (no lugar do SQL; registrado) e a aba "Vendas e
+--    pagamentos" (período, situação, aluno, produto, forma, valor, data, nota; pedidos de devolução para a equipe com prazo de 5 dias
+--    úteis e o botão "Devolver pagamento"; total do período).
+--
 -- Ponto de ligação com o ramo notificacoes (Central de Notificações, 013830): quando a nota é autorizada, se existir a função
 -- public.notificacao_nota_fiscal(p_user uuid, p_cobranca bigint, p_pdf_url text) ela é chamada (aviso na tela). Esta migração NÃO
 -- cria essa função (para não sobrescrever a do outro ramo); quem juntar os ramos cria numa migração posterior.
@@ -634,6 +638,126 @@ begin
 end
 $$;
 
+-- ---------------------------------------------------------------- Administração: abrir e fechar as vendas (pedido de 17/10, noite)
+-- No lugar do SQL "update billing_config set vendas_ligadas = ...": botão na aba Planos, só administrador, com registro de quem mudou.
+-- Mostra também a chave dos cadeados (013690) e o que fica à venda, para conferir a ordem de ligar (vendas e, logo depois, cadeados).
+create or replace function public.app_admin_billing_vendas() returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare b public.billing_config; v_cad boolean; v_extras jsonb := '[]'::jsonb; v_planos jsonb := '[]'::jsonb;
+begin
+  perform public.assert_admin();
+  select * into b from public.billing_config;
+  if to_regclass('public.direitos_config') is not null then
+    execute 'select (to_jsonb(d) ->> ''cadeados_ligados'')::boolean from public.direitos_config d' into v_cad;
+  end if;
+  v_extras := coalesce(public.billing_vitrine() -> 'extras', '[]'::jsonb);
+  v_planos := coalesce((select jsonb_agg(p) from jsonb_array_elements(public.billing_vitrine() -> 'planos') p where (p ->> 'a_venda')::boolean), '[]'::jsonb);
+  return jsonb_build_object('vendas_ligadas', coalesce(b.vendas_ligadas, false), 'atualizado_em', b.updated_at,
+    'atualizado_por', (select u.email from auth.users u where u.id = b.updated_by),
+    'cadeados_ligados', v_cad, 'planos_a_venda', v_planos, 'extras_a_venda', v_extras);
+end
+$$;
+
+create or replace function public.app_admin_billing_vendas_ligar(p_ligar boolean) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare v_antes boolean;
+begin
+  perform public.assert_admin();
+  if p_ligar is null then raise exception 'Escolha abrir ou fechar as vendas.' using errcode = '22023'; end if;
+  select b.vendas_ligadas into v_antes from public.billing_config b;
+  update public.billing_config set vendas_ligadas = p_ligar, updated_at = now(), updated_by = (select auth.uid());
+  if v_antes is distinct from p_ligar then
+    perform public.admin_log('cobranca.vendas', null, jsonb_build_object('vendas_ligadas', p_ligar, 'antes', v_antes));
+  end if;
+  return public.app_admin_billing_vendas();
+end
+$$;
+
+-- ---------------------------------------------------------------- Administração: Vendas e pagamentos (lista do período)
+-- Prazo de N dias úteis (sábado e domingo não contam; feriados não estão na conta) a partir de uma data.
+create or replace function public.billing_dias_uteis(p_inicio timestamptz, p_dias integer) returns date
+  language plpgsql immutable set search_path = ''
+as $$
+declare d date := (p_inicio at time zone 'America/Sao_Paulo')::date; n integer := 0;
+begin
+  while n < greatest(0, coalesce(p_dias, 0)) loop
+    d := d + 1;
+    if extract(isodow from d) < 6 then n := n + 1; end if;
+  end loop;
+  return d;
+end
+$$;
+
+-- Situação de cada linha: pago, pendente (esperando pagar), vencido (não pago no prazo / cartão recusado), devolvido, em_analise
+-- (pedido de devolução esperando a equipe ou esperando a confirmação do fornecedor). p_situacao null = todas. Período em dias de
+-- Brasília (data do pagamento; sem pagamento, a do pedido). Totais do período inteiro (sem o filtro de situação).
+create or replace function public.app_admin_billing_vendas_lista(p_de date, p_ate date, p_situacao text default null, p_busca text default null,
+                                                                 p_limite integer default 300) returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  v_de date := coalesce(p_de, (now() at time zone 'America/Sao_Paulo')::date - 30);
+  v_ate date := coalesce(p_ate, (now() at time zone 'America/Sao_Paulo')::date);
+  v_busca text := nullif(lower(btrim(coalesce(p_busca, ''))), '');
+  r jsonb;
+begin
+  perform public.assert_admin();
+  if p_situacao is not null and p_situacao not in ('pago', 'pendente', 'vencido', 'devolvido', 'em_analise') then
+    raise exception 'Situação inválida.' using errcode = '22023';
+  end if;
+  if v_ate < v_de then raise exception 'O fim do período vem antes do começo.' using errcode = '22023'; end if;
+  with linhas as (
+    select 'cobranca' as origem, x.id as cobranca_id, null::uuid as pedido_id, x.user_id,
+           coalesce(k.nome, case when x.tipo = 'plano' then upper(x.codigo) || ' ' || x.ciclo else 'Extra ' || x.codigo end) as produto,
+           x.tipo, x.codigo, x.ciclo, x.metodo, x.valor_centavos, x.devolvido_centavos, coalesce(x.pago_em, x.criado_em) as em, x.pago_em,
+           case when rr.id is not null then 'em_analise'
+                when x.status = 'paga' then 'pago'
+                when x.status in ('devolvida', 'devolvida_parcial') then 'devolvido'
+                when x.status = 'falhou' then 'vencido'
+                else 'pendente' end as situacao,
+           x.status as status_cobranca, x.recibo_url, case when x.nota_status = 'autorizada' then x.nota_pdf_url end as nota_url, x.nota_status,
+           case when rr.id is null then null else jsonb_build_object('id', rr.id, 'status', rr.status, 'valor_centavos', rr.valor_centavos, 'origem', rr.origem,
+                'motivo', rr.motivo, 'erro', rr.erro, 'em', rr.criado_em, 'prazo', public.billing_dias_uteis(rr.criado_em, 5)) end as devolucao
+    from public.billing_cobrancas x
+    left join public.billing_pedidos k on k.id = x.pedido_id
+    left join lateral (select * from public.billing_reembolsos z where z.cobranca_id = x.id and z.status in ('equipe', 'solicitado')
+                       order by z.criado_em desc limit 1) rr on true
+    union all
+    -- pedidos ainda sem cobrança paga/registrada: esperando pagar (aberto) ou que venceram sem pagamento
+    select 'pedido', null, p.id, p.user_id, p.nome, p.tipo, p.codigo, p.ciclo, p.metodo, p.valor_centavos, 0, p.criado_em, null,
+           case when p.status = 'aberto' and p.expira_em > now() then 'pendente' else 'vencido' end,
+           null, null, null, null, null
+    from public.billing_pedidos p
+    where p.status in ('aberto', 'expirado')
+      and not exists (select 1 from public.billing_cobrancas x where x.provider = p.provider and x.provider_payment_id = p.provider_payment_id)
+  ), periodo as (
+    select l.*, u.email, nullif(btrim(pr.name), '') as nome
+    from linhas l left join auth.users u on u.id = l.user_id left join public.profiles pr on pr.id = l.user_id
+    where (l.em at time zone 'America/Sao_Paulo')::date between v_de and v_ate
+      and (v_busca is null or lower(coalesce(u.email, '')) like '%' || v_busca || '%' or lower(coalesce(pr.name, '')) like '%' || v_busca || '%')
+  )
+  select jsonb_build_object(
+    'de', v_de, 'ate', v_ate,
+    'totais', jsonb_build_object(
+      'recebido_centavos', coalesce(sum(valor_centavos) filter (where origem = 'cobranca' and pago_em is not null), 0),
+      'devolvido_centavos', coalesce(sum(devolvido_centavos) filter (where origem = 'cobranca'), 0),
+      'liquido_centavos', coalesce(sum(valor_centavos) filter (where origem = 'cobranca' and pago_em is not null), 0)
+                          - coalesce(sum(devolvido_centavos) filter (where origem = 'cobranca'), 0),
+      'pagamentos', count(*) filter (where origem = 'cobranca' and pago_em is not null),
+      'por_situacao', jsonb_build_object('pago', count(*) filter (where situacao = 'pago'), 'pendente', count(*) filter (where situacao = 'pendente'),
+                        'vencido', count(*) filter (where situacao = 'vencido'), 'devolvido', count(*) filter (where situacao = 'devolvido'),
+                        'em_analise', count(*) filter (where situacao = 'em_analise'))),
+    'linhas', coalesce((select jsonb_agg(to_jsonb(t) order by (t.situacao = 'em_analise') desc, t.em desc)
+                        from (select * from periodo where p_situacao is null or situacao = p_situacao
+                              order by (situacao = 'em_analise') desc, em desc limit least(1000, greatest(1, coalesce(p_limite, 300)))) t), '[]'::jsonb))
+    into r
+  from periodo;
+  return r;
+end
+$$;
+
 -- ---------------------------------------------------------------- permissões
 revoke execute on function public.alertas_dono_criar(text, text, text, text, jsonb) from public, anon, authenticated;
 revoke execute on function public.alertas_usd(numeric) from public, anon, authenticated;
@@ -655,5 +779,12 @@ revoke execute on function public.app_admin_billing_devolucoes(integer) from pub
 grant execute on function public.app_admin_billing_devolucoes(integer) to authenticated;
 revoke execute on function public.app_admin_alertas_dono() from public, anon;
 grant execute on function public.app_admin_alertas_dono() to authenticated;
+revoke execute on function public.billing_dias_uteis(timestamptz, integer) from public, anon, authenticated;
+revoke execute on function public.app_admin_billing_vendas() from public, anon;
+grant execute on function public.app_admin_billing_vendas() to authenticated;
+revoke execute on function public.app_admin_billing_vendas_ligar(boolean) from public, anon;
+grant execute on function public.app_admin_billing_vendas_ligar(boolean) to authenticated;
+revoke execute on function public.app_admin_billing_vendas_lista(date, date, text, text, integer) from public, anon;
+grant execute on function public.app_admin_billing_vendas_lista(date, date, text, text, integer) to authenticated;
 revoke execute on function public.app_admin_alertas_dono_salvar(jsonb) from public, anon;
 grant execute on function public.app_admin_alertas_dono_salvar(jsonb) to authenticated;

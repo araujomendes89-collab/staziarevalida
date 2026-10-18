@@ -518,3 +518,60 @@ describe("extras de IA à venda junto com o PRO", () => {
     expect(r).toMatchObject({ status: 200, body: { nome: "IA Max", valor_centavos: 12990 } });
   });
 });
+
+describe("Administração: abrir/fechar vendas e Vendas e pagamentos", () => {
+  it("abrir e fechar as vendas: só administrador, fica no Registro; fechadas, ninguém compra", async () => {
+    await expect(comoUsuario(EDITOR, "app_admin_billing_vendas_ligar", { p_ligar: false })).rejects.toThrow(/administradores/);
+    const fechou = await comoUsuario<any>(ADMIN, "app_admin_billing_vendas_ligar", { p_ligar: false });
+    expect(fechou).toMatchObject({ vendas_ligadas: false, atualizado_por: "aj6@t.dev" });
+    expect(fechou.extras_a_venda.map((x: any) => x.codigo)).toEqual(["boost", "plus", "max"]);
+    expect(fechou.planos_a_venda.map((x: any) => x.codigo)).toEqual(["pro"]);
+    expect(typeof fechou.cadeados_ligados).toBe("boolean");
+    expect((await api(EXTRA, "/checkout", { tipo: "extra", codigo: "plus", metodo: "pix", aceite: true, idem: `idem-${++seq}-fechada` })).body.code).toBe("vendas_desligadas");
+    const reg = await q1(`select actor_id, details from public.admin_audit_log where action = 'cobranca.vendas' order by id desc limit 1`);
+    expect(reg).toEqual({ actor_id: ADMIN, details: { vendas_ligadas: false, antes: true } });
+    // a mesma escolha de novo não grava outra linha no Registro
+    await comoUsuario(ADMIN, "app_admin_billing_vendas_ligar", { p_ligar: false });
+    expect((await q1(`select count(*)::int n from public.admin_audit_log where action = 'cobranca.vendas'`)).n).toBe(1);
+    expect((await comoUsuario<any>(ADMIN, "app_admin_billing_vendas_ligar", { p_ligar: true })).vendas_ligadas).toBe(true);
+  });
+
+  it("lista do período por situação, com aluno, produto, forma, valor, nota, pedidos para a equipe (prazo de 5 dias úteis) e o total", async () => {
+    await expect(comoUsuario(EDITOR, "app_admin_billing_vendas_lista", { p_de: null, p_ate: null })).rejects.toThrow(/administradores/);
+    const nota = await cobranca((await q1(`select provider_payment_id from public.billing_cobrancas where user_id = $1 and tipo = 'plano'`, [NOTA])).provider_payment_id);
+    await dev.db.query(`insert into public.billing_reembolsos (user_id, cobranca_id, valor_centavos, total, regra, status) values ($1, $2, 9990, true, '{}', 'equipe')`, [NOTA, nota.id]);
+    const tudo = await comoUsuario<any>(ADMIN, "app_admin_billing_vendas_lista", { p_de: null, p_ate: null });
+    expect(tudo.linhas[0]).toMatchObject({ situacao: "em_analise", cobranca_id: nota.id, email: "aj12@t.dev", nome: "Joana Teste", metodo: "pix", valor_centavos: 9990,
+      devolucao: expect.objectContaining({ status: "equipe", prazo: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) }) });
+    const sit = (s: string) => tudo.linhas.filter((l: any) => l.situacao === s);
+    expect(sit("devolvido").some((l: any) => l.email === "aj0@t.dev")).toBe(true); // a cobrança repetida devolvida no painel
+    expect(sit("pendente").some((l: any) => l.origem === "pedido" && l.produto === "IA Max")).toBe(true); // o IA Max ainda não pago
+    expect(sit("pago").find((l: any) => l.email === "aj13@t.dev" && l.produto === "IA Plus")).toMatchObject({ nota_url: "https://nota.teste/inv_2.pdf", metodo: "pix" });
+    const t = tudo.totais;
+    expect(t.liquido_centavos).toBe(t.recebido_centavos - t.devolvido_centavos);
+    // o período padrão é dos últimos 30 dias: a cobrança de 40 dias atrás (aluno "período encerrado") fica de fora
+    expect(t.recebido_centavos).toBe(Number((await q1(`select sum(valor_centavos)::int s from public.billing_cobrancas where pago_em > now() - interval '31 days'`)).s));
+    const desde2020 = await comoUsuario<any>(ADMIN, "app_admin_billing_vendas_lista", { p_de: "2020-01-01", p_ate: null });
+    expect(desde2020.totais.recebido_centavos).toBe(Number((await q1(`select sum(valor_centavos)::int s from public.billing_cobrancas where pago_em is not null`)).s));
+    expect(t.por_situacao.em_analise).toBe(1);
+    // filtro por situação e busca por aluno
+    const devolvidos = await comoUsuario<any>(ADMIN, "app_admin_billing_vendas_lista", { p_de: null, p_ate: null, p_situacao: "devolvido" });
+    expect(devolvidos.linhas.every((l: any) => l.situacao === "devolvido")).toBe(true);
+    expect(devolvidos.totais).toEqual(tudo.totais); // o total é do período inteiro
+    const busca = await comoUsuario<any>(ADMIN, "app_admin_billing_vendas_lista", { p_de: null, p_ate: null, p_busca: "AJ13@" });
+    expect(new Set(busca.linhas.map((l: any) => l.email))).toEqual(new Set(["aj13@t.dev"]));
+    // o pedido que venceu sem pagar vira "vencido"; período sem nada = vazio
+    await dev.db.query(`update public.billing_pedidos set expira_em = now() - interval '1 minute' where user_id = $1 and status = 'aberto'`, [GASTAO]);
+    const venc = await comoUsuario<any>(ADMIN, "app_admin_billing_vendas_lista", { p_de: null, p_ate: null, p_situacao: "vencido" });
+    expect(venc.linhas.some((l: any) => l.produto === "IA Max")).toBe(true);
+    const vazio = await comoUsuario<any>(ADMIN, "app_admin_billing_vendas_lista", { p_de: "2020-01-01", p_ate: "2020-01-31" });
+    expect(vazio).toMatchObject({ linhas: [], totais: { recebido_centavos: 0, pagamentos: 0 } });
+    await expect(comoUsuario(ADMIN, "app_admin_billing_vendas_lista", { p_de: null, p_ate: null, p_situacao: "outra" })).rejects.toThrow(/Situação inválida/);
+  });
+
+  it("prazo em dias úteis: sábado e domingo não contam", async () => {
+    expect((await q1(`select public.billing_dias_uteis('2026-10-16 10:00-03', 5)::text d`)).d).toBe("2026-10-23"); // sexta → sexta
+    expect((await q1(`select public.billing_dias_uteis('2026-10-17 10:00-03', 5)::text d`)).d).toBe("2026-10-23"); // sábado → sexta
+    expect((await q1(`select public.billing_dias_uteis('2026-10-19 10:00-03', 5)::text d`)).d).toBe("2026-10-26"); // segunda → segunda
+  });
+});

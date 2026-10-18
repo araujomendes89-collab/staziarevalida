@@ -65,6 +65,10 @@ revoke execute on function public.app_billing_historico() from public, anon;
 grant execute on function public.app_billing_historico() to authenticated;
 
 -- o que a 013850 criou
+drop function if exists public.app_admin_billing_vendas_lista(date, date, text, text, integer);
+drop function if exists public.billing_dias_uteis(timestamptz, integer);
+drop function if exists public.app_admin_billing_vendas_ligar(boolean);
+drop function if exists public.app_admin_billing_vendas();
 drop function if exists public.app_admin_alertas_dono_salvar(jsonb);
 drop function if exists public.app_admin_alertas_dono();
 drop function if exists public.ch_worker_alerta_dono_marcar(bigint, boolean, text);
