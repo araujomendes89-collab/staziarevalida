@@ -112,6 +112,8 @@ describe("Minha conta: aceites", () => {
     openPrivacy();
     expect(screen.queryByText(/Termo de Aceite e Uso v/)).toBeNull();
     expect(screen.queryByText("Baixar meus dados")).toBeNull();
-    expect(screen.getByText(/privacidade@staziamed\.com\.br/)).toBeTruthy();
+    // o e-mail da privacidade aparece nos direitos da LGPD e, desde 22bf8472, também no aviso de "Excluir conta"
+    expect(screen.getByText(/Seus direitos pela LGPD.*privacidade@staziamed\.com\.br/)).toBeTruthy();
+    expect(screen.getByText(/peça antes em privacidade@staziamed\.com\.br/)).toBeTruthy();
   });
 });
