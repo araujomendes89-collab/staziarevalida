@@ -17,7 +17,8 @@
 // A animação não conhece a OpenAI: ela lê só este estado, os níveis de áudio (streams) e a emoção que o servidor devolve.
 import React from "react";
 import { voiceApi } from "./api.js";
-import { unlockAudio } from "./voice/audioUnlock.js";
+import { getAudioContext, unlockAudio } from "./voice/audioUnlock.js";
+import { MIC_CONSTRAINTS } from "./voice/microfone.js";
 import { openGeminiLive } from "./voice/geminiLive.js";
 import { openGeminiPonte } from "./voice/geminiPonte.js";
 import { refreshVoiceLanguage, TUTOR_SPOKEN_LANGUAGE } from "../../../shared/tutor/voiceLanguage";
@@ -37,6 +38,7 @@ const rodizioDe = (sessionId) => {
 };
 
 const CALLS_URL = "https://api.openai.com/v1/realtime/calls";
+
 const CONNECT_TIMEOUT_MS = 20_000;
 const UTTERANCE_GAP_MS = 1_200; // GPT-Live manda a transcrição em pedaços: sem pedaço novo por este tempo, a fala terminou
 const SPEAKING_GAP_MS = 900;
@@ -118,6 +120,8 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   const [streams, setStreams] = React.useState({ input: null, output: null });
   const [provider, setProvider] = React.useState(null);
   const [playbackBlocked, setPlaybackBlocked] = React.useState(false);
+  // o som do navegador parou (Safari: outra mídia, ligação, tela bloqueada): a tela mostra "Toque para voltar o som"
+  const [audioSuspended, setAudioSuspended] = React.useState(false);
   // frase de espera mostrada enquanto a busca no material passa de ~600 ms (null: nada a mostrar)
   const [conferindo, setConferindo] = React.useState(null);
   const r = React.useRef({ handled: new Set(), transcript: [] });
@@ -239,6 +243,10 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   const pushTranscript = (role, text) => {
     const cur = r.current;
     cur.transcript = [...(cur.transcript ?? []), { role, text }].slice(-40);
+    if (role === "tutor" && cur.farewell) {
+      cur.farewell.text = text;
+      if (!cur.gem?.speaking) cur.farewell.finish();
+    }
     cb.current.onTranscript?.(role, text);
     const id = cur.voiceCallId;
     voiceApi.transcript(backend, id, role, text).then(
@@ -278,6 +286,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     setState((s) => (s === "paused" ? s : s === "thinking" && r.current.delegBusy ? s : "listening"));
     const closing = r.current.closing;
     if (closing) closing.finish();
+    if (r.current.farewell?.text) r.current.farewell.finish();
   };
   const studentSpeaking = () => {
     const cur = r.current;
@@ -720,7 +729,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     r.current.connectTimer = setTimeout(() => fail("timeout"), CONNECT_TIMEOUT_MS);
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia(MIC_CONSTRAINTS);
       metrics().mic_permission = "granted";
     } catch (e) {
       metrics().mic_permission = "denied";
@@ -806,10 +815,13 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
    * Gemini: microfone, depois a reserva (o servidor devolve a chave temporária ou, se o Google recusar, o segredo do Realtime);
    * se a conexão não abrir neste aparelho, encerra a reserva e pede outra voz ao servidor (avoid = gemini).
    */
-  const startGemini = async (force) => {
+  const startGemini = async (force, given = null) => {
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+      // o microfone pedido no toque do aluno (Safari: o mesmo toque libera o som e o microfone; pedir de novo depois de uma espera
+      // pode trocar a saída de som do iPhone); sem ele, pede aqui com eco cancelado e supressão de ruído
+      const vivo = given?.getAudioTracks?.().some((t) => t.readyState === "live");
+      stream = vivo ? given : await navigator.mediaDevices.getUserMedia(MIC_CONSTRAINTS);
       metrics().mic_permission = "granted";
     } catch (e) {
       metrics().mic_permission = "denied";
@@ -883,6 +895,8 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
           onIdle: () => speakingStopped(),
           onInterrupted: () => {
             falaEspera.current.parar(false);
+            // o aluno falou por cima: o pedaço que o professor chegou a dizer fecha aqui (não gruda na próxima fala)
+            if (r.current.utter?.role === "tutor") finalizeUtterance();
             metrics().interruptions++;
             setState((s) => (s === "paused" ? s : "listening"));
           },
@@ -939,7 +953,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
       setCaptions({ tutor: "", student: "" });
       setState(opts.reconnect ? "reconnecting" : "connecting");
       const skipGemini = hint === "gemini" && Date.now() - geminiFailedAt < GEMINI_RETRY_MS;
-      if (hint === "gemini" && !skipGemini) await startGemini(force);
+      if (hint === "gemini" && !skipGemini) await startGemini(force, opts.stream ?? null);
       else if (live) await startLiveFirst(force, skipGemini ? ["gemini"] : null);
       else await startRealtime(force, null, skipGemini ? ["gemini"] : null);
     },
@@ -1045,6 +1059,39 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Despedida (18/10, pedido do dono): ao tocar em Encerrar, o microfone fecha e o próprio professor se despede numa frase curta, do
+   * jeito dele, criada agora (sem texto fixo). Resolve com o texto dito (ou null: outra voz, sem conexão, ou passou de maxMs). A fala
+   * entra no histórico pela transcrição de sempre. Só na voz do Gemini; nas outras, resolve null na hora.
+   */
+  const farewell = React.useCallback((instruction, maxMs = 9_000) => new Promise((resolve) => {
+    const cur = r.current;
+    const conectado = ["ready", "listening", "thinking", "speaking", "interrupted", "paused"].includes(stateRef.current);
+    if (cur.provider !== "gemini" || !cur.gem || !conectado || cur.farewell) return resolve(null);
+    cur.stream?.getAudioTracks?.().forEach((t) => (t.enabled = false));
+    cur.gem.mute(true);
+    falaEspera.current?.parar(false);
+    if (stateRef.current === "speaking") cur.gem.interrupt();
+    finalizeUtterance();
+    let feito = false;
+    cur.farewell = {
+      text: "",
+      finish: () => {
+        if (feito) return;
+        feito = true;
+        clearTimeout(timer);
+        const u = cur.utter;
+        const texto = cur.farewell?.text || (u?.role === "tutor" ? u.text.trim() : "") || null;
+        cur.farewell = null;
+        resolve(texto);
+      },
+    };
+    const timer = setTimeout(() => cur.farewell?.finish(), maxMs);
+    cur.gem.sendText(instruction);
+    setState("thinking");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []);
+
   /** Texto digitado no chat da tela de voz: mesma conversa, sem desligar a voz. */
   const sendText = React.useCallback((text) => {
     const clean = String(text ?? "").trim().slice(0, 2000);
@@ -1081,6 +1128,27 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     []
   );
 
+  // som do navegador: o Safari suspende o áudio (outra mídia, ligação, tela bloqueada). Ao voltar para a página tenta retomar sozinho;
+  // se não der (o Safari pede um toque), a tela mostra "Toque para voltar o som" (enablePlayback)
+  const ativo = !["idle", "ended", "error"].includes(state);
+  React.useEffect(() => {
+    if (!ativo) return undefined;
+    const ctx = getAudioContext();
+    if (!ctx) return undefined;
+    const olhar = () => setAudioSuspended(ctx.state !== "running" && ctx.state !== "closed");
+    const voltar = () => {
+      if (document.visibilityState !== "visible" || ctx.state === "running" || ctx.state === "closed") return;
+      Promise.resolve(ctx.resume?.()).catch(() => {}).finally(olhar);
+    };
+    olhar();
+    ctx.addEventListener?.("statechange", olhar);
+    document.addEventListener("visibilitychange", voltar);
+    return () => {
+      ctx.removeEventListener?.("statechange", olhar);
+      document.removeEventListener("visibilitychange", voltar);
+    };
+  }, [ativo]);
+
   /** Volume da voz do professor (0..1), sem mexer no microfone. */
   const setVolume = React.useCallback((v) => {
     const vol = Math.max(0, Math.min(1, Number(v)));
@@ -1107,6 +1175,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
       } else return false;
       if (r.current !== cur) return false;
       setPlaybackBlocked(false);
+      setAudioSuspended(false);
       return true;
     } catch {
       if (r.current === cur) {
@@ -1118,7 +1187,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   }, []);
 
   return {
-    state, error, remaining, start, stop, interrupt, pause, resume, setVolume, enablePlayback, playbackBlocked,
+    state, error, remaining, start, stop, interrupt, pause, resume, setVolume, enablePlayback, playbackBlocked, audioSuspended, farewell,
     muted, mute: () => setMuted(true), unmute: () => setMuted(false), toggleMute: () => setMuted(!r.current.muted),
     sendText, captions, streams, provider, conferindo,
     active: !["idle", "ended", "error"].includes(state),
