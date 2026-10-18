@@ -79,6 +79,14 @@
     {
       "path": "/api/cobranca/cron",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/legal/email",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/legal/diaria",
+      "schedule": "20 4 * * *"
     }
   ]
 }

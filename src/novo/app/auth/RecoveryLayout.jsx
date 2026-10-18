@@ -76,9 +76,10 @@ export function FieldError({ id, children }) {
 
 /**
  * Campo no visual do login: rótulo, ícone à esquerda, olho para mostrar a senha, dica ou erro embaixo.
- * `defaultValue`: o que a pessoa já tinha escrito (cadastro: volta de "Usar outro e-mail").
+ * `defaultValue`: o que a pessoa já tinha escrito (cadastro: volta de "Usar outro e-mail"). `onBlur`/`onChange`: avisos enquanto
+ * a pessoa preenche (cadastro: senhas), sem tornar o campo controlado.
  */
-export function RecoveryField({ id, name, label, type = "text", autoComplete, hint, error, icon = "mail", disabled, placeholder, defaultValue }) {
+export function RecoveryField({ id, name, label, type = "text", autoComplete, hint, error, icon = "mail", disabled, placeholder, defaultValue, onBlur, onChange }) {
   const [show, setShow] = React.useState(false);
   const pw = type === "password";
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
@@ -97,6 +98,8 @@ export function RecoveryField({ id, name, label, type = "text", autoComplete, hi
           inputMode={type === "email" ? "email" : undefined}
           placeholder={placeholder}
           defaultValue={defaultValue}
+          onBlur={onBlur}
+          onChange={onChange}
           className={`ln-input${pw ? " ln-input--pw" : ""}${error ? " is-error" : ""}`}
           aria-invalid={error ? "true" : "false"}
           aria-describedby={describedBy}

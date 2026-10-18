@@ -25,6 +25,8 @@ const supabase = vi.hoisted(() => ({ signUp: vi.fn() }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ auth: { signUp: supabase.signUp } }) }));
 
 const MIGRATIONS = path.resolve(__dirname, "../../supabase/migrations");
+// migrações que dependem da 013740 (ramo termo-funcoes): ficam de fora enquanto a 013740 estiver de fora
+const DEPOIS_DO_V3 = /^20261003013(800|810)_/;
 const PHONE = "+5541999998888";
 const sha256 = (text: string) => crypto.createHash("sha256").update(text, "utf8").digest("hex");
 
@@ -70,7 +72,7 @@ beforeAll(async () => {
   VIG = (await backend.rpc<any>("app_legal_current")).termo_uso.version;
 
   // banco do servidor de desenvolvimento: sem a 013740 (Termo 2.0), para os testes do cadastro de antes; o 3.0 está em termoV3Banco
-  const files = fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== "20261003013740_termo_v3.sql");
+  const files = fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== "20261003013740_termo_v3.sql" && !DEPOIS_DO_V3.test(f));
   const source = Object.fromEntries(files.map((f) => [f, fs.readFileSync(path.join(MIGRATIONS, f), "utf8")]));
   db = new PGlite();
   await migrateLocalDatabase(db, source, null);

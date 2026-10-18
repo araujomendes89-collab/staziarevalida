@@ -1,0 +1,43 @@
+-- DESFAZER a cópia do contrato por e-mail e a caixa de marketing (supabase/migrations/20261003013800_termo_copia_email_marketing.sql).
+-- Pode ser colado de novo. Antes, desfazer a 013810 (contas inativas e expurgo), se tiver sido colada: ela usa a fila daqui.
+--
+-- O que sai: o gatilho da cópia na fila, as funções e as tabelas novas.
+-- A fila de e-mails sai. O histórico do consentimento de marketing NÃO é apagado: fica guardado como
+-- public.marketing_consent_log_desfeito (sem acesso do navegador), para servir de prova; apagar à mão só se o dono decidir.
+-- O site continua funcionando sem estas funções: a chave de marketing some da Minha Conta e a pergunta do onboarding passa a não gravar.
+-- Nenhum aceite (legal_acceptances) é tocado.
+
+drop trigger if exists legal_copia_na_fila on public.legal_acceptances;
+drop trigger if exists on_auth_user_marketing on auth.users;
+
+drop function if exists public.app_marketing_set(boolean, text);
+drop function if exists public.app_marketing_get();
+drop function if exists public.marketing_no_cadastro();
+drop function if exists public.marketing_gravar(uuid, boolean, text);
+drop function if exists public.marketing_texto(text);
+drop function if exists public.ch_worker_email_marcar(bigint, text, text);
+drop function if exists public.ch_worker_email_pegar(integer);
+drop function if exists public.legal_copia_na_fila();
+drop function if exists public.email_conta_confirmada(uuid);
+
+-- (a cópia guardada continua presa à conta: some se a conta for apagada; os índices ganham outro nome para a migração poder voltar)
+do $guarda$
+declare
+  i text;
+begin
+  if to_regclass('public.marketing_consent_log') is not null then
+    if to_regclass('public.marketing_consent_log_desfeito') is null then
+      alter table public.marketing_consent_log rename to marketing_consent_log_desfeito;
+      for i in select indexname from pg_indexes where schemaname = 'public' and tablename = 'marketing_consent_log_desfeito' loop
+        execute format('alter index public.%I rename to %I', i, left(i, 50) || '_desfeito');
+      end loop;
+    else
+      insert into public.marketing_consent_log_desfeito (user_id, opt_in, origin, texto, at)
+      select user_id, opt_in, origin, texto, at from public.marketing_consent_log;
+      drop table public.marketing_consent_log;
+    end if;
+  end if;
+end
+$guarda$;
+drop table if exists public.marketing_consents;
+drop table if exists public.email_saida;

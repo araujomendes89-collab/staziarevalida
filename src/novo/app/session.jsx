@@ -111,6 +111,9 @@ export function SessionProvider({ children }) {
               return;
             }
             limparAvisoDerrubada();
+            // conta inativa (Política 3.0, seção 5): registra a abertura do app (o banco grava no máximo uma vez por hora; sem a
+            // migração …13810 a chamada só falha e nada muda)
+            Promise.resolve().then(() => backend.rpc("app_marcar_acesso")).catch(() => {});
             boot.nivelamento = nivelamento;
             boot.onboarding = onboarding;
             if (alive) setState({ status: "ready", backend, user, boot, error: null, recovery: recoveryRef.current, derrubada: null });
