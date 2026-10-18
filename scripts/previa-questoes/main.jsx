@@ -1,5 +1,5 @@
 // PRÉVIA da tela de questão (porta 31942): dados simulados, sem login e sem banco.
-//   /?modo=treino|simulado  &q=inedita|oficial|tabela|anulada  &estado=respondendo|certo|errado  &tema=escuro  &total=20
+//   /?modo=treino|simulado  &q=inedita|oficial|tabela|quadro|anulada  &estado=respondendo|certo|errado  &tema=escuro  &total=20
 // Sem parâmetros: treino com a Questão Inédita do modelo, ainda sem responder.
 import React from "react";
 import { createRoot } from "react-dom/client";

@@ -90,6 +90,30 @@ const TABELA = {
     ],
   },
 };
+// Pior caso do celular (hotfix iPhone, 18/10/2026): o quadro de exames como figura (o recorte da Revalida 2020 · Q79), uma tabela de
+// apoio larga, um endereço de site sem espaço no enunciado (como a Revalida 2020 · Q47) e uma alternativa com número longo.
+const QUADRO = {
+  ...OFICIAL,
+  id: "q-quadro",
+  number: 79,
+  exam: { id: "revalida-2020", kind: "REVALIDA", year: 2020, semester: null },
+  statement:
+    "[Texto de exemplo da prévia] Homem de 50 anos com transaminases elevadas traz os exames do quadro a seguir. Disponível em: <https://www.exemplodeenderecolongo.com.br:8443/imagens/quadrodeexameslaboratoriais/caso.png>. Com base nos aspectos clínicos e laboratoriais, qual é o diagnóstico mais provável?",
+  options: [
+    { id: "A", text: "Hepatite B crônica (exemplo)." },
+    { id: "B", text: "Hepatite B aguda (exemplo)." },
+    { id: "C", text: "Código de exemplo sem espaços: ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJ." },
+    { id: "D", text: "Hepatite C (exemplo)." },
+  ],
+  images: [{ url: "/question-assets/revalida_2020_1/q079_image_01.png", alt: "Quadro com 3 colunas (Exame, Resultado, Referência)" }],
+  support: {
+    title: "Exame | Resultado | Referência (dados de exemplo)",
+    rows: [
+      { label: "Anti-HBc total (IgG + IgM) — imunoensaio quimioluminescente", value: "reagente (índice 12,40 S/CO) · referência: não reagente (< 1,00 S/CO)" },
+      { label: "Gamaglutamiltransferase", value: "198 U/L · referência: 8 a 61 U/L" },
+    ],
+  },
+};
 const ANULADA = { ...OFICIAL, id: "q-anulada", number: 31, statement: "[Texto de exemplo da prévia] Questão anulada pela banca, usada para mostrar o estado.", images: [] };
 
 const FILL = (n) => ({
@@ -109,6 +133,7 @@ const SETS = {
   inedita: { first: INEDITA, correction: CORRECAO_INEDITA },
   oficial: { first: OFICIAL, correction: CORRECAO_OFICIAL },
   tabela: { first: TABELA, correction: CORRECAO_OFICIAL },
+  quadro: { first: QUADRO, correction: CORRECAO_OFICIAL },
   anulada: { first: ANULADA, correction: { ...CORRECAO_OFICIAL, correct_option: null, annulled: true, explanation: null, option_notes: [], annulled_notes: [] } },
 };
 
@@ -257,3 +282,7 @@ export function SessionProvider({ children }) {
   return <>{children}</>;
 }
 export function rememberChoice() {}
+// a figura do editor (FiguraLeitor) e o mini tutor leem a sessão por aqui
+export function useOptionalSession() {
+  return value;
+}
