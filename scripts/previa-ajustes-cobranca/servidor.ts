@@ -96,7 +96,7 @@ async function main() {
   const mailer: Mailer = {
     from: "nao-responda@staziamed.com.br",
     async send(m) {
-      const nome = `${new Date().toISOString().replace(/[:.]/g, "-")}-${m.to.replace(/[^a-z0-9]/gi, "_")}.html`;
+      const nome = `${new Date().toISOString().replace(/[:.]/g, "-")}-${String(++seq).padStart(3, "0")}-${m.to.replace(/[^a-z0-9]/gi, "_")}.html`;
       fs.writeFileSync(path.join(EMAILS, nome), `<!-- Para: ${m.to} | Assunto: ${m.subject} -->\n${m.html}`);
     },
   };

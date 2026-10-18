@@ -3,7 +3,8 @@
 // Os pedidos de devolução que ficaram para a equipe (prazo de 5 dias úteis) vêm primeiro, com o botão "Devolver pagamento". Total
 // do período: recebido, devolvido e líquido (sem as taxas do Asaas, que saem no extrato do Asaas).
 import React from "react";
-import { Badge, Banner, Button, Card, SegmentedControl, TextField } from "../../../ds";
+import { Badge, Banner, Button, Card, SegmentedControl, SelectField, TextField } from "../../../ds";
+import { useMobile } from "../../Shell.jsx";
 import { useSession } from "../../session.jsx";
 import { LoadError, Loading, useDebounced, useLoad } from "../common.jsx";
 import { brl, dateBR } from "../../plan/billingApi.js";
@@ -31,19 +32,20 @@ function Total({ rotulo, valor, dica }) {
   );
 }
 
-function Linha({ l, aberto, setAberto, onFeito }) {
+function Linha({ l, aberto, setAberto, onFeito, mobile }) {
   const [rot, tom] = SITUACAO[l.situacao] ?? [l.situacao, "neutral"];
   const d = l.devolucao;
   const podeDevolver = l.cobranca_id && ["pago", "em_analise"].includes(l.situacao) && !(d && d.status === "solicitado") && l.valor_centavos - (l.devolvido_centavos ?? 0) > 0;
   const chave = l.cobranca_id ? `c${l.cobranca_id}` : `p${l.pedido_id}`;
   return (
     <li style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px 0", borderBottom: "1px solid var(--border-subtle)" }} data-testid={`venda-${chave}`}>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1.4fr) auto", gap: 10, alignItems: "center" }} className="vp-linha">
+      {/* celular: aluno e valor na 1ª linha, produto embaixo; computador: três colunas */}
+      <div style={{ display: "grid", gridTemplateColumns: mobile ? "minmax(0, 1fr) auto" : "minmax(0, 2fr) minmax(0, 1.4fr) auto", gap: mobile ? "4px 10px" : 10, alignItems: "center" }}>
         <div style={{ minWidth: 0 }}>
           <b style={{ overflowWrap: "anywhere" }}>{l.nome ?? l.email ?? "Conta excluída"}</b>
           {l.nome && l.email && <div style={{ ...fina, overflowWrap: "anywhere" }}>{l.email}</div>}
         </div>
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, gridColumn: mobile ? "1 / -1" : undefined, gridRow: mobile ? 2 : undefined }}>
           <span>{l.produto}</span>
           <div style={fina}>
             {METODO[l.metodo] ?? l.metodo} · {dateBR(l.em)}
@@ -88,6 +90,7 @@ function Linha({ l, aberto, setAberto, onFeito }) {
 
 export function VendasPagamentos() {
   const { backend } = useSession();
+  const mobile = useMobile();
   const hoje = new Date();
   const [de, setDe] = React.useState(dia(new Date(hoje.getTime() - 30 * 86400e3)));
   const [ate, setAte] = React.useState(dia(hoje));
@@ -126,9 +129,11 @@ export function VendasPagamentos() {
             <TextField label="Até" type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
             <TextField label="Aluno (nome ou e-mail)" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar" />
           </div>
-          <div style={{ overflowX: "auto" }}>
+          {mobile ? (
+            <SelectField label="Situação" value={situacao} onChange={(e) => setSituacao(e.target.value)} options={opcoes} />
+          ) : (
             <SegmentedControl label="Situação" value={situacao} onChange={setSituacao} options={opcoes} />
-          </div>
+          )}
           {t && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, paddingTop: 12, borderTop: "1px solid var(--border-subtle)" }} data-testid="vendas-totais">
               <Total rotulo="Recebido no período" valor={brl(t.recebido_centavos)} dica={`${t.pagamentos} pagamento(s)`} />
@@ -153,6 +158,7 @@ export function VendasPagamentos() {
               <Linha
                 key={l.cobranca_id ? `c${l.cobranca_id}` : `p${l.pedido_id}`}
                 l={l}
+                mobile={mobile}
                 aberto={aberto}
                 setAberto={(k) => (setOk(null), setAberto(k))}
                 onFeito={(m) => {

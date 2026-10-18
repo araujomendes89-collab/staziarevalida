@@ -90,7 +90,8 @@ for (const [tam, vp, tema] of VARIANTES) {
     await page.goto(`${BASE}/novo/admin?aba=vendas`, { waitUntil: "domcontentloaded" });
     await page.getByTestId("vendas-lista").waitFor({ timeout: 60000 });
     await foto(page, "07-vendas-e-pagamentos");
-    await page.getByRole("radio", { name: /Em análise/ }).click();
+    if (tam === "celular") await page.getByLabel("Situação").selectOption("em_analise");
+    else await page.getByRole("radio", { name: /Em análise/ }).click();
     await page.waitForTimeout(800);
     await page.getByRole("button", { name: "Devolver pagamento" }).first().click();
     await page.getByLabel("Motivo (obrigatório)").fill("Pedido do aluno aprovado pela equipe");
@@ -113,6 +114,10 @@ for (const [tam, vp, tema] of VARIANTES) {
   }
   // Aluna: Minha conta › Assinatura (link da nota)
   {
+    // o pop-up dos avisos já visto (senão cobre a lista)
+    const av = await rpc(ana, "app_meus_avisos");
+    const ids = (av?.novos ?? []).map((x) => x.id);
+    if (ids.length) await rpc(ana, "app_avisos_vistos", { p_ids: ids });
     const ctx = await ctxDe(ana);
     const page = await ctx.newPage();
     erro(page);

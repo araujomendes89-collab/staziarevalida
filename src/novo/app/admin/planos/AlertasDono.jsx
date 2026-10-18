@@ -23,7 +23,7 @@ function Form({ data, setData, onSalvo }) {
     email: c.email ?? "",
     ligado: Boolean(c.ligado),
     resumo: Boolean(c.resumo_diario),
-    limite: String(c.aluno_limite_usd_dia ?? "1").replace(".", ","),
+    limite: Number(c.aluno_limite_usd_dia ?? 1).toFixed(2).replace(".", ","),
   });
   const [st, setSt] = React.useState({ saving: false, error: null });
   const salvar = async () => {
