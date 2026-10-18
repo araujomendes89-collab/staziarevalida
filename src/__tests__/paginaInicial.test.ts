@@ -425,17 +425,13 @@ describe("página inicial: só promete o que existe (decisões do dono)", () => 
     expect(pagamento?.textContent).toMatch(/à vista/);
   });
 
-  it("o teste grátis é anunciado como amostra diária, com os números só quando a amostra estiver ligada", () => {
+  it("a página não detalha o que o teste grátis inclui (pedido do dono 18/10): sem quadro e sem números de limite", () => {
     const doc = pagina();
-    expect(doc.querySelector(".faixa__grade li:last-child")?.textContent).toMatch(/amostra diária/);
-    expect(doc.querySelector('.incluido__p[data-ate-la="amostra"]')?.textContent).toMatch(/amostra diária/);
-    expect(doc.querySelector('.incluido__grade')?.getAttribute("data-quando")).toBe("amostra");
-    expect([...doc.querySelectorAll(".incluido__grade li")].map((li) => [...li.children].map((c) => c.textContent).join(" "))).toEqual([
-      "20 questões por dia", "1 simulado curto por dia", "3 Temas ou aulas por dia, mais os flashcards do dia", "5 créditos de Tutor IA por dia", "2 min de voz no teste inteiro",
-    ]);
+    expect(doc.querySelector(".incluido")).toBeNull();
+    expect(html).not.toMatch(/20 questões por dia|2 min de voz no teste inteiro|5 créditos de Tutor IA por dia/);
     const faq = [...doc.querySelectorAll(".pergunta")][0];
-    expect(faq.querySelector('[data-quando="amostra"]')?.textContent).toMatch(/20 questões, 1 simulado curto, 3 Temas/);
-    expect(faq.querySelector('[data-ate-la="amostra"]')?.textContent).toMatch(/amostra diária/);
+    expect(faq.textContent).toMatch(/não pede cartão/);
+    expect(faq.textContent).not.toMatch(/20 questões|2 minutos de voz/);
   });
 
   it("regras de pagamento, renovação e cancelamento só aparecem com a cobrança ligada; o arrependimento (lei) sempre", () => {
@@ -461,7 +457,7 @@ describe("página inicial: só promete o que existe (decisões do dono)", () => 
     const doc = pagina();
     expect(doc.documentElement.dataset.liberado).toBe("");
     const usados = new Set([...doc.querySelectorAll("[data-quando],[data-ate-la]")].flatMap((e) => (e.getAttribute("data-quando") || e.getAttribute("data-ate-la") || "").split(/\s+/)));
-    expect([...usados].sort()).toEqual(["amostra", "carteira", "cobranca", "tutor"]);
+    expect([...usados].sort()).toEqual(["carteira", "cobranca", "tutor"]);
     for (const p of usados) {
       expect(css).toContain(`html:not([data-liberado~="${p}"]) [data-quando~="${p}"]`);
       expect(css).toContain(`html[data-liberado~="${p}"] [data-ate-la~="${p}"]`);

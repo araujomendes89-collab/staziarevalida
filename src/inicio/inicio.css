@@ -356,14 +356,6 @@ html:not(.js) .metro__ponto, .metro__parada--acesa .metro__ponto { background: v
 .fase2__link[aria-expanded="true"] svg { transform: rotate(90deg); }
 .fase2__encaixe { margin-top: 6px; border: 1px solid var(--borda); border-radius: 16px; padding: 14px 16px; background: var(--cinza); }
 .fase2__encaixe-p { font-size: 14px; line-height: 1.5; color: var(--texto2); margin: 0; }
-.incluido { margin-top: 26px; border: 1px solid var(--borda); border-radius: 24px; padding: clamp(22px, 2.8vw, 36px); }
-.incluido__t { font-size: 22px; font-weight: 800; margin: 0; }
-.incluido__p { font-size: 15.5px; line-height: 1.6; color: var(--texto2); margin: 10px 0 0; max-width: 760px; }
-.incluido__grade { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 20px 0 0; }
-.incluido__grade li { background: var(--cinza); border-radius: 16px; padding: 18px; }
-.incluido__n { display: block; font-family: var(--fonte-titulo); font-size: 32px; font-weight: 800; line-height: 1; color: var(--navy); }
-.incluido__d { display: block; font-size: 14px; color: var(--texto2); margin-top: 6px; line-height: 1.45; }
-.incluido__nota { font-size: 13.5px; line-height: 1.6; color: var(--texto2); margin: 16px 0 0; }
 
 /* ---------- 8 · regras comerciais, arrependimento e perguntas ---------- */
 .regras { list-style: none; padding: 0; margin: 28px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
@@ -449,9 +441,6 @@ html:not(.js) .metro__ponto, .metro__parada--acesa .metro__ponto { background: v
   .conversa__falas { min-height: 190px; }
 }
 @media (min-width: 641px) and (max-width: 1080px) {
-  .incluido__grade { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .incluido__grade > * { grid-column: span 2; }
-  .incluido__grade > :nth-child(n+4) { grid-column: span 3; }
   .regras { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 900px) {
@@ -468,8 +457,6 @@ html:not(.js) .metro__ponto, .metro__parada--acesa .metro__ponto { background: v
   .grupo { padding: 16px; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; text-align: left; }
   .grupo__t { font-size: 17px; }
   .grupo__d { font-size: 13px; }
-  .incluido__grade { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .incluido__grade > :last-child { grid-column: 1 / -1; }
   .regras { grid-template-columns: 1fr; }
   .metro__corpo { padding-left: 38px; }
   .barra-fixa__texto { display: none; }
