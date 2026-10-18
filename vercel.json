@@ -37,6 +37,12 @@
       "permanent": false
     },
     {
+      "source": "/",
+      "has": [{ "type": "host", "value": "staziamed.com.br" }],
+      "destination": "https://www.staziamed.com.br/",
+      "permanent": false
+    },
+    {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "staziamed.com.br" }],
       "destination": "https://www.staziamed.com.br/:path*",

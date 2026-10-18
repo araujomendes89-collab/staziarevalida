@@ -44,10 +44,11 @@ describe("redirecionamentos do vercel.json", () => {
     const regra = (host: string, source: string) =>
       porHost.find((r) => r.source === source && r.has?.some((h) => h.type === "host" && h.value === host));
     expect(regra("app.staziamed.com.br", "/")?.destination).toBe("/novo");
+    expect(regra("staziamed.com.br", "/")?.destination).toBe("https://www.staziamed.com.br/");
     expect(regra("staziamed.com.br", "/:path*")?.destination).toBe("https://www.staziamed.com.br/:path*");
     expect(regra("www.staziamed.com.br", "/novo")?.destination).toBe("https://app.staziamed.com.br/novo");
     expect(regra("www.staziamed.com.br", "/novo/:path*")?.destination).toBe("https://app.staziamed.com.br/novo/:path*");
-    expect(porHost).toHaveLength(4);
+    expect(porHost).toHaveLength(5);
     expect(porHost.every((r) => r.permanent === false)).toBe(true);
     // a raiz do www continua sem regra: mostra a página inicial
     expect(porHost.some((r) => r.source === "/" && r.has?.some((h) => h.value === "www.staziamed.com.br"))).toBe(false);
