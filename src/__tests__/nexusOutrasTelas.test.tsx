@@ -159,4 +159,25 @@ describe("Nexus por cima das outras telas", () => {
     const app = await import("fs").then((fs) => fs.readFileSync(require("path").resolve(__dirname, "../novo/app/App.jsx"), "utf8"));
     expect(app).toMatch(/route === "analise"\) body = <ReportScreen go=\{go\} \/>/);
   });
+
+  it("/analise de um aluno novo (sem questões e sem Tutor): estado vazio com o caminho para as Questões, não erro", async () => {
+    const { ReportScreen } = await import("../novo/app/tutor/ReportScreen.jsx");
+    const go = vi.fn();
+    // o que o banco devolve para a conta nova: teste grátis na carteira (créditos quebrados) e nenhuma resposta
+    rpcImpl.app_tutor_status = () => status({ daily_limit: 5, used_today: 2.5, entitlement: { ...ENT, mode: "trial", is_paid: false, regra: "carteira", text: { unit: "creditos", used: 2.5, limit: 5, remaining: 2.5 } } });
+    rpcImpl.app_tutor_report = () => ({
+      ...REPORT,
+      sessions: { count: 0, minutes: 0, voice_minutes: 0, questions_discussed: 0 },
+      mastery: { areas: [{ area: "CLINICA_MEDICA", level: "SEM_DADOS", correct: 0, accuracy: null, attempts: 0 }], subareas: [] },
+      evolution: { last_30: { attempts: 0, correct: 0 }, previous_30: { attempts: 0, correct: 0 } },
+      reviews: { due: 0, scheduled: 0 },
+      tutor: { correct: 0, answers: 0, wrong_but_sure: 0, lucky_guesses: 0, with_heavy_hints: 0, avg_hints: 0, error_classes: {} },
+    });
+    render(<ReportScreen go={go} />);
+    expect(await screen.findByText("Sua análise começa quando você estudar")).toBeInTheDocument();
+    expect(screen.queryByText(/formato inválido/)).toBeNull();
+    expect(screen.queryByText("Meu relatório")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Ir para Questões/ }));
+    expect(go).toHaveBeenCalledWith("questoes");
+  });
 });

@@ -1,7 +1,7 @@
 // Relatório do Tutor em /analise ("Análise Inteligente"), com o mesmo portão da Nexus: aceite do §34, Tutor desligado e plano.
 // Visual do pacote "Novas telas" (15/10/2026). Todo número vem do banco (app_tutor_report); nada é inventado e não há previsão de aprovação.
 import React from "react";
-import { Badge, Banner, Button, Icon } from "../../ds";
+import { Badge, Banner, Button, EmptyState, Icon } from "../../ds";
 import { useSession } from "../session.jsx";
 import { ERROR_CLASS, LEVEL } from "./labels.js";
 import { TutorGate } from "./nexus/TutorGate.jsx";
@@ -15,8 +15,16 @@ const messageOf = (error) => explainError(error);
 const LEVEL_TONE = { INTERMEDIARIO: "warning" };
 
 export function ReportScreen({ go }) {
-  return <TutorGate go={go}>{() => <Report />}</TutorGate>;
+  return <TutorGate go={go}>{() => <Report go={go} />}</TutorGate>;
 }
+
+/** Conta nova (nenhuma questão respondida, nenhuma conversa com o Tutor): ainda não há o que analisar. */
+const semDados = (data) =>
+  !(data.mastery?.areas ?? []).some((a) => a.attempts > 0) &&
+  !data.evolution?.last_30?.attempts &&
+  !data.evolution?.previous_30?.attempts &&
+  !data.tutor?.answers &&
+  !data.sessions?.count;
 
 const pct = (x) => (x.attempts ? `${Math.round((100 * x.correct) / x.attempts)}% em ${x.attempts}` : null);
 
@@ -218,7 +226,7 @@ const TABS = [
 ];
 
 /** O relatório do aluno (dados do banco: erros, domínio, evolução, revisões e o que o Tutor percebeu). */
-export function Report({ onBack = null }) {
+export function Report({ go = null, onBack = null }) {
   const { backend } = useSession();
   const narrow = useNarrow();
   const [tab, setTab] = React.useState("areas");
@@ -233,6 +241,23 @@ export function Report({ onBack = null }) {
   }, [backend]);
   if (error) return <Banner tone="danger">{error}</Banner>;
   if (!data) return <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Carregando…</p>;
+  if (semDados(data)) {
+    return (
+      <div className="ev ev-stack an">
+        {onBack && (
+          <Button size="sm" variant="ghost" icon="arrow-left" onClick={onBack}>
+            Voltar
+          </Button>
+        )}
+        <EmptyState
+          icon="sparkles"
+          title="Sua análise começa quando você estudar"
+          description="Responda algumas questões ou converse com o Tutor. A partir daí, aparecem aqui o seu domínio por área, a sua evolução e o que o Tutor perceber nos seus erros e acertos."
+          action={go && <Button iconRight="arrow-right" onClick={() => go("questoes")}>Ir para Questões</Button>}
+        />
+      </div>
+    );
+  }
   const classes = Object.entries(data.error_types ?? data.tutor.error_classes ?? {}).sort((a, b) => b[1] - a[1]);
   const risk = data.highest_risk_area ? (areaOf(data.highest_risk_area) ? areaLabel(data.highest_risk_area) : data.highest_risk_area.replace(/_/g, " ").toLowerCase()) : null;
   const s = data.sessions;
