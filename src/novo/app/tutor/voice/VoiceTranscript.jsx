@@ -3,7 +3,7 @@
 import React from "react";
 import { Icon } from "../../../ds";
 
-/** Legenda ao vivo: a fala do professor e, menor, a do aluno. Some se o aluno escolher ocultar. */
+/** Legenda (só com "Legendas" ligado): a fala do professor e, menor, a do aluno, numa faixa própria embaixo do personagem. */
 export function VoiceCaptions({ show, captions }) {
   if (!show) return null;
   const tutor = (captions?.tutor ?? "").trim();
@@ -52,7 +52,7 @@ export function VoiceChatSheet({ messages, onSend, onClose, showCaptions, onTogg
       </div>
       <label className="svm__row">
         <input type="checkbox" checked={showCaptions} onChange={(e) => onToggleCaptions(e.target.checked)} />
-        Mostrar transcrição na tela
+        Legendas na tela
       </label>
       <label className="svm__row">
         <Icon name="volume-2" size={18} />

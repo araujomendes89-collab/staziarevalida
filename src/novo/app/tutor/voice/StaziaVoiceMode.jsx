@@ -5,6 +5,10 @@
 // ligação, para microfone e alto-falante e libera o áudio do navegador.
 // 17/10/2026: no lugar da esfera fica o personagem escolhido pelo aluno (Stazi ou Stazia), com as mesmas entradas da esfera
 // (estado, emoção do servidor, nível do microfone e da voz). A animação só lê; nada aqui muda a lógica da voz.
+// 18/10/2026 (pedidos do dono): sem "Falar"/"Enviar" (a conversa é mãos livres); o título é o nome do personagem (Stazi ou Stazia) e o
+// selo mostra o jeito ("Tranquilo"); a fala NÃO aparece escrita durante a conversa (só o personagem e o estado: ouvindo, pensando,
+// falando). "Legendas" (desligado por padrão, guardado por aluno) mostra o texto numa faixa própria, embaixo do personagem, que
+// nunca fica atrás dele. Avisos importantes (modo reserva, sem minutos, microfone bloqueado) aparecem curtos na mesma faixa.
 import React from "react";
 import { createPortal } from "react-dom";
 import { StaziaVoiceOrb, orbEmotion } from "./StaziaVoiceOrb.jsx";
@@ -69,13 +73,16 @@ class PersonagemSeguro extends React.Component {
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 
 /**
- * jeitoLabel: como o professor fala nesta conversa ("Voz do professor", "Voz reserva", "Por escrito"), ao lado do selo dele.
- * card: o que fica abaixo da esfera (o cartão da questão). Para escrever, o Chat abre por cima, na mesma conversa.
+ * jeitoLabel: o selo do jeito quando não é a voz ao vivo ("Modo reserva", "Por escrito"); a voz ao vivo não leva selo.
+ * card: o que fica abaixo do personagem (o cartão da questão). Para escrever, o Chat abre por cima, na mesma conversa.
  * onWrite: quando a voz não abriu, "Escrever pelo Chat" pede antes à tela um jeito em que o Chat manda (a Nexus passa para por escrito).
+ * captions / onCaptions: as Legendas (desligadas por padrão; quem guarda a escolha por aluno é a Nexus). Sem onCaptions, a escolha
+ * fica só nesta tela. closing: o aluno tocou em Encerrar e o professor está se despedindo.
  */
-export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, entitlement = null, note = null, onClose, jeitoLabel = null, card = null, onWrite = null, personagem = null, motor = "2d", semitons = null }) {
+export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, entitlement = null, note = null, onClose, jeitoLabel = null, card = null, onWrite = null, personagem = null, motor = "2d", semitons = null, captions = undefined, onCaptions = null, closing = false }) {
   const [chatOpen, setChatOpen] = React.useState(false);
-  const [showCaptions, setShowCaptionsState] = React.useState(() => readPref("smn-voice-captions", true));
+  const [localCaptions, setLocalCaptions] = React.useState(false);
+  const showCaptions = captions ?? localCaptions;
   const [volume, setVolumeState] = React.useState(() => readPref("smn-voice-volume", 1));
   const [playbackMessage, setPlaybackMessage] = React.useState(null);
   const dialog = React.useRef(null);
@@ -104,8 +111,8 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
   };
 
   const setShowCaptions = (v) => {
-    setShowCaptionsState(v);
-    writePref("smn-voice-captions", v);
+    if (onCaptions) onCaptions(v);
+    else setLocalCaptions(v);
   };
   const setVolume = (v) => {
     setVolumeState(v);
@@ -115,7 +122,7 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
   const enableSound = async () => {
     if (volume === 0) setVolume(1);
     const ok = await rt.enablePlayback?.();
-    setPlaybackMessage(ok ? "Som liberado." : "Confira a saída de som e a permissão de áudio do navegador.");
+    setPlaybackMessage(ok ? null : "Confira a saída de som e a permissão de áudio do navegador.");
   };
   React.useEffect(() => {
     rt.setVolume?.(volume);
@@ -163,10 +170,16 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
   }, [rt.chatRequest]);
 
   const err = rt.state === "error" ? rt.error : null;
-  const shownNote = note ?? rt.notice ?? null;
+  // avisos curtos: o da voz (ex.: "Não entendi, pode repetir?") e o da tela (ex.: modo reserva), sem repetir
+  const avisos = [...new Set([rt.notice, note].filter(Boolean))];
+  const shownNote = avisos[0] ?? null;
   const connected = ["ready", "listening", "thinking", "speaking", "interrupted", "paused"].includes(rt.state);
   const quota = voiceQuotaText(entitlement, rt.remaining);
-  const hasCaption = Boolean((rt.captions?.tutor ?? "").trim() || (rt.captions?.student ?? "").trim());
+  const nome = PERSONAGENS[quem]?.nome ?? persona?.name ?? "Tutor";
+  const tutorCaption = (rt.captions?.tutor ?? "").trim();
+  const studentCaption = (rt.captions?.student ?? "").trim();
+  // som parado pelo navegador (Safari): um toque volta
+  const semSom = connected && rt.enablePlayback && (rt.playbackBlocked || rt.audioSuspended || volume === 0);
 
   const onFrame = (l) => mic.current?.style.setProperty("--mic-level", (rt.muted ? 0 : l.input).toFixed(3));
   const esfera = (
@@ -184,23 +197,25 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
   return createPortal(
     <div className={`svm${card ? " svm--with-card" : ""}`} data-emo={semPersonagem ? undefined : emo.emotion} style={{ "--svm-emo-i": emo.intensity.toFixed(2) }} role="dialog" aria-modal="true" aria-labelledby="svm-title" aria-describedby="svm-desc" ref={dialog} onKeyDown={onKey}>
       <div className="svm__top">
-        <span className="svm__persona">
-          <span aria-hidden="true">{persona?.emoji ?? "🎙️"}</span>
-          {persona?.name ?? "Professor"}
-        </span>
+        <span className="svm__persona">{persona?.name ?? "Tutor"}</span>
         {jeitoLabel && <span className="svm__jeito">{jeitoLabel}</span>}
         {!semPersonagem && !personagemFixo && (
           <button type="button" className="svm__troca" onClick={trocarPersonagem} aria-label={`Trocar para ${PERSONAGENS[outro].genero === "a" ? "a" : "o"} ${PERSONAGENS[outro].nome}, ${PERSONAGENS[outro].papel}`}>
             Trocar para {PERSONAGENS[outro].nome}
           </button>
         )}
-        {quota && <span className="svm__quota">{quota}</span>}
+        <span className="svm__top-dir">
+          {quota && <span className="svm__quota">{quota}</span>}
+          <button type="button" className={`svm__legendas${showCaptions ? " is-on" : ""}`} aria-pressed={showCaptions} onClick={() => setShowCaptions(!showCaptions)}>
+            Legendas
+          </button>
+        </span>
       </div>
       <div className="svm__head">
-        <h2 id="svm-title" className="svm__title">Nexus</h2>
-        <VoiceStatus state={rt.state} muted={rt.muted} />
+        <h2 id="svm-title" className="svm__title">{nome}</h2>
+        <VoiceStatus state={closing ? "closing" : rt.state} muted={rt.muted} />
       </div>
-      <p id="svm-desc" className="svm-sr">Conversa por voz com o professor. Fale quando quiser; para interromper, é só falar. O microfone liga e desliga sem encerrar a conversa.</p>
+      <p id="svm-desc" className="svm-sr">Conversa por voz com {nome}. Fale quando quiser; para interromper, é só falar. O microfone liga e desliga sem encerrar a conversa. As legendas mostram a conversa escrita.</p>
 
       <div className="svm__stage">
         <PersonagemSeguro onFalha={() => setSemPersonagem(true)} fallback={esfera}>
@@ -219,65 +234,51 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
       </div>
       {card && <div className="svm__card">{card}</div>}
 
-      {err ? (
-        <div role="alert" style={{ width: "100%" }}>
-          <div className="svm__error">{realtimeErrorMessage(err)}</div>
-          <div className="svm__actions">
-            {err.kind === "busy" && <button type="button" className="svm__pill" onClick={() => rt.start(true)}>Assumir aqui</button>}
-            {["network", "timeout", "server", "mic", "no_mic"].includes(err.kind) && <button type="button" className="svm__pill" onClick={() => rt.start()}>Tentar de novo</button>}
-            <button type="button" className="svm__pill" onClick={() => (onWrite?.(), setChatOpen(true))}>Escrever pelo Chat</button>
+      {/* faixa própria, embaixo do personagem (nunca atrás dele): legenda (se ligada), avisos curtos e saídas de erro */}
+      <div className="svm__faixa">
+        {showCaptions && !err && rt.state !== "ended" && (
+          <div className="svm__legenda" aria-live="polite">
+            <VoiceCaptions show captions={{ tutor: tutorCaption || (rt.conferindo ?? ""), student: studentCaption }} />
           </div>
-        </div>
-      ) : rt.state === "ended" ? (
-        <div style={{ width: "100%" }}>
-          <p className="svm__hint" role="status">{shownNote ?? "A conversa por voz foi encerrada."}</p>
-          <div className="svm__actions">
-            <button type="button" className="svm__pill" onClick={() => rt.start()}>Conversar de novo</button>
+        )}
+        {err ? (
+          <div role="alert" style={{ width: "100%" }}>
+            <div className="svm__error">{realtimeErrorMessage(err)}</div>
+            <div className="svm__actions">
+              {err.kind === "busy" && <button type="button" className="svm__pill" onClick={() => rt.start(true)}>Assumir aqui</button>}
+              {["network", "timeout", "server", "mic", "no_mic"].includes(err.kind) && <button type="button" className="svm__pill" onClick={() => rt.start()}>Tentar de novo</button>}
+              <button type="button" className="svm__pill" onClick={() => (onWrite?.(), setChatOpen(true))}>Escrever pelo Chat</button>
+            </div>
           </div>
-        </div>
-      ) : connected && !hasCaption ? (
-        <p className="svm__hint">
-          <strong>Fale com o Nexus...</strong>
-          Experimente: “me explica pré-eclâmpsia” ou “me faz uma pergunta de pediatria”.
-          {shownNote && <span style={{ display: "block", marginTop: 6 }}>{shownNote}</span>}
-        </p>
-      ) : (
-        <>
-          <VoiceCaptions show={showCaptions} captions={rt.captions} />
-          {shownNote && <p className="svm__hint" role="status" style={{ marginTop: 4 }}>{shownNote}</p>}
-        </>
-      )}
-
-      {rt.micError && <p className="svm__hint" role="status">{rt.micError}</p>}
-      {/* frase de espera: a busca no material passou de ~600 ms (frasesEspera.ts, decisão do dono de 17/10) */}
-      {rt.conferindo && <p className="svm__hint svm__conferindo" role="status">{rt.conferindo}</p>}
-
-      {rt.tapToTalk && connected && rt.state === "ready" && !rt.muted && rt.streams?.input && (
-        <div className="svm__actions">
-          <p className="svm__hint" style={{ margin: 0 }}>Toque para falar</p>
-          <button type="button" className="svm__pill" onClick={rt.talk}>Falar</button>
-        </div>
-      )}
-      {rt.tapToTalk && rt.state === "listening" && (
-        <div className="svm__actions">
-          <button type="button" className="svm__pill" aria-label="Enviar a fala" onClick={rt.send}>Enviar</button>
-        </div>
-      )}
-
-      {rt.state === "speaking" && rt.provider !== "live" && (
-        <div className="svm__actions">
-          <button type="button" className="svm__pill" onClick={rt.interrupt}>Interromper</button>
-        </div>
-      )}
-
-      {connected && rt.enablePlayback && (
-        <div className="svm__actions">
-          <button type="button" className="svm__pill" onClick={enableSound}>
-            {rt.playbackBlocked || volume === 0 ? "Ativar som do Nexus" : "Não ouvi a voz"}
-          </button>
-        </div>
-      )}
-      {playbackMessage && <p className="svm__hint" role="status">{playbackMessage}</p>}
+        ) : rt.state === "ended" ? (
+          <div style={{ width: "100%" }}>
+            <p className="svm__aviso" role="status">{shownNote ?? "A conversa por voz foi encerrada."}</p>
+            <div className="svm__actions">
+              <button type="button" className="svm__pill" onClick={() => rt.start()}>Conversar de novo</button>
+            </div>
+          </div>
+        ) : (
+          avisos.map((a) => <p key={a} className="svm__aviso" role="status">{a}</p>)
+        )}
+        {rt.micError && !avisos.includes(rt.micError) && <p className="svm__aviso" role="status">{rt.micError}</p>}
+        {/* modo reserva no iPhone, caso raro: o medidor do navegador parou; um toque acorda o som (ou encerra a fala, se ele não voltar) */}
+        {rt.meterDead > 0 && connected && (
+          <div className="svm__actions">
+            <button type="button" className="svm__pill" onClick={rt.wakeMeter}>{rt.meterDead >= 2 ? "Terminei de falar" : "Toque para eu voltar a te ouvir"}</button>
+          </div>
+        )}
+        {rt.state === "speaking" && rt.provider === "tts" && (
+          <div className="svm__actions">
+            <button type="button" className="svm__pill" onClick={rt.interrupt}>Interromper</button>
+          </div>
+        )}
+        {semSom && (
+          <div className="svm__actions">
+            <button type="button" className="svm__pill" onClick={enableSound}>Toque para ativar o som</button>
+          </div>
+        )}
+        {playbackMessage && <p className="svm__aviso" role="status">{playbackMessage}</p>}
+      </div>
 
       <VoiceControls
         muted={rt.muted}
@@ -285,8 +286,9 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
         chatOpen={chatOpen}
         onToggleChat={() => setChatOpen((v) => !v)}
         onClose={onClose}
-        micDisabled={!connected}
+        micDisabled={!connected || closing}
         micRef={mic}
+        closing={closing}
       />
 
       {chatOpen && (
