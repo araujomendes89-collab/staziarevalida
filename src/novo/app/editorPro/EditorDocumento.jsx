@@ -19,10 +19,32 @@ import "./editorPro.css";
  * compacto: campo curto (alternativa, legenda...): folha sem margem de página.
  * somenteTexto: sem as ferramentas de formatação (ex.: roteiro de podcast, que vai para a voz): só desfazer, Revisão e Exibir.
  * semModulos: ids de módulos fora deste editor (extensões, botões e painéis). Ex.: ["imagens"] num campo de questão.
+ * Celular (até 600 px; decisão do dono 18/10, só na Administração, que é onde o editor existe): uma barra curta com os botões
+ * principais (desfazer, negrito, itálico, lista, link) e "Mais", que abre a barra completa; as abas e os grupos rolam de lado
+ * dentro da caixa, sem estourar a largura da tela.
  */
+const ESTREITO = "(max-width: 600px)";
+function useEstreito() {
+  const consulta = () => (typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia(ESTREITO).matches : false);
+  const [estreito, setEstreito] = React.useState(consulta);
+  React.useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
+    const mq = window.matchMedia(ESTREITO);
+    const mudou = () => setEstreito(mq.matches);
+    mudou();
+    mq.addEventListener?.("change", mudou);
+    return () => mq.removeEventListener?.("change", mudou);
+  }, []);
+  return estreito;
+}
+// Botões da barra curta do celular (na ordem); o link abre o painel "Hiperlink". O estado do rascunho (aulas) fica à vista no fim.
+const RAPIDOS = ["desfazer", "negrito", "italico", "lista"];
+const RAPIDOS_FIM = ["rascunho"];
 export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarConfig, contexto, somenteLeitura = false, rotulo, id, aoCriar, somenteTexto = false, compacto = false, semModulos = [] }) {
   const [aba, setAba] = React.useState("inicio");
   const [painel, setPainel] = React.useState(null);
+  const estreito = useEstreito();
+  const [mais, setMais] = React.useState(false);
   const ultimo = React.useRef(JSON.stringify(valor ?? null));
   const aoMudarRef = React.useRef(aoMudar);
   aoMudarRef.current = aoMudar;
@@ -103,10 +125,29 @@ export default function EditorDocumento({ valor, aoMudar, config = {}, aoMudarCo
   }
   const listaPaineis = paineis().filter((p) => !fora.includes(p.modulo));
   const aberto = listaPaineis.find((p) => p.id === painel);
+  const doInicio = (ids) => (estreito ? ids.map((rid) => botoesDaAba("inicio").find((b) => b.id === rid)).filter((b) => b && permitido(b)) : []);
+  const rapidos = doInicio(RAPIDOS);
+  const rapidosFim = doInicio(RAPIDOS_FIM);
+  const painelLink = estreito && !somenteTexto ? listaPaineis.find((p) => p.id === "hiperlink") : null;
 
   return (
-    <div className={`ep-container${compacto ? " ep-container--compacto" : ""}${aberto ? " ep-container--painel" : ""}`} id={id} onKeyDown={aoTeclar}>
-      <div className="ep-toolbar">
+    <div className={`ep-container${compacto ? " ep-container--compacto" : ""}${aberto ? " ep-container--painel" : ""}${estreito ? " ep-container--estreito" : ""}`} id={id} onKeyDown={aoTeclar}>
+      {estreito && (
+        <div className="ep-rapida" role="toolbar" aria-label="Ferramentas principais">
+          {rapidos.map(({ id: bid, Componente }) => <Componente key={bid} editor={editor} ctx={ctx} />)}
+          {painelLink && <Botao icon={painelLink.icone} label={painelLink.titulo} ativo={painel === painelLink.id} onClick={() => setPainel(painel === painelLink.id ? null : painelLink.id)} />}
+          {rapidosFim.map(({ id: bid, Componente }) => (
+            <span key={bid} className="ep-rapida-estado">
+              <Componente editor={editor} ctx={ctx} />
+            </span>
+          ))}
+          <button type="button" className={`ep-mais${mais ? " ep-ativo" : ""}`} aria-expanded={mais} aria-controls={id ? `${id}-barra` : undefined} onMouseDown={(e) => e.preventDefault()} onClick={() => setMais((m) => !m)}>
+            <Icon name={mais ? "chevron-up" : "ellipsis"} size={16} />
+            {mais ? "Menos" : "Mais"}
+          </button>
+        </div>
+      )}
+      <div className="ep-toolbar" id={id ? `${id}-barra` : undefined} hidden={estreito && !mais}>
         <div className="ep-tablist" role="tablist" aria-label="Abas do editor">
           {abas.map((a) => (
             <button key={a.id} type="button" role="tab" aria-selected={abaAtiva === a.id} className={`ep-tab${abaAtiva === a.id ? " ep-tab--ativa" : ""}`} onClick={() => setAba(a.id)}>

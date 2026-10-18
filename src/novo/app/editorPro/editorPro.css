@@ -182,3 +182,21 @@
 .ep-container--compacto:focus-within { border-color: var(--border-brand); }
 .ep-container--compacto:not(:focus-within):not(.ep-container--painel) > .ep-toolbar { display: none; }
 .ep-container--compacto:not(:focus-within):not(.ep-container--painel) .ep-folha { border-radius: 10px; }
+
+/* Celular (até 600 px; só na Administração): barra curta + "Mais"; abas e grupos rolam de lado dentro da caixa (decisão do dono 18/10) */
+.ep-container--estreito { max-width: 100%; min-width: 0; }
+.ep-container--estreito .ep-toolbar { min-width: 0; padding: 6px; }
+.ep-container--estreito .ep-toolbar[hidden] { display: none; }
+.ep-rapida { display: flex; align-items: center; gap: 2px; padding: 6px; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; border-bottom: 1px solid var(--border-subtle); background: var(--surface-card); }
+.ep-rapida .ep-btn { flex: none; min-width: 40px; min-height: 40px; justify-content: center; }
+.ep-rapida-estado { flex: none; display: inline-flex; align-items: center; padding: 0 6px; font-size: 12px; }
+.ep-mais { flex: none; margin-left: auto; position: sticky; right: 0; box-shadow: -8px 0 8px -4px var(--surface-card); display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border: 1px solid var(--border-default); border-radius: 10px; background: var(--surface-card); color: var(--text-primary); font: 600 14px var(--font-sans); cursor: pointer; }
+.ep-mais.ep-ativo { background: var(--selected-bg, var(--surface-brand-soft)); border-color: var(--selected-border, var(--border-brand)); }
+.ep-mais:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ep-container--estreito .ep-tablist { gap: 2px; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; }
+.ep-container--estreito .ep-tab { flex: none; white-space: nowrap; padding: 8px 10px; }
+.ep-container--estreito .ep-paineis-btn { flex: none; }
+.ep-container--estreito .ep-tools { flex-wrap: nowrap; gap: 12px; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 4px; }
+.ep-container--estreito .ep-grupo { flex: none; }
+.ep-container--estreito .ep-grupo-itens { flex-wrap: nowrap; }
+.ep-container--compacto:not(:focus-within):not(.ep-container--painel) > .ep-rapida { display: none; }
