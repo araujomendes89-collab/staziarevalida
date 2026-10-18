@@ -22,7 +22,7 @@ import { MIC_CONSTRAINTS } from "./voice/microfone.js";
 import { openGeminiLive } from "./voice/geminiLive.js";
 import { openGeminiPonte } from "./voice/geminiPonte.js";
 import { refreshVoiceLanguage, TUTOR_SPOKEN_LANGUAGE } from "../../../shared/tutor/voiceLanguage";
-import { comEspera, personaDeEspera, RodizioDeEspera, VINHETAS } from "../../../../server/tutor/conhecimento/frasesEspera";
+import { ATRASO_ESPERA_VOZ_MS, comEspera, personaDeEspera, RodizioDeEspera, VINHETAS } from "../../../../server/tutor/conhecimento/frasesEspera";
 import { FalaDeEspera, preCarregarVinhetas } from "./voice/falaDeEspera.js";
 
 // Frases de espera (decisão do dono de 17/10): um rodízio por conversa, para não repetir frase na mesma conversa nem quando a
@@ -544,8 +544,8 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     if (falaEspera.current.ativa) r.current.esperaApagar = true;
     else setConferindo(null);
   };
-  /** Busca no material pelo navegador: passou de ~600 ms, a frase aparece até a resposta voltar. */
-  const comFraseDeEspera = (nome, trabalho) => (nome === "get_topic_context" ? comEspera(trabalho, mostrarEspera, apagarEspera) : trabalho);
+  /** Busca no material pelo navegador: a frase de espera começa junto com a busca (ATRASO_ESPERA_VOZ_MS) e vai até a resposta voltar. */
+  const comFraseDeEspera = (nome, trabalho) => (nome === "get_topic_context" ? comEspera(trabalho, mostrarEspera, apagarEspera, ATRASO_ESPERA_VOZ_MS) : trabalho);
 
   /** O professor pediu ferramentas: o servidor executa; o resultado volta para ele continuar falando. */
   const geminiTools = async (calls) => {

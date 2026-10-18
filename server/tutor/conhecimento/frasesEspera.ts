@@ -20,8 +20,16 @@
 
 export type PersonaEspera = "durao" | "acolhedor" | "durona" | "tranquila";
 
-/** A frase só aparece se a busca ainda estiver rodando depois deste tempo. */
+/** A frase só aparece se a busca ainda estiver rodando depois deste tempo (texto: o indicador do Mini Tutor). */
 export const ATRASO_ESPERA_MS = 600;
+/**
+ * Na VOZ AO VIVO a frase falada começa assim que a busca no material começa (18/10, meta do dono de responder em menos de 1,5 s).
+ * Medido com a montagem do app (scripts/voz-teste/medir-voz-app.ts): o modelo pede a busca ~0,75 s depois do fim da fala do aluno
+ * e, mesmo com a busca levando só 100 a 400 ms, ainda gasta ~1,1 a 1,4 s para começar a responder depois do resultado (1º áudio em
+ * 2,1 a 2,5 s). Esperar 600 ms deixava o aluno ~1,35 s em silêncio (e sem frase nenhuma quando a busca era rápida); começando já,
+ * o aluno ouve o professor em ~0,8 s. A resposta corta a frase como antes.
+ */
+export const ATRASO_ESPERA_VOZ_MS = 0;
 
 export const FRASES_ESPERA: Readonly<Record<PersonaEspera, readonly string[]>> = {
   // Stazi, Durão: preceptor escrachado e exigente; seco, rápido, orgulho de não chutar
