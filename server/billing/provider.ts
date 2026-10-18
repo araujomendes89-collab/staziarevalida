@@ -41,7 +41,23 @@ export type ProviderNotice =
   /** failed = o fornecedor avisou que a TENTATIVA falhou (ex.: cartão recusado) mesmo que a cobrança continue "pendente" para nova tentativa. */
   | { kind: "charge"; eventId: string; event: string; chargeId: string; subscriptionId: string | null; failed?: boolean }
   | { kind: "subscription_ended"; eventId: string; event: string; subscriptionId: string }
+  /** Nota fiscal mudou (emitida, cancelada, erro). O núcleo relê a nota na API antes de guardar ou mandar e-mail. */
+  | { kind: "invoice"; eventId: string; event: string; invoiceId: string }
   | { kind: "ignored"; eventId: string; event: string };
+
+/** Situação da nota fiscal, traduzida do fornecedor. */
+export type InvoiceStatus = "agendada" | "autorizada" | "cancelando" | "cancelada" | "erro";
+
+/** Nota fiscal lida na API do fornecedor. */
+export interface ProviderInvoice {
+  id: string;
+  status: InvoiceStatus;
+  /** Cobrança da nota (null = nota avulsa, não é de um pagamento do app). */
+  chargeId: string | null;
+  /** PDF da nota (https). */
+  pdfUrl: string | null;
+  numero: string | null;
+}
 
 export interface CustomerInput {
   userId: string;
@@ -90,6 +106,8 @@ export interface ProviderCapabilities {
   partialRefund: boolean;
   /** Nota fiscal ligada: a primeira compra pede CEP e número (o endereço do tomador é obrigatório na NFS-e). */
   requiresAddress: boolean;
+  /** O fornecedor emite nota fiscal e deixa ler a nota (getInvoice/listInvoices). */
+  invoices?: boolean;
 }
 
 export interface PaymentProvider {
@@ -117,6 +135,10 @@ export interface PaymentProvider {
   afterPaid?(charge: ProviderCharge, description: string): Promise<void>;
   /** Depois de uma devolução TOTAL confirmada (ex.: cancelar a nota fiscal daquele pagamento). Erro aqui só é registrado. */
   afterRefunded?(charge: ProviderCharge): Promise<void>;
+  /** Lê uma nota fiscal (conferência antes de guardar o link e mandar o e-mail). null = não existe nesta conta. */
+  getInvoice?(invoiceId: string): Promise<ProviderInvoice | null>;
+  /** Notas de uma cobrança (a tarefa de hora em hora pergunta quando o aviso da nota não chegou). */
+  listInvoices?(chargeId: string): Promise<ProviderInvoice[]>;
 }
 
 export class BillingSignatureError extends Error {

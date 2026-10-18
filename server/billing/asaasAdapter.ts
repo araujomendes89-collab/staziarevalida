@@ -29,8 +29,10 @@ import {
   type ChargeInput,
   type ChargeStatus,
   type CustomerInput,
+  type InvoiceStatus,
   type PaymentProvider,
   type ProviderCharge,
+  type ProviderInvoice,
   type ProviderNotice,
   type SubscriptionInput,
 } from "./provider";
@@ -136,6 +138,34 @@ export function toProviderCharge(p: Obj): ProviderCharge {
   };
 }
 
+/** Situação da nota no Asaas → situação neutra. Cancelamento negado = a nota continua valendo (autorizada). */
+export function asaasInvoiceStatus(status: unknown): InvoiceStatus {
+  switch (String(status)) {
+    case "AUTHORIZED":
+    case "CANCELLATION_DENIED":
+      return "autorizada";
+    case "PROCESSING_CANCELLATION":
+      return "cancelando";
+    case "CANCELED":
+      return "cancelada";
+    case "ERROR":
+      return "erro";
+    default:
+      return "agendada"; // SCHEDULED, SYNCHRONIZED
+  }
+}
+
+export function toProviderInvoice(i: Obj): ProviderInvoice {
+  const pdf = typeof i.pdfUrl === "string" && /^https:\/\//.test(i.pdfUrl) && i.pdfUrl.length <= 500 ? i.pdfUrl : null;
+  return {
+    id: String(i.id),
+    status: asaasInvoiceStatus(i.status),
+    chargeId: i.payment ? String(i.payment) : null,
+    pdfUrl: pdf,
+    numero: i.number != null && String(i.number).trim() ? String(i.number).trim().slice(0, 40) : null,
+  };
+}
+
 /** Cria o adaptador; sem chave (ou chave de produção sem ASAAS_ALLOW_LIVE=1, ou formato estranho) devolve null = desligado. */
 export function createAsaasProvider(env: NodeJS.ProcessEnv = process.env, fetchImpl: typeof fetch = fetch): PaymentProvider | null {
   const apiKey = (env.ASAAS_API_KEY ?? "").trim();
@@ -203,7 +233,7 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
   return {
     name: "asaas",
     mode,
-    capabilities: { methods: { card: true, pix: true, debit: true }, partialRefund: true, requiresAddress: Boolean(opts.nfse) },
+    capabilities: { methods: { card: true, pix: true, debit: true }, partialRefund: true, requiresAddress: Boolean(opts.nfse), invoices: Boolean(opts.nfse) },
 
     async ensureCustomer(input: CustomerInput) {
       const found = await call<Obj>("GET", `/customers?externalReference=${encodeURIComponent(input.userId)}&limit=1`);
@@ -317,10 +347,27 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
         const failed = event === "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED" || event === "PAYMENT_REPROVED_BY_RISK_ANALYSIS";
         return { kind: "charge", eventId, event, chargeId, subscriptionId: body.payment.subscription ? String(body.payment.subscription) : null, ...(failed ? { failed: true } : {}) };
       }
+      // nota fiscal (INVOICE_AUTHORIZED, INVOICE_CANCELED...): na conta principal chegam também as notas do StaziaTech; o núcleo
+      // relê a nota e só guarda a de um pagamento do app
+      if (event.startsWith("INVOICE_") && body?.invoice?.id) {
+        return { kind: "invoice", eventId, event, invoiceId: String(body.invoice.id) };
+      }
       if ((event === "SUBSCRIPTION_DELETED" || event === "SUBSCRIPTION_INACTIVATED") && body?.subscription?.id) {
         return { kind: "subscription_ended", eventId, event, subscriptionId: String(body.subscription.id) };
       }
       return { kind: "ignored", eventId, event };
+    },
+
+    async getInvoice(invoiceId: string) {
+      if (!ID.test(invoiceId)) return null;
+      const i = await call<Obj>("GET", `/invoices/${encodeURIComponent(invoiceId)}`, undefined, true);
+      return i?.id ? toProviderInvoice(i) : null;
+    },
+
+    async listInvoices(chargeId: string) {
+      if (!ID.test(chargeId)) return [];
+      const list = await call<Obj>("GET", `/invoices?payment=${encodeURIComponent(chargeId)}`);
+      return (Array.isArray(list?.data) ? list!.data : []).filter((i: Obj) => i?.id).map(toProviderInvoice);
     },
 
     async afterRefunded(charge) {

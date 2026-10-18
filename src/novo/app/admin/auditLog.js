@@ -45,6 +45,9 @@ export const ACTION_LABEL = {
   "direitos.fase_dada": "Plano por fase dado pela equipe (regra nova)", // 013690
   "direitos.fase_tirada": "Plano por fase tirado pela equipe (regra nova)", // 013690
   "direitos.teste_verificado": "Teste grátis marcado como verificado (alerta de IP)", // 013690
+  "cobranca.devolver": "Pagamento devolvido ao aluno pela Administração", // 013850
+  "cobranca.vendas": "Vendas abertas ou fechadas", // 013850
+  "alertas_dono.save": "Alertas de gasto de IA por e-mail ao dono alterados", // 013850
   "settings.save": "Configurações salvas",
   "settings.sessao_unica": "Sessão única (uma conta, um aparelho por vez) alterada",
   "support.contact": "Contato de suporte alterado",
@@ -393,6 +396,11 @@ const SUMMARY = {
   "user.role": (d, entry) => join([person(entry), `${ROLE_LABEL[d.from] ?? d.from} → ${ROLE_LABEL[d.to] ?? d.to}`]),
   "user.subscription": (d, entry) => join([person(entry), `${PLAN_LABEL[d.to?.plan] ?? d.to?.plan} · ${SUB_STATUS_LABEL[d.to?.status] ?? d.to?.status}`]),
   "user.delete": (d) => d.email,
+  // cobrança (013850)
+  "cobranca.vendas": (d) => (d.vendas_ligadas ? "Vendas abertas" : "Vendas fechadas"),
+  "cobranca.devolver": (d, entry) =>
+    join([person(entry), d.valor_centavos != null ? `R$ ${(d.valor_centavos / 100).toFixed(2).replace(".", ",")}` : null,
+      d.acesso === "encerrar" ? "acesso encerrado" : d.acesso === "manter" ? "acesso mantido" : null, d.motivo]),
   "plan.save": (d, entry) =>
     entry.target === "trial"
       ? `${PLAN_LABEL.trial} · ${d.active ? "oferta de teste no cadastro ligada" : "oferta de teste no cadastro desligada"}`

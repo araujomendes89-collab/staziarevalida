@@ -9,7 +9,7 @@
 import type { ContentDb, Identity } from "../contentHub/infra";
 import { descricaoDaNota } from "./nota";
 import { brtDate, cleanDocument, endOfBrtDay, periodEndFor } from "./period";
-import { ProviderError, type PaymentProvider, type ProviderCharge, type ProviderNotice } from "./provider";
+import { ProviderError, type PaymentProvider, type ProviderCharge, type ProviderInvoice, type ProviderNotice } from "./provider";
 
 export class BillingError extends Error {
   constructor(message: string, public status = 400, public code?: string) {
@@ -80,7 +80,9 @@ interface Ctx {
 function dbError(e: unknown): BillingError | null {
   const m = /([a-z_]{4,40}): (.{3,300})$/.exec(String((e as Error)?.message ?? ""));
   if (!m) return null;
-  const known: Record<string, number> = { renovacao_pendente: 409, pedido_vencido: 409, sem_renovacao: 409, ja_no_cartao: 409, renovacao_paga: 409, vendas_desligadas: 503, pedido_aberto: 409, fora_de_venda: 409, ja_assinante: 409, sem_devolucao: 409, devolucao_em_andamento: 409 };
+  const known: Record<string, number> = { renovacao_pendente: 409, pedido_vencido: 409, sem_renovacao: 409, ja_no_cartao: 409, renovacao_paga: 409, vendas_desligadas: 503, pedido_aberto: 409, fora_de_venda: 409, ja_assinante: 409, sem_devolucao: 409, devolucao_em_andamento: 409,
+    // botão "Devolver pagamento" da Administração (013850)
+    so_admin: 403, motivo_obrigatorio: 422, acesso_obrigatorio: 422, valor_invalido: 422 };
   return m[1] in known ? new BillingError(m[2], known[m[1]], m[1]) : null;
 }
 
@@ -472,6 +474,78 @@ export function createBilling(deps: BillingDeps) {
     }
   }
 
+  /**
+   * Botão "Devolver pagamento" da Administração (013850; só administrador, conferido no banco). Motivo obrigatório; "manter" deixa o
+   * acesso como está, "encerrar" acaba com o acesso e com a renovação. Valor vazio = tudo o que ainda não voltou. A devolução é
+   * registrada ANTES de pedir ao fornecedor (com quem fez); o acesso só muda quando o fornecedor confirmar (Pix fica esperando a
+   * autorização no Asaas). Recusa do fornecedor (ex.: devolução parcial no cartão no mesmo dia) volta para a tela com o motivo.
+   */
+  async function adminRefund(admin: Identity, body: { cobranca_id?: unknown; valor_centavos?: unknown; motivo?: unknown; acesso?: unknown }) {
+    const p = need();
+    const id = Number(body?.cobranca_id);
+    if (!Number.isInteger(id) || id <= 0) throw new BillingError("Pagamento inválido.");
+    const bruto = body?.valor_centavos;
+    const valor = bruto == null || bruto === "" ? null : Number(bruto);
+    if (valor !== null && (!Number.isInteger(valor) || valor <= 0)) throw new BillingError("Valor inválido. Use, por exemplo, 49,95.", 422, "valor_invalido");
+    const acesso = body?.acesso === "manter" || body?.acesso === "encerrar" ? body.acesso : null;
+    let r: { id: number; user_id: string | null; tipo: "plano" | "extra"; valor_centavos: number; total: boolean; acesso: string; provider: string; payment_id: string; pedir_total: boolean };
+    try {
+      r = await svc("ch_worker_billing_admin_devolucao", { p_admin: admin.id, p_cobranca: id, p_valor: valor, p_motivo: typeof body?.motivo === "string" ? body.motivo : "", p_acesso: acesso });
+    } catch (e) {
+      throw dbError(e) ?? e;
+    }
+    if (r.provider !== p.name) {
+      await svc("ch_worker_billing_devolucao_falhou", { p_reembolso: r.id, p_erro: "Pagamento de outro fornecedor" }).catch(() => undefined);
+      throw new BillingError("Este pagamento foi feito por outro meio. Devolva pelo painel da instituição de pagamento.", 409);
+    }
+    let done: { status: "done" | "pending" };
+    try {
+      done = await p.refund(r.payment_id, r.pedir_total ? undefined : r.valor_centavos);
+    } catch (e) {
+      const msg = (e as Error).message;
+      log(`[billing] devolução da equipe falhou: ${msg}`);
+      await svc("ch_worker_billing_devolucao_falhou", { p_reembolso: r.id, p_erro: msg }).catch(() => undefined);
+      const motivo = e instanceof ProviderError ? msg.split(" - ").slice(1).join(" - ").trim() : "";
+      throw new BillingError(
+        `A instituição de pagamento não aceitou a devolução${motivo ? `: ${motivo}` : "."} A devolução ficou registrada como pendente para a equipe. ` +
+          "Devolução parcial no cartão só é aceita a partir do dia seguinte ao pagamento.",
+        502,
+        "devolucao_recusada"
+      );
+    }
+    if (done.status === "done") await processCharge(r.payment_id, null).catch((e) => log(`[billing] pós-devolução da equipe: ${(e as Error).message}`));
+    // "encerrar": a renovação acaba já (como na desistência do aluno), mesmo que a devolução de Pix ainda espere a autorização
+    if (r.acesso === "encerrar" && r.tipo === "plano" && r.user_id) {
+      await cancelRenewal({ id: r.user_id } as Identity).catch(() => undefined);
+    }
+    return {
+      ok: true,
+      status: done.status === "done" ? "feito" : "solicitado",
+      valor_centavos: r.valor_centavos,
+      mensagem:
+        done.status === "done"
+          ? "Devolução feita. O valor volta ao aluno pela mesma forma de pagamento."
+          : "Devolução pedida. No Pix, ela só sai depois que você autorizar no painel ou no aplicativo do Asaas (token). O acesso muda quando o Asaas confirmar.",
+    };
+  }
+
+  /** Relê a nota fiscal na API e guarda no pagamento do app (link no histórico e e-mail "Sua nota fiscal"). */
+  async function saveInvoice(p: PaymentProvider, inv: ProviderInvoice): Promise<string | null> {
+    if (!inv.chargeId) return null; // nota avulsa (não é de um pagamento do app)
+    const r = await svc<{ conhecida: boolean; user_id?: string | null }>("ch_worker_billing_nota_salvar", {
+      p_provider: p.name, p_payment: inv.chargeId, p_nota: { id: inv.id, status: inv.status, pdf_url: inv.pdfUrl, numero: inv.numero },
+    });
+    return r?.user_id ?? null;
+  }
+
+  async function processInvoice(invoiceId: string): Promise<string | null> {
+    const p = need();
+    if (!p.getInvoice) return null;
+    const inv = await p.getInvoice(invoiceId);
+    if (!inv) return null; // não existe na NOSSA conta
+    return saveInvoice(p, inv);
+  }
+
   /** Aviso do fornecedor (já conferido no adaptador). Repetido = nada. Erro = lança (o fornecedor tenta de novo). */
   async function handleNotice(n: ProviderNotice) {
     const p = need();
@@ -480,6 +554,7 @@ export function createBilling(deps: BillingDeps) {
     if (!first) return { handled: false, duplicate: true };
     let userId: string | null = null;
     if (n.kind === "charge") userId = await processCharge(n.chargeId, n.subscriptionId, Boolean(n.failed));
+    else if (n.kind === "invoice") userId = await processInvoice(n.invoiceId);
     else {
       const r = await svc<{ user_id: string | null }>("ch_worker_billing_assinatura_fim", { p_provider: p.name, p_subscription: n.subscriptionId });
       userId = r?.user_id ?? null;
@@ -533,7 +608,21 @@ export function createBilling(deps: BillingDeps) {
         p_venc_fim: tipo === "plano" && charge.dueDate ? endOfBrtDay(charge.dueDate).toISOString() : null,
       });
     } else if (charge.status === "refunded" || charge.status === "partially_refunded") {
-      await svc("ch_worker_billing_devolvido", { p_provider: p.name, p_payment: charge.id, p_devolvido: charge.refundedCents || charge.amountCents });
+      // 013850: a devolução é classificada no banco (duplicada, parcial, período encerrado, conferir, única) e só a desistência / a
+      // devolução da única cobrança do período (ou "encerrar" da equipe) corta o acesso; aí a renovação do cartão é cancelada lá
+      const d = await svc<{ cancelar_assinatura?: string | null; classificacao?: string | null } | null>("ch_worker_billing_devolvido", {
+        p_provider: p.name, p_payment: charge.id, p_devolvido: charge.refundedCents || charge.amountCents,
+      });
+      if (d?.classificacao && !["aluno", "equipe_manter", "equipe_encerrar"].includes(d.classificacao)) log(`[billing] devolução no painel (${charge.id}): ${d.classificacao}`);
+      if (d?.cancelar_assinatura) {
+        try {
+          await p.cancelSubscription(d.cancelar_assinatura);
+          await svc("ch_worker_billing_assinatura_fim", { p_provider: p.name, p_subscription: d.cancelar_assinatura });
+        } catch (e) {
+          // a renovação já está desligada no banco; se o fornecedor cobrar de novo, a cobrança chega como paga e a equipe devolve
+          log(`[billing] assinatura ${d.cancelar_assinatura} não cancelada depois da devolução: ${(e as Error).message}`);
+        }
+      }
       if (charge.status === "refunded" && p.afterRefunded) await p.afterRefunded(charge).catch((e) => log(`[billing] nota não cancelada (${charge.id}): ${(e as Error).message}`));
     } else if (charge.status === "canceled" && pedido?.status === "aberto") {
       await svc("ch_worker_billing_pedido_encerrar", { p_pedido: pedido.id, p_status: "cancelado", p_erro: "Cobrança removida no fornecedor", p_user: null });
@@ -545,7 +634,7 @@ export function createBilling(deps: BillingDeps) {
   async function runScheduled() {
     const p = need();
     const v = await encerrarVencidos(null);
-    const out = { expirados: v.expirados, renovacoes: 0, entregues: 0, erros: v.erros, sem_aceite: 0 };
+    const out = { expirados: v.expirados, renovacoes: 0, entregues: 0, erros: v.erros, sem_aceite: 0, notas: 0 };
     // Contrato 3.0, cláusula 6.5-A: cartão que renovaria em até 1 dia sem o aceite da versão vigente deixa de renovar sozinho e passa a
     // Pix (o Pix só sai depois do aceite). Banco primeiro, depois o fornecedor; falhou = desfaz (como na troca pelo aluno).
     for (const c of await svc<{ user_id: string; provider: string; subscription_id: string }[]>("ch_worker_billing_cartao_sem_aceite", {}).catch(() => [])) {
@@ -583,10 +672,28 @@ export function createBilling(deps: BillingDeps) {
       }
     }
     out.entregues = await svc<number>("ch_worker_billing_entregar_pendentes", {});
+    // nota fiscal: pergunta ao fornecedor pelas notas que ainda não chegaram (serve também se o aviso INVOICE_* não estiver ligado)
+    if (p.capabilities.invoices && p.listInvoices) {
+      const pend = await svc<{ provider: string; payment_id: string }[]>("ch_worker_billing_notas_pendentes", { p_limite: 30 }).catch(() => []);
+      for (const n of pend ?? []) {
+        if (n.provider !== p.name) continue;
+        try {
+          const list = await p.listInvoices(n.payment_id);
+          const nota = list.find((i) => i.status === "autorizada") ?? list.find((i) => i.status !== "cancelada") ?? list[0];
+          if (nota) {
+            await saveInvoice(p, nota);
+            out.notas++;
+          }
+        } catch (e) {
+          out.erros++;
+          log(`[billing] nota de ${n.payment_id}: ${(e as Error).message}`);
+        }
+      }
+    }
     return out;
   }
 
-  return { overview, checkout, orderStatus, cancelOrder, cancelRenewal, payRenewalByPix, changeMethod, refund, handleNotice, processCharge, runScheduled };
+  return { overview, checkout, orderStatus, cancelOrder, cancelRenewal, payRenewalByPix, changeMethod, refund, adminRefund, handleNotice, processCharge, processInvoice, runScheduled };
 }
 
 export type Billing = ReturnType<typeof createBilling>;

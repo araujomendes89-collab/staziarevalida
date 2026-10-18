@@ -7,6 +7,7 @@ import { Tabs } from "../../ds";
 import { useSession } from "../session.jsx";
 import { AdminQuestions } from "./AdminQuestions.jsx";
 import { AdminUsers } from "./AdminUsers.jsx";
+import { VendasPagamentos } from "./planos/VendasPagamentos.jsx";
 import { AdminAudit, AdminOverview, AdminPlans, AdminSettings, AdminStations, AdminTutor } from "./AdminPanels.jsx";
 import { ContentHub } from "./content/ContentHub.jsx";
 import { AdminPlay } from "./AdminPlay.jsx";
@@ -25,6 +26,8 @@ import { isStaffRole } from "./common.jsx";
 const TABS = [
   { value: "geral", label: "Visão geral", icon: "layout-dashboard", staff: true },
   { value: "usuarios", label: "Usuários", icon: "users" },
+  // cobrança (013850): vendas, pagamentos e devoluções do período; só administrador
+  { value: "vendas", label: "Vendas e pagamentos", icon: "receipt", admin: true },
   { value: "questoes", label: "Questões", icon: "file-question", staff: true, reviewer: true },
   { value: "aulas", label: "Aulas", icon: "tv", staff: true },
   { value: "podcasts", label: "Podcasts", icon: "headphones", staff: true },
@@ -61,6 +64,7 @@ export function AdminScreen() {
       <Tabs wrap label="Administração" value={tab} onChange={(aba) => setParams({ aba }, { replace: true })} tabs={tabs.map(({ value, label, icon }) => ({ value, label, icon, ...(value === "radar" && radar.graves > 0 ? { count: radar.graves } : {}) }))} />
       {tab === "geral" && <AdminOverview isAdmin={isAdmin} />}
       {tab === "usuarios" && <AdminUsers />}
+      {tab === "vendas" && isAdmin && <VendasPagamentos />}
       {tab === "questoes" && <AdminQuestions onOpenIneditas={() => setParams({ aba: "conteudo", secao: "ineditas" })} />}
       {tab === "aulas" && <AdminLessons />}
       {tab === "podcasts" && <AdminPodcasts />}

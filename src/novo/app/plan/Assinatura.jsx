@@ -1,6 +1,6 @@
 // Minha conta › Assinatura (planos etapa 4). Só aparece com a cobrança ligada no servidor e para aluno (equipe e revisor não têm
 // plano). Mostra: plano atual, próxima cobrança, forma de pagamento, trocar para Pix/cartão, cancelar (sem multa, a devolução volta
-// pela mesma forma de pagamento), histórico de pagamentos com recibo/nota e os avisos recentes. Quem decide tudo é o servidor.
+// pela mesma forma de pagamento), histórico de pagamentos com recibo e link da nota fiscal (013850) e os avisos recentes. Quem decide tudo é o servidor.
 import React from "react";
 import { Badge, Banner, Button, Icon, IconTile } from "../../ds";
 import { useSession } from "../session.jsx";
@@ -375,19 +375,26 @@ export function AssinaturaSection({ go, Cabecalho }) {
                   <Badge tone={tom} size="sm">
                     {rot}
                   </Badge>
-                  {x.recibo_url ? (
-                    <a className="as-hist__r" href={x.recibo_url} target="_blank" rel="noopener noreferrer">
-                      <Icon name="receipt" size={16} /> Recibo e nota
-                    </a>
-                  ) : (
-                    <span className="as-hist__r" />
-                  )}
+                  <span className="as-hist__links">
+                    {x.recibo_url && (
+                      <a className="as-hist__r" href={x.recibo_url} target="_blank" rel="noopener noreferrer">
+                        <Icon name="receipt" size={16} /> Recibo
+                      </a>
+                    )}
+                    {x.nota_url ? (
+                      <a className="as-hist__r" href={x.nota_url} target="_blank" rel="noopener noreferrer" data-testid={`nota-${x.id}`}>
+                        <Icon name="file-text" size={16} /> Nota fiscal{x.nota_numero ? ` nº ${x.nota_numero}` : ""}
+                      </a>
+                    ) : x.nota_status === "cancelada" ? (
+                      <span className="as-hist__nc">Nota cancelada</span>
+                    ) : null}
+                  </span>
                 </li>
               );
             })}
           </ul>
         )}
-        <p className="bl-fina">A nota fiscal é emitida pela instituição de pagamento e aparece no recibo quando sair.</p>
+        <p className="bl-fina">A nota fiscal é emitida depois de cada pagamento confirmado: ela chega no seu e-mail e o link aparece aqui. Na devolução total, a nota é cancelada.</p>
         {hist?.aceite && (
           <p className="bl-fina">
             Contrato aceito em {dateBR(hist.aceite.em)}

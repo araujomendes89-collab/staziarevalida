@@ -54,6 +54,7 @@ import { createAvisos } from "./server/avisos/avisos";
 import { createLegalRouter, startLegalScheduler, type LegalDeps } from "./server/legal/router";
 // Um módulo de e-mail só (Pacote 2): o de server/email cobre o de server/avisos (mesmas variáveis SMTP_*, mesmo Mailer, mais anexos)
 import { createSmtpMailer, smtpConfigFromEnv } from "./server/email/smtp";
+import { createEmailsCobranca } from "./server/avisos/emailsCobranca";
 import { createLessonsRouter, lessonsStorage } from "./server/lessons/router";
 import { createQuestionFiguresRouter, questionFiguresStorage } from "./server/questions/figures";
 import { createAdminAssistantRouter } from "./server/adminAssistant/router";
@@ -131,7 +132,9 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
     // avisos de cobrança (013760): e-mail só com SMTP_HOST/SMTP_USER/SMTP_PASSWORD/SMTP_FROM no servidor; sem eles, só o aviso na tela
     const smtp = smtpConfigFromEnv();
     const avisos = createAvisos({ db: hub.deps.db, mailer: smtp ? createSmtpMailer(smtp) : null, baseUrl: (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "") || null, log: (m) => console.log(m) });
-    billingDeps = { billing, provider: billingProvider, authenticate: (req) => hub.deps!.db.authenticate(req), log: (m) => console.log(m), avisos };
+    // 013850: "Sua nota fiscal" ao aluno e alertas de gasto de IA ao dono (mesmo SMTP; sem ele, nada sai)
+    const emails = createEmailsCobranca({ db: hub.deps.db, mailer: smtp ? createSmtpMailer(smtp) : null, baseUrl: (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "") || null, log: (m) => console.log(m) });
+    billingDeps = { billing, provider: billingProvider, authenticate: (req) => hub.deps!.db.authenticate(req), log: (m) => console.log(m), avisos, emails };
     if (billingProvider) console.log(`[billing] cobrança ligada (${billingProvider.name}, modo ${billingProvider.mode}).`);
     app.use("/api/cobranca", createBillingRouter(() => billingDeps));
   }

@@ -4,6 +4,7 @@ import { Avatar, Badge, Banner, Button, Card, EmptyState, Icon, SegmentedControl
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { PlanoPorFaseUsuario } from "./planos/PlanoPorFaseUsuario.jsx";
+import { PagamentosAluno } from "./planos/PagamentosAluno.jsx";
 import { percent } from "../practice/format.js";
 import { AREA_LABEL } from "./content/labels.js";
 import {
@@ -262,6 +263,7 @@ function UserDetail({ id, onBack, onChanged }) {
             <PlanForm key={`p-${user.id}`} user={user} onSaved={saved} />
           </Card>
           {!isStaffRole(user.role) && user.email && <PlanoPorFaseUsuario email={user.email} />}
+          {!isStaffRole(user.role) && <PagamentosAluno userId={user.id} />}
           <DeleteUser
             user={user}
             onDeleted={() => {
