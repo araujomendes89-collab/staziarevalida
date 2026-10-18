@@ -97,7 +97,7 @@ describe("Migração 012900: o candidato não recebe o tema da estação", () =>
     const r = await ler(U.carla, id);
     expect(r.conteudo.pressing_count).toBe(2);
     expect(r.conteudo.pressings).toEqual([
-      { id: "i1", display_number: 1, initially_visible: true, name: "Relato do caso", content: "Relato inicial de teste.", has_image: false },
+      { id: "i1", display_number: 1, initially_visible: true, in_sheet: true, name: "Relato do caso", content: "Relato inicial de teste.", has_image: false },
     ]);
     expect(r.estado.released_pressings).toEqual([]);
     // mesmo que o id do inicial esteja gravado como liberado, ele não aparece na lista de liberados
@@ -110,7 +110,7 @@ describe("Migração 012900: o candidato não recebe o tema da estação", () =>
   it("display_number e source_number: candidato só vê display; avaliador vê os dois", async () => {
     const id = await sala("running");
     const c = (await ler(U.carla, id)).conteudo;
-    expect(c.pressings[1]).toEqual({ id: "d1", display_number: 1, initially_visible: false, name: "Exame A", content: "Resultado A.", has_image: false });
+    expect(c.pressings[1]).toEqual({ id: "d1", display_number: 1, initially_visible: false, in_sheet: false, name: "Exame A", content: "Resultado A.", has_image: false });
     expect(JSON.stringify(c)).not.toContain("source_number");
     const a = (await ler(U.fabio, id)).conteudo;
     expect(a.pressings.map((p: any) => [p.id, p.display_number, p.source_number, p.initially_visible])).toEqual([

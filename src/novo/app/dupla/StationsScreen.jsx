@@ -1,12 +1,18 @@
 // Banco de estações da 2ª fase (Treinamento em Dupla). Textos e medidas do protótipo (Stations.jsx:19-58), sem "Simulado de
-// prova" e sem dificuldade (o banco não tem esse dado). Dados reais de `app_dupla_stations()`; sem dado fica "—".
+// prova". Cartão e linha (pedido do dono de 17/10): área, nome, grau de dificuldade (só quando a revisão médica gravou; sem
+// grau, nenhum selo) e origem ("Revalida 2020 · INEP" ou "Estação inédita"); embaixo, "Sua última nota" e "Média geral".
+// Sem o número e sem os temas pequenos (styles): a busca continua procurando neles. Dados reais de `app_dupla_stations()`;
+// sem nota fica "—".
+// Equipe (catálogo da 013420): os cartões ainda sem conteúdo levam o selo "Aguardando conteúdo" e o filtro "Só com conteúdo",
+// ligado por padrão, esconde esses cartões. Cartão ou linha sem conteúdo não abre o Praticar: fica desabilitado (aria-disabled,
+// continua no leitor de tela) e, ao tocar, mostra "Conteúdo em preparação" (decisão de 17/10). O aluno nunca recebe cartão sem conteúdo (o banco não entrega) e não vê o filtro.
 // Clique numa estação: `go("dupla", { estacao: id })` abre o Praticar com ela escolhida.
 import React from "react";
-import { Button, Dialog, Icon, SegmentedControl, StationCard, TextField } from "../../ds";
+import { Button, Dialog, Icon, SegmentedControl, StationCard, StationLevel, Switch, TextField, useWaitHint, WAIT_HINT } from "../../ds";
 import { formatDecimal } from "../../ds/format.js";
 import { useSession } from "../session.jsx";
 import { isStaffRole, LoadError, Loading, useLoad } from "../admin/common.jsx";
-import { AREAS, areaByCode, areaVars, sourceLabel } from "./labels.js";
+import { AREAS, areaByCode, areaVars, originLabel } from "./labels.js";
 
 // Estilos da tela: só tokens (var(--…)). Classes `dst-` próprias para ter foco, hover e celular sem tocar no CSS do design system.
 const CSS = `
@@ -38,13 +44,20 @@ const CSS = `
 .dst__h-n{font:600 12px var(--font-mono);color:var(--text-tertiary)}
 .dst__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:14px}
 .dst__list{overflow:hidden;background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-xl)}
-.dst__row{display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:center;gap:14px;width:100%;padding:14px 18px;border:0;border-top:1px solid var(--border-subtle);background:transparent;text-align:left;cursor:pointer;font:inherit;color:inherit}
+.dst__row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;width:100%;padding:14px 18px;border:0;border-top:1px solid var(--border-subtle);box-shadow:inset 4px 0 0 var(--dst-solid);background:transparent;text-align:left;cursor:pointer;font:inherit;color:inherit}
 .dst__row:first-child{border-top:0}
 .dst__row:hover{background:var(--surface-subtle)}
-.dst__num{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:var(--radius-sm);background:var(--dst-solid);color:var(--surface-card);font:700 13px var(--font-mono)}
-.dst__row-t{display:block;font:700 15px/1.35 var(--font-sans);color:var(--text-primary)}
-.dst__row-m{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:3px;font:400 12px var(--font-sans);color:var(--text-secondary)}
-.dst__row-a{color:var(--dst-ink);font-weight:600}
+.dst__row-a{display:flex;align-items:center;gap:6px;font:700 11px var(--font-sans);letter-spacing:.04em;text-transform:uppercase;color:var(--dst-ink)}
+.dst__row-t{display:block;margin-top:3px;font:700 15px/1.35 var(--font-sans);color:var(--text-primary)}
+.dst__row-m{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:6px;font:600 12px var(--font-sans);color:var(--dst-ink)}
+.dst__row .osce-level{height:24px;background:var(--surface-subtle)}
+.dst__wait{display:inline-flex;align-items:center;height:22px;margin-left:8px;padding:0 8px;border-radius:var(--radius-pill);background:var(--warning-bg);border:1px solid var(--warning-border);color:var(--warning-text);font:700 10px var(--font-sans);letter-spacing:0;text-transform:none;white-space:nowrap}
+.dst__only{flex:none}
+.dst__row[data-waiting="true"]{cursor:not-allowed}
+.dst__row[data-waiting="true"]:hover{background:transparent}
+.dst__row[data-waiting="true"] .dst__row-t{color:var(--text-secondary)}
+.dst__hint{display:block;margin-top:6px;font:600 12px var(--font-sans);color:var(--warning-text)}
+.dst__hint[data-on="false"]{margin:0}
 .dst__scores{display:flex;gap:18px;align-items:center}
 .dst__score{text-align:right}
 .dst__k{display:block;font:600 10px var(--font-sans);letter-spacing:.05em;text-transform:uppercase;color:var(--text-tertiary)}
@@ -52,8 +65,8 @@ const CSS = `
 .dst__v--mine{color:var(--dst-ink)}
 .dst__v[data-empty="true"]{color:var(--text-tertiary)}
 @media (max-width:640px){
-  .dst__row{grid-template-columns:34px minmax(0,1fr);padding:14px}
-  .dst__scores{grid-column:2;justify-content:flex-start}
+  .dst__row{grid-template-columns:minmax(0,1fr);padding:14px 14px 14px 18px}
+  .dst__scores{justify-content:flex-start}
   .dst__score{text-align:left}
   .dst__scores>.sm-icon{display:none}
 }
@@ -68,25 +81,41 @@ const cssVars = (code) => {
   return { "--dst-solid": v.solid, "--dst-soft": v.soft, "--dst-ink": v.ink };
 };
 
+/** Cartão do catálogo ainda sem conteúdo (013420): só a equipe o recebe. */
+const awaiting = (s) => s?.content_status === "awaiting_content";
+
 const pct = (value, digits) => (typeof value === "number" && Number.isFinite(value) ? `${formatDecimal(value, digits)}%` : "—");
 
-function Row({ station, onOpen }) {
+function Row({ station, onOpen, staff }) {
   const area = areaByCode(station.area_code);
-  const tags = Array.isArray(station.styles) ? station.styles : [];
   const mine = typeof station.my_last_pct === "number" && Number.isFinite(station.my_last_pct);
+  const waiting = staff && awaiting(station);
+  const [hint, showHint] = useWaitHint();
+  const hintId = React.useId();
+  const props = waiting ? { "aria-disabled": "true", "aria-describedby": hintId, "data-waiting": "true", onClick: showHint } : { onClick: onOpen };
   return (
-    <button type="button" className="dst__row" style={cssVars(station.area_code)} onClick={onOpen}>
-      <span className="dst__num">{station.number ?? "—"}</span>
+    <button type="button" className="dst__row" style={cssVars(station.area_code)} {...props}>
       <span style={{ minWidth: 0 }}>
+        {(area || (staff && awaiting(station))) && (
+          <span className="dst__row-a">
+            {area?.card}
+            {waiting && <span className="dst__wait">Aguardando conteúdo</span>}
+          </span>
+        )}
         <span className="dst__row-t">{station.name}</span>
+        {waiting && (
+          <span id={hintId} role="status" className="dst__hint" data-on={hint}>
+            {hint ? WAIT_HINT : ""}
+          </span>
+        )}
         <span className="dst__row-m">
-          {area && <span className="dst__row-a">{area.label}</span>}
-          {tags.length > 0 && <span>{tags.join(" · ")}</span>}
+          <StationLevel level={station.difficulty} />
+          <span>{originLabel(station)}</span>
         </span>
       </span>
       <span className="dst__scores">
         <span className="dst__score">
-          <span className="dst__k">Última nota</span>
+          <span className="dst__k">Sua última nota</span>
           <span className="dst__v dst__v--mine" data-empty={!mine}>{pct(station.my_last_pct, 0)}</span>
         </span>
         <span className="dst__score">
@@ -99,17 +128,17 @@ function Row({ station, onOpen }) {
   );
 }
 
-function Grid({ items, onOpen }) {
+function Grid({ items, onOpen, staff }) {
   return (
     <div className="dst__grid">
       {items.map((s) => (
         <StationCard
           key={s.id}
           areaCode={s.area_code}
-          number={s.number}
           title={s.name}
-          tags={Array.isArray(s.styles) ? s.styles : []}
-          source={sourceLabel(s)}
+          difficulty={s.difficulty}
+          source={originLabel(s)}
+          awaitingContent={staff && awaiting(s)}
           myScorePct={s.my_last_pct}
           averagePct={s.average_pct}
           onClick={() => onOpen(s)}
@@ -130,15 +159,20 @@ export function StationsScreen({ go }) {
   const [q, setQ] = React.useState("");
   const [sort, setSort] = React.useState("prova");
   const [view, setView] = React.useState("grid");
+  // "Só com conteúdo": só para a equipe, ligado por padrão (pedido de 17/10)
+  const [onlyContent, setOnlyContent] = React.useState(true);
 
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
 
-  const bank = Array.isArray(data) ? data : [];
+  const all = Array.isArray(data) ? data : [];
+  const bank = canSolo && onlyContent ? all.filter((s) => !awaiting(s)) : all;
+  const hiddenByContent = all.length - bank.length;
   const open = (station) => (canSolo ? setChoosing(station) : go("dupla", { estacao: station.id }));
   const count = (code) => bank.filter((s) => s.area_code === code).length;
   const needle = plain(q.trim());
 
+  // A busca procura também nos temas pequenos (styles), que o cartão não mostra mais.
   let list = bank.filter(
     (s) => (area === "all" || s.area_code === area) && (!needle || plain([s.name, s.topic, ...(Array.isArray(s.styles) ? s.styles : [])].join(" ")).includes(needle)),
   );
@@ -155,7 +189,7 @@ export function StationsScreen({ go }) {
       {choosing && (
         <Dialog
           title="Como você quer treinar esta estação?"
-          description={`Estação ${choosing.number ?? ""}${choosing.area_code ? ` · ${areaByCode(choosing.area_code)?.label ?? ""}` : ""}`.trim()}
+          description={[choosing.name, areaByCode(choosing.area_code)?.label].filter(Boolean).join(" · ")}
           onClose={() => setChoosing(null)}
           actions={
             <>
@@ -184,6 +218,16 @@ export function StationsScreen({ go }) {
             <TextField icon="search" aria-label="Buscar por estação, tema ou queixa" placeholder="Buscar por estação, tema ou queixa" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <SegmentedControl label="Ordenar" value={sort} onChange={setSort} options={[{ value: "prova", label: "Ordem da prova" }, { value: "az", label: "A–Z" }]} />
+          {canSolo && (
+            <div className="dst__only">
+              <Switch
+                label="Só com conteúdo"
+                description={hiddenByContent > 0 ? `Escondidos: ${hiddenByContent} aguardando conteúdo` : "Só a equipe vê esta opção"}
+                checked={onlyContent}
+                onChange={(e) => setOnlyContent(e.target.checked)}
+              />
+            </div>
+          )}
           <SegmentedControl label="Visualização" value={view} onChange={setView} options={[{ value: "grid", label: "Grade", icon: "layout-grid" }, { value: "list", label: "Lista", icon: "list" }]} />
         </div>
         <div className="dst__tabs" role="group" aria-label="Área">
@@ -204,6 +248,8 @@ export function StationsScreen({ go }) {
         <div className="dst__empty">
           <Icon name="search-x" size={28} />
           <div className="dst__empty-t">Nenhuma estação encontrada</div>
+          {/* Equipe: tudo escondido por "Só com conteúdo" */}
+          {bank.length === 0 && hiddenByContent > 0 && <>Desligue “Só com conteúdo” para ver os cartões aguardando conteúdo.</>}
           {/* Banco sem nenhuma estação publicada: não há filtro para limpar */}
           {bank.length > 0 && (
             <>
@@ -227,7 +273,7 @@ export function StationsScreen({ go }) {
       {list.length > 0 && view === "list" && (
         <div className="dst__list">
           {list.map((s) => (
-            <Row key={s.id} station={s} onOpen={() => open(s)} />
+            <Row key={s.id} station={s} staff={canSolo} onOpen={() => open(s)} />
           ))}
         </div>
       )}
@@ -241,13 +287,13 @@ export function StationsScreen({ go }) {
                 {a.label}
                 <span className="dst__h-n">{items.length}</span>
               </h2>
-              <Grid items={items} onOpen={open} />
+              <Grid items={items} onOpen={open} staff={canSolo} />
             </section>
           ))}
-          {orphans.length > 0 && <Grid items={orphans} onOpen={open} />}
+          {orphans.length > 0 && <Grid items={orphans} onOpen={open} staff={canSolo} />}
         </>
       ) : (
-        <Grid items={list} onOpen={open} />
+        <Grid items={list} onOpen={open} staff={canSolo} />
       ))}
     </div>
   );

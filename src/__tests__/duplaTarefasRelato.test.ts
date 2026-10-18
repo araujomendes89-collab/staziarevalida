@@ -45,8 +45,8 @@ describe("regra do texto das tarefas", () => {
     expect(relatoNaFolha([], true)).toBe(false);
   });
 
-  it("folha (modelo folha-1.1): com o relato, as tarefas saem ajustadas e a conferência espera o texto ajustado", () => {
-    expect(FOLHA_MODELO).toBe("folha-1.1");
+  it("folha (modelo folha-1.2): com o relato, as tarefas saem ajustadas e a conferência espera o texto ajustado", () => {
+    expect(FOLHA_MODELO).toBe("folha-1.2");
     const fonte: FolhaFonte = {
       numero: 1, area: "Clínica Médica", duracao_ms: 600000, cenario: "Cenário.", tarefas: OFICIAL,
       impressos: [{ nome: "Relato do caso clínico", texto: "Homem, 30 anos." }], bloqueio: null,

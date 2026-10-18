@@ -210,26 +210,23 @@ function Prints() {
 
 function Stations() {
   return (
-    <Section title="Cartão de estação" note="As cinco áreas, com e sem nota. Números e porcentagens são de exemplo.">
+    <Section title="Cartão de estação" note="As cinco áreas: com e sem grau de dificuldade, com e sem nota. Graus e porcentagens são de exemplo.">
       <div style={grid(260)}>
         {AREAS.map((area, i) => (
           <StationCard
             key={`${area.code}-sem`}
             areaCode={area.code}
-            number={i + 1}
             title={`Estação de Exemplo ${i + 1} (sem nota)`}
-            tags={["Queixa de exemplo"]}
-            source="Origem de exemplo"
+            source="Estação inédita"
           />
         ))}
         {AREAS.map((area, i) => (
           <StationCard
             key={`${area.code}-com`}
             areaCode={area.code}
-            number={i + 6}
             title={`Estação de Exemplo ${i + 6} (com nota)`}
-            tags={["Queixa de exemplo"]}
-            source="Origem de exemplo"
+            difficulty={["facil", "medio", "dificil"][i % 3]}
+            source="Revalida 2020 · INEP"
             myScorePct={80}
             averagePct={60.5}
           />

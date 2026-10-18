@@ -1,6 +1,6 @@
 // Visão geral, planos, estações, configurações e registro de ações.
 import React from "react";
-import { Badge, Banner, Button, Card, EmptyState, SelectField, StatCard, Switch, TextField } from "../../ds";
+import { Badge, Banner, Button, Card, Checkbox, EmptyState, SegmentedControl, SelectField, StatCard, StationLevel, Switch, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { dateTimeBR, LoadError, Loading, messageOf, PLAN_LABEL, ROLE_LABEL, SUB_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
@@ -10,6 +10,7 @@ import { CarteiraIA } from "./planos/CarteiraIA.jsx";
 import { DevolucoesRecentes } from "./planos/PagamentosAluno.jsx";
 import { VendasChave } from "./planos/VendasChave.jsx";
 import { FolhaBadge, FolhaCandidato } from "./FolhaCandidato.jsx";
+import { CRITERIOS, DIFICULDADES, dificuldadeLabel, dificuldadeSugerida } from "../dupla/dificuldade.js";
 
 // ---------------------------------------------------------------- visão geral
 /** O que espera conferência, por aba (chaves de pending_review em app_admin_overview). */
@@ -559,6 +560,105 @@ export function StationSummary({ station, legacy = "", onStatus, suggestDraft = 
   );
 }
 
+/**
+ * Grau de dificuldade da estação (pedido do dono de 17/10, migração 013410): o revisor médico da área (ou o administrador)
+ * marca os itens da rubrica fixa (docs/estacoes/dificuldade-estacoes.md), escolhe Fácil, Médio ou Difícil e registra o que
+ * conferiu (10 caracteres ou mais). A rubrica fica ao lado da escolha e diz o grau que indica; quem decide é o revisor.
+ * Mudar o grau não mexe na aprovação médica da estação. O aluno vê só o selo do grau no Banco de estações.
+ */
+export function StationDifficulty({ station: s, onSaved }) {
+  const { backend } = useSession();
+  const savedLevel = s.difficulty ?? null;
+  const savedCriteria = React.useMemo(() => (Array.isArray(s.difficulty_criteria) ? s.difficulty_criteria : []), [s.difficulty_criteria]);
+  const [level, setLevel] = React.useState(savedLevel);
+  const [marks, setMarks] = React.useState(savedCriteria);
+  const [note, setNote] = React.useState("");
+  const [state, setState] = React.useState({ busy: false, error: null });
+  React.useEffect(() => {
+    setLevel(savedLevel);
+    setMarks(savedCriteria);
+  }, [savedLevel, savedCriteria]);
+  const suggested = dificuldadeSugerida(marks);
+  const changed = level !== savedLevel || [...marks].sort().join() !== [...savedCriteria].sort().join();
+  const short = note.trim().length < MIN_NOTE;
+  const save = async (nextLevel) => {
+    setState({ busy: true, error: null });
+    try {
+      onSaved(
+        await backend.rpc("app_admin_set_station_difficulty", {
+          p_station_id: s.id,
+          p_level: nextLevel,
+          p_criteria: nextLevel ? marks : [],
+          p_note: note.trim(),
+        })
+      );
+      setNote("");
+      setState({ busy: false, error: null });
+    } catch (err) {
+      setState({ busy: false, error: messageOf(err) });
+    }
+  };
+  const record = savedLevel
+    ? `${dificuldadeLabel(savedLevel)}: definido${s.difficulty_by ? ` por ${s.difficulty_by}` : ""}${s.difficulty_at ? ` em ${dateTimeBR(s.difficulty_at)}` : ""}${s.difficulty_note ? `: “${s.difficulty_note}”` : "."}`
+    : "Sem grau definido: o aluno não vê selo de dificuldade nesta estação.";
+
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ font: "var(--type-label)" }}>Grau de dificuldade</div>
+        {savedLevel ? <StationLevel level={savedLevel} /> : <Badge size="sm">Sem grau</Badge>}
+      </div>
+      <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{record}</div>
+      {state.error && <Banner tone="danger">{state.error}</Banner>}
+      {s.can_review ? (
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+          <fieldset style={{ flex: "1 1 320px", minWidth: 0, margin: 0, padding: 12, border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", display: "grid", gap: 8 }}>
+            <legend style={{ padding: "0 4px", font: "var(--type-label)" }}>Rubrica (marque o que a estação exige)</legend>
+            {CRITERIOS.map((c) => (
+              <Checkbox
+                key={c.value}
+                checked={marks.includes(c.value)}
+                onChange={(e) => setMarks((m) => (e.target.checked ? [...m.filter((x) => x !== c.value), c.value] : m.filter((x) => x !== c.value)))}
+                label={
+                  <span>
+                    <b>{c.label}.</b> <span style={{ color: "var(--text-secondary)" }}>{c.hint}</span>
+                  </span>
+                }
+              />
+            ))}
+            <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+              0 ou 1 item: Fácil · 2 ou 3: Médio · 4 ou mais: Difícil. Marcados: {marks.length}. A rubrica indica: <b>{dificuldadeLabel(suggested)}</b>.
+            </div>
+          </fieldset>
+          <div style={{ flex: "1 1 260px", minWidth: 0, display: "grid", gap: 10 }}>
+            <SegmentedControl label="Grau de dificuldade" value={level} onChange={setLevel} options={DIFICULDADES} />
+            {changed && level && level !== suggested && (
+              <div style={{ font: "var(--type-body-sm)", color: "var(--warning-text)" }}>
+                A escolha é diferente do que a rubrica indica ({dificuldadeLabel(suggested)}). Explique o motivo na nota.
+              </div>
+            )}
+            <TextArea label="O que foi conferido para definir o grau" value={note} rows={2} maxLength={2000} onChange={setNote} hint="Pelo menos 10 caracteres. Fica registrado com seu nome e a data. Não muda a aprovação médica da estação." />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Button size="sm" icon="save" disabled={!level || !changed || short} loading={state.busy} onClick={() => save(level)}>
+                Salvar grau
+              </Button>
+              {savedLevel && (
+                <Button size="sm" variant="ghost" icon="x" disabled={short} loading={state.busy} onClick={() => save(null)}>
+                  Tirar o grau
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>
+          Só um revisor médico cadastrado em {s.area} ou um administrador define o grau de dificuldade desta estação.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function reviewRecord(s) {
   if (s.reviewed_at) {
     const what = s.medical_review === "approved" ? "Aprovada" : "Devolvida para revisão";
@@ -619,6 +719,7 @@ function StationCard({ station: s, onSaved, folha, onFolha }) {
               </Badge>
             )}
             {s.institution === "INEP" && <Badge size="sm">INEP</Badge>}
+            <StationLevel level={s.difficulty} />
             {summaryBadge && (
               <Badge size="sm" tone={summaryBadge[0]}>
                 {summaryBadge[1]}
@@ -653,6 +754,7 @@ function StationCard({ station: s, onSaved, folha, onFolha }) {
           {content.loading && <Loading />}
           {content.error && <Banner tone="danger">{content.error}</Banner>}
           {content.data !== undefined && <StationContent content={content.data} />}
+          <StationDifficulty station={s} onSaved={onSaved} />
           <StationSummary station={s} legacy={legacySummaryText(content.data)} onStatus={setSummaryStatus} />
           <FolhaCandidato stationId={s.id} onSituacao={onFolha} />
           <div style={{ display: "grid", gap: 8 }}>

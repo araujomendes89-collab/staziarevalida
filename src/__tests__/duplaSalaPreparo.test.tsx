@@ -254,7 +254,7 @@ describe("Sala ao vivo: preparação", () => {
     expect(screen.queryByText("Só o avaliador inicia")).toBeNull();
     expect(screen.getByText("Em andamento")).toBeTruthy();
     expect(screen.getByRole("timer").textContent).toMatch(/10:00|09:59/);
-    expect(screen.getByText("Enunciado")).toBeTruthy();
+    expect(screen.getByText("INSTRUÇÕES AO PARTICIPANTE")).toBeTruthy();
     expect(whistle.n).toBe(1); // apito ao ver a estação começar
   });
 

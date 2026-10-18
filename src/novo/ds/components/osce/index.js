@@ -3,5 +3,5 @@ export { PrintImage } from "./PrintImage.jsx";
 export { PrintItem } from "./PrintItem.jsx";
 export { ScrollPane } from "./ScrollPane.jsx";
 export { StatTile } from "./StatTile.jsx";
-export { StationCard } from "./StationCard.jsx";
+export { StationCard, StationLevel, useWaitHint, WAIT_HINT } from "./StationCard.jsx";
 export { Timer } from "./Timer.jsx";

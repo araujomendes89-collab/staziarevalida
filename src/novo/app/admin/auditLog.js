@@ -72,6 +72,7 @@ export const ACTION_LABEL = {
   "station.review": "Revisão de estação",
   "station.summary.save": "Resumo sobre o tema da estação salvo",
   "station.summary.review": "Revisão do resumo sobre o tema da estação",
+  "station.difficulty": "Grau de dificuldade da estação",
   // treinamento em dupla
   "dupla.save": "Treinamento em Dupla: acesso salvo",
   "dupla.chat.save": "Chat do Treinamento em Dupla: regras salvas",
@@ -466,6 +467,10 @@ const SUMMARY = {
   "station.summary.save": (d, entry) => `${entry.target}: ${d.action === "deleted" ? "resumo apagado" : "rascunho do resumo salvo"}`,
   "station.summary.review": (d, entry) =>
     `${entry.target}: ${d.to === "approved" ? "resumo aprovado pela revisão médica" : "resumo voltou a rascunho"}${d.note ? ` · “${d.note}”` : ""}`,
+  "station.difficulty": (d, entry) => {
+    const nome = { facil: "Fácil", medio: "Médio", dificil: "Difícil" };
+    return `${entry.target}: ${d.to ? `grau ${nome[d.to] ?? "definido"}` : "grau de dificuldade retirado"}${d.note ? ` · “${d.note}”` : ""}`;
+  },
   "guideline_update.publish": (d) => join([topic(d), d.review_status === "approved" ? "Conferência médica aprovada" : d.review_status && "Publicada sem conferência médica aprovada"]),
   "guideline_update.unpublish": (d, entry) => join([topic(d), `Motivo: ${retirementReason(entry)}`, d.note && `Nota do revisor: ${d.note}`]),
   "guideline_update.delete": topic,

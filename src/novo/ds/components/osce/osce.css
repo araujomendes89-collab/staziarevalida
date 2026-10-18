@@ -63,19 +63,32 @@
 .osce-stat__hint{font-size:var(--text-xs);color:var(--text-tertiary)}
 
 /* ---------- StationCard ---------- */
-/* Variáveis --osce-base/-soft/-ink/-solid vêm do areaVars() da área (style inline). O selo do número usa -solid (texto --surface-card, contraste 4,5:1). */
+/* Variáveis --osce-base/-soft/-ink/-solid vêm do areaVars() da área (style inline). Sem número e sem queixas (pedido do dono de 17/10): área, nome, dificuldade e origem. */
 .osce-station{display:flex;flex-direction:column;width:100%;padding:0;border:0;border-radius:var(--radius-xl);background:var(--surface-card);box-shadow:var(--shadow-sm);overflow:hidden;text-align:left;font-family:var(--font-sans);cursor:pointer;transition:box-shadow var(--duration-base),transform var(--duration-base) var(--ease-out)}
 .osce-station:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
 .osce-station:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .osce-station__top{display:flex;flex-direction:column;flex:1;gap:12px;padding:18px 18px 16px;background:var(--osce-soft)}
 .osce-station__head{display:flex;align-items:center;gap:10px}
-.osce-station__num{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--radius-md);background:var(--osce-solid);color:var(--surface-card);font:800 17px var(--font-sans)}
-.osce-station__area{flex:1;min-width:0;font:700 12px var(--font-sans);color:var(--osce-ink);text-transform:uppercase;letter-spacing:.04em}
+.osce-station__area{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font:700 12px var(--font-sans);color:var(--osce-ink);text-transform:uppercase;letter-spacing:.04em}
+.osce-station__dot{flex-shrink:0;width:10px;height:10px;border-radius:3px;background:var(--osce-solid)}
+.osce-station__wait{flex-shrink:0;display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:var(--radius-pill);background:var(--warning-bg);border:1px solid var(--warning-border);color:var(--warning-text);font:700 11px var(--font-sans);white-space:nowrap}
+.osce-station[data-waiting="true"]{position:relative;cursor:not-allowed}
+.osce-station[data-waiting="true"]:hover{transform:none;box-shadow:var(--shadow-sm)}
+.osce-station[data-waiting="true"] .osce-station__title{color:var(--text-secondary)}
+.osce-station__hint{position:absolute;left:12px;right:12px;bottom:12px;padding:8px 12px;border-radius:var(--radius-md);background:var(--surface-inverse,var(--text-primary));color:var(--surface-card);font:600 13px var(--font-sans);text-align:center;pointer-events:none}
+.osce-station__hint[data-on="false"]{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0 0 0 0)}
 .osce-station__done{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--surface-card);color:var(--osce-base)}
 .osce-station__title{margin:0;font:800 18px/1.3 var(--font-sans);letter-spacing:-.01em;color:var(--text-primary);text-wrap:pretty}
-.osce-station__tags{display:flex;flex-wrap:wrap;gap:6px}
-.osce-station__tag{padding:4px 10px;border-radius:var(--radius-pill);background:var(--surface-card);color:var(--osce-ink);font:600 12px var(--font-sans)}
-.osce-station__source{font:600 11px var(--font-sans);color:var(--osce-ink);opacity:.8}
+.osce-station__meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:auto}
+.osce-station__source{font:600 12px var(--font-sans);color:var(--osce-ink)}
+/* grau de dificuldade: selo claro com três barras (1 Fácil, 2 Médio, 3 Difícil), na cor de estado de cada grau */
+.osce-level{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 10px;border-radius:var(--radius-pill);background:var(--surface-card);color:var(--text-primary);font:700 12px var(--font-sans);white-space:nowrap}
+.osce-level__bars{display:inline-flex;align-items:flex-end;gap:2px;height:12px}
+.osce-level__bars>span{width:4px;border-radius:1px;background:var(--border-default)}
+.osce-level__bars>span:nth-child(1){height:5px}.osce-level__bars>span:nth-child(2){height:8px}.osce-level__bars>span:nth-child(3){height:12px}
+.osce-level[data-level="facil"] .osce-level__bars>span[data-on="true"]{background:var(--success-solid)}
+.osce-level[data-level="medio"] .osce-level__bars>span[data-on="true"]{background:var(--warning-solid)}
+.osce-level[data-level="dificil"] .osce-level__bars>span[data-on="true"]{background:var(--danger-solid)}
 .osce-station__scores{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-card)}
 .osce-station__score{padding:14px 18px}
 .osce-station__score--avg{border-left:1px solid var(--border-subtle)}

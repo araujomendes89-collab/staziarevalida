@@ -146,7 +146,7 @@ describe("impressos e folha do candidato", () => {
     srv.content = contentOf("candidate", { sheetImage: true });
     await mount();
     expect(fetchMock).toHaveBeenCalledWith("/api/dupla/rooms/r1/prints/candidate_sheet/link", expect.anything());
-    const img = screen.getByAltText("Instruções para o participante e relato do caso clínico");
+    const img = screen.getByAltText("Instruções ao participante e relato do caso clínico");
     expect(img.getAttribute("src")).toBe("https://deposito.test/candidate_sheet.png");
     // imagem única da estação: "Ampliar imagem da estação", tela cheia com 1100 px a 100% (StationImage do protótipo)
     fireEvent.click(screen.getByRole("button", { name: "Ampliar imagem da estação" }));
@@ -156,22 +156,22 @@ describe("impressos e folha do candidato", () => {
     expect(full.style.width).toBe("1320px");
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.queryByText("Enunciado")).toBeNull();
+    expect(screen.queryByText("INSTRUÇÕES AO PARTICIPANTE")).toBeNull();
     expect(screen.queryByText("Relato inicial de teste.")).toBeNull(); // o relato está na imagem única
     cleanup();
 
     // a rota diz que não há imagem (404): o texto é a folha
     fetchMock.mockImplementation(async () => ({ ok: false, status: 404, json: async () => ({ error: "Impresso sem imagem." }) }));
     await mount();
-    expect(screen.getByText("Enunciado")).toBeTruthy();
-    expect(screen.getByText("Nos 10 minutos de duração, execute:")).toBeTruthy();
+    expect(screen.getByText("INSTRUÇÕES AO PARTICIPANTE")).toBeTruthy();
+    expect(screen.getByText("Nos 10 minutos de duração da estação, você deverá executar as seguintes tarefas:")).toBeTruthy();
     expect(screen.getByText("Relato inicial de teste.")).toBeTruthy();
     cleanup();
 
     srv.content = contentOf("candidate");
     fetchMock.mockClear();
     await mount();
-    expect(screen.getByText("Enunciado")).toBeTruthy();
+    expect(screen.getByText("INSTRUÇÕES AO PARTICIPANTE")).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalledWith("/api/dupla/rooms/r1/prints/candidate_sheet/link", expect.anything());
   });
 });

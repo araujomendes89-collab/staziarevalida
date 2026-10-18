@@ -345,9 +345,9 @@ describe("Sala: fases a partir do estado gravado", () => {
     await mount({ room: roles("candidate", { ...running, released_pressings: ["d1"] }), content: contentFor("candidate", ["d1"]) });
     expect(document.body.textContent).not.toContain("Estação de teste");
     expect(screen.getByRole("heading", { name: "Estação 3 · Clínica Médica" })).toBeTruthy();
-    expect(screen.getByText("Enunciado")).toBeTruthy();
+    expect(screen.getByText("INSTRUÇÕES AO PARTICIPANTE")).toBeTruthy();
     expect(screen.getByText("Cenário de teste, bloco um.")).toBeTruthy();
-    expect(screen.getByText("Nos 10 minutos de duração, execute:")).toBeTruthy();
+    expect(screen.getByText("Nos 10 minutos de duração da estação, você deverá executar as seguintes tarefas:")).toBeTruthy();
     expect(screen.getByText("01")).toBeTruthy();
     expect(screen.getByText("Fazer a anamnese.")).toBeTruthy();
     expect(screen.getByText("1 liberado")).toBeTruthy();

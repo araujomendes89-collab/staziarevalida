@@ -2,17 +2,31 @@
 // TUDO é DADO DE TESTE: colegas fictícios, notas fictícias. As 10 estações do INEP 2020 vêm do pacote de design (só locais).
 import React from "react";
 import ESTACOES from "./estacoes-inep2020-teste.json";
+import CATALOGO from "./catalogo-cartoes.json";
 
 const NOW = () => new Date().toISOString();
 const EM = (ms) => new Date(Date.now() + ms).toISOString();
 
+// Grau de dificuldade (013410): EXEMPLO DE TESTE só na prévia, para ver o selo. Não é classificação médica: no app, quem
+// define é o revisor médico em Administração › Estações › Conferir. As estações 5 e 10 ficam sem grau (sem selo nenhum).
+const DIFICULDADE_TESTE = ["medio", "facil", "dificil", "medio", null, "facil", "medio", "dificil", "facil", null];
+const dificuldades = {};
 const resumo = (s) => ({
   id: `teste-inep2020-e${String(s.n).padStart(2, "0")}`,
   name: s.name, topic: s.tags?.[0] ?? null, number: s.n, area: s.area, area_code: s.code, styles: s.tags ?? [],
   edition: "2020", reapplication: false, institution: "INEP", duration_ms: s.duration * 1000, is_pro_only: false,
+  difficulty: (dificuldades[`teste-inep2020-e${String(s.n).padStart(2, "0")}`] ?? { level: DIFICULDADE_TESTE[s.n - 1] }).level,
   my_last_pct: s.n === 1 ? 74 : s.n === 4 ? 52 : null, average_pct: [61, 55, 70, 58, 49, 66, 72, 45, 60, 53][s.n - 1],
 });
-const BANCO = ESTACOES.map(resumo);
+// Cartões do catálogo (013420/013425): só o título, a área e a origem; sem conteúdo, sem nota. A equipe os recebe (a prévia
+// entra como administrador) e o filtro "Só com conteúdo" os esconde por padrão. Não é conteúdo médico.
+const doCatalogo = (c) => ({
+  id: c.id, name: c.tema, topic: c.tema, area: c.area, area_code: c.area_code, styles: [], number: null, edition: null,
+  reapplication: false, institution: c.fonte_oficial ? "INEP" : null, origin_label: c.origem_rotulo, difficulty: null,
+  content_status: c.situacao === "conteúdo pronto" ? "content_ready" : "awaiting_content", my_last_pct: null, average_pct: null,
+});
+const banco = () => [...ESTACOES.map(resumo).map((e) => ({ ...e, content_status: "content_ready" })), ...CATALOGO.map(doCatalogo)];
+const BANCO = ESTACOES.map(resumo); // Administração › Estações da prévia: só as 10 de teste
 const porId = (id) => ESTACOES.find((s) => resumo(s).id === id) ?? ESTACOES[0];
 
 let perfil = {
@@ -316,12 +330,18 @@ const resumoDe = (id) => {
     approval_note: r?.status === "approved" ? r.note ?? null : null, can_approve: true,
   };
 };
+// grau de dificuldade na Administração (013410), em memória: o EXEMPLO DE TESTE começa "definido pelo Revisor de Teste"
+const dificuldadeAdm = (id) => {
+  const d = dificuldades[id] ?? (DIFICULDADE_TESTE[Number(id.slice(-2)) - 1] ? { level: DIFICULDADE_TESTE[Number(id.slice(-2)) - 1], criteria: [], note: "EXEMPLO DE TESTE (prévia): não é classificação médica.", at: EM(-86400000) } : { level: null });
+  return { difficulty: d.level, difficulty_criteria: d.criteria ?? [], difficulty_note: d.level ? d.note : null, difficulty_at: d.level ? d.at : null, difficulty_by: d.level ? "Revisor de Teste" : null };
+};
 const respostasAdm = {
   app_admin_stations: () =>
     BANCO.map((b) => ({
       id: b.id, name: b.name, topic: b.topic ?? "", area: b.area, medical_review: "approved", is_pro_only: false, institution: "INEP",
       review_note: "Conferência de teste (prévia).", reviewed_at: EM(-86400000), reviewer: "Revisor de Teste", can_review: true,
       summary_status: resumos[b.id]?.status ?? null, reports: 0, last_reports: [],
+      ...dificuldadeAdm(b.id),
     })),
   app_admin_station_content: ({ p_station_id }) => {
     const E = porId(p_station_id);
@@ -333,6 +353,11 @@ const respostasAdm = {
     };
   },
   app_admin_station_summary: ({ p_station_id }) => resumoDe(p_station_id),
+  app_admin_set_station_difficulty: ({ p_station_id, p_level, p_criteria, p_note }) => {
+    if (String(p_note ?? "").trim().length < 10) throw new Error("Registre o que foi conferido para definir o grau (pelo menos 10 caracteres).");
+    dificuldades[p_station_id] = { level: p_level ?? null, criteria: p_level ? p_criteria ?? [] : [], note: String(p_note).trim(), at: NOW() };
+    return respostasAdm.app_admin_stations();
+  },
   app_admin_save_station_summary: ({ p_station_id, p_body }) => {
     const body = String(p_body ?? "").trim();
     if (!body) delete resumos[p_station_id];
@@ -358,7 +383,7 @@ const respostas = {
     perfil = { ...(perfil ?? {}), ...p_profile };
     return { profile: perfil, defaults: null, stats: { done: 3, avg: 7.8 } };
   },
-  app_dupla_stations: () => BANCO,
+  app_dupla_stations: () => banco(),
   app_dupla_deck: () => ({ cards: baralho, hidden_by_role: 2, online: 5, matches_today: 1, open_room: null, server_now: NOW() }),
   app_dupla_heartbeat: () => ({ server_now: NOW() }),
   app_dupla_invites: () => ({ invites: convites, server_now: NOW() }),

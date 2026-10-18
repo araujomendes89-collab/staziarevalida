@@ -13,7 +13,7 @@ import fs from "fs";
 import path from "path";
 import type { ContentDb, Storage } from "../contentHub/infra";
 import type { Renderer } from "../contentHub/render";
-import { FOLHA_ESCALA, FOLHA_LARGURA, FOLHA_MODELO, folhaHtml, textosEsperados, type FolhaFonte } from "../../src/shared/dupla/folhaCandidato";
+import { FOLHA_ESCALA, FOLHA_LARGURA, FOLHA_MODELO, folhaHtml, textosEsperados, type FolhaFonte, type FolhaOpcoes } from "../../src/shared/dupla/folhaCandidato";
 
 const ROOT = process.cwd();
 /** Logotipo do app (StaziaMed Revalida), o mesmo da tela. */
@@ -63,9 +63,12 @@ export function fonteCss(): string {
   return fontCache;
 }
 
-/** HTML da folha como o servidor desenha (logotipo e fonte embutidos). */
-export function folhaHtmlServidor(fonte: FolhaFonte): string {
-  return folhaHtml(fonte, { logoSrc: logoDataUri(), fontCss: fonteCss() });
+/**
+ * HTML da folha como o servidor desenha (logotipo e fonte embutidos). Títulos do INEP por padrão (folha-1.2);
+ * `{ titulosInep: false }` volta ao modelo antigo, só para comparação (a folha gravada no banco usa sempre o padrão).
+ */
+export function folhaHtmlServidor(fonte: FolhaFonte, opcoes: Pick<FolhaOpcoes, "titulosInep"> = {}): string {
+  return folhaHtml(fonte, { logoSrc: logoDataUri(), fontCss: fonteCss(), titulosInep: opcoes.titulosInep });
 }
 
 const espacos = (t: string) => t.replace(/\s+/g, " ").trim();
@@ -74,11 +77,15 @@ const espacos = (t: string) => t.replace(/\s+/g, " ").trim();
  * Desenha a folha e devolve o PNG. Confere no navegador: todo o texto esperado está na página (nada cortado nem perdido) e
  * nenhuma linha passa da largura. Problema → erro com o motivo (a imagem não é gravada).
  */
-export async function desenharFolha(renderer: Renderer, fonte: FolhaFonte): Promise<{ png: Buffer; width: number; height: number }> {
+export async function desenharFolha(
+  renderer: Renderer,
+  fonte: FolhaFonte,
+  opcoes: Pick<FolhaOpcoes, "titulosInep"> = {}
+): Promise<{ png: Buffer; width: number; height: number }> {
   if (!renderer.newPage) throw new FolhaIndisponivel("O gerador de imagens (Chromium) não está disponível neste servidor.");
   const page = await renderer.newPage({ viewport: { width: FOLHA_LARGURA, height: 1200 }, deviceScaleFactor: FOLHA_ESCALA });
   try {
-    await page.setContent(folhaHtmlServidor(fonte), { waitUntil: "load" });
+    await page.setContent(folhaHtmlServidor(fonte, opcoes), { waitUntil: "load" });
     await page.evaluate(() => (document as any).fonts?.ready);
     const conferencia = await page.$eval("main.folha", (el) => ({
       texto: (el as HTMLElement).innerText,
@@ -89,7 +96,7 @@ export async function desenharFolha(renderer: Renderer, fonte: FolhaFonte): Prom
     if (!conferencia.imagens) throw new Error("O logotipo não carregou na folha.");
     if (conferencia.largura > conferencia.caixa + 1) throw new Error("Algum texto passou da largura da folha.");
     const pagina = espacos(conferencia.texto);
-    const faltando = textosEsperados(fonte).filter((t) => !pagina.includes(espacos(t)));
+    const faltando = textosEsperados(fonte, opcoes).filter((t) => !pagina.includes(espacos(t)));
     if (faltando.length) throw new Error(`Texto da estação ausente na folha: “${faltando[0].slice(0, 80)}”.`);
     const png = Buffer.from(await page.locator("main.folha").screenshot({ type: "png", animations: "disabled" }));
     if (png.length < 24 || png.subarray(12, 16).toString("latin1") !== "IHDR") throw new Error("A imagem gerada não é um PNG.");

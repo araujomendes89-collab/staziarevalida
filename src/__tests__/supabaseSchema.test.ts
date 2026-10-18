@@ -163,8 +163,11 @@ describe("Supabase — estações (2ª fase)", () => {
     const pro = await as(user(ids.carla), (tx) => rows(tx, `select station_id from public.checklist_station_contents order by 1`));
     expect(pro).toEqual([]);
 
-    const admin = await as(user(ids.admin), (tx) => rows(tx, `select id from public.checklist_stations`));
+    // os cartões do catálogo (migração 013420, sem conteúdo e pendentes) também aparecem só para a equipe: fora da conta aqui
+    const admin = await as(user(ids.admin), (tx) => rows(tx, `select id from public.checklist_stations where catalog_edition is null`));
     expect(admin).toHaveLength(3);
+    const catalogo = await as(user(ids.admin), (tx) => rows(tx, `select id from public.checklist_stations where catalog_edition is not null`));
+    expect(catalogo).toHaveLength(179);
     const adminContents = await as(user(ids.admin), (tx) => rows(tx, `select station_id from public.checklist_station_contents order by 1`));
     expect(adminContents.map((x) => x.station_id)).toEqual(["st-free", "st-pending", "st-pro"]);
   });
@@ -294,7 +297,7 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
       expect(cand.role).toBe("candidate");
       expect(cand.pressing_count).toBe(2);
       // Etapa P (012900): chave de tela 'd<n>', sem o nome nem o id da estação, com a folha do candidato.
-      expect(cand.pressings).toEqual([{ id: "d1", display_number: 1, initially_visible: false, name: "Hemograma", content: "Hb 9,0 g/dL", has_image: false }]);
+      expect(cand.pressings).toEqual([{ id: "d1", display_number: 1, initially_visible: false, in_sheet: false, name: "Hemograma", content: "Hb 9,0 g/dL", has_image: false }]);
       expect(cand.station).toEqual({
         label: "Estação", area: "Clínica Médica", area_code: "CM", number: null, duration_ms: 600000, version: "1.0",
         doctor_scene: STATION.doctor_scene, doctor_tasks: STATION.doctor_tasks, candidate_sheet: { has_image: false },

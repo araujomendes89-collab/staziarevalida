@@ -11,7 +11,7 @@ import { areaVars, sourceLabel } from "../labels.js";
 import { maxScoreOf, splitActorScript, splitBlocks, splitTasks, toPepItems } from "../content.js";
 import { relatoNaFolha, tarefasAjustadas } from "../../../../shared/dupla/tarefasRelato";
 import { ActorScript, Scene, roleLabel, stationTitle } from "./parts.jsx";
-import { CandidatePrints, CandidateSheet, PressingMedia, useImageUrl } from "./CandidateSheet.jsx";
+import { CandidatePrints, CandidateSheet, PressingMedia, inSheet, useImageUrl } from "./CandidateSheet.jsx";
 import { EvaluatorFooter } from "./EvaluatorFooter.jsx";
 import { notesKey, readDraft, writeDraft } from "./useRoom.js";
 
@@ -162,8 +162,10 @@ function EvaluatorView({ room, content, marks, actions, started }) {
   const tasks = splitTasks(tarefasAjustadas(st.doctor_tasks, withReport));
   const released = room.released_pressings || [];
   const items = toPepItems(content.checklist_items);
-  const initial = (content.pressings || []).filter((p) => p.initially_visible);
-  const releasable = (content.pressings || []).filter((p) => !p.initially_visible);
+  const initial = (content.pressings || []).filter(inSheet);
+  // fora da folha, na ordem do número de tela: os liberáveis e os visíveis desde o início (monitor e bandeja "em cima da maca")
+  const numbered = (content.pressings || []).filter((p) => !inSheet(p)).sort((a, b) => (a.display_number ?? 0) - (b.display_number ?? 0));
+  const releasable = numbered.filter((p) => !p.initially_visible);
 
   const mark = (itemId, grade) => actions.mark(itemId, grade, marks[itemId]?.subitems ?? []);
   const toggleSubitem = (itemId, subId) => {
@@ -209,7 +211,20 @@ function EvaluatorView({ room, content, marks, actions, started }) {
                   <div style={{ font: "var(--text-xs) var(--font-sans)", color: "var(--text-secondary)", padding: "0 4px 6px" }}>O candidato já lê este texto na folha dele, desde o início.</div>
                 </div>
               ))}
-              {releasable.map((p) => {
+              {numbered.map((p) => {
+                if (p.initially_visible) {
+                  return (
+                    <div key={p.id} style={{ display: "grid", gap: 4 }}>
+                      <PrintItem index={p.display_number ?? p.index} sourceNumber={p.source_number} title={p.name} released>
+                        <div style={{ display: "grid", gap: 10 }}>
+                          <div style={{ whiteSpace: "pre-wrap" }}>{p.content}</div>
+                          {p.has_image && <PressingMedia pressing={{ ...p, content: "" }} actions={actions} />}
+                        </div>
+                      </PrintItem>
+                      <div style={{ font: "var(--text-xs) var(--font-sans)", color: "var(--text-secondary)", padding: "0 4px 6px" }}>O candidato já vê este impresso, desde o início: não precisa liberar.</div>
+                    </div>
+                  );
+                }
                 const isReleased = released.includes(p.id);
                 return (
                   <PrintItem

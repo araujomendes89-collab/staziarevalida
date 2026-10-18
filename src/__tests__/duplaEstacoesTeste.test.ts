@@ -285,7 +285,8 @@ describe("Banco local de desenvolvimento", () => {
     expect(lista).toHaveLength(10);
     expect(lista.every((r) => r.medical_review === "approved" && r.institution === "INEP" && r.year === "2020" && !r.is_pro_only && r.max_score === 10 && r.duration_ms === 600000)).toBe(true);
     // a carga real continua lá (pendentes de revisão), sem misturar
-    const reais = (await db.query<any>(`select count(*)::int as n from public.checklist_stations where id not like 'teste-%'`)).rows[0].n;
+    // (os 179 cartões do catálogo da migração 013420, sem conteúdo e pendentes, ficam fora desta conta)
+    const reais = (await db.query<any>(`select count(*)::int as n from public.checklist_stations where id not like 'teste-%' and catalog_edition is null`)).rows[0].n;
     expect(reais).toBe(10);
 
     const conteudo = (await db.query<any>(`select station_id, content from public.checklist_station_contents where station_id like 'teste-%' order by station_id`)).rows;
