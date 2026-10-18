@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import config from "../../vercel.json";
 
-const redirects = config.redirects as Array<{ source: string; destination: string; permanent: boolean }>;
+type Redirect = { source: string; destination: string; permanent: boolean; has?: Array<{ type: string; value: string }> };
+const todos = config.redirects as Redirect[];
+// as regras por endereço (www, app e sem www) ficam no fim e são testadas à parte
+const redirects = todos.filter((r) => !r.has);
+const porHost = todos.filter((r) => r.has);
 const rewrites = config.rewrites as Array<{ source: string; destination: string }>;
 const headers = (config as { headers?: Array<{ source: string; headers: Array<{ key: string; value: string }> }> }).headers ?? [];
 
@@ -33,6 +37,20 @@ describe("redirecionamentos do vercel.json", () => {
     }
     // a raiz não casa com o geral (o grupo exige ao menos 1 caractere): / mostra a página inicial (dist/index.html)
     expect(re.test("/")).toBe(false);
+  });
+
+  it("www mostra a página inicial, app abre o aplicativo e o endereço sem www vai para o www", () => {
+    expect(todos.slice(0, 4)).toEqual(redirects);
+    const regra = (host: string, source: string) =>
+      porHost.find((r) => r.source === source && r.has?.some((h) => h.type === "host" && h.value === host));
+    expect(regra("app.staziamed.com.br", "/")?.destination).toBe("/novo");
+    expect(regra("staziamed.com.br", "/:path*")?.destination).toBe("https://www.staziamed.com.br/:path*");
+    expect(regra("www.staziamed.com.br", "/novo")?.destination).toBe("https://app.staziamed.com.br/novo");
+    expect(regra("www.staziamed.com.br", "/novo/:path*")?.destination).toBe("https://app.staziamed.com.br/novo/:path*");
+    expect(porHost).toHaveLength(4);
+    expect(porHost.every((r) => r.permanent === false)).toBe(true);
+    // a raiz do www continua sem regra: mostra a página inicial
+    expect(porHost.some((r) => r.source === "/" && r.has?.some((h) => h.value === "www.staziamed.com.br"))).toBe(false);
   });
 
   it("endereço que não existe não cai mais no index.html (o app antigo): a Vercel responde 404.html", () => {

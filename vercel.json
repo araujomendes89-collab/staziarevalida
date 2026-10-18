@@ -29,6 +29,30 @@
       "source": "/:path((?!api(?:/|$)|novo|assets/|brand/|ds-icons/|question-assets/|images/|temas/|mapas-mentais/|novo-assets/|\\.well-known/|_vercel/|robots\\.txt$|sitemap\\.xml$|inicio-sem-js\\.css$).+)",
       "destination": "/novo",
       "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "app.staziamed.com.br" }],
+      "destination": "/novo",
+      "permanent": false
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "staziamed.com.br" }],
+      "destination": "https://www.staziamed.com.br/:path*",
+      "permanent": false
+    },
+    {
+      "source": "/novo",
+      "has": [{ "type": "host", "value": "www.staziamed.com.br" }],
+      "destination": "https://app.staziamed.com.br/novo",
+      "permanent": false
+    },
+    {
+      "source": "/novo/:path*",
+      "has": [{ "type": "host", "value": "www.staziamed.com.br" }],
+      "destination": "https://app.staziamed.com.br/novo/:path*",
+      "permanent": false
     }
   ],
   "rewrites": [
