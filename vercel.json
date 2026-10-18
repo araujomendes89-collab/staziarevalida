@@ -4,6 +4,7 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build:vercel",
   "outputDirectory": "dist",
+  "regions": ["gru1"],
   "functions": {
     "api/index.js": {
       "maxDuration": 300
