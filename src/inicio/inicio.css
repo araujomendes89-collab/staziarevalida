@@ -296,21 +296,11 @@ html:not(.js) .metro__ponto, .metro__parada--acesa .metro__ponto { background: v
 .arena__lede { color: var(--texto2); margin-top: 16px; max-width: 560px; }
 .arena__nota { font-size: 13.5px; line-height: 1.6; color: var(--texto2); margin: 16px 0 0; max-width: 560px; }
 .semana { flex: 1 1 340px; min-width: 0; background: #FFFFFF; border: 1px solid var(--borda); border-radius: 22px; padding: 24px; }
-.semana__topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.semana__t { font-size: 18px; font-weight: 800; margin: 0; }
-.semana__dias { display: flex; gap: 8px; margin-top: 16px; }
-.dia { flex: 1; height: 38px; border-radius: 10px; background: var(--cinza); border: 1.5px dashed #9AA8BC; }
-.dia--feito { background: var(--azul); border: 0; }
-.semana__nomes { display: flex; justify-content: space-between; font-size: 12px; color: var(--texto2); margin-top: 6px; }
-.semana__liga { margin-top: 20px; }
-.semana__liga-topo { display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 700; }
-.semana__xp { color: var(--azul); }
-.semana__liga-trilho { margin-top: 8px; height: 10px; border-radius: 5px; background: var(--cinza); overflow: hidden; }
-.semana__liga-valor { width: 64%; height: 100%; background: var(--azul); }
-.semana__pilulas { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
-.semana__pilulas span { font-size: 13px; font-weight: 700; padding: 8px 13px; border-radius: 999px; background: var(--cinza); }
-.semana__pilulas .semana__opcional { color: var(--texto2); }
-.semana__nota { font-size: 12.5px; color: var(--texto2); margin: 14px 0 0; }
+/* tela T6: captura real da Liga da semana, no mesmo cartão (borda e cantos do desenho); a legenda fica dentro, embaixo */
+.semana--real { flex-basis: 388px; padding: 0; overflow: hidden; }
+.semana__imagem, .semana__imagem img { display: block; }
+.semana__imagem img { width: 100%; height: 290px; object-fit: cover; object-position: center top; }
+.semana__nota { font-size: 12.5px; color: var(--texto2); margin: 0; padding: 10px 18px 12px; border-top: 1px solid var(--borda); }
 
 /* ---------- 7 · planos ---------- */
 .ciclos { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px; margin-top: 28px; }

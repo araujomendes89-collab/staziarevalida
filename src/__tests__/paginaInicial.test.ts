@@ -534,10 +534,14 @@ describe("página inicial: script", () => {
     expect(encaixe.hidden).toBe(true);
   });
 
-  it("telas T1 a T4 são capturas reais do app no tamanho do desenho, com texto alternativo e aviso de dados de exemplo", () => {
+  it("telas T1 a T4 e a Arena (T6, Liga da semana) são capturas reais do app no tamanho do desenho, com texto alternativo e aviso de dados de exemplo", () => {
     const doc = pagina();
-    const imgs = [doc.querySelector(".painel-app__tela img"), ...doc.querySelectorAll(".tela-real img")] as HTMLImageElement[];
-    expect(imgs).toHaveLength(4);
+    const imgs = [doc.querySelector(".painel-app__tela img"), ...doc.querySelectorAll(".tela-real img"), doc.querySelector(".semana--real img")] as HTMLImageElement[];
+    expect(imgs).toHaveLength(5);
+    expect(doc.querySelector(".semana--real .semana__nota")?.textContent).toBe("Tela do aplicativo. Os dados são de exemplo.");
+    expect(doc.querySelector(".semana--real img")?.getAttribute("alt")).toMatch(/Liga da semana/);
+    // a ilustração "Sua semana" saiu (o app não tem essa faixa)
+    expect(textoDe(doc)).not.toMatch(/Sua semana|Exemplo ilustrativo|960 XP/);
     for (const img of imgs) {
       expect((img.getAttribute("alt") || "").length, img.outerHTML).toBeGreaterThan(40);
       expect(img.getAttribute("alt")).toMatch(/aplicativo StaziaMed/);

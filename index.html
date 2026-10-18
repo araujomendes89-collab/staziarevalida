@@ -485,23 +485,17 @@
             <p class="lede arena__lede">A Arena é a camada de motivação: cada estudo rende XP, a constância vira sequência e as ligas e medalhas marcam o seu caminho. O ranking é um recurso adicional, para quem gosta de comparar.</p>
             <p class="arena__nota">Coins são bônus e não têm valor em dinheiro. Novas trocas serão anunciadas com 30 dias de antecedência.</p>
           </div>
-          <div class="semana">
-            <div class="semana__topo">
-              <h3 class="semana__t">Sua semana</h3>
-              <span class="chip chip--ambar">Sequência · 5 dias</span>
-            </div>
-            <div class="semana__dias" aria-hidden="true">
-              <span class="dia dia--feito"></span><span class="dia dia--feito"></span><span class="dia dia--feito"></span><span class="dia dia--feito"></span><span class="dia dia--feito"></span><span class="dia"></span><span class="dia"></span>
-            </div>
-            <div class="semana__nomes" aria-hidden="true"><span>seg</span><span>ter</span><span>qua</span><span>qui</span><span>sex</span><span>sáb</span><span>dom</span></div>
-            <div class="semana__liga">
-              <div class="semana__liga-topo"><span>Liga atual</span><span class="semana__xp">960 XP</span></div>
-              <div class="semana__liga-trilho"><div class="semana__liga-valor"></div></div>
-            </div>
-            <div class="semana__pilulas">
-              <span>XP</span><span>Medalhas</span><span>Ligas</span><span class="semana__opcional">Ranking (opcional)</span>
-            </div>
-            <p class="semana__nota">Exemplo ilustrativo.</p>
+          <!-- [TELA T6] captura real da Liga da semana (app /novo, dados de exemplo), no lugar da ilustração "Sua semana" (decisão do dono 18/10) -->
+          <div class="semana semana--real">
+            <picture class="semana__imagem">
+              <source media="(max-width: 640px)" type="image/avif" srcset="/src/inicio/img/telas/t6-celular-348w.avif 348w, /src/inicio/img/telas/t6-celular-696w.avif 696w" sizes="calc(100vw - 42px)" />
+              <source media="(max-width: 640px)" type="image/webp" srcset="/src/inicio/img/telas/t6-celular-348w.webp 348w, /src/inicio/img/telas/t6-celular-696w.webp 696w" sizes="calc(100vw - 42px)" />
+              <source media="(max-width: 1080px)" type="image/avif" srcset="/src/inicio/img/telas/t6-tablet-705w.avif 705w, /src/inicio/img/telas/t6-tablet-1410w.avif 1410w" sizes="calc(100vw - 63px)" />
+              <source media="(max-width: 1080px)" type="image/webp" srcset="/src/inicio/img/telas/t6-tablet-705w.webp 705w, /src/inicio/img/telas/t6-tablet-1410w.webp 1410w" sizes="calc(100vw - 63px)" />
+              <source type="image/avif" srcset="/src/inicio/img/telas/t6-computador-388w.avif 388w, /src/inicio/img/telas/t6-computador-776w.avif 776w" sizes="388px" />
+              <img src="/src/inicio/img/telas/t6-computador-388w.webp" srcset="/src/inicio/img/telas/t6-computador-388w.webp 388w, /src/inicio/img/telas/t6-computador-776w.webp 776w" sizes="388px" width="388" height="290" alt="Liga da semana no aplicativo StaziaMed com dados de exemplo: Liga Bronze, grupo 1, e a classificação dos alunos com os pontos de XP" loading="lazy" decoding="async" />
+            </picture>
+            <p class="semana__nota">Tela do aplicativo. Os dados são de exemplo.</p>
           </div>
         </div>
       </section>
