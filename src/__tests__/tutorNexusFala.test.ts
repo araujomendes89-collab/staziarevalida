@@ -20,11 +20,12 @@ import { VOICE_BLOCK_ERROR, elevenAccessOf, minutesOf } from "../../server/tutor
 import { speechCut } from "../../server/tutor/speech";
 import { TRIAL_OVER } from "../../server/tutor/engine";
 import { aceitarTermos } from "./helpers/aceites";
+import { GEMINI_VOZ_ENV, custoDe, pedidoGemini, respostaGemini } from "./helpers/vozGemini";
 
-const ENV = {
-  ELEVENLABS_API_KEY: "chave-falsa-de-teste-" + "x".repeat(40), TUTOR_VOICE_ALLOW_EXTERNAL: "1",
-  ELEVENLABS_VOICE_STAZI: "vozStaziTeste000001", ELEVENLABS_VOICE_STAZIA: "vozStaziaTeste00001",
-};
+// a voz do professor é a do personagem no Gemini (padrão); a ElevenLabs só de reserva (TUTOR_VOICE_ENGINE=elevenlabs)
+const ENV = GEMINI_VOZ_ENV;
+const RESERVA_ELEVENLABS = { ...ENV, TUTOR_VOICE_ENGINE: "elevenlabs", ELEVENLABS_API_KEY: "chave-falsa-de-teste-" + "x".repeat(40),
+  ELEVENLABS_VOICE_STAZI: "vozStaziTeste000001", ELEVENLABS_VOICE_STAZIA: "vozStaziaTeste00001" };
 const ADMIN = "00000000-0000-4000-8000-0000000000a1";
 const TESTE = "00000000-0000-4000-8000-0000000000f1";
 const PAGO = "00000000-0000-4000-8000-0000000000f2";
@@ -36,12 +37,13 @@ let db: ContentDb;
 let server: Server;
 let base: string;
 const tokens: Record<string, string> = {};
-const sent: { url: string; body: any }[] = [];
+const sent: { url: string; body: any; text: string; voice: string; headers: Record<string, string> }[] = [];
 let failVoice = false;
 const fakeFetch = (async (url: string, init: RequestInit) => {
   if (failVoice) return new Response("fora do ar", { status: 503 });
-  sent.push({ url, body: JSON.parse(String(init.body)) });
-  return new Response(new Uint8Array([73, 68, 51, 4]), { headers: { "Content-Type": "audio/mpeg" } });
+  const pedido = pedidoGemini(init);
+  sent.push({ url, ...pedido, headers: init.headers as Record<string, string> });
+  return respostaGemini(pedido.text);
 }) as typeof fetch;
 const deps: any = { mockRespond: () => ({}), fetch: fakeFetch, elevenEnv: ENV };
 
@@ -118,9 +120,10 @@ describe("Voz do professor pela rota", () => {
     const no = await phrase(TESTE, "marked");
     expect(no).toMatchObject({ status: 429, json: { error: "Você usou sua voz de hoje", code: "voice_student_limit" } });
     expect(sent).toHaveLength(1);
-    // o gasto entrou no registro de uso com o custo do painel (US$ 0,30 por mil caracteres)
-    const led = await sql(`select feature, characters, estimated_cost_usd::float c from public.ai_usage_ledger where user_id = $1 and feature = 'tutor_tts'`, [TESTE]);
-    expect(led).toEqual([{ feature: "tutor_tts", characters: UNMARKED, c: Math.round((UNMARKED / 1000) * 0.3 * 1e6) / 1e6 }]);
+    // o gasto entrou no registro de uso com o custo que o próprio Google informou (tokens do Gemini), não o preço do painel
+    const led = await sql(`select feature, provider, model, characters, estimated_cost_usd::float c from public.ai_usage_ledger where user_id = $1 and feature = 'tutor_tts'`, [TESTE]);
+    expect(led).toEqual([{ feature: "tutor_tts", provider: "gemini", model: "gemini-3.8-flash-tts", characters: UNMARKED, c: custoDe(sent[0].text) }]);
+    expect(custoDe(sent[0].text)).toBeGreaterThan(0);
   });
 
   it("a voz do professor funciona com o tempo da voz ao vivo esgotado (dia e teste inteiro)", async () => {
@@ -171,8 +174,8 @@ describe("Voz do professor pela rota", () => {
     expect(await phrase(PAGO, "marked", "durona")).toMatchObject({ status: 409, json: { code: "voice_unavailable" } });
     await approve("stazia");
     expect((await phrase(PAGO, "marked", "durona")).status).toBe(200);
-    // trocou o voice_id no servidor: a versão aprovada não vale mais
-    deps.elevenEnv = { ...ENV, ELEVENLABS_VOICE_STAZIA: "outraVozDurona0001" };
+    // trocou o serviço da voz no servidor (reserva ElevenLabs): a versão aprovada não vale mais
+    deps.elevenEnv = RESERVA_ELEVENLABS;
     const n = sent.length;
     expect(await phrase(PAGO, "marked", "durona", "C")).toMatchObject({ status: 409, json: { code: "voice_unavailable" } });
     expect(sent).toHaveLength(n);
@@ -193,10 +196,15 @@ describe("Voz do professor pela rota", () => {
     await sql(`update public.tutor_sessions set emotion = '{"mood": "pleased", "frustration": 5, "enthusiasm": 80}'::jsonb where id = $1`, [s]);
     const m = await tutorMessage(PAGO, s, "De novo? Lê o comando da questão.", { personality: { id: "durona", mood: "irritated", frustration: 70, enthusiasm: 30 } });
     expect((await speak(PAGO, { kind: "message", session_id: s, message_id: m })).status).toBe(200);
-    expect(sent.at(-1)!.body.text).toBe("[frustrated] De novo? Lê o comando da questão.");
-    expect(sent.at(-1)!.url).toContain(ENV.ELEVENLABS_VOICE_STAZIA);
+    // o Gemini TTS lê em voz alta qualquer instrução de tom: vai só a fala, na voz da Stazia (Kore); o jeito vem do texto
+    expect(sent.at(-1)!.text).toBe("De novo? Lê o comando da questão.");
+    expect(sent.at(-1)!.voice).toBe("Kore");
+    expect(Object.keys(sent.at(-1)!.body).sort()).toEqual(["contents", "generationConfig"]);
+    expect(sent.at(-1)!.url).toBe("https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent");
+    expect(sent.at(-1)!.url).not.toContain(ENV.VERTEX_API_KEY);
+    expect(sent.at(-1)!.headers["x-goog-api-key"]).toBe(ENV.VERTEX_API_KEY);
     expect((await phrase(PAGO, "marked", "durona", "E")).status).toBe(200);
-    expect(sent.at(-1)!.body.text).toBe("Marquei a E. Diga confirmo para responder, ou fale outra alternativa.");
+    expect(sent.at(-1)!.text).toBe("Marquei a E. Diga confirmo para responder, ou fale outra alternativa.");
   });
 
   it("corte da fala: até ~450 caracteres num fim de frase; sem fim de frase, no último espaço; a mensagem gravada continua inteira", async () => {
@@ -213,17 +221,18 @@ describe("Voz do professor pela rota", () => {
     const s = await session(PAGO, "durao");
     const m = await tutorMessage(PAGO, s, long);
     expect((await speak(PAGO, { kind: "message", session_id: s, message_id: m })).status).toBe(200);
-    expect(sent.at(-1)!.body.text).toBe(sentence.repeat(7).trim());
+    expect(sent.at(-1)!.text).toBe(sentence.repeat(7).trim());
+    expect(sent.at(-1)!.voice).toBe("Zubenelgenubi"); // o Durão fala com a voz do Stazi
     expect(await used(PAGO)).toBe(sentence.repeat(7).trim().length);
     expect((await sql(`select content from public.tutor_messages where id = $1`, [m]))[0].content).toBe(long);
   });
 
-  it("colchetes do texto viram parênteses; a marcação só vem do Speech Director", async () => {
+  it("colchetes do texto viram parênteses (não viram marcação de áudio do serviço)", async () => {
     const s = await session(PAGO, "acolhedor");
     const m = await tutorMessage(PAGO, s, "Olha isso [laughs] e confere o enunciado.", { personality: { id: "acolhedor", mood: "neutral", frustration: 5 } });
     expect((await speak(PAGO, { kind: "message", session_id: s, message_id: m })).status).toBe(200);
-    expect(sent.at(-1)!.body.text).not.toContain("[");
-    expect(sent.at(-1)!.body.text).not.toContain("]");
+    expect(sent.at(-1)!.text).not.toContain("[");
+    expect(sent.at(-1)!.text).not.toContain("]");
   });
 
   it("ouvir de novo sai do cache, sem gerar nem cobrar", async () => {

@@ -7,7 +7,7 @@
  * Só configuração: nenhuma chamada externa, nenhum banco.
  */
 import { describe, expect, it } from "vitest";
-import { elevenLabsReadiness } from "../../server/tutor/officialVoices";
+import { voiceReadiness as elevenLabsReadiness } from "../../server/tutor/officialVoices";
 import { realtimeConfig, voiceReady } from "../../server/tutor/realtime";
 import { geminiVoiceConfig, liveConfig, LIVE_VOICE_LOCK } from "../../server/tutor/voiceProviders";
 

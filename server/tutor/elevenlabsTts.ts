@@ -1,10 +1,12 @@
-/** ElevenLabs oficial: transporte TTS, sem ferramentas, histórico, prompt médico ou geração de resposta. */
+/**
+ * ElevenLabs (RESERVA, desligada por padrão: só com TUTOR_VOICE_ENGINE=elevenlabs e ELEVENLABS_VOICE_STAZI/_STAZIA): transporte TTS,
+ * sem ferramentas, histórico, prompt médico ou geração de resposta. A voz padrão do professor é a do Gemini (geminiTts.ts).
+ */
 import type { SpeechAudio, SpeechProvider, VoiceProfile } from "./speech";
-import type { TutorDeps } from "./engine";
 import { elevenLabsVoiceSettings, SPEED_RANGE, TAG_RULES, type SpeechDirection } from "./speechDirector";
 import { OFFICIAL_VOICES, type OfficialVoice } from "../../src/shared/tutor/officialVoices";
 import { familyOf } from "./emotion";
-import { elevenLabsConfiguration, elevenLabsReadiness, officialVoiceForPersonality, voiceFingerprint } from "./officialVoices";
+import { elevenLabsConfiguration, officialVoiceForPersonality, voiceFingerprint, voiceReadiness } from "./officialVoices";
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 /** Tags escolhidas pelo Stazia, nunca interpretadas de prompts ou histórico pelo provedor. */
@@ -40,16 +42,17 @@ export class OfficialElevenLabsSpeech implements SpeechProvider {
   readonly cacheIdentity: string;
   private config: ReturnType<typeof elevenLabsConfiguration>;
   constructor(private env: NodeJS.ProcessEnv = process.env, private fetchImpl: typeof fetch = fetch) {
-    this.env = { ...env };
+    // esta classe é sempre a ElevenLabs: a prontidão e a versão são as dela, qualquer que seja o serviço escolhido no servidor
+    this.env = { ...env, TUTOR_VOICE_ENGINE: "elevenlabs" };
     this.config = elevenLabsConfiguration(env);
     this.model = this.config.model;
-    this.cacheIdentity = Object.keys(OFFICIAL_VOICES).map((id) => voiceFingerprint(id as OfficialVoice, env)).join(":");
+    this.cacheIdentity = Object.keys(OFFICIAL_VOICES).map((id) => voiceFingerprint(id as OfficialVoice, this.env)).join(":");
   }
 
   async synthesize(text: string, voice: VoiceProfile): Promise<SpeechAudio> {
     const id = officialVoiceForPersonality(voice.personality);
     if (!id) throw new Error("Esta personalidade ainda não tem voz oficial ElevenLabs associada.");
-    const readiness = elevenLabsReadiness(this.env);
+    const readiness = voiceReadiness(this.env);
     const row = readiness.rows.find((item) => item.id === id)!;
     // o aviso é em português simples; o detalhe técnico (nome da variável) segue no erro, que só vai para o registro do servidor
     if (!row.ready) throw new Error([row.pending || readiness.pending || "Voz oficial não configurada.", row.detail || readiness.detail].filter(Boolean).join(" "));
@@ -76,10 +79,4 @@ export class OfficialElevenLabsSpeech implements SpeechProvider {
     if (!audio.length || audio.length > 8 * 1024 * 1024) throw new Error("Áudio ElevenLabs vazio ou acima do limite.");
     return { audio, mime: "audio/mpeg" };
   }
-}
-
-/** A voz do professor no servidor: a dos testes (deps.speech; null = desligada) ou a oficial, com o ambiente do servidor. */
-export function elevenSynth(deps: Pick<TutorDeps, "speech" | "elevenEnv" | "fetch">): SpeechProvider | null {
-  if (deps.speech !== undefined) return deps.speech;
-  return new OfficialElevenLabsSpeech(deps.elevenEnv ?? process.env, deps.fetch ?? fetch);
 }

@@ -3,14 +3,19 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import express from "express";
 import type { Server } from "node:http";
 import { OFFICIAL_VOICES, VOICE_SCENARIOS, scenariosFor } from "../shared/tutor/officialVoices";
-import { elevenLabsConfiguration, elevenLabsReadiness, fingerprintOf, fingerprintParts, officialVoiceForPersonality, voiceFingerprint } from "../../server/tutor/officialVoices";
-import { OfficialElevenLabsSpeech, elevenSynth, officialSpeechDirection } from "../../server/tutor/elevenlabsTts";
+import { elevenLabsConfiguration, voiceReadiness as elevenLabsReadiness, fingerprintOf, fingerprintParts, officialVoiceForPersonality, voiceFingerprint } from "../../server/tutor/officialVoices";
+import { OfficialElevenLabsSpeech, officialSpeechDirection } from "../../server/tutor/elevenlabsTts";
+import { professorSynth as elevenSynth } from "../../server/tutor/professorVoice";
+import { OfficialGeminiSpeech } from "../../server/tutor/geminiTts";
 import { SPEECH_PROFILES, SPEED_RANGE, TAG_RULES, speechDirectionFromState } from "../../server/tutor/speechDirector";
 import { createVoicePreviewRouter } from "../../server/tutor/voicePreview";
 import { SpeechCache, tutorSpeech, MockSpeech, speechProviderFor } from "../../server/tutor/speech";
 import { createTutorRouter } from "../../server/tutor/router";
 
+// RESERVA ElevenLabs (desligada por padrão): estes testes ligam de propósito, com TUTOR_VOICE_ENGINE=elevenlabs. A voz padrão
+// do professor é a do personagem no Gemini (tutorVozGemini.test.ts).
 const ENV = {
+  TUTOR_VOICE_ENGINE: "elevenlabs",
   ELEVENLABS_API_KEY: "test-secret-not-real-" + "x".repeat(40), TUTOR_VOICE_ALLOW_EXTERNAL: "1",
   ELEVENLABS_VOICE_STAZI: "voiceStazi00001", ELEVENLABS_VOICE_STAZIA: "voiceStazia0001",
 };
@@ -20,7 +25,7 @@ const direcao = (voice: "stazi" | "stazia", personality: string, d: Parameters<t
 const speechDirectionFromStateIntensity = (mood: string) => speechDirectionFromState({ mood, frustration: 35, enthusiasm: 90 }).intensity;
 const audioResponse = () => new Response(new Uint8Array([73, 68, 51, 1]), { headers: { "Content-Type": "audio/mpeg" } });
 
-describe("vozes oficiais: configuração, revisão e fronteira TTS", () => {
+describe("vozes oficiais (reserva ElevenLabs): configuração, revisão e fronteira TTS", () => {
   it("a voz vem do personagem: Durão e Tranquilo falam com a voz do Stazi; Durona e Tranquila, com a da Stazia; o Direto saiu", () => {
     expect(officialVoiceForPersonality("durao")).toBe("stazi");
     expect(officialVoiceForPersonality("acolhedor")).toBe("stazi");
@@ -35,15 +40,24 @@ describe("vozes oficiais: configuração, revisão e fronteira TTS", () => {
     expect(officialVoiceForPersonality("questionador")).toBeNull();
     expect(officialVoiceForPersonality("__proto__")).toBeNull();
   });
-  it("usa os nomes atuais de variáveis e mantém IDs antigos de voz como fallback", () => {
+  it("usa só os nomes atuais de variáveis: as vozes antigas (Tranquilo, Durona, Durão, Preguiçoso, Direto) não valem nem de reserva", () => {
     expect(elevenLabsConfiguration(ENV).voices.stazia).toBe(ENV.ELEVENLABS_VOICE_STAZIA);
     expect(elevenLabsConfiguration(ENV).voices.stazi).toBe(ENV.ELEVENLABS_VOICE_STAZI);
-    // reserva de compatibilidade: as variáveis de antes valem enquanto as novas não existem (a Stazia herda a da Durona; o Stazi, a do Tranquilo)
-    const antigas = { ELEVENLABS_API_KEY: ENV.ELEVENLABS_API_KEY, TUTOR_VOICE_ALLOW_EXTERNAL: "1" };
-    expect(elevenLabsConfiguration({ ...antigas, ELEVENLABS_VOICE_DURONA: "voiceDuronaAntiga01", ELEVENLABS_VOICE_TRANQUILO: "voiceTranquiloAnt01" }).voices).toEqual({ stazi: "voiceTranquiloAnt01", stazia: "voiceDuronaAntiga01" });
-    expect(elevenLabsConfiguration({ ...antigas, ELEVENLABS_VOICE_DURAO: "voiceDuronaAntiga02", ELEVENLABS_VOICE_PREGUICOSO: "voiceTranquiloAnt02" }).voices).toEqual({ stazi: "voiceTranquiloAnt02", stazia: "voiceDuronaAntiga02" });
-    // a variável nova vence a antiga; a do Direto não vale mais
-    expect(elevenLabsConfiguration({ ...ENV, ELEVENLABS_VOICE_DURONA: "voiceDuronaAntiga01", ELEVENLABS_VOICE_DIRETO: "voiceDiretoAntigo1" }).voices).toEqual({ stazi: ENV.ELEVENLABS_VOICE_STAZI, stazia: ENV.ELEVENLABS_VOICE_STAZIA });
+    // 18/10/2026: a reserva das variáveis antigas tocava as vozes velhas sem ninguém querer; saiu
+    const antigas = { TUTOR_VOICE_ENGINE: "elevenlabs", ELEVENLABS_API_KEY: ENV.ELEVENLABS_API_KEY, TUTOR_VOICE_ALLOW_EXTERNAL: "1",
+      ELEVENLABS_VOICE_DURONA: "voiceDuronaAntiga01", ELEVENLABS_VOICE_TRANQUILO: "voiceTranquiloAnt01", ELEVENLABS_VOICE_DURAO: "voiceDuronaAntiga02",
+      ELEVENLABS_VOICE_PREGUICOSO: "voiceTranquiloAnt02", ELEVENLABS_VOICE_DIRETO: "voiceDiretoAntigo1" };
+    expect(elevenLabsConfiguration(antigas).voices).toEqual({ stazi: "", stazia: "" });
+    expect(elevenLabsReadiness(antigas).rows.every((row) => !row.ready && !row.configured)).toBe(true);
+    expect(elevenLabsConfiguration({ ...ENV, ELEVENLABS_VOICE_DURONA: "voiceDuronaAntiga01" }).voices).toEqual({ stazi: ENV.ELEVENLABS_VOICE_STAZI, stazia: ENV.ELEVENLABS_VOICE_STAZIA });
+  });
+  it("a ElevenLabs só fala quando ligada de propósito (TUTOR_VOICE_ENGINE=elevenlabs); sem isso, a voz é a do Gemini", () => {
+    const { TUTOR_VOICE_ENGINE: _engine, ...semMotor } = ENV;
+    expect(elevenLabsReadiness(semMotor).engine).toBe("gemini");
+    expect(elevenLabsReadiness({ ...semMotor, TUTOR_VOICE_ENGINE: "ElevenLabs " }).engine).toBe("elevenlabs");
+    expect(elevenLabsReadiness({ ...semMotor, TUTOR_VOICE_ENGINE: "openai" }).engine).toBe("gemini");
+    expect(elevenSynth({ elevenEnv: semMotor })).toBeInstanceOf(OfficialGeminiSpeech);
+    expect(voiceFingerprint("stazia", semMotor)).not.toBe(voiceFingerprint("stazia", ENV));
   });
   it("os roteiros de Voice Design respeitam os tamanhos da API e são originais", () => {
     for (const profile of Object.values(OFFICIAL_VOICES)) {
@@ -55,7 +69,7 @@ describe("vozes oficiais: configuração, revisão e fronteira TTS", () => {
     }
   });
   it("credenciais e IDs ausentes não liberam nem simulam áudio", () => {
-    const status = elevenLabsReadiness({});
+    const status = elevenLabsReadiness({ TUTOR_VOICE_ENGINE: "elevenlabs" });
     expect(status.keyConfigured).toBe(false);
     expect(status.rows.every((row) => !row.ready && !row.approved)).toBe(true);
     expect(JSON.stringify(status)).not.toContain(ENV.ELEVENLABS_API_KEY);
@@ -69,7 +83,7 @@ describe("vozes oficiais: configuração, revisão e fronteira TTS", () => {
   });
   it("VZ04: os avisos do painel vêm em português simples, sem nome de variável do servidor; o detalhe técnico vem à parte", () => {
     const tecnico = /[A-Z]{3,}_[A-Z_]+|voice_?id|eleven_v3|mp3_|=1/i;
-    const semChave = elevenLabsReadiness({});
+    const semChave = elevenLabsReadiness({ TUTOR_VOICE_ENGINE: "elevenlabs" });
     expect(semChave.pending).toBe("A chave de acesso da voz do professor ainda não foi configurada no servidor.");
     expect(semChave.detail).toBe("Configure ELEVENLABS_API_KEY no servidor.");
     const semAutorizacao = elevenLabsReadiness({ ...ENV, TUTOR_VOICE_ALLOW_EXTERNAL: "0" });
@@ -125,7 +139,7 @@ describe("vozes oficiais: configuração, revisão e fronteira TTS", () => {
 
   it("a versão da voz junta voz, modelo, formato, cenários dela e a direção do Speech Director; mudar qualquer um muda a versão", () => {
     const parts = fingerprintParts("stazia", ENV);
-    expect(parts).toMatchObject({ id: "stazia", voiceId: ENV.ELEVENLABS_VOICE_STAZIA, model: "eleven_v3", format: "mp3_44100_128", profile: OFFICIAL_VOICES.stazia });
+    expect(parts).toMatchObject({ id: "stazia", engine: "elevenlabs", voiceId: ENV.ELEVENLABS_VOICE_STAZIA, model: "eleven_v3", format: "mp3_44100_128", profile: OFFICIAL_VOICES.stazia });
     expect(parts.scenarios.map(([k]) => k)).toEqual(scenariosFor("stazia"));
     expect(parts.direction).toEqual({ profiles: SPEECH_PROFILES, tags: TAG_RULES, speed: SPEED_RANGE });
     const v = fingerprintOf(parts);
@@ -189,9 +203,11 @@ describe("vozes oficiais: configuração, revisão e fronteira TTS", () => {
       expect(r.provider, provider).toBeInstanceOf(OfficialElevenLabsSpeech);
       expect(r.status, provider).toMatchObject({ ready: true, provider: "elevenlabs", pending: null });
     }
-    const off = speechProviderFor({ db: {} as any, elevenEnv: {} });
+    const off = speechProviderFor({ db: {} as any, elevenEnv: { TUTOR_VOICE_ENGINE: "elevenlabs" } });
     expect(off.provider).toBeNull();
     expect(off.status).toMatchObject({ ready: false, provider: "elevenlabs", pending: expect.stringMatching(/chave de acesso/), detail: expect.stringMatching(/ELEVENLABS_API_KEY/) });
+    // sem nada configurado, o padrão é o Gemini: pede a chave do Vertex
+    expect(speechProviderFor({ db: {} as any, elevenEnv: {} }).status).toMatchObject({ ready: false, provider: "gemini", detail: expect.stringMatching(/VERTEX_API_KEY/) });
     // nos testes, deps.speech decide (null = desligada)
     const mock = new MockSpeech();
     expect(elevenSynth({ speech: mock })).toBe(mock);
@@ -259,7 +275,7 @@ describe("vozes oficiais: configuração, revisão e fronteira TTS", () => {
   });
 });
 
-describe("audição interna autenticada (sem ElevenLabs real)", () => {
+describe("audição interna autenticada (reserva ElevenLabs, sem rede)", () => {
   let server: Server;
   let base: string;
   const provider = vi.fn(async () => audioResponse());

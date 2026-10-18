@@ -22,6 +22,7 @@ import type { RealtimeConfig } from "../../server/tutor/realtime";
 import { setLiveSidebandFactory, type GeminiVoiceConfig, type LiveConfig } from "../../server/tutor/voiceProviders";
 import { aceitarTermos } from "./helpers/aceites";
 import { voiceFingerprint } from "../../server/tutor/officialVoices";
+import { GEMINI_VOZ_ENV } from "./helpers/vozGemini";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tutor-aceite-"));
 let dev: DevDatabase;
@@ -34,10 +35,7 @@ const SEM_ACEITE_CODE = "42501";
 
 const sql = async <T = any>(q: string, p: unknown[] = []) => (await dev.db.query<T>(q, p)).rows;
 /** Voz do professor nos testes: ambiente falso (sem rede) e as duas vozes aprovadas nesta versão. */
-const VOZ_ENV = {
-  ELEVENLABS_API_KEY: "chave-falsa-de-teste-" + "x".repeat(40), TUTOR_VOICE_ALLOW_EXTERNAL: "1",
-  ELEVENLABS_VOICE_STAZI: "vozStaziTeste000001", ELEVENLABS_VOICE_STAZIA: "vozStaziaTeste00001",
-};
+const VOZ_ENV = GEMINI_VOZ_ENV; // a voz do professor é a do personagem no Gemini (padrão)
 const aprovarVozes = (q: (s: string, p?: unknown[]) => Promise<unknown>) =>
   Promise.all((["stazi", "stazia"] as const).map((v) => q(`insert into public.tutor_voice_approvals (voice, fingerprint) values ($1, $2) on conflict (voice) do update set fingerprint = excluded.fingerprint, revoked_at = null`, [v, voiceFingerprint(v, VOZ_ENV)])));
 /** Roda como o navegador (papel authenticated) de um aluno logado, ou sem sessão (uid nulo, como um token sem usuário). */
