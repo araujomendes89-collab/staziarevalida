@@ -358,3 +358,8 @@ button.ihs-box:hover{border-color:var(--border-strong)}
   .ip:has(> .ip-sec + .ip-extra)>.ip-sec{grid-column:1}
   .ip:has(> .ip-sec + .ip-extra)>.ip-extra{grid-column:2;margin-top:33px}
 }
+/* planos etapa 4: contagem do teste grátis no Início (só com a cobrança ligada) */
+.ini-teste{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-radius:14px;background:var(--surface-brand-soft);border:1px solid color-mix(in oklab,var(--border-brand) 35%,transparent);font:400 14px var(--font-sans);color:var(--text-primary)}
+.ini-teste .sm-icon{color:var(--text-brand)}
+.ini-teste button{margin-left:auto;min-height:36px;padding:0 12px;border:0;border-radius:10px;background:none;color:var(--text-link);font:700 14px var(--font-sans);cursor:pointer}
+.ini-teste button:hover{text-decoration:underline}

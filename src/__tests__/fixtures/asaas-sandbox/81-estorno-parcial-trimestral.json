@@ -1,0 +1,21 @@
+{
+ "quando": "2026-10-17T20:28:52.783Z",
+ "pedido": {
+  "method": "POST",
+  "path": "/installments/a75b834d-be9e-4fe6-bedf-48969ce58aba/refund",
+  "body": {
+   "value": 80.91,
+   "description": "TESTE: trimestral cancelado no 2º mês - 1 mês não iniciado (R$ 89,90) menos 10% = R$ 80,91"
+  }
+ },
+ "status": 400,
+ "resposta": {
+  "errors": [
+   {
+    "code": "invalid_action",
+    "description": "Esta transação só pode ser estornada parcialmente no próximo dia."
+   }
+  ]
+ },
+ "nota": "Resposta REAL do sandbox do Asaas (17/10/2026), dados fictícios; chaves e tokens ocultos."
+}

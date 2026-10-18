@@ -1,6 +1,7 @@
 // Montar treino (Questões) e simulado, com dados do banco.
 // Mesma marcação do Builder do protótipo (prototype/Session.jsx); muda de onde vêm os números.
 import React from "react";
+import { lockHintOf } from "../../data/backend";
 import { useSearchParams } from "react-router-dom";
 import { Badge, Banner, Button, Card, Chip, EmptyState, Icon, SegmentedControl, SelectField, TextField } from "../../ds";
 import { AreaArtTile } from "../../ds/area-icons/AreaArtTile.jsx";
@@ -274,7 +275,9 @@ export function QuestionBuilder({ go, mode }) {
       setError(
         isPlanLockMessage(e?.message)
           ? withSupport(e.message, supportEmail)
-          : tri && /simulado TRI/.test(e?.message ?? "")
+          : lockHintOf(e)
+            ? e.message // planos etapa 4: recusa por plano (cadeado/amostra) mostra a frase do banco; a mensagem de compra abre por cima
+            : tri && /simulado TRI/.test(e?.message ?? "")
             ? e.message
             : "Não foi possível iniciar. Ajuste os filtros e tente de novo."
       );
@@ -293,7 +296,7 @@ export function QuestionBuilder({ go, mode }) {
       go("sessao", { s: started.session_id });
     } catch (e) {
       set({ exam: "staziamed", status });
-      setError(isPlanLockMessage(e?.message) ? withSupport(e.message, supportEmail) : "Não foi possível abrir as Questões Inéditas agora. Ajuste os filtros abaixo e tente de novo.");
+      setError(isPlanLockMessage(e?.message) ? withSupport(e.message, supportEmail) : lockHintOf(e) ? e.message : "Não foi possível abrir as Questões Inéditas agora. Ajuste os filtros abaixo e tente de novo.");
       setStarting(false);
     }
   };

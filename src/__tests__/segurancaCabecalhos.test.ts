@@ -40,6 +40,28 @@ describe("cabeçalhos de segurança do vercel.json", () => {
     expect(get("Content-Security-Policy")).not.toMatch(/script-src|default-src|connect-src/);
   });
 
+  it("Pacote 2: as 6 tarefas agendadas continuam (voz, play, planos, cobrança, e-mail do Contrato e rotina diária do Contrato)", () => {
+    const crons = ((config as { crons?: Array<{ path: string; schedule: string }> }).crons ?? []).map((c) => c.path).sort();
+    expect(crons).toEqual(["/api/cobranca/cron", "/api/legal/diaria", "/api/legal/email", "/api/planos/cron", "/api/play/cron", "/api/tutor/voice/sweep"]);
+  });
+
+  it("Pacote 2: o que a Vercel manda em /novo/entrar (a tela de entrar do app) inclui o microfone do próprio site e a proteção de quadro", () => {
+    // como a Vercel junta as regras: todas as que casam com o caminho, na ordem; a mesma chave numa regra seguinte substitui a anterior
+    const casa = (source: string, url: string) => new RegExp(`^${source.replace(/\(\.\*\)/g, "(.*)")}$`).test(url);
+    const para = (url: string) => {
+      const h: Record<string, string> = {};
+      for (const r of rules) if (casa(r.source, url)) for (const x of r.headers) h[x.key.toLowerCase()] = x.value;
+      return h;
+    };
+    const entrar = para("/novo/entrar");
+    expect(entrar["permissions-policy"]).toContain("microphone=(self)");
+    expect(entrar["x-frame-options"]).toBe("SAMEORIGIN");
+    expect(entrar["x-content-type-options"]).toBe("nosniff");
+    // a página inicial (/) continua mais estrita e sem microfone; a voz não roda nela
+    expect(para("/")["permissions-policy"]).toContain("microphone=()");
+    expect(para("/")["x-frame-options"]).toBe("DENY");
+  });
+
   it("um bloco de cabeçalhos só no vercel.json (a junção com a página inicial não pode apagar estes) e a página inicial em / vem depois, mais estrita", () => {
     const texto = readFileSync("vercel.json", "utf8");
     const chavesRepetidas: string[] = [];

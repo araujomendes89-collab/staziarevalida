@@ -177,14 +177,14 @@ export function DireitosPorFase({ data, setData }) {
     <form onSubmit={salvar} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
       <Banner tone={data.config.cadeados_ligados ? "warning" : "info"} title={data.config.cadeados_ligados ? "Cadeados: chave LIGADA" : "Modo sombra: nada é trancado"}>
         {data.config.cadeados_ligados
-          ? "A chave está ligada, mas nesta versão do app nada passou a ser trancado ainda: as telas e o banco só vão obedecer a ela nas próximas etapas (cadeados no banco e nas telas)."
+          ? "A chave está ligada: o banco tranca de verdade o que o plano do aluno não inclui (questões, simulados e flashcards além da amostra do dia, estações e a 2ª fase fechada) e a carteira de IA decide os créditos e minutos. Quem esbarra num cadeado vê a mensagem “assine para liberar” com o que ainda sobra hoje. Para voltar ao modo sombra, desligue e salve."
           : "A regra nova por fase (PRO = 1ª fase, PRÁTICA = 2ª fase, ELITE = as duas) já é calculada para cada aluno, mas só informa. Os alunos continuam com o acesso de hoje. Use o diagnóstico abaixo para conferir antes de ligar."}
       </Banner>
 
       <Secao titulo="Chaves" texto="Toda mudança fica no Registro.">
         <Switch
           label="Cadeados ligados"
-          description="Desligado = modo sombra (a regra nova só informa; as cotas e acessos de hoje continuam). Ligado = a carteira de IA decide os créditos e minutos, e os cadeados do banco passam a valer (questões, simulados, flashcards, estações). As telas com cadeado e a mensagem de compra vêm na etapa 4."
+          description="Desligado = modo sombra (a regra nova só informa; as cotas e acessos de hoje continuam). Ligado = o banco tranca de verdade o que o plano não inclui (questões, simulados, flashcards, estações) e a carteira de IA decide os créditos e minutos; o aluno vê a mensagem “assine para liberar”. Decisão do dono: ligados na abertura, logo depois de abrir as vendas."
           checked={form.config.cadeados_ligados}
           onChange={(e) => setCfg({ cadeados_ligados: e.target.checked })}
         />

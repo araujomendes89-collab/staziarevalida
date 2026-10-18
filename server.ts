@@ -47,6 +47,14 @@ import { tutorMockRespond } from "./server/tutor/mock";
 import { startVoiceSweeper } from "./server/tutor/realtime";
 import { createPlayRouter, startPlayScheduler } from "./server/play/router";
 import { createPlanosRouter } from "./server/planos/router";
+import { createBilling } from "./server/billing/core";
+import { createProviderFromEnv } from "./server/billing/providerFromEnv";
+import { createBillingRouter, createWebhookHandler, type BillingRoutesDeps } from "./server/billing/router";
+import { createAvisos } from "./server/avisos/avisos";
+import { createLegalRouter, startLegalScheduler, type LegalDeps } from "./server/legal/router";
+// Um módulo de e-mail só (Pacote 2): o de server/email cobre o de server/avisos (mesmas variáveis SMTP_*, mesmo Mailer, mais anexos)
+import { createSmtpMailer, smtpConfigFromEnv } from "./server/email/smtp";
+import { createEmailsCobranca } from "./server/avisos/emailsCobranca";
 import { createLessonsRouter, lessonsStorage } from "./server/lessons/router";
 import { createQuestionFiguresRouter, questionFiguresStorage } from "./server/questions/figures";
 import { createAdminAssistantRouter } from "./server/adminAssistant/router";
@@ -84,6 +92,10 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   const app = express();
   app.disable("x-powered-by"); // não anuncia "Express" nas respostas (auditoria de segurança 17/10)
   if (opts.serverless) process.env.CONTENT_HUB_WORKER = "0";
+  // Cobrança nova (server/billing, migração 013700; sem chave = desligada): o aviso do fornecedor precisa do corpo CRU para
+  // conferir o token, por isso esta rota vem ANTES do express.json. As outras rotas /api/cobranca são montadas depois do banco.
+  let billingDeps: BillingRoutesDeps | null = null;
+  app.post("/api/cobranca/webhook", express.raw({ type: "*/*", limit: "1mb" }), createWebhookHandler(() => billingDeps));
   app.use(express.json({ limit: "50mb" }));
   // site da Vercel (corta o pedido em 300 s): cada pedido ganha a hora-limite logo depois de lido o corpo, e todas as chamadas
   // de IA dele a respeitam (correção IA10, server/ai/requestDeadline.ts). Depois do express.json, para o contexto não se perder
@@ -91,7 +103,7 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   if (opts.serverless) app.use(requestDeadlineMiddleware());
   // Cobrança do app antigo (Firebase) desligada (RT01/RT02, 2026-10-10): /api/billing e /api/webhooks não são montadas.
   // Tinham simulação de aprovação sem login e aviso de pagamento sem conferência; nenhuma tela do app novo as usa.
-  // Os arquivos ficam em server/routes; a cobrança nova será feita do zero, com conferência obrigatória da assinatura.
+  // Os arquivos ficam em server/routes. A cobrança NOVA (server/billing, 013700) usa OUTRO caminho: /api/cobranca.
   // Inventário das rotas do app antigo (RT03, 2026-10-12). Todas usam o login do Firebase do app antigo; o app novo (/novo) não chama nenhuma.
   //   ligadas porque o app antigo ainda chama (src/services):
   //     /api/entitlements (planos, meu acesso, consumo; "upgrade-self" só administrador), /api/admin/users, /api/admin/design,
@@ -113,6 +125,19 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   app.use("/api/checklist-bank", checklistBankRouter);
   // Central de Conteúdo: envio de PDFs, fila de processamento, arquivos finais (chaves só no servidor).
   const hub = await setupContentHub();
+  // Cobrança nova (Pix ou cartão à vista; fornecedor pela camada neutra). Sem ASAAS_API_KEY + ASAAS_WEBHOOK_TOKEN: desligada (503).
+  if (hub.deps) {
+    const billingProvider = createProviderFromEnv();
+    const billing = createBilling({ db: hub.deps.db, provider: billingProvider, baseUrl: (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "") || null, log: (m) => console.log(m) });
+    // avisos de cobrança (013760): e-mail só com SMTP_HOST/SMTP_USER/SMTP_PASSWORD/SMTP_FROM no servidor; sem eles, só o aviso na tela
+    const smtp = smtpConfigFromEnv();
+    const avisos = createAvisos({ db: hub.deps.db, mailer: smtp ? createSmtpMailer(smtp) : null, baseUrl: (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "") || null, log: (m) => console.log(m) });
+    // 013850: "Sua nota fiscal" ao aluno e alertas de gasto de IA ao dono (mesmo SMTP; sem ele, nada sai)
+    const emails = createEmailsCobranca({ db: hub.deps.db, mailer: smtp ? createSmtpMailer(smtp) : null, baseUrl: (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "") || null, log: (m) => console.log(m) });
+    billingDeps = { billing, provider: billingProvider, authenticate: (req) => hub.deps!.db.authenticate(req), log: (m) => console.log(m), avisos, emails };
+    if (billingProvider) console.log(`[billing] cobrança ligada (${billingProvider.name}, modo ${billingProvider.mode}).`);
+    app.use("/api/cobranca", createBillingRouter(() => billingDeps));
+  }
   app.use("/api/gemini", requireAdmin(hub.deps)); // rotas antigas do Gemini: só administrador (a chave é para criação de conteúdo)
   app.use("/api/ai", requireAdmin(hub.deps)); // rotas antigas /api/ai/* (Anthropic, OpenAI e Gemini): só administrador; não pega /api/ai-central
   // Materiais visuais (cards, A4, story e flashcards): rotas próprias, montadas antes das da Central
@@ -130,6 +155,14 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   app.use("/api/play", createPlayRouter(hub.deps ? { db: hub.deps.db, log: (m: string) => console.log(m) } : null));
   // Planos (etapa 3): ativação do teste grátis vendo o IP (só o código/hash vai ao banco) e tarefa diária (avisos de renovação)
   app.use("/api/planos", createPlanosRouter(hub.deps ? { db: hub.deps.db, log: (m: string) => console.log(m) } : null, hub.pending));
+  // Contrato 3.0 (ramo termo-funcoes): aviso de conta inativa por e-mail (só com SMTP_HOST/SMTP_USER/SMTP_PASSWORD/SMTP_FROM no
+  // servidor) e expurgo dos aceites (desligados por chave no banco); só tarefas agendadas com CRON_SECRET. O contrato NÃO vai por
+  // e-mail (decisão do dono, 18/10/2026): fica só em Minha Conta → Documentos.
+  const smtp = smtpConfigFromEnv();
+  const legalDeps: LegalDeps | null = hub.deps
+    ? { db: hub.deps.db, mailer: smtp ? createSmtpMailer(smtp) : null, baseUrl: (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "") || null, log: (m: string) => console.log(m) }
+    : null;
+  app.use("/api/legal", createLegalRouter(legalDeps));
   // Aulas: slides e áudios ficam no depósito privado; o banco decide quem vê
   app.use("/api/lessons", createLessonsRouter(hub.deps ? { db: hub.deps.db, storage: lessonsStorage(hub.deps.db.mode), log: (m: string) => console.log(m) } : null, hub.pending));
   // Figuras das questões (PNG/JPG, até 5 MB, uma por questão): depósito privado; o banco decide quem envia (equipe) e quem vê
@@ -1411,16 +1444,18 @@ Retorne um JSON com a avaliação rigorosa baseada no padrão INEP:
     }
   });
 
-  return { app, tutorDeps };
+  return { app, tutorDeps, legalDeps };
 }
 
 async function startServer() {
   const PORT = resolveServerPort(process.env.PORT);
-  const { app, tutorDeps } = await createApp();
+  const { app, tutorDeps, legalDeps } = await createApp();
   // voz em tempo real: chamadas sem renovação expiram e o servidor as desliga (cota nunca depende só do navegador)
   if (tutorDeps) startVoiceSweeper(tutorDeps);
   // Stazia Play: fora da Vercel a rotina diária roda aqui (na Vercel é a tarefa agendada /api/play/cron)
   if (tutorDeps) startPlayScheduler({ db: tutorDeps.db, log: (m: string) => console.log(m) });
+  // Contrato 3.0: fora da Vercel a fila de e-mail (5 min) e a rotina diária rodam aqui (na Vercel: /api/legal/email e /api/legal/diaria)
+  if (legalDeps) startLegalScheduler(legalDeps);
 
   // Vite Middleware integration
   if (process.env.NODE_ENV !== "production") {

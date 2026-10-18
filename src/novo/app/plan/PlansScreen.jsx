@@ -1,11 +1,13 @@
 // Planos (PL01): tela do ALUNO, SÓ INFORMATIVA. Mostra o nome, a descrição e o que cada plano inclui, do jeito que o administrador
 // escreveu em Administração > Planos (função app_plans_info), e a situação da própria pessoa. NÃO tem preço, NÃO tem botão de assinar
-// e não leva a pagamento nenhum: a assinatura pelo app ainda não está disponível (a Stripe está parada) e os preços só entram depois.
+// e não leva a pagamento nenhum: a assinatura pelo app ainda não está disponível e os preços só entram depois.
+// EXCEÇÃO (cobrança, 013700): com o fornecedor ligado no servidor, a BillingSection mostra preços, compra e "Minha assinatura".
 import React from "react";
 import { Badge, Button, EmptyState, Icon } from "../../ds";
 import { useSession } from "../session.jsx";
 import { currentPlanCode, hasFullAccess, planStatusLabel, usePlanLock } from "./planAccess.js";
 import { Panel, RichIcon, Tile, useNarrow } from "../evolucao/ui.jsx";
+import { BillingSection } from "./BillingSection.jsx";
 import "./planos.css";
 
 const PLAN_NAME = { trial: "Teste grátis", pro: "Pro", elite: "Elite" };
@@ -76,6 +78,8 @@ export function PlansScreen({ go }) {
   const [tick, setTick] = React.useState(0);
   const lock = usePlanLock();
   const reviewer = Boolean(boot?.reviewer_areas?.length);
+  // volta da página de pagamento (?pedido=<id>), quando o "endereço de volta" do fornecedor estiver ligado
+  const pedidoInicial = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("pedido");
   const label = planStatusLabel(boot?.subscription, boot?.role, reviewer);
   const current = currentPlanCode(boot?.subscription, boot?.role, reviewer);
 
@@ -97,8 +101,11 @@ export function PlansScreen({ go }) {
   const paidParts = info?.tutor_paid ? "Os simulados completos, o Tutor e as estações Pro" : "Os simulados completos e as estações Pro";
 
   const narrow = useNarrow();
+  // cobrança ligada no servidor (013700): a nota "ainda não disponível" sai e entra a seção de assinatura/extras
+  const [billingOn, setBillingOn] = React.useState(false);
+  const onBilling = React.useCallback((on) => setBillingOn(on), []);
   // nota curta do pacote (G9.7): os mesmos textos do aviso, numa linha com ícone pequeno
-  const notice = (
+  const notice = billingOn ? null : (
     <p className="pn-notice" role="note">
       <Icon name="info" size={16} />
       <span>
@@ -136,6 +143,7 @@ export function PlansScreen({ go }) {
           {situation}
         </>
       )}
+      {!hasFullAccess(boot) && <BillingSection onEnabled={onBilling} go={go} pedidoInicial={pedidoInicial} />}
       {state.status === "loading" && <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Carregando os planos…</p>}
       {state.status === "error" && (
         <EmptyState
@@ -145,7 +153,8 @@ export function PlansScreen({ go }) {
           action={<Button onClick={() => setTick((n) => n + 1)}>Tentar de novo</Button>}
         />
       )}
-      {state.status === "ready" && (
+      {/* com a cobrança ligada, a vitrine acima (preços e o que cada plano libera, do banco) substitui a lista informativa antiga */}
+      {state.status === "ready" && !billingOn && (
         <>
           {plans.length === 0 ? (
             <EmptyState icon="crown" title="Nenhum plano para mostrar agora" description="Volte aqui mais tarde." />

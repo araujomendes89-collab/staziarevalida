@@ -57,7 +57,7 @@ describe("session.acceptTerms", () => {
     expect(backend.rpc).toHaveBeenLastCalledWith("app_accept_terms_declared", {
       p_document: "termo_uso", p_version: "2.0", p_origin: "tela_aceite", p_phone: null, p_user_agent: navigator.userAgent, p_adult: true, p_physician: true,
     });
-    expect(session.boot).toBe(SEM_TELA);
+    expect(session.boot).toMatchObject(SEM_TELA); // a abertura agora junta onboarding e nivelamento (ramo onboarding)
   });
 
   it("chama app_accept_terms com os argumentos p_* e troca os dados de abertura", async () => {
@@ -76,7 +76,7 @@ describe("session.acceptTerms", () => {
       p_phone: "+5541999998888",
       p_user_agent: navigator.userAgent,
     });
-    expect(session.boot).toBe(SEM_TELA);
+    expect(session.boot).toMatchObject(SEM_TELA); // a abertura agora junta onboarding e nivelamento (ramo onboarding)
     expect(session.status).toBe("ready");
   });
 

@@ -8,6 +8,7 @@ import { Badge, Banner, Button, Card, Switch, TextField } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { LoadError, Loading, messageOf, useLoad } from "../common.jsx";
 import { centavosParaReais, reaisParaCentavos } from "./DireitosPorFase.jsx";
+import { AlertasDono } from "./AlertasDono.jsx";
 
 const RECURSO = {
   tutor_texto: "Tutor por texto",
@@ -127,7 +128,7 @@ function Ajustes({ data, setData }) {
       ))}
       <b>Planos à venda</b>
       <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
-        Até a 2ª fase abrir, só o PRO vale à venda; os planos com a 2ª fase aparecem "em breve". A cobrança ainda está desligada: nada é vendido.
+        Até a 2ª fase abrir, só o PRO vale à venda; os planos com a 2ª fase aparecem "em breve". Os pacotes extras acima ficam à venda junto com o PRO quando as vendas forem abertas (não têm chave própria). Nada é vendido enquanto as vendas estiverem fechadas.
       </span>
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         {f.venda.map((p, i) => (
@@ -327,6 +328,7 @@ export function CarteiraIA() {
         )}
       </Secao>
       <Ajustes key={JSON.stringify(data.config) + JSON.stringify(data.pacotes) + JSON.stringify(data.planos_a_venda)} data={data} setData={setData} />
+      <AlertasDono />
       <CarteiraDoAluno />
       <SimularDevolucao />
     </>

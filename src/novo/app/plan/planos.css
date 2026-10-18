@@ -39,3 +39,122 @@
 .pn-notice .sm-icon,.pn-notice svg{flex:none;margin-top:2px;color:var(--text-link)}
 .pn-notice strong{font-weight:700}
 @media (max-width:719px){.pn-notice{padding:0 4px;border:0;border-radius:0;background:none;color:var(--text-secondary);font-size:13px}}
+
+/* Cobrança (BillingSection, migração 013700): só aparece com o fornecedor ligado no servidor */
+.bl { display: flex; flex-direction: column; gap: 16px; }
+.bl-h3 { margin: 0 0 8px; font: var(--type-title-sm, 600 17px/1.3 var(--font-sans)); color: var(--text-primary); }
+.bl-sub { font-weight: 400; color: var(--text-secondary); font-size: 14px; }
+.bl-planos, .bl-extras, .bl-devolucoes { display: flex; flex-direction: column; gap: 12px; }
+.bl-plano, .bl-compra, .bl-aberto, .bl-minha { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.bl-plano__head { display: flex; align-items: center; gap: 8px; }
+.bl-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.bl-doc { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.bl-regras { margin: 0; padding-left: 18px; color: var(--text-secondary); font: var(--type-caption, 13px/1.4 var(--font-sans)); }
+.bl-acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.bl-erro { margin: 0; color: var(--danger-text); }
+.bl-ok { padding: 12px 16px; display: flex; align-items: center; gap: 8px; color: var(--success-text); background: var(--success-bg); }
+.bl-qr { width: 200px; height: 200px; align-self: center; image-rendering: pixelated; }
+.bl-copia { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.bl-copia code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; padding: 8px; border-radius: var(--radius-md, 8px); background: var(--surface-sunken); }
+.bl-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.bl-extra { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.bl-link { color: var(--text-brand); font-weight: 600; }
+
+/* Etapa 4 (fase1-compra): compra em etapas, pagamento em andamento, cadeado, avisos e Minha conta > Assinatura */
+.bl-k { margin: 0; font: 700 13px var(--font-sans); letter-spacing: .04em; text-transform: uppercase; color: var(--text-tertiary); }
+.bl-fina { margin: 0; font: 400 13px/1.5 var(--font-sans); color: var(--text-secondary); }
+.bl-fina a, .as a { color: var(--text-link); font-weight: 600; }
+.bl-compra { padding: 20px; gap: 14px; }
+.bl-compra__top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.bl-compra__steps { min-width: 110px; }
+.bl-resumo { margin: 0; display: grid; gap: 0; border: 1px solid var(--border-default); border-radius: var(--radius-lg, 14px); overflow: hidden; }
+.bl-resumo__l { display: grid; grid-template-columns: minmax(120px, 34%) 1fr; gap: 12px; padding: 12px 14px; background: var(--surface-card); }
+.bl-resumo__l + .bl-resumo__l { border-top: 1px solid var(--border-subtle, var(--border-default)); }
+.bl-resumo dt { font: 600 13px/1.45 var(--font-sans); color: var(--text-secondary); }
+.bl-resumo dd { margin: 0; font: 600 14px/1.45 var(--font-sans); color: var(--text-primary); }
+@media (max-width: 519px) { .bl-resumo__l { grid-template-columns: 1fr; gap: 2px; } }
+.bl-vitrine { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 900px) { .bl-vitrine { grid-template-columns: 1.4fr 1fr 1fr; align-items: start; } }
+.bl-plano { padding: 18px; }
+.bl-plano--venda { border: 2px solid var(--selected-border, var(--border-brand)); box-shadow: 0 18px 36px -24px rgba(10, 95, 196, .45); }
+.bl-plano--breve { opacity: .78; }
+.bl-plano--breve .bl-opts { pointer-events: none; }
+.bl-garantias { display: flex; gap: 8px; align-items: flex-start; }
+.bl-garantias .sm-icon { flex: none; margin-top: 2px; color: var(--success-text); }
+.bl-minha { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 14px; }
+.bl-minha__txt { flex: 1 1 240px; display: flex; flex-direction: column; gap: 4px; }
+.bl-minha__txt p { margin: 0; color: var(--text-secondary); }
+.bl-aberto { padding: 20px; gap: 14px; }
+.bl-aberto__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bl-pix { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+.bl-pix .bl-qr { flex: none; width: 196px; height: 196px; padding: 8px; border-radius: 16px; background: #fff; border: 1px solid var(--border-default); }
+.bl-pix__txt { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.bl-passos { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font: 400 14px/1.5 var(--font-sans); color: var(--text-secondary); }
+.bl-cartao { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.bl-cartao p { margin: 0; color: var(--text-secondary); }
+.bl-link-btn { text-decoration: none; }
+.bl-esperando { display: flex; align-items: center; gap: 10px; font: 600 13.5px var(--font-sans); color: var(--text-secondary); }
+.bl-esperando .sm-spin { color: var(--text-link); }
+.bl-fim { padding: 20px; display: flex; gap: 16px; align-items: flex-start; }
+.bl-fim p { margin: 0; color: var(--text-secondary); }
+.bl-fim p.bl-motivo { color: var(--text-primary); font-weight: 600; margin-bottom: 4px; }
+.bl-fim--ok { background: var(--success-bg); border-color: var(--success-border); }
+.bl-fim--falhou { background: var(--danger-bg); border-color: var(--danger-border); }
+.bl-pendente { padding: 18px; display: flex; gap: 14px; align-items: flex-start; border-color: var(--danger-border); }
+.bl-pendente p { margin: 0 0 10px; color: var(--text-secondary); }
+/* celular: quem paga pelo próprio celular usa o copia-e-cola; o QR fica embaixo (para pagar com outro aparelho) */
+@media (max-width: 519px) {
+  .bl-pix { flex-direction: column; align-items: stretch; }
+  .bl-pix__txt { order: -1; }
+  .bl-pix .bl-qr { width: 100%; max-width: 220px; height: auto; aspect-ratio: 1; align-self: center; }
+  .bl-copia { flex-direction: column; align-items: stretch; }
+  .bl-copia code { white-space: normal; word-break: break-all; max-height: 4.6em; }
+  .bl-fim, .bl-pendente { flex-direction: column; }
+}
+
+/* cadeado e pop-up de avisos */
+.cdz-overlay { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--surface-overlay, rgba(13, 28, 66, .55)); }
+.cdz-modal { width: 100%; max-width: 440px; max-height: calc(100vh - 32px); overflow: auto; padding: 28px 24px 22px; border-radius: 24px; background: var(--surface-card); border: 1px solid var(--border-default); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.cdz-t { margin: 4px 0 0; font: 800 21px/1.25 var(--font-sans); color: var(--text-primary); }
+.cdz-p { margin: 0; font: 400 15px/1.55 var(--font-sans); color: var(--text-secondary); text-wrap: pretty; }
+.cdz-ofertas { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.cdz-sobra { list-style: none; margin: 0; padding: 12px 14px; width: 100%; border-radius: 14px; background: var(--surface-sunken); display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.cdz-sobra li { display: flex; gap: 8px; align-items: center; font: 500 13.5px/1.4 var(--font-sans); color: var(--text-primary); }
+.cdz-sobra .sm-icon { flex: none; color: var(--text-link); }
+.cdz-dados { margin: 0; font: 400 13px/1.5 var(--font-sans); color: var(--text-tertiary); }
+.cdz-acoes { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.avp-sino { align-self: flex-start; font: 700 12px var(--font-sans); letter-spacing: .08em; text-transform: uppercase; color: var(--text-tertiary); }
+
+/* Minha conta > Assinatura */
+.as { display: flex; flex-direction: column; gap: 16px; }
+.as-plano { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.as-plano__top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.as-plano__t { flex: 1 1 180px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.as-k { font: 700 12px var(--font-sans); letter-spacing: .08em; text-transform: uppercase; color: var(--text-tertiary); }
+.as-nome { font: 800 20px/1.2 var(--font-sans); color: var(--text-primary); }
+.as-confirma { padding: 16px; display: flex; flex-direction: column; gap: 8px; border-color: var(--warning-border); background: var(--warning-bg); }
+.as-confirma p { margin: 0; color: var(--text-secondary); }
+.as-bloco { display: flex; flex-direction: column; gap: 10px; }
+.as-h { margin: 0; font: 700 16px var(--font-sans); color: var(--text-primary); }
+.as-hist { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border-default); border-radius: 14px; overflow: hidden; }
+.as-hist__l { display: grid; grid-template-columns: 92px 1fr auto auto 150px; gap: 10px; align-items: center; padding: 10px 14px; font: 400 14px var(--font-sans); color: var(--text-primary); background: var(--surface-card); }
+.as-hist__l + .as-hist__l { border-top: 1px solid var(--border-subtle, var(--border-default)); }
+.as-hist__d { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.as-hist__o { display: flex; flex-direction: column; min-width: 0; }
+.as-hist__o small { color: var(--text-tertiary); }
+.as-hist__v { font-weight: 700; font-variant-numeric: tabular-nums; }
+.as-hist__r { display: inline-flex; align-items: center; gap: 4px; font: 600 13px var(--font-sans); color: var(--text-link); justify-self: end; }
+.as-hist__links { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; justify-self: end; }
+.as-hist__nc { font: 400 12px var(--font-sans); color: var(--text-tertiary); }
+@media (max-width: 639px) { .as-hist__l { grid-template-columns: 1fr auto; } .as-hist__d { grid-column: 1 / -1; font-size: 12px; } .as-hist__r { justify-self: start; } .as-hist__links { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; gap: 4px 16px; justify-self: start; } }
+.as-avisos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.as-avisos li { display: flex; flex-direction: column; padding: 10px 12px; border-radius: 12px; background: var(--surface-sunken); }
+.as-avisos b { font: 600 14px var(--font-sans); color: var(--text-primary); }
+.as-avisos small { color: var(--text-tertiary); }
+
+.bl > .sm-badge, .as > .sm-badge { align-self: flex-start; }
+@media (max-width: 639px) {
+  .bl-extra { flex-wrap: wrap; }
+  .bl-extra > span { flex: 1 1 100%; }
+  .as-hist__l .sm-badge { justify-self: start; }
+}

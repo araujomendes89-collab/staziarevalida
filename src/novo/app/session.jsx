@@ -1,6 +1,7 @@
 // Sessão do app novo: quem está logado e os dados de abertura (app_bootstrap).
 import React from "react";
 import { getBackend } from "../data";
+import { comAvisoDeCadeado } from "./plan/cadeadoEvento.js";
 import { clearAuthLinkFromUrl, initialAuthLink } from "./auth/authLink.js";
 import {
   EVENTO_SESSAO_DERRUBADA,
@@ -85,7 +86,8 @@ export function SessionProvider({ children }) {
 
     (async () => {
       try {
-        const backend = await getBackend();
+        // recusa por plano (cadeado/amostra) avisa a tela com a mensagem de compra; o erro segue igual para quem chamou
+        const backend = comAvisoDeCadeado(await getBackend());
         const load = async (user, event) => {
           if (!alive) return;
           if (event === "PASSWORD_RECOVERY") recoveryRef.current = true;
@@ -109,6 +111,9 @@ export function SessionProvider({ children }) {
               return;
             }
             limparAvisoDerrubada();
+            // conta inativa (Política 3.0, seção 5): registra a abertura do app (o banco grava no máximo uma vez por hora; sem a
+            // migração …13810 a chamada só falha e nada muda)
+            Promise.resolve().then(() => backend.rpc("app_marcar_acesso")).catch(() => {});
             boot.nivelamento = nivelamento;
             boot.onboarding = onboarding;
             if (alive) setState({ status: "ready", backend, user, boot, error: null, recovery: recoveryRef.current, derrubada: null });

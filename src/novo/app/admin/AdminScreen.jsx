@@ -7,12 +7,14 @@ import { Tabs } from "../../ds";
 import { useSession } from "../session.jsx";
 import { AdminQuestions } from "./AdminQuestions.jsx";
 import { AdminUsers } from "./AdminUsers.jsx";
+import { VendasPagamentos } from "./planos/VendasPagamentos.jsx";
 import { AdminAudit, AdminOverview, AdminPlans, AdminSettings, AdminStations, AdminTutor } from "./AdminPanels.jsx";
 import { ContentHub } from "./content/ContentHub.jsx";
 import { AdminPlay } from "./AdminPlay.jsx";
 import { AdminLessons } from "./AdminLessons.jsx";
 import { AdminReports, AdminSupportContact } from "./AdminSupport.jsx";
 import { AdminUpdates } from "./AdminUpdates.jsx";
+import { AdminComunicados } from "./AdminComunicados.jsx";
 import { AdminPodcasts } from "./AdminPodcasts.jsx";
 import { AdminAI } from "./ai/AdminAI.jsx";
 import { OfficialVoicesPanel } from "./OfficialVoicesPanel.jsx";
@@ -24,11 +26,15 @@ import { isStaffRole } from "./common.jsx";
 const TABS = [
   { value: "geral", label: "Visão geral", icon: "layout-dashboard", staff: true },
   { value: "usuarios", label: "Usuários", icon: "users" },
+  // cobrança (013850): vendas, pagamentos e devoluções do período; só administrador
+  { value: "vendas", label: "Vendas e pagamentos", icon: "receipt", admin: true },
   { value: "questoes", label: "Questões", icon: "file-question", staff: true, reviewer: true },
   { value: "aulas", label: "Aulas", icon: "tv", staff: true },
   { value: "podcasts", label: "Podcasts", icon: "headphones", staff: true },
   { value: "atualizacoes", label: "Atualizações", icon: "refresh-cw", staff: true, reviewer: true },
   { value: "planos", label: "Planos", icon: "crown" },
+  // Central de Notificações (013830): comunicados aos alunos, só administrador
+  { value: "comunicados", label: "Comunicados", icon: "megaphone", admin: true },
   { value: "estacoes", label: "Estações", icon: "clipboard-list", staff: true, reviewer: true },
   { value: "conteudo", label: "Central de Conteúdo", icon: "library", staff: true, reviewer: true },
   { value: "radar", label: "Fila do Radar", icon: "radar", admin: true },
@@ -58,11 +64,13 @@ export function AdminScreen() {
       <Tabs wrap label="Administração" value={tab} onChange={(aba) => setParams({ aba }, { replace: true })} tabs={tabs.map(({ value, label, icon }) => ({ value, label, icon, ...(value === "radar" && radar.graves > 0 ? { count: radar.graves } : {}) }))} />
       {tab === "geral" && <AdminOverview isAdmin={isAdmin} />}
       {tab === "usuarios" && <AdminUsers />}
+      {tab === "vendas" && isAdmin && <VendasPagamentos />}
       {tab === "questoes" && <AdminQuestions onOpenIneditas={() => setParams({ aba: "conteudo", secao: "ineditas" })} />}
       {tab === "aulas" && <AdminLessons />}
       {tab === "podcasts" && <AdminPodcasts />}
       {tab === "atualizacoes" && <AdminUpdates />}
       {tab === "planos" && <AdminPlans />}
+      {tab === "comunicados" && isAdmin && <AdminComunicados />}
       {tab === "estacoes" && <AdminStations />}
       {tab === "conteudo" && <ContentHub isAdmin={isAdmin} isStaff={isStaff} />}
       {tab === "radar" && isAdmin && <RadarFila />}

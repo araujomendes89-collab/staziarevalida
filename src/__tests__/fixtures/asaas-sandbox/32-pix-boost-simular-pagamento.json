@@ -1,0 +1,63 @@
+{
+ "quando": "2026-10-17T20:26:59.130Z",
+ "pedido": {
+  "method": "POST",
+  "path": "/sandbox/payment/pay_a83tjrw20pc5c5xf/confirm",
+  "body": {}
+ },
+ "status": 200,
+ "resposta": {
+  "object": "payment",
+  "id": "pay_a83tjrw20pc5c5xf",
+  "dateCreated": "2026-10-17",
+  "customer": "cus_000009547247",
+  "checkoutSession": null,
+  "paymentLink": null,
+  "value": 24.9,
+  "netValue": 23.91,
+  "originalValue": null,
+  "interestValue": null,
+  "description": "IA Boost (TESTE sandbox StaziaMed)",
+  "billingType": "PIX",
+  "confirmedDate": "2026-10-17",
+  "pixTransaction": "f029e59f-47c3-424d-967f-8e33e9035469",
+  "pixQrCodeId": "34b03938-d938-482d-af46-0dff35e52b64",
+  "status": "RECEIVED",
+  "dueDate": "2026-10-18",
+  "originalDueDate": "2026-10-18",
+  "paymentDate": "2026-10-17",
+  "clientPaymentDate": "2026-10-17",
+  "installmentNumber": null,
+  "invoiceUrl": "https://sandbox.asaas.com/i/a83tjrw20pc5c5xf",
+  "invoiceNumber": "19037370",
+  "externalReference": "staziamed-teste:boost-1",
+  "deleted": false,
+  "anticipated": false,
+  "anticipable": false,
+  "creditDate": "2026-10-17",
+  "estimatedCreditDate": "2026-10-17",
+  "transactionReceiptUrl": "https://sandbox.asaas.com/000/comprovantes/h/UEFZTUVOVF9SRUNFSVZFRDpwYXlfYTgzdGpydzIwcGM1YzV4Zg%3D%3D",
+  "nossoNumero": null,
+  "bankSlipUrl": null,
+  "lastInvoiceViewedDate": null,
+  "lastBankSlipViewedDate": null,
+  "discount": {
+   "value": 0,
+   "limitDate": null,
+   "dueDateLimitDays": 0,
+   "type": "FIXED"
+  },
+  "fine": {
+   "value": 0,
+   "type": "PERCENTAGE"
+  },
+  "interest": {
+   "value": 0,
+   "type": "PERCENTAGE"
+  },
+  "postalService": false,
+  "escrow": null,
+  "refunds": null
+ },
+ "nota": "Resposta REAL do sandbox do Asaas (17/10/2026), dados fictícios; chaves e tokens ocultos."
+}

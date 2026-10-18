@@ -8,6 +8,7 @@
 // Visual: modelo "Tela de Questão" (15/10/2026), em ./tela. A dica do Tutor antes de responder não existe no app (só o Tutor depois de
 // responder, que vem com a correção); dificuldade e fontes das Questões Inéditas não aparecem (ver docs/tela-questao-modelo.md).
 import React from "react";
+import { lockHintOf } from "../../data/backend";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { Banner, Button, Card, EmptyState, Icon } from "../../ds";
 import { useMQ } from "../Shell.jsx";
@@ -251,6 +252,8 @@ function Runner({ session, go, onFinished }) {
         if (state) setTimer(readTimer(state));
         setError("O simulado foi pausado em outra janela. Continue para responder.");
       } else if (sim && timeIsUp(e)) finish(true);
+      // planos etapa 4: recusa por plano (amostra do dia acabou) mostra a frase do banco; a mensagem de compra abre por cima
+      else if (lockHintOf(e)) setError(e.message);
       else setError(sim ? "Não foi possível guardar sua resposta. Confirme de novo." : "Não foi possível registrar sua resposta. Tente de novo.");
     }
     setBusy(false);

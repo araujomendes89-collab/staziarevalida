@@ -1,0 +1,64 @@
+{
+ "quando": "2026-10-17T21:21:43.102Z",
+ "pedido": {
+  "method": "POST",
+  "path": "/sandbox/payment/pay_yx5q0ebtqlvlecgg/confirm",
+  "body": {}
+ },
+ "status": 200,
+ "resposta": {
+  "object": "payment",
+  "id": "pay_yx5q0ebtqlvlecgg",
+  "dateCreated": "2026-10-17",
+  "customer": "cus_000009547247",
+  "subscription": "sub_1jlkaaoo4uy3hlh2",
+  "checkoutSession": null,
+  "paymentLink": null,
+  "value": 99.9,
+  "netValue": 98.91,
+  "originalValue": null,
+  "interestValue": null,
+  "description": "TESTE: cartão falhou, aluno paga a MESMA cobrança por Pix",
+  "billingType": "PIX",
+  "confirmedDate": "2026-10-17",
+  "pixTransaction": "b530128c-aaa4-4049-8926-0aba210c4a80",
+  "pixQrCodeId": "47d4a2f3-62ff-4474-a799-9dd94ffd7aea",
+  "status": "RECEIVED",
+  "dueDate": "2026-10-17",
+  "originalDueDate": "2026-10-17",
+  "paymentDate": "2026-10-17",
+  "clientPaymentDate": "2026-10-17",
+  "installmentNumber": null,
+  "invoiceUrl": "https://sandbox.asaas.com/i/yx5q0ebtqlvlecgg",
+  "invoiceNumber": "19039141",
+  "externalReference": "staziamed-teste:cartao-para-pix",
+  "deleted": false,
+  "anticipated": false,
+  "anticipable": false,
+  "creditDate": "2026-10-17",
+  "estimatedCreditDate": "2026-10-17",
+  "transactionReceiptUrl": "https://sandbox.asaas.com/000/comprovantes/h/UEFZTUVOVF9SRUNFSVZFRDpwYXlfeXg1cTBlYnRxbHZsZWNnZw%3D%3D",
+  "nossoNumero": null,
+  "bankSlipUrl": null,
+  "lastInvoiceViewedDate": null,
+  "lastBankSlipViewedDate": null,
+  "discount": {
+   "value": 0,
+   "limitDate": null,
+   "dueDateLimitDays": 0,
+   "type": "FIXED"
+  },
+  "fine": {
+   "value": 0,
+   "type": "PERCENTAGE"
+  },
+  "interest": {
+   "value": 0,
+   "type": "PERCENTAGE"
+  },
+  "postalService": false,
+  "escrow": null,
+  "refunds": null
+ },
+ "nota": "Resposta REAL do sandbox do Asaas (17/10/2026), dados fictícios; chaves e tokens ocultos."
+}

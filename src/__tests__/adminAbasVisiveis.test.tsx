@@ -28,7 +28,7 @@ import { Tabs } from "../novo/ds";
 afterEach(cleanup);
 
 describe("Administração: todas as abas aparecem", () => {
-  it("a barra da Administração quebra linha e mostra as 14 abas do administrador (Vozes do Nexus foi para Configurações)", () => {
+  it("a barra da Administração quebra linha e mostra as 16 abas do administrador (Vozes do Nexus foi para Configurações; entraram Comunicados, 013830, e Vendas e pagamentos, 013850)", () => {
     render(
       <MemoryRouter initialEntries={["/admin?aba=ias"]}>
         <AdminScreen />
@@ -37,8 +37,8 @@ describe("Administração: todas as abas aparecem", () => {
     const barra = screen.getByRole("tablist", { name: "Administração" });
     expect(barra.classList.contains("sm-tabs--wrap")).toBe(true);
     const abas = within(barra).getAllByRole("tab");
-    expect(abas).toHaveLength(14);
-    expect(abas.map((a) => a.textContent)).toEqual(expect.arrayContaining(["Central de IAs", "Stazia Arena", "Configurações", "Fila do Radar", "Registro"]));
+    expect(abas).toHaveLength(16);
+    expect(abas.map((a) => a.textContent)).toEqual(expect.arrayContaining(["Central de IAs", "Stazia Arena", "Configurações", "Fila do Radar", "Registro", "Comunicados", "Vendas e pagamentos"]));
     expect(abas.map((a) => a.textContent)).not.toContain("Vozes do Nexus");
     expect(within(barra).getByRole("tab", { name: "Central de IAs" }).getAttribute("aria-selected")).toBe("true");
   });
