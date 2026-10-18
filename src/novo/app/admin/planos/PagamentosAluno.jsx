@@ -219,7 +219,7 @@ export function DevolucoesRecentes() {
         <div>
           <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Devoluções</h3>
           <p style={{ margin: "4px 0 0", color: "var(--text-secondary)", font: "var(--type-body-sm)" }}>
-            Pedidas pelos alunos, feitas pela equipe e feitas direto no painel do Asaas. As que esperam a equipe ou pedem conferência aparecem primeiro. Para devolver, abra a ficha do aluno em Usuários.
+            Pedidas pelos alunos, feitas pela equipe e feitas direto no painel do Asaas. As que esperam a equipe ou pedem conferência aparecem primeiro. Para devolver, use a aba Vendas e pagamentos ou a ficha do aluno em Usuários.
           </p>
         </div>
         {corpo}

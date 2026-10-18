@@ -227,8 +227,8 @@ begin
       perform public.alertas_dono_criar('devolucao:' || r.id, 'devolucao_conferir',
         'Devolução no painel do Asaas para conferir',
         'Uma cobrança do plano de ' || coalesce(v_email, 'um aluno') || ' (' || public.avisos_brl(x.valor_centavos) || ') foi devolvida por inteiro no painel do Asaas, '
-        || 'mas o aluno já tem a renovação seguinte paga. O acesso NÃO foi cortado. Se a ideia era encerrar a assinatura, use Administração > Usuários > '
-        || 'ficha do aluno > Pagamentos > Devolver pagamento (encerrar acesso).',
+        || 'mas o aluno já tem a renovação seguinte paga. O acesso NÃO foi cortado. Se a ideia era encerrar a assinatura, use Administração > Vendas e '
+        || 'pagamentos (ou a ficha do aluno em Usuários) > Devolver pagamento > devolver e encerrar acesso.',
         jsonb_build_object('cobranca_id', x.id, 'user_id', x.user_id));
     end if;
   end if;

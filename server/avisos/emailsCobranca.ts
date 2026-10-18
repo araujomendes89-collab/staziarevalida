@@ -100,8 +100,8 @@ export interface AlertaDono {
 
 export function renderAlerta(a: Pick<AlertaDono, "titulo" | "texto" | "tipo">, baseUrl: string | null) {
   const base = (baseUrl || "https://app.staziamed.com.br").replace(/\/+$/, "");
-  // a devolução para conferir se resolve na ficha do aluno (Usuários); o resto, na Carteira de IA (Planos)
-  const link = `${base}/novo/admin?aba=${a.tipo === "devolucao_conferir" ? "usuarios" : "planos"}`;
+  // a devolução para conferir se resolve em Vendas e pagamentos; o resto, na Carteira de IA (Planos)
+  const link = `${base}/novo/admin?aba=${a.tipo === "devolucao_conferir" ? "vendas" : "planos"}`;
   const rodape = "Alerta automático do StaziaMed para a administração. Uma vez só por evento. Para mudar o endereço ou desligar: Administração > Planos > Carteira de IA > Alertas por e-mail.";
   const text = `${a.titulo}\n\n${a.texto}\n\nAbrir a Administração: ${link}\n\n—\nStaziaMed Revalida\n${rodape}\n`;
   const html = layout({ titulo: a.titulo, ola: "Alerta do StaziaMed", paragrafos: [a.texto], botao: { texto: "Abrir a Administração", link }, rodape });

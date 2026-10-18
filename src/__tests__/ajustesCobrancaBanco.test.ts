@@ -517,7 +517,7 @@ describe("alertas de gasto de IA para o dono", () => {
   it("modelo do e-mail do alerta leva à Administração", () => {
     const r = renderAlerta({ tipo: "teto_80", titulo: "Gasto de IA em 80% do teto de hoje", texto: "x" }, "https://app.teste.dev");
     expect(r.text).toContain("https://app.teste.dev/novo/admin?aba=planos");
-    expect(renderAlerta({ tipo: "devolucao_conferir", titulo: "t", texto: "x" }, null).text).toContain("aba=usuarios");
+    expect(renderAlerta({ tipo: "devolucao_conferir", titulo: "t", texto: "x" }, null).text).toContain("aba=vendas");
   });
 });
 
