@@ -26,12 +26,7 @@
       "permanent": false
     },
     {
-      "source": "/",
-      "destination": "/novo",
-      "permanent": false
-    },
-    {
-      "source": "/:path((?!api(?:/|$)|novo|assets/|brand/|ds-icons/|question-assets/|images/|temas/|mapas-mentais/|novo-assets/|\\.well-known/|_vercel/).+)",
+      "source": "/:path((?!api(?:/|$)|novo|assets/|brand/|ds-icons/|question-assets/|images/|temas/|mapas-mentais/|novo-assets/|\\.well-known/|_vercel/|robots\\.txt$|sitemap\\.xml$|inicio-sem-js\\.css$).+)",
       "destination": "/novo",
       "permanent": false
     }
@@ -48,10 +43,24 @@
     {
       "source": "/novo/:path*",
       "destination": "/novo.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/",
+      "headers": [
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; img-src 'self' data:; font-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+        { "key": "X-Frame-Options", "value": "DENY" }
+      ]
     },
     {
-      "source": "/:path*",
-      "destination": "/index.html"
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
     }
   ],
   "crons": [

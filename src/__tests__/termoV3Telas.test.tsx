@@ -127,14 +127,9 @@ describe("Termo 3.0 — tela de aceite", () => {
     expect(janela.textContent).toContain("9.1 O que guardamos no aceite.");
   });
 
-  it("sem aceitar dá para baixar os dados, pedir o cancelamento ao suporte ou sair", async () => {
-    const createObjectURL = vi.fn(() => "blob:x");
-    (URL as any).createObjectURL = createObjectURL;
-    (URL as any).revokeObjectURL = vi.fn();
+  it("sem aceitar dá para pedir o cancelamento ao suporte ou sair (sem baixar dados pela tela, decisão do dono 17/10)", async () => {
     const fns = abrirAceite(legal3("2.0"));
-    fireEvent.click(screen.getByRole("button", { name: "Baixar meus dados" }));
-    await waitFor(() => expect(banco.rpc).toHaveBeenCalledWith("app_export_my_data"));
-    await waitFor(() => expect(createObjectURL).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Baixar meus dados" })).toBeNull();
     const cancelar = screen.getByRole("link", { name: "Não aceito: pedir o cancelamento" });
     expect(cancelar.getAttribute("href")).toMatch(/^mailto:suporte@staziamed\.com\.br\?subject=Pedido%20de%20cancelamento/);
     fireEvent.click(screen.getByRole("button", { name: "Sair da conta" }));

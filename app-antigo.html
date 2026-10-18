@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>StaziaMed Revalida — O Sistema Operacional da sua Aprovação no Revalida INEP</title>
+    <meta name="description" content="O Sistema Operacional inteligente para preparação de excelência no Revalida INEP: diagnóstico adaptativo, autópsia de erros, simulador OSCE com paciente virtual e monitoramento de prontidão." />
+    <meta property="og:title" content="StaziaMed Revalida — O Sistema Operacional da sua Aprovação no Revalida INEP" />
+    <meta property="og:description" content="O Sistema Operacional inteligente para preparação de excelência no Revalida INEP: diagnóstico adaptativo, autópsia de erros, simulador OSCE com paciente virtual e monitoramento de prontidão." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://app.staziamed.com.br/brand/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/brand/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/brand/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/brand/apple-touch-icon.png" />
+    <link rel="manifest" href="/brand/site.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+    <!-- Google Identity Services for Google Calendar OAuth Integration -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body class="bg-[#F6F8FB] text-slate-800 font-sans antialiased selection:bg-teal-500/20 selection:text-teal-900 min-h-screen">
+    <div id="root">
+      <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #06101E; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+          <img src="/brand/horizontal-escuro-320w.png" alt="StaziaMed Revalida" width="200" height="62" style="display: block; width: 200px; height: auto;" />
+          <div style="text-align: center;">
+            <div style="font-size: 13px; color: #94a3b8; margin-top: 6px;">Carregando ambiente seguro...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      window.addEventListener('error', function(e) {
+        var root = document.getElementById('root');
+        if (root && (!root.children || root.children.length === 0 || root.innerHTML.indexOf('Carregando ambiente') !== -1)) {
+          console.error('[Global Startup Error]:', e.error || e.message);
+          root.innerHTML = '<div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #06101E; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; text-align: center;">' +
+            '<div style="font-size: 24px; font-weight: bold; color: #f43f5e; margin-bottom: 8px;">Falha na Inicialização</div>' +
+            '<p style="font-size: 14px; color: #94a3b8; max-width: 460px; margin-bottom: 20px;">O navegador encontrou uma instabilidade ao carregar os módulos. Clique abaixo para reiniciar.</p>' +
+            '<button onclick="localStorage.clear();sessionStorage.clear();window.location.reload();" style="padding: 10px 20px; background-color: #14b8a6; color: #042f2e; font-weight: 700; border-radius: 8px; border: none; cursor: pointer;">Limpar Cache e Recarregar</button>' +
+            '</div>';
+        }
+      });
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

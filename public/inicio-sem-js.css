@@ -1,0 +1,10 @@
+/* Página inicial sem JavaScript: mostra todo o conteúdo das abas e o menu do celular (o texto inteiro fica legível).
+   Os 5 passos do ciclo já saem todos visíveis, com a linha acesa e parada (inicio.css, sem a classe .js). */
+[role="tabpanel"][hidden] { display: block !important; margin-top: 16px; }
+[role="tablist"] { display: none !important; }
+@media (max-width: 1080px) {
+  /* o menu fica aberto dentro do topo; por isso o topo deixa de grudar no alto */
+  .topo { position: relative !important; }
+  .topo__painel[hidden] { display: block !important; border-top: 1px solid #DCE1E8; }
+  .topo__menu { display: none !important; }
+}

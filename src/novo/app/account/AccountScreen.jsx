@@ -339,31 +339,10 @@ function AcceptanceLine({ title, doc }) {
 function PrivacySection() {
   const { backend, boot } = useSession();
   const legal = boot.legal;
-  const [exporting, setExporting] = React.useState(false);
-  const [exportError, setExportError] = React.useState(null);
   const [confirm, setConfirm] = React.useState("");
   const [deleting, setDeleting] = React.useState(false);
   const [deleteError, setDeleteError] = React.useState(null);
 
-  const download = async () => {
-    setExporting(true);
-    setExportError(null);
-    try {
-      const data = await backend.rpc("app_export_my_data");
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `staziamed-meus-dados-${new Date().toLocaleDateString("en-CA")}.json`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch {
-      setExportError("Não foi possível gerar o arquivo. Tente de novo.");
-    }
-    setExporting(false);
-  };
   const remove = async () => {
     setDeleting(true);
     setDeleteError(null);
@@ -378,17 +357,7 @@ function PrivacySection() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <SectionHeader title="Privacidade e dados" subtitle="Seus direitos pela LGPD: acesso e exclusão dos seus dados" />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 280px" }}>
-          <div style={{ font: "var(--type-label)" }}>Baixar meus dados</div>
-          <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Perfil, respostas, sessões, flashcards, anotações e plano, num arquivo JSON.</div>
-        </div>
-        <Button variant="secondary" icon="download" onClick={download} loading={exporting}>
-          Baixar arquivo
-        </Button>
-      </div>
-      {exportError && <Banner tone="danger">{exportError}</Banner>}
+      <SectionHeader title="Privacidade e dados" subtitle="Seus direitos pela LGPD: para pedir uma cópia ou a correção dos seus dados, escreva para privacidade@staziamed.com.br" />
       {legal && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 20, borderTop: "1px solid var(--border-subtle)" }}>
           <div style={{ font: "var(--type-label)" }}>Meus aceites</div>
