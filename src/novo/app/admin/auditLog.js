@@ -4,6 +4,7 @@
 // lê as migrações e confere.
 import { PLAN_LABEL, ROLE_LABEL, SUB_STATUS_LABEL } from "./common.jsx";
 import { QUESTION_STATUS_LABEL } from "../../../shared/questions/status";
+import { publicoRotulo } from "../notificacoes/publico.js";
 
 // Nomes que a tela da Central de IAs mostra (ai/AdminAI.jsx e ai/aiApi.js). Ficam aqui, copiados, para o Registro não
 // depender da pasta ai/ (outra frente de trabalho); o teste registroAdministracao.test.ts compara as duas listas e avisa
@@ -38,6 +39,7 @@ export const ACTION_LABEL = {
   "direitos.modo": "Cadeados: modo sombra ou ligado alterado", // 013640
   "direitos.segunda_fase": "Segunda fase aberta ou fechada aos alunos (regra nova)", // 013640
   "carteira.save": "Carteira de IA: teto, reservas, pacotes ou planos à venda salvos", // 013680
+  "comunicado.enviar": "Comunicado enviado aos alunos", // 013830
   "carteira.cortesia": "Créditos de IA de cortesia dados a um aluno", // 013680
   "carteira.cortesia_cancelada": "Cortesia de créditos de IA cancelada", // 013680
   "direitos.fase_dada": "Plano por fase dado pela equipe (regra nova)", // 013690
@@ -386,6 +388,7 @@ const aiRequestResult = (d, noun) =>
   ]);
 
 const SUMMARY = {
+  "comunicado.enviar": (d) => join([d.titulo, publicoRotulo(d.publico, d.filtro), d.destinatarios != null ? `${d.destinatarios} ${d.destinatarios === 1 ? "aluno" : "alunos"}` : null]),
   "user.role": (d, entry) => join([person(entry), `${ROLE_LABEL[d.from] ?? d.from} → ${ROLE_LABEL[d.to] ?? d.to}`]),
   "user.subscription": (d, entry) => join([person(entry), `${PLAN_LABEL[d.to?.plan] ?? d.to?.plan} · ${SUB_STATUS_LABEL[d.to?.status] ?? d.to?.status}`]),
   "user.delete": (d) => d.email,

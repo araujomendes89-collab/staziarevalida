@@ -1,9 +1,11 @@
 // Pop-up dos avisos de cobrança (planos etapa 4, app_meus_avisos da 013760): renovação 7/3/1 dia antes, pagamento que não passou,
 // acesso pausado e acesso liberado. O mesmo texto vai por e-mail. Aparece ao abrir o app (e ao voltar para a aba) quando há aviso
 // não visto; "Entendi" marca como visto (só os próprios: o banco confere). Sem avisos (cobrança desligada), nada aparece.
+// Central de Notificações (013830): cada aviso daqui também fica guardado no sino; marcar como visto aqui conta como lido lá.
 import React from "react";
 import { Button, IconTile } from "../../ds";
 import { useSession } from "../session.jsx";
+import { useNotificacoes } from "../notificacoes/NotificacoesProvider.jsx";
 import "./planos.css";
 
 const ARTE = {
@@ -12,10 +14,14 @@ const ARTE = {
   acesso_bloqueado: ["lock", "warning"],
   acesso_liberado: ["circle-check", "success"],
 };
+// Avisos URGENTES (013830): "Entendi" esconde só até a próxima abertura do app (recarregar a página); enquanto o aluno não resolve,
+// o banco devolve o aviso de novo. Fica na memória desta aba (voltar para a aba não traz de volta).
+const adiadosNestaAbertura = new Set();
 const BOTAO = { planos: "Abrir Meu plano", perfil: "Abrir Minha conta", aceite: "Ler e aceitar o contrato" };
 
 export function AvisosPopup({ go, ativo = true }) {
   const { backend } = useSession();
+  const central = useNotificacoes();
   const [avisos, setAvisos] = React.useState([]);
   const [tick, setTick] = React.useState(0);
   const botao = React.useRef(null);
@@ -25,7 +31,7 @@ export function AvisosPopup({ go, ativo = true }) {
     let vivo = true;
     Promise.resolve()
       .then(() => backend.rpc("app_meus_avisos"))
-      .then((r) => vivo && setAvisos(Array.isArray(r?.novos) ? r.novos : []))
+      .then((r) => vivo && setAvisos(Array.isArray(r?.novos) ? r.novos.filter((a) => !adiadosNestaAbertura.has(a.id)) : []))
       .catch(() => vivo && setAvisos([]));
     return () => {
       vivo = false;
@@ -51,12 +57,14 @@ export function AvisosPopup({ go, ativo = true }) {
   const a = avisos[0];
   const [icone, tom] = ARTE[a.tipo] ?? ARTE.renovacao;
   const visto = async (abrir) => {
+    if (a.urgente) adiadosNestaAbertura.add(a.id);
     setAvisos((lista) => lista.slice(1));
     try {
       await backend.rpc("app_avisos_vistos", { p_ids: [a.id] });
     } catch {
       // aparece de novo na próxima vez; nada se perde
     }
+    central?.recarregar();
     if (abrir) go(a.rota === "perfil" ? "perfil" : a.rota === "aceite" ? "aceite" : "planos", a.rota === "perfil" ? { secao: "assinatura" } : undefined);
   };
   return (

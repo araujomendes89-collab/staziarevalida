@@ -349,7 +349,10 @@ describe("avisos na tela (aluno)", () => {
     // tentar marcar avisos de outra pessoa: nada muda
     expect(await comoAluno<number>(PIX, "app_avisos_vistos", { p_ids: idsOutro })).toBe(0);
     expect(await comoAluno<number>(PIX, "app_avisos_vistos", { p_ids: meus.novos.map((a: any) => a.id) })).toBe(meus.novos.length);
-    expect((await comoAluno<any>(PIX, "app_meus_avisos")).novos).toEqual([]);
+    // Central de Notificações (013830, decisão do dono 17/10): visto, só o aviso URGENTE ainda sem solução volta na próxima abertura
+    const depois = (await comoAluno<any>(PIX, "app_meus_avisos")).novos;
+    expect(depois.every((a: any) => a.urgente === true)).toBe(true);
+    expect(depois.length).toBeLessThan(meus.novos.length);
     expect((await comoAluno<any>(OUTRO, "app_meus_avisos")).novos.length).toBe(idsOutro.length);
     await expect(comoAluno(PIX, "avisos_criar", { p_user: PIX, p_tipo: "renovacao", p_chave: "x:1", p_titulo: "abc", p_texto: "abc" })).rejects.toThrow();
     await expect(comoAluno(PIX, "ch_worker_avisos_email_pegar", { p_limite: 5, p_horas: 48 })).rejects.toThrow();
