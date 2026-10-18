@@ -26,6 +26,9 @@ vi.mock("../novo/app/admin/AdminPanels.jsx", () => ({
 vi.mock("../novo/app/admin/content/ContentHub.jsx", () => ({ ContentHub: () => null }));
 vi.mock("../novo/app/admin/ai/AdminAI.jsx", () => ({ AdminAI: () => null }));
 vi.mock("../novo/app/admin/radar/RadarFila.jsx", () => ({ RadarFila: () => null }));
+// painéis da 2ª fase nas Configurações (chave do Treino em Dupla e do chat) e aba de denúncias: têm testes próprios
+vi.mock("../novo/app/admin/AdminDupla.jsx", () => ({ AdminDupla: () => null }));
+vi.mock("../novo/app/admin/AdminDuplaChat.jsx", () => ({ AdminDuplaChatReports: () => null, AdminDuplaChatSettings: () => null }));
 vi.mock("../novo/app/admin/OfficialVoicesPanel.jsx", () => ({ OfficialVoicesPanel: () => <div data-testid="painel-vozes">Aprovar vozes</div> }));
 vi.mock("../novo/app/admin/VoiceReactionsPanel.jsx", () => ({ VoiceReactionsPanel: () => <div data-testid="painel-linguagem">Linguagem forte</div> }));
 

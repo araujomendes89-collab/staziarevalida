@@ -38,7 +38,7 @@ describe("Carga real no Supabase", () => {
              (select count(*) from public.questions)::int as questions,
              (select count(distinct code) from public.questions)::int as codes,
              (select count(*) from public.questions where status = 'annulled')::int as annulled,
-             (select count(*) from public.checklist_stations)::int as stations,
+             (select count(*) from public.checklist_stations where catalog_edition is null)::int as stations, -- sem os 179 cartões do catálogo (013420)
              (select count(*) from public.checklist_events)::int as events`);
     expect(r.rows[0]).toEqual({ exams: 12, questions: 1200, codes: 1200, annulled: 83, stations: 10, events: 1 });
   });

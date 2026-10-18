@@ -61,6 +61,8 @@ beforeAll(async () => {
   }
   await db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITOR]);
+  // os cartões do catálogo da 2ª fase (013420: 179 pendentes, sem conteúdo) têm teste próprio; aqui conta só a estação do teste
+  await db.exec(`delete from public.checklist_stations where catalog_edition is not null`);
   await db.exec(`
     insert into public.checklist_stations (id, name, topic, area, medical_review) values
       ('st-1', 'Cetoacidose', 'DM1', 'Clínica Médica', 'pending');

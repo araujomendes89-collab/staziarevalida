@@ -181,7 +181,7 @@ describe("US04 · texto do papel de Editor", () => {
   it("lista as abas que o editor realmente vê (as marcadas para a equipe em AdminScreen) e diz o que fica com o Administrador", async () => {
     const fonte = fs.readFileSync(path.resolve(__dirname, "../novo/app/admin/AdminScreen.jsx"), "utf8");
     const abasDoEditor = [...fonte.matchAll(/label: "([^"]+)"[^}]*\bstaff: true/g)].map((m) => m[1]);
-    expect(abasDoEditor).toEqual(["Visão geral", "Questões", "Aulas", "Podcasts", "Atualizações", "Estações", "Central de Conteúdo"]);
+    expect(abasDoEditor).toEqual(["Visão geral", "Questões", "Aulas", "Podcasts", "Atualizações", "Estações", "Central de Conteúdo", "Denúncias do chat"]);
 
     render(<AdminUsers />);
     await open("Pessoa 1");

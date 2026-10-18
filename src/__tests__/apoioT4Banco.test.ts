@@ -26,7 +26,8 @@ const ABERTOS = new Set<string>(
 [
  "VAZAMENTO [CRÍTICO] Tutor antigo: mensagem e meta.sources gravados (leitura direta e app_tutor_session)",
  "VAZAMENTO [CRÍTICO] Tutor antigo: resumo da conversa",
- "VAZAMENTO [CRÍTICO] estação aprovada: roteiro/impressos",
+ // "estação aprovada: roteiro/impressos": FECHADO pela 2ª fase (013300: o conteúdo das estações passou a ser só da equipe; o aluno
+ // recebe só o que o papel dele na sala permite, por app_dupla_room_content)
 ]
 );
 const vazaT4: typeof it = ((nome: string, fn: any, t?: number) => (ABERTOS.has(nome) ? it.fails : it)(nome, fn, t)) as any;
