@@ -1,5 +1,5 @@
 /**
- * Painel "Vozes do Nexus" (administração): uma linha por voz, um botão por cenário dela (marcado quando já ouvido nesta
+ * Painel "Vozes do Stazi e da Stazia" (administração): uma linha por voz, um botão por cenário dela (marcado quando já ouvido nesta
  * versão), "Aprovar esta voz" só com todos os cenários ouvidos e para quem está na lista de aprovação, e "Revogar" para a voz
  * aprovada. O navegador manda só professor e cenário; a versão da voz nunca sai daqui.
  */
@@ -22,7 +22,7 @@ const row = (id: Id, over: Record<string, unknown> = {}, heard: boolean | string
   scenarios: scenariosFor(id).map((s) => ({ id: s, label: VOICE_SCENARIOS[s].label, heard: Array.isArray(heard) ? heard.includes(s) : heard })),
   ...over,
 });
-const panel = (rows: ReturnType<typeof row>[], approver = true) => ({ model: "eleven_v3", keyConfigured: true, pending: null, detail: null, approver, rows });
+const panel = (rows: ReturnType<typeof row>[], approver = true) => ({ engine: "gemini", model: "gemini-3.8-flash-tts", keyConfigured: true, pending: null, detail: null, approver, rows });
 let current: ReturnType<typeof panel>;
 let fetcher: ReturnType<typeof vi.fn>;
 let play: ReturnType<typeof vi.spyOn>;
@@ -44,10 +44,13 @@ afterEach(() => {
 });
 const rowOf = async (label: string) => (await screen.findByRole("group", { name: `Voz ${label}` }));
 
-describe("Vozes do Nexus", () => {
+describe("Vozes do Stazi e da Stazia", () => {
   it("lista as duas vozes (uma por personagem) com os cenários de cada uma; tocar um cenário manda só voz e cenário", async () => {
     render(<OfficialVoicesPanel />);
-    expect(await screen.findByRole("heading", { name: "Vozes do Nexus" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Vozes do Stazi e da Stazia" })).toBeInTheDocument();
+    // os textos citam os personagens e não nomeiam mais a ElevenLabs nem o Nexus
+    expect(screen.getByText(/O Stazi fala pelo Durão e pelo Tranquilo; a Stazia, pela Durona e pela Tranquila/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/ElevenLabs|Nexus/);
     for (const id of ["stazi", "stazia"] as Id[]) {
       const r = await rowOf(LABEL[id]);
       expect(within(r).getAllByRole("button", { name: new RegExp(`^Ouvir ${LABEL[id]}:`) })).toHaveLength(scenariosFor(id).length);
