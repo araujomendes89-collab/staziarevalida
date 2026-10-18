@@ -28,7 +28,7 @@ const SECTIONS = [
   { id: "comemoracoes", label: "Comemorações e sons", sub: "Sons, voz da Durona e animações", icon: "sparkles", tone: "violet" },
   { id: "estudo", label: "Estudo e prova", sub: "Fase, prova-alvo e rotina", icon: "calendar", tone: "blue" },
   { id: "seg", label: "Segurança", sub: "Senha e sessão", icon: "lock", tone: "blue" },
-  { id: "priv", label: "Privacidade e dados", sub: "Exportação e exclusão (LGPD)", icon: "privacy", tone: "green" },
+  { id: "priv", label: "Privacidade e dados", sub: "Novidades por e-mail, aceites e exclusão (LGPD)", icon: "privacy", tone: "green" },
   { id: "docs", label: "Documentos", sub: "Contrato aceito, Política e Regulamento", icon: "clipboard", tone: "violet" },
   { id: "ajuda", label: "Ajuda e suporte", sub: "Fale com a equipe ou relate um problema", icon: "question", tone: "blue" },
 ];
@@ -436,7 +436,7 @@ function PrivacySection() {
           <Icon name="triangle-alert" size={18} /> Excluir conta
         </div>
         <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
-          Apaga sua conta e todo o seu histórico: respostas, sessões, flashcards, anotações e plano. Não dá para desfazer. Baixe seus dados antes, se quiser guardá-los.
+          Apaga sua conta e todo o seu histórico: respostas, sessões, flashcards, anotações e plano. Não dá para desfazer. Para guardar uma cópia dos seus dados, peça antes em privacidade@staziamed.com.br.
         </p>
         {deleteError && <Banner tone="danger">{deleteError}</Banner>}
         <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
