@@ -105,7 +105,7 @@ for (const [tam, vp, tema] of VARIANTES) {
   const priv = page.getByText("Privacidade e dados").first();
   if (await priv.count()) await priv.click().catch(() => {});
   await page.getByText("Novidades e ofertas por e-mail").first().waitFor({ timeout: 30000 }).catch(() => {});
-  await page.getByText("Novidades e ofertas por e-mail").first().scrollIntoViewIfNeeded().catch(() => {});
+  await page.getByText("Novidades e ofertas por e-mail").first().evaluate((el) => el.scrollIntoView({ block: "center" })).catch(() => {});
   const corpo = await page.locator("body").innerText();
   notas.push(`${tam}-${tema}: Minha Conta ${/Baixar meus dados/i.test(corpo) ? 'TEM "Baixar meus dados"' : 'sem "Baixar meus dados"'}; chave de novidades ${/Ligado/.test(corpo) ? "Ligado" : /Desligado/.test(corpo) ? "Desligado" : "?"}`);
   await foto(page, "minha-conta-privacidade");
