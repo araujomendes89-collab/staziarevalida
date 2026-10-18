@@ -4,6 +4,8 @@
 // Movimento só com transform e opacity; com "menos movimento" nada anima (o CSS também trava tudo).
 // O CSS entra pelo <link> do HTML (sem piscar). Estilo só por CSSOM (style.setProperty), que a CSP permite.
 
+import "./lista-interesse.js"; // formulário da lista de interesse da 2ª fase (sem ele, o formulário envia por POST normal)
+
 const LIBERACOES = ["cobranca", "carteira", "tutor", "amostra"];
 
 /** Volta para o app quem chegou na raiz por um link de e-mail (confirmar cadastro / nova senha / erro do link). */

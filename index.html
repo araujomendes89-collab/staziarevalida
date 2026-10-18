@@ -563,16 +563,69 @@
                   <p>Preparação integrada, sem cobrança antecipada.</p>
                 </div>
               </div>
-              <!-- Lista de interesse da 2ª fase (decisão do dono, 18/10): o formulário vem do ramo lista-interesse
-                   (/api/interesse, com dupla confirmação por e-mail) e entra no ENCAIXE abaixo. Até lá, o bloco leva ao Criar conta. -->
+              <!-- Lista de interesse da 2ª fase (decisão do dono, 18/10): o botão abre o formulário logo abaixo. -->
               <button class="fase2__link" type="button" id="botao-interesse" aria-expanded="false" aria-controls="lista-interesse" data-evento="waitlist_cta_clicked" data-local="planos">
                 Entrar na lista de interesse
                 <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
               </button>
-              <div class="fase2__encaixe" id="lista-interesse" data-encaixe="lista-interesse" hidden>
-                <!-- ENCAIXE: formulário da lista de interesse (pendente) -->
-                <p class="fase2__encaixe-p">Enquanto a lista não abre, você pode <a href="https://app.staziamed.com.br/novo/criar-conta">criar sua conta grátis</a> e testar a 1ª fase.</p>
-              </div>
+              <!-- formulário da lista de interesse (ramo lista-interesse, POST /api/interesse; funciona sem JavaScript). Não mudar o texto do consentimento, os nomes dos campos nem os ids li- -->
+              <section class="li fase2__encaixe" id="lista-interesse" data-encaixe="lista-interesse" aria-labelledby="li-titulo" hidden>
+                <h4 class="li-titulo" id="li-titulo">Lista de interesse da 2ª fase</h4>
+                <p class="li-sub">Deixe seu WhatsApp e entre no grupo para saber quando a 2ª fase abrir.</p>
+
+                <form class="li-form" id="li-form" method="post" action="/api/interesse">
+                  <input type="hidden" name="versao" value="2a_fase-v1" />
+                  <input type="hidden" name="origem" value="site_inicio" />
+
+                  <div class="li-campo">
+                    <label class="li-rotulo" for="li-whatsapp">WhatsApp <span class="li-obrig">(obrigatório)</span></label>
+                    <div class="li-tel">
+                      <select class="li-pais" id="li-pais" name="pais" aria-label="País do número">
+                        <option value="55" selected>Brasil +55</option>
+                        <option value="595">Paraguai +595</option>
+                        <option value="591">Bolívia +591</option>
+                        <option value="54">Argentina +54</option>
+                        <option value="outro">Outro país</option>
+                      </select>
+                      <input class="li-input" id="li-whatsapp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel-national"
+                             required maxlength="25" placeholder="(11) 98765-4321" aria-describedby="li-whatsapp-dica" />
+                    </div>
+                    <p class="li-dica" id="li-whatsapp-dica">Com DDD. Número de outro país: escolha o país ou escolha “Outro país” e comece com + e o código.</p>
+                  </div>
+
+                  <div class="li-campo">
+                    <label class="li-rotulo" for="li-nome">Nome <span class="li-opc">(opcional)</span></label>
+                    <input class="li-input" id="li-nome" name="nome" type="text" autocomplete="name" maxlength="80" />
+                  </div>
+
+                  <div class="li-campo">
+                    <label class="li-rotulo" for="li-email">E-mail <span class="li-opc">(opcional)</span></label>
+                    <input class="li-input" id="li-email" name="email" type="email" autocomplete="email" maxlength="254" aria-describedby="li-email-dica" />
+                    <p class="li-dica" id="li-email-dica">Se informar, mandamos um link para você confirmar o endereço.</p>
+                  </div>
+
+                  <div class="li-consentimento">
+                    <input class="li-caixa" id="li-consentimento" name="consentimento" type="checkbox" value="sim" required />
+                    <label for="li-consentimento">Quero receber avisos da 2ª fase do StaziaMed pelo WhatsApp (e por e-mail, se informei). Posso sair a qualquer momento.</label>
+                  </div>
+                  <p class="li-politica">Veja como cuidamos dos seus dados na <a href="/politica-de-privacidade" target="_blank" rel="noopener">Política de Privacidade</a>.</p>
+
+                  <!-- HONEYPOT contra robôs: escondido de quem vê e de quem usa leitor de tela. Pessoas não preenchem; se vier preenchido, o servidor ignora. -->
+                  <div class="li-hp" aria-hidden="true">
+                    <label for="li-website">Deixe este campo vazio</label>
+                    <input id="li-website" name="website" type="text" tabindex="-1" autocomplete="off" />
+                  </div>
+
+                  <p class="li-erro" id="li-erro" role="alert" hidden></p>
+                  <button class="li-botao" id="li-enviar" type="submit">Entrar na lista de interesse</button>
+                </form>
+
+                <div class="li-pronto" id="li-pronto" tabindex="-1" hidden>
+                  <p class="li-pronto-titulo">Pronto!</p>
+                  <p class="li-pronto-msg" id="li-pronto-msg">Você está na lista de interesse da 2ª fase.</p>
+                  <a class="li-grupo" id="li-grupo" href="#" target="_blank" rel="noopener" hidden>Entrar no grupo do WhatsApp</a>
+                </div>
+              </section>
             </article>
           </div>
 

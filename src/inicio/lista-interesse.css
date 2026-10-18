@@ -1,0 +1,42 @@
+/* Lista de interesse da 2ª fase — estilo mínimo. Usa as variáveis da página inicial (src/inicio/inicio.css) quando existirem,
+   com valores de reserva iguais. Sem estilo inline (CSP). Funciona no celular (campos em coluna, botão de largura total). */
+.li { max-width: 560px; margin: 0 auto; padding: 24px var(--lateral, 16px); font-family: var(--fonte, system-ui, sans-serif); color: var(--texto, #052A5A); }
+.li-titulo { margin: 0 0 8px; font: 700 28px/1.15 var(--fonte-titulo, var(--fonte, sans-serif)); }
+.li-sub { margin: 0 0 20px; color: var(--texto-2, #4F5A69); font-size: 16px; line-height: 1.5; }
+.li-form { display: flex; flex-direction: column; gap: 16px; }
+.li-campo { display: flex; flex-direction: column; gap: 6px; }
+.li-rotulo { font-weight: 600; font-size: 15px; }
+.li-obrig, .li-opc { font-weight: 400; color: var(--texto-2, #4F5A69); }
+.li-tel { display: flex; gap: 8px; }
+.li-pais { flex: 0 0 auto; max-width: 46%; }
+.li-input, .li-pais {
+  min-height: 48px; padding: 0 14px; border: 1px solid var(--borda-forte, #7D8A9C); border-radius: var(--raio-sm, 12px);
+  background: var(--branco, #fff); color: var(--texto, #052A5A); font: 400 16px/1.2 var(--fonte, sans-serif); /* 16px: o iPhone não dá zoom */
+}
+.li-tel .li-input { flex: 1 1 auto; min-width: 0; }
+.li-input:focus-visible, .li-pais:focus-visible, .li-caixa:focus-visible, .li-botao:focus-visible, .li-grupo:focus-visible, .li-politica a:focus-visible {
+  outline: none; box-shadow: var(--anel-foco, 0 0 0 2px #fff, 0 0 0 4px #0A6FD8);
+}
+.li-input[aria-invalid="true"], .li-caixa[aria-invalid="true"] { border-color: #B42318; outline: 2px solid #B42318; outline-offset: 1px; }
+.li-dica { margin: 0; font-size: 13px; line-height: 1.4; color: var(--texto-2, #4F5A69); }
+.li-consentimento { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; line-height: 1.45; }
+.li-caixa { flex: 0 0 auto; width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--azul, #0A6FD8); }
+.li-politica { margin: -8px 0 0; font-size: 14px; color: var(--texto-2, #4F5A69); }
+.li-politica a { color: var(--azul-texto, #0B5FC4); }
+.li-erro { margin: 0; padding: 12px 14px; border-radius: var(--raio-sm, 12px); background: #FEF3F2; color: #B42318; font-size: 15px; line-height: 1.4; }
+.li-botao, .li-grupo {
+  display: block; width: 100%; min-height: 52px; padding: 14px 20px; border: 0; border-radius: var(--raio-sm, 12px);
+  background: var(--azul, #0A6FD8); color: #fff; font: 700 17px/1.2 var(--fonte, sans-serif); text-align: center; text-decoration: none; cursor: pointer;
+}
+.li-botao:hover, .li-grupo:hover { background: var(--azul-hover, #0B5FC4); }
+.li-botao:disabled { opacity: .7; cursor: progress; }
+.li-grupo { background: #0F7A40; } /* verde do WhatsApp escurecido: contraste 5,4:1 com o branco */
+.li-grupo:hover { background: #0B6634; }
+.li-pronto { padding: 20px; border: 1px solid var(--borda, #DCE1E8); border-radius: var(--raio-md, 16px); background: var(--branco, #fff); }
+.li-pronto:focus { outline: none; }
+.li-pronto-titulo { margin: 0 0 6px; font: 700 26px/1.2 var(--fonte-titulo, var(--fonte, sans-serif)); }
+.li-pronto-msg { margin: 0 0 16px; font-size: 16px; line-height: 1.5; color: var(--texto-2, #4F5A69); }
+/* honeypot: fora da tela (não usar display:none, que alguns robôs ignoram) */
+.li-hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+.li [hidden] { display: none !important; } /* o formulário e o "Pronto" trocam pelo atributo hidden */
+@media (max-width: 380px) { .li-tel { flex-direction: column; } .li-pais { max-width: none; } }

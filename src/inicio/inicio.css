@@ -4,6 +4,8 @@
    Fontes guardadas no próprio site (nada de terceiros). Sem estilo inline (a página roda com CSP rígida).
    Movimento só com transform e opacity; com "reduzir movimento" tudo fica parado. */
 
+@import "./lista-interesse.css";
+
 @font-face {
   font-family: "Plus Jakarta Sans";
   font-style: normal;
@@ -344,8 +346,11 @@ html:not(.js) .metro__ponto, .metro__parada--acesa .metro__ponto { background: v
 .fase2__link { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; margin-top: 14px; font-size: 15.5px; font-weight: 700; padding: 0; border: 0; background: none; color: var(--azul); text-decoration: underline; text-underline-offset: 2px; }
 .fase2__link:hover { color: var(--navy); }
 .fase2__link[aria-expanded="true"] svg { transform: rotate(90deg); }
-.fase2__encaixe { margin-top: 6px; border: 1px solid var(--borda); border-radius: 16px; padding: 14px 16px; background: var(--cinza); }
-.fase2__encaixe-p { font-size: 14px; line-height: 1.5; color: var(--texto2); margin: 0; }
+/* formulário da lista de interesse dentro do cartão da 2ª fase (estilo base em lista-interesse.css) */
+.fase2__encaixe.li { margin-top: 6px; max-width: none; border: 1px solid var(--borda); border-radius: 16px; padding: 18px 16px; background: var(--cinza); }
+.fase2__encaixe .li-titulo { font-size: 22px; }
+/* o estilo do formulário conta o padding dentro da largura (o resto da página segue o desenho, sem border-box) */
+.li, .li *, .li *::before, .li *::after { box-sizing: border-box; }
 
 /* ---------- 8 · regras comerciais, arrependimento e perguntas ---------- */
 .regras { list-style: none; padding: 0; margin: 28px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }

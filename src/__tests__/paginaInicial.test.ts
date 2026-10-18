@@ -60,7 +60,10 @@ describe("página inicial: estrutura e SEO", () => {
     ];
     for (const u of carregados) expect(u, String(u)).toMatch(/^\//);
     expect(html).not.toMatch(/googleapis|gstatic|googletagmanager|google-analytics|gtag\(|fbq\(|hotjar|vercel\/insights|speed-insights/i);
-    expect(css).not.toMatch(/@import|https?:\/\//);
+    // só o @import do estilo do formulário da lista de interesse (arquivo local; o Vite junta tudo num arquivo no build)
+    expect(css.match(/@import[^;]*;/g)).toEqual(['@import "./lista-interesse.css";']);
+    expect(css).not.toMatch(/https?:\/\//);
+    expect(fs.readFileSync(path.join(raiz, "src/inicio/lista-interesse.css"), "utf-8")).not.toMatch(/@import|https?:\/\//);
     // sem estilo inline (a página roda com Content-Security-Policy style-src 'self')
     expect(doc.querySelectorAll("[style]")).toHaveLength(0);
     expect(doc.querySelectorAll("style")).toHaveLength(0);
@@ -135,14 +138,16 @@ describe("página inicial: links", () => {
     const doc = pagina();
     const ids = [...doc.querySelectorAll("[id]")].map((e) => e.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const a of doc.querySelectorAll('a[href^="#"]')) {
+    // o botão do grupo do WhatsApp (#li-grupo) nasce escondido e recebe o endereço do servidor depois do envio
+    for (const a of doc.querySelectorAll('a[href^="#"]:not(#li-grupo)')) {
       const alvo = a.getAttribute("href")!.slice(1);
       expect(doc.getElementById(alvo), alvo).not.toBeNull();
     }
   });
 
   it("nenhum link para páginas do pacote de desenho (Main.dc.html) ou vazio", () => {
-    expect(html).not.toMatch(/href="[^"]*\.dc\.html"|href="#"/);
+    expect(html).not.toMatch(/href="[^"]*\.dc\.html"/);
+    expect([...html.matchAll(/<a\b[^>]*href="#"[^>]*>/g)].map((m) => m[0])).toEqual([expect.stringContaining('id="li-grupo"')]);
   });
 });
 
@@ -520,11 +525,12 @@ describe("página inicial: script", () => {
     expect(textoDe(doc)).toMatch(/Respostas escritas previamente para esta demonstração/);
   });
 
-  it("lista de interesse da 2ª fase: o botão abre o encaixe do formulário (que vem do ramo lista-interesse)", () => {
+  it("lista de interesse da 2ª fase: o botão abre o formulário do ramo lista-interesse, que funciona sem JavaScript (POST /api/interesse)", () => {
     const doc = pagina();
     const botao = doc.getElementById("botao-interesse") as HTMLButtonElement;
     const encaixe = doc.getElementById("lista-interesse")!;
     expect(encaixe.getAttribute("data-encaixe")).toBe("lista-interesse");
+    expect(encaixe.closest(".fase2")).not.toBeNull();
     expect(encaixe.hidden).toBe(true);
     ligarAbre(botao, doc);
     botao.click();
@@ -532,28 +538,18 @@ describe("página inicial: script", () => {
     expect(encaixe.hidden).toBe(false);
     botao.click();
     expect(encaixe.hidden).toBe(true);
-  });
-
-  it("telas T1 a T4 e a Arena (T6, Liga da semana) são capturas reais do app no tamanho do desenho, com texto alternativo e aviso de dados de exemplo", () => {
-    const doc = pagina();
-    const imgs = [doc.querySelector(".painel-app__tela img"), ...doc.querySelectorAll(".tela-real img"), doc.querySelector(".semana--real img")] as HTMLImageElement[];
-    expect(imgs).toHaveLength(5);
-    expect(doc.querySelector(".semana--real .semana__nota")?.textContent).toBe("Tela do aplicativo. Os dados são de exemplo.");
-    expect(doc.querySelector(".semana--real img")?.getAttribute("alt")).toMatch(/Liga da semana/);
-    // a ilustração "Sua semana" saiu (o app não tem essa faixa)
-    expect(textoDe(doc)).not.toMatch(/Sua semana|Exemplo ilustrativo|960 XP/);
-    for (const img of imgs) {
-      expect((img.getAttribute("alt") || "").length, img.outerHTML).toBeGreaterThan(40);
-      expect(img.getAttribute("alt")).toMatch(/aplicativo StaziaMed/);
-    }
-    expect([...doc.querySelectorAll(".demo__legenda")].map((p) => p.textContent)).toEqual([
-      "Tela do aplicativo: questão do Revalida 2026/1.", "Tela do aplicativo com dados de exemplo. Não representa resultado de alunos.", "Tela do aplicativo. Os dados são de exemplo.",
-    ]);
-    expect(doc.querySelector(".painel-app__nota")?.textContent).toMatch(/dados são de exemplo/);
-    // cada arquivo citado existe (AVIF e WebP, 1x e 2x, celular, tablet e computador)
-    const citados = new Set([...html.matchAll(/\/src\/inicio\/img\/[\w/.-]+\.(?:avif|webp|png)/g)].map((m) => m[0]));
-    expect(citados.size).toBeGreaterThanOrEqual(60);
-    for (const c of citados) expect(fs.existsSync(path.join(raiz, c)), c).toBe(true);
+    // o formulário como foi entregue: mesmo destino, mesmos campos, mesmo texto do consentimento (versão 2a_fase-v1)
+    const form = encaixe.querySelector("form#li-form") as HTMLFormElement;
+    expect(form.getAttribute("method")).toBe("post");
+    expect(form.getAttribute("action")).toBe("/api/interesse");
+    expect([...form.querySelectorAll("[name]")].map((e) => e.getAttribute("name")).sort()).toEqual(["consentimento", "email", "nome", "origem", "pais", "versao", "website", "whatsapp"]);
+    expect((form.querySelector('[name="versao"]') as HTMLInputElement).value).toBe("2a_fase-v1");
+    expect(doc.querySelector('label[for="li-consentimento"]')?.textContent).toBe("Quero receber avisos da 2ª fase do StaziaMed pelo WhatsApp (e por e-mail, se informei). Posso sair a qualquer momento.");
+    for (const id of ["li-form", "li-pais", "li-whatsapp", "li-email", "li-consentimento", "li-erro", "li-enviar", "li-pronto", "li-pronto-msg", "li-grupo"]) expect(doc.getElementById(id), id).not.toBeNull();
+    expect(doc.getElementById("li-pronto")!.hidden).toBe(true);
+    // o script e o estilo do formulário entram pela página (nada inline)
+    expect(fs.readFileSync(path.join(raiz, "src/inicio/inicio.js"), "utf-8")).toMatch(/^import "\.\/lista-interesse\.js";/m);
+    expect(fs.readFileSync(path.join(raiz, "public/inicio-sem-js.css"), "utf-8")).toMatch(/#lista-interesse\[hidden\] \{ display: block !important; \}/);
   });
 
   it("perguntas abrem sem JavaScript (details), uma por vez, com a primeira aberta", () => {

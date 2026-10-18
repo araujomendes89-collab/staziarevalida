@@ -89,6 +89,10 @@ describe("cabeçalhos de segurança do vercel.json", () => {
     }
     expect([...html.matchAll(/<script\b(?![^>]*\bsrc=)(?![^>]*application\/ld\+json)[^>]*>/g)]).toHaveLength(0);
     const css = readFileSync("src/inicio/inicio.css", "utf8");
-    expect(css).not.toMatch(/@import|https?:\/\//);
+    expect(css).not.toMatch(/https?:\/\//);
+    expect(css.match(/@import[^;]*;/g) ?? []).toEqual(['@import "./lista-interesse.css";']);
+    // o formulário da lista de interesse envia para o próprio site (form-action 'self'), sem nada inline
+    expect(html).toMatch(/<form class="li-form" id="li-form" method="post" action="\/api\/interesse">/);
+    expect(html).not.toMatch(/\son[a-z]+="/);
   });
 });
