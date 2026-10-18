@@ -80,7 +80,8 @@ const ACOES: Record<string, [string, unknown[]?]> = {
   flashcards: [`select jsonb_array_length(coalesce(public.app_flashcards() -> 'cards', '[]'::jsonb)) as n`],
   revisar: [`select public.app_review_flashcard('${CARD}', 3, $1::jsonb) ->> 'due' is not null as ok`, [PROX]],
   gate: [`select public.simulado_gate() as g`],
-  estacoes: [`select count(*)::int n from public.checklist_stations`],
+  // só a estação do teste: com a 2ª fase (013420) o banco também traz os cartões do catálogo, pendentes e só da equipe
+  estacoes: [`select count(*)::int n from public.checklist_stations where id = 'est-1'`],
   conteudo: [`select count(*)::int n from public.checklist_station_contents`],
   eventos: [`select count(*)::int n from public.checklist_events`],
 };

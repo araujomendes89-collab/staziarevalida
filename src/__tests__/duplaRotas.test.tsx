@@ -26,7 +26,7 @@ vi.mock("../novo/app/study/LessonsScreen.jsx", () => ({ LessonsScreen: () => nul
 vi.mock("../novo/app/study/UpdatesScreen.jsx", () => ({ UpdatesScreen: () => null }));
 vi.mock("../novo/app/study/ThemesScreen.jsx", () => ({ ThemesScreen: () => null }));
 vi.mock("../novo/app/home/HomeScreen.jsx", () => ({ HomeScreen: () => <div data-testid="tela-home" /> }));
-vi.mock("../novo/app/home/TodayPlan.jsx", () => ({ TodayPlan: () => null }));
+vi.mock("../novo/app/home/TodayPlan.jsx", () => ({ TodayPlan: () => null, MINUTES: [] }));
 vi.mock("../novo/app/home/PlanningScreen.jsx", () => ({ PlanningScreen: () => null }));
 vi.mock("../novo/app/review/ErrorNotebook.jsx", () => ({ ErrorNotebook: () => null }));
 vi.mock("../novo/app/review/PerformanceScreen.jsx", () => ({ PerformanceScreen: () => null }));
@@ -508,7 +508,8 @@ describe("Sessão", () => {
 
   it("lê app_dupla_access junto com o app_bootstrap e o nivelamento", async () => {
     const { calls, session } = await openReal(async (fn) => (fn === "app_bootstrap" ? bootOf("student") : ABERTO_COM_PLANO));
-    expect(calls).toEqual(["app_bootstrap", "app_nivelamento_estado", "app_dupla_access"]); // o nivelamento (main) é lido junto
+    // o nivelamento, o onboarding e a sessão única (main) são lidos junto; app_dupla_access entra na mesma leva
+    expect(calls).toEqual(expect.arrayContaining(["app_bootstrap", "app_nivelamento_estado", "app_dupla_access"]));
     expect(session().dupla).toEqual(ABERTO_COM_PLANO);
     expect(session().boot.role).toBe("student");
   });

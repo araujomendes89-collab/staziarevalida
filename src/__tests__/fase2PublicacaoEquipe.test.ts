@@ -154,7 +154,7 @@ describe("2ª fase só para a equipe, com uma estação carregada", () => {
     expect(sala).toContain("Esta estação ficou indisponível");
     expect(sala).toContain("in_sheet"); // da 013560
     // colar a junção de novo não muda nada
-    await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013980_fase2_juncao_main.sql"), "utf8"));
+    await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013980_treino_dupla_juncao_main.sql"), "utf8"));
     const [{ def: def2 }] = await d.sql(`select pg_get_functiondef('public.app_export_my_data()'::regprocedure) def`);
     expect(def2).toBe(def);
   });

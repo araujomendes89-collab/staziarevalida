@@ -326,8 +326,8 @@ describe("Migração 013360 (+013380): resultado, revisão da nota, treinar outr
       );
     const antes = await defs();
     // a 013380 apaga o app_dupla_swap que a 013360 cria, e a 013400 refaz o app_dupla_result: a 013360 e as seguintes, na
-    // ordem, voltam ao mesmo banco
-    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.endsWith(".sql") && x >= MIGRACAO).sort()) {
+    // ordem, voltam ao mesmo banco (só as da 2ª fase, até a 013560, mais a junção 013980: as do main depois dela não são da 2ª fase)
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.endsWith(".sql") && x >= MIGRACAO && (x < "20261003013570" || x.includes("treino_dupla"))).sort()) {
       await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
     }
     expect(await defs()).toEqual(antes);

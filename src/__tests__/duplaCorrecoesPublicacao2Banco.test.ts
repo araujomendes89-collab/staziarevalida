@@ -52,7 +52,8 @@ describe("Migração 013406: correções da revisão antes de publicar (2ª leva
     await d.sql(`delete from public.checklist_rooms`);
     await d.sql(`delete from public.study_matches`);
     await d.sql(`delete from public.station_attempts`);
-    await d.sql(`update public.checklist_stations set medical_review = 'approved'`);
+    // os cartões do catálogo (013420) ficam como estão: sem conteúdo, não podem ser aprovados
+    await d.sql(`update public.checklist_stations set medical_review = 'approved' where catalog_edition is null`);
     await d.sql(`update public.user_roles set role = 'student' where user_id = any ($1)`, [[U.ana, U.bruno, U.carla, U.diego]]);
   });
 
@@ -240,7 +241,8 @@ describe("Migração 013406: correções da revisão antes de publicar (2ª leva
       );
       expect(c.station.label).toBe("Estação 7");
       expect(c.pressings, phase).toEqual([
-        { id: "i1", display_number: 1, initially_visible: true, name: "Relato do caso", content: "Relato inicial de teste.", has_image: false },
+        // in_sheet: da 013560 (o relato vai na folha)
+        { id: "i1", display_number: 1, initially_visible: true, in_sheet: true, name: "Relato do caso", content: "Relato inicial de teste.", has_image: false },
       ]);
       expect(c, phase).not.toHaveProperty("checklist_items");
       expect(vaza(await estado(U.ana, id)), phase).toEqual([]);
@@ -248,14 +250,18 @@ describe("Migração 013406: correções da revisão antes de publicar (2ª leva
   });
 
   // ------------------------------------------------------------------ colar duas vezes e permissões
-  it("a 013406 colada duas vezes dá o mesmo banco; apoio fechado; exportação com os direitos de quem chama", async () => {
+  it("a 013406 colada duas vezes (com as seguintes do Treino) dá o mesmo banco; apoio fechado; exportação com os direitos de quem chama", async () => {
     const defs = () =>
       d.sql<{ id: string; def: string; acl: string | null }>(
         `select p.oid::regprocedure::text as id, pg_get_functiondef(p.oid) as def, p.proacl::text as acl
            from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' order by 1`
       );
     const antes = await defs();
-    await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8"));
+    // a 013560 refaz app_dupla_room_content e a junção 013980 junta as duas versões e recoloca o remendo do Termo 3.0 na
+    // exportação: cola-se a 013406 e as seguintes do Treino, na ordem
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.includes("treino_dupla") && x >= MIGRACAO).sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect(await defs()).toEqual(antes);
     for (const fn of ["dupla_room_seen", "dupla_sweep", "dupla_room_need", "dupla_room_state"]) {
       const [p] = await d.sql(`select has_function_privilege('authenticated', oid, 'execute') as aut, has_function_privilege('anon', oid, 'execute') as anon, prosecdef, proconfig

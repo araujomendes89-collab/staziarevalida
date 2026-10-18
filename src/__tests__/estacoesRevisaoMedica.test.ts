@@ -117,7 +117,8 @@ describe("Estações — quem aprova", () => {
 describe("Estações — quem vê", () => {
   it("o revisor médico que não é da equipe abre a lista (sabendo onde pode aprovar) e o conteúdo para conferir", async () => {
     const list = await rpc(REV_CM, "app_admin_stations");
-    expect(list.map((s: any) => s.id).sort()).toEqual(["st-cir", "st-cm"]);
+    // (os cartões do catálogo da 2ª fase, 013420, também aparecem na aba: aqui contam só as estações deste teste)
+    expect(list.map((s: any) => s.id).filter((id: string) => id.startsWith("st-")).sort()).toEqual(["st-cir", "st-cm"]);
     expect(item(list, "st-cm").can_review).toBe(true);
     expect(item(list, "st-cir").can_review).toBe(false);
     expect(item(await rpc(ADMIN, "app_admin_stations"), "st-cir").can_review).toBe(true);
@@ -159,7 +160,7 @@ describe("Estações — não dependem da Central de Conteúdo", () => {
   it("com a Central de Conteúdo desligada, a aba Estações continua abrindo e a revisão médica continua valendo", async () => {
     await db.query(`update public.ch_flags set value = false where key = 'enabled'`);
     try {
-      expect((await rpc(EDITOR, "app_admin_stations")).map((s: any) => s.id).sort()).toEqual(["st-cir", "st-cm"]);
+      expect((await rpc(EDITOR, "app_admin_stations")).map((s: any) => s.id).filter((id: string) => id.startsWith("st-")).sort()).toEqual(["st-cir", "st-cm"]);
       expect(await rpc(REV_PED, "app_admin_station_content", { p_station_id: "st-cm" })).toMatchObject({ actor_script: "Roteiro do ator." });
       const back = await rpc(REV_CM, "app_admin_set_station_review", { p_station_id: "st-cm", p_status: "pending", p_note: "Refazer a conferência do impresso." });
       expect(item(back, "st-cm")).toMatchObject({ medical_review: "pending", reviewer: "Dr. Clínico" });
@@ -222,8 +223,11 @@ describe("Estações — permissões das funções da aba (rodada 1)", () => {
 // checklist_stations, a tabela do catálogo que todo usuário logado lê (política de …0400_checklist_bank.sql e a permissão
 // padrão do Supabase em todas as colunas): /rest/v1/checklist_stations?select=id,review_note,reviewed_by entregava o registro
 // a qualquer aluno. Agora o registro fica em checklist_station_reviews, que só as funções da aba leem e gravam.
+// Decisão (2ª fase, 013420): as colunas do catálogo de cartões (edição, número, origem, fonte oficial, páginas e situação do
+// conteúdo) são do catálogo, não do registro da revisão; o aluno só as lê nas estações aprovadas.
 const CATALOGO = ["id", "name", "topic", "area", "setting", "taxonomy_path", "goal", "institution", "year", "styles", "is_pro_only",
-  "medical_review", "max_score", "duration_ms", "created_at"];
+  "medical_review", "max_score", "duration_ms", "created_at",
+  "catalog_edition", "catalog_number", "catalog_number_label", "origin_label", "official_source", "catalog_pages", "content_status"];
 const REGISTRO = ["review_note", "reviewed_by", "reviewed_at"];
 const NOTA_MFC = "Conferi roteiro, impressos e PEP da estação de MFC.";
 const FORA_DA_ABA = "Nota escrita por fora da aba.";

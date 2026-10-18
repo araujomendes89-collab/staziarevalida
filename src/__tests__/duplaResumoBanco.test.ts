@@ -166,8 +166,8 @@ describe("Migração 013380 (parte 2): resumo sobre o tema com revisão médica"
            from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' order by 1`
       );
     const antes = await defs();
-    // a 013400 refaz funções da 013380 (nota ao aprovar): cola-se a 013380 e as seguintes, na ordem
-    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.endsWith(".sql") && x >= MIGRACAO).sort()) {
+    // a 013400 refaz funções da 013380 (nota ao aprovar): cola-se a 013380 e as seguintes da 2ª fase (até a 013560, mais a junção 013980; as do main depois dela não são da 2ª fase), na ordem
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.endsWith(".sql") && x >= MIGRACAO && (x < "20261003013570" || x.includes("treino_dupla"))).sort()) {
       await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
     }
     expect(await defs()).toEqual(antes);

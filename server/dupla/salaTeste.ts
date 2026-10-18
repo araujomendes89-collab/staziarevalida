@@ -69,6 +69,7 @@ export async function prepararContas(dev: DevDatabase, emails: unknown): Promise
          select $1::uuid, v.document, v.version, case v.document when 'termo_uso' then 'cadastro' else 'tutor' end,
                 public.legal_email_hash(coalesce((select u.email from auth.users u where u.id = $1::uuid), ''))
          from public.legal_versions v
+         where v.document in ('termo_uso', 'tutor_ia') -- a Política e o Regulamento (vigentes desde a 013740) não são aceitos à parte
          on conflict (user_id, document, version) do nothing`,
         [id]
       );
