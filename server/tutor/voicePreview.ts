@@ -1,10 +1,11 @@
 /**
- * VOZES DO NEXUS no painel (/api/tutor/voices): audição e aprovação das vozes oficiais, no mesmo servidor do Tutor.
+ * VOZES DO STAZI E DA STAZIA no painel (/api/tutor/voices): audição e aprovação da voz do professor de cada personagem (a mesma da
+ * voz ao vivo e das frases de espera), no mesmo servidor do Tutor.
  *
  * - Só administrador ouve; só quem está em TUTOR_VOICE_APPROVERS (e-mails, no servidor) aprova ou revoga.
  * - O navegador manda só o professor e o cenário: nunca texto, voice_id, parâmetros nem a versão da voz.
  * - Cada audição fica registrada pelo servidor (também quando o áudio sai do cache); aprovar exige todos os cenários daquela
- *   versão ouvidos nas últimas 24 h (o banco confere de novo). A versão junta voz, modelo, formato, cenários e direção.
+ *   versão ouvidos nas últimas 24 h (o banco confere de novo). A versão junta serviço, voz, afinação, modelo, formato, acabamento e cenários.
  * - Ao aprovar, a "Apresentação" vai para o depósito tutor-voice-samples/<voz>/<versão>.mp3: é ela que toca no "Ouvir" do aluno.
  * - Audições entram no registro de uso como tutor_tts_audicao, fora dos limites e dos tetos.
  */
@@ -12,9 +13,9 @@ import express, { type Request } from "express";
 import path from "path";
 import { localStorageDir, supabaseStorage, type ContentDb, type Identity, type Storage } from "../contentHub/infra";
 import type { TutorDeps } from "./engine";
-import { elevenSynth } from "./elevenlabsTts";
-import { elevenLabsReadiness, officialVoiceForPersonality, type Approval, type ReadinessRow } from "./officialVoices";
-import { tutorSettings } from "./settings";
+import { professorSynth } from "./professorVoice";
+import { officialVoiceForPersonality, voiceReadiness, type Approval, type ReadinessRow, type VoiceEngine } from "./officialVoices";
+import { speechPriceOf } from "./speech";
 import { OFFICIAL_VOICES, VOICE_SCENARIOS, scenariosFor, type OfficialVoice, type VoiceScenario } from "../../src/shared/tutor/officialVoices";
 
 export const SAMPLE_BUCKET = "tutor-voice-samples";
@@ -31,6 +32,8 @@ export function voiceApprovers(env: NodeJS.ProcessEnv = process.env): string[] {
 }
 
 export interface VoicePanel {
+  /** Serviço da voz no ar: gemini (padrão, a voz do personagem) ou elevenlabs (reserva). */
+  engine: VoiceEngine;
   model: string;
   keyConfigured: boolean;
   pending: string | null;
@@ -59,7 +62,7 @@ export function createVoicePreviewRouter(deps: TutorDeps | null, env: NodeJS.Pro
 
   router.use(async (req: Admin, res, next) => {
     res.setHeader("Cache-Control", "no-store");
-    if (!deps) return res.status(503).json({ error: "Vozes do Nexus sem servidor configurado." });
+    if (!deps) return res.status(503).json({ error: "Vozes do Stazi e da Stazia sem servidor configurado." });
     try {
       const user = await deps.db.authenticate(req);
       if (!user) return res.status(401).json({ error: "Entre na sua conta StaziaMed." });
@@ -81,10 +84,10 @@ export function createVoicePreviewRouter(deps: TutorDeps | null, env: NodeJS.Pro
   async function panelOf(user: Identity): Promise<VoicePanel> {
     const data = await deps!.db.service<PanelData>("ch_worker_tutor_voice_panel", { p_user: user.id });
     const approvals = Object.fromEntries(Object.entries(data?.approvals ?? {}).filter(([, a]) => a && !a.revoked_at)) as Partial<Record<OfficialVoice, Approval>>;
-    const r = elevenLabsReadiness(voiceEnv(), approvals);
+    const r = voiceReadiness(voiceEnv(), approvals);
     const approver = isApprover(user);
     return {
-      model: r.model, keyConfigured: r.keyConfigured, pending: r.pending, detail: r.detail, approver,
+      engine: r.engine, model: r.model, keyConfigured: r.keyConfigured, pending: r.pending, detail: r.detail, approver,
       rows: r.rows.map((row) => {
         const scenarios = scenariosFor(row.id).map((id) => ({
           id, label: VOICE_SCENARIOS[id].label,
@@ -100,16 +103,15 @@ export function createVoicePreviewRouter(deps: TutorDeps | null, env: NodeJS.Pro
     const key = `${row.fingerprint}:${scenario}`;
     const hit = cache.get(key);
     if (hit) return hit;
-    const provider = elevenSynth(deps!);
+    const provider = professorSynth(deps!);
     if (!provider) throw new Error("Voz oficial indisponível.");
     const sample = VOICE_SCENARIOS[scenario];
     const text = sample.text ?? OFFICIAL_VOICES[id].sample;
     const out = await provider.synthesize(text, { personality: id, direction: { emotion: sample.emotion, intensity: sample.intensity } });
-    const settings = await tutorSettings(deps!);
     await deps!.db.service("ch_worker_tutor_ledger", {
       p_user: user.id, p_session_id: null,
       p_entry: { feature: "tutor_tts_audicao", provider: provider.name, model: provider.model, characters: text.length,
-                 estimated_cost_usd: Math.round((text.length / 1000) * settings.tts_price_per_1k_chars_usd * 1e6) / 1e6, meta: { voice: id, scenario } },
+                 estimated_cost_usd: out.costUsd ?? (await speechPriceOf(deps!, text.length)), meta: { voice: id, scenario, ...(out.seconds ? { seconds: out.seconds } : {}) } },
     }).catch((e) => deps!.log?.(`[tutor] vozes: registro da audição falhou: ${(e as Error).message.slice(0, 120)}`));
     if (cache.size >= 20) cache.delete(cache.keys().next().value!);
     cache.set(key, out.audio);
@@ -140,7 +142,7 @@ export function createVoicePreviewRouter(deps: TutorDeps | null, env: NodeJS.Pro
     if (record.count >= 12 || busy.has(user.id)) return res.status(429).json({ error: "Aguarde a audição atual ou tente novamente em um minuto." });
     if (recent.size >= 1000 && !recent.has(user.id)) return res.status(429).json({ error: "Muitas audições simultâneas. Tente novamente em um minuto." });
     recent.set(user.id, { ...record, count: record.count + 1 });
-    const row = elevenLabsReadiness(voiceEnv()).rows.find((item) => item.id === id)!;
+    const row = voiceReadiness(voiceEnv()).rows.find((item) => item.id === id)!;
     if (!row.ready) return res.status(503).json({ error: row.pending });
     busy.add(user.id);
     try {
@@ -148,8 +150,10 @@ export function createVoicePreviewRouter(deps: TutorDeps | null, env: NodeJS.Pro
       // a audição desta versão conta para a aprovação (registrada pelo servidor, nunca pelo navegador)
       await deps!.db.service("ch_worker_tutor_voice_listened", { p_user: user.id, p_voice: id, p_fingerprint: row.fingerprint, p_scenario: scenario });
       res.type("audio/mpeg").send(audio);
-    } catch {
-      res.status(502).json({ error: "A audição falhou. Confira a chave de acesso, as permissões, o cadastro da voz e os créditos no painel do serviço de voz." });
+    } catch (error) {
+      // o detalhe (código HTTP, motivo) só no registro do servidor; a tela recebe o aviso simples
+      deps!.log?.(`[tutor] vozes: audição falhou: ${(error as Error).message.slice(0, 200)}`);
+      res.status(502).json({ error: "A audição falhou. Confira a chave de acesso, as permissões e o crédito do serviço de voz." });
     } finally {
       busy.delete(user.id);
     }

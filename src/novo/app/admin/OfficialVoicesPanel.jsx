@@ -1,5 +1,5 @@
-// Vozes do Nexus (administração): ouvir cada cenário da versão atual de cada voz e, para quem está na lista de aprovação do
-// servidor, aprovar ou revogar aquela voz. O servidor registra as audições e confere tudo de novo; o navegador manda só o
+// Vozes do Stazi e da Stazia (administração): ouvir cada cenário da versão atual da voz de cada personagem (a mesma da voz ao vivo
+// e das frases de espera) e, para quem está na lista de aprovação do servidor, aprovar ou revogar aquela voz. O servidor registra as audições e confere tudo de novo; o navegador manda só o
 // professor e o cenário.
 import React from "react";
 import { Badge, Button } from "../../ds";
@@ -125,12 +125,12 @@ export function OfficialVoicesPanel({ endpoint = "/api/tutor/voices" }) {
   return (
     <section className="official-voices" aria-labelledby="official-voices-title">
       <header>
-        <span className="official-voices__eyebrow">NEXUS · AUDIÇÃO E APROVAÇÃO</span>
-        <h2 id="official-voices-title">Vozes do Nexus</h2>
-        <p>Ouça todos os cenários da versão atual de uma voz; depois, quem está na lista de aprovação aprova. Cada voz vale sozinha: aprovada, ela já fala com os alunos (se "Voz do professor só para a equipe" estiver desligado no Tutor). Mudar a voz, o modelo ou a direção cria uma versão nova, que pede nova audição.</p>
+        <span className="official-voices__eyebrow">VOZ DO PROFESSOR · AUDIÇÃO E APROVAÇÃO</span>
+        <h2 id="official-voices-title">Vozes do Stazi e da Stazia</h2>
+        <p>É a voz que lê em voz alta as respostas do Tutor: a mesma da conversa ao vivo e das frases de espera. O Stazi fala pelo Durão e pelo Tranquilo; a Stazia, pela Durona e pela Tranquila. Ouça todos os cenários da versão atual de uma voz; depois, quem está na lista de aprovação aprova. Cada voz vale sozinha: aprovada, ela já fala com os alunos (se "Voz do professor só para a equipe" estiver desligado no Tutor). Mudar a voz, o tom ou o modelo cria uma versão nova, que pede nova audição.</p>
       </header>
       <p className="official-voices__notice" role="status">
-        {approver ? "Você está na lista de aprovação." : "Só quem está na lista de aprovação do servidor aprova ou revoga. Você pode ouvir."} As audições consomem créditos da ElevenLabs.
+        {approver ? "Você está na lista de aprovação." : "Só quem está na lista de aprovação do servidor aprova ou revoga. Você pode ouvir."} Cada audição nova custa poucos centavos no serviço de voz; ouvir de novo o mesmo cenário não gera outra.
       </p>
       {status?.pending && <p>{status.pending}</p>}
       <TechnicalDetail text={status?.pending ? status.detail : null} />
@@ -173,7 +173,7 @@ export function OfficialVoicesPanel({ endpoint = "/api/tutor/voices" }) {
         </div>
       </div>
       {error && <p role="alert" className="official-voices__error">{error}</p>}
-      <p className="official-voices__footnote">Personalidade, memória, regras pedagógicas e respostas vêm do motor do Tutor; a ElevenLabs só sintetiza o áudio.</p>
+      <p className="official-voices__footnote">Personalidade, memória, regras pedagógicas e respostas vêm do motor do Tutor; o serviço de voz só transforma o texto em áudio. O jeito de cada personalidade vem do próprio texto e da pontuação.</p>
     </section>
   );
 }

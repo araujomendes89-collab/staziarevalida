@@ -2,9 +2,12 @@
  * VOZ NATURAL do Stazia Tutor: transforma em áudio, no servidor, um texto que o servidor JÁ validou (fala gravada do professor,
  * a questão da conversa ou uma frase fixa do aplicativo). O navegador nunca manda texto livre para cá.
  *
- * A voz do professor é sempre a oficial (ElevenLabs, uma voz por professor; TUTOR_VOICE_PROVIDER não decide mais):
+ * A voz do professor é sempre a oficial, a MESMA do personagem na voz ao vivo e nas frases de espera (TUTOR_VOICE_PROVIDER não
+ * decide mais): Gemini TTS pelo Vertex, Stazi = "Zubenelgenubi" afinado +3 semitons, Stazia = "Kore" (officialVoices.ts).
  *   TUTOR_VOICE_ALLOW_EXTERNAL=1  consentimento próprio: o texto da resposta vai para o serviço de voz
- *   ELEVENLABS_API_KEY, ELEVENLABS_VOICE_STAZI / _STAZIA (reserva: _TRANQUILO / _DURONA), ELEVENLABS_MODEL_ID (eleven_v3), ELEVENLABS_OUTPUT_FORMAT
+ *   VERTEX_API_KEY                a chave do Vertex AI (sem ela, GEMINI_API_KEY do AI Studio)
+ *   TUTOR_VOICE_ENGINE=elevenlabs só para ligar a RESERVA ElevenLabs no lugar do Gemini (desligada por padrão), com
+ *                                 ELEVENLABS_API_KEY, ELEVENLABS_VOICE_STAZI / _STAZIA, ELEVENLABS_MODEL_ID, ELEVENLABS_OUTPUT_FORMAT
  *   TUTOR_VOICE_DAILY_CHARS       teto de caracteres falados por aluno por dia (padrão 30.000, cerca de meia hora de fala)
  *
  * A voz é sempre a mesma resposta validada: só muda o som. Quem pode ouvir, quanto e com qual voz decide nexus.ts (direito do
@@ -17,8 +20,8 @@ import { spokenText } from "./safety";
 import { protegerFala } from "./escudo";
 import { TUTOR_SPOKEN_LANGUAGE } from "../../src/shared/tutor/voiceLanguage";
 import { speechDirectionFromState, type SpeechDirection } from "./speechDirector";
-import { elevenSynth } from "./elevenlabsTts";
-import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
+import { professorSynth } from "./professorVoice";
+import { officialVoiceForPersonality, voiceReadiness } from "./officialVoices";
 import { elevenAccessOf, voiceBlockError, type ElevenBlock, type TtsQuota } from "./nexus";
 import { tutorSettings } from "./settings";
 
@@ -36,6 +39,10 @@ export interface VoiceProfile {
 export interface SpeechAudio {
   audio: Buffer;
   mime: string;
+  /** Custo desta geração informado pelo próprio serviço (tokens do Gemini); sem ele, vale o preço por mil caracteres do painel. */
+  costUsd?: number;
+  /** Duração do áudio (segundos), quando o provedor sabe. */
+  seconds?: number;
 }
 
 export interface SpeechProvider {
@@ -200,17 +207,17 @@ interface SpeechSource {
 const cache = new SpeechCache();
 const NEUTRAL: SpeechDirection = { emotion: "neutral", intensity: 0 };
 
-/** Voz do professor: a dos testes (deps.speech) ou a oficial, pronta quando ao menos uma voz está configurada. */
+/** Voz do professor: a dos testes (deps.speech) ou a oficial (Gemini; ElevenLabs só de reserva), pronta quando ao menos uma voz está configurada. */
 export function speechProviderFor(deps: TutorDeps): { provider: SpeechProvider | null; status: SpeechStatus } {
   if (deps.speech !== undefined) {
     const p = deps.speech;
     return { provider: p, status: { ready: Boolean(p), provider: p?.name ?? "off", model: p?.model ?? null, pending: p ? null : "Voz natural desligada." } };
   }
-  const r = elevenLabsReadiness(deps.elevenEnv ?? process.env);
+  const r = voiceReadiness(deps.elevenEnv ?? process.env);
   const ready = !r.pending && r.rows.some((row) => row.ready);
-  const status: SpeechStatus = { ready, provider: "elevenlabs", model: r.model, pending: ready ? null : r.pending ?? r.rows.find((row) => row.pending)?.pending ?? "Voz oficial não configurada.",
+  const status: SpeechStatus = { ready, provider: r.engine, model: r.model, pending: ready ? null : r.pending ?? r.rows.find((row) => row.pending)?.pending ?? "Voz oficial não configurada.",
     detail: ready ? null : r.pending ? r.detail : r.rows.find((row) => row.pending)?.detail ?? null };
-  return { provider: ready ? elevenSynth(deps) : null, status };
+  return { provider: ready ? professorSynth(deps) : null, status };
 }
 
 /**
@@ -240,7 +247,7 @@ export async function tutorSpeech(deps: TutorDeps, userId: string, req: SpeechRe
   if (!text) throw new TutorError("Frase inválida.", 400);
 
   const id = officialVoiceForPersonality(src.personality);
-  const row = elevenLabsReadiness(deps.elevenEnv ?? process.env, quota.approvals).rows.find((r) => r.id === id) ?? null;
+  const row = voiceReadiness(deps.elevenEnv ?? process.env, quota.approvals).rows.find((r) => r.id === id) ?? null;
   const access = elevenAccessOf({ quota, row, need: text.length });
   if (!access.ok) throw voiceBlockError(access.reason!);
 
@@ -267,9 +274,14 @@ export async function tutorSpeech(deps: TutorDeps, userId: string, req: SpeechRe
     await settle(false).catch(() => undefined);
     throw Object.assign(new TutorError("A voz natural falhou agora.", 502), { code: "voice_failed" });
   }
-  const settings = await tutorSettings(deps);
-  const cost = Math.round((text.length / 1000) * settings.tts_price_per_1k_chars_usd * 1e6) / 1e6;
-  await settle(true, { provider: provider.name, model: provider.model, estimated_cost_usd: cost, meta: { kind: req.kind, voice: id } });
+  const cost = out.costUsd ?? (await speechPriceOf(deps, text.length));
+  await settle(true, { provider: provider.name, model: provider.model, estimated_cost_usd: cost, meta: { kind: req.kind, voice: id, ...(out.seconds ? { seconds: out.seconds } : {}) } });
   cache.set(key, out);
   return { ...out, cached: false };
+}
+
+/** Custo estimado pelo preço do painel (US$ por mil caracteres): quando o serviço não informa o próprio custo. */
+export async function speechPriceOf(deps: TutorDeps, chars: number): Promise<number> {
+  const settings = await tutorSettings(deps);
+  return Math.round((chars / 1000) * settings.tts_price_per_1k_chars_usd * 1e6) / 1e6;
 }

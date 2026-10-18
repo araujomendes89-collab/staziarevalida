@@ -21,6 +21,7 @@ import { tutorMockRespond } from "../../server/tutor/mock";
 import { createTutorRouter } from "../../server/tutor/router";
 import { MockSpeech, phraseText, speechCost } from "../../server/tutor/speech";
 import { elevenLabsVoiceSettings, speechDirectionFromState } from "../../server/tutor/speechDirector";
+import { GEMINI_VOZ_ENV } from "./helpers/vozGemini";
 import { OfficialElevenLabsSpeech } from "../../server/tutor/elevenlabsTts";
 import express from "express";
 import { aceitarTermos } from "./helpers/aceites";
@@ -316,10 +317,7 @@ describe("Validação de segurança (regras, sem IA)", () => {
 });
 
 /** Voz do professor nos testes: ambiente falso (sem rede) e as duas vozes (uma por personagem) aprovadas nesta versão. */
-const VOZ_ENV = {
-  ELEVENLABS_API_KEY: "chave-falsa-de-teste-" + "x".repeat(40), TUTOR_VOICE_ALLOW_EXTERNAL: "1",
-  ELEVENLABS_VOICE_STAZI: "vozStaziTeste000001", ELEVENLABS_VOICE_STAZIA: "vozStaziaTeste00001",
-};
+const VOZ_ENV = GEMINI_VOZ_ENV; // a voz do professor é a do personagem no Gemini (padrão)
 const aprovarVozes = (q: (s: string, p?: unknown[]) => Promise<unknown>) =>
   Promise.all((["stazi", "stazia"] as const).map((v) => q(`insert into public.tutor_voice_approvals (voice, fingerprint) values ($1, $2) on conflict (voice) do update set fingerprint = excluded.fingerprint, revoked_at = null`, [v, voiceFingerprint(v, VOZ_ENV)])));
 
@@ -332,7 +330,7 @@ describe("Voz natural: serviços de voz (sem chamada externa)", () => {
     expect(elevenLabsVoiceSettings({ emotion: "unknown", intensity: 5 })).toMatchObject({ stability: 0.54, style: 0.36, speed: 1 });
   });
 
-  it("ElevenLabs oficial: o painel usa somente voz e roteiro homologados", async () => {
+  it("ElevenLabs (reserva): o painel usa somente voz e roteiro homologados", async () => {
     const env = {
       ELEVENLABS_API_KEY: KEY,
       TUTOR_VOICE_ALLOW_EXTERNAL: "1",

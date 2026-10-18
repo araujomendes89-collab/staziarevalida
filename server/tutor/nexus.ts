@@ -8,7 +8,7 @@
  */
 import { PROFESSOR_CHANGED, TutorError, consentError, type TutorDeps } from "./engine";
 import { CHARS_PER_MINUTE } from "./speech";
-import { elevenLabsReadiness, officialVoiceForPersonality, type Approval, type ReadinessRow } from "./officialVoices";
+import { voiceReadiness, officialVoiceForPersonality, type Approval, type ReadinessRow } from "./officialVoices";
 import { hangup, reasonError, voiceReady } from "./realtime";
 import { sttConfig, studentMicOpen } from "./stt";
 import { tutorSettings } from "./settings";
@@ -100,7 +100,7 @@ export interface NexusOpen {
 const quotaOf = (deps: TutorDeps, userId: string) => deps.db.service<TtsQuota>("ch_worker_tutor_tts_quota", { p_user: userId });
 const rowFor = (deps: TutorDeps, quota: TtsQuota, personality: string) => {
   const id = officialVoiceForPersonality(personality);
-  return id ? elevenLabsReadiness(deps.elevenEnv ?? process.env, quota.approvals ?? {}).rows.find((r) => r.id === id) ?? null : null;
+  return id ? voiceReadiness(deps.elevenEnv ?? process.env, quota.approvals ?? {}).rows.find((r) => r.id === id) ?? null : null;
 };
 const minutesToday = (q: TtsQuota) => minutesOf(Math.min(q.remaining_today, q.account_day_left, q.account_month_left));
 const reserveOf = (deps: TutorDeps, q: TtsQuota) => ({

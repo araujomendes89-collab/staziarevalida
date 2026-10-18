@@ -21,11 +21,10 @@ import { ttsIntent } from "../../server/tutor/delegate";
 import { PROFESSOR_CHANGED } from "../../server/tutor/engine";
 import { NO_EVALUATION, type TutorOutput } from "../../server/tutor/prompts";
 import { aceitarTermos } from "./helpers/aceites";
+import { GEMINI_VOZ_ENV } from "./helpers/vozGemini";
 
-const ENV = {
-  ELEVENLABS_API_KEY: "chave-falsa-de-teste-" + "x".repeat(40), TUTOR_VOICE_ALLOW_EXTERNAL: "1",
-  ELEVENLABS_VOICE_STAZI: "vozStaziTeste000001", ELEVENLABS_VOICE_STAZIA: "vozStaziaTeste00001",
-};
+// a voz do professor é a do personagem no Gemini (padrão)
+const ENV = GEMINI_VOZ_ENV;
 const KEY = "sk-teste-" + "k".repeat(40);
 const STT = { ready: true, model: "gpt-4o-mini-transcribe", key: KEY, pending: null };
 const RT = { ready: true, model: "gpt-realtime-2.1", pending: null, key: KEY, transcribeModel: null };
@@ -318,6 +317,6 @@ describe("Nexus: o turno", () => {
     const old = (await sql(`insert into public.tutor_sessions (user_id, mode, title, personality_id, intensity, legacy_persona) values ($1, 'livre', 'antiga', 'acolhedor', 3, '{"name":"Acolhedor","emoji":"🤗"}') returning id`, [PAGO]))[0].id;
     expect(await open(PAGO, old)).toEqual({ status: 409, json: { error: PROFESSOR_CHANGED } });
     const raw = JSON.stringify([(await api(PAGO, "GET", "/nexus")).json, (await open(PAGO, await start(PAGO, "livre"))).json]);
-    for (const secret of [KEY, ENV.ELEVENLABS_API_KEY, ENV.ELEVENLABS_VOICE_STAZIA]) expect(raw).not.toContain(secret);
+    for (const secret of [KEY, ENV.VERTEX_API_KEY, "Kore", "Zubenelgenubi"]) expect(raw).not.toContain(secret);
   });
 });

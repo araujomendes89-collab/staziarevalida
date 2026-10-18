@@ -18,7 +18,7 @@ import { geminiVoiceConfig, planProviders, vertexPonteConfig } from "./voiceProv
 import { relatorioConfere } from "../vozPonte/bilhete";
 import { planPersonaTurn } from "./voiceReactions";
 import { personaStateLayer } from "./personalityEngine";
-import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
+import { voiceReadiness, officialVoiceForPersonality } from "./officialVoices";
 import { samplePath } from "./voicePreview";
 import { elevenAccessOf, nexusStatus, openNexus, type TtsQuota } from "./nexus";
 import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, STT_BLOCK, STT_BUSY, STT_PER_MINUTE, audioFitsSeconds, sttAccessOf, sttConfig, transcribe } from "./stt";
@@ -194,7 +194,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       const quota = await deps!.db.service<TtsQuota>("ch_worker_tutor_tts_quota", { p_user: req.user!.id });
       if (quota?.consent_pending) return failTutor(res, consentError());
       const id = officialVoiceForPersonality(String(req.params.personality ?? ""));
-      const row = id ? elevenLabsReadiness(deps!.elevenEnv ?? process.env, quota?.approvals ?? {}).rows.find((r) => r.id === id) : null;
+      const row = id ? voiceReadiness(deps!.elevenEnv ?? process.env, quota?.approvals ?? {}).rows.find((r) => r.id === id) : null;
       const approval = id ? quota?.approvals?.[id] : null;
       // need: 0, pois a amostra não gasta caracteres: o limite do dia não a bloqueia
       const access = row && quota ? elevenAccessOf({ quota, row, need: 0 }) : null;

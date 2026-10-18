@@ -1,16 +1,20 @@
-/** Catálogo público de audição. Não contém chaves, IDs de provedor nem regras do Tutor Engine. */
+/**
+ * Catálogo público de audição da voz do professor (uma voz por personagem: Stazi e Stazia). Não contém chaves, IDs de provedor
+ * nem regras do Tutor Engine. O texto vai para o serviço de voz exatamente como está: o jeito vem das palavras e da pontuação.
+ * `design` é o roteiro da ElevenLabs (reserva desligada); a voz padrão é a do personagem no Gemini.
+ */
 export const OFFICIAL_VOICES = {
   stazi: {
     label: "Stazi", speed: 0.98,
     description: "Voz masculina do Stazi, usada pelo Durão e pelo Tranquilo. Natural, próxima, firme quando precisa e calma quando dá.",
     design: "Voz masculina adulta original, nativa do Brasil, falando português brasileiro padrão contemporâneo. Professor jovem e próximo, de timbre médio e presença firme. Ampla variação de entonação: calma e sem pressa nas explicações, com humor seco; firme, impaciente e irônica nas cobranças, sempre inteligível e sem gritos. Pequenos suspiros e brincadeiras sutis sem soar desinteressado nem arrastado. Deve soar humano em uma conversa individual, não como narrador. Sotaque brasileiro neutro, sem caricatura regional nem influência de português europeu, inglês ou espanhol. Áudio limpo de estúdio, sem música.",
-    sample: "Ah, você por aqui. Eu sou o Nexus. Eu até podia entregar a resposta pronta, mas aí você ia me deixar fazendo todo o trabalho, né? Vamos combinar assim: você me dá uma hipótese, e eu ajudo a testar.",
+    sample: "Ah, você por aqui. Eu sou o Stazi. Eu até podia entregar a resposta pronta, mas aí você ia me deixar fazendo todo o trabalho, né? Vamos combinar assim: você me dá uma hipótese, e eu ajudo a testar.",
   },
   stazia: {
     label: "Stazia", speed: 1.0,
     description: "Voz feminina da Stazia, usada pela Durona e pela Tranquila. Expressiva: firme e irônica quando cobra, calma e acolhedora quando dá.",
     design: "Voz feminina adulta original, nativa do Brasil, falando português brasileiro padrão contemporâneo. Professora jovem e próxima, de timbre médio e presença marcante. Ampla variação de entonação: calma, acolhedora e sem pressa nas explicações; firme, impaciente e irônica nas cobranças, com raiva controlada, sempre inteligível e sem gritos. Reações e ênfases naturais, sem teatralidade excessiva. Conversa próxima, não locução. Sotaque brasileiro neutro, sem caricatura regional nem influência de português europeu, inglês ou espanhol. Áudio limpo de estúdio, sem música.",
-    sample: "Eu sou o Nexus. Pera aí. Você escolheu essa resposta com base em quê? Vamos olhar de novo: repetir o chute não resolve. Quero ouvir o seu raciocínio, passo a passo. Você consegue fazer melhor essa análise.",
+    sample: "Eu sou a Stazia. Pera aí. Você escolheu essa resposta com base em quê? Vamos olhar de novo: repetir o chute não resolve. Quero ouvir o seu raciocínio, passo a passo. Você consegue fazer melhor essa análise.",
   },
 } as const;
 
