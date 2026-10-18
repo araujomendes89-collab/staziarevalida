@@ -436,7 +436,7 @@ function PrivacySection() {
           <Icon name="triangle-alert" size={18} /> Excluir conta
         </div>
         <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
-          Apaga sua conta e todo o seu histórico: respostas, sessões, flashcards, anotações e plano. Não dá para desfazer. Para guardar uma cópia dos seus dados, peça antes em privacidade@staziamed.com.br.
+          Apaga sua conta e todo o seu histórico: respostas, sessões, flashcards, anotações e plano. Não dá para desfazer. Para guardar uma cópia dos seus dados, peça antes pelo e-mail de privacidade (acima).
         </p>
         {deleteError && <Banner tone="danger">{deleteError}</Banner>}
         <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
