@@ -4,18 +4,23 @@
  *
  *   1. afina com o MESMO afinador da voz ao vivo (AfinadorStream de src/novo/app/tutor/voice/pitchShift.js): o Stazi sobe +3
  *      semitons (efeito de desenho); a Stazia passa sem tocar em nada;
- *   2. apara o silêncio das pontas (janelas de 20 ms, 60 ms de folga, 10 ms de entrada e saída suaves);
- *   3. iguala o volume ao das frases de espera do mesmo personagem (loudness EBU R128 integrada, com um limitador rápido que
+ *   2. tira o RUÍDO das pontas que o Gemini TTS entrega em todo arquivo (18/10, o "chiado" que o dono ouviu quando o professor
+ *      termina de falar): ~170 ms de ruído largo e alto (−3 a −6 dB) depois de um silêncio no fim, e um estalo de ~20 ms no
+ *      começo. O corte é por DETECÇÃO (energia + planura do espectro + silêncio antes), nunca por tempo fixo: fala não é cortada;
+ *   3. apara o silêncio das pontas (janelas de 20 ms, 60 ms de folga; entrada suave de 20 ms e saída de 30 ms);
+ *   4. iguala o volume ao das frases de espera do mesmo personagem (loudness EBU R128 integrada, com um limitador rápido que
  *      segura só os picos);
- *   4. MP3 mono 24 kHz 64 kbps (lamejs), como as frases de espera.
+ *   5. MP3 mono 24 kHz 64 kbps (lamejs), como as frases de espera.
  *
  * O navegador toca o MP3 como chega (o tocador nunca afina o MP3 do professor: audioPlayer.js).
  */
 import { afinarTudo } from "../../src/novo/app/tutor/voice/pitchShift.js";
 import { pcmToMp3 } from "../podcasts/audio";
+import { tirarRuidoDasPontas } from "./ruidoTts";
 
 /** Muda quando o acabamento mudar: entra na versão da voz (nova audição e nova aprovação). */
-export const ACABAMENTO_VERSAO = "frases-espera-2026-10-17";
+// 18/10: sem o ruído das pontas do Gemini TTS (o "chiado"): o cache e a aprovação da voz mudam junto
+export const ACABAMENTO_VERSAO = "sem-chiado-2026-10-18";
 export const MP3_KBPS = 64;
 /**
  * Volume medido nas frases de espera aprovadas (public/novo-assets/tutor/espera/manifesto.json, média de cada personagem):
@@ -40,6 +45,9 @@ export function floatParaPcm(a: Float32Array): Buffer {
   return b;
 }
 
+// o ruído das pontas do Gemini TTS sai por ruidoTts.ts (sem dependências: também serve aos podcasts)
+export { fimDoEstaloInicial, inicioDoRuidoFinal, planura, tirarRuidoDasPontas } from "./ruidoTts";
+
 /** Corta o silêncio das pontas: fala = janela de 20 ms com RMS acima de 500/32768 (o mesmo critério de aparar.mjs). */
 export function apararPontas(a: Float32Array, taxa: number, folgaS = 0.06): Float32Array {
   const jan = Math.max(1, Math.round(taxa * 0.02));
@@ -59,11 +67,11 @@ export function apararPontas(a: Float32Array, taxa: number, folgaS = 0.06): Floa
   const de = Math.max(0, Math.round(ini * jan - folgaS * taxa));
   const ate = Math.min(a.length, Math.round((fim + 1) * jan + folgaS * taxa));
   const out = a.slice(de, ate);
-  const rampa = Math.min(Math.round(taxa * 0.01), out.length >> 1);
-  for (let k = 0; k < rampa; k++) {
-    out[k] *= k / rampa;
-    out[out.length - 1 - k] *= k / rampa;
-  }
+  // entrada suave de 20 ms e saída de 30 ms (sem estalo no começo nem no fim)
+  const entra = Math.min(Math.round(taxa * 0.02), out.length >> 1);
+  const sai = Math.min(Math.round(taxa * 0.03), out.length >> 1);
+  for (let k = 0; k < entra; k++) out[k] *= k / entra;
+  for (let k = 0; k < sai; k++) out[out.length - 1 - k] *= k / sai;
   return out;
 }
 
@@ -181,7 +189,8 @@ export interface Acabamento {
 
 /** PCM 16 bits mono do serviço de voz → MP3 com o acabamento do personagem. */
 export async function acabarVoz(pcm: Buffer, taxa: number, o: { semitons: number; lufs: number }): Promise<Acabamento> {
-  let a = pcmParaFloat(pcm);
+  // o ruído sai ANTES de afinar (o afinador espalharia o ruído do fim por cima da última sílaba)
+  let a = tirarRuidoDasPontas(pcmParaFloat(pcm), taxa).audio;
   if (o.semitons) a = afinarTudo(a, { semitons: o.semitons, taxa }) as Float32Array;
   a = apararPontas(a, taxa);
   a = igualarVolume(a, taxa, o.lufs);

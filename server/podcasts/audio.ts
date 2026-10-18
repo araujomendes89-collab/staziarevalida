@@ -12,6 +12,7 @@
  * PCM 16 bits, 24 kHz, mono; no fim, as partes viram um MP3 (64 kbps, mono) com lamejs. Chaves só no servidor.
  */
 import type { ScriptLine } from "./script";
+import { tirarRuidoDoPcm } from "../tutor/ruidoTts";
 
 export const SAMPLE_RATE = 24_000;
 export const MAX_PART_CHARS = 1_400;
@@ -206,7 +207,8 @@ export async function synthesizePart(kind: TtsKind, lines: ScriptLine[], voices:
     if (!data) throw new VoiceError("O serviço de voz do Gemini não devolveu áudio. Tente de novo.", "gemini (voz) respondeu sem áudio.");
     const { pcm, rate } = toPcm(Buffer.from(data, "base64"));
     if (rate !== SAMPLE_RATE) throw new VoiceError("O áudio devolvido pelo serviço de voz do Gemini veio num formato inesperado. Tente de novo.", `taxa de amostragem inesperada: ${rate}.`);
-    return pcm;
+    // o Gemini TTS deixa um estalo no começo e ~170 ms de ruído no fim (18/10): saem por detecção, sem cortar fala
+    return tirarRuidoDoPcm(pcm, rate);
   }
   // OpenAI: uma fala por chamada, emendadas com pausa curta
   const key = realKey(env.OPENAI_API_KEY)!;

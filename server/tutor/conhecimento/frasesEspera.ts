@@ -74,16 +74,17 @@ export const FRASES_ESPERA: Readonly<Record<PersonaEspera, readonly string[]>> =
  * Gravações das frases na voz do personagem (endereço por frase, mesma ordem de FRASES_ESPERA), gravadas em 17/10/2026 depois da
  * aprovação do dono: Gemini TTS (gemini-3.8-flash-tts), Stazi = "Zubenelgenubi" JÁ afinado +3 semitons (o mesmo afinador da voz ao
  * vivo; o app toca sem afinar de novo), Stazia = "Kore". mp3 mono 24 kHz em public/novo-assets/tutor/espera (manifesto.json traz
- * texto, duração e volume de cada uma); `?v=` muda quando o arquivo muda (o navegador não fica com a gravação velha).
+ * texto, duração e volume de cada uma); `?v=` muda quando o arquivo muda (o navegador não fica com a gravação velha). 18/10: o ruído
+ * de ~170 ms que o Gemini TTS deixa no fim de todo arquivo (o "chiado") foi tirado (scripts/voz-teste/limpar-chiado-espera.ts).
  * Mudou o texto de uma frase? Grave de novo (scripts/voz-teste/gravar-frases-espera.ts): o teste confere texto x manifesto.
  * Sem gravação, a frase aparece só escrita.
  */
 const gravadas = (prefixo: string, versoes: readonly string[]) => versoes.map((v, i) => `/novo-assets/tutor/espera/${prefixo}-${i + 1}.mp3?v=${v}`);
 export const VINHETAS: Readonly<Partial<Record<PersonaEspera, readonly string[]>>> = {
-  durao: gravadas("stazi-durao", ["8d7d5dc0", "e1851865", "c6c1d1ed", "cd6cf96b", "2977addd", "fbd2417a", "5d2af30f", "c12dbd1c"]),
-  acolhedor: gravadas("stazi-tranquilo", ["729a3c27", "d37f5f87", "3147359d", "30598b41", "4924cf86", "bdfc8a60", "4ec3f43b", "990080a4"]),
-  durona: gravadas("stazia-durona", ["062b7bd7", "94c64fe4", "4f738174", "b148c753", "d7b0c9f1", "4957912a", "6190839c", "aa0def81"]),
-  tranquila: gravadas("stazia-tranquila", ["8f062b8f", "1bf0a8ee", "98354b87", "68e53778", "1036a443", "39ba1396", "6bcfded7", "eae36dea"]),
+  durao: gravadas("stazi-durao", ["fdf2e221", "69c7d651", "583b46e6", "b22b7c61", "d2560cec", "87581f60", "1b3b0197", "b9c18f80"]),
+  acolhedor: gravadas("stazi-tranquilo", ["2dc97de8", "ff42fad9", "92cb44c4", "154b41b1", "e47975ee", "af3a53de", "3f3eb9a5", "5b6db6cd"]),
+  durona: gravadas("stazia-durona", ["a6533cfc", "2fe6f6f7", "3c6f97e0", "34326dcd", "4aa356a8", "5c39e3d7", "2982f8b2", "da5deeb3"]),
+  tranquila: gravadas("stazia-tranquila", ["71896d10", "a61d2722", "b5969794", "33f83b2e", "0fc07c10", "987a1876", "5213945f", "25cb3850"]),
 };
 
 /** A personalidade (id do banco) para as frases. "direto" virou Tranquilo (migração 013590); desconhecida: Tranquila. */
