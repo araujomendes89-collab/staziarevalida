@@ -126,6 +126,13 @@ describe("2ª fase só para a equipe, com uma estação carregada", () => {
     expect(n).toBe(aguardando);
   });
 
+  it("carga de novo não apaga as imagens já ligadas (folha gerada pelo app em pressing_assets)", async () => {
+    await d.sql(`update public.checklist_station_contents set content = jsonb_set(content, '{pressing_assets}', '{"candidate_sheet": {"folha": "abc"}}') where station_id = 'inep2025-1-e07'`);
+    await d.db.exec(carga);
+    const [{ a }] = await d.sql(`select content -> 'pressing_assets' a from public.checklist_station_contents where station_id = 'inep2025-1-e07'`);
+    expect(a).toEqual({ candidate_sheet: { folha: "abc" } });
+  });
+
   it("estação já aprovada: a mesma carga não faz nada; conteúdo diferente é recusado", async () => {
     await d.sql(`update public.checklist_stations set medical_review = 'approved' where id = 'inep2025-1-e07'`);
     await d.db.exec(carga);

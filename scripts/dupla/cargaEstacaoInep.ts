@@ -8,7 +8,8 @@
  *     equipe)", app_dupla_stations e dupla_station_liberada). A aprovação médica fica para a tela Administração › Estações ›
  *     Conferir, com o revisor e o registro (…8000). Se a estação JÁ estiver aprovada e o conteúdo for diferente, recusa (mudar
  *     conteúdo aprovado pede nova revisão); igual, não faz nada;
- *   - grava o conteúdo completo em checklist_station_contents (o gatilho da 013420 marca o cartão como "conteúdo pronto");
+ *   - grava o conteúdo completo em checklist_station_contents (o gatilho da 013420 marca o cartão como "conteúdo pronto"),
+ *     sem apagar as imagens já ligadas (pressing_assets: a folha gerada pelo app, 013390, e os impressos);
  *   - cartões do catálogo SEM conteúdo que nasceram "conteúdo pronto" (as outras 9 da 2025/1 na 013420) passam a "Aguardando
  *     conteúdo", só visível à equipe; quando o conteúdo deles chegar, o gatilho os volta a "conteúdo pronto".
  * O conteúdo é o estacao-app.json como está, passando por normalizeStation/validateStation do app (soma 10, ids, números),
@@ -71,7 +72,7 @@ begin
   select s.medical_review into v_review from public.checklist_stations s where s.id = v_id;
   select c.content into v_atual from public.checklist_station_contents c where c.station_id = v_id;
   if v_review = 'approved' then
-    if v_atual is distinct from v_content then
+    if (v_atual - 'pressing_assets') is distinct from v_content then
       raise exception 'A estação % já está aprovada e o conteúdo é diferente: mudar conteúdo aprovado pede nova revisão. Nada foi gravado.', v_id;
     end if;
     return;
@@ -94,9 +95,16 @@ begin
         (excluded.name, excluded.topic, excluded.area, excluded.setting, excluded.taxonomy_path, excluded.goal,
          excluded.institution, excluded.year, excluded.styles, excluded.is_pro_only, excluded.max_score, excluded.duration_ms);
 
+  -- as imagens já ligadas à estação (pressing_assets: a folha gerada pelo app, 013390, e impressos) ficam como estão
   insert into public.checklist_station_contents (station_id, content) values (v_id, v_content)
-  on conflict (station_id) do update set content = excluded.content
-  where checklist_station_contents.content is distinct from excluded.content;
+  on conflict (station_id) do update set content =
+         case when jsonb_typeof(checklist_station_contents.content -> 'pressing_assets') = 'object'
+              then excluded.content || jsonb_build_object('pressing_assets', checklist_station_contents.content -> 'pressing_assets')
+              else excluded.content end
+  where checklist_station_contents.content is distinct from
+         case when jsonb_typeof(checklist_station_contents.content -> 'pressing_assets') = 'object'
+              then excluded.content || jsonb_build_object('pressing_assets', checklist_station_contents.content -> 'pressing_assets')
+              else excluded.content end;
 end
 ${tag};
 
