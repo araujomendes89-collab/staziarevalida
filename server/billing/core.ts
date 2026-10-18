@@ -9,7 +9,7 @@
 import type { ContentDb, Identity } from "../contentHub/infra";
 import { descricaoDaNota } from "./nota";
 import { brtDate, cleanDocument, endOfBrtDay, periodEndFor } from "./period";
-import { ProviderError, type PaymentProvider, type ProviderCharge, type ProviderInvoice, type ProviderNotice } from "./provider";
+import { ProviderError, type FailReason, type PaymentProvider, type ProviderCharge, type ProviderInvoice, type ProviderNotice } from "./provider";
 
 export class BillingError extends Error {
   constructor(message: string, public status = 400, public code?: string) {
@@ -61,6 +61,7 @@ type Pedido = {
   expira_em: string;
   provider_payment_id: string | null;
   provider_subscription_id: string | null;
+  erro?: string | null;
   repetido?: boolean;
   reaproveitado?: boolean;
 };
@@ -87,6 +88,17 @@ function dbError(e: unknown): BillingError | null {
 }
 
 const METODO = { pix: "pix", cartao: "card", debito: "debit" } as const;
+
+/**
+ * Por que o pagamento não passou, no texto que o aluno vê ("Pagamento não concluído"). O pedido guarda SÓ estes textos como erro de
+ * recusa; os outros erros (técnicos, do fornecedor) nunca vão à tela.
+ */
+const MOTIVO_FALHA: Record<FailReason | "recusado", string> = {
+  card_refused: "O cartão foi recusado pela instituição de pagamento.",
+  risk_rejected: "A instituição de pagamento não aprovou o pagamento na análise de segurança.",
+  recusado: "A instituição de pagamento recusou o pagamento.",
+};
+const MOTIVOS_DA_TELA = new Set(Object.values(MOTIVO_FALHA));
 const SAFE_IDEM = /^[A-Za-z0-9_-]{8,100}$/;
 
 export function createBilling(deps: BillingDeps) {
@@ -276,7 +288,12 @@ export function createBilling(deps: BillingDeps) {
   const pixDaCobrancaDoCartao = (p: Pedido) => p.motivo === "renovacao" && p.metodo === "pix";
 
   function publicOrder(p: Pedido) {
-    return { id: p.id, status: p.status, nome: p.nome, tipo: p.tipo, metodo: p.metodo, motivo: p.motivo, valor_centavos: p.valor_centavos, url: p.url, pix: p.pix ?? null, expira_em: p.expira_em, cancelavel: !pixDaCobrancaDoCartao(p) };
+    return {
+      id: p.id, status: p.status, nome: p.nome, tipo: p.tipo, codigo: p.codigo, ciclo: p.ciclo, metodo: p.metodo, motivo: p.motivo, valor_centavos: p.valor_centavos,
+      url: p.url, pix: p.pix ?? null, expira_em: p.expira_em, cancelavel: !pixDaCobrancaDoCartao(p),
+      // cartão recusado: o motivo em português para "Pagamento não concluído" (nunca o erro técnico)
+      motivo_falha: p.status === "falhou" && p.erro && MOTIVOS_DA_TELA.has(p.erro) ? p.erro : null,
+    };
   }
 
   /** Situação do pedido para a tela que espera o pagamento. Se o fornecedor já diz "pago", confere e processa na hora. */
@@ -553,7 +570,7 @@ export function createBilling(deps: BillingDeps) {
     const first = await svc<boolean>("ch_worker_billing_evento", { p_provider: p.name, p_event_id: n.eventId, p_type: n.event, p_payload: { kind: n.kind } });
     if (!first) return { handled: false, duplicate: true };
     let userId: string | null = null;
-    if (n.kind === "charge") userId = await processCharge(n.chargeId, n.subscriptionId, Boolean(n.failed));
+    if (n.kind === "charge") userId = await processCharge(n.chargeId, n.subscriptionId, n.failed ? (n.failReason ?? "recusado") : null);
     else if (n.kind === "invoice") userId = await processInvoice(n.invoiceId);
     else {
       const r = await svc<{ user_id: string | null }>("ch_worker_billing_assinatura_fim", { p_provider: p.name, p_subscription: n.subscriptionId });
@@ -563,12 +580,43 @@ export function createBilling(deps: BillingDeps) {
     return { handled: true };
   }
 
-  /** Relê a cobrança na API e aplica o que ela diz. Devolve o aluno (ou null se a cobrança não é nossa). */
-  async function processCharge(chargeId: string, hintSubscription: string | null, attemptFailed = false): Promise<string | null> {
+  /**
+   * Compra no cartão (ou débito) RECUSADA, no pedido ainda aberto desta cobrança: encerra o pedido como "falhou", para a tela que
+   * espera mostrar "Pagamento não concluído" na hora e liberar uma compra nova (um pedido aberto por vez). Antes, cancela no
+   * fornecedor a cobrança e a assinatura deste pedido (a página antiga não pode ser paga depois de uma compra nova: cobrança em dobro)
+   * e confere de novo: se o aluno acertou o cartão na mesma página nesse meio-tempo, vale o pagamento. Erro aqui só vai ao registro:
+   * o pedido segue aberto, e a próxima consulta da tela (ou o vencimento do pedido) tenta de novo. O aviso não falha por isso: o
+   * fornecedor pausa a fila de avisos depois de muitos erros seguidos.
+   * Só a cobrança do PRÓPRIO pedido aberto: a renovação automática do cartão (que acha o pedido antigo, já pago, pela referência) e o
+   * Pix (a renovação recusada que virou Pix é a mesma cobrança) nunca passam por aqui.
+   */
+  async function encerrarRecusado(pedido: Pedido | null, charge: ProviderCharge, motivo: string) {
+    if (!pedido || pedido.status !== "aberto" || pedido.provider_payment_id !== charge.id || pedido.metodo === "pix" || charge.method === "pix") return;
+    const p = need();
+    try {
+      // a cobrança primeiro: cancelada, a página antiga não aceita mais cartão; se já foi paga, vale o pagamento (e a assinatura fica)
+      await p.cancelCharge(charge.id);
+      const depois = await p.getCharge(charge.id);
+      if (depois?.status === "paid") {
+        await processCharge(depois.id, depois.subscriptionId);
+        return;
+      }
+      if (pedido.provider_subscription_id) await p.cancelSubscription(pedido.provider_subscription_id);
+      await svc("ch_worker_billing_pedido_encerrar", { p_pedido: pedido.id, p_status: "falhou", p_erro: motivo, p_user: null });
+    } catch (e) {
+      log(`[billing] pedido recusado ${pedido.id} não encerrado: ${(e as Error).message}`);
+    }
+  }
+
+  /**
+   * Relê a cobrança na API e aplica o que ela diz. Devolve o aluno (ou null se a cobrança não é nossa).
+   * failure = o aviso do fornecedor disse que a TENTATIVA falhou (a cobrança pode continuar "pendente" lá).
+   */
+  async function processCharge(chargeId: string, hintSubscription: string | null, failure: FailReason | "recusado" | null = null): Promise<string | null> {
     const p = need();
     const charge = await p.getCharge(chargeId);
     if (!charge) return null; // não existe na NOSSA conta: aviso de outra conta ou forjado
-    const found = await svc<{ pedido: Pedido | null; contrato: Contrato | null }>("ch_worker_billing_achar", {
+    const found = await svc<{ pedido: Pedido | null; contrato: Contrato | null; cobranca: { status: string } | null }>("ch_worker_billing_achar", {
       p_provider: p.name, p_payment: charge.id, p_subscription: charge.subscriptionId ?? hintSubscription, p_ref: charge.externalReference,
     });
     const pedido = found?.pedido ?? null;
@@ -598,7 +646,7 @@ export function createBilling(deps: BillingDeps) {
         await p.afterPaid(charge, descricaoDaNota({ tipo, codigo, ciclo, nome: pedido?.nome }))
           .catch((e) => log(`[billing] nota fiscal não pedida (${charge.id}): ${(e as Error).message}`));
       }
-    } else if (charge.status === "failed" || charge.status === "overdue" || (attemptFailed && charge.status === "pending")) {
+    } else if (charge.status === "failed" || charge.status === "overdue" || (failure && charge.status === "pending")) {
       // sem tolerância (dono, 17/10): a renovação que falhou pausa o acesso NO MESMO DIA, mesmo que o fornecedor ainda vá tentar
       // o cartão de novo; se ele conseguir depois, o aviso de pagamento libera de novo a partir da confirmação
       await svc("ch_worker_billing_falhou", {
@@ -607,6 +655,8 @@ export function createBilling(deps: BillingDeps) {
         p_motivo: charge.status === "overdue" ? "Venceu sem pagamento" : "Cartão recusado",
         p_venc_fim: tipo === "plano" && charge.dueDate ? endOfBrtDay(charge.dueDate).toISOString() : null,
       });
+      // compra no cartão recusada: a tela mostra "Pagamento não concluído" e o aluno tenta com outro cartão ou Pix
+      if (charge.status !== "overdue") await encerrarRecusado(pedido, charge, MOTIVO_FALHA[failure ?? "recusado"]);
     } else if (charge.status === "refunded" || charge.status === "partially_refunded") {
       // 013850: a devolução é classificada no banco (duplicada, parcial, período encerrado, conferir, única) e só a desistência / a
       // devolução da única cobrança do período (ou "encerrar" da equipe) corta o acesso; aí a renovação do cartão é cancelada lá
@@ -624,8 +674,16 @@ export function createBilling(deps: BillingDeps) {
         }
       }
       if (charge.status === "refunded" && p.afterRefunded) await p.afterRefunded(charge).catch((e) => log(`[billing] nota não cancelada (${charge.id}): ${(e as Error).message}`));
+    } else if (charge.status === "canceled" && pedido?.status === "aberto" && found?.cobranca?.status === "falhou" && pedido.metodo !== "pix") {
+      // recusada e já cancelada lá, mas a assinatura ou o banco ficaram para trás: termina o encerramento como "não concluído"
+      await encerrarRecusado(pedido, charge, MOTIVO_FALHA.recusado);
     } else if (charge.status === "canceled" && pedido?.status === "aberto") {
       await svc("ch_worker_billing_pedido_encerrar", { p_pedido: pedido.id, p_status: "cancelado", p_erro: "Cobrança removida no fornecedor", p_user: null });
+    } else if (charge.status === "pending" && found?.cobranca?.status === "falhou") {
+      // a recusa já foi registrada por um aviso, mas o pedido ficou aberto (ex.: o fornecedor fora do ar na hora de cancelar): a
+      // consulta da tela (ou o próximo aviso) encerra. O fornecedor sozinho não diz que o cartão foi recusado: a cobrança dele
+      // continua "pendente" (conferido no sandbox 17/10), por isso vale o que o aviso registrou.
+      await encerrarRecusado(pedido, charge, MOTIVO_FALHA.recusado);
     }
     return userId;
   }

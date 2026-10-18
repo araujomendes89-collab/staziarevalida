@@ -30,8 +30,8 @@ const TOKEN = "token-do-aviso-simulado-com-mais-de-32-caracteres";
 const CRON = "segredo-da-tarefa-de-teste";
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ajustes-cobranca-"));
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const [DUPLO, PARCIAL, UNICA, ANTIGA, CONFERIR, EXTRA, ADMIN, EDITOR, MANTER, ENCERRAR, RECUSA, ASSUME, NOTA, GASTAO, DUPLO_CARTAO] = [41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55].map(id);
-const TODOS = [DUPLO, PARCIAL, UNICA, ANTIGA, CONFERIR, EXTRA, ADMIN, EDITOR, MANTER, ENCERRAR, RECUSA, ASSUME, NOTA, GASTAO, DUPLO_CARTAO];
+const [DUPLO, PARCIAL, UNICA, ANTIGA, CONFERIR, EXTRA, ADMIN, EDITOR, MANTER, ENCERRAR, RECUSA, ASSUME, NOTA, GASTAO, DUPLO_CARTAO, DESISTE] = [41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56].map(id);
+const TODOS = [DUPLO, PARCIAL, UNICA, ANTIGA, CONFERIR, EXTRA, ADMIN, EDITOR, MANTER, ENCERRAR, RECUSA, ASSUME, NOTA, GASTAO, DUPLO_CARTAO, DESISTE];
 const MIGRACAO = path.resolve(__dirname, "../../supabase/migrations/20261003013850_ajustes_cobranca.sql");
 const DESFAZER = path.resolve(__dirname, "../../supabase/desfazer/20261003013850_ajustes_cobranca.desfazer.sql");
 const CONFERIR_SQL = path.resolve(__dirname, "../../supabase/conferir/ajustes-cobranca.sql");
@@ -48,6 +48,8 @@ const charges = new Map<string, ProviderCharge & { reference: string }>();
 const invoices = new Map<string, ProviderInvoice>();
 const subs = new Map<string, { active: boolean }>();
 const recusar = new Set<string>();
+/** Devoluções que o fornecedor segura (ex.: "autorização de evento crítico" do Asaas): o pedido fica "solicitado". */
+const segurar = new Set<string>();
 const log: string[] = [];
 let seq = 0;
 const fake: PaymentProvider = {
@@ -82,6 +84,10 @@ const fake: PaymentProvider = {
   },
   async refund(cid, amount) {
     if (recusar.has(cid)) throw new ProviderError("Asaas 400: invalid_action - Esta cobrança só pode ser estornada parcialmente no próximo dia", 400, "invalid_action");
+    if (segurar.has(cid)) {
+      log.push(`devolucao-segura:${cid}`);
+      return { status: "pending" };
+    }
     const c = charges.get(cid)!;
     c.refundedCents += amount ?? c.amountCents - c.refundedCents;
     c.status = c.refundedCents >= c.amountCents ? "refunded" : "partially_refunded";
@@ -299,6 +305,33 @@ describe("devolução feita no painel do Asaas", () => {
     await devolverNoPainel(c);
     expect((await q1(`select cancelado_em from public.carteira_extras where referencia = $1`, [`asaas:${c}`])).cancelado_em).not.toBeNull();
     expect((await devolucoesPainel(EXTRA))[0].classificacao).toBe("extra_total");
+  });
+});
+
+describe("desistência já registrada (teste da jornada 17/10)", () => {
+  it("o botão some (a compra sai da lista do que dá para devolver), a 2ª é recusada e o histórico diz em andamento / concluída", async () => {
+    const cid = await comprarPago(DESISTE, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "pix" });
+    const x = await cobranca(cid);
+    const antes = (await api(DESISTE, "/overview")).body.devolucoes;
+    expect(antes.map((d: any) => [d.cobranca_id, d.regra])).toEqual([[x.id, "integral_7_dias"]]);
+    segurar.add(cid);
+    const r = await api(DESISTE, "/refunds", { cobranca_id: x.id });
+    expect(r.body.status).toBe("solicitado");
+    // o Asaas segurou a devolução: o acesso continua, mas "Desistir da compra" não aparece de novo
+    expect((await api(DESISTE, "/overview")).body.devolucoes).toEqual([]);
+    expect((await api(DESISTE, "/refunds", { cobranca_id: x.id })).body.code).toBe("devolucao_em_andamento");
+    const h1 = await comoUsuario<any>(DESISTE, "app_billing_historico");
+    expect(h1.pagamentos.find((p: any) => p.id === x.id).devolucao).toEqual({ status: "solicitado", desistencia: true, valor_centavos: 9990 });
+    // o Asaas libera e confirma a devolução
+    segurar.delete(cid);
+    await devolverNoPainel(cid);
+    const h2 = await comoUsuario<any>(DESISTE, "app_billing_historico");
+    expect(h2.pagamentos.find((p: any) => p.id === x.id)).toMatchObject({ status: "devolvida", devolucao: { status: "feito", desistencia: true } });
+    expect((await api(DESISTE, "/overview")).body.devolucoes).toEqual([]);
+    // devolução que FALHOU volta para a lista (o aluno pode pedir de novo)
+    await dev.db.query(`update public.billing_reembolsos set status = 'falhou' where cobranca_id = $1`, [x.id]);
+    await dev.db.query(`update public.billing_cobrancas set status = 'paga', devolvido_centavos = 0 where id = $1`, [x.id]);
+    expect((await api(DESISTE, "/overview")).body.devolucoes.map((d: any) => d.cobranca_id)).toEqual([x.id]);
   });
 });
 

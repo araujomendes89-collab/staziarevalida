@@ -194,7 +194,7 @@ describe("compra no cartão", () => {
     const aba: any = { opener: 1, document: { title: "", body: { innerHTML: "" } }, location: { href: "" }, close: vi.fn() };
     const abrir = vi.fn(() => aba);
     (window as any).open = abrir;
-    mockFetch({ "/overview": OV, "/checkout": { id: "33333333-3333-4333-8333-333333333333", status: "aberto", nome: "PRO trimestral", tipo: "plano", metodo: "cartao", valor_centavos: 26970, url: "https://sandbox.asaas.com/i/xyz" }, "/orders/33333333-3333-4333-8333-333333333333": { id: "33333333-3333-4333-8333-333333333333", status: "falhou", tipo: "plano", metodo: "cartao", valor_centavos: 26970 } });
+    mockFetch({ "/overview": OV, "/checkout": { id: "33333333-3333-4333-8333-333333333333", status: "aberto", nome: "PRO trimestral", tipo: "plano", metodo: "cartao", valor_centavos: 26970, url: "https://sandbox.asaas.com/i/xyz" }, "/orders/33333333-3333-4333-8333-333333333333": { id: "33333333-3333-4333-8333-333333333333", status: "falhou", tipo: "plano", codigo: "pro", ciclo: "trimestral", metodo: "cartao", valor_centavos: 26970, motivo_falha: "O cartão foi recusado pela instituição de pagamento." } });
     render(<BillingSection go={vi.fn()} />);
     const pro = await screen.findByTestId("cobranca-plano-pro");
     expect(pro.textContent).toContain("economia de R$ 30,00");
@@ -218,8 +218,65 @@ describe("compra no cartão", () => {
     await act(async () => {
       window.dispatchEvent(new Event("focus"));
     });
-    await screen.findByTestId("cobranca-falhou");
+    const falhou = await screen.findByTestId("cobranca-falhou");
+    expect(falhou.textContent).toContain("Pagamento não concluído");
+    expect(falhou.textContent).toContain("O cartão foi recusado pela instituição de pagamento.");
+    expect(falhou.textContent).toMatch(/não foi concluído/);
+    expect(screen.queryByText(/Esperando a confirmação/)).toBeNull();
+    // tentar com outro cartão: a MESMA compra (PRO trimestral), já no cartão
+    fireEvent.click(screen.getByRole("button", { name: "Tentar com outro cartão" }));
+    expect(screen.queryByTestId("cobranca-falhou")).toBeNull();
+    const compra = await screen.findByTestId("cobranca-compra");
+    expect(compra.textContent).toContain("PRO trimestral · R$ 269,70");
+    expect(screen.getByRole("radio", { name: /Cartão de crédito/ }).getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("cartão recusado, a tela só espera (sem voltar à aba): em 5 s mostra 'não concluído' e 'Pagar por Pix' abre a mesma compra no Pix", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const PED = "44444444-4444-4444-8444-444444444444";
+      const aberto = { id: PED, status: "aberto", nome: "PRO trimestral", tipo: "plano", codigo: "pro", ciclo: "trimestral", metodo: "cartao", motivo: "compra", valor_centavos: 26970, url: "https://sandbox.asaas.com/i/abc", expira_em: new Date(Date.now() + 3600e3).toISOString() };
+      let recusou = false;
+      globalThis.fetch = vi.fn(async (url: any) => {
+        const u = String(url);
+        const v = u.endsWith("/overview")
+          ? { ...OV, pedidos_abertos: recusou ? [] : [aberto] }
+          : u.endsWith(`/orders/${PED}`)
+            ? recusou
+              ? { ...aberto, status: "falhou", motivo_falha: "O cartão foi recusado pela instituição de pagamento." }
+              : aberto
+            : {};
+        return new Response(JSON.stringify(v), { status: 200, headers: { "Content-Type": "application/json" } });
+      }) as any;
+      render(<BillingSection go={vi.fn()} />);
+      await screen.findByTestId("cobranca-aberta");
+      expect(screen.getByText(/Esperando a confirmação/)).toBeTruthy();
+      expect(screen.getByText(/Se o cartão for recusado, esta tela avisa/)).toBeTruthy();
+      // o aviso de recusa do Asaas chegou ao servidor, que encerrou o pedido; a tela confere sozinha de 5 em 5 s
+      recusou = true;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5100);
+      });
+      const falhou = await screen.findByTestId("cobranca-falhou");
+      expect(falhou.textContent).toContain("O cartão foi recusado pela instituição de pagamento.");
+      expect(screen.queryByTestId("cobranca-aberta")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Pagar por Pix" }));
+      const compra = await screen.findByTestId("cobranca-compra");
+      expect(compra.textContent).toContain("PRO trimestral · R$ 269,70");
+      expect(screen.getByRole("radio", { name: /^Pix/ }).getAttribute("aria-checked")).toBe("true");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("outros finais (tempo acabou) continuam com 'Tentar de novo'", async () => {
+    const PED = "55555555-5555-4555-8555-555555555555";
+    mockFetch({ "/overview": OV, [`/orders/${PED}`]: { id: PED, status: "expirado", tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "cartao", valor_centavos: 9990 } });
+    render(<BillingSection go={vi.fn()} pedidoInicial={PED} />);
+    const fim = await screen.findByTestId("cobranca-falhou");
+    expect(fim.textContent).toContain("O tempo para pagar acabou");
     expect(screen.getByRole("button", { name: "Tentar de novo" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Pagar por Pix" })).toBeNull();
   });
 });
 

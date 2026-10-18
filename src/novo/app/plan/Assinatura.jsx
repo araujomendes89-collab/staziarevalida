@@ -97,8 +97,13 @@ export function AssinaturaSection({ go, Cabecalho }) {
   const pagamentos = hist?.pagamentos ?? [];
   const contratoUrl = hist?.contrato_url ?? ov.contrato_doc?.url ?? "/novo/termos";
   // Contrato 3.0: "Desistir da compra" nos 7 dias (CDC art. 49) = devolução integral do plano, pela mesma forma de pagamento
-  const desistencia = (ov.devolucoes ?? []).find((d) => d.tipo === "plano" && d.regra === "integral_7_dias") ?? null;
-  const outrasDevolucoes = (ov.devolucoes ?? []).filter((d) => d !== desistencia);
+  // devolução já pedida (em andamento, com a equipe ou feita) para uma compra: o botão some e a tela diz como está (o servidor também
+  // tira a compra da lista; isto cobre a tela que ainda não recarregou)
+  const registradas = pagamentos.filter((x) => x.devolucao && x.devolucao.status !== "falhou");
+  const jaPedida = new Set(registradas.map((x) => x.id));
+  const podeDevolver = (ov.devolucoes ?? []).filter((d) => !jaPedida.has(d.cobranca_id));
+  const desistencia = podeDevolver.find((d) => d.tipo === "plano" && d.regra === "integral_7_dias") ?? null;
+  const outrasDevolucoes = podeDevolver.filter((d) => d !== desistencia);
 
   const agir = async (fn) => {
     setBusy(true);
@@ -311,6 +316,28 @@ export function AssinaturaSection({ go, Cabecalho }) {
         <p className="pn-note" role="status">
           {msg}
         </p>
+      )}
+
+      {registradas.length > 0 && (
+        <ul className="bl-lista" data-testid="assinatura-devolucao-registrada">
+          {registradas.map((x) => {
+            const feita = x.devolucao.status === "feito" || x.status === "devolvida" || x.status === "devolvida_parcial";
+            return (
+              <li key={x.id} className="ev-panel bl-extra">
+                <span>
+                  <b>
+                    {x.devolucao.desistencia ? "Desistência registrada" : "Devolução registrada"} – {feita ? "devolução concluída" : "devolução em andamento"}
+                  </b>
+                  <br />
+                  <small>
+                    {x.tipo === "plano" ? `${String(x.codigo).toUpperCase()} ${x.ciclo}` : `Extra ${x.codigo}`} · {brl(x.devolucao.valor_centavos)}
+                    {feita ? " devolvidos pela mesma forma de pagamento." : " voltam pela mesma forma de pagamento (no Pix, pode levar alguns dias)."}
+                  </small>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       )}
 
       {outrasDevolucoes.length > 0 && (

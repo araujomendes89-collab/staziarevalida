@@ -70,7 +70,9 @@ describe("aviso (webhook)", () => {
     expect(fim).toEqual({ kind: "subscription_ended", eventId: "evt_2", event: "SUBSCRIPTION_DELETED", subscriptionId: "sub_kcjrcccayp7mfz68" });
     expect(p.parseNotice(body({ id: "evt_3", event: "INVOICE_CREATED" }), { "asaas-access-token": TOKEN }).kind).toBe("ignored");
     const recusa = p.parseNotice(body({ id: "evt_4", event: "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED", payment: { id: "pay_x", subscription: "sub_y" } }), { "asaas-access-token": TOKEN });
-    expect(recusa).toMatchObject({ kind: "charge", chargeId: "pay_x", subscriptionId: "sub_y", failed: true });
+    expect(recusa).toMatchObject({ kind: "charge", chargeId: "pay_x", subscriptionId: "sub_y", failed: true, failReason: "card_refused" });
+    const risco = p.parseNotice(body({ id: "evt_5", event: "PAYMENT_REPROVED_BY_RISK_ANALYSIS", payment: { id: "pay_x" } }), { "asaas-access-token": TOKEN });
+    expect(risco).toMatchObject({ kind: "charge", chargeId: "pay_x", failed: true, failReason: "risk_rejected" });
     expect(() => p.parseNotice(Buffer.from("{nao é json"), { "asaas-access-token": TOKEN })).toThrow(BillingSignatureError);
   });
 });

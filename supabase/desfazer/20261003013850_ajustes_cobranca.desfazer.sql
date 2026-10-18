@@ -1,5 +1,5 @@
 -- Desfaz a 20261003013850_ajustes_cobranca.sql (ramo ajustes-cobranca). Devolve as versões ANTERIORES de ch_worker_billing_devolvido
--- (013700) e app_billing_historico (013760) e apaga o que a 013850 criou. ATENÇÃO: apaga os alertas ao dono já gravados, a nota fiscal
+-- e ch_worker_billing_devolucoes (013700) e app_billing_historico (013760) e apaga o que a 013850 criou. ATENÇÃO: apaga os alertas ao dono já gravados, a nota fiscal
 -- guardada em cada pagamento (o PDF continua no Asaas) e o registro de origem/motivo/quem fez das devoluções (as devoluções continuam).
 -- Pode ser colado de novo.
 
@@ -41,6 +41,16 @@ begin
 end
 $$;
 revoke execute on function public.ch_worker_billing_devolvido(text, text, integer) from public, anon, authenticated;
+
+create or replace function public.ch_worker_billing_devolucoes(p_user uuid) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select coalesce(jsonb_agg(d order by (d ->> 'pago_em') desc), '[]'::jsonb)
+  from (select public.billing_devolucao_calculo(x.id) d from public.billing_cobrancas x
+        where x.user_id = p_user and x.status = 'paga' and x.devolvido_centavos = 0) s
+  where d is not null and coalesce((d ->> 'valor_centavos')::int, 0) > 0
+$$;
+revoke execute on function public.ch_worker_billing_devolucoes(uuid) from public, anon, authenticated;
 
 create or replace function public.app_billing_historico() returns jsonb
   language plpgsql stable security definer set search_path = ''

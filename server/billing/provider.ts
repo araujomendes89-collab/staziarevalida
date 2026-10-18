@@ -36,10 +36,16 @@ export interface ProviderCharge {
   receiptUrl?: string | null;
 }
 
+/** Por que a tentativa de pagamento falhou. */
+export type FailReason = "card_refused" | "risk_rejected";
+
 /** Aviso do fornecedor já conferido (token/assinatura). Não traz decisão: o núcleo relê a cobrança antes de agir. */
 export type ProviderNotice =
-  /** failed = o fornecedor avisou que a TENTATIVA falhou (ex.: cartão recusado) mesmo que a cobrança continue "pendente" para nova tentativa. */
-  | { kind: "charge"; eventId: string; event: string; chargeId: string; subscriptionId: string | null; failed?: boolean }
+  /**
+   * failed = o fornecedor avisou que a TENTATIVA falhou (ex.: cartão recusado) mesmo que a cobrança continue "pendente" para nova
+   * tentativa; failReason diz por quê (cartão recusado ou reprovado na análise de segurança), para a tela explicar ao aluno.
+   */
+  | { kind: "charge"; eventId: string; event: string; chargeId: string; subscriptionId: string | null; failed?: boolean; failReason?: FailReason }
   | { kind: "subscription_ended"; eventId: string; event: string; subscriptionId: string }
   /** Nota fiscal mudou (emitida, cancelada, erro). O núcleo relê a nota na API antes de guardar ou mandar e-mail. */
   | { kind: "invoice"; eventId: string; event: string; invoiceId: string }
