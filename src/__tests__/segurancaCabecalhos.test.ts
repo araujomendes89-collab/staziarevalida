@@ -72,4 +72,23 @@ describe("cabeçalhos de segurança do vercel.json", () => {
     expect(fontes[0]).toBe("/(.*)");
     if (fontes.includes("/")) expect(fontes.indexOf("/")).toBeGreaterThan(fontes.indexOf("/(.*)"));
   });
+
+  it("Home v7: a página inicial cabe na CSP rígida da raiz (nada de fora, nada inline, fontes e imagens locais)", () => {
+    const raiz = rules.find((r) => r.source === "/");
+    const csp = raiz?.headers.find((h) => h.key === "Content-Security-Policy")?.value ?? "";
+    expect(csp).toMatch(/default-src 'self'/);
+    expect(csp).toMatch(/style-src 'self'/);
+    expect(csp).toMatch(/font-src 'self'/);
+    expect(csp).toMatch(/img-src 'self' data:/);
+    expect(csp).toMatch(/form-action 'self'/);
+    const html = readFileSync("index.html", "utf8");
+    expect(html).not.toMatch(/\sstyle="|<style[\s>]|fonts\.googleapis|fonts\.gstatic|support\.js|vendor\/react/);
+    for (const m of html.matchAll(/<(?:script|img|source|link)\b[^>]*\s(?:src|srcset|href)="([^"]+)"/g)) {
+      if (/rel="canonical"/.test(m[0])) continue;
+      expect(m[1], m[0]).toMatch(/^\//);
+    }
+    expect([...html.matchAll(/<script\b(?![^>]*\bsrc=)(?![^>]*application\/ld\+json)[^>]*>/g)]).toHaveLength(0);
+    const css = readFileSync("src/inicio/inicio.css", "utf8");
+    expect(css).not.toMatch(/@import|https?:\/\//);
+  });
 });

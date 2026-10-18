@@ -1,4 +1,9 @@
-# Página inicial pública (app.staziamed.com.br/)
+# Página inicial pública (www.staziamed.com.br/)
+
+**18/10: Home v7** (desenho do dono "Home v7", computador 1440, tablet 768 e celular 390), ramo `site-novo`. Comparação com o desenho em
+`/Volumes/StaziaMed/.tmp-aulas/site-novo/comparar/comparar.html`. As telas T1 a T4 são capturas reais do app (dados de exemplo) em
+`src/inicio/img/telas/`; a Arena (T6) segue ilustrada até o dono escolher. A lista de interesse da 2ª fase entra no encaixe
+`#lista-interesse` (formulário do ramo `lista-interesse`). Links do app vão direto para `https://app.staziamed.com.br/novo/...`.
 
 Ramo `pagina-inicial`. Nada disto está no ar. Publicar só com ordem do dono (push na `main`).
 
@@ -10,7 +15,7 @@ Ramo `pagina-inicial`. Nada disto está no ar. Publicar só com ordem do dono (p
 | `src/inicio/inicio.css` | Estilo da página (visual do desenho do dono; tokens do app copiados; não importa o design system, que puxa fonte do Google). Do site do grupo (stazia.com.br) vieram só comportamentos (decisão do dono, 17/10): topo que gruda e ganha sombra ao rolar com barra de progresso, título com cursor digitando, passos do ciclo que acendem. |
 | `src/inicio/inicio.js` | Abas (fases, franquia, ranking), passos do ciclo que acendem ao rolar ou tocar (teclado e leitor de tela), título letra a letra, topo e barra de rolagem, menu do celular, volta dos links de e-mail para `/novo`. Com "menos movimento" nada anima. |
 | `src/inicio/fonts/` | Plus Jakarta Sans (OFL). A Barlow Condensed vem de `src/novo/app/auth/fonts/`. |
-| `src/inicio/img/` | Lontra em WebP e AVIF (de braços cruzados: 320, 480 e 640 px; acenando: 220 e 440 px), tirada dos sprites aprovados do ramo `tutor-personagens`, e a logo do topo em WebP (336 e 504 px; a PNG fica de reserva). |
+| `src/inicio/img/` | Logo, lontra de braços cruzados e símbolo S (azul e branco) em AVIF e WebP, 1x e 2x, nos tamanhos do desenho; `telas/` = capturas reais do app (T1 Início, T2 questão, T3 desempenho, T4 Plano de Hoje) para celular, tablet e computador. |
 | `src/inicio/chave.js` | As duas chaves (`PAGINA_INICIAL` e `PAGINA_INICIAL_TEXTOS`), lidas no build pelo `vite.config.ts`. |
 | `src/inicio/ir-para-o-app.js` | Com a página desligada, `/` leva para `/novo` com o resto do endereço. |
 | `public/brand/compartilhar-inicio.jpg` | Imagem de compartilhamento (WhatsApp, redes, Google), 1200×630, com a logo e a lontra. Refazer: `node scripts/inicio/imagem-compartilhar.cjs`. |

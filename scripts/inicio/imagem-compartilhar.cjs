@@ -20,7 +20,7 @@ h1{font-family:BC,sans-serif;font-weight:700;font-size:92px;line-height:.98;marg
 p{font-size:30px;line-height:1.35;font-weight:600;color:#CFE4FF;margin:0}.lontra{position:absolute;right:70px;bottom:0;height:590px}
 </style></head><body><div class="txt"><img class="logo" src="${url("public/brand/horizontal-escuro-1280w.png")}" alt="">
 <h1>Estude, treine<br>e dispute.</h1><p>Preparação para o Revalida INEP<br>e o ENAMED</p></div>
-<img class="lontra" src="${url("src/inicio/img/lontra-bracos-cruzados-640.webp")}" alt=""></body></html>`;
+<img class="lontra" src="${url("src/inicio/img/lontra-bracos-cruzados-460w.webp")}" alt=""></body></html>`;
 
 (async () => {
   const pasta = fs.mkdtempSync(path.join(raiz, ".imagem-compartilhar-"));

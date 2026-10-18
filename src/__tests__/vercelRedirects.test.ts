@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import config from "../../vercel.json";
 
@@ -52,6 +53,17 @@ describe("redirecionamentos do vercel.json", () => {
     expect(porHost.every((r) => r.permanent === false)).toBe(true);
     // a raiz do www continua sem regra: mostra a página inicial
     expect(porHost.some((r) => r.source === "/" && r.has?.some((h) => h.value === "www.staziamed.com.br"))).toBe(false);
+  });
+
+  it("Home v7: os links da página inicial (www) para o app vão direto para app.staziamed.com.br/novo, sem passar pelo redirecionamento do www", () => {
+    const html = readFileSync("index.html", "utf8");
+    const hrefs = [...html.matchAll(/<a\b[^>]*\shref="([^"]+)"/g)].map((m) => m[1]);
+    const doApp = hrefs.filter((h) => /\/novo(\/|$|")/.test(h + '"'));
+    expect(doApp.length).toBeGreaterThanOrEqual(10);
+    for (const h of doApp) expect(h, h).toMatch(/^https:\/\/app\.staziamed\.com\.br\/novo(\/(criar-conta|entrar|termos|privacidade|regulamento|planos))?$/);
+    // e quem digitar www.staziamed.com.br/novo/... continua indo para o app
+    const regra = porHost.find((r) => r.source === "/novo/:path*" && r.has?.some((x) => x.value === "www.staziamed.com.br"));
+    expect(regra?.destination).toBe("https://app.staziamed.com.br/novo/:path*");
   });
 
   it("endereço que não existe não cai mais no index.html (o app antigo): a Vercel responde 404.html", () => {

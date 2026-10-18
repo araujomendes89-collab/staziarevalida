@@ -5,4 +5,4 @@ Allow: /novo/privacidade
 Allow: /novo/regulamento
 Disallow: /novo
 Disallow: /api
-Sitemap: https://app.staziamed.com.br/sitemap.xml
+Sitemap: https://www.staziamed.com.br/sitemap.xml

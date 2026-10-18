@@ -1,5 +1,6 @@
-// Página inicial: abas (fases, franquia, ranking), linha de metrô do ciclo, título com cursor, topo que ganha fundo
-// e barra de rolagem, menu do celular. Sem React, sem biblioteca, sem cookie, sem nada de fora.
+// Página inicial (Home v7): abas (telas do app, grupos de ferramentas, mensal/trimestral), linha de metrô do ciclo, título
+// digitado com cursor, demonstração do Tutor, topo que ganha sombra e barra de leitura, menu do celular.
+// Sem React, sem biblioteca, sem cookie, sem nada de fora.
 // Movimento só com transform e opacity; com "menos movimento" nada anima (o CSS também trava tudo).
 // O CSS entra pelo <link> do HTML (sem piscar). Estilo só por CSSOM (style.setProperty), que a CSP permite.
 
@@ -173,20 +174,29 @@ export function ligarMetro(raiz, win = window, opcoes = {}) {
   return { medir, aoRolar, escolher, get ativo() { return ativo; } };
 }
 
-/** Título principal: a parte em verde-água aparece letra por letra, com cursor. Leitor de tela recebe o texto inteiro. */
+/** Título principal: a segunda frase aparece letra por letra, com cursor (como no desenho: palavras sem quebrar no meio).
+ *  Leitor de tela recebe o texto inteiro. */
 export function digitarTitulo(doc, reduzido) {
   const alvo = doc.querySelector("[data-digita]");
   if (!alvo || reduzido) return;
   const texto = alvo.textContent || "";
   const visual = doc.createElement("span");
   visual.setAttribute("aria-hidden", "true");
-  Array.from(texto).forEach((ch, i) => {
-    const s = doc.createElement("span");
-    s.className = "letra";
-    s.textContent = ch;
-    s.style.setProperty("--i", String(i));
-    visual.appendChild(s);
-  });
+  let i = 0;
+  for (const palavra of texto.split(" ")) {
+    const grupo = doc.createElement("span");
+    grupo.className = "palavra";
+    for (const ch of Array.from(palavra)) {
+      const s = doc.createElement("span");
+      s.className = "letra";
+      s.textContent = ch;
+      s.style.setProperty("--i", String(i));
+      grupo.appendChild(s);
+      i += 1;
+    }
+    i += 1; // o espaço também conta tempo
+    visual.appendChild(grupo);
+  }
   const leitor = doc.createElement("span");
   leitor.className = "so-leitor";
   leitor.textContent = texto;
@@ -196,6 +206,64 @@ export function digitarTitulo(doc, reduzido) {
     titulo.classList.add("digitando");
     titulo.style.setProperty("--fim", `${texto.length * 55 + 350}ms`);
   }
+}
+
+/**
+ * Demonstração do Tutor: começa com a primeira fala; "Reproduzir" mostra as outras a cada 1,5 s;
+ * "Mostrar a conversa toda" mostra tudo. Respostas escritas antes, sem cadastro e sem IA. Sem JavaScript a conversa aparece inteira.
+ */
+export function ligarConversa(doc, win = window, reduzido = false) {
+  const caixa = doc.getElementById("conversa-falas");
+  const tocar = doc.getElementById("conversa-tocar");
+  const tudo = doc.getElementById("conversa-tudo");
+  const rotulo = doc.getElementById("conversa-tocar-rotulo");
+  if (!caixa || !tocar || !tudo) return null;
+  const falas = Array.from(caixa.querySelectorAll(".fala"));
+  let relogio = 0;
+  let rodando = false;
+  const mostrar = (n, animar) => {
+    falas.forEach((f, k) => {
+      const visivel = k < n;
+      const era = !f.classList.contains("fala--espera");
+      f.classList.toggle("fala--espera", !visivel);
+      f.classList.toggle("fala--chega", visivel && !era && animar && !reduzido);
+    });
+  };
+  const parar = () => { win.clearTimeout(relogio); relogio = 0; };
+  const atualizarRotulo = (n) => {
+    if (!rotulo) return;
+    rotulo.textContent = rodando ? "Reproduzindo…" : n >= falas.length ? "Reproduzir de novo" : "Reproduzir demonstração";
+  };
+  const avancar = (n) => {
+    if (n > falas.length) { rodando = false; atualizarRotulo(falas.length); return; }
+    relogio = win.setTimeout(() => { mostrar(n, true); avancar(n + 1); }, 1500);
+  };
+  tocar.addEventListener("click", () => {
+    parar();
+    rodando = true;
+    mostrar(1, false);
+    atualizarRotulo(1);
+    avancar(2);
+  });
+  tudo.addEventListener("click", () => {
+    parar();
+    rodando = false;
+    mostrar(falas.length, false);
+    atualizarRotulo(falas.length);
+  });
+  mostrar(1, false);
+  return { get visiveis() { return falas.filter((f) => !f.classList.contains("fala--espera")).length; } };
+}
+
+/** Botão que abre um bloco logo abaixo (lista de interesse da 2ª fase). */
+export function ligarAbre(botao, doc = botao.ownerDocument) {
+  const bloco = doc.getElementById(botao.getAttribute("aria-controls"));
+  if (!bloco) return;
+  botao.addEventListener("click", () => {
+    const abrir = botao.getAttribute("aria-expanded") !== "true";
+    botao.setAttribute("aria-expanded", String(abrir));
+    bloco.hidden = !abrir;
+  });
 }
 
 export function ligarMenu(doc) {
@@ -245,7 +313,7 @@ export function ajustarEntrar(doc, armazenamento) {
       if (/^sb-.+-auth-token$/.test(k)) { temSessao = true; break; }
     }
     if (!temSessao) return;
-    for (const a of doc.querySelectorAll("[data-entrar]")) { a.textContent = "Ir para o app"; a.setAttribute("href", "/novo"); }
+    for (const a of doc.querySelectorAll("[data-entrar]")) { a.textContent = "Ir para o app"; a.setAttribute("href", "https://app.staziamed.com.br/novo"); }
   } catch {
     /* armazenamento bloqueado: fica "Entrar" */
   }
@@ -258,6 +326,8 @@ export function iniciar(doc = document, win = window) {
   aplicarPreviaLocal(doc, win.location);
   for (const lista of doc.querySelectorAll('[role="tablist"]')) ligarAbas(lista);
   ligarMenu(doc);
+  const interesse = doc.getElementById("botao-interesse");
+  if (interesse) ligarAbre(interesse, doc);
   let armazenamento = null;
   try { armazenamento = win.localStorage; } catch { armazenamento = null; }
   if (armazenamento) ajustarEntrar(doc, armazenamento);
@@ -265,6 +335,7 @@ export function iniciar(doc = document, win = window) {
   const reduzido = Boolean(win.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
   const barraPorScript = !reduzido && !(win.CSS?.supports?.("animation-timeline: scroll()"));
   digitarTitulo(doc, reduzido);
+  ligarConversa(doc, win, reduzido);
   const raizMetro = doc.querySelector("[data-metro]");
   const metro = raizMetro ? ligarMetro(raizMetro, win, { reduzido }) : null;
 

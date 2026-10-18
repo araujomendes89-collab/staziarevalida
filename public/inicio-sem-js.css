@@ -1,10 +1,14 @@
-/* Página inicial sem JavaScript: mostra todo o conteúdo das abas e o menu do celular (o texto inteiro fica legível).
-   Os 5 passos do ciclo já saem todos visíveis, com a linha acesa e parada (inicio.css, sem a classe .js). */
+/* Página inicial sem JavaScript: mostra o conteúdo de todas as abas (telas, ferramentas e preços), a conversa inteira do Tutor
+   e o menu do celular (o texto inteiro fica legível). Os 5 passos do ciclo saem visíveis, com a linha acesa e parada. */
 [role="tabpanel"][hidden] { display: block !important; margin-top: 16px; }
 [role="tablist"] { display: none !important; }
+.conversa__botoes { display: none !important; }
 @media (max-width: 1080px) {
   /* o menu fica aberto dentro do topo; por isso o topo deixa de grudar no alto */
   .topo { position: relative !important; }
-  .topo__painel[hidden] { display: block !important; border-top: 1px solid #DCE1E8; }
+  .topo__painel[hidden] { display: block !important; position: static; box-shadow: none; }
   .topo__menu { display: none !important; }
 }
+/* lista de interesse da 2ª fase: sem JavaScript o bloco já aparece aberto e o botão some */
+#lista-interesse[hidden] { display: block !important; }
+#botao-interesse { display: none !important; }
