@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { aplicarPreviaLocal, ajustarEntrar, atualizarTopo, destinoDoLinkDeEmail, digitarTitulo, ligarAbas, ligarMenu, ligarMetro } from "../inicio/inicio.js";
+import { aplicarPreviaLocal, ajustarEntrar, atualizarTopo, destinoDoLinkDeEmail, digitarTitulo, ligarAbas, ligarAbre, ligarConversa, ligarMenu, ligarMetro } from "../inicio/inicio.js";
 import { telaInicialPeloEndereco } from "../novo/app/AuthScreens.jsx";
 import { HTML_DESLIGADA, LIBERACOES, aplicarTextos, chavePaginaInicial, paginaInicialLigada, palavrasLiberadas } from "../inicio/chave.js";
 
@@ -18,6 +18,7 @@ function ligar(doc: Document) {
   ligarMenu(doc);
 }
 const textoDe = (doc: Document) => (doc.body.textContent || "").replace(/\s+/g, " ");
+const APP = "https://app.staziamed.com.br/novo";
 
 describe("página inicial: estrutura e SEO", () => {
   it("tem um só h1, idioma, título, descrição, canonical e Open Graph", () => {
@@ -29,8 +30,10 @@ describe("página inicial: estrutura e SEO", () => {
     const desc = doc.querySelector('meta[name="description"]')?.getAttribute("content") || "";
     expect(desc.length).toBeGreaterThan(50);
     expect(desc.length).toBeLessThanOrEqual(160);
-    expect(doc.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe("https://app.staziamed.com.br/");
-    expect(doc.querySelector('meta[property="og:image"]')?.getAttribute("content")).toBe("https://app.staziamed.com.br/brand/compartilhar-inicio.jpg");
+    // a página inicial fica no www (app.staziamed.com.br/ leva para /novo desde 18/10)
+    expect(doc.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe("https://www.staziamed.com.br/");
+    expect(doc.querySelector('meta[property="og:url"]')?.getAttribute("content")).toBe("https://www.staziamed.com.br/");
+    expect(doc.querySelector('meta[property="og:image"]')?.getAttribute("content")).toBe("https://www.staziamed.com.br/brand/compartilhar-inicio.jpg");
     expect(fs.existsSync(path.join(raiz, "public/brand/compartilhar-inicio.jpg"))).toBe(true);
     expect(doc.querySelector('meta[property="og:image:width"]')?.getAttribute("content")).toBe("1200");
     expect(doc.querySelector('meta[property="og:image:height"]')?.getAttribute("content")).toBe("630");
@@ -44,6 +47,8 @@ describe("página inicial: estrutura e SEO", () => {
     const tipos = blocos[0]["@graph"].map((n: { "@type": string }) => n["@type"]);
     expect(tipos).toEqual(["Organization", "WebSite"]);
     expect(JSON.stringify(blocos)).not.toMatch(/Offer|Product|AggregateRating|Review|price/i);
+    // sem endereço (o dono tirou o endereço da página em 18/10)
+    expect(JSON.stringify(blocos)).not.toMatch(/address|streetAddress|Visconde|Conj\./i);
   });
 
   it("nada de terceiros: fontes, estilos, scripts e imagens vêm do próprio site", () => {
@@ -70,21 +75,36 @@ describe("página inicial: estrutura e SEO", () => {
 });
 
 describe("página inicial: links", () => {
-  it("Entrar leva ao login (/novo/entrar) e todo Teste grátis leva ao Criar conta", () => {
+  it("Entrar leva ao login do app e todo botão de teste grátis leva ao Criar conta do app (app.staziamed.com.br/novo)", () => {
     const doc = pagina();
     const entrar = [...doc.querySelectorAll("[data-entrar]")];
-    expect(entrar.length).toBeGreaterThanOrEqual(2);
-    for (const a of entrar) expect(a.getAttribute("href")).toBe("/novo/entrar");
+    expect(entrar.length).toBeGreaterThanOrEqual(3);
+    for (const a of entrar) expect(a.getAttribute("href")).toBe(`${APP}/entrar`);
     expect(html404).toContain('href="/novo/entrar"');
-    const testes = [...doc.querySelectorAll("a")].filter((a) => /teste grátis/i.test(a.textContent || ""));
-    expect(testes.length).toBeGreaterThanOrEqual(4);
-    for (const a of testes) expect(a.getAttribute("href")).toBe("/novo/criar-conta");
+    const testes = [...doc.querySelectorAll('a[data-evento="trial_cta_clicked"]')];
+    expect(testes.length).toBeGreaterThanOrEqual(5);
+    for (const a of testes) expect(a.getAttribute("href")).toBe(`${APP}/criar-conta`);
+    expect(testes.map((a) => (a.textContent || "").trim())).toEqual(expect.arrayContaining(["Teste grátis", "Começar meus 7 dias grátis", "Começar grátis"]));
+    // nada de links do desenho para www.staziamed.com.br/novo (dariam uma volta a mais) nem parâmetros que o cadastro não lê
+    expect(html).not.toMatch(/www\.staziamed\.com\.br\/novo|[?&](plano|ciclo)=/);
+    // todo link para o app vai para o app.staziamed.com.br
+    for (const a of doc.querySelectorAll('a[href*="/novo"]')) expect(a.getAttribute("href"), a.textContent || "").toMatch(/^https:\/\/app\.staziamed\.com\.br\/novo(\/|$)/);
+  });
+
+  it("atendimento pelo WhatsApp oficial do SAC (o mesmo do Contrato), abrindo sem passar o endereço de origem", () => {
+    const doc = pagina();
+    const zap = [...doc.querySelectorAll('a[href^="https://wa.me/"]')];
+    expect(zap.length).toBeGreaterThanOrEqual(4);
+    for (const a of zap) {
+      expect(a.getAttribute("href")).toBe("https://wa.me/5541999031074");
+      expect(a.getAttribute("rel")).toBe("noopener noreferrer");
+    }
   });
 
   it("rodapé tem as páginas legais 3.0 (Termos e Contrato, Privacidade, Regulamento) e os contatos", () => {
     const doc = pagina();
     const hrefs = [...doc.querySelectorAll("footer a")].map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(expect.arrayContaining(["/novo/termos", "/novo/privacidade", "/novo/regulamento", "/novo/entrar", "/novo/criar-conta", "mailto:suporte@staziamed.com.br", "mailto:privacidade@staziamed.com.br"]));
+    expect(hrefs).toEqual(expect.arrayContaining([`${APP}/termos`, `${APP}/privacidade`, `${APP}/regulamento`, `${APP}/entrar`, `${APP}/criar-conta`, "mailto:suporte@staziamed.com.br", "mailto:privacidade@staziamed.com.br"]));
     // os mesmos nomes do menu das páginas legais do app (src/novo/app/legal/LegalPage.jsx)
     const legal = fs.readFileSync(path.join(raiz, "src/novo/app/legal/LegalPage.jsx"), "utf-8");
     for (const nome of ["Termos de Uso e Contrato", "Política de Privacidade", "Regulamento de Coins e Ligas"]) {
@@ -99,6 +119,16 @@ describe("página inicial: links", () => {
     }
     expect(textoDe(doc)).toMatch(/CNPJ 64\.964\.213\/0001-16/);
     expect(textoDe(doc)).toMatch(/Usamos só cookies essenciais/);
+    expect(sitemap).toContain("<loc>https://www.staziamed.com.br/</loc>");
+    expect(robots).toContain("Sitemap: https://www.staziamed.com.br/sitemap.xml");
+  });
+
+  it("rodapé só com a empresa, o CNPJ e os contatos: sem nome nem endereço do dono (pedido de 18/10)", () => {
+    const doc = pagina();
+    const base = (doc.querySelector(".rodape__base")?.textContent || "").replace(/\s+/g, " ");
+    expect(base).toContain("Stazia Tecnologia e Educação Ltda · CNPJ 64.964.213/0001-16");
+    const tudo = textoDe(doc) + html;
+    expect(tudo).not.toMatch(/Jo[aã]o Paulo|Mendes|Visconde|Rio Branco|Conj\.|80420|Curitiba|Encarregad/i);
   });
 
   it("todo link interno (#) aponta para algo que existe e os ids não se repetem", () => {
@@ -116,7 +146,7 @@ describe("página inicial: links", () => {
   });
 });
 
-describe("página inicial: abas (fases, franquia e ranking)", () => {
+describe("página inicial: abas (telas do app, grupos de ferramentas e mensal/trimestral)", () => {
   it("cada aba aponta para o próprio painel e só a escolhida fica visível", () => {
     const doc = pagina();
     ligar(doc);
@@ -133,22 +163,27 @@ describe("página inicial: abas (fases, franquia e ranking)", () => {
     }
   });
 
-  it("clique troca o painel das fases", () => {
+  it("clique troca a tela do app e o grupo de ferramentas", () => {
     const doc = pagina();
     ligar(doc);
-    (doc.getElementById("aba-fase-2") as HTMLButtonElement).click();
-    expect(doc.getElementById("painel-fase-2")!.hidden).toBe(false);
-    expect(doc.getElementById("painel-fase-1")!.hidden).toBe(true);
-    expect(doc.getElementById("aba-fase-2")!.getAttribute("aria-selected")).toBe("true");
-    expect((doc.getElementById("aba-fase-1") as HTMLElement).tabIndex).toBe(-1);
+    (doc.getElementById("aba-tela-desempenho") as HTMLButtonElement).click();
+    expect(doc.getElementById("tela-desempenho")!.hidden).toBe(false);
+    expect(doc.getElementById("tela-questoes")!.hidden).toBe(true);
+    expect((doc.getElementById("aba-tela-questoes") as HTMLElement).tabIndex).toBe(-1);
+    (doc.getElementById("aba-grupo-evolua") as HTMLButtonElement).click();
+    expect(doc.getElementById("grupo-evolua")!.hidden).toBe(false);
+    expect(doc.getElementById("grupo-aprenda")!.hidden).toBe(true);
   });
 
-  it("ranking troca o título entre semana e mês", () => {
+  it("a chave A cada 3 meses mostra R$ 89,90 por mês e o total de R$ 269,70; Mensal volta a R$ 99,90", () => {
     const doc = pagina();
     ligar(doc);
-    (doc.getElementById("aba-rank-mes") as HTMLButtonElement).click();
-    expect(doc.getElementById("titulo-ranking")!.textContent).toBe("Ranking do mês");
-    expect(doc.getElementById("painel-rank-mes")!.hidden).toBe(false);
+    expect(doc.getElementById("preco-mensal")!.textContent).toMatch(/R\$ 99,90/);
+    (doc.getElementById("aba-trimestral") as HTMLButtonElement).click();
+    const tri = doc.getElementById("preco-trimestral")!;
+    expect(tri.hidden).toBe(false);
+    expect(tri.textContent).toMatch(/R\$ 89,90.*R\$ 269,70 a cada 3 meses/s);
+    expect(doc.getElementById("preco-mensal")!.hidden).toBe(true);
   });
 
   it("menu do celular abre, fecha com Esc e fecha ao escolher um link", () => {
@@ -178,12 +213,17 @@ describe("página inicial: comportamentos trazidos do site do grupo (visual cont
   it("título com cursor digitando a segunda parte; leitor de tela recebe a frase inteira", () => {
     const doc = pagina();
     const h1 = doc.querySelector("h1")!;
-    expect(textoDe(doc).includes("Estude, treine e dispute. Tudo no mesmo lugar.")).toBe(true);
-    expect(h1.querySelector("[data-digita]")?.textContent).toBe("Tudo no mesmo lugar.");
+    const frase = "Sua evolução em cada estudo.";
+    expect(textoDe(doc).includes(`Sua preparação organizada. ${frase}`)).toBe(true);
+    expect(h1.querySelector("[data-digita]")?.textContent).toBe(frase);
     expect(h1.querySelector(".cursor")?.getAttribute("aria-hidden")).toBe("true");
     digitarTitulo(doc, false);
-    expect(h1.querySelector(".so-leitor")?.textContent).toBe("Tudo no mesmo lugar.");
-    expect(h1.querySelector('[aria-hidden="true"]')?.querySelectorAll(".letra")).toHaveLength("Tudo no mesmo lugar.".length);
+    expect(h1.querySelector(".so-leitor")?.textContent).toBe(frase);
+    const visual = h1.querySelector('[aria-hidden="true"]')!;
+    // como no desenho: cada palavra num bloco que não quebra, e só as letras (sem os espaços) aparecem uma a uma
+    expect([...visual.querySelectorAll(".palavra")].map((p) => p.textContent)).toEqual(frase.split(" "));
+    expect(visual.querySelectorAll(".letra")).toHaveLength(frase.replace(/ /g, "").length);
+    expect((visual.querySelectorAll(".letra")[3] as HTMLElement).style.getPropertyValue("--i")).toBe("4");
     const parado = pagina();
     digitarTitulo(parado, true); // menos movimento: nada muda
     expect(parado.querySelectorAll(".letra")).toHaveLength(0);
@@ -254,7 +294,7 @@ describe("página inicial: passos do ciclo acendendo", () => {
     expect(botoes[3].closest("li")!.classList.contains("metro__parada--ativa")).toBe(true);
     const anuncio = doc.getElementById("ciclo-anuncio")!;
     expect(anuncio.getAttribute("aria-live")).toBe("polite");
-    expect(anuncio.textContent).toBe("Passo 4 de 5: Corrija. Corrija com explicação");
+    expect(anuncio.textContent).toBe("Passo 4 de 5: Corrija. Corrija entendendo o raciocínio");
   });
 
   it("setas, Home e End andam entre os passos", () => {
@@ -293,11 +333,11 @@ describe("página inicial: acessibilidade básica", () => {
     for (const b of doc.querySelectorAll("button")) expect((b.textContent || "").trim() || b.getAttribute("aria-label")).toBeTruthy();
   });
 
-  it("CSS respeita menos movimento, tem anel de foco e letras de no mínimo 12 px", () => {
+  it("CSS respeita menos movimento, tem anel de foco e letras de no mínimo 11 px (só os selos em caixa alta do desenho têm 11)", () => {
     expect(css).toMatch(/prefers-reduced-motion: reduce/);
     expect(css).toMatch(/:focus-visible/);
-    const tamanhos = [...css.matchAll(/font-size:\s*(\d+)px/g)].map((m) => Number(m[1]));
-    expect(Math.min(...tamanhos)).toBeGreaterThanOrEqual(12);
+    const tamanhos = [...css.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)].map((m) => Number(m[1]));
+    expect(Math.min(...tamanhos)).toBeGreaterThanOrEqual(11);
   });
 
   it("contraste dos pares de cor usados em texto passa de 4,5:1", () => {
@@ -306,9 +346,11 @@ describe("página inicial: acessibilidade básica", () => {
       return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
     };
     const razao = (a: string, b: string) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    // cores do desenho (Home v7, "cores da auditoria")
     const pares: Array<[string, string]> = [
-      ["#0B5FC4", "#FFFFFF"], ["#0B5FC4", "#F1F5FB"], ["#0B5FC4", "#EBF5FF"], ["#4F5A69", "#F1F5FB"], ["#4F5A69", "#FFFFFF"],
-      ["#FFFFFF", "#0A6FD8"], ["#9A5B06", "#FEF5E3"], ["#CFE0F7", "#052A5A"], ["#B3DCFF", "#052A5A"], ["#AFC6E6", "#052A5A"], ["#052A5A", "#FFFFFF"],
+      ["#1559C4", "#FFFFFF"], ["#1559C4", "#F4F7FC"], ["#1559C4", "#E8F0FC"], ["#4F5A69", "#FFFFFF"], ["#4F5A69", "#F4F7FC"], ["#4F5A69", "#DCE1E8"],
+      ["#071F43", "#23D5C3"], ["#FFFFFF", "#1559C4"], ["#D4E2F2", "#071F43"], ["#B9CCE2", "#071F43"], ["#9FB6D2", "#071F43"], ["#9FB6D2", "#052A5A"],
+      ["#23D5C3", "#052A5A"], ["#0B6B4F", "#E1F6EE"], ["#071F43", "#F3B44B"],
     ];
     for (const [t, f] of pares) expect(razao(t, f), `${t} sobre ${f}`).toBeGreaterThanOrEqual(4.5);
   });
@@ -317,61 +359,74 @@ describe("página inicial: acessibilidade básica", () => {
 describe("página inicial: só promete o que existe (decisões do dono)", () => {
   it("o que não existe hoje não aparece", () => {
     const t = textoDe(pagina());
-    for (const proibido of [/Meet/, /semana[il]s?\b.*simulado|simulados? semana/i, /ao vivo semanal|correção ao vivo/i, /PDF/, /StaziaMind/, /Farmácia/i, /Consultas com parceiros/i, /Grupos exclusivos/i, /\bMatch/i, /ilimitad/i, /3 personalidades/i, /Todas as personalidades/i, /acesso demonstrativo/i, /duas fases e ao Tutor/i, /aprovação garantida|garantimos sua aprovação/i, /troque por benefícios|trocados por desconto/i, /ranking próprio/i]) {
+    for (const proibido of [/captura real da tela entra aqui/i, /amanhã/i, /comentário de cada alternativa/i, /Meet/, /semana[il]s?\b.*simulado|simulados? semana/i, /ao vivo semanal|correção ao vivo/i, /PDF/, /StaziaMind/, /Farmácia/i, /Consultas com parceiros/i, /Grupos exclusivos/i, /\bMatch/i, /ilimitad/i, /3 personalidades/i, /Todas as personalidades/i, /acesso demonstrativo/i, /duas fases e ao Tutor/i, /aprova/i, /troque por benefícios|trocados por desconto/i, /ranking próprio/i]) {
       expect(t, String(proibido)).not.toMatch(proibido);
     }
   });
 
-  it("só o PRO tem preço; PRÁTICA e ELITE aparecem como Em breve, sem preço nem compra", () => {
+  it("só o PRO tem preço (R$ 99,90 ou R$ 269,70 a cada 3 meses, a conta fecha); PRÁTICA e ELITE aparecem como Em breve, sem preço nem compra", () => {
     const doc = pagina();
-    const planos = [...doc.querySelectorAll(".plano")];
-    expect(planos).toHaveLength(3);
-    expect(planos[0].textContent).toMatch(/R\$\s*99,90/);
-    expect(planos[0].textContent).toMatch(/R\$\s*269,70/);
-    for (const p of planos.slice(1)) {
-      expect(p.textContent).toMatch(/Em breve/);
+    const pro = doc.querySelector(".pro")!;
+    expect(pro.textContent).toMatch(/R\$ 99,90/);
+    expect(pro.textContent).toMatch(/R\$ 269,70/);
+    expect(pro.textContent).toMatch(/R\$ 3,33 por dia/); // 99,90 / 30
+    expect(textoDe(doc)).toMatch(/economiza R\$ 30,00/); // 3 × 99,90 − 269,70
+    const outros = [...doc.querySelectorAll(".fase2__plano")];
+    expect(outros).toHaveLength(2);
+    for (const p of outros) {
+      expect(p.textContent).toMatch(/Em breve/i);
       expect(p.textContent).not.toMatch(/R\$/);
       expect(p.querySelector("a")).toBeNull();
     }
+    expect(doc.querySelector(".fase2")!.textContent).not.toMatch(/R\$/);
     expect(textoDe(doc)).not.toMatch(/169,90|458,70|199,90|539,70|152,90|179,90/);
+    // nada de "de/por" riscado
+    expect(html).not.toMatch(/<s>|<del>|line-through/);
   });
 
-  it("o Tutor fala em 2 personagens e 4 personalidades, e a voz gasta só minutos", () => {
+  it("o Tutor fala em dois personagens e quatro personalidades, e a voz gasta só minutos", () => {
     const t = textoDe(pagina());
-    expect(t).toMatch(/2 personagens · 4 personalidades/);
+    expect(t).toMatch(/Dois personagens e quatro personalidades/);
     expect(t).toMatch(/não gasta créditos/);
     expect(t).not.toMatch(/consome créditos e minutos/);
   });
 
-  it("Coins sem valor em dinheiro e benefícios de parceiros como cortesia", () => {
+  it("Coins sem valor em dinheiro", () => {
     const t = textoDe(pagina());
     expect(t).toMatch(/Coins são bônus e não têm valor em dinheiro/);
-    expect(t).toMatch(/não fazem parte do plano contratado/);
   });
 
   it("sem parcelamento: pagamento só à vista por Pix ou cartão (decisão de 17/10)", () => {
     expect(html).not.toMatch(/\d\s*[x×]\s*sem juros|parcel/i);
     const doc = pagina();
-    const pagamento = [...doc.querySelectorAll(".planos__regras li")].find((li) => /Pix/.test(li.textContent || ""));
+    const pagamento = [...doc.querySelectorAll(".regra")].find((li) => /Pix/.test(li.textContent || ""));
     expect(pagamento?.textContent).toMatch(/à vista/);
   });
 
-  it("o teste grátis é anunciado como amostra diária em toda chamada", () => {
+  it("o teste grátis é anunciado como amostra diária, com os números só quando a amostra estiver ligada", () => {
     const doc = pagina();
-    for (const sel of [".abertura__nota", ".faixa__item:last-child", ".planos__regras li:first-child", '.chamada__p[data-ate-la="amostra"]', '.chamada__p[data-quando="amostra"]']) {
-      expect(doc.querySelector(sel)?.textContent, sel).toMatch(/amostra/);
-    }
-    expect(doc.querySelector('.chamada__p[data-quando="amostra"]')?.textContent).toMatch(/20 questões.*1 simulado curto.*3 Temas/);
+    expect(doc.querySelector(".faixa__grade li:last-child")?.textContent).toMatch(/amostra diária/);
+    expect(doc.querySelector('.incluido__p[data-ate-la="amostra"]')?.textContent).toMatch(/amostra diária/);
+    expect(doc.querySelector('.incluido__grade')?.getAttribute("data-quando")).toBe("amostra");
+    expect([...doc.querySelectorAll(".incluido__grade li")].map((li) => [...li.children].map((c) => c.textContent).join(" "))).toEqual([
+      "20 questões por dia", "1 simulado curto por dia", "3 Temas ou aulas por dia, mais os flashcards do dia", "5 créditos de Tutor IA por dia", "2 min de voz no teste inteiro",
+    ]);
+    const faq = [...doc.querySelectorAll(".pergunta")][0];
+    expect(faq.querySelector('[data-quando="amostra"]')?.textContent).toMatch(/20 questões, 1 simulado curto, 3 Temas/);
+    expect(faq.querySelector('[data-ate-la="amostra"]')?.textContent).toMatch(/amostra diária/);
   });
 
-  it("regras de pagamento, devolução e renovação só aparecem com a cobrança ligada; o link diz Termos de Uso", () => {
+  it("regras de pagamento, renovação e cancelamento só aparecem com a cobrança ligada; o arrependimento (lei) sempre", () => {
     const doc = pagina();
-    const regras = [...doc.querySelectorAll(".planos__regras li")];
+    const regras = [...doc.querySelectorAll(".regra")];
     expect(regras[0].getAttribute("data-quando")).toBeNull();
-    for (const li of regras.slice(1)) expect(li.getAttribute("data-quando"), li.textContent || "").toBe("cobranca");
-    expect(textoDe(doc)).not.toMatch(/renova sozinha|condições completas/);
-    const renovacao = regras.find((li) => /renovação/.test(li.textContent || ""));
-    expect(renovacao?.textContent).toMatch(/No Pix.*7 dias antes.*confirmado/);
+    expect(regras[0].textContent).toMatch(/7 dias, sem cartão/);
+    for (const li of regras.filter((r) => /Pix ou cartão|Minha Conta/.test(r.textContent || ""))) expect(li.getAttribute("data-quando"), li.textContent || "").toBe("cobranca");
+    const renovacao = [...doc.querySelectorAll(".pergunta")].find((d) => /renovação\?/.test(d.querySelector("summary")?.textContent || ""));
+    expect(renovacao?.querySelector('[data-quando="cobranca"]')?.textContent).toMatch(/No Pix.*7 dias antes.*confirmado/);
+    expect(doc.querySelector(".arrependimento")?.getAttribute("data-quando")).toBeNull();
+    expect(doc.querySelector(".arrependimento")?.textContent).toMatch(/art\. 49/);
+    expect(doc.querySelector('.arrependimento a')?.getAttribute("href")).toBe(`${APP}/termos`);
   });
 
   it("questões oficiais: anos que estão no banco e sem prometer comentário em cada questão", () => {
@@ -389,9 +444,15 @@ describe("página inicial: só promete o que existe (decisões do dono)", () => 
       expect(css).toContain(`html:not([data-liberado~="${p}"]) [data-quando~="${p}"]`);
       expect(css).toContain(`html[data-liberado~="${p}"] [data-ate-la~="${p}"]`);
     }
-    // "Assinar o PRO" só existe sob a liberação da cobrança
-    const assinar = [...doc.querySelectorAll("a")].find((a) => /Assinar o PRO/.test(a.textContent || ""));
-    expect(assinar?.getAttribute("data-quando")).toBe("cobranca");
+    // "Contratar o PRO" e "vendas abertas" só existem sob a liberação da cobrança
+    const contratar = [...doc.querySelectorAll("a")].find((a) => /Contratar o PRO/.test(a.textContent || ""));
+    expect(contratar?.getAttribute("data-quando")).toBe("cobranca");
+    expect(contratar?.getAttribute("href")).toBe(`${APP}/planos`);
+    for (const e of [...doc.querySelectorAll("*")].filter((x) => x.children.length === 0 && /vendas abertas/i.test(x.textContent || ""))) {
+      expect(e.closest("[data-quando]")?.getAttribute("data-quando"), e.textContent || "").toBe("cobranca");
+    }
+    // os números da franquia do Tutor só com a carteira ligada
+    expect(doc.querySelector('[data-quando="carteira"]')?.textContent).toMatch(/8 créditos por dia, até 180 por mês, e 10 minutos/);
   });
 });
 
@@ -418,8 +479,50 @@ describe("página inicial: script", () => {
     ajustarEntrar(doc, mem);
     for (const a of doc.querySelectorAll("[data-entrar]")) {
       expect(a.textContent).toBe("Ir para o app");
-      expect(a.getAttribute("href")).toBe("/novo");
+      expect(a.getAttribute("href")).toBe(APP);
     }
+  });
+
+  it("demonstração do Tutor: começa com uma fala, Reproduzir mostra uma a uma e Mostrar a conversa toda mostra as 4", () => {
+    const doc = pagina();
+    const relogios: Array<() => void> = [];
+    const win = { setTimeout: (f: () => void) => { relogios.push(f); return relogios.length; }, clearTimeout: () => undefined } as unknown as Window;
+    const api = ligarConversa(doc, win, false)!;
+    expect(api.visiveis).toBe(1);
+    (doc.getElementById("conversa-tocar") as HTMLButtonElement).click();
+    expect(doc.getElementById("conversa-tocar-rotulo")!.textContent).toBe("Reproduzindo…");
+    relogios.shift()!();
+    expect(api.visiveis).toBe(2);
+    (doc.getElementById("conversa-tudo") as HTMLButtonElement).click();
+    expect(api.visiveis).toBe(4);
+    expect(doc.getElementById("conversa-tocar-rotulo")!.textContent).toBe("Reproduzir de novo");
+    // sem JavaScript as 4 falas já estão no HTML e os botões somem (inicio-sem-js.css)
+    expect(pagina().querySelectorAll("#conversa-falas .fala")).toHaveLength(4);
+    expect(fs.readFileSync(path.join(raiz, "public/inicio-sem-js.css"), "utf-8")).toMatch(/\.conversa__botoes \{ display: none !important; \}/);
+    expect(textoDe(doc)).toMatch(/Respostas escritas previamente para esta demonstração/);
+  });
+
+  it("lista de interesse da 2ª fase: o botão abre o encaixe do formulário (que vem do ramo lista-interesse)", () => {
+    const doc = pagina();
+    const botao = doc.getElementById("botao-interesse") as HTMLButtonElement;
+    const encaixe = doc.getElementById("lista-interesse")!;
+    expect(encaixe.getAttribute("data-encaixe")).toBe("lista-interesse");
+    expect(encaixe.hidden).toBe(true);
+    ligarAbre(botao, doc);
+    botao.click();
+    expect(botao.getAttribute("aria-expanded")).toBe("true");
+    expect(encaixe.hidden).toBe(false);
+    botao.click();
+    expect(encaixe.hidden).toBe(true);
+  });
+
+  it("perguntas abrem sem JavaScript (details), uma por vez, com a primeira aberta", () => {
+    const doc = pagina();
+    const perguntas = [...doc.querySelectorAll("details.pergunta")];
+    expect(perguntas).toHaveLength(10);
+    expect(perguntas.filter((d) => d.hasAttribute("open"))).toHaveLength(1);
+    expect(perguntas[0].hasAttribute("open")).toBe(true);
+    for (const d of perguntas) expect(d.getAttribute("name")).toBe("duvidas");
   });
 
   it("/novo/criar-conta abre o Criar conta; o resto abre o login", () => {
