@@ -58,6 +58,8 @@ import { createInteresseRouter } from "./server/interesse/router";
 import { createSmtpMailer, smtpConfigFromEnv } from "./server/email/smtp";
 import { createEmailsCobranca } from "./server/avisos/emailsCobranca";
 import { createLessonsRouter, lessonsStorage } from "./server/lessons/router";
+import { createDuplaRouter, duplaStorage } from "./server/dupla/router";
+import { createFolhaRouter } from "./server/dupla/folhaRouter";
 import { createQuestionFiguresRouter, questionFiguresStorage } from "./server/questions/figures";
 import { createAdminAssistantRouter } from "./server/adminAssistant/router";
 import { mockAdminAssist } from "./server/adminAssistant/mock";
@@ -172,6 +174,10 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   app.use("/api/interesse", createInteresseRouter(hub.deps ? { db: hub.deps.db, baseUrl: (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "") || null, log: (m: string) => console.log(m) } : null));
   // Aulas: slides e áudios ficam no depósito privado; o banco decide quem vê
   app.use("/api/lessons", createLessonsRouter(hub.deps ? { db: hub.deps.db, storage: lessonsStorage(hub.deps.db.mode), log: (m: string) => console.log(m) } : null, hub.pending));
+  // Treino em Dupla: folha do candidato em imagem (Administração › Estações: gerar/regerar e ver); antes de /api/dupla
+  app.use("/api/dupla/folhas", createFolhaRouter(hub.deps ? { db: hub.deps.db, storage: duplaStorage(hub.deps.db.mode), renderer: hub.deps.renderer ?? null, log: (m: string) => console.log(m) } : null, hub.pending));
+  // Treino em Dupla: imagem do impresso da sala; o banco (app_dupla_print_path) decide quem vê o quê
+  app.use("/api/dupla", createDuplaRouter(hub.deps ? { db: hub.deps.db, storage: duplaStorage(hub.deps.db.mode), log: (m: string) => console.log(m) } : null, hub.pending));
   // Figuras das questões (PNG/JPG, até 5 MB, uma por questão): depósito privado; o banco decide quem envia (equipe) e quem vê
   app.use("/api/question-figures", createQuestionFiguresRouter(hub.deps ? { db: hub.deps.db, storage: questionFiguresStorage(hub.deps.db.mode), log: (m: string) => console.log(m) } : null, hub.pending));
   // Assistente de IA das abas da Administração: IA pelo maestro; a simulação só existe com o banco de desenvolvimento

@@ -30,7 +30,7 @@ export function sqlLiteral(value: unknown): string {
 }
 
 /** Marca um array de strings para virar text[] (em vez de jsonb). */
-const textArray = (values: string[]) => Object.assign([...values], { __textArray: true });
+export const textArray = (values: string[]) => Object.assign([...values], { __textArray: true });
 
 function insert(table: string, rows: Row[], conflict: string): string {
   if (rows.length === 0) return "";
@@ -75,6 +75,14 @@ function assertCleanText(value: unknown, where: string): void {
 
 // Texto-padrão das alternativas erradas na base atual: não explica nada, então não é carregado.
 const PLACEHOLDER_EXPLANATION = "Alternativa incorreta.";
+
+/**
+ * Estações de teste (ids `teste-…`, como as do INEP 2020 do Treino em Dupla) existem só nos testes e no banco local:
+ * a carga do Supabase recusa o prefixo.
+ */
+export function assertNoTestStations(ids: string[]): void {
+  if (ids.some((id) => id.startsWith("teste-"))) throw new Error("A carga do Supabase não aceita estações de teste (teste-…).");
+}
 
 export function buildSeedRows() {
   const questions = ALL_CANONICAL_QUESTIONS as any[];
@@ -129,6 +137,7 @@ export function buildSeedRows() {
   }));
 
   const stations = loadStations(stationsSeed);
+  assertNoTestStations(stations.map((s) => s.id));
   const events = loadEvents(eventsSeed, stations);
 
   const stationRows: Row[] = stations.map((s) => {

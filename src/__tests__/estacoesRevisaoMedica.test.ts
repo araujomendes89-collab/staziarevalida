@@ -260,7 +260,7 @@ describe("Estações — o aluno não lê o registro da revisão (leva 2)", () =
     expect(colunas.sort()).toEqual([...CATALOGO].sort());
   });
 
-  it("o aluno lê a estação aprovada com select * e o conteúdo dela, sem a nota, sem quem aprovou e sem quando", async () => {
+  it("o aluno lê a estação aprovada com select * (e não o conteúdo completo), sem a nota, sem quem aprovou e sem quando", async () => {
     const estacoes = await comoUsuario(STUDENT, `select * from public.checklist_stations where id = 'st-mfc'`);
     expect(estacoes).toHaveLength(1);
     expect(estacoes[0]).toMatchObject({ id: "st-mfc", name: "Hipertensão na UBS", area: "Medicina de Família e Comunidade", medical_review: "approved", is_pro_only: false });
@@ -271,7 +271,8 @@ describe("Estações — o aluno não lê o registro da revisão (leva 2)", () =
     expect(inteira).not.toContain(NOTA_MFC);
     expect(inteira).not.toContain(ADMIN);
 
-    expect(await comoUsuario(STUDENT, `select station_id from public.checklist_station_contents where station_id = 'st-mfc'`)).toEqual([{ station_id: "st-mfc" }]);
+    // O conteúdo completo deixou de ser lido direto pelo aluno (Treino em Dupla, migração 9750): só a equipe; o aluno o recebe pelo papel na sala.
+    expect(await comoUsuario(STUDENT, `select station_id from public.checklist_station_contents where station_id = 'st-mfc'`)).toEqual([]);
     for (const c of REGISTRO) {
       await expect(comoUsuario(STUDENT, `select id, ${c} from public.checklist_stations`), c).rejects.toThrow(/does not exist/);
     }

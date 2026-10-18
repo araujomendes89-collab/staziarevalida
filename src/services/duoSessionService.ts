@@ -371,51 +371,8 @@ export class DuoSessionService {
     }
   }
 
-  /**
-   * Swap roles for a second training round
-   */
-  static async swapRoles(sessionId: string): Promise<void> {
-    try {
-      const session = await this.getDuoSession(sessionId);
-      if (!session) return;
-
-      // Reset scores for new round
-      const resetScores: Record<string, DuoChecklistScore> = {};
-      Object.keys(session.checklistScores).forEach((k) => {
-        resetScores[k] = {
-          ...session.checklistScores[k],
-          status: "UNCHECKED",
-          pointsAwarded: 0,
-        };
-      });
-
-      const sessionRef = doc(db, DUO_SESSIONS_COLLECTION, sessionId);
-      await updateDoc(sessionRef, {
-        doctorUserId: session.evaluatorUserId,
-        doctorName: session.evaluatorName,
-        evaluatorUserId: session.doctorUserId,
-        evaluatorName: session.doctorName,
-        status: "LOBBY",
-        startedAt: null,
-        checklistScores: resetScores,
-        totalScore: 0,
-        revealedExams: [],
-        chatMessages: [
-          ...session.chatMessages,
-          {
-            id: `msg_${Date.now()}`,
-            sender: "system",
-            senderName: "StaziaMed Revalida",
-            text: `🔄 Papéis invertidos! Dr(a). ${session.evaluatorName} agora é o(a) Médico(a) e Dr(a). ${session.doctorName} é o(a) Avaliador(a).`,
-            time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          },
-        ],
-        updatedAt: serverTimestamp(),
-      });
-    } catch (e) {
-      console.warn("[DuoSessionService] swapRoles error:", e);
-    }
-  }
+  // Sem "inverter papéis" na mesma estação (decisão do dono de 17/10): o swapRoles saiu. O novo candidato já teria visto o tema
+  // como avaliador da rodada anterior.
 
   /**
    * Finish the station session and lock checklist

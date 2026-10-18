@@ -1,6 +1,6 @@
 /**
- * ES06: a tela de uma estação (aberta em /estacao, antes do ponto em que o aviso era colocado) também mostra o aviso
- * "Tela em reconstrução", como as outras telas ainda não ligadas aos dados. Só a equipe chega nessa tela.
+ * ES06: telas ainda não ligadas aos dados mostram o aviso "Tela em reconstrução". Hoje só "Praticar em dupla" (maquete da frente do
+ * Treino em Dupla) o mostra; as outras telas da 2ª fase leem o banco. Só a equipe chega nessas telas.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -48,16 +48,15 @@ vi.mock("../novo/app/admin/AdminScreen.jsx", async () => ({
   AdminScreen: () => null,
   isStaffRole: (await import("../novo/app/admin/common.jsx")).isStaffRole, // a regra de verdade
 }));
-vi.mock("../novo/prototype/Phase2.jsx", () => ({
-  Home2: () => <div data-testid="tela-home2" />,
-  Stations: () => <div data-testid="tela-estacoes" />,
-  Station: () => <div data-testid="tela-estacao" />,
-  Peps: () => <div data-testid="tela-peps" />,
-  Perf2: () => <div data-testid="tela-desempenho2" />,
-  SimPatient: () => <div data-testid="tela-paciente" />,
-}));
-vi.mock("../novo/prototype/Match.jsx", () => ({ Pair: () => <div data-testid="tela-dupla" /> }));
-vi.mock("../novo/prototype/Theory2.jsx", () => ({ Theory2: () => <div data-testid="tela-teoria2" /> }));
+vi.mock("../novo/app/fase2/Fase2Home.jsx", () => ({ Fase2Home: () => <div data-testid="tela-home2" /> }));
+vi.mock("../novo/app/fase2/Fase2Player.jsx", () => ({ Fase2Player: () => <div data-testid="tela-estacao" /> }));
+vi.mock("../novo/app/fase2/Fase2Peps.jsx", () => ({ Fase2Peps: () => <div data-testid="tela-peps" /> }));
+vi.mock("../novo/app/fase2/Fase2Performance.jsx", () => ({ Fase2Performance: () => <div data-testid="tela-desempenho2" /> }));
+vi.mock("../novo/app/fase2/Fase2Patient.jsx", () => ({ Fase2Patient: () => <div data-testid="tela-paciente" /> }));
+vi.mock("../novo/app/fase2/Fase2Theory.jsx", () => ({ Fase2Theory: () => <div data-testid="tela-teoria2" /> }));
+// Treinamento em Dupla: telas reais (Tarefas 7 e 8), sem o aviso de exemplo
+vi.mock("../novo/app/dupla/StationsScreen.jsx", () => ({ StationsScreen: () => <div data-testid="tela-estacoes" /> }));
+vi.mock("../novo/app/dupla/PracticeScreen.jsx", () => ({ PracticeScreen: () => <div data-testid="tela-dupla" /> }));
 
 import { App } from "../novo/app/App.jsx";
 
@@ -89,15 +88,28 @@ afterEach(() => {
 });
 
 describe("Tela em reconstrução (ES06)", () => {
-  it("a tela de uma estação mostra o aviso, junto com a tela", () => {
-    renderApp("/estacao", "admin");
-    expect(screen.getByTestId("tela-estacao")).toBeTruthy();
-    expect(screen.getByText("Tela em reconstrução")).toBeTruthy();
-    expect(screen.getByText(/Os itens e números abaixo são exemplos do novo design/)).toBeTruthy();
+  // 16/10/2026: as telas da 2ª fase (estação, banco, início, PEPs, desempenho, paciente, teoria) leem o banco de verdade
+  // (src/novo/app/fase2/) e deixaram de mostrar o aviso de "exemplos do novo design".
+  it("as telas da 2ª fase já ligadas aos dados não mostram o aviso", () => {
+    for (const rota of ["/estacao", "/estacoes", "/home2", "/peps", "/desempenho2", "/paciente", "/teoria2"]) {
+      renderApp(rota, "admin");
+      expect(screen.queryByText("Tela em reconstrução")).toBeNull();
+      cleanup();
+    }
   });
 
-  it("o banco de estações (que já tinha o aviso) continua com ele, uma vez só", () => {
+  it("o Banco de estações (um só, o do pacote de 11/10) e o Praticar em dupla são telas com dados reais: sem o aviso", () => {
+    renderApp("/dupla", "admin");
+    expect(screen.getByTestId("tela-dupla")).toBeTruthy();
+    expect(screen.queryByText("Tela em reconstrução")).toBeNull();
+    cleanup();
     renderApp("/estacoes", "admin");
+    expect(screen.getByTestId("tela-estacoes")).toBeTruthy();
+    expect(screen.queryByText("Tela em reconstrução")).toBeNull();
+  });
+
+  it("uma tela que ainda é de exemplo continua com o aviso, uma vez só", () => {
+    renderApp("/vitrine-dupla", "admin");
     expect(screen.getAllByText("Tela em reconstrução")).toHaveLength(1);
   });
 

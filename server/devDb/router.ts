@@ -4,6 +4,7 @@
  */
 import express, { type Request, type Response, Router } from "express";
 import { BackendError, signUpMetadata } from "../../src/novo/data/backend";
+import { criarSalaTeste, prepararContas } from "../dupla/salaTeste";
 import type { DevDatabase } from "./devDatabase";
 
 const tokenOf = (req: Request) => (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "").trim() || null;
@@ -104,6 +105,25 @@ export function createDevDbRouter(getDb: () => Promise<DevDatabase>): Router {
       const user = await db.userForToken(tokenOf(req));
       const data = await db.core.rpc(user, String(req.body?.fn ?? ""), req.body?.args ?? {});
       res.json({ data: data ?? null });
+    } catch (error) {
+      fail(res, error);
+    }
+  });
+
+  // Treinamento em Dupla, SÓ no banco local: prepara contas (Pro ativo, aceites, WhatsApp de teste, chave aberta) e cria uma sala
+  // de teste entre duas contas locais já numa fase. Usadas por `npm run dupla:sala-teste` (scripts/dupla/sala-teste.ts).
+  router.post("/dupla/preparar", async (req, res) => {
+    try {
+      await prepararContas(await getDb(), req.body?.emails);
+      res.json({ ok: true });
+    } catch (error) {
+      fail(res, error);
+    }
+  });
+
+  router.post("/dupla/sala-teste", async (req, res) => {
+    try {
+      res.json(await criarSalaTeste(await getDb(), req.body?.fase, req.body?.motivo ?? "saiu"));
     } catch (error) {
       fail(res, error);
     }

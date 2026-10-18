@@ -62,7 +62,8 @@ export function SessionProvider({ children }) {
   // recovery: a pessoa abriu o link de recuperar senha e ainda não criou a nova senha (a tela "Criar nova senha" vem antes do app)
   // derrubada (sessão única): a conta foi aberta em outro aparelho e este saiu; { aparelho?, desde? } para o aviso, ou null
   const recoveryRef = React.useRef(initialAuthLink.kind === "recovery");
-  const [state, setState] = React.useState({ status: "loading", backend: null, user: null, boot: null, error: null, recovery: recoveryRef.current, derrubada: null });
+  // dupla: o que o Treinamento em Dupla diz sobre o acesso ({ aberto, permitido, planos, equipe }), ou null se não foi possível ler
+  const [state, setState] = React.useState({ status: "loading", backend: null, user: null, boot: null, dupla: null, error: null, recovery: recoveryRef.current, derrubada: null });
   // sessão única: tira este navegador da conta (só aqui) e deixa o aviso para todas as abas
   const derrubandoRef = React.useRef(false);
   const derrubar = React.useCallback(async (backend, info) => {
@@ -76,7 +77,7 @@ export function SessionProvider({ children }) {
       /* mesmo sem resposta do servidor, a tela sai da conta */
     }
     recoveryRef.current = false;
-    setState({ status: "signed-out", backend, user: null, boot: null, error: null, recovery: false, derrubada: aviso });
+    setState({ status: "signed-out", backend, user: null, boot: null, dupla: null, error: null, recovery: false, derrubada: aviso });
     derrubandoRef.current = false;
   }, []);
 
@@ -93,17 +94,21 @@ export function SessionProvider({ children }) {
           if (event === "PASSWORD_RECOVERY") recoveryRef.current = true;
           if (!user) {
             recoveryRef.current = false;
-            setState({ status: "signed-out", backend, user: null, boot: null, error: null, recovery: false, derrubada: lerAvisoDerrubada() });
+            setState({ status: "signed-out", backend, user: null, boot: null, dupla: null, error: null, recovery: false, derrubada: lerAvisoDerrubada() });
             return;
           }
           try {
             // sessão única: entrar (ou abrir o app já com login) faz desta a sessão que vale; sessão já derrubada sai aqui mesmo
-            const [boot, nivelamento, onboarding, sessao] = await Promise.all([
+            const [boot, nivelamento, onboarding, sessao, dupla] = await Promise.all([
               backend.rpc("app_bootstrap"),
               backend.rpc("app_nivelamento_estado").catch(() => null),
               // onboarding (migração 013720): sem a função no banco, o app abre como antes
               backend.rpc("app_onboarding_estado").catch(() => null),
               perguntarSessao(backend, user, "app_session_claim"),
+              // acesso ao Treinamento em Dupla / 2ª fase (013300): se falhar (ou a função não existir), vira null e a 2ª fase fica fechada
+              Promise.resolve()
+                .then(() => backend.rpc("app_dupla_access"))
+                .catch(() => null),
             ]);
             if (!alive) return;
             if (sessao?.vigente === false) {
@@ -116,9 +121,9 @@ export function SessionProvider({ children }) {
             Promise.resolve().then(() => backend.rpc("app_marcar_acesso")).catch(() => {});
             boot.nivelamento = nivelamento;
             boot.onboarding = onboarding;
-            if (alive) setState({ status: "ready", backend, user, boot, error: null, recovery: recoveryRef.current, derrubada: null });
+            if (alive) setState({ status: "ready", backend, user, boot, dupla: dupla ?? null, error: null, recovery: recoveryRef.current, derrubada: null });
           } catch (error) {
-            if (alive) setState({ status: "error", backend, user, boot: null, error, recovery: recoveryRef.current });
+            if (alive) setState({ status: "error", backend, user, boot: null, dupla: null, error, recovery: recoveryRef.current });
           }
         };
 

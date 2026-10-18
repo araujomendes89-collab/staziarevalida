@@ -15,6 +15,8 @@ const ROOT = path.resolve(__dirname, "../..");
 const MIGRATIONS = path.join(ROOT, "supabase/migrations");
 // migrações que dependem da 013740 (ramo termo-funcoes): ficam de fora enquanto a 013740 estiver de fora
 const DEPOIS_DO_V3 = /^20261003013(800|810)_/;
+// 2ª fase (Treino em Dupla e estações): 013300 a 013560
+const FASE2 = /^20261003013(3[0-9][0-9]|4[0-9][0-9]|5[0-6][0-9])_/;
 const NOVA = "20261003011500_termo_v2_declaracoes.sql";
 const ATIVACAO = "20261003011510_termo_v2_ativar.sql";
 const ler = (rel: string) => fs.readFileSync(path.join(ROOT, rel), "utf8");
@@ -103,8 +105,9 @@ beforeAll(async () => {
   db = new PGlite();
   await db.exec(ler("supabase/tests/bootstrap.sql"));
   // a …13661 (aceite só com a maioridade, 17/10/2026) remenda funções criadas pela …11500: fica fora deste ensaio da 11500
-  // (testada em aceiteMaioridadeBanco.test.ts)
-  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== NOVA && f !== ATIVACAO && f !== "20261003013661_aceite_com_maioridade.sql" && f !== "20261003013740_termo_v3.sql" && !DEPOIS_DO_V3.test(f)).sort()) {
+  // (testada em aceiteMaioridadeBanco.test.ts). As da 2ª fase (013300 a 013560) contam com a tabela legal_declarations que o
+  // Termo 2.0 cria (exportação de dados): também ficam fora deste banco "de antes do Termo 2.0".
+  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== NOVA && f !== ATIVACAO && f !== "20261003013661_aceite_com_maioridade.sql" && f !== "20261003013740_termo_v3.sql" && !DEPOIS_DO_V3.test(f) && !FASE2.test(f)).sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
   // um aluno com o Termo 1.0 aceito antes da migração

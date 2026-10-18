@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Prévia — Parte 2 prática</title>
+<style>
+  body{font:16px/1.5 system-ui,sans-serif;margin:0;background:#f6f7f5;color:#17231c}
+  main{max-width:1000px;margin:0 auto;padding:20px 16px 60px}
+  .aviso{background:#fff3cd;border:1px solid #e0c36a;border-radius:10px;padding:12px 14px;font-weight:600;color:#5c4400}
+  h1{margin:20px 0 4px} h2{margin:28px 0 8px;font-size:18px}
+  .card{background:#fff;border:1px solid #dde3dd;border-radius:12px;padding:12px 14px;margin:8px 0;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+  .card b{display:block} .card small{color:#55645b;display:block;max-width:640px}
+  .st{font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+  .pronta{background:#d6f0dc;color:#14562a}.parcial{background:#fde9b8;color:#6b4a00}.maquete{background:#fbd5d5;color:#7a1c1c}.nao{background:#e3e3e3;color:#444}
+  a.ir{font-weight:700;color:#0b6b3a;margin-right:10px;white-space:nowrap}
+</style>
+</head>
+<body><main>
+<div class="aviso">PRÉVIA SÓ NO SEU COMPUTADOR · DADOS DE TESTE. Nada aqui foi publicado. Colegas, notas e resultados são inventados para teste; as 10 estações do INEP 2020 vêm do pacote de design, só para ver as telas.</div>
+<h1>Parte 2 prática: o que já existe</h1>
+<p>Ramo dupla-ajustes2 (16/10): Treino em Dupla com a sala ao vivo (Etapa 5), o resultado (Etapa 6) e os ajustes do dono de 16/10.</p>
+
+<h2>Decisões do dono de 17/10 (o que mudou)</h2>
+<div class="card"><div><b>(c) Meus PEPs: resultado das rodadas em dupla depois de a sala fechar</b><small>As duas salas do exemplo já estão ENCERRADAS. A rodada da estação 1 (você foi o candidato) abre o resultado só para ler, sem os botões da sala. A rodada da estação 2 (você avaliou) teve a revisão da nota pedida: aparece "Aguardando revisão", sem o nome da estação, sem nota e sem abrir.</small></div><div><span class="st pronta">PRONTA (simulada)</span><br><a class="ir" href="/tela.html?t=peps">Abrir Meus PEPs</a><a class="ir" href="/tela.html?t=peps&tema=escuro">Modo noite</a></div></div>
+<div class="card"><div><b>(b) Tarefas citam o relato, não o "impresso 1"</b><small>Na estação 1, o painel do avaliador mostra "ler o relato do caso clínico (na sua folha, acima)" e "conforme orientação do relato do caso". O texto oficial guardado não muda. A folha em imagem nova sai do gerador (a imagem da prévia ainda é a do protótipo).</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=sala&sala=running-evaluator">Avaliador</a></div></div>
+<div class="card"><div><b>(d) Aprovar o resumo pede a nota do que foi conferido</b><small>Em "Conferir", numa estação com resumo em rascunho, aparece "O que foi conferido no resumo" (10 caracteres ou mais). Sem a nota, o botão "Aprovar resumo" fica desligado. A nota aparece no registro: "Aprovado por … em …: “nota”".</small></div><div><span class="st pronta">PRONTA (simulada)</span><br><a class="ir" href="/tela.html?t=estacoes-adm">Abrir</a></div></div>
+
+<h2>Ajustes do dono de 16/10 (o que mudou)</h2>
+<div class="card"><div><b>Resultado sem "Inverter papéis"</b><small>Ficaram "Treinar outra estação" e "Encerrar treino". "Treinar outra estação" volta para a escolha dos papéis e da estação (rodada 2); a estação que vocês acabaram de fazer aparece como "Já treinada nesta sala" e não pode ser escolhida.</small></div><div><span class="st pronta">PRONTA (simulada)</span><br><a class="ir" href="/tela.html?t=sala&sala=result-evaluator">Resultado (avaliador)</a><a class="ir" href="/tela.html?t=sala&sala=result-candidate">Resultado (candidato)</a></div></div>
+<div class="card"><div><b>Relato do caso sem número (avaliador)</b><small>Em "Impressos", o avaliador vê "Relato do caso (na folha do candidato)", sem número; os impressos liberáveis seguem 1, 2, 3, com "no documento oficial: Impresso N".</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=sala&sala=running-evaluator">Avaliador</a></div></div>
+<div class="card"><div><b>Materiais com "Resumo sobre o tema" (avaliador)</b><small>Na sala do avaliador, abra "Materiais". O texto da prévia é um EXEMPLO DE TESTE, não é conteúdo médico. O candidato nunca vê.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=sala&sala=running-evaluator">Avaliador</a><a class="ir" href="/tela.html?t=sala&sala=running-candidate">Candidato (sem Materiais)</a></div></div>
+<div class="card"><div><b>Administração › Estações: onde a equipe escreve o resumo</b><small>Clique "Conferir" numa estação: "Resumo sobre o tema" com rascunho → aprovado pela revisão médica (quem e quando). Texto novo volta a rascunho. A estação 1 já tem o exemplo de teste aprovado.</small></div><div><span class="st pronta">PRONTA (simulada)</span><br><a class="ir" href="/tela.html?t=estacoes-adm">Abrir</a></div></div>
+
+<h2>Telas que existem no código</h2>
+<div class="card"><div><b>Praticar: baralho de colegas e "Deu match!"</b><small>Escolher o papel, arrastar/curtir colegas, tela "Deu match!" ao curtir o Colega Teste Um (o primeiro cartão). Ver a regra de compatibilidade.</small></div><div><span class="st pronta">PRONTA (sem banco real)</span><br><a class="ir" href="/tela.html?t=praticar">Abrir</a><a class="ir" href="/tela.html?t=praticar&tema=escuro">Modo noite</a></div></div>
+<div class="card"><div><b>Praticar com estação escolhida</b><small>Vindo do Banco de estações: faixa "Estação 3 · ..." e o match abre nela.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=praticar&estacao=teste-inep2020-e04">Abrir</a></div></div>
+<div class="card"><div><b>Praticar sem perfil de estudo</b><small>Estado vazio que leva a criar o perfil.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=praticar&perfil=nenhum">Abrir</a></div></div>
+<div class="card"><div><b>Convite recebido</b><small>Janela "Deu match!" para quem recebe o convite de um colega.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=praticar&convite=1">Abrir</a></div></div>
+<div class="card"><div><b>Meu perfil de estudo</b><small>Nome público, instituição, áreas, papel, ritmo, dias, turnos, privacidade e o cartão como os outros veem.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=perfil">Abrir</a></div></div>
+<div class="card"><div><b>Banco de estações</b><small>10 estações de teste (INEP 2020) por área, busca, grade/lista. Clicar abre o Praticar com a estação.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=estacoes">Abrir</a></div></div>
+
+<h2>Sala de treino ao vivo (Etapa 5 e 6)</h2>
+<p>Cada aba guarda a sua sala e o <b>colega é simulado</b>: ele confirma os papéis, fica pronto, inicia a estação (quando você é o candidato) e libera o esfregaço. Cronômetro anda, botões funcionam. A estação 1 mostra as imagens do protótipo de 11/10 (folha do candidato e esfregaço), lidas só por este servidor de prévia.</p>
+<div class="card"><div><b>Rodada inteira como AVALIADOR</b><small>Papéis → conexão (5 etapas) → prontidão → "Abrir sala do avaliador" → ajustar tempo no rodapé → "Iniciar estação" → liberar o esfregaço → marcar o PEP → "Finalizar estação" → conferência → resultado → treinar outra estação.</small></div><div><span class="st pronta">PRONTA (simulada)</span><br><a class="ir" href="/tela.html?t=sala&sala=roles-evaluator">Começar nos papéis</a><a class="ir" href="/tela.html?t=sala&sala=setup-evaluator">Começar na prontidão</a></div></div>
+<div class="card"><div><b>Rodada inteira como CANDIDATO</b><small>Clique "Estou pronto": uns segundos depois o avaliador simulado inicia e você entra sozinho na estação (folha em imagem com Ampliar, cronômetro com Ocultar); depois de ~10 s o esfregaço é liberado.</small></div><div><span class="st pronta">PRONTA (simulada)</span><br><a class="ir" href="/tela.html?t=sala&sala=roles-candidate">Começar nos papéis</a><a class="ir" href="/tela.html?t=sala&sala=setup-candidate">Começar na prontidão</a></div></div>
+<div class="card"><div><b>Estação em andamento</b><small>Avaliador: duas colunas com rolagem própria (cenário, orientações, impressos, anotações, feedback | PEP) e rodapé com o cronômetro. Candidato: "Estação 1 · Clínica Médica", origem "Revalida 2020 · INEP", folha em imagem e impressos.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=sala&sala=running-candidate">Candidato</a><a class="ir" href="/tela.html?t=sala&sala=running-evaluator">Avaliador</a><a class="ir" href="/tela.html?t=sala&sala=running-evaluator&tema=escuro">Avaliador (noite)</a></div></div>
+<div class="card"><div><b>Conferência e resultado</b><small>Conferência do avaliador (filtro Pendentes, feedback em rascunho); resultado com "Solicitar revisão da nota", "Rever a nota", "Treinar outra estação" e "Encerrar treino".</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=sala&sala=review-evaluator">Conferência</a><a class="ir" href="/tela.html?t=sala&sala=review-candidate">Candidato aguardando</a><a class="ir" href="/tela.html?t=sala&sala=result-candidate">Resultado (candidato)</a><a class="ir" href="/tela.html?t=sala&sala=result-evaluator">Resultado (avaliador)</a></div></div>
+<div class="card"><div><b>Sala encerrada</b><small>Aviso quando o colega sai.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=sala&sala=closed-candidate">Abrir</a></div></div>
+
+<h2>Apoio</h2>
+<div class="card"><div><b>Vitrine de componentes</b><small>Cores novas (áreas, papéis, PEP) e componentes da estação, só de desenvolvimento.</small></div><div><span class="st pronta">PRONTA</span><br><a class="ir" href="/tela.html?t=vitrine">Abrir</a></div></div>
+
+<h2>O que não existe (ainda)</h2>
+<div class="card"><div><b>Sala ao vivo com o banco de verdade</b><small>O código existe (Etapas 5 e 6, migrações 013350, 013360 e 013380); aqui na prévia o colega e o banco são simulados. Para ver com o banco local: servidor local seguro e duas janelas.</small></div><span class="st parcial">SÓ NO SERVIDOR LOCAL</span></div>
+<div class="card"><div><b>Praticar sozinho com avaliação por IA</b><small>Só especificado (adendo de 12/10).</small></div><span class="st nao">NÃO EXISTE</span></div>
+<div class="card"><div><b>Radar de quem está online (tela própria)</b><small>Só especificado. O baralho já usa presença, mas não há tela de radar.</small></div><span class="st nao">NÃO EXISTE</span></div>
+<div class="card"><div><b>Stazia Match completo (documento de engenharia, 19 partes)</b><small>Só spec e plano; nada construído além do baralho/convite.</small></div><span class="st nao">NÃO EXISTE</span></div>
+<div class="card"><div><b>Maquetes antigas do app (Phase2.jsx / Match.jsx)</b><small>Ver o resumo: ainda existem no código; não são abertas aqui.</small></div><span class="st maquete">SÓ MAQUETE</span></div>
+</main></body></html>

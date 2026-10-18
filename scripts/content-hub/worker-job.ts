@@ -16,6 +16,8 @@ import { aiAvailable, createContentHubWorker } from "../../server/contentHub/wor
 import { aiSummaryLine, probeProcessing, reportProcessing } from "../../server/contentHub/capabilities";
 import { runScheduledReanalysis, type ScheduledReanalysis } from "../../server/contentHub/reanalysisRun";
 import { manterConexoesIaAbertas } from "../../server/ai/conexoes";
+import { gerarFolhasPendentes } from "../../server/dupla/folha";
+import { duplaStorage } from "../../server/dupla/router";
 
 const budgetMs = (Number(process.env.CONTENT_HUB_JOB_BUDGET_MIN) > 0 ? Number(process.env.CONTENT_HUB_JOB_BUDGET_MIN) : 50) * 60_000;
 const staleSeconds = Number(process.env.CONTENT_HUB_STALE_SECONDS) > 0 ? Number(process.env.CONTENT_HUB_STALE_SECONDS) : 1800;
@@ -41,6 +43,12 @@ async function main() {
   await deps.db.service("ch_worker_similarity_autoqueue").catch((error: Error) => console.error(`[central] questões parecidas: ${error.message.slice(0, 200)}`));
   let jobs = 0;
   while (Date.now() - t0 < budgetMs && (await worker.tick())) jobs++;
+  // Treino em Dupla: folhas do candidato pedidas na Administração › Estações (só as pedidas; falhar aqui não derruba a tarefa)
+  const folhas = await gerarFolhasPendentes({ db: deps.db, storage: duplaStorage(deps.db.mode), renderer: deps.renderer ?? null, log: (m) => console.log(m) }, { max: 20 }).catch((error: Error) => {
+    console.error(`[central] folhas do candidato: ${error.message.slice(0, 200)}`);
+    return { estacoes: [], geradas: [], falhas: [] };
+  });
+  if (folhas.estacoes.length) console.log(`[central] folhas do candidato: ${folhas.geradas.length} gerada(s) de ${folhas.estacoes.length} pedida(s)`);
   const sources = await worker.checkSources();
   // Vigilância científica: retratações no Crossref (semanal por fonte, sem chave) e quarentena em dia (falhar aqui não derruba a tarefa)
   const identifiers = await worker.checkIdentifiers().catch((error: Error) => {

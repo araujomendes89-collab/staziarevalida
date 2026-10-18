@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { Icon, Avatar } from "../ds";
 import { RI_CSS } from "../prototype/RealIcons.jsx";
 import { AppRealIcon } from "./AppIcons.jsx";
-import { FULL, badgeKind, badgeOf, configItems, groupBadge, groupOfRoute, groupsOf, mobileTabs } from "./shell/navModel.js";
+import { FULL, NAV_ALIAS, badgeKind, badgeOf, configItems, groupBadge, groupOfRoute, groupsOf, mobileTabs } from "./shell/navModel.js";
 import { MaisSheet } from "./shell/MaisSheet.jsx";
 import { inicioCelular, maisCelular } from "./shell/cascaConfig.js";
 import { useShellCounts } from "./shell/useShellCounts.js";
@@ -57,7 +57,17 @@ function readCollapsed(narrow) {
 }
 
 /** Grupo da sanfona (botão + itens). No rodapé ("Configurações") os itens abrem para cima, como no pacote. */
-function SideGroup({ g, route, go, info, open, current, collapsed, onToggle, up = false }) {
+function SideGroup({ g, route, go, info, open, current, collapsed, onToggle, up = false, soon = [] }) {
+  if (g.direct && soon.includes(g.direct)) {
+    // aluno com a 2ª fase aberta: esta tela ainda é só da equipe
+    return (
+      <button type="button" className="smn-grp" aria-disabled="true" aria-label={`${g.label}, em breve`} title={`${g.label} · Em breve`} onClick={(e) => e.preventDefault()} style={{ opacity: 0.55, cursor: "default" }}>
+        <Ic name={g.icon} size={26} />
+        {!collapsed && <span className="smn-lbl">{g.label}</span>}
+        {!collapsed && <span style={{ font: "600 11px var(--font-sans)", color: "var(--text-tertiary)" }}>Em breve</span>}
+      </button>
+    );
+  }
   if (g.direct) {
     const on = route === g.direct;
     return (
@@ -81,7 +91,13 @@ function SideGroup({ g, route, go, info, open, current, collapsed, onToggle, up 
   const gb = groupBadge(g, info);
   const sub = isOpen && (
     <div className={`smn-sub${up ? " smn-sub--up" : ""}`} id={`smn-sub-${g.id}`} role="group" aria-label={g.label}>
-      {g.items.map(([id, ic, l]) => (
+      {g.items.map(([id, ic, l]) => soon.includes(id) ? (
+        <button key={id} type="button" className="smn-item" aria-disabled="true" aria-label={`${l}, em breve`} title={`${l} · Em breve`} onClick={(e) => e.preventDefault()} style={{ opacity: 0.55, cursor: "default" }}>
+          <Ic name={ic} size={22} />
+          <span className="smn-lbl">{l}</span>
+          <span style={{ font: "600 11px var(--font-sans)", color: "var(--text-tertiary)" }}>Em breve</span>
+        </button>
+      ) : (
         <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} onClick={() => go(id)} data-tour={id === "hoje" ? "nav-hoje" : undefined}>
           <Ic name={ic} size={22} />
           <span className="smn-lbl">{l}</span>
@@ -113,7 +129,7 @@ function SideGroup({ g, route, go, info, open, current, collapsed, onToggle, up 
   );
 }
 
-function Sidebar({ route, go, phase, info, theme, collapsed, setCollapsed }) {
+function Sidebar({ route, go, phase, info, theme, collapsed, setCollapsed, soon = [] }) {
   const groups = groupsOf(phase);
   const config = { id: "config", label: "Configurações", icon: "settings", items: [...configItems(info), ["perfil", "settings", "Preferências"]] };
   const current = groupOfRoute(route, phase) || (config.items.some(([id]) => id === route) ? "config" : null);
@@ -161,7 +177,7 @@ function Sidebar({ route, go, phase, info, theme, collapsed, setCollapsed }) {
         </div>
         <div className="smn-list">
           {groups.map((g) => (
-            <SideGroup key={g.id} g={g} route={route} go={go} info={info} open={open === g.id} current={current === g.id} collapsed={collapsed} onToggle={onToggle(g.id)} />
+            <SideGroup key={g.id} g={g} route={route} go={go} info={info} open={open === g.id} current={current === g.id} collapsed={collapsed} onToggle={onToggle(g.id)} soon={soon} />
           ))}
         </div>
         <div className="smn-foot">
@@ -625,7 +641,7 @@ function Header({ title, sub, theme, setTheme, go, mobile, tablet, phase, setPha
 const PAD = { desktop: "32px 40px 64px", tablet: "32px 28px 64px", mobile: "24px 18px calc(104px + env(safe-area-inset-bottom))" };
 
 /** `actions`: botões da tela que vão à direita do título no computador e no tablet (ex.: "Estudar agora" em Missões). */
-function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phase = 1, setPhase, phase2Locked = false, info: baseInfo, headerKind: kind, actions }) {
+function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phase = 1, setPhase, phase2Locked = false, soon = [], info: baseInfo, headerKind: kind, actions }) {
   const layout = useLayout();
   const [more, setMore] = React.useState(false);
   const [slot, setSlot] = React.useState(null);
@@ -633,6 +649,7 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
   const counts = useShellCounts(route);
   const info = { ...counts, ...baseInfo };
   const full = FULL.includes(route);
+  const navRoute = NAV_ALIAS[route] ?? route; // a tela de dentro do módulo de dupla deixa o item "Praticar" aceso
   const mobile = layout === "mobile";
   const narrowWeb = useMQ("(max-width: 1280px)");
   const [pref, setPref] = React.useState(() => readCollapsed(narrowWeb));
@@ -647,6 +664,10 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
     }
   }, [narrowWeb]);
   const setCollapsed = (v) => {
+    if (inRoom) {
+      setRoomOpen(!v);
+      return;
+    }
     userSet.current = true;
     setPref(v);
     try {
@@ -655,7 +676,14 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
       /* sem armazenamento: vale só nesta visita */
     }
   };
-  const collapsed = pref;
+  // Na sala do Treinamento em Dupla (bare) o menu abre recolhido; o botão expande só enquanto a pessoa está na sala (estado em memória,
+  // não grava a preferência dela). Ao sair da sala vale de novo a preferência anterior, e a próxima entrada recolhe outra vez.
+  const inRoom = !!bare && route === "dupla-sala";
+  const [roomOpen, setRoomOpen] = React.useState(false);
+  React.useEffect(() => {
+    if (!inRoom) setRoomOpen(false);
+  }, [inRoom]);
+  const collapsed = inRoom ? !roomOpen : pref;
   const headerKind = kind === "inicio" && mobile && inicioCelular() === "simples" ? "inicio-simples" : kind;
   const marginLeft = full || mobile ? 0 : layout === "tablet" ? 100 : collapsed ? 100 : 280;
   return (
@@ -665,8 +693,8 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
           Pular para o conteúdo
         </a>
       )}
-      {!full && layout === "desktop" && <Sidebar route={route} go={go} phase={phase} info={info} theme={theme} collapsed={collapsed} setCollapsed={setCollapsed} />}
-      {!full && layout === "tablet" && <Rail route={route} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} theme={theme} setTheme={setTheme} />}
+      {!full && layout === "desktop" && <Sidebar route={navRoute} go={go} phase={phase} info={info} theme={theme} collapsed={collapsed} setCollapsed={setCollapsed} soon={phase === 2 ? soon : []} />}
+      {!full && layout === "tablet" && <Rail route={navRoute} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} theme={theme} setTheme={setTheme} />}
       <main id="conteudo" tabIndex={-1} style={{ marginLeft, transition: "margin-left var(--dur-base) var(--ease-standard)", padding: bare ? 0 : PAD[layout], outline: "none" }}>
         {bare ? (
           children
@@ -677,7 +705,7 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
           </div>
         )}
       </main>
-      {!full && mobile && <MobileTabs route={route} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} theme={theme} setTheme={setTheme} more={more} setMore={setMore} />}
+      {!full && !inRoom && mobile && <MobileTabs route={navRoute} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} theme={theme} setTheme={setTheme} more={more} setMore={setMore} />}
     </div>
   );
 }
