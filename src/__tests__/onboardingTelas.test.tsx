@@ -54,10 +54,21 @@ const PLANO = { day: "2026-10-17", done: 0, total: 1, tasks: [{ id: "t1", kind: 
 
 let salvos: any[];
 let estadoAtual: any;
-function servidor(base: any, falhar: Record<string, string> = {}) {
+let marketing: any[];
+// marketing: o que app_marketing_get devolve; "sem" = banco sem a 013800 (a função não existe)
+function servidor(base: any, falhar: Record<string, string> = {}, mkt: any = { opt_in: false, updated_at: null, origin: null }) {
   estadoAtual = base;
   salvos = [];
+  marketing = [];
   backend.rpc.mockImplementation(async (fn: string, args: any) => {
+    if (fn === "app_marketing_get") {
+      if (mkt === "sem") throw new Error("Could not find the function public.app_marketing_get without parameters in the schema cache");
+      return mkt;
+    }
+    if (fn === "app_marketing_set") {
+      marketing.push(args);
+      return { opt_in: args.p_opt_in, updated_at: "2026-10-17T21:00:00-03:00", origin: args.p_origin };
+    }
     if (fn === "app_onboarding_salvar") {
       salvos.push([args.p_passo, args.p_dados]);
       if (falhar[args.p_passo]) throw new Error(falhar[args.p_passo]);
@@ -137,8 +148,17 @@ describe("fluxo inteiro de uma conta nova em teste (2ª fase fechada)", () => {
     fireEvent.click(screen.getByRole("switch", { name: /Quero lembretes/ }));
     fireEvent.change(screen.getByLabelText("Horário"), { target: { value: "07:30" } });
     continuar();
-    await screen.findByText("Nivelamento existente");
+    // novidades por e-mail (decisão do dono de 17/10): no onboarding, nada marcado, dois botões; "Agora não" não grava nada
+    await screen.findByRole("heading", { name: "Novidades por e-mail" });
     expect(salvos[7]).toEqual(["lembretes", { quer: true, horario: "07:30" }]);
+    expect(screen.getByRole("heading", { name: "Quer receber novidades e ofertas do StaziaMed por e-mail?" })).toBeTruthy();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.queryByRole("switch")).toBeNull();
+    expect(screen.getByText(/pergunta 7 de 7/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Agora não" }));
+    await screen.findByText("Nivelamento existente");
+    expect(marketing).toEqual([]);
+    expect(salvos).toHaveLength(8);
     fireEvent.click(screen.getByRole("button", { name: "Fazer depois" }));
     await screen.findByRole("heading", { name: "Seu plano de hoje está pronto" });
     expect(salvos[8]).toEqual(["nivelamento", {}]);
@@ -236,9 +256,70 @@ describe("retomar, passos visíveis e quem não faz o nivelamento", () => {
     abrir(e);
     await screen.findByRole("heading", { name: "Quer lembretes para estudar?" });
     continuar();
+    await screen.findByRole("heading", { name: "Novidades por e-mail" });
+    fireEvent.click(screen.getByRole("button", { name: "Sim, quero receber" }));
     await screen.findByRole("heading", { name: "Seu plano de hoje está pronto" });
+    expect(marketing).toEqual([{ p_opt_in: true, p_origin: "onboarding" }]);
     expect(salvos.slice(0, 2).map(([p]) => p)).toEqual(["lembretes", "nivelamento"]);
     expect(screen.queryByText("Nivelamento existente")).toBeNull();
+  });
+  it("novidades por e-mail: Voltar leva aos lembretes e a pergunta não se repete na mesma abertura", async () => {
+    const e = ESTADO({ status: "in_progress", passo_atual: "lembretes", nivelamento: { cabe: false, concluido: false } });
+    servidor(e);
+    abrir(e);
+    await screen.findByRole("heading", { name: "Quer lembretes para estudar?" });
+    continuar();
+    await screen.findByRole("heading", { name: "Novidades por e-mail" });
+    fireEvent.click(screen.getByRole("button", { name: /Voltar/ }));
+    await screen.findByRole("heading", { name: "Quer lembretes para estudar?" });
+    continuar();
+    await screen.findByRole("heading", { name: "Novidades por e-mail" });
+    fireEvent.click(screen.getByRole("button", { name: "Agora não" }));
+    await screen.findByRole("heading", { name: "Seu plano de hoje está pronto" });
+    // "Ajustar respostas" no plano: passa de novo pelos lembretes, sem a pergunta de novidades
+    fireEvent.click(screen.getByRole("button", { name: /Ajustar/ }));
+    await screen.findByRole("heading", { name: /Quanto tempo por dia/ });
+    continuar();
+    await screen.findByRole("heading", { name: /dificuldade/ });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Pediatria/ }));
+    continuar();
+    await screen.findByRole("heading", { name: "Como você prefere estudar?" });
+    fireEvent.click(screen.getByRole("radio", { name: /Um pouco de tudo/ }));
+    continuar();
+    await screen.findByRole("heading", { name: "Quem vai te acompanhar no Tutor?" });
+    continuar();
+    await screen.findByRole("heading", { name: "Quer lembretes para estudar?" });
+    continuar();
+    await screen.findByRole("heading", { name: "Seu plano de hoje está pronto" });
+    expect(marketing).toEqual([]);
+  });
+  it("novidades por e-mail: não pergunta a quem já recebe, no banco sem a 013800 nem ao refazer a apresentação", async () => {
+    const e = ESTADO({ status: "in_progress", passo_atual: "lembretes", nivelamento: { cabe: false, concluido: false } });
+    servidor(e, {}, { opt_in: true, updated_at: "2026-10-01T10:00:00-03:00", origin: "minha_conta" });
+    abrir(e);
+    await screen.findByRole("heading", { name: "Quer lembretes para estudar?" });
+    continuar();
+    await screen.findByRole("heading", { name: "Seu plano de hoje está pronto" });
+    expect(screen.queryByRole("heading", { name: "Novidades por e-mail" })).toBeNull();
+    cleanup();
+
+    servidor(e, {}, "sem");
+    abrir(e);
+    await screen.findByRole("heading", { name: "Quer lembretes para estudar?" });
+    continuar();
+    await screen.findByRole("heading", { name: "Seu plano de hoje está pronto" });
+    expect(screen.queryByRole("heading", { name: "Novidades por e-mail" })).toBeNull();
+    cleanup();
+
+    const r = ESTADO({ mostrar: false, status: "completed", passo_atual: "fim", nivelamento: { cabe: false, concluido: false } });
+    servidor(r);
+    backend.rpc.mockClear();
+    abrir(r, { modo: "refazer", inicio: "lembretes", go: vi.fn() });
+    await screen.findByRole("heading", { name: "Quer lembretes para estudar?" });
+    continuar();
+    await screen.findByRole("heading", { name: "Seu plano de hoje está pronto" });
+    expect(backend.rpc.mock.calls.some(([fn]: any) => fn === "app_marketing_get")).toBe(false);
+    expect(marketing).toEqual([]);
   });
   it("refazer pela Ajuda: começa na pergunta pedida e 'Fechar' volta ao painel sem gravar nada", async () => {
     const go = vi.fn();

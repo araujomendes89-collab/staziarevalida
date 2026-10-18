@@ -1,5 +1,5 @@
-// Onboarding inteligente: apresentação → configuração (7 perguntas, cada uma salva no Supabase ao continuar) → nivelamento
-// (o EXISTENTE, opcional) → seu plano (o Plano de Hoje real) → painel com o tour.
+// Onboarding inteligente: apresentação → configuração (7 perguntas, cada uma salva no Supabase ao continuar) → novidades por
+// e-mail (só na primeira vez; opcional) → nivelamento (o EXISTENTE, opcional) → seu plano (o Plano de Hoje real) → painel com o tour.
 // modo "primeira": tela cheia antes do app, para a conta nova (o servidor decide em app_onboarding_estado.mostrar).
 // modo "refazer": pela Conta → Ajuda ("Refazer apresentação") ou pelo Início (convite / Primeiros passos); fecha e volta ao app.
 // Quem decide acesso, teste e plano é sempre o servidor: aqui só se pergunta e se guarda a preferência.
@@ -10,6 +10,8 @@ import { Banner, Icon } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../shell/useLayout.js";
 import { Nivelamento } from "../nivelamento/Nivelamento.jsx";
+import { MarketingPergunta } from "../account/MarketingPergunta.jsx";
+import { semFuncaoNoBanco } from "../legal/vigente.js";
 import { Apresentacao, BotoesApresentacao } from "./Apresentacao.jsx";
 import { Trilha } from "./Trilha.jsx";
 import {
@@ -116,6 +118,10 @@ export function Onboarding({ modo = "primeira", inicio = null, go }) {
   const [valores, setValores] = React.useState(() => valoresIniciais(boot.onboarding || {}));
   const [ocupado, setOcupado] = React.useState(false);
   const [erro, setErro] = React.useState(null);
+  // novidades por e-mail (Contrato 3.0, cláusulas 6.2 e 32; decisão do dono de 17/10): pergunta logo depois dos lembretes, só na
+  // primeira vez e uma vez por abertura. Não é um passo do banco (onboarding_ordem): quem recarrega depois dos lembretes não a vê
+  // de novo e pode ligar em Minha Conta → Privacidade e dados.
+  const [marketingVisto, setMarketingVisto] = React.useState(false);
   const titulo = React.useRef(null);
 
   React.useEffect(() => {
@@ -177,6 +183,32 @@ export function Onboarding({ modo = "primeira", inicio = null, go }) {
     const e = await salvar("apresentacao");
     irPara(proximoDe("apresentacao", e));
   });
+  /** Segue para o passo depois de p; nivelamento já feito (ou que não cabe): o servidor registra e o passo some da lista. */
+  const seguirDe = async (p, e) => {
+    let prox = proximoDe(p, e);
+    if (prox === "trilha" && e.nivelamento && !e.etapas?.nivelamento) {
+      const n = await salvar("nivelamento");
+      prox = proximoDe("nivelamento", n);
+    }
+    irPara(prox);
+  };
+  /**
+   * A pergunta de novidades aparece? Só na primeira vez e se a pessoa ainda não recebe. Banco sem a 013800 (função não existe):
+   * não pergunta (nada é prometido sem poder guardar). Outro erro ao ler: pergunta mesmo assim ("Agora não" não grava nada).
+   */
+  const perguntarMarketing = async () => {
+    if (modo !== "primeira" || marketingVisto) return false;
+    try {
+      const m = await backend.rpc("app_marketing_get");
+      return m?.opt_in !== true;
+    } catch (err) {
+      return !semFuncaoNoBanco(err);
+    }
+  };
+  const respondeuMarketing = () => {
+    setMarketingVisto(true);
+    executar(() => seguirDe("lembretes", estado));
+  };
   const continuarPergunta = () => executar(async () => {
     // a escolha do teste (1ª fase, 2ª fase ou as duas) passa pelo servidor, que vê o IP; recusa do banco aparece na tela.
     // Servidor de planos fora (503/rede): o próprio passo do onboarding grava a escolha, como antes.
@@ -188,13 +220,8 @@ export function Onboarding({ modo = "primeira", inicio = null, go }) {
       }
     }
     const e = await salvar(passo, dadosDoPasso(passo, valores[passo]));
-    // nivelamento já feito (ou que não cabe): o servidor registra e o passo some da lista
-    let prox = proximoDe(passo, e);
-    if (prox === "trilha" && e.nivelamento && !e.etapas?.nivelamento) {
-      const n = await salvar("nivelamento");
-      prox = proximoDe("nivelamento", n);
-    }
-    irPara(prox);
+    if (passo === "lembretes" && (await perguntarMarketing())) return irPara("marketing");
+    await seguirDe(passo, e);
   });
   const voltar = () => irPara(visiveis[Math.max(0, indice - 1)]);
   const pularTudo = () => executar(async () => {
@@ -237,6 +264,31 @@ export function Onboarding({ modo = "primeira", inicio = null, go }) {
         rodape={<BotoesApresentacao cena={cena} setCena={setCena} onFim={fimApresentacao} onPular={fimApresentacao} ocupado={ocupado} />}>
         {erroBanner}
         <Apresentacao contexto={contexto} cena={cena} setCena={setCena} onFim={fimApresentacao} ocupado={ocupado} mobile={mobile} tituloRef={titulo} />
+      </Moldura>
+    );
+  }
+
+  // ---------------------------------------------------------------- novidades por e-mail (nada marcado; "Agora não" não grava)
+  if (passo === "marketing") {
+    return (
+      <Moldura estado={estado} passo="lembretes" modo={modo} onSair={sair.acao} rotuloSair={sair.rotulo} ocupado={ocupado}
+        rodape={
+          <span className="ob-rodape__esq">
+            <button type="button" className="ob-btn ob-btn--sec" onClick={() => irPara("lembretes")} disabled={ocupado}>
+              <Icon name="arrow-left" size={18} /> Voltar
+            </button>
+          </span>
+        }>
+        <div className="ob-q">
+          <div className="ob-q__cab">
+            <span className="ob-over">Seu estudo · opcional</span>
+            <h1 className="ob-h1" ref={titulo} tabIndex={-1}>
+              Novidades por e-mail
+            </h1>
+          </div>
+          {erroBanner}
+          <MarketingPergunta onRespondido={respondeuMarketing} />
+        </div>
       </Moldura>
     );
   }

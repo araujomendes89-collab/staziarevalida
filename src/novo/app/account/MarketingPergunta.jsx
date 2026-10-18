@@ -1,5 +1,6 @@
 // Pergunta de marketing do ONBOARDING (Contrato 3.0, cláusulas 6.2 e 32; decisão do dono de 17/10/2026: a escolha sai do cadastro e
-// passa a ser feita no onboarding). Pronta para encaixar no onboarding (ramo onboarding/pacote1, junção do Pacote 2).
+// passa a ser feita no onboarding). Encaixada no Pacote 2: tela "Novidades por e-mail" logo depois dos lembretes
+// (src/novo/app/onboarding/Onboarding.jsx), só na primeira vez e só para quem ainda não recebe.
 //
 // COMO USAR
 //   import { MarketingPergunta } from "../account/MarketingPergunta.jsx";
