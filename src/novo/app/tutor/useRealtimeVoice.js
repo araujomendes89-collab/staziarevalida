@@ -55,12 +55,20 @@ export const resetGeminiDeviceFallback = () => {
 export const realtimeSupport = () =>
   typeof window !== "undefined" && typeof window.RTCPeerConnection === "function" && Boolean(navigator?.mediaDevices?.getUserMedia);
 
+const iosDevice = () => {
+  const nav = typeof navigator !== "undefined" ? navigator : null;
+  return /iPhone|iPad|iPod/.test(nav?.userAgent ?? "") || (nav?.platform === "MacIntel" && (nav?.maxTouchPoints ?? 0) > 1);
+};
+
 /** Mensagem para o aluno, por tipo de problema. */
 export function realtimeErrorMessage(err) {
   if (!err) return null;
   switch (err.kind) {
     case "mic":
-      return "O navegador bloqueou o microfone. Clique no cadeado ao lado do endereço, permita o microfone e tente de novo.";
+      // iPhone e iPad não têm o cadeado: o caminho é pelo "aA" da barra de endereço
+      return iosDevice()
+        ? "O microfone está bloqueado. Toque em “aA” na barra de endereço, depois em Ajustes do Site, permita o Microfone e tente de novo."
+        : "O navegador bloqueou o microfone. Clique no cadeado ao lado do endereço, permita o microfone e tente de novo.";
     case "no_mic":
       return "Não encontrei um microfone neste aparelho.";
     case "unsupported":

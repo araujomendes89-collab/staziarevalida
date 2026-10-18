@@ -48,7 +48,7 @@ window.fetch = async (url, init = {}) => {
     case "/nexus":
       return json({
         voice_enabled: true, stt: true, reserve: !soReserva, reserve_minutes: cenario === "sem-minutos" ? 0 : 8, minutes_today: 5,
-        live: !soReserva, live_minutes: cenario === "sem-minutos" ? 0 : 8,
+        live: !soReserva && cenario !== "sem-minutos", live_minutes: cenario === "sem-minutos" ? 0 : 8,
         professors: ["durao", "acolhedor", "durona", "tranquila"].map((id) => ({ id, eleven: true, sample: false, reason: null })),
       });
     case "/voice/open": {
