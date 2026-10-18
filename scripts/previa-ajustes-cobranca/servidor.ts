@@ -103,13 +103,14 @@ async function main() {
   const billing = createBilling({ db, provider: fake, baseUrl: `http://127.0.0.1:${PORTA}`, log: (m) => console.log(m) });
   const emails = createEmailsCobranca({ db, mailer, baseUrl: `http://127.0.0.1:${PORTA}`, log: (m) => console.log(m) });
   const deps: BillingRoutesDeps = { billing, provider: fake, authenticate: (req) => db.authenticate(req), log: (m) => console.log(m), emails };
-  await dev.db.query(`update public.billing_config set vendas_ligadas = true`);
 
   await conta(dev, "admin-previa@previa.dev", "Equipe StaziaMed", true);
   const ana = await conta(dev, "ana-pagamentos@previa.dev", "Ana Souza");
   const bruno = await conta(dev, "bruno-conferir@previa.dev", "Bruno Lima");
   const carla = await conta(dev, "carla-equipe@previa.dev", "Carla Mendes");
   if (ana.novo) {
+    // as compras de exemplo precisam das vendas abertas; no fim elas voltam a FECHADAS (para ver o botão "Abrir vendas")
+    await dev.db.query(`update public.billing_config set vendas_ligadas = true`);
     const comprar = async (u: { id: string }, email: string, o: Record<string, unknown>, ajuste: Partial<ProviderCharge> = {}) => {
       const r = await billing.checkout({ id: u.id, email } as any, { aceite: true, idem: `previa-${++seq}-compra`, documento: "366.385.446-91", nome: "Aluno Previa", ...o });
       const p = (await dev.db.query<any>(`select provider_payment_id from public.billing_pedidos where id = $1`, [r.id])).rows[0];
@@ -149,6 +150,7 @@ async function main() {
       await dev.db.query(`insert into public.carteira_movimentos (user_id, request_id, recurso, modo, situacao, creditos, custo_usd) values ($1, $2, 'tutor_texto', 'sombra', 'confirmado', 1, $3)`, [u, `previa-${++seq}-ia`, usd]);
     }
     console.log("[previa] tarefa:", JSON.stringify(await emails.rodar()));
+    await dev.db.query(`update public.billing_config set vendas_ligadas = false`);
   }
 
   const app = express();

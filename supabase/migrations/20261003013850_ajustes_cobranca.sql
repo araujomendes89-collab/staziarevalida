@@ -195,9 +195,18 @@ begin
       order by y.pago_em desc nulls last limit 1;
       if v_outra is not null then
         v_class := 'duplicada';
-        -- o contrato passa a apontar para a cobrança que ficou (a base da devolução do aluno, se ele pedir depois)
-        update public.billing_contratos set ultima_cobranca_id = v_outra, atualizado_em = now()
-        where user_id = x.user_id and ultima_cobranca_id = x.id;
+        -- o contrato passa a apontar para a cobrança que ficou (a base da devolução do aluno, se ele pedir depois). Se a repetida
+        -- (devolvida) tinha trocado a forma de renovar (ex.: um Pix pago em cima do período do cartão), volta a da que ficou: com
+        -- assinatura do cartão = renova no cartão (senão sairia também o Pix da renovação e o aluno pagaria duas vezes)
+        update public.billing_contratos k set ultima_cobranca_id = v_outra,
+          metodo = case when y.provider_subscription_id is not null then 'cartao' else k.metodo end,
+          provider_subscription_id = coalesce(y.provider_subscription_id, k.provider_subscription_id), atualizado_em = now()
+        from public.billing_cobrancas y
+        where y.id = v_outra and k.user_id = x.user_id and k.ultima_cobranca_id = x.id;
+        update public.subscriptions set provider_subscription_id = y.provider_subscription_id, updated_at = now()
+        from public.billing_cobrancas y
+        where y.id = v_outra and y.provider_subscription_id is not null and public.subscriptions.user_id = x.user_id
+          and public.subscriptions.provider_subscription_id is null;
       elsif x.periodo_fim is not null and x.periodo_fim <= now() then
         v_class := 'periodo_encerrado';
       elsif exists (select 1 from public.billing_cobrancas y where y.user_id = x.user_id and y.id <> x.id and y.tipo = 'plano'

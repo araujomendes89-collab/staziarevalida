@@ -30,8 +30,8 @@ const TOKEN = "token-do-aviso-simulado-com-mais-de-32-caracteres";
 const CRON = "segredo-da-tarefa-de-teste";
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ajustes-cobranca-"));
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const [DUPLO, PARCIAL, UNICA, ANTIGA, CONFERIR, EXTRA, ADMIN, EDITOR, MANTER, ENCERRAR, RECUSA, ASSUME, NOTA, GASTAO] = [41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54].map(id);
-const TODOS = [DUPLO, PARCIAL, UNICA, ANTIGA, CONFERIR, EXTRA, ADMIN, EDITOR, MANTER, ENCERRAR, RECUSA, ASSUME, NOTA, GASTAO];
+const [DUPLO, PARCIAL, UNICA, ANTIGA, CONFERIR, EXTRA, ADMIN, EDITOR, MANTER, ENCERRAR, RECUSA, ASSUME, NOTA, GASTAO, DUPLO_CARTAO] = [41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55].map(id);
+const TODOS = [DUPLO, PARCIAL, UNICA, ANTIGA, CONFERIR, EXTRA, ADMIN, EDITOR, MANTER, ENCERRAR, RECUSA, ASSUME, NOTA, GASTAO, DUPLO_CARTAO];
 const MIGRACAO = path.resolve(__dirname, "../../supabase/migrations/20261003013850_ajustes_cobranca.sql");
 const DESFAZER = path.resolve(__dirname, "../../supabase/desfazer/20261003013850_ajustes_cobranca.desfazer.sql");
 const CONFERIR_SQL = path.resolve(__dirname, "../../supabase/conferir/ajustes-cobranca.sql");
@@ -233,6 +233,19 @@ describe("devolução feita no painel do Asaas", () => {
     // aviso repetido (outro id de evento, mesmo valor): nada novo
     await devolverNoPainel(c2);
     expect((await devolucoesPainel(DUPLO)).length).toBe(1);
+  });
+
+  it("cobrança repetida por Pix em cima do período do cartão: devolvida, o contrato volta a renovar no cartão (sem Pix de renovação a mais)", async () => {
+    const c1 = await comprarPago(DUPLO_CARTAO, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "cartao" });
+    const sid = charges.get(c1)!.subscriptionId!;
+    const c2 = `pay_${++seq}`;
+    charges.set(c2, { ...charges.get(c1)!, id: c2, method: "pix", subscriptionId: null, paidAt: new Date() });
+    expect((await hookPag(c2)).status).toBe(200);
+    expect(await q1(`select metodo, provider_subscription_id from public.billing_contratos where user_id = $1`, [DUPLO_CARTAO])).toEqual({ metodo: "pix", provider_subscription_id: null });
+    await devolverNoPainel(c2);
+    expect(await q1(`select metodo, provider_subscription_id, renova from public.billing_contratos where user_id = $1`, [DUPLO_CARTAO])).toEqual({ metodo: "cartao", provider_subscription_id: sid, renova: true });
+    expect(await acesso(DUPLO_CARTAO)).toEqual({ status: "active", vale: true });
+    expect((await devolucoesPainel(DUPLO_CARTAO))[0].classificacao).toBe("duplicada");
   });
 
   it("devolução parcial: o acesso continua e fica registrada", async () => {
