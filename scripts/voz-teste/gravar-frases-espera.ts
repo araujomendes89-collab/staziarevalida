@@ -23,6 +23,7 @@ import { faixaDeFala } from "./aparar.mjs";
 import { tokensPorModalidade, custoUsd } from "./precos.mjs";
 import { AfinadorStream } from "../../src/novo/app/tutor/voice/pitchShift.js";
 import { PERSONAGENS } from "../../src/novo/app/tutor/personagens/personagens.js";
+import { textoParaVoz } from "../../server/tutor/pronuncia";
 
 const arg = (n: string, p: string) => {
   const i = process.argv.indexOf(`--${n}`);
@@ -119,7 +120,8 @@ async function gravar() {
       let r: Awaited<ReturnType<typeof geminiTts>> | null = null;
       for (let tentativa = 1; tentativa <= 2 && !r; tentativa++) {
         try {
-          r = await geminiTts({ modelo: MODELO, voz, texto: FRASES_ESPERA[p][i] });
+          // só o que vai para a voz leva a pronúncia dos nomes (Estázia, Estázi, Enamédi); o manifesto guarda o texto escrito
+          r = await geminiTts({ modelo: MODELO, voz, texto: textoParaVoz(FRASES_ESPERA[p][i]) });
           if (!r.pcm.length) throw new Error("sem áudio na resposta");
         } catch (e: any) {
           r = null;

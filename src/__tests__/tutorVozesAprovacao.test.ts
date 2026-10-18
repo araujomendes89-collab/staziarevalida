@@ -21,6 +21,7 @@ import { voiceFingerprint } from "../../server/tutor/officialVoices";
 import { OFFICIAL_VOICES, VOICE_SCENARIOS, scenariosFor } from "../shared/tutor/officialVoices";
 import { aceitarTermos } from "./helpers/aceites";
 import { GEMINI_VOZ_ENV, custoDe, pedidoGemini, respostaGemini } from "./helpers/vozGemini";
+import { textoParaVoz } from "../../server/tutor/pronuncia";
 
 const ENV = GEMINI_VOZ_ENV;
 const ELEVEN = { ELEVENLABS_API_KEY: "chave-falsa-de-teste-" + "x".repeat(40), ELEVENLABS_VOICE_STAZI: "vozStaziTeste000001", ELEVENLABS_VOICE_STAZIA: "vozStaziaTeste00001" };
@@ -201,7 +202,8 @@ describe("Vozes do Stazi e da Stazia: audição e aprovação no servidor", () =
     const stored = await deps.storage.get(samplePath("stazia", fp));
     // guardada a mesma Apresentação ouvida (o texto do catálogo, na voz da Stazia), já em MP3
     expect(stored.equals(heard)).toBe(true);
-    expect(generated.map((g) => [g.text, g.voice])).toEqual([[OFFICIAL_VOICES.stazia.sample, "Kore"]]);
+    expect(generated.map((g) => [g.text, g.voice])).toEqual([[textoParaVoz(OFFICIAL_VOICES.stazia.sample), "Kore"]]);
+    expect(generated[0].text).toMatch(/^Eu sou a Estázia\./); // a voz fala o nome com a pronúncia aprovada
     expect(OFFICIAL_VOICES.stazia.sample).toMatch(/^Eu sou a Stazia\./);
     expect(stored[0] === 0xff && (stored[1] & 0xe0) === 0xe0).toBe(true); // começa num quadro MP3
     // o "Ouvir" do aluno toca o arquivo guardado, sem gerar voz
@@ -222,7 +224,8 @@ describe("Vozes do Stazi e da Stazia: audição e aprovação no servidor", () =
     const m = generated.length;
     expect((await call(SOCIA, "POST", "/tutor/voices/approve", { personality: "stazi" })).status).toBe(200);
     expect(generated.length).toBe(m + 1);
-    expect(generated.at(-1)).toMatchObject({ text: OFFICIAL_VOICES.stazi.sample, voice: "Zubenelgenubi" });
+    expect(generated.at(-1)).toMatchObject({ text: textoParaVoz(OFFICIAL_VOICES.stazi.sample), voice: "Zubenelgenubi" });
+    expect(generated.at(-1)!.text).toContain("Eu sou o Estázi.");
     expect(OFFICIAL_VOICES.stazi.sample).toContain("Eu sou o Stazi.");
     expect((await deps.storage.get(samplePath("stazi", voiceFingerprint("stazi", ENV)))).length).toBeGreaterThan(500);
   });
@@ -276,7 +279,7 @@ describe("Vozes do Stazi e da Stazia: audição e aprovação no servidor", () =
     expect(await preview(DONO, "stazia", "comemoracao")).toMatchObject({ status: 400 });
     expect(generated).toHaveLength(0);
     expect((await preview(DONO, "stazia", "apresentacao")).status).toBe(200);
-    expect(generated[0]).toMatchObject({ voice: "Kore", text: OFFICIAL_VOICES.stazia.sample });
+    expect(generated[0]).toMatchObject({ voice: "Kore", text: textoParaVoz(OFFICIAL_VOICES.stazia.sample) });
     expect(generated[0].url).toContain("gemini-3.8-flash-tts");
     expect(generated[0].url).not.toContain(ENV.VERTEX_API_KEY);
     const raw = JSON.stringify((await panel(DONO)).json);

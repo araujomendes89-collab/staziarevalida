@@ -4,6 +4,7 @@ import { PERSONAGENS } from "../../src/novo/app/tutor/personagens/personagens.js
 import { SPEECH_PROFILES, SPEED_RANGE, TAG_RULES } from "./speechDirector";
 import { googleAiAccess } from "../ai/googleKey";
 import { ACABAMENTO_VERSAO, LUFS_ALVO, MP3_KBPS, PICO_MAX_DB } from "./vozAcabamento";
+import { PRONUNCIAS, PRONUNCIA_VERSAO } from "./pronuncia";
 
 // Apenas servidor. Não importar este módulo em src/ (o catálogo público fica em src/shared).
 /** Aprovação de uma voz no painel (tutor_voice_approvals): vale só para a mesma versão (fingerprint). */
@@ -65,8 +66,8 @@ export function elevenLabsConfiguration(env: NodeJS.ProcessEnv = process.env) {
 }
 
 /**
- * O que forma a versão de uma voz. Gemini: o serviço, o modelo, a voz, a afinação, o formato, o acabamento (volume e teto), o
- * perfil e os cenários de audição. ElevenLabs (reserva): o voice_id, o modelo, o formato, o perfil, os cenários e a direção do
+ * O que forma a versão de uma voz. Gemini: o serviço, o modelo, a voz, a afinação, o formato, o acabamento (volume e teto), a
+ * pronúncia dos nomes (pronuncia.ts), o perfil e os cenários de audição. ElevenLabs (reserva): o voice_id, o modelo, o formato, o perfil, os cenários e a direção do
  * Speech Director. Mudar qualquer parte pede nova audição e nova aprovação.
  */
 export function fingerprintParts(id: OfficialVoice, env: NodeJS.ProcessEnv = process.env) {
@@ -75,7 +76,8 @@ export function fingerprintParts(id: OfficialVoice, env: NodeJS.ProcessEnv = pro
     const g = geminiVoiceOf(id);
     return {
       id, engine: "gemini" as const, model: GEMINI_TTS_MODEL, voice: g.voice, semitons: g.semitons, format: GEMINI_FORMAT,
-      finish: { version: ACABAMENTO_VERSAO, lufs: LUFS_ALVO[id], peakDb: PICO_MAX_DB }, profile: OFFICIAL_VOICES[id], scenarios,
+      finish: { version: ACABAMENTO_VERSAO, lufs: LUFS_ALVO[id], peakDb: PICO_MAX_DB },
+      pronunciation: { version: PRONUNCIA_VERSAO, words: PRONUNCIAS }, profile: OFFICIAL_VOICES[id], scenarios,
     };
   }
   const c = elevenLabsConfiguration(env);

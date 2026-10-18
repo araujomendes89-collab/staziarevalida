@@ -15,6 +15,7 @@ import { OFFICIAL_VOICES, type OfficialVoice } from "../../src/shared/tutor/offi
 import { googleAiAccess } from "../ai/googleKey";
 import { GEMINI_TTS_MODEL, geminiVoiceOf, officialVoiceForPersonality, voiceFingerprint, voiceReadiness } from "./officialVoices";
 import { acabarVoz, LUFS_ALVO } from "./vozAcabamento";
+import { textoParaVoz } from "./pronuncia";
 
 /** Preço do Gemini TTS (US$ por 1 milhão de tokens, ai.google.dev/gemini-api/docs/pricing de 15/10/2026): promocional até 31/12/2026. */
 export function geminiTtsPrice(model: string, now = new Date()): { textIn: number; audioOut: number } | null {
@@ -62,8 +63,9 @@ export class OfficialGeminiSpeech implements SpeechProvider {
     if (!text.trim() || text.length > 4000) throw new Error("Texto de voz vazio ou acima de 4.000 caracteres.");
     const access = googleAiAccess(this.env)!;
     const g = geminiVoiceOf(id);
-    // Colchetes do texto não podem virar marcação de áudio do serviço (ex.: "[laughs]"): preserva as palavras.
-    const literal = text.replaceAll("[", "(").replaceAll("]", ")");
+    // Só o texto que vai para a voz: os nomes com a pronúncia aprovada ("Estázia", "Estázi", "Enamédi"; pronuncia.ts). A tela segue
+    // com o texto escrito. Colchetes do texto não podem virar marcação de áudio do serviço (ex.: "[laughs]"): preserva as palavras.
+    const literal = textoParaVoz(text).replaceAll("[", "(").replaceAll("]", ")");
     let response: Response;
     try {
       response = await this.fetchImpl(endpoint(access.mode, this.model), {

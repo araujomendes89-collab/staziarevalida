@@ -144,7 +144,8 @@ PRONÚNCIA DE TERMOS MÉDICOS
 - Siglas que se leem como palavra, leia como palavra (SUS, UTI, UBS). As outras, letra por letra, com os nomes das letras em português: PA "pê-á", FC "efe-cê", AVC "a-vê-cê", IAM "i-a-ême", HIV "agá-i-vê", DPOC "dê-pê-ó-cê", ECG "é-cê-gê".
 - Unidades por extenso: mg "miligramas", mL "mililitros", mmHg "milímetros de mercúrio", kg "quilos", bpm "batimentos por minuto", irpm "incursões por minuto", °C "graus".
 - Números por extenso em português: 2,5 é "dois vírgula cinco"; 120 por 80 é "doze por oito" quando for pressão arterial.
-- Nomes de remédio e de doença com a pronúncia usada nos hospitais brasileiros (amoxicilina, dipirona, ceftriaxona, pré-eclâmpsia).`;
+- Nomes de remédio e de doença com a pronúncia usada nos hospitais brasileiros (amoxicilina, dipirona, ceftriaxona, pré-eclâmpsia).
+- Pronuncie Stazia como "Estázia" (também em StaziaMed, Stazia Arena e Stazia Coins), Stazi como "Estázi" e ENAMED como "Enamédi".`;
 
 /** Camada da VOZ EM TEMPO REAL (OpenAI Realtime): o modelo fala direto, então os fatos precisam vir das ferramentas. */
 export const TUTOR_REALTIME = `VOCÊ ESTÁ EM UMA CONVERSA POR VOZ, AO VIVO.
