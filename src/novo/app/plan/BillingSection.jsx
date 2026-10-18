@@ -37,6 +37,11 @@ const ESTADO_FINAL = {
   cancelado: ["Pagamento cancelado", "Este pagamento foi cancelado. Nada foi cobrado."],
 };
 
+const TROCA_FALHOU = [
+  "Não foi possível trocar para o cartão",
+  "Nada foi cobrado. Sua renovação continua no Pix (um Pix novo chega 7 dias antes do vencimento) e o seu acesso continua até o fim do período já pago.",
+];
+
 /** A página do cartão abre numa aba nova ANTES da resposta do servidor (senão o navegador bloqueia a janela). */
 export function abrirAbaVazia() {
   if (typeof window === "undefined" || typeof window.open !== "function") return null;
@@ -302,7 +307,9 @@ export function PedidoAberto({ pedido, onChange, onNovo }) {
     );
   }
   if (ESTADO_FINAL[p.status]) {
-    const [t, d] = ESTADO_FINAL[p.status];
+    // troca da renovação de Pix para cartão (Minha conta) que não passou: só desfaz a troca; o período pago fica inteiro
+    const trocaFalhou = p.status === "falhou" && p.motivo === "renovacao" && p.metodo !== "pix";
+    const [t, d] = trocaFalhou ? TROCA_FALHOU : ESTADO_FINAL[p.status];
     // cartão (ou débito) recusado: tentar com outro cartão ou por Pix, na mesma compra
     // (a troca da renovação para o cartão, em Minha conta, só tenta de novo: a renovação continua no Pix)
     const recusado = p.status === "falhou" && (p.metodo === "cartao" || p.metodo === "debito") && p.motivo !== "renovacao";
@@ -325,7 +332,7 @@ export function PedidoAberto({ pedido, onChange, onNovo }) {
                   </Button>
                 </>
               ) : (
-                <Button icon="rotate-ccw" onClick={() => onNovo()}>
+                <Button icon="rotate-ccw" onClick={() => onNovo(undefined, p)}>
                   Tentar de novo
                 </Button>
               )}

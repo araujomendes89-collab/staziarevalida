@@ -603,6 +603,9 @@ export function createBilling(deps: BillingDeps) {
       }
       if (pedido.provider_subscription_id) await p.cancelSubscription(pedido.provider_subscription_id);
       await svc("ch_worker_billing_pedido_encerrar", { p_pedido: pedido.id, p_status: "falhou", p_erro: motivo, p_user: null });
+      // troca da renovação para o cartão que não passou: a renovação continua no Pix; se já está na janela dos 7 dias, o Pix (que a
+      // troca tinha cancelado) sai de novo agora, sem esperar a tarefa
+      if (pedido.motivo === "renovacao") await pixDeRenovacao(pedido.user_id);
     } catch (e) {
       log(`[billing] pedido recusado ${pedido.id} não encerrado: ${(e as Error).message}`);
     }
@@ -648,12 +651,15 @@ export function createBilling(deps: BillingDeps) {
       }
     } else if (charge.status === "failed" || charge.status === "overdue" || (failure && charge.status === "pending")) {
       // sem tolerância (dono, 17/10): a renovação que falhou pausa o acesso NO MESMO DIA, mesmo que o fornecedor ainda vá tentar
-      // o cartão de novo; se ele conseguir depois, o aviso de pagamento libera de novo a partir da confirmação
+      // o cartão de novo; se ele conseguir depois, o aviso de pagamento libera de novo a partir da confirmação.
+      // MENOS na troca da renovação de Pix para cartão (Minha conta): o cartão recusado ali só desfaz a troca; o período já pago
+      // continua inteiro e a renovação segue no Pix (dono, 17/10). A pausa vale só para a recusa da renovação do próprio cartão.
+      const trocaParaCartao = Boolean(pedido && pedido.motivo === "renovacao" && pedido.metodo !== "pix" && pedido.provider_payment_id === charge.id);
       await svc("ch_worker_billing_falhou", {
         p_provider: p.name, p_payment: charge.id, p_pedido: pedido?.id ?? null, p_user: userId, p_subscription: charge.subscriptionId,
         p_tipo: tipo, p_codigo: codigo, p_ciclo: ciclo, p_metodo: metodo, p_valor: charge.amountCents,
         p_motivo: charge.status === "overdue" ? "Venceu sem pagamento" : "Cartão recusado",
-        p_venc_fim: tipo === "plano" && charge.dueDate ? endOfBrtDay(charge.dueDate).toISOString() : null,
+        p_venc_fim: tipo === "plano" && charge.dueDate && !trocaParaCartao ? endOfBrtDay(charge.dueDate).toISOString() : null,
       });
       // compra no cartão recusada: a tela mostra "Pagamento não concluído" e o aluno tenta com outro cartão ou Pix
       if (charge.status !== "overdue") await encerrarRecusado(pedido, charge, MOTIVO_FALHA[failure ?? "recusado"]);
@@ -688,6 +694,42 @@ export function createBilling(deps: BillingDeps) {
     return userId;
   }
 
+  type RenovacaoPix = { user_id: string; plano: string; ciclo: "mensal" | "trimestral"; periodo_fim: string; provider: string; customer_id: string };
+
+  /**
+   * Pix da renovação de um contrato no Pix (7 dias antes do vencimento). A chave é por vencimento; se o Pix daquele vencimento foi
+   * cancelado (a troca para cartão cancela o Pix aberto e, se o cartão for recusado, a renovação volta ao Pix), a chave seguinte
+   * (":2", ":3"...) gera outro. true = gerou agora.
+   */
+  async function gerarPixDeRenovacao(r: RenovacaoPix): Promise<boolean> {
+    const p = need();
+    const due = brtDate(new Date(r.periodo_fim));
+    for (let n = 1; n <= 5; n++) {
+      const pedido = await svc<Pedido>("ch_worker_billing_pedido_abrir", {
+        p_user: r.user_id, p_tipo: "plano", p_codigo: r.plano, p_ciclo: r.ciclo, p_metodo: "pix", p_motivo: "renovacao",
+        // chave do servidor com ":" (o navegador não consegue usar esse caractere: ninguém bloqueia o Pix de outra renovação)
+        p_idem: `renovacao:${r.user_id}:${due}${n > 1 ? `:${n}` : ""}`, p_aceite: null, p_renova_ate: r.periodo_fim,
+      });
+      if (pedido.repetido && ["cancelado", "falhou", "expirado"].includes(pedido.status)) continue;
+      if (pedido.url || pedido.status !== "aberto") return false;
+      const created = await p.createCharge({ customerId: r.customer_id, method: "pix", amountCents: pedido.valor_centavos, description: `StaziaMed ${pedido.nome}`, reference: `smp:${pedido.id}`, dueDate: due, returnUrl: `${deps.baseUrl ?? ""}/novo/planos?pedido=${pedido.id}` });
+      await anexar(pedido, { ...created, subscriptionId: null }, { customer: r.customer_id, vencimento: due });
+      return true;
+    }
+    return false;
+  }
+
+  /** O Pix da renovação deste aluno, se já está na janela (depois de uma troca para cartão que não passou). Erro: a tarefa tenta de novo. */
+  async function pixDeRenovacao(userId: string) {
+    const p = need();
+    try {
+      const r = (await svc<RenovacaoPix[]>("ch_worker_billing_renovacoes_pix", {})).find((x) => x.user_id === userId && x.provider === p.name);
+      if (r) await gerarPixDeRenovacao(r);
+    } catch (e) {
+      log(`[billing] Pix da renovação depois da troca que não passou (${userId.slice(0, 8)}): ${(e as Error).message}`);
+    }
+  }
+
   /** Tarefa diária (e de hora em hora fora da Vercel): pedidos vencidos, Pix de renovação 7 dias antes, extras pendentes. */
   async function runScheduled() {
     const p = need();
@@ -711,19 +753,10 @@ export function createBilling(deps: BillingDeps) {
         log(`[billing] renovação sem aceite de ${c.user_id.slice(0, 8)}: ${(e as Error).message}`);
       }
     }
-    for (const r of await svc<{ user_id: string; plano: string; ciclo: "mensal" | "trimestral"; periodo_fim: string; provider: string; customer_id: string }[]>("ch_worker_billing_renovacoes_pix", {})) {
+    for (const r of await svc<RenovacaoPix[]>("ch_worker_billing_renovacoes_pix", {})) {
       if (r.provider !== p.name) continue;
       try {
-        const due = brtDate(new Date(r.periodo_fim));
-        const pedido = await svc<Pedido>("ch_worker_billing_pedido_abrir", {
-          p_user: r.user_id, p_tipo: "plano", p_codigo: r.plano, p_ciclo: r.ciclo, p_metodo: "pix", p_motivo: "renovacao",
-          // chave do servidor com ":" (o navegador não consegue usar esse caractere: ninguém bloqueia o Pix de outra renovação)
-          p_idem: `renovacao:${r.user_id}:${due}`, p_aceite: null, p_renova_ate: r.periodo_fim,
-        });
-        if (pedido.url || pedido.status !== "aberto") continue;
-        const created = await p.createCharge({ customerId: r.customer_id, method: "pix", amountCents: pedido.valor_centavos, description: `StaziaMed ${pedido.nome}`, reference: `smp:${pedido.id}`, dueDate: due, returnUrl: `${deps.baseUrl ?? ""}/novo/planos?pedido=${pedido.id}` });
-        await anexar(pedido, { ...created, subscriptionId: null }, { customer: r.customer_id, vencimento: due });
-        out.renovacoes++;
+        if (await gerarPixDeRenovacao(r)) out.renovacoes++;
       } catch (e) {
         out.erros++;
         log(`[billing] renovação Pix de ${r.user_id.slice(0, 8)}: ${(e as Error).message}`);

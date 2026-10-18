@@ -123,7 +123,22 @@ export function AssinaturaSection({ go, Cabecalho }) {
       {titulo}
       {ov.mode === "test" && <Badge tone="warning">Modo de teste: nenhum valor real é cobrado</Badge>}
       {ov.renovacao_pendente && !aberto && <RenovacaoPendente pendente={ov.renovacao_pendente} onPedido={setPedido} onErro={(m) => (setMsg(m), recarregar())} />}
-      {aberto && <PedidoAberto pedido={aberto} onChange={recarregar} onNovo={() => (setPedido(null), recarregar())} />}
+      {aberto && (
+        <PedidoAberto
+          pedido={aberto}
+          onChange={(x) => {
+            // estado final (ex.: a troca para cartão que não passou): a tela segura o pedido até o aluno escolher o que fazer
+            if (x && x.status !== "aberto") setPedido(x);
+            recarregar();
+          }}
+          onNovo={(_metodo, final) => {
+            setPedido(null);
+            // "Tentar de novo" depois da troca para cartão que não passou: volta à pergunta da troca
+            if (final?.motivo === "renovacao" && final.metodo !== "pix" && final.status === "falhou") setPergunta("trocar");
+            recarregar();
+          }}
+        />
+      )}
 
       {vigente ? (
         <div className="ev-panel as-plano" data-testid="assinatura-plano">
