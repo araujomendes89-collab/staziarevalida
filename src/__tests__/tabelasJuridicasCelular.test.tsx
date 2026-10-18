@@ -91,4 +91,31 @@ describe("tabelas dos documentos jurídicos no celular", () => {
     expect(fora).toMatch(/\.lgl-tabela table \{[^}]*min-width: 600px;/);
     expect(fora).not.toMatch(/\.lgl-tabela[^{]*\{[^}]*display: block/);
   });
+
+  it("texto justificado (18/10/2026): parágrafos sempre; no celular o Resumo das tabelas de 2 colunas; Tema e tabelas de 3+ à esquerda", () => {
+    const { container } = render(<LegalText source={TEXTOS.contrato} />);
+    // hifenização em português, para não abrir buracos entre as palavras
+    expect(container.querySelector(".lgl-text")!.getAttribute("lang")).toBe("pt-BR");
+    const regra = (sel: string, css: string) => {
+      const esc = sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return css.match(new RegExp(`(?:^|\\n)\\s*${esc} \\{([^}]*)\\}`))?.[1] ?? "";
+    };
+    const m = CSS.match(/@media \(max-width: 600px\) \{([\s\S]*?)\n\}/)!;
+    const fora = CSS.replace(m[0], "");
+    // parágrafos do corpo: justificados no celular e no computador, última linha à esquerda, hifenização e inter-word
+    const p = regra(".lgl-text > p", fora);
+    for (const d of ["text-align: justify;", "text-justify: inter-word;", "text-align-last: left;", "hyphens: auto;", "-webkit-hyphens: auto;", "hyphenate-limit-chars: 6 3 3;"]) {
+      expect(p).toContain(d);
+    }
+    // títulos e listas não são justificados
+    expect(CSS).not.toMatch(/\.lgl-(?:text|paper) (?:h[123]|ul|li)[^{]*\{[^}]*text-align: justify/);
+    // celular: Resumo justificado, Tema à esquerda, tabelas de 3+ colunas à esquerda (vem depois e ganha)
+    const cel = m[1];
+    expect(regra(".lgl-tabela td + td", cel)).toContain("text-align: justify;");
+    expect(regra(".lgl-tabela td + td", cel)).toContain("text-align-last: left;");
+    expect(regra(".lgl-tabela td:first-child", cel)).toContain("text-align: left;");
+    expect(cel.lastIndexOf(".lgl-tabela--rotulos td + td { text-align: left; }")).toBeGreaterThan(cel.indexOf(".lgl-tabela td + td {"));
+    // no computador as células da tabela não são justificadas
+    expect(fora).not.toMatch(/\.lgl-tabela[^{]*\{[^}]*text-align: justify/);
+  });
 });

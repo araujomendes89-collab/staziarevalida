@@ -75,6 +75,15 @@
 .lgl-tabela tr:last-child td { border-bottom: 0; }
 .lgl-text em { font-style: italic; }
 
+/* Texto justificado (pedido do dono, 18/10/2026: "justificar todo o texto pra ocupar a tela"). Só os parágrafos do corpo (celular e
+   computador); títulos e listas ficam à esquerda. A última linha (e a linha antes de uma quebra) fica à esquerda. Para não abrir
+   buracos entre as palavras: hifenização em português (lang="pt-BR" no .lgl-text), palavras de 6+ letras, 3 letras de cada lado. */
+.lgl-text > p {
+  text-align: justify; text-justify: inter-word; text-align-last: left;
+  -webkit-hyphens: auto; hyphens: auto;
+  hyphenate-limit-chars: 6 3 3; -webkit-hyphenate-limit-before: 3; -webkit-hyphenate-limit-after: 3;
+}
+
 /* Celular (até 600 px): cada linha da tabela vira um bloco, sem arrastar para o lado (pedido do dono, 18/10/2026). A 1ª coluna
    ("Tema") em negrito como título, as outras ("Resumo") logo abaixo, na largura toda, com as palavras quebrando normalmente. Com 3
    colunas ou mais (.lgl-tabela--rotulos), o nome da coluna (data-label) aparece em cima de cada célula depois da 1ª. O cabeçalho
@@ -87,9 +96,18 @@
   .lgl-tabela tr { padding: 12px 14px; border-bottom: 1px solid var(--line-soft, rgba(127, 127, 127, .3)); }
   .lgl-tabela tr:last-child { border-bottom: 0; }
   .lgl-tabela td { padding: 0; border: 0; overflow-wrap: break-word; word-break: normal; }
-  .lgl-tabela td:first-child { font-weight: 700; margin-bottom: 4px; }
+  .lgl-tabela td:first-child { font-weight: 700; margin-bottom: 4px; text-align: left; }
+  /* o "Resumo" (e as outras colunas depois da 1ª) justificado, como os parágrafos; uma linha só fica à esquerda */
+  .lgl-tabela td + td {
+    text-align: justify; text-justify: inter-word; text-align-last: left;
+    -webkit-hyphens: auto; hyphens: auto;
+    hyphenate-limit-chars: 6 3 3; -webkit-hyphenate-limit-before: 3; -webkit-hyphenate-limit-after: 3;
+  }
   .lgl-tabela td + td { margin-top: 2px; }
   .lgl-tabela--rotulos td + td { margin-top: 8px; }
+  /* tabelas de 3 colunas ou mais (Política): células curtas, de 1 ou 2 linhas; justificadas abriam buracos grandes entre as
+     palavras no WebKit a 375/390 px (conferido em 18/10/2026), então ficam à esquerda */
+  .lgl-tabela--rotulos td + td { text-align: left; }
   .lgl-tabela--rotulos td + td::before { content: attr(data-label); display: block; font-size: .85em; font-weight: 700; opacity: .7; }
   .acd-body .lgl-tabela tr { border-color: var(--border-subtle); }
 }

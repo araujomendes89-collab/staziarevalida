@@ -4,6 +4,9 @@
 // Tabelas: no computador, tabela comum. No celular (até 600 px, legal.css) cada linha vira um bloco empilhado, sem arrastar para o
 // lado: a 1ª coluna (ex.: "Tema") em negrito como título e as outras (ex.: "Resumo") logo abaixo, na largura toda. Com 3 colunas ou
 // mais, cada célula depois da 1ª mostra o nome da coluna (data-label) em cima. Os papéis (role) mantêm a leitura de tabela.
+// Texto justificado (pedido do dono, 18/10/2026): os parágrafos sempre e, no celular, as células depois da 1ª das tabelas de 2
+// colunas (as de 3+ ficam à esquerda: células curtas abriam buracos); lang="pt-BR" deixa o
+// navegador hifenizar em português para não abrir buracos entre as palavras (legal.css).
 import React from "react";
 
 // ***x***, **x** ou *x* (o itálico não começa nem termina com espaço, para "2 * 3" não virar itálico)
@@ -83,7 +86,7 @@ function parse(source) {
 
 export function LegalText({ source }) {
   return (
-    <div className="lgl-text">
+    <div className="lgl-text" lang="pt-BR">
       {parse(source).map((b, i) => {
         if (b.kind === "hr") return <hr key={i} />;
         // O primeiro título do arquivo é o título do documento; os demais são seções ("###": subseção).
