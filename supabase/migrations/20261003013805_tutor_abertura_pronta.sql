@@ -159,7 +159,13 @@ begin
   delete from public.tutor_opening_ready o where o.user_id = p_user and o.claimed_at < now() - interval '2 days';
 
   select * into c from public.tutor_config;
-  v_profanity := case when (t.params ->> 'profanity')::int >= 20 then c.max_profanity else 'off' end;
+  -- palavrão da fala preparada: a ESCOLHA DO ALUNO (revisão do Pacote 1, M5), nunca acima do teto do painel. Vale a preferência gravada
+  -- para este professor; palavrão desligado nas preferências da Durona/Durão vale sempre; sem escolha gravada para ele, sem palavrão.
+  v_profanity := case
+    when coalesce((t.params ->> 'profanity')::int, 0) < 20 then 'off'
+    when exists (select 1 from public.tutor_explosiva_preferences xp where xp.user_id = p_user and xp.profanity is false) then 'off'
+    else coalesce(public.tutor_profanity(t.id, coalesce((select tp.profanity from public.tutor_preferences tp
+                                                          where tp.user_id = p_user and tp.personality_id = t.id), 'off')), 'off') end;
   v_emotion := jsonb_build_object('session_mood', v_mood, 'frustration', case v_mood when 'impatient' then 12 when 'good' then 0 else 5 end);
   insert into public.tutor_opening_ready (user_id, personality_id, mode, topic, context_type, context_label, area, question_id, question_state, emotion)
   values (p_user, t.id, p_mode, v_topic_col, v_ctype, v_clabel, v_area, v_q, v_state, v_emotion)

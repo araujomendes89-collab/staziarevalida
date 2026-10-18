@@ -294,7 +294,13 @@ describe("Nexus: o turno", () => {
     respond = () => reply("Olha a idade da paciente e o tempo de evolução.");
     expect((await say(PAGO, call, { command: "hint" })).json).toMatchObject({ intent: "hint", message: { content: "Olha a idade da paciente e o tempo de evolução." } });
     respond = () => reply("A resposta é a conduta que estabiliza primeiro.", { reveals_answer: true });
-    expect((await say(PAGO, call, { command: "reveal" })).json).toMatchObject({ intent: "reveal", question_state: "revealed" });
+    // revisão do Pacote 1 (M4): a resolução só sai depois da resposta; pedir pela voz com a questão aberta é recusado
+    const rev = await say(PAGO, call, { command: "reveal" });
+    expect(rev.status).toBe(409);
+    expect(JSON.stringify(rev.json)).not.toContain("A resposta é a conduta");
+    // responde (qualquer letra) e aí segue para a próxima
+    respond = () => reply("Vamos ver o que pesou na sua escolha.");
+    expect((await say(PAGO, call, { command: "answer", option: "A" })).status).toBe(200);
     const n = await requests(PAGO);
     const next = await say(PAGO, call, { command: "next" });
     expect(next.json).toMatchObject({ intent: "next", message: null, phrase: null, question_state: "open" });

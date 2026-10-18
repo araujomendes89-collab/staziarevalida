@@ -776,7 +776,7 @@ describe("Banco e motor (IA simulada)", () => {
         expect(req.input).toContain(`Resposta do aluno: ${off[qid]} (acertou)`);
       });
 
-      it("erro: a classificação da IA fica registrada como pista; dica 5 revela e fecha a questão para resposta", async () => {
+      it("erro: a classificação da IA fica registrada como pista; a 5ª ajuda (que entrega a resposta) só depois de responder", async () => {
         const s = await rpc(S1, "app_tutor_next_question", qs);
         const q = s.question.id;
         const wrong = ["A", "B", "C", "D"].find((x) => x !== off[q])!;
@@ -793,11 +793,14 @@ describe("Banco e motor (IA simulada)", () => {
 
         const n = (await rpc(S1, "app_tutor_next_question", qs)).question.id;
         for (let i = 1; i <= 4; i++) await turn(() => reply(`Pista ${i}: volte ao enunciado.`), { type: "hint" }, S1, qs);
-        const h5 = await turn(() => reply(`A resposta é ${off[n]}: é o que o quadro pede.`, { reveals_answer: true }), { type: "hint" }, S1, qs);
-        expect(h5).toMatchObject({ question_state: "revealed", message: { hint_level: 5 } });
-        expect((await rpc(S1, "app_tutor_session", qs)).question).toMatchObject({ state: "revealed", correct_option: off[n] });
-        await expect(rpc(S1, "app_tutor_answer", qs, off[n], 5)).rejects.toThrow(/Não há questão aberta/);
-        expect(await sql(`select 1 from public.question_attempts where user_id = $1 and question_id = $2`, [S1, n])).toEqual([]); // resposta revelada não entra no histórico
+        // revisão do Pacote 1 (M4): a 5ª ajuda entregaria a resposta; com a questão ainda sem resposta, o servidor recusa
+        await expect(turn(() => reply(`A resposta é ${off[n]}: é o que o quadro pede.`, { reveals_answer: true }), { type: "hint" }, S1, qs)).rejects.toMatchObject({ status: 409 });
+        const sess = (await rpc(S1, "app_tutor_session", qs)).question;
+        expect(sess.state).toBe("open");
+        expect(sess.correct_option ?? null).toBeNull(); // o gabarito não saiu
+        expect(await sql(`select 1 from public.question_attempts where user_id = $1 and question_id = $2`, [S1, n])).toEqual([]);
+        // a questão segue valendo: o aluno responde e pode seguir para a próxima
+        await rpc(S1, "app_tutor_answer", qs, off[n], 3);
       });
 
       it("acerto por provável chute: o Tutor pede o porquê; explicação boa tira o 'chute' e a revisão", async () => {
@@ -892,15 +895,22 @@ describe("Banco e motor (IA simulada)", () => {
       expect(inputs[0]).toContain(`Gabarito oficial da prova: ${off[q]}`);
     });
 
-    it("pedido de resolução: o aluno pede e o Tutor resolve, a questão sai como revelada e não conta como acerto", async () => {
+    it("pedido de resolução com a questão ainda sem resposta: recusado no servidor, sem chamar a IA e sem gabarito (revisão do Pacote 1, M4)", async () => {
       const s = await rpc(S1, "app_tutor_start", "questao", null, null);
       const q = s.question.id;
-      const r = await turn(() => reply(`A certa é a ${off[q]}, e a mais tentadora falha no comando.`), { type: "reveal" }, S1, s.id);
-      expect(r).toMatchObject({ question_state: "revealed", message: { hint_level: 5 } });
-      expect(seen[seen.length - 1].input).toContain("O aluno pediu a resolução com todas as letras");
-      expect(seen[seen.length - 1].input).toContain("Gabarito oficial da prova");
-      await expect(rpc(S1, "app_tutor_answer", s.id, off[q], 5)).rejects.toThrow(/Não há questão aberta/);
-      await expect(turn(() => reply("x"), { type: "reveal" }, S1, s.id)).rejects.toMatchObject({ status: 409 });
+      const antes = seen.length;
+      await expect(turn(() => reply(`A certa é a ${off[q]}, e a mais tentadora falha no comando.`), { type: "reveal" }, S1, s.id)).rejects.toMatchObject({ status: 409 });
+      expect(seen.length).toBe(antes); // a IA não foi chamada
+      expect((await rpc(S1, "app_tutor_session", s.id)).question.state).toBe("open");
+      // a questão continua valendo: o aluno responde normalmente e aí a explicação vem
+      await rpc(S1, "app_tutor_answer", s.id, off[q], 3);
+      expect((await rpc(S1, "app_tutor_session", s.id)).question.state).toBe("answered");
+      // questão ESCOLHIDA pelo aluno (por exemplo, uma do treino que ele ainda vai responder, fora do simulado): também recusa
+      const livre = Object.keys(off).find((x) => x !== q)!;
+      const s2 = await rpc(S2, "app_tutor_start", "questao", null, livre);
+      await expect(turn(() => reply(`A certa é a ${off[livre]}.`), { type: "reveal" }, S2, s2.id)).rejects.toMatchObject({ status: 409 });
+      for (let i = 1; i <= 4; i++) await turn(() => reply(`Pista ${i}: volte ao enunciado.`), { type: "hint" }, S2, s2.id);
+      await expect(turn(() => reply(`A resposta é ${off[livre]}.`, { reveals_answer: true }), { type: "hint" }, S2, s2.id)).rejects.toMatchObject({ status: 409 });
     });
 
     it("rota /api/tutor: exige login, valida a entrada, responde ao aluno e só mostra o motivo da pendência ao administrador", async () => {

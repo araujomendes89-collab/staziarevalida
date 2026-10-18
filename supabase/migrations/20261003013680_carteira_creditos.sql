@@ -826,18 +826,25 @@ begin
   v_ligado := coalesce(cfg.cadeados_ligados, false);
   v_staff := public.user_has_full_access(p_user);
   v_est := coalesce((select r.reserva_creditos from public.direitos_recursos r where r.codigo = p_recurso), 1.0);
-  d := public.direitos_do_aluno(p_user);
-  v_acesso := d #>> array['recursos', p_recurso, 'acesso'];
-  v_disp_fr := coalesce((d #>> '{creditos,disponivel_franquia}')::numeric, 0);
-  v_disp := coalesce((d #>> '{creditos,disponivel}')::numeric, 0);
-
-  -- o que a regra nova diria
-  if not v_staff then
-    if v_acesso = 'trancado' then v_teria := true; v_motivo := 'trancado';
-    elsif v_disp < 0.1 then v_teria := true; v_motivo := 'sem_creditos';
-    elsif cfg.teto_custo_dia_usd is not null and public.carteira_gasto_hoje_usd() >= cfg.teto_custo_dia_usd then v_teria := true; v_motivo := 'teto_global';
+  -- o que a regra nova diria (direitos do aluno e gasto do dia). Com a chave DESLIGADA isso é só anotação: se der erro, fica
+  -- registrado no movimento (motivo 'erro_sombra') e a regra de hoje segue decidindo, sem derrubar a mensagem do Tutor.
+  -- Com a chave LIGADA a carteira precisa desses números: o erro sobe (a IA não é chamada).
+  begin
+    d := public.direitos_do_aluno(p_user);
+    v_acesso := d #>> array['recursos', p_recurso, 'acesso'];
+    v_disp_fr := coalesce((d #>> '{creditos,disponivel_franquia}')::numeric, 0);
+    v_disp := coalesce((d #>> '{creditos,disponivel}')::numeric, 0);
+    if not v_staff then
+      if v_acesso = 'trancado' then v_teria := true; v_motivo := 'trancado';
+      elsif v_disp < 0.1 then v_teria := true; v_motivo := 'sem_creditos';
+      elsif cfg.teto_custo_dia_usd is not null and public.carteira_gasto_hoje_usd() >= cfg.teto_custo_dia_usd then v_teria := true; v_motivo := 'teto_global';
+      end if;
     end if;
-  end if;
+  exception when others then
+    if v_ligado then raise; end if;
+    raise warning 'carteira (modo sombra): cálculo da regra nova falhou para %: % (a regra de hoje segue)', p_user, sqlerrm;
+    d := null; v_acesso := null; v_disp := 0; v_disp_fr := 0; v_teria := false; v_motivo := 'erro_sombra';
+  end;
 
   if not v_ligado then
     -- ===== MODO SOMBRA: a regra de hoje decide, exatamente como antes

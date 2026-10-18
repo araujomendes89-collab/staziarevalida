@@ -208,7 +208,7 @@ describe("Tutor fora da tela do Tutor, resolução, encerramento e relatório", 
     expect(await screen.findByText("Seu teste grátis do Tutor terminou")).toBeTruthy();
   });
 
-  it("cartão da questão na voz reserva: 'Ver resolução' pede pela voz; Encerrar fecha e mostra o resumo feito pelos dados", async () => {
+  it("cartão da questão na voz reserva: sem 'Ver resolução' antes da resposta (revisão do Pacote 1); Encerrar fecha e mostra o resumo feito pelos dados", async () => {
     let current = session();
     rpcImpl.app_tutor_session = () => current;
     rpcImpl.app_tutor_close = () => {
@@ -221,8 +221,7 @@ describe("Tutor fora da tela do Tutor, resolução, encerramento e relatório", 
     emit({ type: "session.created", session: { instructions: `${TUTOR_SPOKEN_LANGUAGE}\n\nRegras médicas e personalidade.\n\n${TUTOR_SPOKEN_REMINDER}` } });
     const dialog = await screen.findByRole("dialog", { name: "Nexus" });
     expect(within(dialog).getByText(/Lactente com sibilância/)).toBeTruthy(); // o enunciado fica na tela (e não é lido)
-    fireEvent.click(within(dialog).getByRole("button", { name: "Ver resolução" }));
-    await waitFor(() => expect(JSON.stringify(sent)).toContain("Me mostra a resolução."));
+    expect(within(dialog).queryByRole("button", { name: "Ver resolução" })).toBeNull(); // a resolução só sai depois da resposta
     fireEvent.click(within(dialog).getByLabelText("Encerrar a conversa por voz"));
     expect(await screen.findByText("2 de 3 questões certas.")).toBeTruthy();
     expect(screen.getByText("Erros que já se repetiram: Prioridade da conduta.")).toBeTruthy();

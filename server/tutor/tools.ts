@@ -8,7 +8,7 @@
  *   - nada de SQL vindo do modelo: cada ferramenta é uma função fixa.
  *
  * Nomes do pedido de 2026-10-06 → ferramentas daqui: get_current_question / get_official_answer / get_question_explanation →
- * get_question_context (o gabarito só sai depois da resposta ou com reveal); grade_student_answer → submit_answer;
+ * get_question_context (o gabarito só sai depois da resposta; reveal não abre mais a questão sem resposta); grade_student_answer → submit_answer;
  * get_authoritative_content → get_topic_context; get_student_profile / get_topic_performance → get_student_learning_memory;
  * get_recent_errors → get_student_errors; update_learning_state → register_learning_event; e as novas save_tutor_memory,
  * schedule_review e wait_for_user.
@@ -30,7 +30,7 @@ const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
 export const REALTIME_TOOLS = [
   {
     type: "function", name: "get_question_context",
-    description: "Traz a questão desta sessão do banco oficial: enunciado e alternativas; depois de respondida (ou com reveal = true), também o gabarito oficial, as explicações, a análise revisada e a atualização de conduta.",
+    description: "Traz a questão desta sessão do banco oficial: enunciado e alternativas; depois de respondida, também o gabarito oficial, as explicações, a análise revisada e a atualização de conduta. Antes da resposta o gabarito não sai, mesmo com reveal = true.",
     parameters: obj({ reveal: { type: "boolean", description: "true só se o aluno pediu a resolução com todas as letras" } }),
   },
   {
@@ -124,7 +124,8 @@ export async function runTutorTool(t: ToolCtx, name: string, args: Record<string
     await assertAiAllowed(t.deps);
     switch (name) {
       case "get_question_context": {
-        const q = await svc<Record<string, unknown> | null>("ch_worker_tutor_tool_question", { p_session_id: t.sessionId, p_reveal: args.reveal === true });
+        // o gabarito só sai depois da resposta (revisão do Pacote 1, M4): pedir reveal pela voz não abre a questão ainda sem resposta
+        const q = await svc<Record<string, unknown> | null>("ch_worker_tutor_tool_question", { p_session_id: t.sessionId, p_reveal: false });
         return q ? { question: q } : { error: "Esta sessão não tem questão." };
       }
       case "submit_answer": {
