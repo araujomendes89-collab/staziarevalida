@@ -26,8 +26,8 @@ import type { MailMessage } from "../../server/avisos/smtp";
 const TOKEN = "token-do-aviso-simulado-com-mais-de-32-caracteres";
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "compra-avisos-"));
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const [CARTAO, PIX, TROCA_PIX, TROCA_CARTAO, AMOSTRA, OUTRO, EQUIPE, VENCIDO, DUPLO, ACEITE] = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30].map(id);
-const TODOS = [CARTAO, PIX, TROCA_PIX, TROCA_CARTAO, AMOSTRA, OUTRO, EQUIPE, VENCIDO, DUPLO, ACEITE];
+const [CARTAO, PIX, TROCA_PIX, TROCA_CARTAO, AMOSTRA, OUTRO, EQUIPE, VENCIDO, DUPLO, ACEITE, TROCA_RECUSA] = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31].map(id);
+const TODOS = [CARTAO, PIX, TROCA_PIX, TROCA_CARTAO, AMOSTRA, OUTRO, EQUIPE, VENCIDO, DUPLO, ACEITE, TROCA_RECUSA];
 let dev: DevDatabase;
 let db: ContentDb;
 let base: string;
@@ -88,7 +88,7 @@ const fake: PaymentProvider = {
   parseNotice(raw, headers) {
     if (headers["asaas-access-token"] !== TOKEN) throw new BillingSignatureError();
     const b = JSON.parse(raw.toString());
-    return b.payment ? { kind: "charge", eventId: b.id, event: b.event, chargeId: b.payment.id, subscriptionId: b.payment.subscription ?? null, failed: b.event === "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED" } : { kind: "ignored", eventId: b.id, event: b.event };
+    return b.payment ? { kind: "charge", eventId: b.id, event: b.event, chargeId: b.payment.id, subscriptionId: b.payment.subscription ?? null, failed: b.event === "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED", ...(b.event === "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED" ? { failReason: "card_refused" as const } : {}) } : { kind: "ignored", eventId: b.id, event: b.event };
   },
 };
 const pay = (cid: string, when = new Date()) => Object.assign(charges.get(cid)!, { status: "paid", paidAt: when });
@@ -425,6 +425,48 @@ describe("trocar a forma de pagamento", () => {
     const dias = (new Date(c.periodo_fim).getTime() - new Date(fimAntes).getTime()) / 86400e3;
     expect(dias).toBeGreaterThanOrEqual(28);
     expect((await api(TROCA_CARTAO, "/payment-method", { metodo: "cartao", idem: "troca-cartao-003" })).body.code).toBe("ja_no_cartao");
+  });
+
+  it("Pix → cartão com o cartão RECUSADO: só desfaz a troca; o período pago fica inteiro e o Pix da renovação volta na hora", async () => {
+    const r = await comprar(TROCA_RECUSA, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "pix" });
+    const cid = r.body.url.split("/").pop();
+    pay(cid);
+    await hook(cid);
+    await dev.db.query(`update public.billing_contratos set periodo_fim = $2 where user_id = $1`, [TROCA_RECUSA, fimDoDia(5)]);
+    await dev.db.query(`update public.subscriptions set current_period_end = $2 where user_id = $1`, [TROCA_RECUSA, fimDoDia(5)]);
+    expect((await billing.runScheduled()).renovacoes).toBe(1);
+    const pix1 = await q1(`select id, provider_payment_id p from public.billing_pedidos where user_id = $1 and motivo = 'renovacao' and status = 'aberto'`, [TROCA_RECUSA]);
+    const t = await api(TROCA_RECUSA, "/payment-method", { metodo: "cartao", idem: "troca-recusa-001" });
+    expect(t.status).toBe(200);
+    expect(await q1(`select status from public.billing_pedidos where id = $1`, [pix1.id])).toEqual({ status: "cancelado" });
+    const troca = (t.body.url as string).split("/").pop()!;
+    const sid = charges.get(troca)!.subscriptionId!;
+    // o cartão foi recusado na página da troca (a cobrança continua "pendente" no fornecedor; o aviso diz que falhou)
+    expect((await hook(troca, "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED")).status).toBe(200);
+    // o acesso continua até o fim do período já pago (nada de pausa no mesmo dia)
+    const s = await q1(`select status, current_period_end from public.subscriptions where user_id = $1`, [TROCA_RECUSA]);
+    expect(s.status).toBe("active");
+    expect(new Date(s.current_period_end).toISOString()).toBe(fimDoDia(5));
+    // a troca é desfeita: contrato no Pix renovando, assinatura do cartão cancelada, pedido da troca "falhou"
+    expect(await q1(`select metodo, renova, provider_subscription_id, periodo_fim = $2 as mesmo_fim from public.billing_contratos where user_id = $1`, [TROCA_RECUSA, fimDoDia(5)])).toEqual({ metodo: "pix", renova: true, provider_subscription_id: null, mesmo_fim: true });
+    expect(log).toContain(`cancelou-assinatura:${sid}`);
+    const st = await api(TROCA_RECUSA, `/orders/${t.body.id}`);
+    expect(st.body).toMatchObject({ status: "falhou", motivo: "renovacao", metodo: "cartao", motivo_falha: "O cartão foi recusado pela instituição de pagamento." });
+    // o Pix da renovação (que a troca tinha cancelado) sai de novo na hora, uma vez só
+    const pix2 = await q(`select id, provider_payment_id p from public.billing_pedidos where user_id = $1 and motivo = 'renovacao' and metodo = 'pix' and status = 'aberto'`, [TROCA_RECUSA]);
+    expect(pix2).toHaveLength(1);
+    expect(pix2[0].p).not.toBe(pix1.p);
+    expect((await billing.runScheduled()).renovacoes).toBe(0);
+    const ov = await api(TROCA_RECUSA, "/overview");
+    expect(ov.body.renovacao_pendente).toBeNull();
+    // "Tentar de novo": a troca abre outra vez
+    expect((await api(TROCA_RECUSA, "/payment-method", { metodo: "cartao", idem: "troca-recusa-002" })).status).toBe(200);
+  });
+
+  it("desistiu da 2ª troca (cancelou): o Pix da renovação volta outra vez pela tarefa (a chave seguinte gera outro)", async () => {
+    const pix = await q1(`select id from public.billing_pedidos where user_id = $1 and motivo = 'renovacao' and metodo = 'cartao' and status = 'aberto'`, [TROCA_RECUSA]);
+    await api(TROCA_RECUSA, `/orders/${pix.id}/cancel`, {});
+    expect((await billing.runScheduled()).renovacoes).toBe(1);
   });
 
   it("Pix da renovação já pago na hora da troca: vale o pagamento, a troca é recusada sem cobrança em dobro", async () => {

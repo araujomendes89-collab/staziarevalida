@@ -108,6 +108,41 @@ describe("Minha conta › Assinatura: desistência já registrada (teste da jorn
   });
 });
 
+describe("Minha conta › Assinatura: troca para cartão com o cartão recusado", () => {
+  it("'Não foi possível trocar para o cartão', o acesso segue até o fim do período e 'Tentar de novo' volta à troca", async () => {
+    const fim = new Date(Date.now() + 5 * 86400e3).toISOString();
+    const PED = "66666666-6666-4666-8666-666666666666";
+    const troca = { id: PED, tipo: "plano", codigo: "pro", ciclo: "mensal", nome: "PRO mensal (troca para cartão)", metodo: "cartao", motivo: "renovacao", valor_centavos: 9990, url: "https://sandbox.asaas.com/i/troca", expira_em: new Date(Date.now() + 3600e3).toISOString() };
+    let recusou = false;
+    globalThis.fetch = vi.fn(async (url: any) => {
+      const u = String(url);
+      const v = u.endsWith("/overview")
+        ? { enabled: true, mode: "test", methods: { card: true, pix: true }, devolucoes: [], pedidos_abertos: recusou ? [] : [troca],
+            contrato: { plano: "pro", ciclo: "mensal", metodo: "pix", renova: true, valor_centavos: 9990, periodo_fim: fim, contratado_em: hoje } }
+        : u.endsWith(`/orders/${PED}`)
+          ? { ...troca, status: recusou ? "falhou" : "aberto", motivo_falha: recusou ? "O cartão foi recusado pela instituição de pagamento." : null }
+          : {};
+      return new Response(JSON.stringify(v), { status: 200, headers: { "Content-Type": "application/json" } });
+    }) as any;
+    backend.rpc.mockImplementation(async (fn: string) => (fn === "app_billing_historico" ? { pagamentos: [], aceite: null, contrato_url: "/novo/termos" } : { novos: [], recentes: [] }));
+    render(<AssinaturaSection go={vi.fn()} />);
+    await screen.findByTestId("cobranca-aberta");
+    recusou = true;
+    window.dispatchEvent(new Event("focus"));
+    const falhou = await screen.findByTestId("cobranca-falhou");
+    expect(falhou.textContent).toContain("Não foi possível trocar para o cartão");
+    expect(falhou.textContent).toContain("O cartão foi recusado pela instituição de pagamento.");
+    expect(falhou.textContent).toContain("Sua renovação continua no Pix");
+    expect(falhou.textContent).toContain("o seu acesso continua até o fim do período já pago");
+    expect(screen.queryByRole("button", { name: "Pagar por Pix" })).toBeNull();
+    // o plano continua ativo na tela, renovando no Pix
+    expect((await screen.findByTestId("assinatura-plano")).textContent).toContain("Pix novo 7 dias antes");
+    fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+    expect(screen.queryByTestId("cobranca-falhou")).toBeNull();
+    expect(await screen.findByText("Trocar para cartão de crédito?")).toBeTruthy();
+  });
+});
+
 const PAGAMENTOS = {
   contrato: { plano: "pro", ciclo: "mensal", metodo: "cartao", renova: true, periodo_fim: new Date(Date.now() + 20 * 86400e3).toISOString() },
   pagamentos: [
