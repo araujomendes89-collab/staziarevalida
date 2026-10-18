@@ -25,7 +25,7 @@ import { BillingSignatureError, type PaymentProvider, type ProviderCharge } from
 const TOKEN = "token-do-aviso-simulado-com-mais-de-32-caracteres";
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "cobranca-"));
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL, FALHA, DEBITO, ENDERECO] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(id);
+const [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL, FALHA, DEBITO, ENDERECO, RECUSA, RECUSA2] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(id);
 let dev: DevDatabase;
 let db: ContentDb;
 let base: string;
@@ -39,6 +39,11 @@ const charges = new Map<string, ProviderCharge & { reference: string }>();
 const subs = new Map<string, { customerId: string; amountCents: number; cycle: string; reference: string; active: boolean }>();
 const log: string[] = [];
 let seq = 0;
+/** Simula o fornecedor fora do ar na hora de cancelar (próximas N chamadas de cancelamento falham). */
+let cancelamentosQueFalham = 0;
+let assinaturasQueFalham = 0;
+/** Simula o aluno pagando com outro cartão na mesma página logo antes do cancelamento desta cobrança. */
+let pagaAntesDeCancelar: string | null = null;
 const fake: PaymentProvider = {
   name: "asaas",
   mode: "test",
@@ -72,6 +77,11 @@ const fake: PaymentProvider = {
     return c ? { ...c } : null;
   },
   async cancelCharge(cid) {
+    if (cancelamentosQueFalham > 0 && cancelamentosQueFalham--) throw new Error("fornecedor fora do ar");
+    if (pagaAntesDeCancelar === cid) {
+      pagaAntesDeCancelar = null;
+      Object.assign(charges.get(cid)!, { status: "paid", paidAt: clock });
+    }
     const c = charges.get(cid);
     if (c && c.status === "pending") c.status = "canceled";
     log.push(`cancelou:${cid}`);
@@ -84,6 +94,7 @@ const fake: PaymentProvider = {
     return { status: "done" };
   },
   async cancelSubscription(sid) {
+    if (assinaturasQueFalham > 0 && assinaturasQueFalham--) throw new Error("fornecedor fora do ar");
     const s = subs.get(sid);
     if (s) s.active = false;
     log.push(`cancelou-assinatura:${sid}`);
@@ -91,7 +102,7 @@ const fake: PaymentProvider = {
   parseNotice(raw, headers) {
     if (headers["asaas-access-token"] !== TOKEN) throw new BillingSignatureError();
     const b = JSON.parse(raw.toString());
-    return b.payment ? { kind: "charge", eventId: b.id, event: b.event, chargeId: b.payment.id, subscriptionId: b.payment.subscription ?? null, failed: b.event === "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED" } : { kind: "ignored", eventId: b.id, event: b.event };
+    return b.payment ? { kind: "charge", eventId: b.id, event: b.event, chargeId: b.payment.id, subscriptionId: b.payment.subscription ?? null, failed: b.event === "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED" || b.event === "PAYMENT_REPROVED_BY_RISK_ANALYSIS", ...(b.event === "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED" ? { failReason: "card_refused" as const } : b.event === "PAYMENT_REPROVED_BY_RISK_ANALYSIS" ? { failReason: "risk_rejected" as const } : {}) } : { kind: "ignored", eventId: b.id, event: b.event };
   },
 };
 const pay = (cid: string, when = clock, over: Partial<ProviderCharge> = {}) => Object.assign(charges.get(cid)!, { status: "paid", paidAt: when, ...over });
@@ -167,7 +178,7 @@ end $$;`;
 beforeAll(async () => {
   dev = await openDevDatabaseForTests(path.join(tmp, "db"));
   db = devContentDb(async () => dev);
-  for (const [i, uid] of [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL, FALHA, DEBITO, ENDERECO].entries()) {
+  for (const [i, uid] of [ALUNO, CARTAO, SEM_TERMO, EQUIPE, TRI, PIXREN, DEVOL, FALHA, DEBITO, ENDERECO, RECUSA, RECUSA2].entries()) {
     await dev.db.query(`insert into auth.users (id, email) values ($1, $2)`, [uid, `c${i}@t.dev`]);
     tokens[uid] = await dev.createSession(uid);
     if (uid !== SEM_TERMO) await dev.db.query(`insert into public.legal_acceptances (user_id, document, version, origin, email_hash) select $1, document, version, 'tela_aceite', 'x' from public.legal_versions where document = 'termo_uso'`, [uid]);
@@ -352,6 +363,8 @@ describe("renovação do cartão recusada (decisão do dono 17/10): bloqueio no 
     expect(log.filter((l) => l.startsWith("cobranca:") || l.startsWith("assinatura:")).length).toBe(antes);
     // repetir o clique devolve o mesmo Pix
     expect((await api(base, FALHA, "/renewal/pix", {})).body.id).toBe(r.body.id);
+    // a tela que espera o Pix confere: a recusa do CARTÃO (registrada nesta mesma cobrança) não encerra o Pix da renovação
+    expect((await api(base, FALHA, `/orders/${r.body.id}`)).body.status).toBe("aberto");
     pay("pay_ren_falhou");
     expect((await hook("pay_ren_falhou")).status).toBe(200);
     const s = await q1(`select status, current_period_end from public.subscriptions where user_id = $1`, [FALHA]);
@@ -457,6 +470,89 @@ describe("devolução pela regra do dono", () => {
     await dev.db.query(`update public.billing_cobrancas set pago_em = now() - interval '9 days' where id = $1`, [x.id]);
     await dev.db.query(`update public.billing_contratos set contratado_em = now() - interval '9 days' where user_id = $1`, [PIXREN]);
     expect((await api(base, PIXREN, "/refunds", { cobranca_id: x.id })).body.code).toBe("sem_devolucao");
+  });
+});
+
+describe("compra no cartão RECUSADA: a tela mostra 'não concluído' em segundos e libera uma compra nova", () => {
+  const recusar = (cid: string, event = "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED") =>
+    fetch(`${base}/api/cobranca/webhook`, { method: "POST", headers: { "Content-Type": "application/json", "asaas-access-token": TOKEN }, body: JSON.stringify({ id: `evt_${++evt}`, event, payment: { id: cid, subscription: charges.get(cid)?.subscriptionId ?? null } }) });
+
+  it("(a) o aviso de recusa chega: pedido encerrado como falhou, cobrança e assinatura canceladas no fornecedor, nada liberado", async () => {
+    const r = await comprar(RECUSA, { tipo: "plano", codigo: "pro", ciclo: "trimestral", metodo: "cartao" });
+    expect(r.status).toBe(200);
+    const cid = r.body.url.split("/").pop();
+    const sid = charges.get(cid)!.subscriptionId!;
+    // o Asaas recusa o cartão e a cobrança continua "pendente" lá (conferido no sandbox): só o aviso diz que falhou
+    expect((await recusar(cid)).status).toBe(200);
+    expect(await q1(`select status, erro from public.billing_pedidos where id = $1`, [r.body.id])).toEqual({ status: "falhou", erro: "O cartão foi recusado pela instituição de pagamento." });
+    expect(await q1(`select status from public.billing_cobrancas where provider_payment_id = $1`, [cid])).toEqual({ status: "falhou" });
+    expect(log).toContain(`cancelou:${cid}`);
+    expect(log).toContain(`cancelou-assinatura:${sid}`);
+    expect(subs.get(sid)!.active).toBe(false);
+    expect(await q1(`select plan from public.subscriptions where user_id = $1`, [RECUSA])).not.toEqual({ plan: "pro" });
+    // a tela que espera recebe o estado final com o motivo (e os dados para tentar de novo a mesma compra)
+    const st = await api(base, RECUSA, `/orders/${r.body.id}`);
+    expect(st.body).toMatchObject({ status: "falhou", motivo_falha: "O cartão foi recusado pela instituição de pagamento.", tipo: "plano", codigo: "pro", ciclo: "trimestral", metodo: "cartao" });
+    expect((await api(base, RECUSA, "/overview")).body.pedidos_abertos ?? []).toEqual([]);
+    // um pedido aberto por vez: a compra nova (outro cartão ou Pix) abre na hora
+    const pix = await comprar(RECUSA, { tipo: "plano", codigo: "pro", ciclo: "trimestral", metodo: "pix" });
+    expect(pix.status).toBe(200);
+    expect(pix.body).toMatchObject({ status: "aberto", metodo: "pix" });
+    await api(base, RECUSA, `/orders/${pix.body.id}/cancel`, {});
+  });
+
+  it("(b) a recusa ficou registrada mas o pedido não fechou (fornecedor fora do ar): a consulta da tela encerra", async () => {
+    const r = await comprar(RECUSA2, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "cartao" });
+    const cid = r.body.url.split("/").pop();
+    cancelamentosQueFalham = 1;
+    // o aviso NÃO falha (o Asaas pausaria a fila de avisos): fica registrado e o pedido segue aberto
+    expect((await recusar(cid)).status).toBe(200);
+    expect(await q1(`select status from public.billing_pedidos where id = $1`, [r.body.id])).toEqual({ status: "aberto" });
+    expect(await q1(`select status from public.billing_cobrancas where provider_payment_id = $1`, [cid])).toEqual({ status: "falhou" });
+    // a tela consulta (a cada 5 s / ao voltar para a aba): o servidor relê no fornecedor (ainda "pendente") e encerra pela recusa registrada
+    const st = await api(base, RECUSA2, `/orders/${r.body.id}`);
+    expect(st.body).toMatchObject({ status: "falhou", motivo_falha: "A instituição de pagamento recusou o pagamento." });
+    expect(log).toContain(`cancelou:${cid}`);
+    expect(charges.get(cid)!.status).toBe("canceled");
+  });
+
+  it("cancelou a cobrança mas a assinatura falhou: a consulta termina como 'não concluído' (não como 'cancelado') e cancela a assinatura", async () => {
+    const r = await comprar(RECUSA2, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "cartao" });
+    const cid = r.body.url.split("/").pop();
+    const sid = charges.get(cid)!.subscriptionId!;
+    assinaturasQueFalham = 1;
+    expect((await recusar(cid)).status).toBe(200);
+    expect(charges.get(cid)!.status).toBe("canceled");
+    expect(await q1(`select status from public.billing_pedidos where id = $1`, [r.body.id])).toEqual({ status: "aberto" });
+    expect((await api(base, RECUSA2, `/orders/${r.body.id}`)).body).toMatchObject({ status: "falhou", motivo_falha: "A instituição de pagamento recusou o pagamento." });
+    expect(subs.get(sid)!.active).toBe(false);
+  });
+
+  it("sem aviso nenhum, a cobrança pendente no fornecedor NÃO vira 'falhou' por conta própria (só o aviso diz que recusou)", async () => {
+    const r = await comprar(RECUSA2, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "cartao" });
+    expect((await api(base, RECUSA2, `/orders/${r.body.id}`)).body.status).toBe("aberto");
+    await api(base, RECUSA2, `/orders/${r.body.id}/cancel`, {});
+  });
+
+  it("acertou o cartão na mesma página antes do cancelamento: vale o pagamento e a renovação continua", async () => {
+    const r = await comprar(RECUSA2, { tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "cartao" });
+    const cid = r.body.url.split("/").pop();
+    const sid = charges.get(cid)!.subscriptionId!;
+    pagaAntesDeCancelar = cid; // entre a recusa e o cancelamento, o aluno pagou com outro cartão na mesma página
+    expect((await recusar(cid)).status).toBe(200);
+    expect(await q1(`select status from public.billing_pedidos where id = $1`, [r.body.id])).toEqual({ status: "pago" });
+    expect(subs.get(sid)!.active).toBe(true);
+    expect(log).not.toContain(`cancelou-assinatura:${sid}`);
+    expect(await q1(`select plan, status from public.subscriptions where user_id = $1`, [RECUSA2])).toEqual({ plan: "pro", status: "active" });
+  });
+
+  it("débito reprovado na análise de segurança: também encerra, com o motivo certo", async () => {
+    const u = { id: RECUSA, email: "c10@t.dev" } as any;
+    const billing = createBilling({ db, provider: fake, baseUrl: "https://app.teste.dev", now: () => clock });
+    const r = await billing.checkout(u, { tipo: "plano", codigo: "pro", ciclo: "trimestral", metodo: "debito", aceite: true, idem: `idem-deb-recusa-${++seq}` });
+    const cid = (r.url as string).split("/").pop()!;
+    expect((await recusar(cid, "PAYMENT_REPROVED_BY_RISK_ANALYSIS")).status).toBe(200);
+    expect((await billing.orderStatus(u, r.id))).toMatchObject({ status: "falhou", metodo: "debito", motivo_falha: "A instituição de pagamento não aprovou o pagamento na análise de segurança." });
   });
 });
 

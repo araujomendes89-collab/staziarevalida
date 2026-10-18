@@ -66,6 +66,48 @@ describe("Minha conta › Assinatura: nota fiscal no histórico", () => {
   });
 });
 
+describe("Minha conta › Assinatura: desistência já registrada (teste da jornada 17/10)", () => {
+  const fim = new Date(Date.now() + 25 * 86400e3).toISOString();
+  const ov = (devolucoes: any[]) => ({
+    enabled: true, mode: "test", methods: { card: true, pix: true }, pedidos_abertos: [],
+    contrato: { plano: "pro", ciclo: "mensal", metodo: "pix", renova: true, valor_centavos: 9990, periodo_fim: fim, contratado_em: hoje },
+    devolucoes,
+  });
+  const DESIST = { cobranca_id: 7, tipo: "plano", codigo: "pro", ciclo: "mensal", regra: "integral_7_dias", valor_centavos: 9990 };
+  const hist = (devolucao: any, status = "paga") => ({
+    pagamentos: [{ id: 7, tipo: "plano", codigo: "pro", ciclo: "mensal", metodo: "pix", valor_centavos: 9990, status, pago_em: hoje, devolucao }],
+    aceite: null, contrato_url: "/novo/termos",
+  });
+  const rpc = (h: any) => backend.rpc.mockImplementation(async (fn: string) => (fn === "app_billing_historico" ? h : { novos: [], recentes: [] }));
+
+  it("sem desistência: o botão 'Desistir da compra (7 dias)' aparece", async () => {
+    mockFetch({ "/overview": ov([DESIST]) });
+    rpc(hist(null));
+    render(<AssinaturaSection go={vi.fn()} />);
+    expect(await screen.findByRole("button", { name: "Desistir da compra (7 dias)" })).toBeTruthy();
+    expect(screen.queryByTestId("assinatura-devolucao-registrada")).toBeNull();
+  });
+
+  it("desistência registrada: sem o botão (mesmo com a lista antiga) e 'Desistência registrada – devolução em andamento'", async () => {
+    mockFetch({ "/overview": ov([DESIST]) });
+    rpc(hist({ status: "solicitado", desistencia: true, valor_centavos: 9990 }));
+    render(<AssinaturaSection go={vi.fn()} />);
+    const reg = await screen.findByTestId("assinatura-devolucao-registrada");
+    expect(reg.textContent).toContain("Desistência registrada – devolução em andamento");
+    expect(reg.textContent).toContain("R$ 99,90");
+    expect(screen.queryByRole("button", { name: "Desistir da compra (7 dias)" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Cancelar assinatura" })).toBeTruthy();
+  });
+
+  it("devolução confirmada: 'Desistência registrada – devolução concluída'", async () => {
+    mockFetch({ "/overview": ov([]) });
+    rpc(hist({ status: "feito", desistencia: true, valor_centavos: 9990 }, "devolvida"));
+    render(<AssinaturaSection go={vi.fn()} />);
+    expect((await screen.findByTestId("assinatura-devolucao-registrada")).textContent).toContain("Desistência registrada – devolução concluída");
+    expect(screen.queryByRole("button", { name: "Desistir da compra (7 dias)" })).toBeNull();
+  });
+});
+
 const PAGAMENTOS = {
   contrato: { plano: "pro", ciclo: "mensal", metodo: "cartao", renova: true, periodo_fim: new Date(Date.now() + 20 * 86400e3).toISOString() },
   pagamentos: [

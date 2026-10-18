@@ -403,7 +403,20 @@ as $$
   where id = p_id and nota_email_status = 'enviando'
 $$;
 
--- ---------------------------------------------------------------- histórico do aluno (substitui a da 013760: + nota fiscal)
+-- ---------------------------------------------------------------- o que ainda dá para devolver (substitui a da 013700)
+-- Teste da jornada (17/10): depois da desistência registrada, "Desistir da compra (7 dias)" continuava aparecendo (o banco já recusava a
+-- segunda). Agora a cobrança com devolução pedida, com a equipe ou feita sai da lista; devolução que falhou volta (o aluno pode pedir de novo).
+create or replace function public.ch_worker_billing_devolucoes(p_user uuid) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select coalesce(jsonb_agg(d order by (d ->> 'pago_em') desc), '[]'::jsonb)
+  from (select public.billing_devolucao_calculo(x.id) d from public.billing_cobrancas x
+        where x.user_id = p_user and x.status = 'paga' and x.devolvido_centavos = 0
+          and not exists (select 1 from public.billing_reembolsos r where r.cobranca_id = x.id and r.status in ('solicitado', 'equipe', 'feito'))) s
+  where d is not null and coalesce((d ->> 'valor_centavos')::int, 0) > 0
+$$;
+
+-- ---------------------------------------------------------------- histórico do aluno (substitui a da 013760: + nota fiscal, + devolução registrada)
 create or replace function public.app_billing_historico() returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
@@ -417,7 +430,11 @@ begin
                              -- a nota só aparece autorizada (com o PDF) ou cancelada (sem o link)
                              'nota_status', case when x.nota_status in ('autorizada', 'cancelada') then x.nota_status end,
                              'nota_numero', case when x.nota_status = 'autorizada' then x.nota_numero end,
-                             'nota_url', case when x.nota_status = 'autorizada' then x.nota_pdf_url end)
+                             'nota_url', case when x.nota_status = 'autorizada' then x.nota_pdf_url end,
+                             -- a última devolução pedida desta compra (a tela mostra "Desistência registrada – devolução em andamento/concluída")
+                             'devolucao', (select jsonb_build_object('status', r.status, 'desistencia', r.origem = 'aluno' and r.regra ->> 'regra' = 'integral_7_dias',
+                                                                     'valor_centavos', r.valor_centavos)
+                                           from public.billing_reembolsos r where r.cobranca_id = x.id order by r.criado_em desc, r.id desc limit 1))
                              order by x.criado_em desc)
                            from (select * from public.billing_cobrancas where user_id = v_user order by criado_em desc limit 50) x), '[]'::jsonb),
     'aceite', (select jsonb_build_object('em', p.aceite ->> 'registrado_em', 'versao', p.aceite ->> 'contrato_versao', 'plano', p.nome)
@@ -771,6 +788,7 @@ $$;
 revoke execute on function public.alertas_dono_criar(text, text, text, text, jsonb) from public, anon, authenticated;
 revoke execute on function public.alertas_usd(numeric) from public, anon, authenticated;
 revoke execute on function public.ch_worker_billing_devolvido(text, text, integer) from public, anon, authenticated;
+revoke execute on function public.ch_worker_billing_devolucoes(uuid) from public, anon, authenticated;
 revoke execute on function public.ch_worker_billing_admin_devolucao(uuid, bigint, integer, text, text) from public, anon, authenticated;
 revoke execute on function public.ch_worker_billing_nota_salvar(text, text, jsonb) from public, anon, authenticated;
 revoke execute on function public.ch_worker_billing_notas_pendentes(integer) from public, anon, authenticated;

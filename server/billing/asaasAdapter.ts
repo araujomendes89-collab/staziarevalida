@@ -344,8 +344,8 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
       const chargeId = body?.payment?.id ? String(body.payment.id) : null;
       const eventId = String(body?.id ?? `${event}:${chargeId ?? body?.subscription?.id ?? "?"}:${body?.payment?.status ?? ""}`).slice(0, 200);
       if (event.startsWith("PAYMENT_") && chargeId) {
-        const failed = event === "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED" || event === "PAYMENT_REPROVED_BY_RISK_ANALYSIS";
-        return { kind: "charge", eventId, event, chargeId, subscriptionId: body.payment.subscription ? String(body.payment.subscription) : null, ...(failed ? { failed: true } : {}) };
+        const failReason = event === "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED" ? "card_refused" : event === "PAYMENT_REPROVED_BY_RISK_ANALYSIS" ? "risk_rejected" : null;
+        return { kind: "charge", eventId, event, chargeId, subscriptionId: body.payment.subscription ? String(body.payment.subscription) : null, ...(failReason ? { failed: true, failReason } : {}) };
       }
       // nota fiscal (INVOICE_AUTHORIZED, INVOICE_CANCELED...): na conta principal chegam também as notas do StaziaTech; o núcleo
       // relê a nota e só guarda a de um pagamento do app

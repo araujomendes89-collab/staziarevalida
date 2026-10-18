@@ -97,6 +97,7 @@
 .bl-esperando .sm-spin { color: var(--text-link); }
 .bl-fim { padding: 20px; display: flex; gap: 16px; align-items: flex-start; }
 .bl-fim p { margin: 0; color: var(--text-secondary); }
+.bl-fim p.bl-motivo { color: var(--text-primary); font-weight: 600; margin-bottom: 4px; }
 .bl-fim--ok { background: var(--success-bg); border-color: var(--success-border); }
 .bl-fim--falhou { background: var(--danger-bg); border-color: var(--danger-border); }
 .bl-pendente { padding: 18px; display: flex; gap: 14px; align-items: flex-start; border-color: var(--danger-border); }

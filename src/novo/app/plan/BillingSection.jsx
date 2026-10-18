@@ -32,7 +32,7 @@ export const pedidoDoResumo = (ov) => {
 /** Texto das formas aceitas, conforme o servidor. */
 export const textoFormas = (overview) => (overview?.methods?.debit === true ? "Pix, crédito ou débito" : "Pix ou cartão de crédito");
 const ESTADO_FINAL = {
-  falhou: ["O pagamento não foi concluído", "A instituição de pagamento recusou ou não confirmou. Nada foi cobrado. Você pode tentar de novo, com Pix ou outro cartão."],
+  falhou: ["Pagamento não concluído", "O pagamento não foi concluído e nada foi cobrado. Você pode tentar de novo com outro cartão ou pagar por Pix."],
   expirado: ["O tempo para pagar acabou", "Este pagamento venceu sem confirmação e foi cancelado. Nada foi cobrado. É só começar de novo."],
   cancelado: ["Pagamento cancelado", "Este pagamento foi cancelado. Nada foi cobrado."],
 };
@@ -84,10 +84,26 @@ export function Resumo({ alvo, metodo, cpf }) {
   );
 }
 
+/**
+ * Depois de "Pagamento não concluído": a mesma compra (plano e ciclo, ou o extra) com a forma escolhida no botão, pelo que está à
+ * venda agora (preço da vitrine). null = não está mais à venda (a tela volta aos planos).
+ */
+export function alvoDoPedido(ov, pedido, metodo) {
+  if (!pedido?.codigo) return null;
+  if (pedido.tipo === "extra") {
+    const x = (ov?.vitrine?.extras ?? []).find((e) => e.codigo === pedido.codigo);
+    return x ? { tipo: "extra", codigo: x.codigo, ciclo: "avulso", nome: x.nome, valor: x.valor_centavos, metodo } : null;
+  }
+  const p = (ov?.vitrine?.planos ?? []).find((e) => e.codigo === pedido.codigo);
+  const ciclo = pedido.ciclo === "trimestral" ? "trimestral" : "mensal";
+  if (!p?.a_venda || !ov?.vendas_ligadas) return null;
+  return { tipo: "plano", codigo: p.codigo, ciclo, planoNome: p.nome, nome: `${p.nome} ${ciclo}`, valor: ciclo === "mensal" ? p.mensal_centavos : p.trimestral_centavos, metodo };
+}
+
 function Compra({ alvo, overview, onDone, onCancel }) {
   const { backend } = useSession();
   const [etapa, setEtapa] = React.useState(1);
-  const [metodo, setMetodo] = React.useState("pix");
+  const [metodo, setMetodo] = React.useState(() => (metodosDaCompra(overview, alvo).some((m) => m.id === alvo.metodo) ? alvo.metodo : "pix"));
   const [nome, setNome] = React.useState("");
   const [cpf, setCpf] = React.useState("");
   const [cep, setCep] = React.useState("");
@@ -246,7 +262,7 @@ export function PedidoAberto({ pedido, onChange, onNovo }) {
       const x = await getOrder(backend, p.id);
       if (x?.status && x.status !== p.status) {
         setP(x);
-        if (x.status !== "aberto") onChange?.();
+        if (x.status !== "aberto") onChange?.(x);
       }
       return x;
     } catch {
@@ -287,17 +303,32 @@ export function PedidoAberto({ pedido, onChange, onNovo }) {
   }
   if (ESTADO_FINAL[p.status]) {
     const [t, d] = ESTADO_FINAL[p.status];
+    // cartão (ou débito) recusado: tentar com outro cartão ou por Pix, na mesma compra
+    // (a troca da renovação para o cartão, em Minha conta, só tenta de novo: a renovação continua no Pix)
+    const recusado = p.status === "falhou" && (p.metodo === "cartao" || p.metodo === "debito") && p.motivo !== "renovacao";
     return (
       <div className="ev-panel bl-fim bl-fim--falhou" role="alert" data-testid="cobranca-falhou">
         <IconTile name="circle-alert" tone="danger" size={52} />
         <div>
           <h3 className="bl-h3">{t}</h3>
+          {p.status === "falhou" && p.motivo_falha && <p className="bl-motivo">{p.motivo_falha}</p>}
           <p>{d}</p>
           {onNovo && (
             <div className="bl-acoes">
-              <Button icon="rotate-ccw" onClick={onNovo}>
-                Tentar de novo
-              </Button>
+              {recusado ? (
+                <>
+                  <Button icon="credit-card" onClick={() => onNovo(p.metodo, p)}>
+                    Tentar com outro cartão
+                  </Button>
+                  <Button variant="secondary" icon="qr-code" onClick={() => onNovo("pix", p)}>
+                    Pagar por Pix
+                  </Button>
+                </>
+              ) : (
+                <Button icon="rotate-ccw" onClick={() => onNovo()}>
+                  Tentar de novo
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -372,6 +403,7 @@ export function PedidoAberto({ pedido, onChange, onNovo }) {
               {pedido?.abriuAba ? "Abrimos a página da instituição de pagamento numa aba nova. " : ""}
               Digite o cartão lá e volte para esta aba: ela confirma sozinha quando o pagamento for aprovado.
             </p>
+            <p className="bl-fina">Se o cartão for recusado, esta tela avisa e você pode tentar com outro cartão ou pagar por Pix.</p>
             <a className="sm-btn sm-btn--secondary bl-link-btn" href={p.url} target="_blank" rel="noopener noreferrer">
               <Icon name="external-link" size={18} />
               Abrir a página de pagamento
@@ -527,9 +559,16 @@ export function BillingSection({ onEnabled, go, pedidoInicial }) {
       {aberto && (
         <PedidoAberto
           pedido={aberto}
-          onChange={reload}
-          onNovo={() => {
+          onChange={(x) => {
+            // estado final (ex.: "não concluído"): a tela segura o pedido, mesmo que ele tenha vindo do resumo (que só lista os abertos)
+            if (x && x.status !== "aberto") setPedido(x);
+            reload();
+          }}
+          onNovo={(metodo, final) => {
+            // "Tentar com outro cartão" / "Pagar por Pix": a mesma compra já na escolha da forma; sem forma, volta aos planos
+            const novo = metodo ? alvoDoPedido(ov, final ?? aberto, metodo) : null;
             setPedido(null);
+            if (novo) setAlvo(novo);
             reload();
           }}
         />
