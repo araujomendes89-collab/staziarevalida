@@ -16,6 +16,7 @@ import { tokenGoogle } from "./googleToken";
 import { NoncesUsados } from "./bilhete";
 import { atenderPonte } from "./ponte";
 import { conhecimentoDoAmbiente } from "./conhecimento";
+import { manterConexoesIaAbertas } from "../ai/conexoes";
 
 const env = (k: string, p = "") => (process.env[k] ?? p).trim();
 const PORTA = Number(env("PORT", env("VOZ_PONTE_PORTA", "31997")));
@@ -24,6 +25,7 @@ const log = (o: Record<string, unknown>) => console.log(JSON.stringify({ t: new 
 const segredo = env("VOZ_PONTE_SEGREDO");
 if (segredo.length < 32) { log({ ponte: "sem VOZ_PONTE_SEGREDO (mínimo 32 caracteres): recusando subir" }); process.exit(1); }
 
+manterConexoesIaAbertas(); // a busca de vetores (Vertex) reaproveita a conexão entre perguntas (server/ai/conexoes.ts)
 const usados = new NoncesUsados();
 // cérebro do Tutor (VOZ_PONTE_APP_URL): busca de conhecimento na ponte e POST /vetor para o Tutor por texto; sem a variável, desligado
 const conhecimento = conhecimentoDoAmbiente(process.env, { segredo, projeto: env("VOZ_PONTE_PROJETO", "staziamed-revalida-prod"), tokenGoogle, log });

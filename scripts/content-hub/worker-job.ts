@@ -15,11 +15,13 @@ import { buildContentHubDeps } from "../../server/contentHub/index";
 import { aiAvailable, createContentHubWorker } from "../../server/contentHub/worker";
 import { aiSummaryLine, probeProcessing, reportProcessing } from "../../server/contentHub/capabilities";
 import { runScheduledReanalysis, type ScheduledReanalysis } from "../../server/contentHub/reanalysisRun";
+import { manterConexoesIaAbertas } from "../../server/ai/conexoes";
 
 const budgetMs = (Number(process.env.CONTENT_HUB_JOB_BUDGET_MIN) > 0 ? Number(process.env.CONTENT_HUB_JOB_BUDGET_MIN) : 50) * 60_000;
 const staleSeconds = Number(process.env.CONTENT_HUB_STALE_SECONDS) > 0 ? Number(process.env.CONTENT_HUB_STALE_SECONDS) : 1800;
 
 async function main() {
+  manterConexoesIaAbertas(); // conexões com as IAs abertas entre uma chamada e outra (server/ai/conexoes.ts)
   const t0 = Date.now();
   const { deps, pending } = await buildContentHubDeps();
   if (!deps) {
