@@ -30,13 +30,15 @@ export function documentosDa(versao = TERMO_VERSAO) {
 export const ACEITE_TEXTO = "Li e aceito os Termos de Uso e a Política de Privacidade e declaro ter 18 anos ou mais.";
 
 /**
- * Contrato 3.0 em diante (textos do banco): a caixa única fala em Termos de Uso e Contrato de Assinatura, diz que a pessoa teve acesso
- * à Política (cláusula 6.1 do Contrato) e mantém a declaração de maioridade na mesma caixa (decisão do dono de 17/10/2026; cláusula 5).
+ * Contrato 3.0 em diante (textos do banco): a caixa única fala em Termos de Uso e Contrato de Assinatura e diz que a pessoa teve acesso
+ * à Política (cláusula 6.1 do Contrato).
+ * 18/10/2026 (ordem do dono): saíram da tela o trecho "e declaro ter 18 anos ou mais" da caixa e o aviso que ficava logo abaixo dela
+ * ("Ao aceitar, você declara… Guardamos a data, a hora, o IP e o navegador…"). Só a tela mudou: a maioridade continua sendo declarada
+ * pelo aceite do Contrato (cláusula 5.1, "Ao aceitar este contrato, você declara…") e segue gravada como antes (declares_adult /
+ * declarations.adult, exigida pelo banco em legal_record); data, hora, IP e navegador continuam guardados no aceite. A frase da caixa
+ * não é enviada ao servidor nem entra no código de integridade (o SHA-256 é do texto do Contrato), então os aceites antigos não mudam.
  */
-export const ACEITE_TEXTO_V3 = "Li e aceito os Termos de Uso e o Contrato de Assinatura, declaro ter acesso à Política de Privacidade e declaro ter 18 anos ou mais.";
-/** Aviso fixo logo abaixo da caixa (textos-da-tela.md, item 1). */
-export const AVISO_ACEITE_V3 =
-  "Ao aceitar, você declara que tem 18 anos ou mais e é plenamente capaz (cláusula 5 do Contrato). Guardamos a data, a hora, o IP e o navegador do seu aceite como prova (veja a Política de Privacidade).";
+export const ACEITE_TEXTO_V3 = "Li e aceito os Termos de Uso e o Contrato de Assinatura, declaro ter acesso à Política de Privacidade.";
 /** Mensagem quando a pessoa tenta seguir sem marcar a caixa (textos-da-tela.md, item 1). */
 export const ACEITE_ERRO_V3 = "Para continuar, aceite os Termos de Uso e o Contrato de Assinatura.";
 export const ACEITE_ERRO_CADASTRO_V3 = "Para criar a conta, aceite os Termos de Uso e o Contrato de Assinatura.";

@@ -12,7 +12,7 @@ import { ConfirmEmailScreen, ConfirmLinkExpired } from "./auth/ConfirmEmail.jsx"
 import { DocumentModal } from "./legal/DocumentModal.jsx";
 import { TERMO_VERSAO } from "./legal/versions.js";
 import { rememberGoogleAcceptance } from "./legal/googleAcceptance.js";
-import { ACEITE_ERRO_CADASTRO_V3, ACEITE_TEXTO, ACEITE_TEXTO_V3, AVISO_ACEITE_V3, aceiteNovo } from "./legal/documentos.js";
+import { ACEITE_ERRO_CADASTRO_V3, ACEITE_TEXTO, ACEITE_TEXTO_V3, aceiteNovo } from "./legal/documentos.js";
 import { VIGENTES_DO_SITE, useVigentes } from "./legal/vigente.js";
 import { AceiteFrase } from "./legal/AceiteFrase.jsx";
 import { clearAuthLinkFromUrl, initialAuthLink } from "./auth/authLink.js";
@@ -71,7 +71,7 @@ const FIELD_IDS = { name: "secure-name", email: "secure-email", pw: "secure-pw",
  */
 function Signup({ go }) {
   const { backend } = useSession();
-  // versão vigente do Contrato/Termo (do banco desde a migração …13740; num banco sem ela, a do próprio site): caixa, aviso e versão enviada
+  // versão vigente do Contrato/Termo (do banco desde a migração …13740; num banco sem ela, a do próprio site): caixa e versão enviada
   const vig = useVigentes();
   const novo = aceiteNovo(vig.vigentes);
   const acceptError = novo ? ACEITE_ERRO_CADASTRO_V3 : ACCEPT_ERROR;
@@ -206,17 +206,12 @@ function Signup({ go }) {
                 checked={accepted}
                 onChange={(e) => setAccepted(e.target.checked)}
                 aria-invalid={errors.accept ? "true" : "false"}
-                aria-describedby={errors.accept ? "secure-accept-error" : novo ? "secure-accept-aviso" : undefined}
+                aria-describedby={errors.accept ? "secure-accept-error" : undefined}
               />
               <AceiteFrase onDoc={setDoc} linkClassName="cc-inline-link" novo={novo} />
             </label>
             {errors.accept ? <FieldError id="secure-accept-error">{errors.accept}</FieldError> : null}
           </div>
-          {novo && (
-            <p id="secure-accept-aviso" className="cc-aviso">
-              {AVISO_ACEITE_V3}
-            </p>
-          )}
         </div>
 
         <RecoveryButton type="submit" loading={loading} loadingText="CRIANDO CONTA…">CRIAR CONTA</RecoveryButton>

@@ -60,7 +60,14 @@ import { LegalPage } from "../novo/app/legal/LegalPage.jsx";
 import { AuthFlow } from "../novo/app/AuthScreens.jsx";
 import { DocumentosSection } from "../novo/app/account/DocumentosSection.jsx";
 import { esquecerTextosLegais } from "../novo/app/legal/vigente.js";
-import { ACEITE_TEXTO_V3, AVISO_ACEITE_V3 } from "../novo/app/legal/documentos.js";
+import { ACEITE_TEXTO_V3 } from "../novo/app/legal/documentos.js";
+
+// 18/10/2026 (ordem do dono): a caixa saiu sem "e declaro ter 18 anos ou mais" e o aviso de baixo saiu inteiro
+const FRASE_V3 = "Li e aceito os Termos de Uso e o Contrato de Assinatura, declaro ter acesso à Política de Privacidade.";
+const SEM_NA_TELA = [/declaro ter 18 anos/, /Ao aceitar, você declara/, /Guardamos a data, a hora, o IP e o navegador/];
+const semAvisoNemMaioridade = () => {
+  for (const re of SEM_NA_TELA) expect(document.body.textContent).not.toMatch(re);
+};
 
 const legal3 = (accepted: string | null) => ({
   termo_uso: { current: "3.0", accepted, accepted_at: accepted ? "2026-10-16T12:00:00Z" : null, valid: false },
@@ -89,12 +96,14 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Termo 3.0 — tela de aceite", () => {
-  it("quem aceitou a versão anterior vê 'Atualizamos nosso Contrato', o resumo do que mudou, a caixa nova e o aviso do IP", async () => {
+  it("quem aceitou a versão anterior vê 'Atualizamos nosso Contrato', o resumo do que mudou e a caixa nova (sem 18 anos e sem o aviso)", async () => {
     const fns = abrirAceite(legal3("2.0"));
     expect(screen.getByRole("heading", { level: 1, name: "Atualizamos nosso Contrato" })).toBeTruthy();
     const resumo = await screen.findByRole("region", { name: "O que mudou" });
     expect(within(resumo).getAllByRole("listitem").map((li) => li.textContent)).toEqual(MUDANCAS);
-    expect(screen.getByText(AVISO_ACEITE_V3)).toBeTruthy();
+    expect(ACEITE_TEXTO_V3).toBe(FRASE_V3);
+    expect(caixa().closest("label")!.textContent).toBe(FRASE_V3);
+    semAvisoNemMaioridade();
     // sem a caixa: erro e nada gravado
     fireEvent.click(botao());
     expect(screen.getByText("Para continuar, aceite os Termos de Uso e o Contrato de Assinatura.")).toBeTruthy();
@@ -186,7 +195,7 @@ describe("Termo 3.0 — páginas públicas", () => {
 });
 
 describe("Termo 3.0 — cadastro", () => {
-  it("caixa nova com o aviso; manda a versão 3.0 e completa o IP com o número da conta", async () => {
+  it("caixa nova sem 18 anos e sem o aviso; a maioridade continua gravada; manda a versão 3.0 e completa o IP com o número da conta", async () => {
     const backend: any = {
       rpc: banco.rpc,
       signUp: vi.fn(async () => ({ needsEmailConfirmation: true, userId: "conta-1" })),
@@ -198,8 +207,9 @@ describe("Termo 3.0 — cadastro", () => {
     state.session = { backend };
     render(<AuthFlow />);
     fireEvent.click(screen.getByRole("button", { name: /criar conta/i }));
-    const box = await screen.findByLabelText(ACEITE_TEXTO_V3);
-    expect(screen.getByText(AVISO_ACEITE_V3)).toBeTruthy();
+    const box = await screen.findByLabelText(FRASE_V3);
+    expect(box.closest("label")!.textContent).toBe(FRASE_V3);
+    semAvisoNemMaioridade();
     fireEvent.change(screen.getByLabelText("Nome completo"), { target: { value: "Ana Lima" } });
     fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "ana@teste.dev" } });
     fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "senha-segura" } });

@@ -6,7 +6,8 @@
 //   * quem já tinha aceitado uma versão anterior vê "Atualizamos nosso Contrato" e o resumo do que mudou (legal_texts.changes, tirado
 //     dos próprios textos); quem nunca aceitou vê "Antes de começar";
 //   * os textos completos abrem por cima (Contrato, Política e Regulamento), sempre a versão que o banco diz que está vigente;
-//   * uma caixa só (ACEITE_TEXTO_V3), com a maioridade, e o aviso de que o aceite guarda data, hora, IP e navegador;
+//   * uma caixa só (ACEITE_TEXTO_V3); desde 18/10/2026 sem "e declaro ter 18 anos ou mais" e sem o aviso de baixo (a maioridade vem
+//     da cláusula 5.1 e continua gravada; data, hora, IP e navegador continuam guardados);
 //   * sem aceitar, a pessoa não entra no app, mas pode baixar os próprios dados, pedir o cancelamento ao suporte ou sair da conta
 //     (Contrato 3.0, cláusula 6.5-A).
 // Com o Termo 1.0/2.0 vigente (banco sem a 013740), a mesma tela vale com a caixa e os textos de antes.
@@ -16,7 +17,7 @@ import "./legal.css";
 import { useSession } from "../session.jsx";
 import { DocumentModal } from "./DocumentModal.jsx";
 import { takeGoogleAcceptanceFull } from "./googleAcceptance.js";
-import { ACEITE_ERRO_V3, ACEITE_TEXTO, ACEITE_TEXTO_V3, AVISO_ACEITE_V3, temNoSite } from "./documentos.js";
+import { ACEITE_ERRO_V3, ACEITE_TEXTO, ACEITE_TEXTO_V3, temNoSite } from "./documentos.js";
 import { AceiteFrase } from "./AceiteFrase.jsx";
 import { useVigentes } from "./vigente.js";
 import { FieldError, RecoveryButton, RecoveryLayout, RecoveryLink, RecoveryMessage } from "../auth/RecoveryLayout.jsx";
@@ -189,17 +190,12 @@ export function AcceptanceScreen({ onAgoraNao } = {}) {
                     if (e.target.checked) setErroCaixa(null);
                   }}
                   aria-invalid={erroCaixa ? "true" : "false"}
-                  aria-describedby={erroCaixa ? "aceite-accept-error" : novo ? "aceite-aviso" : undefined}
+                  aria-describedby={erroCaixa ? "aceite-accept-error" : undefined}
                 />
                 <AceiteFrase onDoc={setDoc} linkClassName="cc-inline-link" novo={novo} />
               </label>
               {erroCaixa ? <FieldError id="aceite-accept-error">{erroCaixa}</FieldError> : null}
             </div>
-            {novo && (
-              <p id="aceite-aviso" className="ac3-aviso">
-                {AVISO_ACEITE_V3}
-              </p>
-            )}
           </div>
         )}
 

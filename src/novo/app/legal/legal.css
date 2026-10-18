@@ -90,7 +90,6 @@
 .ac3-docs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 14px; color: var(--ln-body); }
 .ac3-docs-t { width: 100%; font-weight: 700; color: var(--ln-ink); }
 .ac3-docs .cc-inline-link { min-height: 32px; }
-.ac3-aviso { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--ln-muted); }
 .ac3-acoes { gap: 2px; }
 .ac3-link { min-height: 44px; text-decoration: none; }
 .ln-root--m .ac3-docs .cc-inline-link { min-height: 44px; }
