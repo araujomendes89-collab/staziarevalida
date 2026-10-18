@@ -16,6 +16,7 @@ import crypto from "node:crypto";
 import express, { type NextFunction, type Request, type Response } from "express";
 import type { ContentDb, Identity } from "../contentHub/infra";
 import { shown } from "../auth/friendlyError";
+import { cronAutorizado } from "../seguranca/protecoes";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -48,8 +49,8 @@ export function createPlanosRouter(deps: PlanosDeps | null, pending: string | nu
   const router = express.Router();
 
   router.get("/cron", async (req, res) => {
-    const secret = process.env.CRON_SECRET;
-    if (!deps || !secret || req.headers.authorization !== `Bearer ${secret}`) return fail(res, 401, "Não autorizado.");
+    // segredo do cron comparado em tempo constante (auditoria de 17/10)
+    if (!deps || !cronAutorizado(req.headers.authorization, process.env.CRON_SECRET)) return fail(res, 401, "Não autorizado.");
     try {
       const avisos = await deps.db.service<number>("ch_worker_avisos_renovacao");
       const ips = await deps.db.service<number>("ch_worker_teste_ips_limpar");

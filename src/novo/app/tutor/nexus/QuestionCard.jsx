@@ -47,8 +47,8 @@ export function QuestionCard({ session, marked, busy = false, gate = null, onMar
           <p className="nx-q__tip">Diga “confirmo” para responder ou “cancela” para desmarcar.</p>
           <div className="nx-q__actions">
             <Button disabled={!marked || busy} onClick={() => onAnswer(marked)}>Responder</Button>
-            <Button variant="secondary" disabled={busy || session.hint_level >= 5} onClick={onHint}>{session.hint_level >= 5 ? "Sem mais ajuda" : "Pedir ajuda"}</Button>
-            <Button variant="ghost" disabled={busy} onClick={onReveal}>Ver resolução</Button>
+            {/* resolução e última ajuda só depois da resposta (o servidor confere; revisão do Pacote 1) */}
+            <Button variant="secondary" disabled={busy || session.hint_level >= 4} onClick={onHint}>{session.hint_level >= 4 ? "A resolução vem depois da resposta" : "Pedir ajuda"}</Button>
           </div>
         </>
       ) : (

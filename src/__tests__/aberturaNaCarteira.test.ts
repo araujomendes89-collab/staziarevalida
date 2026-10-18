@@ -164,4 +164,30 @@ describe("abertura do Tutor na carteira do aluno", () => {
     await dev.db.exec(mig);
     expect(await def()).toBe(d1);
   });
+
+  it("abertura preparada usa a escolha de palavrão do aluno, nunca o teto do painel (revisão do Pacote 1, M5)", async () => {
+    const claim = async (topic: string) => {
+      await sql(`delete from public.tutor_opening_ready where user_id = $1`, [ANA]);
+      await sql(`delete from public.tutor_rate_limits where user_id = $1`, [ANA]);
+      const r = (await sql(`select public.ch_worker_tutor_opening_prep_claim($1, 'durona', 'livre', $2, null, null) r`, [ANA, topic]))[0].r;
+      return r?.ctx?.session?.settings?.profanity;
+    };
+    await sql(`update public.tutor_config set max_profanity = 'moderate'`);
+    await sql(`delete from public.tutor_explosiva_preferences where user_id = $1`, [ANA]);
+    // sem escolha gravada para a Durona: sem palavrão (antes: o teto do painel)
+    await sql(`update public.tutor_preferences set personality_id = 'acolhedor', profanity = 'off' where user_id = $1`, [ANA]);
+    expect(await claim("Sepse")).toBe("off");
+    // a escolha do aluno para a Durona vale, limitada pelo teto do painel
+    await sql(`update public.tutor_preferences set personality_id = 'durona', profanity = 'mild' where user_id = $1`, [ANA]);
+    expect(await claim("Asma")).toBe("mild");
+    await sql(`update public.tutor_preferences set profanity = 'moderate' where user_id = $1`, [ANA]);
+    await sql(`update public.tutor_config set max_profanity = 'mild'`);
+    expect(await claim("Dengue")).toBe("mild");
+    await sql(`update public.tutor_config set max_profanity = 'moderate'`);
+    // palavrão desligado nas preferências da Durona: nada de palavrão
+    await sql(`insert into public.tutor_explosiva_preferences (user_id, level, shouts, profanity) values ($1, 'n2', true, false)
+               on conflict (user_id) do update set profanity = false`, [ANA]);
+    expect(await claim("Malária")).toBe("off");
+    await sql(`delete from public.tutor_explosiva_preferences where user_id = $1`, [ANA]);
+  });
 });

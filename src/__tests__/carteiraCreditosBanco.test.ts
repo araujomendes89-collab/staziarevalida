@@ -413,6 +413,30 @@ describe("devolução (só cálculo; regra final do dono, 17/10 noite)", () => {
   });
 });
 
+describe("modo sombra não derruba a mensagem do Tutor (revisão do Pacote 1, M3)", () => {
+  it("se o cálculo da regra nova falhar, a reserva segue pela regra de hoje e o movimento fica marcado; com a chave ligada, o erro sobe", async () => {
+    await zerarCarteira();
+    await ligar(false);
+    const original = await one(`select pg_get_functiondef('public.direitos_do_aluno(uuid)'::regprocedure) r`);
+    await db.exec(`create or replace function public.direitos_do_aluno(p_user uuid) returns jsonb language plpgsql stable security definer set search_path = '' as $f$ begin raise exception 'quebrada de propósito'; end $f$;`);
+    try {
+      const s = await sessao(PRO);
+      const r = await reservar(PRO, "tutor_texto", "m3-sombra-01", null, s);
+      expect(r).toMatchObject({ ok: true, modo: "sombra" });
+      expect(typeof r.reservation).toBe("number"); // a reserva antiga do Tutor decidiu, como hoje
+      const mov = await q(`select modo, situacao, motivo_bloqueio, teria_bloqueado from public.carteira_movimentos where request_id = 'm3-sombra-01'`);
+      expect(mov).toEqual([{ modo: "sombra", situacao: "reservado", motivo_bloqueio: "erro_sombra", teria_bloqueado: false }]);
+      await devolver(PRO, "m3-sombra-01");
+      await ligar(true);
+      await expect(reservar(PRO, "tutor_texto", "m3-ligado-01")).rejects.toThrow(/quebrada de propósito/);
+    } finally {
+      await db.exec(original);
+      await ligar(false);
+    }
+  });
+});
+
+
 describe("colar de novo e desfazer", () => {
   it("colar de novo não estraga nada (não renomeia o porteiro, não apaga o que o dono editou)", async () => {
     await db.exec(`update public.direitos_config set cotacao_dolar = 5.4`);

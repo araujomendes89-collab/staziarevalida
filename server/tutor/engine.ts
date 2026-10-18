@@ -324,6 +324,9 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     // ---- a tarefa desta resposta
     const q = ctx.question;
     const open = ctx.session.question_state === "open";
+    // resolução e gabarito só depois de o aluno RESPONDER a questão (revisão do Pacote 1, M4): no Tutor ou no treino. Vale em qualquer
+    // modo, dentro ou fora do simulado: a última ajuda (que entrega a resposta) e "Ver resolução" ficam para depois da resposta.
+    const respondida = Boolean(q && (q.last_answer || q.practice_answer));
     let task: TutorTask;
     let studentText = "";
     let hintLevel: number | null = null;
@@ -332,12 +335,14 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     if (action.type === "hint") {
       if (!q || !open) throw new TutorError("Não há questão aberta para pedir dica.", 409);
       if (ctx.session.hint_level >= 5) throw new TutorError("Você já recebeu todas as dicas desta questão.", 409);
+      if (ctx.session.hint_level >= 4 && !respondida) throw new TutorError("A última ajuda entrega a resposta: ela só sai depois que você responder a questão.", 409);
       hintLevel = ctx.session.hint_level + 1;
       task = { type: "hint", level: hintLevel };
       studentText = hintLevel === 1 ? "Me dá uma ajuda aqui." : "Me ajuda mais um pouco.";
       happening = { kind: "hint" };
     } else if (action.type === "reveal") {
       if (!q || !open) throw new TutorError("Não há questão aberta para mostrar a resolução.", 409);
+      if (!respondida) throw new TutorError("A resolução só sai depois que você responder a questão.", 409);
       hintLevel = 5;
       task = { type: "reveal" };
       studentText = "Me mostra a resolução.";
@@ -553,7 +558,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     };
     const reply = protegerFala(out ? out.reply.trim() : fallbackReply(violations, situacao), ctx.personality.id, sigiloCtx).texto;
     // a resolução (dica 5 ou pedido explícito) revela a resposta mesmo se a IA esquecer de marcar
-    const reveals = hintLevel === 5 && (Boolean(out?.reveals_answer) || task.type === "reveal" || replaced);
+    const reveals = hintLevel === 5 && respondida && (Boolean(out?.reveals_answer) || task.type === "reveal" || replaced);
     const ev = out?.evaluation ?? NO_EVALUATION;
 
     // ---- avaliação silenciosa: vira evento pedagógico (erro registrado) e mexe no estado da sessão

@@ -255,7 +255,7 @@ describe("Voz em tempo real (OpenAI simulada)", () => {
     expect((await sql(`select status, consumed_seconds from public.tutor_voice_calls where user_id = $1 order by started_at desc limit 1`, [PAID]))[0]).toEqual({ status: "ended", consumed_seconds: 0 });
   });
 
-  it("ferramentas: questão aberta sem gabarito; quem corrige é o banco; resolução só a pedido; nada de ferramenta fora da lista", async () => {
+  it("ferramentas: questão aberta sem gabarito; quem corrige é o banco; resolução só depois da resposta; nada de ferramenta fora da lista", async () => {
     const r = await post("/voice/start", { session_id: session });
     const id = r.body.voice_call_id;
     const tool = (name: string, args: unknown = {}) => post("/voice/tool", { voice_call_id: id, name, arguments: JSON.stringify(args) });
@@ -280,8 +280,9 @@ describe("Voz em tempo real (OpenAI simulada)", () => {
     // próxima questão e pedido de resolução
     const next = await tool("next_question");
     expect(next.body.output.question.official_answer).toBeNull();
+    // revisão do Pacote 1 (M4): pedir a resolução pela voz com a questão ainda sem resposta não abre o gabarito
     const reveal = await tool("get_question_context", { reveal: true });
-    expect(reveal.body.output.question).toMatchObject({ state: "revealed", official_answer: off[next.body.output.question.id] });
+    expect(reveal.body.output.question).toMatchObject({ state: "open", official_answer: null });
     // fontes: sem trecho na base, a ferramenta diz para não citar número
     expect((await tool("get_topic_context", { topic: "assunto inexistente xyzwv" })).body.output.note).toMatch(/não cite número/);
     expect((await post("/voice/tool", { voice_call_id: id, name: "run_sql", arguments: "{}" })).status).toBe(400);
