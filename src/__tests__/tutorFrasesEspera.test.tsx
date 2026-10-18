@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import {
-  ATRASO_ESPERA_MS, comEspera, FRASES_ESPERA, nomeDaPersona, personaDeEspera, RodizioDeEspera, textoConferindo, VINHETAS, type PersonaEspera,
+  ATRASO_ESPERA_MS, ATRASO_ESPERA_VOZ_MS, comEspera, FRASES_ESPERA, nomeDaPersona, personaDeEspera, RodizioDeEspera, textoConferindo, VINHETAS, type PersonaEspera,
 } from "../../server/tutor/conhecimento/frasesEspera";
 import { useDemorou } from "../novo/app/tutor/useDemorou.js";
 
@@ -85,6 +85,7 @@ describe("só quando a busca passa de ~600 ms", () => {
   it("comEspera: rápida não mostra; lenta mostra uma vez e apaga no fim; o resultado e o erro não mudam", async () => {
     vi.useFakeTimers();
     expect(ATRASO_ESPERA_MS).toBe(600);
+    expect(ATRASO_ESPERA_VOZ_MS).toBe(0); // voz ao vivo: a frase falada começa junto com a busca (18/10)
     const mostrar = vi.fn();
     const apagar = vi.fn();
     const rapida = comEspera(new Promise((ok) => setTimeout(() => ok("r"), 300)), mostrar, apagar);

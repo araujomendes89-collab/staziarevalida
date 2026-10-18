@@ -134,12 +134,15 @@
 }
 
 /* onde a esfera ficava */
+/* 18/10: o personagem ocupa a altura que SOBRA no palco (antes era 54% da tela fixo e, no celular, passava do palco e a legenda
+   ficava por cima do corpo dele) */
 .svm__stage .tp {
   width: 100%;
-  height: min(54dvh, 480px);
+  height: 100%;
+  max-height: 480px;
 }
 .svm--with-card .svm__stage .tp {
-  height: min(34dvh, 300px);
+  max-height: 300px;
 }
 .nx-lobby__orb .tp,
 .nx-summary__orb .tp {

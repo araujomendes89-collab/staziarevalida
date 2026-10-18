@@ -400,7 +400,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
   });
   router.post("/voice/open", voiceRoute(async (req, b) => {
     if (!uuid.test(String(b.session_id ?? ""))) throw new TutorError("Conversa inválida.", 400);
-    if (b.skip != null && b.skip !== "eleven" && b.skip !== "voice") throw new TutorError("Pedido inválido.", 400);
+    if (b.skip != null && b.skip !== "aovivo" && b.skip !== "eleven" && b.skip !== "voice") throw new TutorError("Pedido inválido.", 400);
     return openNexus(deps!, req.user!.id, String(b.session_id), b.force === true, b.skip ?? null);
   }));
   const letterOf = (x: unknown): Letter | null => (typeof x === "string" && /^[A-D]$/.test(x.toUpperCase()) ? (x.toUpperCase() as Letter) : null);

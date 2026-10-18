@@ -2,18 +2,17 @@
 // (useRealtimeVoice), para a tela cheia (StaziaVoiceMode) não saber a diferença.
 //
 // Um turno: o aluno fala (gravação) → transcrição no servidor → o motor do Tutor (/voice/say, com client_turn_id) → a legenda e
-// a emoção aparecem → a voz do professor (/speech) toca → o microfone volta a ouvir (computador e Android) ou mostra "Toque para
-// falar" (iPhone e iPad). O microfone fica fechado enquanto o professor fala. "Interromper" corta o som e o trecho vai no próximo
-// turno. A letra só marca; "confirmo" ou "Responder" responde. Sem voz do professor (limite, teto, aprovação revogada, falha), a
-// tela passa para a voz reserva pelo onFallback, com a legenda mantida. O enunciado nunca vai para a voz. Sem chamada (a conversa
+// a emoção aparecem → a voz do professor (/speech) toca → o microfone volta a ouvir sozinho, em todo aparelho (18/10: sem "Falar" e
+// "Enviar"; o fim da fala é percebido no navegador, recorder.js). Desde 18/10 este é só o modo RESERVA (a voz ao vivo vem primeiro).
+// O microfone fica fechado enquanto o professor fala. "Interromper" corta o som e o trecho vai no próximo turno. A letra só marca; "confirmo" ou "Responder" responde. Sem voz do professor (limite, teto, aprovação revogada, falha), a
+// tela passa para outro jeito pelo onFallback, com a legenda mantida. O enunciado nunca vai para a voz. Sem chamada (a conversa
 // por voz desligada no painel), o turno vai pela rota de texto do Tutor e a questão pelo banco, como no Chat de antes.
 import React from "react";
 import { nexusApi, tutorOpening, tutorSpeech, tutorTurn, voiceApi } from "../api.js";
 import { realtimeErrorMessage } from "../useRealtimeVoice.js";
 import { AudioPlayer } from "../voice/audioPlayer.js";
-import { getAudioContext } from "../voice/audioUnlock.js";
-import { rmsLevel } from "../voice/useAudioLevel.js";
-import { startRecording, tapToTalkDevice } from "./recorder.js";
+import { getAudioContext, unlockAudio } from "../voice/audioUnlock.js";
+import { startRecording } from "./recorder.js";
 
 /** Tempos (ajustáveis nos testes). */
 export const NEXUS_TIMING = { retryMs: 2_000, retryForMs: 30_000, renewMs: 60_000 };
@@ -21,7 +20,7 @@ export const STT_FAILED = "Não entendi, pode repetir ou digitar?";
 export const ENGINE_FAILED = "O professor não conseguiu responder, tente de novo";
 export const CALL_ENDED = "A conversa por voz foi encerrada.";
 export const CALL_REPLACED = "A conversa continuou em outra aba ou aparelho.";
-/** Códigos da voz do professor que passam a conversa para a voz reserva. */
+/** Códigos da voz do professor que passam a conversa para outro jeito (voz ao vivo ou por escrito). */
 export const VOICE_FALLBACK_CODES = new Set(["voice_student_limit", "voice_account_day", "voice_account_month", "voice_unavailable", "voice_failed"]);
 export const markedPhrase = (letter) => `Marquei a ${letter}. Diga confirmo para responder, ou fale outra alternativa.`;
 export const UNMARKED_PHRASE = "Desmarquei. Qual você escolhe?";
@@ -30,18 +29,30 @@ const turnId = () => globalThis.crypto?.randomUUID?.() ?? `t${Date.now().toStrin
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const lastTutor = (s) => [...(s?.messages ?? [])].reverse().find((m) => m.role === "tutor") ?? null;
 
-function micLevel(stream) {
+/**
+ * Medidor do microfone para o detector de fala: RMS em ponto flutuante (0..1). O Safari entrega a fala baixa (ganho automático) e a
+ * medição em bytes de antes arredondava isso para zero; por isso o iPhone usava toque.
+ */
+export function micLevel(stream, ctx = getAudioContext()) {
   try {
-    const ctx = getAudioContext();
     if (!ctx?.createAnalyser || !ctx.createMediaStreamSource) return undefined;
+    if (ctx.state === "suspended") ctx.resume?.()?.catch?.(() => {});
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 1024;
     const source = ctx.createMediaStreamSource(stream);
     source.connect(analyser);
-    const data = new Uint8Array(analyser.fftSize);
+    const float = typeof analyser.getFloatTimeDomainData === "function" ? new Float32Array(analyser.fftSize) : null;
+    const bytes = new Uint8Array(analyser.fftSize);
     const read = () => {
-      analyser.getByteTimeDomainData(data);
-      return rmsLevel(data);
+      let sum = 0;
+      if (float) {
+        analyser.getFloatTimeDomainData(float);
+        for (let i = 0; i < float.length; i++) sum += float[i] * float[i];
+        return Math.sqrt(sum / float.length);
+      }
+      analyser.getByteTimeDomainData(bytes);
+      for (let i = 0; i < bytes.length; i++) sum += ((bytes[i] - 128) / 128) ** 2;
+      return Math.sqrt(sum / bytes.length);
     };
     read.close = () => {
       try {
@@ -52,7 +63,7 @@ function micLevel(stream) {
     };
     return read;
   } catch {
-    return undefined; // sem medição: a fala é presumida (para no "Enviar" ou em 45 s)
+    return undefined; // sem medição: a gravação para em 45 s (ou no "Pronto")
   }
 }
 
@@ -70,10 +81,12 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
   const [micError, setMicError] = React.useState(null);
   const [chatRequest, setChatRequest] = React.useState(0);
   const [output, setOutput] = React.useState(null);
-  const tap = React.useMemo(() => tapToTalkDevice(), []);
+  // o medidor do navegador só devolveu zeros (Safari com o áudio suspenso): 0 = tudo bem; 1 = a tela pede UM toque, que acorda o
+  // áudio; 2 = morreu de novo depois do toque: a tela pede um toque quando o aluno terminar de falar (só neste caso raro)
+  const [meterDead, setMeterDead] = React.useState(0);
   const r = React.useRef({ metrics: { stt: [], engine: [], tts: [], play: [] } });
   // as funções chamadas de fora do ciclo de desenho sempre leem o estado mais novo
-  Object.assign(r.current, { backend, session, jeito, voiceCallId, micStream, canListen, onSession, onMessage, onFallback, onReopen, muted, tap });
+  Object.assign(r.current, { backend, session, jeito, voiceCallId, micStream, canListen, onSession, onMessage, onFallback, onReopen, muted });
 
   const setState = (s) => {
     r.current.state = s;
@@ -128,17 +141,24 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
       h.cancel?.();
     }
   };
-  const listen = (manual = false) => {
+  const listen = () => {
     const c = r.current;
     if (!c.alive || c.rec) return;
-    if (!c.micStream || !c.canListen || c.muted || c.noRecorder || (c.tap && !manual)) {
+    if (!c.micStream || !c.canListen || c.muted || c.noRecorder) {
       setState("ready");
       return;
     }
     c.level ??= micLevel(c.micStream);
     try {
       let h = null;
-      h = startRecording({ stream: c.micStream, auto: !c.tap, level: c.level, onDone: (out) => heard(out, h) });
+      h = startRecording({
+        stream: c.micStream, level: c.level, onDone: (out) => heard(out, h),
+        onMeterDead: () => {
+          if (c.rec !== h) return;
+          c.meterDeaths = (c.meterDeaths ?? 0) + 1;
+          setMeterDead(Math.min(2, c.meterDeaths));
+        },
+      });
       c.rec = h;
       setState("listening");
     } catch {
@@ -151,7 +171,7 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     }
   };
   const afterReply = () => {
-    if (r.current.alive) listen(false);
+    if (r.current.alive) listen();
   };
 
   // ---- a fala do aluno chegou
@@ -326,6 +346,8 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     releaseAudio();
     c.interrupted = null;
     c.speaking = null;
+    c.meterDeaths = 0;
+    setMeterDead(0);
     setMarked(null);
     setAvatar(null);
     setMicError(null);
@@ -420,15 +442,36 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     if (next) {
       cancelRec();
       if (c.state === "listening") setState("ready");
-    } else if (c.state === "ready") listen(false);
+    } else if (c.state === "ready") listen();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const setVolume = React.useCallback((v) => {
     r.current.volume = v;
     r.current.player?.setVolume(v);
   }, []);
-  const talk = React.useCallback(() => listen(true), []);
-  const send = React.useCallback(() => r.current.rec?.stop?.(), []);
+  /**
+   * Medidor morto: o toque do aluno acorda o áudio (Safari) e o medidor é refeito. Se ele morrer de novo depois disso, cada toque
+   * passa a encerrar a fala que está gravando (o mínimo de toques: um por fala, só neste caso raro).
+   */
+  const wakeMeter = React.useCallback(() => {
+    const c = r.current;
+    unlockAudio();
+    const h = c.rec;
+    if ((c.meterDeaths ?? 0) >= 2) {
+      // o medidor não volta neste aparelho: cada toque manda a fala gravada (a tela segue pedindo o toque)
+      setMeterDead(2);
+      if (h) h.finish?.();
+      return;
+    }
+    setMeterDead(0);
+    c.level?.close?.();
+    c.level = undefined;
+    if (h) {
+      cancelRec();
+      listen();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   React.useEffect(() => () => {
     r.current.alive = false;
@@ -440,6 +483,6 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
   return {
     state, error: null, captions, streams: { input: micStream ?? null, output }, muted, provider: "tts", remaining: null, active: state !== "idle" && state !== "ended",
     start, stop, interrupt, sendText, toggleMute, setVolume, enablePlayback: null,
-    mark, answer, command, marked, avatar, tapToTalk: tap, talk, send, recording: state === "listening", micError, notice, chatRequest,
+    mark, answer, command, marked, avatar, recording: state === "listening", micError, notice, chatRequest, meterDead, wakeMeter,
   };
 }

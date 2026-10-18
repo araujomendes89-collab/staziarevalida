@@ -79,6 +79,7 @@ let server: Record<string, (body: any) => { status?: number; body?: any; headers
 const calls: { url: string; body: any }[] = [];
 
 beforeEach(async () => {
+  window.localStorage.setItem("smn-voz-legendas:anonimo", "1"); // estes testes leem a fala na tela (Legendas ligadas)
   (await import("../novo/app/tutor/useRealtimeVoice.js")).resetGeminiDeviceFallback();
   calls.length = 0;
   opened.length = 0;
@@ -94,7 +95,7 @@ beforeEach(async () => {
     "/api/tutor/status": () => ({ body: { ready: true, simulated: false, neural_voice: false, realtime_voice: true, live_voice: false, voice_hint: "gemini" } }),
     // Nexus: sem voz do professor aprovada, a conversa abre na voz reserva (a voz ao vivo)
     "/api/tutor/nexus": () => ({ body: { voice_enabled: true, stt: false, reserve: true, reserve_minutes: 10, minutes_today: 0, professors: PERSONALITIES.map((p) => ({ id: p.id, eleven: false, sample: false, reason: "not_approved" })) } }),
-    "/api/tutor/voice/open": () => ({ body: { jeito: "reserva", voice_call_id: null, mic: true, reason: "not_approved", minutes_today: 0, reserve_minutes: 10 } }),
+    "/api/tutor/voice/open": () => ({ body: { jeito: "aovivo", voice_call_id: null, mic: true, reason: "not_approved", minutes_today: 0, reserve_minutes: 10 } }),
     // o servidor abre o Gemini, a não ser que o aplicativo peça outra voz
     "/api/tutor/voice/start": (b) => ({ body: b?.avoid?.includes("gemini") ? realtimeStart : geminiStart }),
     "https://api.openai.com/v1/realtime/calls": () => ({ text: "v=0 answer", headers: { Location: "/v1/realtime/calls/rtc_123" } }),
@@ -133,7 +134,7 @@ describe("Voz do Gemini na tela", () => {
     expect(bodies("/api/tutor/voice/start")).toEqual([{ session_id: session().id, force: false }]);
     expect(opened[0]).toMatchObject({ token: "auth_tokens/temporario", model: "gemini-3.8-live" });
     expect(urls().some((u) => u.startsWith("https://api.openai.com"))).toBe(false); // nada vai para a OpenAI
-    expect(await screen.findByRole("dialog", { name: "Nexus" })).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: /^Stazia?$/ })).toBeTruthy();
     const h = opened[0].handlers;
     act(() => {
       h.onReady();
@@ -150,8 +151,8 @@ describe("Voz do Gemini na tela", () => {
       h.onTranscript("tutor", "bora lá.", true);
     });
     await waitFor(() => expect(bodies("/api/tutor/voice/transcript")[0]).toMatchObject({ voice_call_id: GEMINI_CALL, role: "tutor", text: "Fala, bora lá." }));
-    fireEvent.click(screen.getByText("Interromper"));
-    expect(gem.interrupted).toBe(1);
+    // 18/10: na voz ao vivo não há botão "Interromper": falar por cima basta (o serviço de voz percebe e o professor para)
+    expect(screen.queryByText("Interromper")).toBeNull();
     // ferramenta pedida pela voz: o servidor executa e o resultado volta para o Gemini
     act(() => {
       h.onToolCalls([{ id: "f1", name: "get_question_context", args: {} }]);
@@ -167,10 +168,18 @@ describe("Voz do Gemini na tela", () => {
       h.onReconnect("goaway");
     });
     fireEvent.click(screen.getByLabelText("Encerrar a conversa por voz"));
+    // despedida (18/10): o microfone fecha e o professor se despede numa frase criada agora; ela aparece no fim
+    await waitFor(() => expect(gem.texts.at(-1)).toMatch(/tocou em Encerrar/));
+    expect(gem.muted.at(-1)).toBe(true);
+    expect(screen.getByText("Se despedindo...")).toBeTruthy();
+    act(() => {
+      h.onTranscript("tutor", "Boa, amanhã a gente fecha a pré-eclâmpsia.", true);
+    });
     await waitFor(() => expect(urls()).toContain("/api/tutor/voice/end"));
     expect(gem.closed).toBeGreaterThan(0);
+    expect(await screen.findByText("“Boa, amanhã a gente fecha a pré-eclâmpsia.”")).toBeTruthy();
     expect(bodies("/api/tutor/voice/end")[0]).toMatchObject({ voice_call_id: GEMINI_CALL, reason: "student", metrics: { provider_used: "gemini", mic_permission: "granted", tools: 1, reconnects: 0 } });
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nexus" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /^Stazia?$/ })).toBeNull());
   });
 
   it("o Gemini não abriu neste aparelho: libera a reserva sem cobrar e a voz da OpenAI assume na hora", async () => {

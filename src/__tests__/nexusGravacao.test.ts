@@ -1,14 +1,15 @@
 // @vitest-environment jsdom
 /**
- * Gravação da fala do aluno na Nexus e o tocador da voz do professor (spec §16 "Turno"): webm/opus no Chrome e mp4 no Safari;
- * iPhone e iPad gravam por toque ("Falar"/"Enviar"); computador e Android param sozinhos depois de 1,5 s de silêncio (só depois
- * de ouvir fala); tudo para em 45 s; só silêncio, cancelada ou acima de 4 MB não vai ao servidor. O tocador toca o mp3 pelo
+ * Gravação da fala do aluno na Nexus (modo reserva) e o tocador da voz do professor (spec §16 "Turno"): webm/opus no Chrome e mp4
+ * no Safari; desde 18/10 TODO aparelho (iPhone inclusive) para sozinho depois de 1,2 s de silêncio, só depois de ouvir fala, com
+ * limiar que aprende o ruído de fundo; medidor que só devolve zeros avisa (a tela pede um toque); tudo para em 45 s; só silêncio,
+ * cancelada ou acima de 4 MB não vai ao servidor. O tocador toca o mp3 pelo
  * caminho que a esfera mede e para na hora. E a cor da esfera acompanha a irritação, até o vermelho.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "fs";
 import path from "path";
-import { MAX_AUDIO_BYTES, MAX_RECORD_MS, SILENCE_LEVEL, SILENCE_MS, SPEECH_LEVEL, pickMime, startRecording, tapToTalkDevice } from "../novo/app/tutor/nexus/recorder.js";
+import { DEAD_METER_MS, MAX_AUDIO_BYTES, MAX_RECORD_MS, MIN_SPEECH_MS, SILENCE_MS, createVad, pickMime, startRecording } from "../novo/app/tutor/nexus/recorder.js";
 import { AudioPlayer, base64ToFloat32 } from "../novo/app/tutor/voice/audioPlayer.js";
 import { ORB_EMOTION, orbEmotion } from "../novo/app/tutor/voice/StaziaVoiceOrb.jsx";
 
@@ -39,9 +40,9 @@ class FakeRecorder {
 }
 
 let level = 0;
-const record = (auto: boolean, over: Record<string, unknown> = {}) => {
+const record = (over: Record<string, unknown> = {}) => {
   const done = vi.fn();
-  const r = startRecording({ stream: {}, auto, level: () => level, MediaRecorderImpl: FakeRecorder as any, onDone: done, ...over });
+  const r = startRecording({ stream: {}, level: () => level, MediaRecorderImpl: FakeRecorder as any, onDone: done, ...over });
   return { r, done };
 };
 const tick = (ms: number) => vi.advanceTimersByTime(ms);
@@ -60,77 +61,99 @@ describe("Gravação da fala", () => {
     expect(pickMime(() => false)).toBe("");
     expect(pickMime(undefined as any)).toBe("");
     FakeRecorder.supported = new Set(["audio/mp4"]);
-    const { r } = record(false);
+    const { r } = record();
     expect(FakeRecorder.last!.mimeType).toBe("audio/mp4");
     r.cancel();
   });
 
-  it("iPhone e iPad (também o iPad que se apresenta como Mac) gravam por toque; computador e Android, sozinhos", () => {
-    const nav = (userAgent: string, platform = "", maxTouchPoints = 0) => ({ userAgent, platform, maxTouchPoints }) as any;
-    expect(tapToTalkDevice(nav("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)", "iPhone", 5))).toBe(true);
-    expect(tapToTalkDevice(nav("Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)", "iPad", 5))).toBe(true);
-    expect(tapToTalkDevice(nav("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605", "MacIntel", 5))).toBe(true);
-    expect(tapToTalkDevice(nav("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/130", "MacIntel", 0))).toBe(false);
-    expect(tapToTalkDevice(nav("Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/130", "Linux armv8l", 5))).toBe(false);
-    expect(tapToTalkDevice(nav("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130", "Win32", 0))).toBe(false);
-  });
-
-  it("para sozinho depois de 1,5 s de silêncio, só depois de ouvir fala; para em 45 s", () => {
-    expect([SILENCE_MS, MAX_RECORD_MS]).toEqual([1500, 45_000]);
-    expect(SPEECH_LEVEL).toBeGreaterThan(SILENCE_LEVEL);
-    // silêncio antes de falar não encerra
-    const a = record(true);
+  it("para sozinho (em qualquer aparelho) depois de 1,2 s de silêncio, só depois de ouvir fala; para em 45 s", () => {
+    expect([SILENCE_MS, MAX_RECORD_MS]).toEqual([1200, 45_000]);
+    level = 0.003; // ruído de fundo da sala
+    const a = record();
     tick(5000);
     expect(FakeRecorder.last!.state).toBe("recording");
-    level = 0.4; // começou a falar
+    level = 0.12; // começou a falar
     tick(600);
-    level = 0.02; // calou
-    tick(1400);
+    level = 0.003; // calou
+    tick(1100);
     expect(a.done).not.toHaveBeenCalled();
-    tick(300);
+    tick(250);
     expect(a.done).toHaveBeenCalledTimes(1);
     const out = a.done.mock.calls[0][0];
     expect(out.blob).toBeInstanceOf(Blob);
     expect(out.mime).toBe("audio/webm;codecs=opus");
-    expect(out.seconds).toBeGreaterThan(7);
-    // gravação por toque não para no silêncio, mas para em 45 s
-    level = 0.4;
-    const b = record(false);
-    tick(1000);
-    level = 0;
-    tick(20_000);
-    expect(b.done).not.toHaveBeenCalled();
-    tick(MAX_RECORD_MS - 21_000 + 50);
+    expect(out.seconds).toBeGreaterThan(6);
+    // falando sem parar: para em 45 s
+    level = 0.2;
+    const b = record();
+    tick(MAX_RECORD_MS + 60);
     expect(b.done).toHaveBeenCalledTimes(1);
     expect(b.done.mock.calls[0][0].seconds).toBeLessThanOrEqual(45);
-    // "Enviar" para na hora
-    level = 0.5;
-    const c = record(false);
-    tick(800);
-    c.r.stop();
-    expect(c.done.mock.calls[0][0]).toMatchObject({ mime: "audio/webm;codecs=opus" });
   });
 
-  it("por toque (iPhone e iPad), o 'Enviar' manda mesmo quando o medidor não ouviu fala (o Safari mede mal o microfone)", () => {
-    const tap = record(false);
-    tick(2000);
-    tap.r.stop();
-    expect(tap.done).toHaveBeenCalledWith(expect.objectContaining({ blob: expect.any(Blob), seconds: 2 }));
+  it("limiar adaptativo: o microfone baixinho do iPhone (ganho automático) e a sala barulhenta funcionam sem toque", () => {
+    // iPhone: fundo 0,0008 e fala 0,02 (bem abaixo do limite fixo de antes)
+    level = 0.0008;
+    const baixo = record();
+    tick(1000);
+    level = 0.02;
+    tick(800);
+    level = 0.0008;
+    tick(SILENCE_MS + 100);
+    expect(baixo.done).toHaveBeenCalledWith(expect.objectContaining({ blob: expect.any(Blob) }));
+    // sala barulhenta: fundo 0,03 não conta como fala; a fala a 0,15 conta
+    level = 0.03;
+    const sala = record();
+    tick(4000);
+    expect(sala.done).not.toHaveBeenCalled();
+    level = 0.15;
+    tick(700);
+    level = 0.03;
+    tick(SILENCE_MS + 100);
+    expect(sala.done).toHaveBeenCalledWith(expect.objectContaining({ blob: expect.any(Blob) }));
+    // estalo curto (menos que MIN_SPEECH_MS) não vale como fala
+    level = 0.003;
+    const estalo = record();
+    tick(1000);
+    level = 0.3;
+    tick(MIN_SPEECH_MS - 100);
+    level = 0.003;
+    tick(SILENCE_MS + 500);
+    expect(estalo.done).not.toHaveBeenCalled();
+    estalo.r.cancel();
+    const v = createVad();
+    for (let i = 0; i < 40; i++) v.push(0.002);
+    expect(v.limites.piso).toBeLessThan(0.003);
+    expect(v.push(0.05)).toBe("speech");
+  });
+
+  it("medidor que só devolve zeros (Safari com o áudio suspenso): avisa uma vez; o 'Pronto' manda mesmo sem o medidor ouvir", () => {
+    level = 0;
+    const morto = vi.fn();
+    const m = record({ onMeterDead: morto });
+    tick(DEAD_METER_MS + 100);
+    expect(morto).toHaveBeenCalledTimes(1);
+    tick(5000);
+    expect(morto).toHaveBeenCalledTimes(1);
+    expect(m.done).not.toHaveBeenCalled();
+    m.r.finish();
+    expect(m.done).toHaveBeenCalledWith(expect.objectContaining({ blob: expect.any(Blob) }));
   });
 
   it("só silêncio, cancelada ou acima de 4 MB não é enviada", () => {
-    const quiet = record(true);
+    level = 0.003;
+    const quiet = record();
     tick(MAX_RECORD_MS);
     expect(quiet.done).toHaveBeenCalledWith(null);
     level = 0.5;
-    const cancelled = record(true);
+    const cancelled = record();
     tick(500);
     cancelled.r.cancel();
     expect(cancelled.done).toHaveBeenCalledWith(null);
-    const big = record(false);
+    const big = record();
     tick(500);
     FakeRecorder.last!.size = MAX_AUDIO_BYTES + 1;
-    big.r.stop();
+    big.r.finish();
     expect(big.done).toHaveBeenCalledWith(null);
   });
 });

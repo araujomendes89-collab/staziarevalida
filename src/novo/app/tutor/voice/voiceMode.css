@@ -1,4 +1,5 @@
-/* Stazia Voice Mode: tela cheia escura (como a referência enviada), esfera no centro, legenda embaixo, controles no rodapé.
+/* Stazia Voice Mode: tela cheia escura (como a referência enviada), personagem no centro, faixa própria embaixo (legenda opcional e
+   avisos curtos; 18/10: o personagem ocupa só o espaço que sobra e nunca cobre texto), controles no rodapé.
    A esfera é dirigida por variáveis CSS escritas a cada quadro (StaziaVoiceOrb): --audio-input, --audio-output, --emotion-intensity,
    --orb-scale, --orb-glow, --ring-speed. Só transform, opacity e filter mudam (sem relayout). */
 
@@ -85,6 +86,33 @@
   color: var(--svm-faint);
   text-align: right;
 }
+.svm__top-dir {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+/* Legendas: desligadas por padrão (a fala não aparece escrita); ligadas, a faixa embaixo do personagem mostra o texto */
+.svm__legendas {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--svm-line);
+  background: transparent;
+  color: var(--svm-muted);
+  font: 600 12.5px/1 var(--font-sans, system-ui, sans-serif);
+  cursor: pointer;
+}
+.svm__legendas.is-on {
+  background: rgba(60, 224, 230, 0.18);
+  border-color: rgba(110, 231, 249, 0.6);
+  color: var(--svm-text);
+}
+.svm__legendas:focus-visible {
+  outline: 2px solid #8be9ff;
+  outline-offset: 2px;
+}
 .svm__head {
   display: flex;
   flex-direction: column;
@@ -105,13 +133,48 @@
   color: var(--svm-muted);
 }
 .svm__stage {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 0;
+  min-height: 120px;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   --orb-size: min(76vw, 44vh, 380px);
+}
+/* faixa própria embaixo do personagem: só ocupa altura quando tem algo (legenda ligada, aviso, erro) */
+.svm__faixa {
+  flex: none;
+  width: min(600px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 8px auto 0;
+}
+.svm__faixa:empty {
+  display: none;
+}
+.svm__legenda {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(5, 7, 26, 0.55);
+  border: 1px solid var(--svm-line);
+}
+.svm__legenda .svm__captions {
+  min-height: 0;
+  font-size: clamp(15px, 4.2vw, 18px);
+  -webkit-line-clamp: 3;
+}
+.svm__aviso {
+  margin: 0;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  text-align: center;
+  font: 500 14px/1.4 var(--font-sans, system-ui, sans-serif);
+  color: var(--svm-muted);
 }
 .svm__captions {
   width: min(600px, 100%);

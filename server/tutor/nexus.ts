@@ -60,7 +60,7 @@ export const VOICE_BLOCK_ERROR: Record<ElevenBlock, { status: number; code: stri
   account_month: { status: 429, code: "voice_account_month", message: "A voz da plataforma acabou neste mês" },
 };
 
-/** Erro da rota com o código que o aplicativo usa para escolher o que mostrar (voz reserva, por escrito, aviso). */
+/** Erro da rota com o código que o aplicativo usa para escolher o que mostrar (voz ao vivo, por escrito, aviso). */
 export const voiceBlockError = (reason: ElevenBlock) => {
   const e = VOICE_BLOCK_ERROR[reason];
   return Object.assign(new TutorError(e.message, e.status), { code: e.code });
@@ -70,9 +70,14 @@ export const voiceBlockError = (reason: ElevenBlock) => {
 export const minutesOf = (chars: number) => Math.floor(Math.max(0, chars) / CHARS_PER_MINUTE);
 
 // ---------------------------------------------------------------- os jeitos da conversa
-/** Voz do professor (eleven), voz reserva ao vivo (reserva) ou por escrito (escrito): a tela mostra "Voz do professor",
- * "Voz reserva" ou "Por escrito", sem nomear fornecedor. */
-export type Jeito = "eleven" | "reserva" | "escrito";
+/**
+ * Voz ao vivo (aovivo), voz do professor em cascata (eleven) ou por escrito (escrito). Desde 18/10 (pedido do dono: "a conversa deve
+ * ser natural", sem "Falar"/"Enviar") a VOZ AO VIVO vem primeiro: mãos livres, o próprio serviço de voz percebe quando o aluno
+ * começa e termina de falar e o professor para quando o aluno fala por cima. A cascata (gravar → transcrever → responder → voz do
+ * professor) virou só reserva, quando a voz ao vivo não está disponível (trava do servidor, sem minutos ao vivo, ponte fora ou
+ * microfone bloqueado no aparelho). A tela não nomeia fornecedor.
+ */
+export type Jeito = "aovivo" | "eleven" | "escrito";
 
 /** Os quatro professores, na ordem dos cartões: Stazi (Durão, Tranquilo) e Stazia (Durona, Tranquila). */
 export const NEXUS_PROFESSORS = ["durao", "acolhedor", "durona", "tranquila"] as const;
@@ -80,6 +85,10 @@ export const NEXUS_PROFESSORS = ["durao", "acolhedor", "durona", "tranquila"] as
 export interface NexusStatus {
   voice_enabled: boolean;
   stt: boolean;
+  /** Voz ao vivo disponível para este aluno agora (trava do servidor, direito e minutos ao vivo). */
+  live: boolean;
+  live_minutes: number;
+  /** Os mesmos dois valores com o nome antigo (aplicativo de antes da troca, durante a publicação). */
   reserve: boolean;
   reserve_minutes: number;
   minutes_today: number;
@@ -92,6 +101,7 @@ export interface NexusOpen {
   mic: boolean;
   reason: ElevenBlock | null;
   minutes_today: number;
+  live_minutes: number;
   reserve_minutes: number;
   /** A abertura criada agora pela IA, quando trocou a reserva (a tela troca o texto da fala de abertura por este). */
   opening?: { id: number; content: string };
@@ -103,14 +113,18 @@ const rowFor = (deps: TutorDeps, quota: TtsQuota, personality: string) => {
   return id ? voiceReadiness(deps.elevenEnv ?? process.env, quota.approvals ?? {}).rows.find((r) => r.id === id) ?? null : null;
 };
 const minutesToday = (q: TtsQuota) => minutesOf(Math.min(q.remaining_today, q.account_day_left, q.account_month_left));
-const reserveOf = (deps: TutorDeps, q: TtsQuota) => ({
-  reserve: voiceReady(deps).ready && q.reserve_can && q.reserve_remaining_s >= 15,
-  reserve_minutes: Math.floor(Math.max(0, q.reserve_remaining_s) / 60),
+/**
+ * Voz ao vivo para este aluno: as travas do servidor (voiceReady), o direito (can_voice) e pelo menos 15 s de minutos ao vivo (a
+ * carteira de voz do plano: o banco conta e /voice/start reserva e renova; nada disso muda aqui).
+ */
+const liveOf = (deps: TutorDeps, q: TtsQuota) => ({
+  live: voiceReady(deps).ready && q.reserve_can && q.reserve_remaining_s >= 15,
+  live_minutes: Math.floor(Math.max(0, q.reserve_remaining_s) / 60),
 });
 const sttReady = (deps: TutorDeps) => (deps.stt ?? sttConfig()).ready;
 /**
  * Microfone da voz do professor e do "por escrito" (transcrição no servidor). CF02: equipe sempre; aluno só quando o dono abriu a
- * chave e preencheu os tetos diários (studentMicOpen). A voz reserva fica de fora: o microfone dela vai do navegador direto à voz ao
+ * chave e preencheu os tetos diários (studentMicOpen). A voz ao vivo fica de fora: o microfone dela vai do navegador direto à voz ao
  * vivo, com limites próprios no banco.
  */
 const micOf = async (deps: TutorDeps, q: TtsQuota) => sttReady(deps) && (q.staff === true || studentMicOpen(await tutorSettings(deps), q.mode));
@@ -119,9 +133,9 @@ const micOf = async (deps: TutorDeps, q: TtsQuota) => sttReady(deps) && (q.staff
 export async function nexusStatus(deps: TutorDeps, userId: string): Promise<NexusStatus> {
   const q = await quotaOf(deps, userId);
   if (q?.consent_pending) throw consentError();
-  const { reserve, reserve_minutes } = reserveOf(deps, q);
+  const { live, live_minutes } = liveOf(deps, q);
   return {
-    voice_enabled: q.voice_enabled, stt: await micOf(deps, q), reserve, reserve_minutes, minutes_today: minutesToday(q),
+    voice_enabled: q.voice_enabled, stt: await micOf(deps, q), live, live_minutes, reserve: live, reserve_minutes: live_minutes, minutes_today: minutesToday(q),
     professors: NEXUS_PROFESSORS.map((id) => {
       const row = rowFor(deps, q, id);
       const access = elevenAccessOf({ quota: q, row });
@@ -134,25 +148,23 @@ export async function nexusStatus(deps: TutorDeps, userId: string): Promise<Nexu
 const SPOKEN_LIMITS = new Set(["student_limit", "account_day", "account_month"]);
 
 /**
- * Abre a conversa da Nexus e escolhe o jeito: voz do professor quando ela vale e há caracteres; senão a voz reserva ao vivo
- * (o aplicativo abre pela rota de sempre) quando houver tempo; senão por escrito. A chamada "tts" (trava de turno) abre na voz do
- * professor e no "por escrito" com a voz ligada no painel. skip: no meio da conversa, "eleven" pula a voz do professor (ela
- * parou) e "voice" pula as duas (a reserva não roda: microfone bloqueado ou sem tempo ao vivo).
+ * Abre a conversa da Nexus e escolhe o jeito: a voz ao vivo quando ela vale e há minutos ao vivo (o aplicativo abre pela rota de
+ * sempre, /voice/start); senão a voz do professor em cascata quando ela vale e há caracteres; senão por escrito. A chamada "tts"
+ * (trava de turno) abre na voz do professor e no "por escrito" com a voz ligada no painel. skip, no meio da conversa: "aovivo" pula
+ * a voz ao vivo (a ponte caiu, o microfone foi bloqueado, os minutos acabaram), "eleven" pula a voz do professor (ela parou) e
+ * "voice" pula as duas.
  */
-export type NexusSkip = "eleven" | "voice";
+export type NexusSkip = "aovivo" | "eleven" | "voice";
 export async function openNexus(deps: TutorDeps, userId: string, sessionId: string, force: boolean, skip: NexusSkip | null = null): Promise<NexusOpen> {
-  // conversa nova: a abertura natural (IA) é pedida junto com a escolha do jeito; só troca a reserva se ela ainda for a última fala
+  // conversa nova: a abertura natural (IA) é pedida depois da escolha do jeito; só troca a reserva se ela ainda for a última fala
   // da conversa e não tiver sido trocada (no meio da conversa, "skip", nada é pedido). Nunca falha: sem ela, fica a reserva.
-  // a tela espera a abertura para começar: espera curta (OPENING_WAIT_MS), depois fica a reserva
-  const opening = skip ? Promise.resolve(null) : naturalOpening(deps, userId, sessionId, OPENING_WAIT_MS);
-  try {
-    const r = await openNexusWay(deps, userId, sessionId, force, skip);
-    const o = await opening;
-    return o ? { ...r, opening: o } : r;
-  } catch (error) {
-    await opening;
-    throw error;
-  }
+  // Na voz ao vivo ela não é pedida (18/10): o próprio professor abre a conversa falando, e esperar a abertura escrita (até
+  // OPENING_WAIT_MS) só atrasava a ligação e gastava a carteira do aluno com uma fala que ninguém ouvia. Na cascata a tela espera
+  // a abertura: espera curta (OPENING_WAIT_MS), depois fica a reserva (a abertura preparada na entrada costuma já estar pronta).
+  const r = await openNexusWay(deps, userId, sessionId, force, skip);
+  if (skip || r.jeito === "aovivo") return r;
+  const o = await naturalOpening(deps, userId, sessionId, OPENING_WAIT_MS);
+  return o ? { ...r, opening: o } : r;
 }
 
 async function openNexusWay(deps: TutorDeps, userId: string, sessionId: string, force: boolean, skip: NexusSkip | null): Promise<NexusOpen> {
@@ -162,7 +174,8 @@ async function openNexusWay(deps: TutorDeps, userId: string, sessionId: string, 
   if (ctx.consent_pending) throw consentError();
   if (ctx.session.read_only) throw new TutorError(PROFESSOR_CHANGED, 409);
   const q = await quotaOf(deps, userId);
-  const base = { minutes_today: minutesToday(q), reserve_minutes: reserveOf(deps, q).reserve_minutes };
+  const aoVivo = liveOf(deps, q);
+  const base = { minutes_today: minutesToday(q), live_minutes: aoVivo.live_minutes, reserve_minutes: aoVivo.live_minutes };
   if (!q.voice_enabled) return { jeito: "escrito", voice_call_id: null, mic: false, reason: "voice_off", ...base };
   const tts = async (spoken: boolean) => {
     const r = await deps.db.service<{ ok: boolean; reason?: string; voice_call_id?: string; replaced_call_id?: string | null; replaced_provider?: string | null }>(
@@ -172,14 +185,17 @@ async function openNexusWay(deps: TutorDeps, userId: string, sessionId: string, 
     return r;
   };
   const access = elevenAccessOf({ quota: q, row: rowFor(deps, q, ctx.personality.id) });
+  // 1) voz ao vivo (natural, mãos livres)
+  if (skip !== "aovivo" && skip !== "voice" && aoVivo.live) return { jeito: "aovivo", voice_call_id: null, mic: true, reason: access.reason, ...base };
+  // 2) reserva: a voz do professor em cascata
   let reason = access.reason;
-  if (access.ok && !skip) {
+  if (access.ok && skip !== "eleven" && skip !== "voice") {
     const r = await tts(true);
     if (r.ok) return { jeito: "eleven", voice_call_id: r.voice_call_id!, mic: await micOf(deps, q), reason: null, ...base };
     if (!SPOKEN_LIMITS.has(r.reason ?? "")) throw reasonError(r.reason, null);
     reason = r.reason as ElevenBlock;
   }
-  if (skip !== "voice" && reserveOf(deps, q).reserve) return { jeito: "reserva", voice_call_id: null, mic: true, reason, ...base };
+  // 3) por escrito
   const r = await tts(false);
   if (!r.ok) throw reasonError(r.reason, null);
   return { jeito: "escrito", voice_call_id: r.voice_call_id!, mic: await micOf(deps, q), reason, ...base };

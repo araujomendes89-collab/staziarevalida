@@ -93,28 +93,28 @@ describe("busca de conhecimento dentro da ponte", () => {
     expect(g.enviados.filter((m) => m.toolResponse)).toHaveLength(0);
   });
 
-  it("frase de espera: só quando a busca passa de ~600 ms o navegador recebe 'espera' (antes das fontes); busca rápida ou cancelada, nada", async () => {
+  it("frase de espera: na voz ao vivo começa junto com a busca (18/10; o modelo ainda leva ~1,1 s depois do resultado): 'espera' antes das fontes; cancelada, nada", async () => {
     const resposta = { response: { passages: [] }, rotulos: ["Protocolo (2024)"], ms: 1, vetor: "nenhum" };
     // lenta (700 ms)
     const lenta = montar({ intercepta: () => true, buscar: vi.fn(() => new Promise<any>((ok) => setTimeout(() => ok(resposta), 700))), pacote: vi.fn(async () => "") });
     await esperar();
     lenta.googles[0].receber({ setupComplete: {} });
     lenta.googles[0].receber({ toolCall: { functionCalls: [{ id: "e1", name: "get_topic_context", args: { topic: "asma" } }] } });
-    await esperar(400);
-    expect(doCliente(lenta.cliente, "espera")).toHaveLength(0); // ainda dentro dos 600 ms
-    await esperar(450);
+    await esperar(30);
+    expect(doCliente(lenta.cliente, "espera")).toHaveLength(1); // já no começo da busca
+    await esperar(820);
     const tipos = lenta.cliente.enviados.map((m) => m.t).filter((t) => ["buscando", "espera", "fontes"].includes(t));
     expect(tipos).toEqual(["buscando", "espera", "fontes"]);
     expect(doCliente(lenta.cliente, "espera")).toEqual([{ t: "espera" }]); // a frase é da tela (rodízio do personagem), nada da busca
-    // rápida (50 ms): sem frase
+    // rápida (50 ms): a frase começa do mesmo jeito (a demora que o aluno sente é a do modelo depois do resultado)
     const rapida = montar({ intercepta: () => true, buscar: vi.fn(() => new Promise<any>((ok) => setTimeout(() => ok(resposta), 50))), pacote: vi.fn(async () => "") });
     await esperar();
     rapida.googles[0].receber({ setupComplete: {} });
     rapida.googles[0].receber({ toolCall: { functionCalls: [{ id: "e2", name: "get_topic_context", args: { topic: "asma" } }] } });
     await esperar(750);
     expect(doCliente(rapida.cliente, "fontes")).toHaveLength(1);
-    expect(doCliente(rapida.cliente, "espera")).toHaveLength(0);
-    // cancelada pelo Google antes dos 600 ms: sem frase
+    expect(rapida.cliente.enviados.map((m) => m.t).filter((t) => ["espera", "fontes"].includes(t))).toEqual(["espera", "fontes"]);
+    // cancelada pelo Google logo no pedido: sem frase
     const cancelada = montar({ intercepta: () => true, buscar: vi.fn(() => new Promise<any>((ok) => setTimeout(() => ok(resposta), 900))), pacote: vi.fn(async () => "") });
     await esperar();
     cancelada.googles[0].receber({ setupComplete: {} });

@@ -12,6 +12,7 @@ export const STATUS_LABEL = {
   paused: "Pausado",
   reconnecting: "Reconectando...",
   ended: "Conversa encerrada",
+  closing: "Se despedindo...",
   error: "A conversa por voz parou",
 };
 

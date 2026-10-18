@@ -28,9 +28,11 @@ export const withArticle = (p) => `${p ? artigoDe(p) : "o"} ${p?.name ?? "profes
 
 export function voiceLine(nexus, personalityId) {
   const prof = nexus?.professors?.find((p) => p.id === personalityId);
-  if (nexus?.voice_enabled && prof?.eleven) return { text: `Voz hoje: ${nexus.minutes_today} min`, label: "Voz do professor", minutes: true };
-  if (nexus?.voice_enabled && nexus.reserve) return { text: `Voz reserva hoje: ${nexus.reserve_minutes} min`, label: "Voz reserva", minutes: true };
-  return { text: "Professor por escrito hoje", label: "Por escrito" };
+  // 18/10: a voz ao vivo (natural, mãos livres) vem primeiro; a voz do professor em cascata é o modo reserva
+  const live = nexus?.live ?? nexus?.reserve;
+  if (nexus?.voice_enabled && live) return { text: `Voz: ${nexus.live_minutes ?? nexus.reserve_minutes} min`, label: "Conversa por voz", minutes: true };
+  if (nexus?.voice_enabled && prof?.eleven) return { text: `Voz hoje: ${nexus.minutes_today} min`, label: "Modo reserva", minutes: true };
+  return { text: "Conversa por escrito hoje", label: "Por escrito" };
 }
 
 // `duronaSettings`: o "Jeito do Durão" / "Jeito da Durona" (ExplosivaPreferences) aparece embaixo dos cartões quando o Durão ou a Durona
