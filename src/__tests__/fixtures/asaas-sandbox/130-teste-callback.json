@@ -1,0 +1,29 @@
+{
+ "quando": "2026-10-17T20:41:18.656Z",
+ "pedido": {
+  "method": "POST",
+  "path": "/payments",
+  "body": {
+   "customer": "cus_000009547247",
+   "billingType": "PIX",
+   "value": 24.9,
+   "dueDate": "2026-10-18",
+   "description": "TESTE callback",
+   "externalReference": "staziamed-teste:callback",
+   "callback": {
+    "successUrl": "https://app.staziamed.com.br/novo/planos?pagamento=aguardando",
+    "autoRedirect": false
+   }
+  }
+ },
+ "status": 400,
+ "resposta": {
+  "errors": [
+   {
+    "code": "invalid_object",
+    "description": "Não há nenhum domínio configurado em sua conta. Cadastre um site em Minha Conta na aba Informações."
+   }
+  ]
+ },
+ "nota": "Resposta REAL do sandbox do Asaas (17/10/2026), dados fictícios; chaves e tokens ocultos."
+}

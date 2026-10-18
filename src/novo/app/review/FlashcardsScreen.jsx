@@ -2,6 +2,7 @@
 // Mesma marcação da FlashcardsScreen do kit (prototype/ReviewScreens.jsx). O "Modo áudio"
 // do protótipo deu lugar a "Novo flashcard": não existe modo áudio no produto.
 import React from "react";
+import { lockHintOf } from "../../data/backend";
 import { Badge, Banner, Button, Card, EmptyState, StatCard } from "../../ds";
 import { useSession } from "../session.jsx";
 import { diaLocal, useCelebracoesApp } from "../play/celebracoes/CelebracoesProvider.jsx";
@@ -103,8 +104,9 @@ export function FlashcardsScreen({ go }) {
         setReload((n) => n + 1); // fim da fila: atualiza contagens e próxima revisão
       }
       refresh().catch(() => {});
-    } catch {
-      setError("Não foi possível registrar a revisão. Tente de novo.");
+    } catch (e) {
+      // planos etapa 4: amostra do dia acabou = a frase do banco (a mensagem de compra abre por cima)
+      setError(lockHintOf(e) ? e.message : "Não foi possível registrar a revisão. Tente de novo.");
     }
     setBusy(false);
   };

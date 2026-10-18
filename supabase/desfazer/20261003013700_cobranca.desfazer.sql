@@ -1,0 +1,38 @@
+-- Desfaz a 20261003013700_cobranca.sql (cobrança). ATENÇÃO: apaga pedidos, cobranças, contratos e devoluções registrados.
+-- Não mexe em subscriptions, billing_events nem nas tabelas da carteira (ramo planos-acesso).
+drop function if exists public.app_billing_resumo();
+drop function if exists public.billing_termo_vigente_ok(uuid);
+drop function if exists public.billing_contrato_vigente();
+drop function if exists public.ch_worker_billing_devolucao_falhou(bigint, text);
+drop function if exists public.ch_worker_billing_devolucao_pedir(uuid, bigint);
+drop function if exists public.ch_worker_billing_devolucoes(uuid);
+drop function if exists public.billing_devolucao_calculo(bigint, timestamptz);
+drop function if exists public.ch_worker_billing_entregar_pendentes();
+drop function if exists public.ch_worker_billing_renovacoes_pix();
+drop function if exists public.ch_worker_billing_cancelar_renovacao(uuid);
+drop function if exists public.ch_worker_billing_assinatura_fim(text, text);
+drop function if exists public.ch_worker_billing_devolvido(text, text, integer);
+drop function if exists public.ch_worker_billing_renovacao_pendente(uuid);
+drop function if exists public.ch_worker_billing_falhou(text, text, uuid, uuid, text, text, text, text, text, integer, text, timestamptz);
+drop function if exists public.ch_worker_billing_pago(text, text, uuid, uuid, text, text, text, text, text, text, integer, timestamptz, timestamptz);
+drop function if exists public.ch_worker_billing_achar(text, text, text, text);
+drop function if exists public.ch_worker_billing_evento_feito(text, text, uuid);
+drop function if exists public.ch_worker_billing_evento(text, text, text, jsonb);
+drop function if exists public.ch_worker_billing_pedidos_vencidos(uuid);
+drop function if exists public.ch_worker_billing_pedidos_vencidos();
+drop function if exists public.ch_worker_billing_pedido(uuid, uuid);
+drop function if exists public.ch_worker_billing_pedido_encerrar(uuid, text, text, uuid);
+drop function if exists public.ch_worker_billing_pedido_anexar(uuid, text, text, text, text, text, jsonb, date);
+drop function if exists public.ch_worker_billing_pedido_abrir(uuid, text, text, text, text, text, text, jsonb, timestamptz);
+drop function if exists public.ch_worker_billing_cliente_salvar(uuid, text, text);
+drop function if exists public.ch_worker_billing_contexto(uuid);
+drop function if exists public.billing_entregar_plano(uuid, text, timestamptz, text, text, text);
+drop function if exists public.billing_entregar_extra(uuid, text, text, integer, timestamptz);
+drop function if exists public.billing_vitrine();
+drop function if exists public.billing_oferta(text, text, text);
+drop table if exists public.billing_reembolsos;
+drop table if exists public.billing_contratos;
+drop table if exists public.billing_cobrancas;
+drop table if exists public.billing_pedidos;
+drop table if exists public.billing_clientes;
+drop table if exists public.billing_config;

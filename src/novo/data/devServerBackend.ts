@@ -48,7 +48,7 @@ export function createDevServerBackend(base = "/api/dev-db"): Backend {
       throw new BackendError("network", "Servidor de desenvolvimento indisponível.");
     }
     const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new BackendError((json?.error?.code as BackendErrorCode) ?? "unknown", json?.error?.message ?? `Erro ${res.status}`);
+    if (!res.ok) throw new BackendError((json?.error?.code as BackendErrorCode) ?? "unknown", json?.error?.message ?? `Erro ${res.status}`, typeof json?.error?.hint === "string" ? json.error.hint : null);
     return json as T;
   }
 

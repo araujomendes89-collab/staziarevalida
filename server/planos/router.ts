@@ -49,7 +49,10 @@ export function createPlanosRouter(deps: PlanosDeps | null, pending: string | nu
 
   router.get("/cron", async (req, res) => {
     const secret = process.env.CRON_SECRET;
-    if (!deps || !secret || req.headers.authorization !== `Bearer ${secret}`) return fail(res, 401, "Não autorizado.");
+    // comparação em tempo constante (revisão 17/10)
+    const got = crypto.createHash("sha256").update(String(req.headers.authorization ?? "")).digest();
+    const want = crypto.createHash("sha256").update(`Bearer ${secret ?? ""}`).digest();
+    if (!deps || !secret || !crypto.timingSafeEqual(got, want)) return fail(res, 401, "Não autorizado.");
     try {
       const avisos = await deps.db.service<number>("ch_worker_avisos_renovacao");
       const ips = await deps.db.service<number>("ch_worker_teste_ips_limpar");

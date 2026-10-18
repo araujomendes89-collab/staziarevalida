@@ -24,7 +24,9 @@ function fail(res: Response, error: unknown) {
   const code = error instanceof BackendError ? error.code : "unknown";
   const message = error instanceof Error ? error.message : String(error);
   const status = code === "invalid_credentials" ? 401 : code === "unknown" ? 400 : 422;
-  res.status(status).json({ error: { code, message } });
+  // a dica do banco (cadeado/amostra dos planos) segue para a tela, como no Supabase
+  const hint = error instanceof BackendError && error.hint ? error.hint : undefined;
+  res.status(status).json({ error: hint ? { code, message, hint } : { code, message } });
 }
 
 export function createDevDbRouter(getDb: () => Promise<DevDatabase>): Router {

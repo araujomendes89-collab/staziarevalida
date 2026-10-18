@@ -21,6 +21,7 @@ import { usePlayLoad } from "../play/usePlay.js";
 import { inicioCelular } from "../shell/cascaConfig.js";
 import { NivelamentoConvite } from "../nivelamento/NivelamentoConvite.jsx";
 import { CONVITE } from "../nivelamento/textos.js";
+import { useCobrancaLigada } from "../plan/Assinatura.jsx";
 import { ConviteOnboarding, PrimeirosPassosCartao, PrimeirosPassosFaixa, useOnboardingAtual } from "../onboarding/Inicio.jsx";
 
 const DIAGNOSTIC_SIZE = 10;
@@ -53,6 +54,25 @@ function TrialBanner({ trial, attempts, go }) {
           ? "Você ainda não respondeu nenhuma questão."
           : `Você respondeu ${attempts} ${attempts === 1 ? "questão" : "questões"} até agora.`}
     </Banner>
+  );
+}
+
+/** Contagem do teste grátis para quem já passou do painel de "aluno novo" (planos etapa 4): só com a cobrança ligada, para o
+ * Início ficar igual ao de hoje sem ela. Nos 2 últimos dias o aviso grande (TrialBanner) assume. */
+function TesteContagem({ trial, go }) {
+  const ligada = useCobrancaLigada(Boolean(trial));
+  const left = trialDaysLeft(trial);
+  if (!ligada || left === null || left <= 2) return null;
+  return (
+    <div className="ini-teste" data-testid="teste-contagem">
+      <Icon name="hourglass" size={18} />
+      <span>
+        <b>Teste grátis:</b> faltam {left} dias
+      </span>
+      <button type="button" onClick={() => go("planos")}>
+        Ver planos
+      </button>
+    </div>
   );
 }
 
@@ -548,6 +568,7 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas
       <ConviteOnboarding estado={onboarding} go={go} />
       <PrimeirosPassosFaixa estado={onboarding} go={go} />
       {home.trial && trialEnding(home.trial) && <TrialBanner trial={home.trial} attempts={home.attempts} go={go} />}
+      {home.trial && !trialEnding(home.trial) && <TesteContagem trial={home.trial} go={go} />}
       {playOn && s.error && <PlayError retry={s.reload} />}
       {play.error && <Banner tone="danger">{play.error}</Banner>}
     </>

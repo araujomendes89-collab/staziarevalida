@@ -13,6 +13,8 @@ import { PGlite } from "@electric-sql/pglite";
 
 const ROOT = path.resolve(__dirname, "../..");
 const MIGRATIONS = path.join(ROOT, "supabase/migrations");
+// migrações que dependem da 013740 (ramo termo-funcoes): ficam de fora enquanto a 013740 estiver de fora
+const DEPOIS_DO_V3 = /^20261003013(800|810)_/;
 
 const PHONE = "+5541999998888";
 const SEM_LOGIN = "Entre na sua conta.";
@@ -77,7 +79,7 @@ const profile = async (userId: string) =>
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(fs.readFileSync(path.join(ROOT, "supabase/tests/bootstrap.sql"), "utf8"));
-  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== "20261003013740_termo_v3.sql").sort()) {
+  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== "20261003013740_termo_v3.sql" && !DEPOIS_DO_V3.test(f)).sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
   // No Supabase real, auth.users.raw_user_meta_data aceita nulo; o stand-in do PGlite não. Igualar para testar o cadastro sem metadados.

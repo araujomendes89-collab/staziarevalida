@@ -108,11 +108,20 @@ export type BackendErrorCode =
 export class BackendError extends Error {
   constructor(
     public readonly code: BackendErrorCode,
-    message: string
+    message: string,
+    /** Dica do banco (HINT do erro). Planos etapa 3/4: "cadeado:<recurso>" ou "amostra:<recurso>" = recusa por plano. */
+    public readonly hint: string | null = null
   ) {
     super(message);
     this.name = "BackendError";
   }
+}
+
+/** A dica de cadeado/amostra de um erro (só o formato conhecido; qualquer outra dica é ignorada). */
+export function lockHintOf(error: unknown): { tipo: "cadeado" | "amostra"; recurso: string } | null {
+  const hint = (error as { hint?: unknown } | null)?.hint;
+  const m = typeof hint === "string" ? /^(cadeado|amostra):([a-z_]{2,40})$/.exec(hint) : null;
+  return m ? { tipo: m[1] as "cadeado" | "amostra", recurso: m[2] } : null;
 }
 
 export const PASSWORD_MIN_LENGTH = 8;

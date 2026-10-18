@@ -1,0 +1,37 @@
+{
+ "quando": "2026-10-17T22:32:21.789Z",
+ "pedido": {
+  "method": "POST",
+  "path": "/invoices",
+  "body": {
+   "payment": "pay_b8agr0lj3ghifywt",
+   "serviceDescription": "Assinatura de plataforma de preparação para o Revalida – plano PRO (mensal)",
+   "observations": "Documento emitido por ME/EPP optante pelo Simples Nacional (Anexo III). ISS recolhido no DAS; não há retenção.",
+   "value": 99.9,
+   "deductions": 0,
+   "effectiveDate": "2026-10-17",
+   "municipalServiceName": "Instrução, treinamento, orientação pedagógica e educacional, avaliação de conhecimentos de qualquer natureza",
+   "municipalServiceCode": "08.02.01",
+   "taxes": {
+    "retainIss": false,
+    "iss": 2.01,
+    "cofins": 0,
+    "csll": 0,
+    "inss": 0,
+    "ir": 0,
+    "pis": 0,
+    "nbsCode": "1.2205.19.00"
+   }
+  }
+ },
+ "status": 400,
+ "resposta": {
+  "errors": [
+   {
+    "code": "invalid_action",
+    "description": "Endereço do cliente incompleto.; CEP do cliente é inválido."
+   }
+  ]
+ },
+ "nota": "Resposta REAL do sandbox do Asaas (subconta de teste, 17/10/2026, certificado falso de teste), dados fictícios."
+}

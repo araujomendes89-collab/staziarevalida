@@ -14,6 +14,8 @@ import { PGlite } from "@electric-sql/pglite";
 
 const ROOT = path.resolve(__dirname, "../..");
 const MIGRATIONS = path.join(ROOT, "supabase/migrations");
+// migrações que dependem da 013740 (ramo termo-funcoes): ficam de fora enquanto a 013740 estiver de fora
+const DEPOIS_DO_V3 = /^20261003013(800|810)_/;
 const NOVA = "20261003013660_cadastro_sem_whatsapp.sql";
 const ler = (rel: string) => fs.readFileSync(path.join(ROOT, rel), "utf8");
 const NOVA_SQL = ler(`supabase/migrations/${NOVA}`);
@@ -56,7 +58,7 @@ let definicaoAntes: string;
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(ler("supabase/tests/bootstrap.sql"));
-  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== NOVA && f !== "20261003013740_termo_v3.sql").sort()) {
+  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f !== NOVA && f !== "20261003013740_termo_v3.sql" && !DEPOIS_DO_V3.test(f)).sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
   comZap = await signUp({ name: "Com WhatsApp", phone: PHONE, terms_version: "2.0", ...DECLARA });

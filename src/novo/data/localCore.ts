@@ -168,7 +168,8 @@ export function createLocalCore(db: PGlite, flush: () => Promise<void> = async (
         await flush();
         return value as T;
       } catch (error) {
-        throw new BackendError("unknown", error instanceof Error ? error.message : String(error));
+        const hint = (error as { hint?: unknown })?.hint;
+        throw new BackendError("unknown", error instanceof Error ? error.message : String(error), typeof hint === "string" ? hint : null);
       }
     },
   };
