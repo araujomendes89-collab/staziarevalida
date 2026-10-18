@@ -10,6 +10,7 @@ import React from "react";
 import { useSession } from "../../session.jsx";
 import { nexusApi, tutorOpening, tutorPrepareOpening, tutorServerStatus, withOpening } from "../api.js";
 import { ERROR_CLASS, modeLabel } from "../labels.js";
+import { nomeSubareaOuNada } from "../../practice/taxonomia.js";
 import { Button } from "../../../ds";
 import { realtimeErrorMessage, useRealtimeVoice } from "../useRealtimeVoice.js";
 import { MIC_CONSTRAINTS } from "../voice/microfone.js";
@@ -564,7 +565,8 @@ export function fimDaConversa(session) {
     linhas.push(`Você acertou ${certas} de ${n} ${n === 1 ? "questão" : "questões"}${trava ? ` e travou em ${trava}` : ""}.`);
   } else if (tema && firmou.length) linhas.push(`Você firmou ${firmou.slice(0, 2).join(" e ")}.`);
   else if (revisar.length) linhas.push(`Vale revisar ${revisar[0]}.`);
-  const proximo = lista(s.next_recommended_topics)[0] ?? revisar[0] ?? tema;
+  // o banco recomenda pela subárea (código do motor, "NEONATOLOGY"): o aluno vê e busca pelo nome em português
+  const proximo = lista(s.next_recommended_topics).map(nomeSubareaOuNada).filter(Boolean)[0] ?? revisar[0] ?? tema;
   // sem tema nenhum (conversa curta, livre): a sugestão é montar um treino
   const next = proximo ? { tema: proximo, texto: `10 questões de ${minusc(proximo)}` } : { tema: null, texto: "Montar um treino de questões" };
   const curta = !n && !firmou.length && !revisar.length && !erros.length;

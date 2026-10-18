@@ -14,6 +14,7 @@
  * de texto (a voz é cobrada por tempo), o custo entra como "tutor_voice_backend" e a resposta já sai conferida para ser dita.
  */
 import { asDocument } from "../contentHub/ai/prompts";
+import { temasParaIA } from "./temas";
 import { AiInvalidOutput, resolveProviderKind, withFallback, type StructuredRequest } from "../contentHub/ai/provider";
 import { aiAllowed, registerPrompts, type PromptEntry } from "../contentHub/ai/registry";
 import type { ContentDb } from "../contentHub/infra";
@@ -301,6 +302,8 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
   try {
     const ctx = await deps.db.service<Context | null>("ch_worker_tutor_context", { p_user: userId, p_session_id: sessionId });
     if (!ctx) throw new TutorError("Conversa não encontrada.", 404);
+    // subáreas pelo nome em português (o banco manda o código "NEONATOLOGY"; a IA não pode receber nem falar o código)
+    ctx.memory = temasParaIA(ctx.memory);
     // o aceite vem antes de qualquer outra conferência (plano, limite, IA): sem ele a tela mostra o cartão do aceite, não o aviso de plano
     if (ctx.consent_pending) throw consentError();
     if (ctx.session.read_only) throw new TutorError(PROFESSOR_CHANGED, 409);

@@ -23,6 +23,7 @@ import { safetyCheck, type Violation } from "./safety";
 import { deterministicTutor, tutorSettings } from "./settings";
 import { protegerFala, violacoesDeSigilo } from "./escudo";
 import { achadosDeSigilo, blocoSigilo, nomeSeguro } from "./sigilo";
+import { temasParaIA } from "./temas";
 import { languageViolations } from "./safety";
 import { reservarCarteira, type ReservaCarteira } from "../planos/carteira";
 
@@ -189,7 +190,7 @@ export function openingSystem(persona: string, kind: OpeningKind, personaId?: st
 /** O contexto do momento, como dado (sem enunciado, sem alternativas, sem gabarito). */
 export function openingInput(st: OpeningState, ctx: OpeningContext): string {
   const s = st.session!;
-  const mem = ctx.memory;
+  const mem = temasParaIA(ctx.memory); // subáreas pelo nome em português, nunca o código do banco
   const errs = (mem?.recent_errors ?? []).filter((e) => !e.resolved).slice(0, 2).map((e) => ({ tema: e.theme, o_que_faltou: e.knowledge_gap }));
   const nome = nomeSeguro(ctx.student?.first_name);
   // sem nada sobre o aluno no banco: o jeito "comece pelo aluno" não é sorteado (ele puxava história inventada)

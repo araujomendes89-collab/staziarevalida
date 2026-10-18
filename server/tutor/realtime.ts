@@ -33,6 +33,7 @@ import { redactSupportMaterial } from "../contentHub/complementarGuard";
 import { safetyCheck, type BaseBlock } from "./safety";
 import { conferirTranscricao } from "./escudo";
 import { nomeSeguro } from "./sigilo";
+import { temasParaIA } from "./temas";
 import { realKey } from "./speech";
 import { REALTIME_TOOLS } from "./tools";
 import { selarBilhete } from "../vozPonte/bilhete";
@@ -190,7 +191,9 @@ export function sessionContext(ctx: VoiceContext, extras: VoiceExtras | null, op
         ? "A questão desta sessão já foi respondida: o backend traz a correção para discutir a escolha do aluno."
         : "A questão desta sessão já foi respondida: chame get_question_context para discutir a escolha do aluno.");
   } else if (ctx.session.context.type === "weak_points") {
-    lines.push(`Foco: pontos fracos do aluno${ctx.memory?.weak_subareas?.length ? ` (${ctx.memory.weak_subareas.slice(0, 3).map((w) => w.subarea).join(", ")})` : ""}.`);
+    // subáreas pelo nome em português (o banco manda o código "NEONATOLOGY")
+    const fracos = (temasParaIA(ctx.memory)?.weak_subareas ?? []).slice(0, 3).map((w) => w.subarea);
+    lines.push(`Foco: pontos fracos do aluno${fracos.length ? ` (${fracos.join(", ")})` : ""}.`);
   } else if (ctx.session.topic || ctx.session.context.label) lines.push(`Tema: ${ctx.session.topic ?? ctx.session.context.label}.`);
   const rec = ctx.memory?.recurrent_errors ?? [];
   if (rec.length) lines.push(`Erros que já se repetiram com este aluno: ${rec.slice(0, 3).map((r) => `${r.error_type}${r.knowledge_gap ? ` (${r.knowledge_gap})` : ""}`).join("; ")}.`);

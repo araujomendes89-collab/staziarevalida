@@ -4,6 +4,7 @@ import React from "react";
 import { Badge, Banner, Button } from "../../ds";
 import { useSession } from "../session.jsx";
 import { ERROR_TYPE } from "../practice/diagnosisLabels.js";
+import { nomeCompetencia, nomeSubarea } from "../practice/taxonomia.js";
 import { Panel, RichIcon, Tile } from "../evolucao/ui.jsx";
 
 const REASON = { conhecimento: "Não sabia o conteúdo", interpretacao: "Interpretei mal", atencao: "Falta de atenção", chute: "Chutei", outro: "Outro" };
@@ -109,8 +110,8 @@ export function ErrorProfile({ go, days, compact = false }) {
                 return (
                   <div key={key} className="dp-weak__row">
                     <div style={{ minWidth: 0 }}>
-                      <strong>{p.subarea}</strong>
-                      <div style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>{p.competency} · {p.wrong} erro(s) em {p.attempts} respostas ({Math.round(p.rate * 100)}%)</div>
+                      <strong>{nomeSubarea(p.subarea)}</strong>
+                      <div style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>{nomeCompetencia(p.competency)} · {p.wrong} erro(s) em {p.attempts} respostas ({Math.round(p.rate * 100)}%)</div>
                     </div>
                     <Button size="sm" iconRight="arrow-right" loading={starting === key} onClick={() => reinforce(p)}>Reforçar com questões reais</Button>
                   </div>

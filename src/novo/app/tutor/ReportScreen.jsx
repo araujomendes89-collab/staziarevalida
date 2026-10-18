@@ -7,6 +7,7 @@ import { ERROR_CLASS, LEVEL } from "./labels.js";
 import { TutorGate } from "./nexus/TutorGate.jsx";
 import { explainError } from "../../../shared/errors/explicarErro";
 import { areaLabel, areaOf } from "../practice/format.js";
+import { nomeSubarea } from "../practice/taxonomia.js";
 import { AreaTile, Panel, RichIcon, Tile, useNarrow } from "../evolucao/ui.jsx";
 import "./analise.css";
 
@@ -210,7 +211,7 @@ function Findings({ data }) {
           <div className="sm-overline">Temas críticos</div>
           <div className="an-chips" style={{ marginTop: 8 }}>
             {data.critical_topics.map((t) => (
-              <Badge key={`${t.area}-${t.subarea}`} tone={LEVEL[t.level]?.[1]}>{t.subarea} · {t.accuracy}%</Badge>
+              <Badge key={`${t.area}-${t.subarea}`} tone={LEVEL[t.level]?.[1]}>{nomeSubarea(t.subarea)} · {t.accuracy}%</Badge>
             ))}
           </div>
         </div>
