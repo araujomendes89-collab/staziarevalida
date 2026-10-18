@@ -13,6 +13,9 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 
 const backend: any = { rpc: vi.fn() };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, refresh: async () => {}, boot: { role: "student" }, user: { id: "u1" } }) }));
+// 013940: o texto do comunicado usa o editor profissional; aqui ele vira um textarea com o mesmo rótulo (o editor de verdade é
+// testado nos testes editorPro.* e a formatação do comunicado em comunicadosEditarTelas.test.tsx).
+vi.mock("../novo/app/editorPro/CampoRico.jsx", () => import("./helpers/campoRicoComoTexto"));
 
 import { NotificacoesProvider } from "../novo/app/notificacoes/NotificacoesProvider.jsx";
 import { Sino } from "../novo/app/notificacoes/Sino.jsx";

@@ -1,14 +1,24 @@
 // Sino da Central de Notificações (migração 013830) no cabeçalho do aluno, no celular e no computador. Bolinha com o número de não
 // lidas (até "9+") e nome acessível "Notificações, 3 não lidas". O painel abre por cima, preso ao sino (computador e tablet), ou de
 // baixo para cima quase em tela cheia (celular). Para equipe e revisores não aparece (o provedor fica desligado).
+// Comunicado da equipe (013940): texto com a formatação do editor profissional (negrito, listas, títulos, links), desenhada pelo
+// mesmo leitor das aulas (ParagrafoRico → ricoValido + LeitorDoc: elementos React, nunca HTML cru; já faz parte do pacote do aluno);
+// selo discreto "editado" quando a equipe mudou o comunicado depois de enviar. Comunicado antigo, só texto, sai igual a antes.
 import React from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Button, Icon, IconTile } from "../../ds";
 import { useLayout } from "../shell/useLayout.js";
+import ParagrafoRico from "../editorPro/leitor/ParagrafoRico.jsx";
 import { useNotificacoes } from "./NotificacoesProvider.jsx";
-import { arteDoTipo, dataCompleta, destinoDaAcao, rotuloBolinha, rotuloSino, tempoRelativo } from "./modelo.js";
+import { arteDoTipo, dataCompleta, destinoDaAcao, precisaLeitorRico, rotuloBolinha, rotuloSino, tempoRelativo } from "./modelo.js";
 import "./notificacoes.css";
+
+/** Texto da notificação: formatado (comunicado com formatação ou link) ou o parágrafo simples de sempre. */
+function TextoNotificacao({ n }) {
+  if (!precisaLeitorRico(n)) return <p>{n.texto}</p>;
+  return <ParagrafoRico texto={n.texto} rico={n.rico} className="ntf-rico" />;
+}
 
 export function Sino() {
   const ctx = useNotificacoes();
@@ -211,11 +221,18 @@ export function NotificacaoItem({ n, onAbrir, onLida, agora }) {
           <h3>{n.titulo}</h3>
           {!n.lida && <span className="ntf-ponto" aria-hidden="true" />}
         </div>
-        <p>{n.texto}</p>
+        <TextoNotificacao n={n} />
         <div className="ntf-rodape">
-          <time dateTime={n.em} title={dataCompleta(n.em)}>
-            {tempoRelativo(n.em, agora)}
-          </time>
+          <span className="ntf-quando">
+            <time dateTime={n.em} title={dataCompleta(n.em)}>
+              {tempoRelativo(n.em, agora)}
+            </time>
+            {n.editado && (
+              <span className="ntf-editado" title={n.editado_em ? `Editado pela equipe em ${dataCompleta(n.editado_em)}` : "Editado pela equipe"} data-testid="selo-editado">
+                editado
+              </span>
+            )}
+          </span>
           <span className="ntf-acoes">
             {!n.lida && !n.urgente && onLida && (n.acao ? null : (
               <button type="button" className="ntf-marcar" onClick={onLida}>

@@ -22,6 +22,11 @@ const todas = fs.readdirSync(MIG).filter((f) => f.endsWith(".sql") && !f.startsW
 const NUMEROS = ["013100", "013110", "013120", "013130", "013140", "013160"];
 const EXPANSAO = NUMEROS.map((n) => todas.find((f) => f.startsWith(`20261003${n}_`))!);
 const daExpansao = new Set(EXPANSAO);
+// Migrações escritas DEPOIS que a expansão já estava em produção (produção ia até a 013900): em produção vêm depois da expansão e
+// podem usar o que ela criou (ex.: 013940 comunicados usa ch_formatacao_valida da 013110). Ficam no fim nas duas ordens e são
+// desfeitas antes da expansão no ensaio do desfazer.
+const POSTERIORES = todas.filter((f) => f.slice(0, 14) > "20261003013900" && !daExpansao.has(f));
+const posterior = new Set(POSTERIORES);
 const temSql = fs.existsSync(SQL);
 
 async function montar(ordem: "producao" | "numerica") {
@@ -33,7 +38,7 @@ async function montar(ordem: "producao" | "numerica") {
     create table if not exists storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
     create table if not exists storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets (id), name text);
   `);
-  const lista = ordem === "numerica" ? todas : [...todas.filter((f) => !daExpansao.has(f)), ...EXPANSAO];
+  const lista = ordem === "numerica" ? todas : [...todas.filter((f) => !daExpansao.has(f) && !posterior.has(f)), ...EXPANSAO, ...POSTERIORES];
   for (const f of lista) await db.exec(ler(path.join(MIG, f)));
   return db;
 }
@@ -46,7 +51,7 @@ async function montarSemExpansao() {
     create table if not exists storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
     create table if not exists storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets (id), name text);
   `);
-  for (const f of todas.filter((f) => !daExpansao.has(f))) await db.exec(ler(path.join(MIG, f)));
+  for (const f of todas.filter((f) => !daExpansao.has(f) && !posterior.has(f))) await db.exec(ler(path.join(MIG, f)));
   return db;
 }
 
@@ -86,7 +91,7 @@ describe("Editor profissional, expansão: ordem das migrações (ed-expansao-int
     expect(EXPANSAO.every(Boolean)).toBe(true);
     const funcoes = (f: string) => new Set([...ler(path.join(MIG, f)).matchAll(/create\s+or\s+replace\s+function\s+public\.([a-z0-9_]+)\s*\(/gi)].map((m) => m[1].toLowerCase()));
     for (const f of EXPANSAO) {
-      const depois = todas.filter((g) => g > f && !daExpansao.has(g)).flatMap((g) => [...funcoes(g)]);
+      const depois = todas.filter((g) => g > f && !daExpansao.has(g) && !posterior.has(g)).flatMap((g) => [...funcoes(g)]);
       for (const fn of funcoes(f)) expect(depois, `${f} redefine ${fn}, que uma migração de número maior também define`).not.toContain(fn);
     }
   });
@@ -117,6 +122,7 @@ describe("Editor profissional, expansão: ordem das migrações (ed-expansao-int
   }, 600_000);
 
   it.skipIf(!temSql)("desfazer na ordem inversa (013160 → 013100) devolve o banco de antes da expansão", async () => {
+    for (const f of [...POSTERIORES].reverse()) await producao.exec(ler(path.join(ROOT, "supabase/desfazer", f.replace(/\.sql$/, ".desfazer.sql"))));
     for (const n of [...NUMEROS].reverse()) await producao.exec(ler(path.join(SQL, `${n}-desfazer.sql`)));
     const base = await montarSemExpansao();
     const a = await retrato(base);

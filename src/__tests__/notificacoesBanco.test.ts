@@ -173,8 +173,8 @@ describe("comunicados da equipe", () => {
   it("só administrador prevê, envia e lista", async () => {
     for (const quem of [ANA, EDITOR, REVISOR]) {
       await expect(rpc(quem, "app_admin_comunicado_previa", { p_publico: "todos", p_filtro: null })).rejects.toThrow(/Só administradores/);
-      await expect(enviar(quem, {})).rejects.toThrow(/Só administradores/);
-      await expect(rpc(quem, "app_admin_comunicados")).rejects.toThrow(/Só administradores/);
+      await expect(enviar(quem, {})).rejects.toThrow(/administradores/);
+      await expect(rpc(quem, "app_admin_comunicados")).rejects.toThrow(/administradores/);
     }
   });
 

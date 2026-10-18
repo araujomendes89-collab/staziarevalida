@@ -70,3 +70,16 @@ export function destinoDaAcao(n) {
   }
   return null;
 }
+
+// Marcas do "texto com marcas" (src/shared/textoRico): link [texto](https://...), **negrito**, *itálico*, <u>, contrabarra.
+const TEM_MARCA = /\[[^\]]+\]\(https:\/\/|\*|<u>|\\/;
+
+/**
+ * Comunicado da equipe (013940) precisa do leitor formatado? Sim quando veio com formatação (rico) ou quando o texto traz marca
+ * (ex.: um link). Os outros tipos e o comunicado só texto ficam no parágrafo simples de sempre.
+ */
+export function precisaLeitorRico(n) {
+  if (!n || n.tipo !== "comunicado") return false;
+  if (n.rico && typeof n.rico === "object") return true;
+  return TEM_MARCA.test(String(n.texto ?? ""));
+}
