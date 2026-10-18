@@ -195,6 +195,16 @@ describe("chamadas à API", () => {
     expect(posts[0].body).toMatchObject({ payment: "pay_novo", municipalServiceCode: "080201", value: 24.9, effectiveDate: "2026-10-17", taxes: { iss: 2.01, nbsCode: "122051900", pis: 0, cofins: 0, retainIss: false } });
     expect(posts[0].body.observations).toContain("Simples Nacional (Anexo III)");
     expect(posts[0].body.municipalServiceId).toBeUndefined();
+    // nota que voltou com ERRO não conta (013860: a tarefa de hora em hora pede outra); a cancelada conta (não pede de novo)
+    const { f: f3, calls: c3 } = fakeFetch([
+      [/\/invoices\?payment=pay_erro$/, "GET", { data: [{ id: "inv_e", status: "ERROR" }] }],
+      [/\/invoices\?payment=pay_canc$/, "GET", { data: [{ id: "inv_c", status: "CANCELED" }] }],
+      [/\/invoices$/, "POST", { id: "inv_3", status: "SCHEDULED" }],
+    ]);
+    const p3 = createAsaasProvider(env, f3)!;
+    await p3.afterPaid!({ ...pago, id: "pay_erro" }, "x");
+    await p3.afterPaid!({ ...pago, id: "pay_canc" }, "x");
+    expect(c3.filter((c) => c.method === "POST").map((c) => c.body.payment)).toEqual(["pay_erro"]);
     // sem configuração: nenhuma nota pedida por aqui
     const { f: f2, calls: c2 } = fakeFetch([]);
     await createAsaasProvider({ ASAAS_API_KEY: KEY, ASAAS_WEBHOOK_TOKEN: TOKEN }, f2)!.afterPaid!(pago, "x");

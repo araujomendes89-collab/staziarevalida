@@ -386,7 +386,9 @@ export function asaasProvider(opts: AsaasOptions, mode: "test" | "live" = "test"
       const nfse = opts.nfse;
       if (!(nfse?.serviceId || nfse?.serviceCode) || !nfse.serviceName) return;
       const existing = await call<Obj>("GET", `/invoices?payment=${encodeURIComponent(charge.id)}`);
-      if (Array.isArray(existing?.data) && existing!.data.length > 0) return;
+      // já tem nota (agendada, autorizada, cancelada...): não pede outra. A que voltou com ERRO não conta: a tarefa de hora em hora
+      // pede de novo (013860)
+      if (Array.isArray(existing?.data) && existing!.data.some((i: Obj) => String(i?.status) !== "ERROR")) return;
       await call("POST", "/invoices", {
         payment: charge.id,
         serviceDescription: description.slice(0, 250),

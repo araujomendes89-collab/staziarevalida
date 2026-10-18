@@ -88,6 +88,44 @@ function Linha({ l, aberto, setAberto, onFeito, mobile }) {
   );
 }
 
+/**
+ * Pagamentos sem nota / nota com erro (013860): o app pediu a nota fiscal e ela não saiu em 2 horas, ou voltou com erro. A tarefa de
+ * hora em hora pede de novo sozinha (até 4 pedidos); depois disso, emitir pelo painel do Asaas. Sem a 013860 ou sem pendência: nada.
+ */
+export function NotasPendentes() {
+  const { backend } = useSession();
+  const { data, error } = useLoad(() => backend.rpc("app_admin_billing_notas_pendencias"), [backend]);
+  if (error || !Array.isArray(data) || data.length === 0) return null;
+  return (
+    <Card>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }} data-testid="notas-pendentes">
+        <div>
+          <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Pagamentos sem nota / nota com erro ({data.length})</h3>
+          <p style={{ margin: "4px 0 0", color: "var(--text-secondary)", font: "var(--type-body-sm)" }}>
+            O app pediu a nota fiscal e ela não saiu. A tarefa de hora em hora pede de novo sozinha (até 4 pedidos por pagamento). Quando
+            aparecer "não vai tentar de novo", emita a nota pelo painel do Asaas.
+          </p>
+        </div>
+        <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+          {data.map((n) => (
+            <li key={n.cobranca_id} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "10px 0", borderTop: "1px solid var(--border-subtle)" }} data-testid={`nota-pendente-${n.cobranca_id}`}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <b style={{ overflowWrap: "anywhere" }}>{n.nome ?? n.email ?? "Conta excluída"}</b>
+                <Badge size="sm" tone={n.situacao === "erro" ? "danger" : "warning"}>{n.situacao === "erro" ? "Nota com erro" : "Sem nota"}</Badge>
+              </div>
+              <span style={fina}>
+                {n.produto} · {brl(n.valor_centavos)} · pago em {dateBR(n.pago_em)} · {n.nota_pedidos} pedido(s) de nota
+                {n.vai_tentar_de_novo ? " · o app vai tentar de novo" : " · não vai tentar de novo"}
+              </span>
+              {n.nota_erro && <span style={{ ...fina, overflowWrap: "anywhere" }}>Último erro: {n.nota_erro}</span>}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Card>
+  );
+}
+
 export function VendasPagamentos() {
   const { backend } = useSession();
   const mobile = useMobile();
@@ -144,6 +182,7 @@ export function VendasPagamentos() {
           )}
         </div>
       </Card>
+      <NotasPendentes />
       {ok && <Banner tone="success">{ok}</Banner>}
       <Card>
         {error ? (

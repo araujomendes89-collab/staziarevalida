@@ -546,6 +546,32 @@ export function createBilling(deps: BillingDeps) {
     };
   }
 
+  /**
+   * Pede a nota fiscal de um pagamento ao fornecedor e anota o pedido (013860: deu certo ou não; a tarefa de hora em hora pede de novo
+   * o que ficou sem nota). Nunca derruba quem chamou. Sem a 013860 no banco, só não anota.
+   */
+  async function pedirNota(p: PaymentProvider, charge: ProviderCharge, descricao: string): Promise<boolean> {
+    if (!p.afterPaid) return false;
+    let ok = true;
+    let erro: string | null = null;
+    try {
+      await p.afterPaid(charge, descricao);
+    } catch (e) {
+      ok = false;
+      erro = (e as Error).message;
+      log(`[billing] nota fiscal não pedida (${charge.id}): ${erro}`);
+    }
+    if (p.capabilities.invoices) {
+      await svc("ch_worker_billing_nota_pedido", { p_provider: p.name, p_payment: charge.id, p_ok: ok, p_erro: erro ? erro.slice(0, 300) : null })
+        .catch((e) => log(`[billing] pedido de nota não anotado (${charge.id}): ${(e as Error).message}`));
+    }
+    return ok;
+  }
+
+  /** A nota que vale de um pagamento: autorizada; senão a que está andando (agendada/cancelando); senão a com erro; senão a 1ª. */
+  const ORDEM_NOTA: Record<string, number> = { autorizada: 0, agendada: 1, cancelando: 2, erro: 3, cancelada: 4 };
+  const notaQueVale = (list: ProviderInvoice[]) => [...list].sort((a, b) => (ORDEM_NOTA[a.status] ?? 9) - (ORDEM_NOTA[b.status] ?? 9))[0] ?? null;
+
   /** Relê a nota fiscal na API e guarda no pagamento do app (link no histórico e e-mail "Sua nota fiscal"). */
   async function saveInvoice(p: PaymentProvider, inv: ProviderInvoice): Promise<string | null> {
     if (!inv.chargeId) return null; // nota avulsa (não é de um pagamento do app)
@@ -645,10 +671,7 @@ export function createBilling(deps: BillingDeps) {
       if (charge.receiptUrl) {
         await svc("ch_worker_billing_recibo_salvar", { p_provider: p.name, p_payment: charge.id, p_url: charge.receiptUrl }).catch((e) => log(`[billing] recibo não salvo (${charge.id}): ${(e as Error).message}`));
       }
-      if (!r?.repetido && p.afterPaid) {
-        await p.afterPaid(charge, descricaoDaNota({ tipo, codigo, ciclo, nome: pedido?.nome }))
-          .catch((e) => log(`[billing] nota fiscal não pedida (${charge.id}): ${(e as Error).message}`));
-      }
+      if (!r?.repetido && p.afterPaid) await pedirNota(p, charge, descricaoDaNota({ tipo, codigo, ciclo, nome: pedido?.nome }));
     } else if (charge.status === "failed" || charge.status === "overdue" || (failure && charge.status === "pending")) {
       // sem tolerância (dono, 17/10): a renovação que falhou pausa o acesso NO MESMO DIA, mesmo que o fornecedor ainda vá tentar
       // o cartão de novo; se ele conseguir depois, o aviso de pagamento libera de novo a partir da confirmação.
@@ -734,7 +757,7 @@ export function createBilling(deps: BillingDeps) {
   async function runScheduled() {
     const p = need();
     const v = await encerrarVencidos(null);
-    const out = { expirados: v.expirados, renovacoes: 0, entregues: 0, erros: v.erros, sem_aceite: 0, notas: 0 };
+    const out = { expirados: v.expirados, renovacoes: 0, entregues: 0, erros: v.erros, sem_aceite: 0, notas: 0, notas_pedidas_de_novo: 0 };
     // Contrato 3.0, cláusula 6.5-A: cartão que renovaria em até 1 dia sem o aceite da versão vigente deixa de renovar sozinho e passa a
     // Pix (o Pix só sai depois do aceite). Banco primeiro, depois o fornecedor; falhou = desfaz (como na troca pelo aluno).
     for (const c of await svc<{ user_id: string; provider: string; subscription_id: string }[]>("ch_worker_billing_cartao_sem_aceite", {}).catch(() => [])) {
@@ -765,15 +788,23 @@ export function createBilling(deps: BillingDeps) {
     out.entregues = await svc<number>("ch_worker_billing_entregar_pendentes", {});
     // nota fiscal: pergunta ao fornecedor pelas notas que ainda não chegaram (serve também se o aviso INVOICE_* não estiver ligado)
     if (p.capabilities.invoices && p.listInvoices) {
-      const pend = await svc<{ provider: string; payment_id: string }[]>("ch_worker_billing_notas_pendentes", { p_limite: 30 }).catch(() => []);
+      type NotaPendente = { provider: string; payment_id: string; tipo?: "plano" | "extra"; codigo?: string; ciclo?: string; nome?: string | null; pedir_de_novo?: boolean };
+      const pend = await svc<NotaPendente[]>("ch_worker_billing_notas_pendentes", { p_limite: 30 }).catch(() => []);
       for (const n of pend ?? []) {
         if (n.provider !== p.name) continue;
         try {
-          const list = await p.listInvoices(n.payment_id);
-          const nota = list.find((i) => i.status === "autorizada") ?? list.find((i) => i.status !== "cancelada") ?? list[0];
+          const nota = notaQueVale(await p.listInvoices(n.payment_id));
           if (nota) {
             await saveInvoice(p, nota);
             out.notas++;
+          }
+          // sem nota (o pedido da hora do pagamento caiu) ou nota com erro: pede de novo (013860; no máximo 4 pedidos, 50 min entre eles)
+          if ((!nota || nota.status === "erro") && n.pedir_de_novo && n.tipo && n.codigo && n.ciclo) {
+            const charge = await p.getCharge(n.payment_id);
+            if (charge?.status === "paid") {
+              if (await pedirNota(p, charge, descricaoDaNota({ tipo: n.tipo, codigo: n.codigo, ciclo: n.ciclo, nome: n.nome }))) out.notas_pedidas_de_novo++;
+              else out.erros++;
+            }
           }
         } catch (e) {
           out.erros++;
