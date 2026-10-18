@@ -115,8 +115,12 @@ beforeEach(async () => {
 describe("Nexus: os jeitos e a abertura", () => {
   it("voz ao vivo primeiro (aluno e equipe), sem chamada tts; sem a voz ao vivo, a voz do professor; aluno sem aprovação: por escrito", async () => {
     deps.realtime = RT;
+    const antes = await requests(PAGO);
     const vivo = await open(PAGO, await start(PAGO, "livre"));
     expect(vivo).toMatchObject({ status: 200, json: { jeito: "aovivo", voice_call_id: null, mic: true } });
+    // na voz ao vivo o professor abre falando: a abertura escrita pela IA nem é pedida (sem espera e sem gasto)
+    expect(vivo.json.opening).toBeUndefined();
+    expect(await requests(PAGO)).toBe(antes);
     expect(vivo.json.live_minutes).toBeGreaterThan(0);
     expect(vivo.json.reserve_minutes).toBe(vivo.json.live_minutes);
     // equipe também cai na voz ao vivo (antes caía na cascata porque a voz do professor sempre "valia" para a equipe)

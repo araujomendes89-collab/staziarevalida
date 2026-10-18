@@ -156,18 +156,15 @@ const SPOKEN_LIMITS = new Set(["student_limit", "account_day", "account_month"])
  */
 export type NexusSkip = "aovivo" | "eleven" | "voice";
 export async function openNexus(deps: TutorDeps, userId: string, sessionId: string, force: boolean, skip: NexusSkip | null = null): Promise<NexusOpen> {
-  // conversa nova: a abertura natural (IA) é pedida junto com a escolha do jeito; só troca a reserva se ela ainda for a última fala
+  // conversa nova: a abertura natural (IA) é pedida depois da escolha do jeito; só troca a reserva se ela ainda for a última fala
   // da conversa e não tiver sido trocada (no meio da conversa, "skip", nada é pedido). Nunca falha: sem ela, fica a reserva.
-  // a tela espera a abertura para começar: espera curta (OPENING_WAIT_MS), depois fica a reserva
-  const opening = skip ? Promise.resolve(null) : naturalOpening(deps, userId, sessionId, OPENING_WAIT_MS);
-  try {
-    const r = await openNexusWay(deps, userId, sessionId, force, skip);
-    const o = await opening;
-    return o ? { ...r, opening: o } : r;
-  } catch (error) {
-    await opening;
-    throw error;
-  }
+  // Na voz ao vivo ela não é pedida (18/10): o próprio professor abre a conversa falando, e esperar a abertura escrita (até
+  // OPENING_WAIT_MS) só atrasava a ligação e gastava a carteira do aluno com uma fala que ninguém ouvia. Na cascata a tela espera
+  // a abertura: espera curta (OPENING_WAIT_MS), depois fica a reserva (a abertura preparada na entrada costuma já estar pronta).
+  const r = await openNexusWay(deps, userId, sessionId, force, skip);
+  if (skip || r.jeito === "aovivo") return r;
+  const o = await naturalOpening(deps, userId, sessionId, OPENING_WAIT_MS);
+  return o ? { ...r, opening: o } : r;
 }
 
 async function openNexusWay(deps: TutorDeps, userId: string, sessionId: string, force: boolean, skip: NexusSkip | null): Promise<NexusOpen> {
