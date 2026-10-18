@@ -8,6 +8,7 @@ import { auditActor, auditLabel, auditSummary } from "./auditLog.js";
 import { PlanosPorFase } from "./planos/DireitosPorFase.jsx";
 import { CarteiraIA } from "./planos/CarteiraIA.jsx";
 import { DevolucoesRecentes } from "./planos/PagamentosAluno.jsx";
+import { VendasChave } from "./planos/VendasChave.jsx";
 
 // ---------------------------------------------------------------- visão geral
 /** O que espera conferência, por aba (chaves de pending_review em app_admin_overview). */
@@ -300,6 +301,7 @@ export function AdminPlans() {
       <Banner tone="info" title="O que o aluno vê dos planos">
         O aluno tem uma tela de Planos só para informar: nome, descrição e recursos de cada plano, como você escreve aqui, e a situação dele. Ela não mostra preço e não tem botão de assinar: o preço fica guardado aqui para quando a cobrança existir, pela Stripe, numa próxima etapa. Até lá, libere planos manualmente em Usuários, com a data em “Plano pago até”. O que só o Elite tem (minutos de voz do Tutor e correção de estação com devolutiva) fica em Configurações, no bloco “Benefícios do plano Elite”, e só aparece na tela de planos depois que você preenche.
       </Banner>
+      <VendasChave />
       <IneditasLimits />
       {data.map((plan) => (
         <PlanEditor key={plan.code} plan={plan} onSaved={setData} signupRule={signupRule} />
