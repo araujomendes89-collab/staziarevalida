@@ -36,5 +36,3 @@
 .cc-item .rc-field-error { align-items: flex-start; line-height: 1.45; }
 .cc-item .rc-field-error svg { flex: none; margin-top: 2px; }
 
-/* Contrato 3.0: aviso fixo logo abaixo da caixa (data, hora, IP e navegador do aceite) */
-.cc-aviso { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--ln-muted); }
