@@ -3,8 +3,8 @@
  * E-mails do Contrato 3.0 (ramo termo-funcoes):
  *   - server/email/smtp.ts contra um servidor SMTP FALSO local (sem rede): login, mensagem com acento, anexo, senha recusada sem vazar,
  *     queda depois de mandar a mensagem = "talvez entregue" (não repete), desligado sem as variáveis;
- *   - server/legal/emails.ts: cópia do contrato (versão, data e hora de Brasília, código, link de Documentos, anexo igual ao "Baixar")
- *     e aviso de conta inativa, no visual dos modelos com a logo nova;
+ *   - server/legal/emails.ts: aviso de conta inativa, no visual dos modelos com a logo nova. NÃO existe e-mail com a cópia do
+ *     contrato (decisão do dono, 18/10/2026: o contrato fica só em Minha Conta → Documentos);
  *   - server/legal/router.ts: fila (enviado / nova tentativa / incerto / cancelado), desligado sem SMTP, tarefa só com CRON_SECRET.
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -12,7 +12,8 @@ import net from "node:net";
 import http from "node:http";
 import express from "express";
 import { buildMessage, createSmtpMailer, smtpConfigFromEnv, SmtpError, type Mailer, type MailMessage } from "../../server/email/smtp";
-import { arquivoDoContrato, dataHoraBR, LOGO, renderAvisoInatividade, renderCopiaContrato, type ItemFila } from "../../server/legal/emails";
+import * as emailsLegais from "../../server/legal/emails";
+import { LOGO, renderAvisoInatividade, renderItem, type ItemFila } from "../../server/legal/emails";
 import { createLegalRouter, enviarFila, rotinaDiaria } from "../../server/legal/router";
 import type { ContentDb } from "../../server/contentHub/infra";
 
@@ -91,16 +92,16 @@ const partes = (data: string) =>
 describe("SMTP (server/email/smtp.ts)", () => {
   it("entra, manda texto, HTML e anexo com acento, e sai", async () => {
     await createSmtpMailer(cfg()).send({
-      to: "aluno@teste.dev", subject: "Sua cópia do contrato", text: "Olá!\n.linha com ponto", html: "<p>Olá!</p>",
-      attachments: [{ filename: "staziamed-contrato-v3.0.txt", content: "Cláusula 6.4", contentType: "text/plain; charset=UTF-8" }],
+      to: "aluno@teste.dev", subject: "Sua conta StaziaMed será apagada", text: "Olá!\n.linha com ponto", html: "<p>Olá!</p>",
+      attachments: [{ filename: "anexo-teste.txt", content: "Anotação com acento", contentType: "text/plain; charset=UTF-8" }],
     });
     const s = sessoes.at(-1)!;
     expect(s.linhas).toEqual(expect.arrayContaining(["AUTH LOGIN", "MAIL FROM:<nao-responda@staziamed.com.br>", "RCPT TO:<aluno@teste.dev>"]));
     expect(s.data).toMatch(/^From: StaziaMed <nao-responda@staziamed\.com\.br>/m);
     expect(s.data).toMatch(/^Subject: =\?UTF-8\?B\?/m);
     expect(s.data).toMatch(/multipart\/mixed/);
-    expect(s.data).toMatch(/Content-Disposition: attachment; filename="staziamed-contrato-v3\.0\.txt"/);
-    expect(partes(s.data)).toEqual(["Olá!\n.linha com ponto", "<p>Olá!</p>", "Cláusula 6.4"]);
+    expect(s.data).toMatch(/Content-Disposition: attachment; filename="anexo-teste\.txt"/);
+    expect(partes(s.data)).toEqual(["Olá!\n.linha com ponto", "<p>Olá!</p>", "Anotação com acento"]);
   });
 
   it("senha recusada: erro com o código, sem a senha; não conta como entregue", async () => {
@@ -140,56 +141,32 @@ describe("SMTP (server/email/smtp.ts)", () => {
   });
 });
 
-const CONTRATO = "# CONTRATO\n\n6.4. **Duas cópias.** O contrato aceito é guardado em duas cópias.\n" + "x".repeat(200);
 const item = (extra: Partial<ItemFila> = {}): ItemFila => ({
-  id: 7, kind: "contrato_copia", tentativas: 1, email: "aluno@teste.dev", nome: "Maria Souza",
-  payload: {},
-  contrato: {
-    document: "termo_uso", version: "3.0", accepted_at: "2026-10-17T17:05:00Z", origin: "tela_aceite",
-    text_sha256: "0a9b58cff598fa27225043e476139521cb1b47a2355b937c02797006c39a1230", title: "Contrato de Assinatura e Termos de Uso", body: CONTRATO,
-    companions: { politica_privacidade: { version: "3.0", sha256: "479660a6" }, regulamento: { version: "1.0", sha256: "b4494a46" } },
-  },
+  id: 7, kind: "aviso_inatividade", tentativas: 1, email: "aluno@teste.dev", nome: "Maria Souza",
+  payload: { acao: "apagar_conta", ultimo_acesso: "2025-11-01T15:00:00Z", prazo: "2026-11-20" },
   ...extra,
 });
 
-describe("Cópia do contrato (server/legal/emails.ts)", () => {
-  it("assunto, versão, data e hora de Brasília, código, Política e Regulamento, link de Documentos e o visual dos modelos", () => {
-    const e = renderCopiaContrato(item(), "https://app.staziamed.com.br/");
-    expect(e.subject).toBe("Sua cópia do contrato (versão 3.0) · StaziaMed");
-    expect(dataHoraBR("2026-10-17T17:05:00Z")).toBe("17/10/2026 às 14:05");
-    for (const t of [e.text, e.html]) {
-      expect(t).toContain("Olá, Maria!");
-      expect(t).toContain("17/10/2026 às 14:05 (horário de Brasília), na tela de aceite");
-      expect(t).toContain("0a9b58cff598fa27225043e476139521cb1b47a2355b937c02797006c39a1230");
-      expect(t).toContain("Política de Privacidade 3.0 e Regulamento de Coins e Ligas 1.0");
-      expect(t).toContain("https://app.staziamed.com.br/novo/perfil?secao=docs");
-      expect(t).toContain("privacidade@staziamed.com.br");
-      expect(t).toContain("não é propaganda");
+describe("Sem cópia do contrato por e-mail (decisão do dono, 18/10/2026)", () => {
+  it("o módulo de e-mails não tem mais o modelo da cópia do contrato", () => {
+    const nomes = Object.keys(emailsLegais);
+    expect(nomes).not.toContain("renderCopiaContrato");
+    expect(nomes).not.toContain("arquivoDoContrato");
+    expect(nomes).not.toContain("textoDaCopia");
+  });
+
+  it("nenhum e-mail da fila fala em cópia do contrato nem leva anexo", () => {
+    for (const acao of ["apagar_conta", "zerar_coins"] as const) {
+      const e = renderItem(item({ payload: { ...item().payload, acao } }), null) as emailsLegais.EmailPronto & { attachments?: unknown };
+      expect(`${e.subject}\n${e.text}\n${e.html}`).not.toMatch(/c[óo]pia do contrato/i);
+      expect(e.attachments).toBeUndefined();
     }
-    expect(e.html).toContain(LOGO);
-    expect(e.html).toContain("background-color:#0B6F68");
-    expect(e.html).toContain("Equipe StaziaMed<br>Tecnologia que transforma.");
-  });
-
-  it("o anexo é o texto aceito, sem marcas do Markdown, com o mesmo cabeçalho do botão Baixar", () => {
-    const [a] = renderCopiaContrato(item(), null).attachments!;
-    expect(a.filename).toBe(arquivoDoContrato("3.0"));
-    expect(a.filename).toBe("staziamed-contrato-v3.0.txt");
-    expect(a.content).toMatch(/^StaziaMed Revalida — cópia do aluno\nContrato de Assinatura e Termos de Uso — versão 3\.0\nAceito em 17\/10\/2026 às 14:05 \(horário de Brasília\) pela conta aluno@teste\.dev\nCódigo de integridade \(SHA-256\) do texto: 0a9b58cf/);
-    expect(a.content).toContain("6.4. Duas cópias. O contrato aceito");
-    expect(a.content).not.toContain("**");
-  });
-
-  it("nome com código HTML é escapado; sem nome, só 'Olá!'; sem texto, recusa", () => {
-    expect(renderCopiaContrato(item({ nome: "<b>Zé</b>" }), null).html).toContain("Olá, &lt;b&gt;Zé&lt;/b&gt;!");
-    expect(renderCopiaContrato(item({ nome: null }), null).text).toMatch(/^Olá!\n/);
-    expect(() => renderCopiaContrato(item({ contrato: { ...item().contrato!, body: null } }), null)).toThrow(/Texto do contrato/);
   });
 });
 
 describe("Aviso de conta inativa", () => {
   const aviso = (acao: "apagar_conta" | "zerar_coins") =>
-    renderAvisoInatividade({ ...item(), kind: "aviso_inatividade", contrato: null, payload: { acao, ultimo_acesso: "2025-11-01T15:00:00Z", prazo: "2026-11-20" } }, null);
+    renderAvisoInatividade({ ...item(), payload: { acao, ultimo_acesso: "2025-11-01T15:00:00Z", prazo: "2026-11-20" } }, null);
 
   it("conta gratuita: diz desde quando, a regra da Política, a data e como manter", () => {
     const e = aviso("apagar_conta");
@@ -199,6 +176,14 @@ describe("Aviso de conta inativa", () => {
     expect(e.text).toContain("Se quiser uma cópia dos seus dados antes, peça pelo e-mail privacidade@staziamed.com.br.");
     expect(e.text).not.toContain("Baixar meus dados");
     expect(e.html).toContain("https://app.staziamed.com.br/novo/login");
+    expect(e.html).toContain(LOGO);
+    expect(e.html).toContain("background-color:#0B6F68");
+    expect(e.html).toContain("Equipe StaziaMed<br>Tecnologia que transforma.");
+  });
+
+  it("nome com código HTML é escapado; sem nome, só 'Olá!'", () => {
+    expect(renderAvisoInatividade(item({ nome: "<b>Zé</b>" }), null).html).toContain("Olá, &lt;b&gt;Zé&lt;/b&gt;!");
+    expect(renderAvisoInatividade(item({ nome: null }), null).text).toMatch(/^Olá!\n/);
   });
 
   it("quem já pagou: só os Coins, com o item 4.3 do Regulamento", () => {
@@ -209,7 +194,7 @@ describe("Aviso de conta inativa", () => {
   });
 
   it("sem prazo, recusa (nunca manda aviso sem data)", () => {
-    expect(() => renderAvisoInatividade({ ...item(), kind: "aviso_inatividade", payload: { acao: "apagar_conta", ultimo_acesso: "2025-11-01" } }, null)).toThrow();
+    expect(() => renderAvisoInatividade({ ...item(), payload: { acao: "apagar_conta", ultimo_acesso: "2025-11-01" } }, null)).toThrow();
   });
 });
 
@@ -266,7 +251,8 @@ describe("Fila de e-mail (server/legal/router.ts)", () => {
     const r = await enviarFila({ db, mailer, baseUrl: null, log: (m) => logs.push(m) });
     expect(r).toEqual({ enviados: 1, novas_tentativas: 1, incertos: 1, cancelados: 1 });
     expect(marcados.map((m) => [m.p_id, m.p_resultado])).toEqual([[1, "enviado"], [2, "tentar_de_novo"], [3, "incerto"], [4, "cancelado"]]);
-    expect(mailer.enviados[0].attachments?.[0].filename).toBe("staziamed-contrato-v3.0.txt");
+    expect(mailer.enviados[0].subject).toBe("Sua conta StaziaMed será apagada por falta de acesso");
+    expect(mailer.enviados[0].attachments).toBeUndefined();
     // o registro não leva o endereço de ninguém
     expect(logs.join("\n")).not.toMatch(/@teste\.dev/);
   });

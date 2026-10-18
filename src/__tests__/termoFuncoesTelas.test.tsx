@@ -244,7 +244,7 @@ describe("Minha Conta: chave de marketing, Ajuda e link de Documentos", () => {
     expect(contrato).toContain(`${PRIVACY_EMAIL} (dados pessoais)`);
   });
 
-  it("?secao=docs (link do e-mail da cópia do contrato) abre Documentos", async () => {
+  it("?secao=docs (link direto) abre Documentos", async () => {
     window.history.pushState({}, "", "/novo/perfil?secao=docs");
     abrirConta((fn) => (fn === "app_my_legal_documents" ? [] : null));
     expect(await screen.findByText("Nenhum aceite registrado nesta conta.")).toBeTruthy();

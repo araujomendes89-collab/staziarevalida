@@ -1,13 +1,14 @@
 // @vitest-environment node
 /**
  * Funções que o Contrato 3.0 promete (ramo termo-funcoes):
- *   013800 — cópia do contrato por e-mail (fila email_saida, um por aceite, nova tentativa, sem duplicar) e escolha opcional de marketing (onboarding e Minha Conta);
+ *   013800 — fila de e-mails de serviço (email_saida: nova tentativa, sem duplicar; SEM cópia do contrato por e-mail, decisão do dono
+ *            de 18/10) e escolha opcional de marketing (onboarding e Minha Conta);
  *   013810 — conta inativa (aviso 30 dias antes, apagar conta gratuita / zerar Coins) e expurgo dos aceites 5 anos depois do fim do
  *            contrato, tudo DESLIGADO por chave (modo ensaio).
  * Ensaio no PGlite: banco com todas as migrações de antes, as duas novas aplicadas duas vezes, desfeitas e aplicadas de novo.
  * Nada aqui toca o banco real.
  */
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
 import { PGlite } from "@electric-sql/pglite";
@@ -72,53 +73,62 @@ beforeAll(async () => {
   for (const s of SQL) await db.exec(s); // pode ser colada duas vezes
 }, 300_000);
 
-describe("013800 — cópia do contrato por e-mail", () => {
-  it("aceite pela tela põe UM e-mail na fila; aceitar de novo não duplica; Tutor não manda", async () => {
+/** põe um e-mail de serviço (aviso de conta inativa) na fila, como a rotina da 013810 faz */
+let nFila = 0;
+async function naFila(uid: string) {
+  await db.query(`insert into public.email_saida (kind, user_id, chave, payload) values ('aviso_inatividade', $1, $2, $3)`, [
+    uid,
+    `teste:${uid}:${++nFila}`,
+    { acao: "apagar_conta", ultimo_acesso: new Date(Date.now() - 335 * 86_400_000).toISOString() },
+  ]);
+}
+
+describe("013800 — sem cópia do contrato por e-mail (decisão do dono, 18/10: o contrato fica só em Minha Conta → Documentos)", () => {
+  it("aceite pela tela e cadastro com a 3.0 NÃO põem nada na fila", async () => {
     const id = await signUp();
     await aceitar(id);
-    await aceitar(id).catch(() => undefined);
-    const f = await fila(id);
-    expect(f).toHaveLength(1);
-    expect(f[0]).toMatchObject({ kind: "contrato_copia", status: "pendente", tentativas: 0 });
-    expect(f[0].chave).toBe(`contrato:${f[0].acceptance_id}`);
-    await call(id, "app_accept_terms", { p_document: "tutor_ia", p_version: "2.0", p_origin: "tutor", p_user_agent: "UA" }).catch(() => undefined);
-    expect(await fila(id)).toHaveLength(1);
+    const cad = await signUp({ terms_version: "3.0", declares_adult: "true" });
+    expect(await linhas(`select 1 from public.legal_acceptances where user_id = any ($1::uuid[]) and version = '3.0'`, [[id, cad]])).toHaveLength(2);
+    expect(await fila(id)).toEqual([]);
+    expect(await fila(cad)).toEqual([]);
   });
 
-  it("cadastro com a 3.0 também põe na fila (origem cadastro)", async () => {
-    const id = await signUp({ terms_version: "3.0", declares_adult: "true" });
-    const [e] = await fila(id);
-    expect(e.kind).toBe("contrato_copia");
-    const [a] = await linhas(`select origin from public.legal_acceptances where id = $1`, [e.acceptance_id]);
-    expect(a.origin).toBe("cadastro");
-  });
-
-  it("se a fila falhar, o aceite é gravado do mesmo jeito (nunca trava a tela)", async () => {
+  it("não existe gatilho nem função da cópia; a fila não aceita o tipo contrato_copia nem tem a coluna do aceite", async () => {
+    expect(await linhas(`select 1 from pg_trigger where tgname = 'legal_copia_na_fila'`)).toEqual([]);
+    expect((await linhas(`select to_regprocedure('public.legal_copia_na_fila()') as f`))[0].f).toBeNull();
+    expect(await linhas(`select 1 from information_schema.columns where table_schema = 'public' and table_name = 'email_saida' and column_name = 'acceptance_id'`)).toEqual([]);
     const id = await signUp();
-    await db.exec(`alter table public.email_saida add constraint teste_quebra check (kind = 'x') not valid`);
-    try {
-      const r = await aceitar(id);
-      expect(r.legal).toMatchObject({ gate_required: false });
-    } finally {
-      await db.exec(`alter table public.email_saida drop constraint teste_quebra`);
-    }
-    expect(await fila(id)).toHaveLength(0);
-    expect(await linhas(`select 1 from public.legal_acceptances where user_id = $1 and version = '3.0'`, [id])).toHaveLength(1);
+    await expect(db.query(`insert into public.email_saida (kind, user_id, chave) values ('contrato_copia', $1, 'contrato:x')`, [id])).rejects.toThrow(/check/);
   });
 
-  it("o servidor pega o lote com o texto exato aceito; pegar de novo não devolve o mesmo e-mail", async () => {
+  it("banco com a versão antiga (com a cópia): colar de novo tira o gatilho e cancela as cópias que esperavam", async () => {
+    await db.exec(`create function public.legal_copia_na_fila() returns trigger language plpgsql as $$ begin return null; end $$;
+      create trigger legal_copia_na_fila after insert on public.legal_acceptances for each row execute function public.legal_copia_na_fila();
+      alter table public.email_saida drop constraint email_saida_kind_check;`);
+    const id = await signUp();
+    await db.query(`insert into public.email_saida (kind, user_id, chave) values ('contrato_copia', $1, 'contrato:antigo')`, [id]);
+    await db.exec(SQL[0]);
+    expect(await linhas(`select 1 from pg_trigger where tgname = 'legal_copia_na_fila'`)).toEqual([]);
+    expect((await fila(id))[0]).toMatchObject({ status: "cancelado", erro: expect.stringContaining("retirada") });
+    await db.exec(`delete from public.email_saida where kind = 'contrato_copia';
+      alter table public.email_saida add constraint email_saida_kind_check check (kind in ('aviso_inatividade'));`);
+  });
+});
+
+describe("013800 — fila de e-mails de serviço (usada pelo aviso de conta inativa)", () => {
+  // os e-mails postos aqui à mão não podem contar nos testes da rotina de conta inativa (013810)
+  afterAll(() => db.exec(`delete from public.email_saida where chave like 'teste:%'`));
+
+  it("o servidor pega o lote (sem texto de contrato); pegar de novo não devolve o mesmo e-mail", async () => {
     await limparFila();
     const id = await signUp();
-    await aceitar(id);
+    await naFila(id);
     const lote = await servico("ch_worker_email_pegar", { p_limite: 10 });
     expect(lote).toHaveLength(1);
     const [item] = lote;
-    expect(item).toMatchObject({ kind: "contrato_copia", email: expect.stringMatching(/@teste\.dev$/), nome: expect.stringMatching(/^Pessoa/), tentativas: 1 });
-    expect(item.contrato).toMatchObject({ document: "termo_uso", version: "3.0", origin: "tela_aceite", title: expect.any(String) });
-    const [t] = await linhas(`select sha256, body from public.legal_texts where document = 'termo_uso' and version = '3.0'`);
-    expect(item.contrato.text_sha256).toBe(t.sha256);
-    expect(item.contrato.body).toBe(t.body);
-    expect(item.contrato.companions).toHaveProperty("politica_privacidade");
+    expect(item).toMatchObject({ kind: "aviso_inatividade", email: expect.stringMatching(/@teste\.dev$/), nome: expect.stringMatching(/^Pessoa/), tentativas: 1 });
+    expect(item).not.toHaveProperty("contrato");
+    expect(item.payload.prazo).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(await servico("ch_worker_email_pegar", { p_limite: 10 })).toEqual([]);
     expect(await servico("ch_worker_email_marcar", { p_id: item.id, p_resultado: "enviado" })).toBe("enviado");
     expect((await fila(id))[0]).toMatchObject({ status: "enviado", erro: null });
@@ -130,7 +140,7 @@ describe("013800 — cópia do contrato por e-mail", () => {
   it("falha antes da entrega volta para a fila com espera; na 5ª tentativa, falhou", async () => {
     await limparFila();
     const id = await signUp();
-    await aceitar(id);
+    await naFila(id);
     for (let i = 1; i <= 5; i++) {
       await db.query(`update public.email_saida set proxima_em = now() - interval '1 second' where user_id = $1`, [id]);
       const [item] = await servico("ch_worker_email_pegar");
@@ -150,7 +160,7 @@ describe("013800 — cópia do contrato por e-mail", () => {
   it("envio que parou no meio vira incerto (não repete); resultado inválido é recusado", async () => {
     await limparFila();
     const id = await signUp();
-    await aceitar(id);
+    await naFila(id);
     const [item] = await servico("ch_worker_email_pegar");
     await db.query(`update public.email_saida set pego_em = now() - interval '16 minutes' where id = $1`, [item.id]);
     expect(await servico("ch_worker_email_pegar")).toEqual([]);
@@ -164,13 +174,13 @@ describe("013800 — cópia do contrato por e-mail", () => {
     try {
       const id = await signUp();
       await db.query(`update auth.users set email_confirmed_at = null where id = $1`, [id]);
-      await aceitar(id);
+      await naFila(id);
       expect(await servico("ch_worker_email_pegar")).toEqual([]);
       await db.query(`update auth.users set email_confirmed_at = now() where id = $1`, [id]);
       expect(await servico("ch_worker_email_pegar")).toHaveLength(1);
       const outro = await signUp();
       await db.query(`update auth.users set email_confirmed_at = null where id = $1`, [outro]);
-      await aceitar(outro);
+      await naFila(outro);
       await db.query(`update public.email_saida set created_at = now() - interval '29 days' where user_id = $1`, [outro]);
       expect(await servico("ch_worker_email_pegar")).toEqual([]);
       expect((await fila(outro))[0].status).toBe("pendente");
@@ -196,7 +206,7 @@ describe("013800 — cópia do contrato por e-mail", () => {
 
   it("conta apagada: o e-mail pendente sai da fila", async () => {
     const id = await signUp();
-    await aceitar(id);
+    await naFila(id);
     await db.query(`delete from auth.users where id = $1`, [id]);
     expect(await fila(id)).toEqual([]);
   });
@@ -546,6 +556,8 @@ describe("desfazer e aplicar de novo", () => {
     const outro = await signUp();
     await aceitar(outro);
     await call(outro, "app_marketing_set", { p_opt_in: true, p_origin: "onboarding" });
+    expect(await fila(outro)).toEqual([]); // o aceite não manda cópia por e-mail
+    await naFila(outro);
     expect(await fila(outro)).toHaveLength(1);
     expect(await call(outro, "app_marketing_get")).toMatchObject({ opt_in: true });
     expect((await servico("ch_worker_contas_inativas")).modo).toBe("ensaio");

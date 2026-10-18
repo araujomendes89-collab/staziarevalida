@@ -6,11 +6,11 @@ em `/Volumes/StaziaMed/.tmp-aulas/termo-funcoes/`: `013800_…_aplicar.sql`, `01
 `termo_funcoes_conferir.sql` (só leitura).
 
 ## O que faz
-1. **Cópia do contrato por e-mail** (cláusulas 6.4 e 6.6): cada aceite do Contrato 3.0 (cadastro, Google, tela de aceite) entra numa
-   fila no banco (`email_saida`, um por aceite). A tarefa `/api/legal/email` (a cada 5 min) manda o e-mail com versão, data e hora,
-   código do texto, botão para Minha Conta → Documentos (`/novo/perfil?secao=docs`) e o texto completo anexado (`.txt`, igual ao
-   botão Baixar). Falha antes da entrega: tenta de novo (5 min, 30 min, 2 h, 12 h; na 5ª desiste). Caiu depois de mandar: não repete
-   (não duplica). Conta com e-mail não confirmado: espera até 30 dias. **Sem as variáveis SMTP, nada sai** (fica na fila).
+1. **SEM cópia do contrato por e-mail** (decisão do dono, 18/10/2026: "Contrato não é enviado ao cliente, fica dentro do app dele.").
+   O contrato aceito fica só em Minha Conta → Documentos (versão, data e hora do aceite, ler e baixar). A 013800 cria só a **fila de
+   e-mails de serviço** (`email_saida`), usada pelo aviso de conta inativa (013810): a tarefa `/api/legal/email` (a cada 5 min) manda
+   o que estiver na fila. Falha antes da entrega: tenta de novo (5 min, 30 min, 2 h, 12 h; na 5ª desiste). Caiu depois de mandar:
+   não repete. Conta com e-mail não confirmado: espera até 30 dias. **Sem as variáveis SMTP, nada sai** (fica na fila).
 2. **Marketing (fora do cadastro, decisão do dono de 17/10)**: a escolha é feita no **onboarding** com o componente
    `src/novo/app/account/MarketingPergunta.jsx` (pergunta, texto e os botões "Sim, quero receber" / "Agora não"; nada marcado; só o
    "Sim" grava, com a origem `onboarding`; "Agora não" não grava nada) e pela chave em Minha Conta → Privacidade e dados. Guarda a
@@ -38,18 +38,18 @@ um conjunto só serve aos dois.
 
 ## Ordem de publicação (SQL antes do site)
 0. **Antes de tudo: "Confirm email" ligado no Supabase** (Authentication → Providers → Email). Sem ele, a conta já nasce "confirmada"
-   e a cópia do contrato pode ir para um e-mail digitado errado ou de outra pessoa (revisão LGPD).
+   e o aviso de conta inativa pode ir para um e-mail digitado errado ou de outra pessoa (revisão LGPD).
 1. Colar `013800_…_aplicar.sql` e depois `013810_…_aplicar.sql` no editor de SQL do Supabase. **Nunca `supabase db push`.**
    Cada uma confere tudo no fim e, se algo não bater, para sem mudar nada. Podem ser coladas de novo.
 2. Rodar `termo_funcoes_conferir.sql`: estrutura "ok", chaves todas `false`, permissões todas `false`.
 3. Criar as variáveis SMTP na Vercel (pode ser depois: até lá a fila só acumula).
 4. Publicar o site do ramo (Vercel). O `vercel.json` ganha as tarefas `/api/legal/email` (*/5) e `/api/legal/diaria` (4h20 UTC).
-5. Conferir: criar uma conta de teste (sem caixa de marketing no cadastro) → em até 5 min chega o e-mail com o anexo; Minha Conta →
-   Privacidade e dados mostra a chave de marketing desligada;
+5. Conferir: criar uma conta de teste (sem caixa de marketing no cadastro) → **nenhum e-mail com o contrato chega**; Minha Conta →
+   Documentos mostra o contrato com a versão e a data do aceite; Minha Conta → Privacidade e dados mostra a chave de marketing
+   desligada;
    Ajuda mostra telefone e horário; o relatório da rotina aparece em `app_rotinas_conta_log` com modo `ensaio`.
 
-Site antes do SQL também funciona (as chamadas novas falham em silêncio e a chave de marketing não aparece), mas a cópia do contrato
-só entra na fila com a 013800 no banco: por isso SQL primeiro.
+Site antes do SQL também funciona (as chamadas novas falham em silêncio e a chave de marketing não aparece); SQL primeiro mesmo assim.
 
 ## Ligar as rotinas (decisão do dono)
 ```sql
@@ -66,4 +66,4 @@ prova dos avisos (o arquivo diz como guardar antes).
 ## Juntar com o ramo fase1-compra
 `fase1-compra` tem `server/avisos/smtp.ts` (mesma ideia, mesmas variáveis). Ao juntar: ficar com `server/email/smtp.ts` (este; tem
 anexo e o "talvez entregue" para não repetir) e apontar `server/avisos/avisos.ts` para ele. As filas continuam separadas (avisos de
-cobrança na 013760, contrato/inatividade na `email_saida`).
+cobrança na 013760, aviso de conta inativa na `email_saida`).

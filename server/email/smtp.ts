@@ -3,7 +3,7 @@
  * Workspace: smtp.gmail.com, porta 465 (TLS desde o início) ou 587 (STARTTLS), com senha de app.
  *
  * MESMA IDEIA E MESMAS VARIÁVEIS do módulo do ramo fase1-compra (server/avisos/smtp.ts), mas sem depender dele. Diferenças:
- *   - anexos (a cópia do contrato vai como arquivo .txt);
+ *   - anexos (opcional; nenhum e-mail do app usa hoje: o contrato NÃO vai por e-mail, decisão do dono de 18/10/2026);
  *   - o erro diz se a mensagem PODE ter sido entregue (`talvezEntregue`): a falha depois de a mensagem ter sido mandada não é
  *     repetida, para não chegar duas vezes.
  * Ao juntar os ramos: ficar com UM módulo só (este cobre o daquele: mesma configuração, `send` aceita a mesma mensagem sem anexos).

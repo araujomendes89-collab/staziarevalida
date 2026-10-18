@@ -155,8 +155,9 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   app.use("/api/play", createPlayRouter(hub.deps ? { db: hub.deps.db, log: (m: string) => console.log(m) } : null));
   // Planos (etapa 3): ativação do teste grátis vendo o IP (só o código/hash vai ao banco) e tarefa diária (avisos de renovação)
   app.use("/api/planos", createPlanosRouter(hub.deps ? { db: hub.deps.db, log: (m: string) => console.log(m) } : null, hub.pending));
-  // Contrato 3.0 (ramo termo-funcoes): cópia do contrato por e-mail (só com SMTP_HOST/SMTP_USER/SMTP_PASSWORD/SMTP_FROM no servidor),
-  // conta inativa e expurgo dos aceites (desligados por chave no banco); só tarefas agendadas com CRON_SECRET
+  // Contrato 3.0 (ramo termo-funcoes): aviso de conta inativa por e-mail (só com SMTP_HOST/SMTP_USER/SMTP_PASSWORD/SMTP_FROM no
+  // servidor) e expurgo dos aceites (desligados por chave no banco); só tarefas agendadas com CRON_SECRET. O contrato NÃO vai por
+  // e-mail (decisão do dono, 18/10/2026): fica só em Minha Conta → Documentos.
   const smtp = smtpConfigFromEnv();
   const legalDeps: LegalDeps | null = hub.deps
     ? { db: hub.deps.db, mailer: smtp ? createSmtpMailer(smtp) : null, baseUrl: (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "") || null, log: (m: string) => console.log(m) }

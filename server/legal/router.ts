@@ -1,6 +1,7 @@
 /**
  * Rotas /api/legal (ramo termo-funcoes): só tarefas agendadas da Vercel (com CRON_SECRET). Nenhuma rota é chamada pelo navegador.
- *   GET /api/legal/email   a cada 5 minutos: manda os e-mails da fila (cópia do contrato aceito, aviso de conta inativa).
+ *   GET /api/legal/email   a cada 5 minutos: manda os e-mails da fila (aviso de conta inativa). O contrato NÃO vai por e-mail
+ *                          (decisão do dono, 18/10/2026): fica só em Minha Conta → Documentos.
  *                          Sem as variáveis SMTP_*: não faz nada ({ desligado: true }) e os e-mails ficam na fila.
  *   GET /api/legal/diaria  uma vez por dia: rotina de contas inativas e expurgo dos aceites (013810). As duas nascem DESLIGADAS
  *                          (chaves em public.app_rotinas_conta_config): desligadas, só devolvem o relatório do que fariam.

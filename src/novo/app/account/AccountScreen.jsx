@@ -381,7 +381,7 @@ export function MarketingSwitch() {
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <Switch
         label="Novidades e ofertas por e-mail"
-        description="Opcional. Os e-mails de serviço (cópia do contrato, segurança, cobrança e avisos da conta) chegam sempre."
+        description="Opcional. Os e-mails de serviço (segurança, cobrança e avisos da conta) chegam sempre."
         checked={st.opt_in}
         disabled={saving || st.status !== "pronto"}
         onChange={(e) => mudar(e.target.checked)}
@@ -617,7 +617,7 @@ export function AccountScreen({ go }) {
   const bp = useBreakpoint();
   const secaoPedida = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("secao");
   // no celular a lista abre com as seções fechadas (D9); no computador e no tablet a primeira seção já aparece
-  // ?secao=assinatura (avisos de cobrança) ou ?secao=docs (link do e-mail da cópia do contrato) abre direto a seção pedida
+  // ?secao=assinatura (avisos de cobrança) ou ?secao=docs (link direto para Documentos) abre direto a seção pedida
   const [section, setSection] = React.useState(() => (secaoPedida === "assinatura" ? "assinatura" : secaoDoEndereco() ?? (bp === "narrow" ? "" : "conta")));
   const active = section || "conta";
   const profile = boot.profile;

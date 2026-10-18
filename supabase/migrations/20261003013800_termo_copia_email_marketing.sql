@@ -1,18 +1,20 @@
 -- =============================================================================
--- 013800 — Contrato 3.0: cópia do contrato por e-mail e caixa opcional de marketing (pedido do dono, 17/10/2026; ramo termo-funcoes)
+-- 013800 — Contrato 3.0: fila de e-mails de serviço e caixa opcional de marketing (pedido do dono, 17/10/2026; ramo termo-funcoes)
 --
--- 1) CÓPIA DO CONTRATO POR E-MAIL (Contrato 3.0, cláusulas 6.4 e 6.6; Política 3.0, seção 9.7)
---    Cada aceite do Contrato 3.0 em diante (cadastro, Google ou tela de aceite) põe UM e-mail na fila public.email_saida, por um
---    gatilho na prova do aceite (legal_acceptances). O envio é feito FORA do aceite, pelo servidor (tarefa agendada a cada 5 minutos,
---    rota /api/legal/email), com as funções ch_worker_email_pegar / ch_worker_email_marcar (só serviço). Assim:
---      * a tela nunca espera o e-mail; se o gatilho falhar por qualquer motivo, o aceite é gravado do mesmo jeito;
---      * sem duplicar: um e-mail por aceite (chave única 'contrato:<id do aceite>'); um envio que parou no meio vira "incerto" e não
---        é repetido;
+-- SEM CÓPIA DO CONTRATO POR E-MAIL (decisão do dono, 18/10/2026: "Contrato não é enviado ao cliente, fica dentro do app dele.").
+-- O contrato aceito fica só em Minha Conta → Documentos (versão, data e hora do aceite, ler e baixar). Esta migração NÃO cria
+-- gatilho no aceite, NÃO põe nada na fila por causa do aceite e a fila não tem mais o tipo "contrato_copia" nem a coluna do aceite.
+-- Se uma versão anterior desta migração (com a cópia) já tiver sido colada num banco de ensaio, colar esta tira o gatilho e a
+-- função da cópia e cancela as cópias que estavam esperando na fila.
+--
+-- 1) FILA DE E-MAILS DE SERVIÇO (public.email_saida), usada pelo aviso de conta inativa (013810)
+--    O envio é feito pelo servidor (tarefa agendada a cada 5 minutos, rota /api/legal/email), com as funções
+--    ch_worker_email_pegar / ch_worker_email_marcar (só serviço). Assim:
+--      * sem duplicar: um e-mail por chave única; um envio que parou no meio vira "incerto" e não é repetido;
 --      * nova tentativa: falha antes de o servidor de e-mail aceitar a mensagem volta para a fila (5 min, 30 min, 2 h, 12 h; na 5ª,
 --        "falhou");
 --      * conta com e-mail ainda não confirmado: espera a confirmação (até 30 dias; depois, "cancelado");
 --      * sem as variáveis SMTP no servidor, nada sai: os e-mails ficam na fila, "pendente".
---    Só versões com texto guardado pelo sistema (legal_texts, 3.0 em diante). Aceites anteriores a esta migração não recebem e-mail.
 --
 -- 2) ESCOLHA OPCIONAL DE MARKETING (Contrato 3.0, cláusulas 6.2 e 32; Política 3.0: "Marketing — até você retirar o consentimento")
 --    public.marketing_consents: a escolha atual (uma linha por conta) e public.marketing_consent_log: o histórico (cada marcação ou
@@ -40,9 +42,8 @@ $confere$;
 -- ---------------------------------------------------------------- 1) fila de e-mails de serviço
 create table if not exists public.email_saida (
   id bigint generated always as identity primary key,
-  kind text not null check (kind in ('contrato_copia', 'aviso_inatividade')),
+  kind text not null check (kind in ('aviso_inatividade')),
   user_id uuid not null references auth.users (id) on delete cascade,
-  acceptance_id bigint references public.legal_acceptances (id) on delete cascade,
   chave text not null unique,
   payload jsonb not null default '{}'::jsonb check (jsonb_typeof(payload) = 'object'),
   status text not null default 'pendente' check (status in ('pendente', 'enviando', 'enviado', 'falhou', 'incerto', 'cancelado')),
@@ -51,11 +52,10 @@ create table if not exists public.email_saida (
   pego_em timestamptz,
   enviado_em timestamptz,
   erro text check (char_length(erro) <= 300),
-  created_at timestamptz not null default now(),
-  check (kind <> 'contrato_copia' or acceptance_id is not null)
+  created_at timestamptz not null default now()
 );
 comment on table public.email_saida is
-  'Fila dos e-mails de serviço (cópia do contrato aceito, aviso de conta inativa). Um por chave (não duplica). Enviados pelo servidor '
+  'Fila dos e-mails de serviço (aviso de conta inativa; o contrato NÃO vai por e-mail, fica em Minha Conta → Documentos). Um por chave (não duplica). Enviados pelo servidor '
   '(ch_worker_email_pegar / ch_worker_email_marcar). Sem acesso do navegador. Apagada junto com a conta.';
 create index if not exists email_saida_fila_idx on public.email_saida (proxima_em, id) where status = 'pendente';
 create index if not exists email_saida_user_idx on public.email_saida (user_id);
@@ -71,27 +71,13 @@ as $$
                    from auth.users u where u.id = p_user), false)
 $$;
 
--- Gatilho na prova do aceite: o aceite do Contrato (3.0 em diante, com texto guardado) põe a cópia na fila. Nunca impede o aceite.
-create or replace function public.legal_copia_na_fila() returns trigger
-  language plpgsql security definer set search_path = ''
-as $$
-begin
-  if new.document = 'termo_uso' and new.user_id is not null and new.origin in ('cadastro', 'google', 'tela_aceite')
-     and exists (select 1 from public.legal_texts t where t.document = new.document and t.version = new.version) then
-    begin
-      insert into public.email_saida (kind, user_id, acceptance_id, chave)
-      values ('contrato_copia', new.user_id, new.id, 'contrato:' || new.id)
-      on conflict (chave) do nothing;
-    exception when others then
-      raise warning 'cópia do contrato não entrou na fila (aceite %): %', new.id, sqlerrm;
-    end;
-  end if;
-  return null;
-end
-$$;
+-- A cópia do contrato por e-mail saiu (decisão do dono, 18/10): sem gatilho no aceite. Banco onde a versão anterior desta
+-- migração foi colada: tira o gatilho e a função e cancela as cópias que ainda esperavam na fila (nada sai).
 drop trigger if exists legal_copia_na_fila on public.legal_acceptances;
-create trigger legal_copia_na_fila after insert on public.legal_acceptances
-  for each row execute function public.legal_copia_na_fila();
+drop function if exists public.legal_copia_na_fila();
+update public.email_saida
+   set status = 'cancelado', erro = 'Cópia do contrato por e-mail retirada (decisão do dono, 18/10/2026).'
+ where kind = 'contrato_copia' and status in ('pendente', 'enviando');
 
 -- Pega um lote para enviar (só serviço). Marca "enviando" e devolve o que o e-mail precisa. Antes: envio parado há 15 min vira
 -- "incerto" (não repete) e conta sem e-mail confirmado há 30 dias desiste ("cancelado").
@@ -116,7 +102,7 @@ begin
   from (
     select e.id
     from public.email_saida e
-    where e.status = 'pendente' and e.proxima_em <= now() and public.email_conta_confirmada(e.user_id)
+    where e.status = 'pendente' and e.kind = 'aviso_inatividade' and e.proxima_em <= now() and public.email_conta_confirmada(e.user_id)
     order by e.proxima_em, e.id
     limit greatest(1, least(coalesce(p_limite, 20), 100))
     for update of e skip locked
@@ -136,16 +122,11 @@ begin
   return coalesce((
     select jsonb_agg(jsonb_build_object(
              'id', e.id, 'kind', e.kind, 'tentativas', e.tentativas, 'email', u.email,
-             'nome', nullif(btrim(p.name), ''), 'payload', e.payload,
-             'contrato', case when e.kind = 'contrato_copia' then jsonb_build_object(
-                 'document', a.document, 'version', a.version, 'accepted_at', a.accepted_at, 'origin', a.origin,
-                 'text_sha256', a.text_sha256, 'title', t.title, 'body', t.body, 'companions', coalesce(a.companions, '{}'::jsonb)) end)
+             'nome', nullif(btrim(p.name), ''), 'payload', e.payload)
            order by e.id)
     from public.email_saida e
     join auth.users u on u.id = e.user_id
     left join public.profiles p on p.id = e.user_id
-    left join public.legal_acceptances a on a.id = e.acceptance_id
-    left join public.legal_texts t on t.document = a.document and t.version = a.version
     where e.id = any (v_ids)), '[]'::jsonb);
 end
 $$;
@@ -155,7 +136,7 @@ $$;
 --   'tentar_de_novo' falhou ANTES de a mensagem ser aceita (conexão, login, recusa): volta para a fila (5 min, 30 min, 2 h, 12 h);
 --                    na 5ª tentativa, "falhou";
 --   'incerto'        caiu depois de a mensagem ter sido mandada: não repete (pode ter chegado);
---   'cancelado'      não dá para mandar (sem e-mail, texto sumiu).
+--   'cancelado'      não dá para mandar (sem e-mail, aviso sem dados).
 create or replace function public.ch_worker_email_marcar(p_id bigint, p_resultado text, p_erro text default null) returns text
   language plpgsql security definer set search_path = ''
 as $$
@@ -280,7 +261,6 @@ $$;
 
 -- ---------------------------------------------------------------- 3) permissões
 revoke execute on function public.email_conta_confirmada(uuid) from public, anon, authenticated;
-revoke execute on function public.legal_copia_na_fila() from public, anon, authenticated;
 revoke execute on function public.ch_worker_email_pegar(integer) from public, anon, authenticated;
 revoke execute on function public.ch_worker_email_marcar(bigint, text, text) from public, anon, authenticated;
 revoke execute on function public.marketing_texto(text) from public, anon, authenticated;
@@ -295,9 +275,12 @@ grant execute on function public.ch_worker_email_marcar(bigint, text, text) to s
 -- ---------------------------------------------------------------- 4) conferência final (se algo não bater, PARA com erro)
 do $confere_fim$
 begin
-  if not exists (select 1 from pg_trigger where tgname = 'legal_copia_na_fila' and tgrelid = 'public.legal_acceptances'::regclass)
-     or exists (select 1 from pg_trigger where tgname = 'on_auth_user_marketing' and tgrelid = 'auth.users'::regclass) then
-    raise exception 'termo-funcoes 013800: gatilho não ficou no lugar';
+  if exists (select 1 from pg_trigger where tgname = 'legal_copia_na_fila' and tgrelid = 'public.legal_acceptances'::regclass)
+     or to_regprocedure('public.legal_copia_na_fila()') is not null then
+    raise exception 'termo-funcoes 013800: a cópia do contrato por e-mail ainda está no banco (decisão do dono, 18/10: não enviar)';
+  end if;
+  if exists (select 1 from pg_trigger where tgname = 'on_auth_user_marketing' and tgrelid = 'auth.users'::regclass) then
+    raise exception 'termo-funcoes 013800: gatilho de marketing no cadastro ainda existe';
   end if;
   if has_function_privilege('anon', 'public.ch_worker_email_pegar(integer)', 'execute')
      or has_function_privilege('authenticated', 'public.ch_worker_email_pegar(integer)', 'execute')
