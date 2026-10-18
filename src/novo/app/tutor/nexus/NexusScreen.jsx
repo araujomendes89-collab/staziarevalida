@@ -1,24 +1,56 @@
 // Nexus: a tela única do Stazia Tutor (spec do Tutor Nexus; prévia aprovada pelo dono em 2026-10-08). Fases: entrada (escolher o
 // professor e o modo), conversa (a esfera em tela cheia, no computador e no celular), resumo (depois de Encerrar), histórico e
 // só leitura. O toque em "Começar" libera o som e pede o microfone na hora (Safari e iPhone exigem o gesto); a conversa nasce com
-// o professor escolhido e o servidor diz o jeito: voz do professor, voz reserva (a voz ao vivo de antes) ou por escrito.
+// o professor escolhido e o servidor diz o jeito. Desde 18/10 (pedido do dono: "a conversa deve ser natural") a VOZ AO VIVO vem
+// primeiro: o microfone abre uma vez e fica aberto, o próprio serviço de voz percebe a fala e o professor para quando o aluno fala
+// por cima. Se ela não abrir (ponte fora, microfone bloqueado, minutos ao vivo no fim), a conversa passa SOZINHA para o modo
+// reserva (a voz do professor em cascata, também sem toques) ou por escrito, com um aviso curto. Na conversa por voz a fala do
+// Tutor não aparece escrita (só o personagem e o estado); "Legendas" liga a legenda numa faixa própria (escolha guardada por aluno).
 import React from "react";
 import { useSession } from "../../session.jsx";
 import { nexusApi, tutorOpening, tutorPrepareOpening, tutorServerStatus, withOpening } from "../api.js";
 import { ERROR_CLASS, modeLabel } from "../labels.js";
-import { useRealtimeVoice } from "../useRealtimeVoice.js";
+import { Button } from "../../../ds";
+import { realtimeErrorMessage, useRealtimeVoice } from "../useRealtimeVoice.js";
+import { MIC_CONSTRAINTS } from "../voice/microfone.js";
 import { StaziaVoiceMode } from "../voice/StaziaVoiceMode.jsx";
 import { PersonagemTutor } from "../personagens/PersonagemTutor.jsx";
-import { marcarNoPerfil, personagemDaConversa, personagemDe } from "../personagens/personagens.js";
+import { PERSONAGENS, marcarNoPerfil, personagemDaConversa, personagemDe } from "../personagens/personagens.js";
 import { unlockAudio } from "../voice/audioUnlock.js";
 import { TutorGate } from "./TutorGate.jsx";
-import { NexusLobby, withArticle } from "./NexusLobby.jsx";
+import { NexusLobby } from "./NexusLobby.jsx";
 import { QuestionCard } from "./QuestionCard.jsx";
 import { useNexusVoice } from "./useNexusVoice.js";
 import "./nexus.css";
 import { explainError } from "../../../../shared/errors/explicarErro";
 
-export const JEITO_LABEL = { eleven: "Voz do professor", reserva: "Voz reserva", escrito: "Por escrito" };
+/** Selo do jeito ao lado do nome do personagem: a voz ao vivo (o normal) não leva selo. */
+export const JEITO_LABEL = { aovivo: null, eleven: "Modo reserva", escrito: "Por escrito" };
+/** Avisos curtos, sem jargão (a tela de voz mostra numa faixa própria, nunca atrás do personagem). */
+export const AVISO = {
+  reserva: "Modo reserva: a conversa continua, com respostas um pouco mais lentas.",
+  semMinutos: "Seus minutos de voz ao vivo acabaram. A conversa continua no modo reserva.",
+  escrito: "A voz não está disponível agora. A conversa continua por escrito no Chat.",
+};
+/** Instrução da despedida (a voz ao vivo cria a frase na hora; nada de texto fixo). */
+export const FAREWELL_INSTRUCTION =
+  "Instrução do sistema (não leia esta instrução em voz alta): o aluno tocou em Encerrar. Despeça-se agora numa frase curta, de no máximo 20 palavras, do seu jeito, retomando o que vocês estudaram e, se fizer sentido, o próximo passo. Não faça pergunta.";
+/** Legendas na conversa por voz: desligadas por padrão; a escolha fica guardada por conta neste aparelho. */
+const LEGENDAS = "smn-voz-legendas";
+const lerLegendas = (conta) => {
+  try {
+    return window.localStorage.getItem(`${LEGENDAS}:${conta ?? "anonimo"}`) === "1";
+  } catch {
+    return false;
+  }
+};
+const gravarLegendas = (conta, on) => {
+  try {
+    window.localStorage.setItem(`${LEGENDAS}:${conta ?? "anonimo"}`, on ? "1" : "0");
+  } catch {
+    // navegação privada: vale só nesta tela
+  }
+};
 export const PROFESSOR_CHANGED = "Este professor mudou. Comece uma conversa nova.";
 const messageOf = (error) => explainError(error);
 
@@ -45,18 +77,18 @@ export function NexusScreen({ go, overlay = false, request = null, onClose }) {
     : undefined;
   const gate = (
     <TutorGate go={go} frame={frame}>
-      {(status, refresh) => <Nexus status={status} refresh={refresh} overlay={overlay} request={request} onClose={onClose} />}
+      {(status, refresh) => <Nexus status={status} refresh={refresh} overlay={overlay} request={request} onClose={onClose} go={go} />}
     </TutorGate>
   );
   if (!overlay) return gate;
   return (
-    <div className="nx-overlay" role="dialog" aria-modal="true" aria-label="Nexus">
+    <div className="nx-overlay" role="dialog" aria-modal="true" aria-label="Tutor">
       {gate}
     </div>
   );
 }
 
-function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
+function Nexus({ status: statusLido, refresh, overlay, request, onClose, go = null }) {
   const { backend, user } = useSession();
   const conta = user?.id ?? null;
   // O status do Tutor é lido ao abrir. O que o perfil confirmou depois (troca de personagem, conversa começada) fica aqui por cima
@@ -87,8 +119,24 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
   const liveStarted = React.useRef(null);
   const ttsStarted = React.useRef(null);
   const [micStream, setMicStream] = React.useState(null);
-  const [fallback, setFallback] = React.useState(null); // { note, caption }: a voz do professor parou e a reserva assumiu
-  const [picked, setPicked] = React.useState(null); // letra marcada na reserva (a voz do professor guarda a dela)
+  const [fallback, setFallback] = React.useState(null); // { note, caption }: a voz que estava falando parou e outro jeito assumiu
+  const [picked, setPicked] = React.useState(null); // letra marcada na voz ao vivo (a voz do professor guarda a dela)
+  const [legendas, setLegendasState] = React.useState(() => lerLegendas(conta));
+  const setLegendas = (on) => {
+    setLegendasState(on);
+    gravarLegendas(conta, on);
+  };
+  const [closing, setClosing] = React.useState(false); // tocou em Encerrar: o professor se despede
+  const [farewell, setFarewell] = React.useState(null); // a frase de despedida dita agora (mostrada no fim)
+  const skipped = React.useRef(new Set()); // jeitos que já falharam nesta conversa (a troca não volta para eles)
+  const closingRef = React.useRef(null);
+  const micDenied = React.useRef(false); // o aluno (ou o aparelho) negou o microfone no toque do "Começar"
+  // o aviso do modo reserva é curto: some depois de alguns segundos (o selo "Modo reserva" continua no topo)
+  React.useEffect(() => {
+    if (fallback?.note !== AVISO.reserva) return undefined;
+    const t = setTimeout(() => setFallback((f) => (f?.note === AVISO.reserva ? { ...f, note: null } : f)), 10_000);
+    return () => clearTimeout(t);
+  }, [fallback?.note]);
   const sessionRef = React.useRef(null);
   sessionRef.current = session;
 
@@ -120,7 +168,7 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
   // as falas da conversa por voz aparecem no Chat (a mesma conversa; o servidor grava e confere)
   const appendMessage = (m) =>
     setSession((s) => (s ? { ...s, messages: [...(s.messages ?? []), { id: m.id ?? `nx-${Date.now()}-${(s.messages ?? []).length}`, role: m.role, content: m.content, voice: true }] } : s));
-  // voz reserva: a voz ao vivo de antes (o servidor encerra a chamada da voz do professor ao abrir esta)
+  // voz ao vivo (o servidor encerra a chamada da voz do professor ao abrir esta)
   const [liveAvatar, setLiveAvatar] = React.useState(null);
   const [liveNote, setLiveNote] = React.useState(null);
   const live = useRealtimeVoice({
@@ -136,8 +184,8 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
     onReopen: () => void openSession(sessionRef.current, true),
     onFallback: (code, message, caption = null) => {
       if (code === "tutor_consent") return void refresh().catch(() => {});
-      // a voz do professor parou (limite, teto, aprovação, falha): a chamada dela fecha e o servidor escolhe o que sobra (a reserva,
-      // ou por escrito quando a reserva não roda), com a mensagem e a legenda mantidas
+      // a voz do professor parou (limite, teto, aprovação, falha): a chamada dela fecha e o servidor escolhe o que sobra (a voz ao
+      // vivo, se ela ainda não falhou nesta conversa; senão por escrito), com a mensagem e a legenda mantidas
       setFallback({ note: message, caption: caption ?? ttsRef.current?.captions?.tutor ?? "" });
       void (async () => {
         await Promise.resolve(ttsRef.current?.stop?.({ keepState: true })).catch(() => {});
@@ -155,31 +203,62 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
     }
   }, [phase, opened?.jeito, opened?.voice_call_id, session?.id, tts]);
   React.useEffect(() => {
-    if (phase === "conversation" && opened?.jeito === "reserva" && session?.id && liveStarted.current !== session.id) {
+    if (phase === "conversation" && opened?.jeito === "aovivo" && session?.id && liveStarted.current !== session.id) {
       liveStarted.current = session.id;
-      live.start();
+      // microfone bloqueado no toque do "Começar": nem tenta a voz ao vivo (não pede de novo); segue no modo reserva com o aviso
+      if (micDenied.current) {
+        if (skipped.current.has("aovivo")) return;
+        setFallback({ note: realtimeErrorMessage({ kind: "mic" }), caption: "" });
+        void switchJeito("aovivo");
+        return;
+      }
+      // o microfone pedido no toque do "Começar" segue para a voz ao vivo (sem pedir de novo depois da espera); vai uma cópia, para o
+      // original continuar aberto se a conversa precisar passar para o modo reserva
+      live.start(false, { stream: mic.current?.clone?.() ?? mic.current });
     }
   }, [phase, opened?.jeito, session?.id, live]);
+  // a voz ao vivo não abriu ou parou (ponte fora, microfone bloqueado, minutos no fim, rede): passa sozinha para o modo reserva
   React.useEffect(() => {
-    if (live.error?.code === "tutor_consent") refresh().catch(() => {});
+    const e = live.error;
+    if (!e) return;
+    if (e.code === "tutor_consent") return void refresh().catch(() => {});
+    // (os minutos que acabam no meio da conversa chegam aqui também: o servidor encerra a ligação com kind "quota")
+    if (phase !== "conversation" || opened?.jeito !== "aovivo" || e.kind === "busy" || closingRef.current || skipped.current.has("aovivo")) return;
+    const note = e.kind === "quota" ? AVISO.semMinutos : e.kind === "mic" || e.kind === "no_mic" ? realtimeErrorMessage(e) : AVISO.reserva;
+    setFallback({ note, caption: "" });
+    void switchJeito("aovivo");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [live.error]);
-
-  /** Troca o jeito no meio da conversa (esta aba assume): skip "eleven" sem a voz do professor; "voice" sem as duas vozes. */
+  }, [live.error, phase, opened?.jeito]);
+  /**
+   * Troca o jeito no meio da conversa (esta aba assume): skip "aovivo" sem a voz ao vivo; "eleven" sem a voz do professor; "voice"
+   * sem as duas. O que já falhou nesta conversa não volta (a voz ao vivo caiu e depois a do professor: por escrito).
+   */
   const switchJeito = async (skip) => {
     const s = sessionRef.current;
     if (!s) return;
-    if (skip === "voice") void Promise.resolve(live.stop?.()).catch(() => {});
+    skipped.current.add(skip);
+    const pular = skipped.current.has("voice") || (skipped.current.has("aovivo") && skipped.current.has("eleven")) ? "voice" : skip;
+    if (skip === "voice" || skip === "aovivo") void Promise.resolve(live.stop?.()).catch(() => {});
     try {
-      const o = await nexusApi.open(backend, s.id, true, skip);
-      if (o.jeito === "reserva" || !o.mic) releaseMic(); // a voz ao vivo pede o microfone por conta própria; sem microfone liberado (CF02) não fica nada aberto
-      setMicStream(o.jeito === "reserva" || !o.mic ? null : mic.current);
+      const o = await nexusApi.open(backend, s.id, true, pular);
+      if (o.jeito !== "aovivo" && !o.mic) releaseMic(); // sem microfone liberado (CF02) não fica nada aberto
+      else if (o.jeito !== "aovivo" && !micLive()) mic.current = await askMic(); // a voz ao vivo fechou o microfone dela
+      setMicStream(o.jeito === "aovivo" || !o.mic ? null : mic.current);
       liveStarted.current = null;
       ttsStarted.current = null;
       setOpened(o);
+      // por escrito: fica o motivo que o servidor deu (ex.: "Você usou sua voz de hoje"); sem motivo, o aviso curto
+      if (o.jeito === "escrito") setFallback((f) => ({ caption: "", ...(f ?? {}), note: f?.note && f.note !== AVISO.reserva && f.note !== AVISO.semMinutos ? f.note : AVISO.escrito }));
     } catch (e) {
       if (!consentLost(e)) setFallback((f) => ({ caption: "", ...(f ?? {}), note: messageOf(e) }));
     }
+  };
+
+  const micLive = () => Boolean(mic.current?.getAudioTracks?.().some((t) => t.readyState === "live"));
+  const askMic = () => {
+    const md = typeof navigator !== "undefined" ? navigator.mediaDevices : null;
+    if (micDenied.current) return Promise.resolve(null); // já foi negado nesta conversa: não pergunta de novo
+    return md?.getUserMedia ? md.getUserMedia(MIC_CONSTRAINTS).catch(() => null) : Promise.resolve(null);
   };
 
   const releaseMic = () => {
@@ -188,13 +267,20 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
   };
   React.useEffect(() => () => releaseMic(), []);
 
+  /** O microfone é pedido nesta conversa? (voz ligada, navegador com microfone e alguma voz que ouça o aluno) */
+  const micAsked = () => {
+    const md = typeof navigator !== "undefined" ? navigator.mediaDevices : null;
+    const noMic = Boolean(nexus) && !nexus.stt && !(nexus.live ?? nexus.reserve);
+    return Boolean(status.voice_enabled && !noMic && md?.getUserMedia);
+  };
   /** O gesto do aluno: libera o som e pede o microfone antes de qualquer espera (Safari e iPhone). */
   const gesture = () => {
     unlockAudio();
     const md = typeof navigator !== "undefined" ? navigator.mediaDevices : null;
-    // sem transcrição liberada a esta pessoa (CF02) e sem voz reserva, o microfone nem é pedido
-    const noMic = Boolean(nexus) && !nexus.stt && !nexus.reserve;
-    return status.voice_enabled && !noMic && md?.getUserMedia ? md.getUserMedia({ audio: true }).catch(() => null) : Promise.resolve(null);
+    // sem transcrição liberada a esta pessoa (CF02) e sem voz ao vivo, o microfone nem é pedido
+    const noMic = Boolean(nexus) && !nexus.stt && !(nexus.live ?? nexus.reserve);
+    // eco cancelado e supressão de ruído (o professor sai pelo alto-falante); o mesmo microfone serve à voz ao vivo e à reserva
+    return status.voice_enabled && !noMic && md?.getUserMedia ? md.getUserMedia(MIC_CONSTRAINTS).catch(() => null) : Promise.resolve(null);
   };
 
   const openSession = async (s, force = false) => {
@@ -205,12 +291,17 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
       // a abertura criada agora pela IA (o servidor já trocou a reserva no banco)
       setSession(withOpening(s, o.opening));
       setOpened(o);
-      setFallback(null);
+      // começou já no modo reserva (a voz ao vivo não está disponível para esta conta agora): o aviso curto aparece
+      setFallback(o.jeito === "eleven" ? { note: o.live_minutes === 0 && nexus?.live === false ? AVISO.semMinutos : AVISO.reserva, caption: "" } : null);
+      skipped.current = new Set();
+      setFarewell(null);
+      setClosing(false);
+      closingRef.current = null;
       setPicked(null);
       setLiveNote(null);
       setLiveAvatar(null);
-      if (o.jeito === "reserva" || !o.mic) releaseMic(); // a voz ao vivo pede o microfone por conta própria; sem microfone liberado (CF02) não fica nada aberto
-      setMicStream(o.jeito === "reserva" || !o.mic ? null : mic.current);
+      if (o.jeito !== "aovivo" && !o.mic) releaseMic(); // sem microfone liberado (CF02) não fica nada aberto
+      setMicStream(o.jeito === "aovivo" || !o.mic ? null : mic.current);
       liveStarted.current = null;
       ttsStarted.current = null;
       setPhase("conversation");
@@ -239,6 +330,7 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
         }
         releaseMic();
         mic.current = await micP;
+        micDenied.current = micAsked() && !mic.current;
         await openSession(s);
       } catch (e) {
         if (!consentLost(e)) setError({ message: messageOf(e), code: e.code ?? null });
@@ -289,11 +381,26 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
     }
   };
 
+  /**
+   * Encerrar: na voz ao vivo, o microfone fecha e o professor se despede numa frase curta criada agora (no máximo ~9 s; um segundo
+   * toque em Encerrar pula a despedida). Depois a tela de fim abre na hora e o encerramento (voz, chamada e conversa) segue por trás.
+   */
   const finish = async () => {
+    if (closingRef.current) {
+      closingRef.current.skip?.();
+      return;
+    }
     const s = session;
     const o = opened;
-    // a tela de voz fecha na hora; o encerramento (voz, chamada e conversa) segue por trás e o resumo chega em seguida
-    const stopping = o?.jeito === "reserva" ? live.stop?.() : tts.stop();
+    const ctl = (closingRef.current = {});
+    let said = null;
+    if (o?.jeito === "aovivo" && live.farewell) {
+      setClosing(true);
+      said = await Promise.race([live.farewell(FAREWELL_INSTRUCTION), new Promise((r) => (ctl.skip = () => r(null)))]);
+    }
+    setFarewell(said);
+    setClosing(false);
+    const stopping = o?.jeito === "aovivo" ? live.stop?.() : tts.stop();
     setOpened(null);
     setPhase("summary");
     releaseMic();
@@ -334,6 +441,7 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
       try {
         const s = await backend.rpc("app_tutor_session", { p_session_id: item.id });
         mic.current = await micP;
+        micDenied.current = micAsked() && !mic.current;
         await openSession(s);
       } catch (e) {
         if (!consentLost(e)) setError({ message: messageOf(e), code: null });
@@ -361,11 +469,10 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
 
   let body;
   if (phase === "conversation" && session && opened) {
-    const reserve = opened.jeito === "reserva";
-    // na reserva, a legenda da voz do professor fica até a voz ao vivo falar
-    const rt = reserve ? (fallback?.caption && !(live.captions?.tutor ?? "").trim() ? { ...live, captions: { ...live.captions, tutor: fallback.caption } } : live) : tts;
+    const aoVivo = opened.jeito === "aovivo";
+    const rt = aoVivo ? { ...live, state: closing ? (live.state === "speaking" ? "speaking" : "thinking") : live.state } : tts;
     const card = session.question && ["questao", "erros"].includes(session.mode) ? (
-      reserve ? (
+      aoVivo ? (
         <QuestionCard
           session={session} marked={picked} gate={session.gate}
           onMark={(l) => setPicked(l)}
@@ -402,76 +509,132 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose }) {
         rt={rt}
         persona={session.personality}
         messages={session.messages ?? []}
-        avatar={reserve ? liveAvatar : tts.avatar}
-        entitlement={reserve ? status.entitlement : null}
-        note={reserve ? fallback?.note ?? liveNote ?? null : error?.message ?? fallback?.note ?? null}
+        avatar={aoVivo ? liveAvatar : tts.avatar}
+        entitlement={aoVivo ? status.entitlement : null}
+        note={aoVivo ? liveNote ?? fallback?.note ?? null : error?.message ?? fallback?.note ?? null}
         jeitoLabel={JEITO_LABEL[opened.jeito]}
         card={card}
-        onWrite={reserve ? () => void switchJeito("voice") : undefined}
+        captions={legendas}
+        onCaptions={setLegendas}
+        closing={closing}
+        onWrite={aoVivo ? () => void switchJeito("voice") : undefined}
         onClose={finish}
       />
     );
   } else if (phase === "summary" || phase === "readonly") {
-    body = <SummaryView session={session} onAgain={session?.read_only ? null : () => begin(session.personality?.id, session.mode)} busy={busy} onLobby={toLobby} onHistory={showHistory} onClose={overlay ? onClose : null} error={errorBox} />;
+    body = (
+      <SummaryView
+        session={session} farewell={phase === "summary" ? farewell : null} busy={busy} onLobby={toLobby} onClose={overlay ? onClose : null} error={errorBox}
+        onAgain={session?.read_only ? null : () => begin(session.personality?.id, session.mode)}
+        onStudy={go ? (q) => (overlay && onClose?.(), go("questoes", q)) : null}
+        onHistory={phase === "readonly" ? showHistory : null}
+      />
+    );
   } else if (phase === "history") {
     body = <HistoryView sessions={sessions} onBack={toLobby} onOpen={fromHistory} onClose={overlay ? onClose : null} error={errorBox} />;
   } else {
     body = <NexusLobby status={status} nexus={nexus} request={request} busy={busy} error={errorBox} onStart={begin} onHistory={showHistory} onListen={listen} onClose={overlay ? onClose : null} onPersonagem={savePersonagem} conta={conta} onPrepare={prepareOpening} />;
   }
-  return <div className={`nx${overlay ? " nx--overlay" : ""}`}>{body}</div>;
+  const fimClaro = phase === "summary" || phase === "readonly";
+  return <div className={`nx${overlay ? " nx--overlay" : ""}${fimClaro ? " nx--fim" : ""}`}>{body}</div>;
 }
 
 
-// ---------------------------------------------------------------- resumo e só leitura
-function SummaryBlock({ summary: s }) {
-  const list = (x) => (Array.isArray(x) ? x.filter(Boolean) : []);
-  if (!s || typeof s !== "object") return <span>Sem resumo desta conversa.</span>;
-  const lines = [
-    s.questions_answered > 0 && `${s.correct} de ${s.questions_answered} questões certas.`,
-    list(s.concepts_mastered).length > 0 && `Firmou: ${list(s.concepts_mastered).join(", ")}.`,
-    list(s.errors_detected).length > 0 && `Erros: ${[...new Set(list(s.errors_detected).map((e) => ERROR_CLASS[e.error_type] ?? e.error_type))].join(", ")}.`,
-    list(s.recurrent_errors).length > 0 && `Erros que já se repetiram: ${list(s.recurrent_errors).map((e) => ERROR_CLASS[e] ?? e).join(", ")}.`,
-    list(s.needs_review).length > 0 && `Volta em revisão: ${list(s.needs_review).join(", ")}.`,
-    list(s.next_recommended_topics).length > 0 && `Próximos temas sugeridos: ${list(s.next_recommended_topics).join(", ")}.`,
-  ].filter(Boolean);
-  if (!lines.length) return <span>Conversa curta: ainda sem resumo de estudo.</span>;
-  return lines.map((l) => <span key={l}>{l}</span>);
+// ---------------------------------------------------------------- fim da conversa e só leitura
+const lista = (x) => (Array.isArray(x) ? x.map((v) => String(v ?? "").trim()).filter(Boolean) : []);
+const minusc = (t) => (t ? t.charAt(0).toLowerCase() + t.slice(1) : t);
+
+/**
+ * O resumo de verdade do fim (2 a 3 linhas, só com o que o banco registrou; nada inventado): o que estudamos, o que acertou ou
+ * travou, e o próximo passo. Conversa curta demais: sem linhas, só o próximo passo. `next.tema` vai para Questões (10 questões).
+ */
+export function fimDaConversa(session) {
+  const s = session?.summary && typeof session.summary === "object" ? session.summary : {};
+  const tema = String(session?.topic ?? "").trim() || null;
+  const firmou = lista(s.concepts_mastered);
+  const revisar = lista(s.needs_review);
+  const erros = [...new Set((Array.isArray(s.errors_detected) ? s.errors_detected : []).map((e) => ERROR_CLASS[e?.error_type] ?? e?.error_type).filter(Boolean))];
+  const n = Number(s.questions_answered) || 0;
+  const certas = Number(s.correct) || 0;
+  const linhas = [];
+  if (tema) linhas.push(`Estudamos ${minusc(tema)}.`);
+  else if (firmou.length) linhas.push(`Estudamos ${firmou.slice(0, 2).join(" e ")}.`);
+  if (n > 0) {
+    const trava = revisar[0] ?? (erros[0] ? minusc(erros[0]) : null);
+    linhas.push(`Você acertou ${certas} de ${n} ${n === 1 ? "questão" : "questões"}${trava ? ` e travou em ${trava}` : ""}.`);
+  } else if (tema && firmou.length) linhas.push(`Você firmou ${firmou.slice(0, 2).join(" e ")}.`);
+  else if (revisar.length) linhas.push(`Vale revisar ${revisar[0]}.`);
+  const proximo = lista(s.next_recommended_topics)[0] ?? revisar[0] ?? tema;
+  // sem tema nenhum (conversa curta, livre): a sugestão é montar um treino
+  const next = proximo ? { tema: proximo, texto: `10 questões de ${minusc(proximo)}` } : { tema: null, texto: "Montar um treino de questões" };
+  const curta = !n && !firmou.length && !revisar.length && !erros.length;
+  return { linhas: curta ? [] : linhas.slice(0, 2), next, foiBem: n >= 2 && certas / n >= 0.7 };
 }
 
-function SummaryView({ session, onAgain, busy, onLobby, onHistory, onClose = null, error }) {
+function SummaryView({ session, farewell = null, onAgain, busy, onLobby, onStudy = null, onHistory = null, onClose = null, error }) {
   const p = session?.personality ?? {};
+  const quem = personagemDaConversa(p.id);
+  const nome = PERSONAGENS[quem]?.nome ?? "Tutor";
   const readOnly = Boolean(session?.read_only);
   const closed = session?.status !== "active";
+  const fim = fimDaConversa(session);
+  const [verConversa, setVerConversa] = React.useState(false);
+  const mensagens = (session?.messages ?? []).filter((m) => m.role === "tutor" || m.role === "student");
   return (
-    <div className="nx-summary">
+    <div className="nx-fim">
       {onClose && (
-        <div className="nx-top__actions nx-summary__close">
-          <button type="button" className="nx-pill" aria-label="Fechar o Tutor" onClick={onClose}>Fechar</button>
+        <div className="nx-fim__fechar">
+          <Button variant="ghost" size="sm" aria-label="Fechar o Tutor" onClick={onClose}>Fechar</Button>
         </div>
       )}
-      <div className="nx-summary__orb" aria-hidden="true">
-        <PersonagemTutor personagem={personagemDaConversa(p.id)} conversationState={closed ? "ended" : "idle"} emotion="neutral" emotionIntensity={0.3} decorativo />
+      <div className="nx-fim__personagem" aria-hidden="true">
+        {/* despedida: acena; se foi bem, acena e comemora (orgulho) */}
+        <PersonagemTutor personagem={quem} conversationState={fim.foiBem ? "ready" : closed ? "ended" : "idle"} emotion={fim.foiBem ? "proud" : "happy"} emotionIntensity={fim.foiBem ? 0.85 : 0.4} decorativo />
       </div>
-      <div className="nx-summary__head">
-        <span className="nx-overline">{readOnly ? "Só leitura" : closed ? "Conversa encerrada" : "Conversa"}</span>
-        <h2 className="nx-summary__title">{p.emoji} {p.name} · {modeLabel(session?.mode)}</h2>
-      </div>
-      {readOnly && <p className="nx-changed">{PROFESSOR_CHANGED}</p>}
-      <div className="nx-summary__box">
-        <span className="nx-overline">Resumo</span>
-        <SummaryBlock summary={session?.summary} />
-      </div>
+      <header className="nx-fim__cabeca">
+        <h2 className="nx-fim__nome">{nome}</h2>
+        {p.name && <span className="nx-fim__jeito">{p.name}</span>}
+      </header>
+      {farewell && <p className="nx-fim__fala">“{farewell}”</p>}
+      {readOnly && <p className="nx-fim__aviso">{PROFESSOR_CHANGED}</p>}
+      {fim.linhas.length > 0 && (
+        <div className="nx-fim__resumo">
+          {fim.linhas.map((l) => <p key={l}>{l}</p>)}
+        </div>
+      )}
+      {fim.next && (
+        <div className="nx-fim__passo">
+          <span className="nx-fim__rotulo">Próximo passo</span>
+          {onStudy ? (
+            <Button variant="secondary" iconRight="arrow-right" onClick={() => onStudy(fim.next.tema ? { tema: fim.next.tema, status: "all", quantidade: "10" } : undefined)}>{fim.next.texto}</Button>
+          ) : (
+            <span className="nx-fim__passo-texto">{fim.next.texto}</span>
+          )}
+        </div>
+      )}
       {error}
-      <div className="nx-summary__actions">
-        {onAgain && (
-          <>
-            <button type="button" className="nx-start" onClick={onAgain} disabled={busy}>Conversar de novo com {withArticle(p)}</button>
-            <span className="nx-summary__note">Abre uma conversa nova com o mesmo professor.</span>
-          </>
-        )}
-        <button type="button" className="nx-ghost" onClick={onLobby}>Trocar de professor</button>
-        <button type="button" className="nx-ghost" onClick={onHistory}>Histórico</button>
+      <div className="nx-fim__acoes">
+        {onAgain && <Button fullWidth size="lg" onClick={onAgain} loading={busy}>{`Continuar com ${PERSONAGENS[quem]?.genero === "a" ? "a" : "o"} ${nome}`}</Button>}
+        <div className="nx-fim__links">
+          <button type="button" className="nx-fim__link" onClick={onLobby}>Trocar de personagem ou jeito</button>
+          {onHistory && <button type="button" className="nx-fim__link" onClick={onHistory}>Voltar ao histórico</button>}
+          {mensagens.length > 0 && (
+            <button type="button" className="nx-fim__link" aria-expanded={verConversa} onClick={() => setVerConversa((v) => !v)}>
+              {verConversa ? "Esconder a conversa" : "Ver a conversa"}
+            </button>
+          )}
+        </div>
       </div>
+      {verConversa && (
+        <ol className="nx-fim__conversa" aria-label="A conversa">
+          {mensagens.map((m, i) => (
+            <li key={m.id ?? i} className={`nx-fim__msg is-${m.role}`}>
+              <span className="nx-fim__quem">{m.role === "tutor" ? nome : "Você"}</span>
+              {m.content}
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }

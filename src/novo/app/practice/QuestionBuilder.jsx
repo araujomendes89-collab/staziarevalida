@@ -174,7 +174,8 @@ export function QuestionBuilder({ go, mode }) {
       search: params.get("tema") ?? "",
       exam: params.get("prova") === "staziamed" ? "staziamed" : "",
       status: sim ? "all" : STATUS_OPTIONS.some((o) => o.value === status) ? status : "unanswered",
-      count: sim ? "30" : "20",
+      // "10 questões de …" (fim da conversa com o Tutor): a quantidade pode vir no endereço, só entre as opções da tela
+      count: sim ? "30" : ["10", "20", "30", "50"].includes(params.get("quantidade")) ? params.get("quantidade") : "20",
       timer: "prova",
       hours: "",
       minutes: "",

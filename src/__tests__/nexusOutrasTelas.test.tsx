@@ -75,7 +75,7 @@ const dock = async (request: any, label: string, below: React.ReactNode = null) 
     </TutorDockProvider>
   );
   fireEvent.click(screen.getByText(label));
-  const overlay = await screen.findByRole("dialog", { name: "Nexus" });
+  const overlay = await screen.findByRole("dialog", { name: "Tutor" });
   await within(overlay).findByRole("heading", { name: "Escolha seu professor" });
   return overlay;
 };
@@ -132,7 +132,7 @@ describe("Nexus por cima das outras telas", () => {
     await act(async () => { await new Promise((r) => setTimeout(r, 60)); });
     expect(Number(screen.getByTestId("cronometro").textContent)).toBeGreaterThan(before); // o treino segue por baixo
     fireEvent.click(within(overlay).getByRole("button", { name: "Fechar o Tutor" }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nexus" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Tutor" })).toBeNull());
     expect(screen.getByTestId("cronometro")).toBeInTheDocument();
     expect(mounts).toBe(1);
   });

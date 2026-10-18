@@ -19,15 +19,15 @@ vi.mock("../novo/app/tutor/voice/audioUnlock.js", () => ({
   getAudioContext: () => null,
 }));
 vi.mock("../novo/app/tutor/voice/StaziaVoiceOrb.jsx", () => ({ StaziaVoiceOrb: () => <div data-testid="orb" />, orbEmotion: () => ({ emotion: "neutral", intensity: 0.2 }) }));
-// voz reserva (ao vivo): o gancho de hoje, simulado
-const live = vi.hoisted(() => ({ starts: [] as unknown[], stops: 0, opts: null as any }));
+// voz ao vivo (o jeito normal desde 18/10): o gancho de hoje, simulado
+const live = vi.hoisted(() => ({ starts: [] as unknown[], startOpts: [] as any[], stops: 0, opts: null as any }));
 vi.mock("../novo/app/tutor/useRealtimeVoice.js", () => ({
   realtimeErrorMessage: (e: any) => e?.message ?? "erro",
   useRealtimeVoice: (opts: any) => {
     live.opts = opts;
     return {
       state: "ready", error: null, captions: { tutor: "", student: "" }, streams: { input: null, output: null }, muted: false, provider: "realtime", remaining: null,
-      start: (force?: boolean) => live.starts.push(force ?? false), stop: async () => { live.stops++; }, interrupt() {}, sendText() {}, toggleMute() {}, setVolume() {}, active: true,
+      start: (force?: boolean, o?: any) => (live.startOpts.push(o ?? null), live.starts.push(force ?? false)), stop: async () => { live.stops++; }, interrupt() {}, sendText() {}, toggleMute() {}, setVolume() {}, active: true,
     };
   },
 }));
@@ -41,7 +41,7 @@ const PERSONALITIES = [
 const ENT = { enabled: true, mode: "paid", is_paid: true, staff: false, trial: { state: "none", days: 7 }, can_use: true, can_text: true, can_voice: true, text: { used: 2, limit: 40, remaining: 38 }, voice: { enabled: true, remaining_s: 600 }, questions: { limit: null, used: 0 } };
 const status = (over: any = {}) => ({ enabled: true, available: true, requires_pro: true, daily_limit: 40, used_today: 2, voice_enabled: true, reviews_due: 0, entitlement: ENT, preferences: { personality_id: "durona", profanity: "moderate", chosen: true }, personalities: PERSONALITIES, ...over });
 const nexus = (over: any = {}) => ({
-  voice_enabled: true, stt: true, reserve: true, reserve_minutes: 10, minutes_today: 5,
+  voice_enabled: true, stt: true, live: true, live_minutes: 10, reserve: true, reserve_minutes: 10, minutes_today: 5,
   // uma voz por personagem: a do Stazi (Durão e Tranquilo) ainda não foi aprovada; a da Stazia (Durona e Tranquila) sim
   professors: [{ id: "durao", eleven: false, sample: false, reason: "not_approved" }, { id: "acolhedor", eleven: false, sample: false, reason: "not_approved" }, { id: "durona", eleven: true, sample: true, reason: null }, { id: "tranquila", eleven: true, sample: true, reason: null }],
   ...over,
@@ -69,6 +69,7 @@ beforeEach(() => {
   audio.order.length = 0;
   audio.unlock.mockClear();
   live.starts.length = 0;
+  live.startOpts.length = 0;
   live.stops = 0;
   tracks = [];
   (navigator as any).mediaDevices = {
@@ -257,22 +258,25 @@ describe("Nexus: entrada", () => {
     expect(rpcCalls.some((c) => c.fn === "app_tutor_start")).toBe(false); // ouvir não começa conversa
   });
 
-  it("linha de voz: 'Voz hoje: 5 min', 'Voz reserva hoje: 10 min' ou 'Professor por escrito hoje'; aviso da Política sempre visível", async () => {
+  it("linha de voz: 'Voz: 10 min' (ao vivo), 'Voz hoje: 5 min' (modo reserva) ou 'Conversa por escrito hoje'; aviso da Política sempre visível", async () => {
     await mount();
-    expect(await screen.findByText("Voz hoje: 5 min")).toHaveClass("nx-voice-line__min"); // minutos em fonte de números
+    expect(await screen.findByText("Voz: 10 min")).toHaveClass("nx-voice-line__min"); // minutos em fonte de números
+    expect(screen.getByText("Conversa por voz")).toBeInTheDocument();
     expect(screen.getByText(POLICY)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Stazi\b/ })); // a voz do Stazi não está aprovada: vai para a reserva
-    expect(await screen.findByText("Voz reserva hoje: 10 min")).toBeInTheDocument();
     cleanup();
-    server["/api/tutor/nexus"] = () => ({ body: nexus({ reserve: false, reserve_minutes: 0, professors: nexus().professors.map((p: any) => ({ ...p, eleven: false, sample: false })) }) });
+    // sem a voz ao vivo: a voz do professor (modo reserva), se aprovada para o professor escolhido
+    server["/api/tutor/nexus"] = () => ({ body: nexus({ live: false, live_minutes: 0, reserve: false, reserve_minutes: 0 }) });
     await mount();
-    expect(await screen.findByText("Professor por escrito hoje")).not.toHaveClass("nx-voice-line__min"); // sem números, texto normal
+    expect(await screen.findByText("Voz hoje: 5 min")).toBeInTheDocument();
+    expect(screen.getByText("Modo reserva")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Stazi\b/ })); // a voz do Stazi não está aprovada: por escrito
+    expect(await screen.findByText("Conversa por escrito hoje")).not.toHaveClass("nx-voice-line__min"); // sem números, texto normal
     expect(screen.getByText(POLICY)).toBeInTheDocument();
   });
 
   it("Começar: som liberado e microfone pedido no mesmo toque; conversa com p_personality e jeito aberto; toque duplo cria uma só", async () => {
     await mount();
-    await screen.findByText("Voz hoje: 5 min");
+    await screen.findByText("Voz: 10 min");
     const b = startButton();
     fireEvent.click(b);
     fireEvent.click(b);
@@ -283,8 +287,9 @@ describe("Nexus: entrada", () => {
     expect(starts[0].args).toEqual({ p_mode: "livre", p_topic: null, p_question_id: null, p_context: { type: "free" }, p_personality: "durona" });
     expect(calls.find((c) => c.url.endsWith("/voice/open"))!.body).toEqual({ session_id: SID });
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Voz do professor")).toBeInTheDocument();
+    expect(within(dialog).getByText("Modo reserva")).toBeInTheDocument(); // o servidor mandou a cascata
     expect(tracks[0].stopped).toBe(false); // o microfone fica para a conversa
+    expect((navigator as any).mediaDevices.getUserMedia).toHaveBeenCalledWith({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
   });
 
   it("outra aba com voz aberta: a mensagem e 'Assumir aqui' (force)", async () => {
@@ -302,17 +307,23 @@ describe("Nexus: entrada", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
-  it("reserva: a voz ao vivo como hoje, com o selo do professor (não é botão) e 'Voz reserva'", async () => {
-    server["/api/tutor/voice/open"] = () => ({ body: { jeito: "reserva", voice_call_id: null, mic: true, reason: "not_approved", minutes_today: 5, reserve_minutes: 10 } });
+  it("voz ao vivo: o título é o personagem (Stazia), o selo mostra o jeito (Durona, não é botão) e não diz 'Voz do professor'; o microfone do toque segue para ela", async () => {
+    server["/api/tutor/voice/open"] = () => ({ body: { jeito: "aovivo", voice_call_id: null, mic: true, reason: null, minutes_today: 5, reserve_minutes: 10, live_minutes: 10 } });
     await mount();
     fireEvent.click(startButton());
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Voz reserva")).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Stazia" })).toBeInTheDocument();
+    expect(within(dialog).queryByText("Nexus")).toBeNull();
     expect(within(dialog).getByText("Durona")).toBeInTheDocument();
     expect(within(dialog).queryByRole("button", { name: /Durona/ })).toBeNull();
+    expect(within(dialog).queryByText(/Voz do professor|Voz reserva|Modo reserva/)).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: /^Falar$|^Enviar/ })).toBeNull();
     await waitFor(() => expect(live.starts.length).toBe(1));
     expect(live.opts).toMatchObject({ sessionId: SID });
-    expect(tracks[0].stopped).toBe(true); // a reserva pede o microfone por conta própria
+    // o microfone pedido no toque vai para a voz ao vivo: nada de pedir de novo depois da espera (Safari)
+    expect(live.startOpts[0]).toMatchObject({ stream: expect.anything() });
+    expect((navigator as any).mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
+    expect(tracks[0].stopped).toBe(false);
     expect(JSON.stringify(document.body.textContent)).not.toMatch(/ElevenLabs|OpenAI|Gemini|Google/);
   });
 
@@ -322,17 +333,19 @@ describe("Nexus: entrada", () => {
     fireEvent.click(startButton());
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Encerrar a conversa por voz" }));
-    expect(await screen.findByText("Conversa encerrada")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Continuar com a Stazia" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Stazia" })).toBeInTheDocument();
     expect(rpcCalls.find((c) => c.fn === "app_tutor_close")!.args).toEqual({ p_session_id: SID });
     expect(calls.find((c) => c.url.endsWith("/voice/end"))!.body).toMatchObject({ voice_call_id: CALL });
-    expect(screen.getByText(/1 de 2 questões certas/)).toBeInTheDocument();
+    expect(await screen.findByText("Você acertou 1 de 2 questões.")).toBeInTheDocument();
+    expect(screen.queryByText(/RESUMO|Resumo|Conversa curta/)).toBeNull();
     rpcImpl.app_tutor_start = () => session({ id: SID2 });
-    fireEvent.click(screen.getByRole("button", { name: "Conversar de novo com a Durona" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continuar com a Stazia" }));
     await waitFor(() => expect(rpcCalls.filter((c) => c.fn === "app_tutor_start")).toHaveLength(2));
     expect(rpcCalls.filter((c) => c.fn === "app_tutor_start")[1].args).toMatchObject({ p_mode: "livre", p_personality: "durona" });
     const again = await screen.findByRole("dialog");
     fireEvent.click(within(again).getByRole("button", { name: "Encerrar a conversa por voz" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Trocar de professor" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Trocar de personagem ou jeito" }));
     expect(await screen.findByRole("heading", { name: "Escolha seu professor" })).toBeInTheDocument();
   });
 
@@ -353,17 +366,17 @@ describe("Nexus: entrada", () => {
     await mount();
     fireEvent.click(screen.getByRole("button", { name: "Histórico" }));
     fireEvent.click(await screen.findByRole("button", { name: /Durona · Perguntar ao Tutor/ }));
-    expect(await screen.findByText(/Firmou: sulfato de magnésio/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Conversar de novo com a Durona" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Histórico" }));
+    expect(await screen.findByText("Estudamos sulfato de magnésio.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continuar com a Stazia" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Voltar ao histórico" }));
     fireEvent.click(await screen.findByRole("button", { name: /Acolhedor · Questões/ }));
     expect(await screen.findByText("Este professor mudou. Comece uma conversa nova.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Conversar de novo/ })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Histórico" }));
+    expect(screen.queryByRole("button", { name: /Continuar com/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Voltar ao histórico" }));
     fireEvent.click(await screen.findByRole("button", { name: /Preguiçoso/ }));
     expect(await screen.findByText("Este professor mudou. Comece uma conversa nova.")).toBeInTheDocument();
     expect(calls.some((c) => c.url.endsWith("/voice/open"))).toBe(false);
-    fireEvent.click(screen.getByRole("button", { name: "Histórico" }));
+    fireEvent.click(screen.getByRole("button", { name: "Voltar ao histórico" }));
     fireEvent.click(await screen.findByRole("button", { name: /Durão · Me teste/ }));
     await waitFor(() => expect(calls.find((c) => c.url.endsWith("/voice/open"))!.body).toEqual({ session_id: SID }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
@@ -389,7 +402,7 @@ describe("Nexus: entrada", () => {
     cleanup();
     rpcImpl.app_tutor_status = () => status();
     await mount();
-    await screen.findByText("Voz hoje: 5 min");
+    await screen.findByText("Voz: 10 min");
     expect(document.body.textContent).not.toMatch(/ElevenLabs|OpenAI|Gemini|Google/);
   });
 });

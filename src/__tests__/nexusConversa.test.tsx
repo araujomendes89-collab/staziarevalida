@@ -1,7 +1,7 @@
 /**
- * A conversa da Nexus pela voz do professor (spec §5, §8 e §16 "Turno"): a fala do aluno vai à transcrição e ao motor; a
- * legenda e a emoção aparecem antes do som; o microfone fecha enquanto o professor fala e volta a ouvir sozinho (computador e
- * Android) ou com "Toque para falar" (iPhone e iPad); "Interromper" corta o som e manda o trecho; a letra só marca e
+ * A conversa da Nexus pela voz do professor em cascata (o MODO RESERVA desde 18/10; spec §5, §8 e §16 "Turno"): a fala do aluno
+ * vai à transcrição e ao motor; a legenda (só com "Legendas" ligado) e a emoção aparecem antes do som; o microfone fecha enquanto
+ * o professor fala e volta a ouvir sozinho em todo aparelho (sem "Falar"/"Enviar"; medidor parado pede um toque); "Interromper" corta o som e manda o trecho; a letra só marca e
  * "Responder" responde; a rede que cai repete o mesmo client_turn_id; por escrito sem som; microfone negado segue pelo Chat;
  * limite ou aprovação revogada passam para a reserva; falhas com as mensagens exatas; os tempos de cada etapa nas métricas.
  */
@@ -45,14 +45,13 @@ vi.mock("../novo/app/tutor/useRealtimeVoice.js", () => ({
   }),
 }));
 // gravação: o teste decide quando a fala termina
-const rec = vi.hoisted(() => ({ tap: false, calls: [] as any[], next: null as any }));
+const rec = vi.hoisted(() => ({ calls: [] as any[], next: null as any }));
 vi.mock("../novo/app/tutor/nexus/recorder.js", async () => {
   const actual: any = await vi.importActual("../novo/app/tutor/nexus/recorder.js");
   return {
     ...actual,
-    tapToTalkDevice: () => rec.tap,
     startRecording: (opts: any) => {
-      const h = { opts, stopped: false, cancelled: false, stop() { this.stopped = true; opts.onDone(rec.next); }, cancel() { this.cancelled = true; opts.onDone(null); } };
+      const h = { opts, stopped: false, cancelled: false, finished: false, stop() { this.stopped = true; opts.onDone(rec.next); }, finish() { this.finished = true; opts.onDone(rec.next); }, cancel() { this.cancelled = true; opts.onDone(null); } };
       rec.calls.push(h);
       return h;
     },
@@ -89,7 +88,8 @@ const PERSONALITIES = [
 ];
 const ENT = { enabled: true, mode: "paid", is_paid: true, trial: { state: "none", days: 7 }, can_use: true, can_text: true, can_voice: true, text: { used: 0, limit: 40, remaining: 40 }, voice: { enabled: true, remaining_s: 600 }, questions: { limit: null, used: 0 } };
 const status = () => ({ enabled: true, available: true, requires_pro: true, daily_limit: 40, used_today: 0, voice_enabled: true, reviews_due: 0, entitlement: ENT, preferences: { personality_id: "durona", profanity: "moderate", chosen: true }, personalities: PERSONALITIES });
-const nexus = { voice_enabled: true, stt: true, reserve: true, reserve_minutes: 10, minutes_today: 5, professors: PERSONALITIES.map((p) => ({ id: p.id, eleven: true, sample: false, reason: null })) };
+// a voz ao vivo indisponível para a conta: a conversa abre no modo reserva (a voz do professor em cascata)
+const nexus = { voice_enabled: true, stt: true, live: false, live_minutes: 0, reserve: false, reserve_minutes: 0, minutes_today: 5, professors: PERSONALITIES.map((p) => ({ id: p.id, eleven: true, sample: false, reason: null })) };
 const SID = "22222222-2222-4222-8222-222222222222";
 const CALL = "33333333-3333-4333-8333-333333333333";
 const STATEMENT = "Gestante de 34 semanas com PA de 170 por 110 e cefaleia intensa. Qual a conduta inicial?";
@@ -115,7 +115,8 @@ beforeEach(async () => {
   live.starts = 0;
   live.sent.length = 0;
   live.error = null;
-  rec.tap = false;
+  // legendas ligadas nesta suíte (os testes leem a fala na tela); o teste "Legendas" confere o padrão desligado
+  window.localStorage.setItem("smn-voz-legendas:anonimo", "1");
   rec.calls = [];
   rec.next = { blob: new Blob(["fala"], { type: "audio/webm" }), mime: "audio/webm", seconds: 2.5 };
   player.plays = [];
@@ -192,7 +193,7 @@ describe("Nexus: a conversa pela voz do professor", () => {
   it("voz do professor: a fala vai à transcrição e ao motor; legenda e emoção antes do som; depois volta a ouvir sozinho", async () => {
     const dialog = await openConversation();
     await waitFor(() => expect(rec.calls).toHaveLength(1));
-    expect(rec.calls[0].opts.auto).toBe(true);
+    expect(rec.calls[0].opts.onMeterDead).toEqual(expect.any(Function)); // grava e para sozinho (sem "Falar"/"Enviar")
     let release!: () => void;
     speechGate = () => new Promise<void>((r) => (release = r));
     await speak();
@@ -211,22 +212,40 @@ describe("Nexus: a conversa pela voz do professor", () => {
     await finishSpeaking();
     expect(speechCalls().at(-1)!.body).toEqual({ kind: "message", session_id: SID, message_id: 7 });
     await waitFor(() => expect(rec.calls).toHaveLength(2));
-    expect(rec.calls[1].opts.auto).toBe(true);
+    expect(rec.calls[1].opts.onMeterDead).toEqual(expect.any(Function));
   });
 
-  it("iPhone/iPad: 'Falar' e 'Enviar'; depois do professor, 'Toque para falar'", async () => {
-    rec.tap = true;
+  it("sem 'Falar' nem 'Enviar' (iPhone também): grava sozinho; medidor parado pede UM toque; parado de novo, 'Terminei de falar'", async () => {
     const dialog = await openConversation();
-    expect(await within(dialog).findByText("Toque para falar")).toBeInTheDocument();
-    expect(rec.calls).toHaveLength(0);
-    fireEvent.click(within(dialog).getByRole("button", { name: "Falar" }));
     await waitFor(() => expect(rec.calls).toHaveLength(1));
-    expect(rec.calls[0].opts.auto).toBe(false);
-    fireEvent.click(within(dialog).getByRole("button", { name: "Enviar a fala" }));
+    expect(within(dialog).queryByRole("button", { name: "Falar" })).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: /Enviar/ })).toBeNull();
+    expect(within(dialog).queryByText("Toque para falar")).toBeNull();
+    // o medidor do navegador só devolveu zeros: um toque acorda o som e a gravação recomeça sozinha
+    await act(async () => rec.calls[0].opts.onMeterDead());
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Toque para eu voltar a te ouvir" }));
+    await waitFor(() => expect(rec.calls).toHaveLength(2));
+    expect(rec.calls[0].cancelled).toBe(true);
+    // parou de novo: o toque passa a encerrar a fala (um por fala, só neste caso raro)
+    await act(async () => rec.calls[1].opts.onMeterDead());
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Terminei de falar" }));
+    expect(rec.calls[1].finished).toBe(true);
     await waitFor(() => expect(sayCalls()).toHaveLength(1));
-    await finishSpeaking();
-    expect(await within(dialog).findByText("Toque para falar")).toBeInTheDocument();
-    expect(rec.calls).toHaveLength(1);
+  });
+
+  it("Legendas: desligadas por padrão (a fala não aparece escrita); ligadas, mostram a fala numa faixa própria e ficam guardadas", async () => {
+    window.localStorage.removeItem("smn-voz-legendas:anonimo");
+    const dialog = await openConversation();
+    await speak();
+    await waitFor(() => expect(sayCalls()).toHaveLength(1));
+    await waitFor(() => expect(within(dialog).getByTestId("orb")).toHaveAttribute("data-emotion", "annoyed"));
+    expect(within(dialog).queryByText(REPLY)).toBeNull();
+    const botao = within(dialog).getByRole("button", { name: "Legendas" });
+    expect(botao).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(botao);
+    expect(botao).toHaveAttribute("aria-pressed", "true");
+    expect(within(dialog).getByText(REPLY).closest(".svm__legenda")).not.toBeNull();
+    expect(window.localStorage.getItem("smn-voz-legendas:anonimo")).toBe("1");
   });
 
   it("Interromper para o som na hora e manda o trecho como interrupted", async () => {
@@ -319,10 +338,10 @@ describe("Nexus: a conversa pela voz do professor", () => {
     expect(rec.calls).toHaveLength(0);
   });
 
-  it("limite do dia ou aprovação revogada no meio: passa para a reserva com a mensagem certa e a legenda fica", async () => {
+  it("limite do dia ou aprovação revogada no meio: passa para a voz ao vivo com a mensagem certa", async () => {
     server["/api/tutor/speech"] = async (body: any) => (body.message_id === 7 ? { status: 429, body: { error: "Você usou sua voz de hoje", code: "voice_student_limit" } } : { audio: true });
     const eleven = server["/api/tutor/voice/open"];
-    server["/api/tutor/voice/open"] = (body: any, init: any) => (body.skip === "eleven" ? { body: { jeito: "reserva", voice_call_id: null, mic: true, reason: "student_limit", minutes_today: 0, reserve_minutes: 10 } } : eleven(body, init));
+    server["/api/tutor/voice/open"] = (body: any, init: any) => (body.skip === "eleven" ? { body: { jeito: "aovivo", voice_call_id: null, mic: true, reason: "student_limit", minutes_today: 0, reserve_minutes: 10, live_minutes: 10 } } : eleven(body, init));
     const dialog = await openConversation();
     await speak();
     expect(await screen.findByText("Você usou sua voz de hoje")).toBeInTheDocument();
@@ -330,8 +349,7 @@ describe("Nexus: a conversa pela voz do professor", () => {
     expect(calls.filter((c) => c.url === "/api/tutor/voice/open")[1].body).toEqual({ session_id: SID, force: true, skip: "eleven" }); // o servidor escolhe o jeito
     expect(calls.findIndex((c) => c.url === "/api/tutor/voice/end")).toBeLessThan(calls.map((c) => c.url).lastIndexOf("/api/tutor/voice/open")); // a chamada da voz do professor fecha antes
     const now = screen.getByRole("dialog");
-    expect(within(now).getByText("Voz reserva")).toBeInTheDocument();
-    expect(within(now).getByText(REPLY)).toBeInTheDocument();
+    expect(within(now).queryByText("Modo reserva")).toBeNull(); // a voz ao vivo não leva selo
     expect(dialog).toBeTruthy();
     // aprovação revogada no meio: a mesma passagem, com o aviso de voz indisponível
     cleanup();
@@ -383,7 +401,7 @@ describe("Nexus: a conversa pela voz do professor", () => {
     server["/api/tutor/turn"] = (body: any) => ({ body: { message: { id: body.action === "react" ? 9 : 8, content: body.action === "react" ? "Errou. A pista estava no enunciado." : REPLY }, question_state: body.action === "react" ? "answered" : "open", gate: null, tone: null, used_today: 1, daily_limit: 40 } });
     const { NexusScreen } = await import("../novo/app/tutor/nexus/NexusScreen.jsx");
     render(<NexusScreen go={vi.fn()} />);
-    await screen.findByText("Professor por escrito hoje");
+    await screen.findByText("Conversa por escrito hoje");
     fireEvent.click(screen.getByRole("button", { name: /^Começar com/ }));
     const dialog = await screen.findByRole("dialog");
     const input = await within(dialog).findByLabelText("Escrever para o Tutor");
@@ -440,10 +458,10 @@ describe("Nexus: a conversa pela voz do professor", () => {
     const firstCtx = audio.ctx;
     rpcImpl.app_tutor_session = () => session({ status: "closed" });
     fireEvent.click(within(dialog).getByRole("button", { name: "Encerrar a conversa por voz" }));
-    expect(await screen.findByText("Conversa encerrada")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^Continuar com a Stazia/ })).toBeInTheDocument();
     expect(firstCtx.state).toBe("closed"); // a tela de voz fechou o som ao sair
     rpcImpl.app_tutor_session = () => session();
-    fireEvent.click(screen.getByRole("button", { name: /^Conversar de novo com/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Continuar com a Stazia/ }));
     const second = await screen.findByRole("dialog");
     expect(within(second).getByTestId("orb").dataset.emotion).toBe("neutral");
     await waitFor(() => expect(player.plays.length).toBe(1)); // a abertura toca
@@ -502,23 +520,26 @@ describe("Nexus: a conversa pela voz do professor", () => {
     await waitFor(() => expect(sayCalls().at(-1)!.body).toMatchObject({ voice_call_id: ESC, text: "segue por escrito" }));
   });
 
-  it("na reserva sem microfone ou sem tempo ao vivo: 'Escrever pelo Chat' passa para por escrito e o Chat manda ao motor", async () => {
-    const ESC = "66666666-6666-4666-8666-666666666666";
-    server["/api/tutor/voice/open"] = (body: any) => (body.skip === "voice"
-      ? { body: { jeito: "escrito", voice_call_id: ESC, mic: true, reason: null, minutes_today: 0, reserve_minutes: 0 } }
-      : { body: { jeito: "reserva", voice_call_id: null, mic: true, reason: "not_approved", minutes_today: 5, reserve_minutes: 10 } });
+  it("voz ao vivo sem minutos (ou ponte fora): passa SOZINHA para o modo reserva, com aviso curto e sem tocar em nada", async () => {
+    const vivo = { jeito: "aovivo", voice_call_id: null, mic: true, reason: null, minutes_today: 5, reserve_minutes: 10, live_minutes: 10 };
+    const cascata = server["/api/tutor/voice/open"];
+    server["/api/tutor/voice/open"] = (body: any, init: any) => (body.skip === "aovivo" ? cascata(body, init) : { body: vivo });
     live.error = { kind: "quota", message: "Você atingiu seu limite de voz de hoje." };
     const dialog = await openConversation({ finishOpening: false });
-    expect(within(dialog).getByText("Você atingiu seu limite de voz de hoje.")).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Escrever pelo Chat" }));
     await waitFor(() => expect(calls.filter((c) => c.url === "/api/tutor/voice/open")).toHaveLength(2));
-    expect(calls.filter((c) => c.url === "/api/tutor/voice/open")[1].body).toEqual({ session_id: SID, force: true, skip: "voice" });
+    expect(calls.filter((c) => c.url === "/api/tutor/voice/open")[1].body).toEqual({ session_id: SID, force: true, skip: "aovivo" });
+    expect(await within(dialog).findByText("Seus minutos de voz ao vivo acabaram. A conversa continua no modo reserva.")).toBeInTheDocument();
+    expect(within(dialog).getByText("Modo reserva")).toBeInTheDocument();
+    await waitFor(() => expect(player.plays.length).toBe(1)); // a voz do professor fala a abertura e a conversa segue
+    await act(async () => player.plays.shift()!.resolve(true));
+    await waitFor(() => expect(rec.calls.length).toBeGreaterThan(0));
+    // a voz ao vivo caiu e depois a do professor também: por escrito (sem voltar para a voz ao vivo)
+    server["/api/tutor/speech"] = async () => ({ status: 429, body: { error: "Você usou sua voz de hoje", code: "voice_student_limit" } });
+    server["/api/tutor/voice/open"] = (body: any) => ({ body: body.skip === "voice" ? { jeito: "escrito", voice_call_id: "66666666-6666-4666-8666-666666666666", mic: true, reason: "student_limit", minutes_today: 0, reserve_minutes: 0 } : vivo });
+    await speak();
+    await waitFor(() => expect(calls.filter((c) => c.url === "/api/tutor/voice/open")).toHaveLength(3));
+    expect(calls.filter((c) => c.url === "/api/tutor/voice/open")[2].body).toEqual({ session_id: SID, force: true, skip: "voice" });
     expect(await within(dialog).findByText("Por escrito")).toBeInTheDocument();
-    const input = within(dialog).getByLabelText("Escrever para o Tutor");
-    await waitFor(() => expect(input).not.toBeDisabled());
-    fireEvent.change(input, { target: { value: "oi" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Enviar" }));
-    await waitFor(() => expect(sayCalls().at(-1)!.body).toMatchObject({ voice_call_id: ESC, text: "oi" }));
   });
 
   it("os tempos de cada etapa vão nas métricas ao encerrar", async () => {
@@ -531,6 +552,6 @@ describe("Nexus: a conversa pela voz do professor", () => {
     const end = calls.find((c) => c.url === "/api/tutor/voice/end")!.body;
     expect(end).toMatchObject({ voice_call_id: CALL, reason: "student" });
     for (const k of ["stt_ms_avg", "engine_ms_avg", "tts_ms_avg", "play_start_ms_avg"]) expect(typeof end.metrics[k], k).toBe("number");
-    expect(await screen.findByText("Conversa encerrada")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^Continuar com a Stazia/ })).toBeInTheDocument();
   });
 });

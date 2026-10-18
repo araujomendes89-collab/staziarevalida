@@ -59,6 +59,7 @@ let server: Record<string, (body: any, init: any) => { status?: number; body?: a
 const calls: { url: string; body: any; headers: any }[] = [];
 
 beforeEach(() => {
+  window.localStorage.setItem("smn-voz-legendas:anonimo", "1"); // estes testes leem a fala na tela (Legendas ligadas)
   sent.length = 0;
   calls.length = 0;
   dc = null;
@@ -72,7 +73,7 @@ beforeEach(() => {
     "/api/tutor/status": () => ({ body: { ready: true, simulated: false, neural_voice: false, realtime_voice: true } }),
     // Nexus: sem voz do professor aprovada, a conversa abre na voz reserva (a voz ao vivo)
     "/api/tutor/nexus": () => ({ body: { voice_enabled: true, stt: false, reserve: true, reserve_minutes: 60, minutes_today: 0, professors: PERSONALITIES.map((p) => ({ id: p.id, eleven: false, sample: false, reason: "not_approved" })) } }),
-    "/api/tutor/voice/open": () => ({ body: { jeito: "reserva", voice_call_id: null, mic: true, reason: "not_approved", minutes_today: 0, reserve_minutes: 60 } }),
+    "/api/tutor/voice/open": () => ({ body: { jeito: "aovivo", voice_call_id: null, mic: true, reason: "not_approved", minutes_today: 0, reserve_minutes: 60 } }),
     "/api/tutor/voice/start": () => ({ body: { voice_call_id: "33333333-3333-4333-8333-333333333333", client_secret: "ek_temporario", model: "m", lease_seconds: 120, entitlement: { voice: { remaining_s: 540 } } } }),
     "https://api.openai.com/v1/realtime/calls": () => ({ text: "v=0 answer", headers: { Location: "/v1/realtime/calls/rtc_123" } }),
     "/api/tutor/voice/renew": () => ({ body: { stop: false, lease_seconds: 120, remaining_s: 500 } }),
@@ -116,7 +117,7 @@ describe("Voz em tempo real na tela", () => {
     dc.onopen();
     emit({ type: "session.created", session: { instructions: `${TUTOR_SPOKEN_LANGUAGE}\n\nRegras médicas e personalidade.\n\n${TUTOR_SPOKEN_REMINDER}` } });
     // a conversa por voz abre em tela cheia (Stazia Voice Mode)
-    expect(await screen.findByRole("dialog", { name: "Nexus" })).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: /^Stazia?$/ })).toBeTruthy();
     expect(await screen.findByText("Ouvindo...")).toBeTruthy();
     expect(sent[0]).toEqual({ type: "response.create" }); // o professor abre a conversa
     // ferramenta pedida pela voz: o servidor executa e o resultado volta pelo canal
@@ -131,13 +132,13 @@ describe("Voz em tempo real na tela", () => {
     emit({ type: "response.output_audio_transcript.done", transcript: "Tem certeza? Olha o comando." });
     expect((await screen.findAllByText("Tem certeza? Olha o comando.")).length).toBeGreaterThan(0); // legenda e conversa
     expect(calls.find((c) => c.url === "/api/tutor/voice/transcript")!.body).toMatchObject({ role: "tutor", text: "Tem certeza? Olha o comando." });
-    fireEvent.click(await screen.findByText("Interromper"));
-    expect(sent.slice(-2)).toEqual([{ type: "response.cancel" }, { type: "output_audio_buffer.clear" }]);
+    // 18/10: sem botão "Interromper" na voz ao vivo: falar por cima basta (o serviço de voz percebe sozinho)
+    expect(screen.queryByText("Interromper")).toBeNull();
     // encerrar: a tela de voz fecha e o servidor registra o fim (com as métricas da ligação)
     fireEvent.click(screen.getByLabelText("Encerrar a conversa por voz"));
     await waitFor(() => expect(urls()).toContain("/api/tutor/voice/end"));
     expect(calls.find((c) => c.url === "/api/tutor/voice/end")!.body).toMatchObject({ reason: "student", metrics: { provider_used: "realtime", mic_permission: "granted", tools: 1 } });
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nexus" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /^Stazia?$/ })).toBeNull());
   });
 
   it("o servidor achou algo errado no que foi dito: o professor recebe a correção na hora", async () => {
@@ -155,7 +156,10 @@ describe("Voz em tempo real na tela", () => {
     micDenied = true;
     await begin();
     expect(await screen.findByText(/O navegador bloqueou o microfone/)).toBeTruthy();
-    expect(calls.find((c) => c.url === "/api/tutor/voice/end")!.body).toMatchObject({ reason: "error" }); // não conectou: não cobra
+    // 18/10: microfone negado no toque do "Começar": a voz ao vivo nem é aberta (não reserva tempo, não cobra) e a conversa passa
+    // para o modo reserva (o Chat continua à mão)
+    expect(calls.some((c) => c.url === "/api/tutor/voice/start")).toBe(false);
+    await waitFor(() => expect(calls.filter((c) => c.url === "/api/tutor/voice/open").at(-1)!.body).toMatchObject({ skip: "aovivo" }));
     cleanup();
     micDenied = false;
     let starts = 0;
@@ -184,7 +188,7 @@ describe("Tutor fora da tela do Tutor, resolução, encerramento e relatório", 
       </TutorDockProvider>
     );
     fireEvent.click(screen.getByText("Discutir com o Tutor"));
-    const overlay = await screen.findByRole("dialog", { name: "Nexus" });
+    const overlay = await screen.findByRole("dialog", { name: "Tutor" });
     expect(await within(overlay).findByRole("heading", { name: "Escolha seu professor" })).toBeTruthy();
     expect(started).toEqual([]); // Nexus (2026-10-08): nada começa antes do "Começar", com o professor escolhido
     fireEvent.click(within(overlay).getByRole("button", { name: /^Começar com/ }));
@@ -219,19 +223,19 @@ describe("Tutor fora da tela do Tutor, resolução, encerramento e relatório", 
     await waitFor(() => expect(urls()).toContain("https://api.openai.com/v1/realtime/calls"));
     dc.onopen();
     emit({ type: "session.created", session: { instructions: `${TUTOR_SPOKEN_LANGUAGE}\n\nRegras médicas e personalidade.\n\n${TUTOR_SPOKEN_REMINDER}` } });
-    const dialog = await screen.findByRole("dialog", { name: "Nexus" });
+    const dialog = await screen.findByRole("dialog", { name: /^Stazia?$/ });
     expect(within(dialog).getByText(/Lactente com sibilância/)).toBeTruthy(); // o enunciado fica na tela (e não é lido)
     expect(within(dialog).queryByRole("button", { name: "Ver resolução" })).toBeNull(); // a resolução só sai depois da resposta
     fireEvent.click(within(dialog).getByLabelText("Encerrar a conversa por voz"));
-    expect(await screen.findByText("2 de 3 questões certas.")).toBeTruthy();
-    expect(screen.getByText("Erros que já se repetiram: Prioridade da conduta.")).toBeTruthy();
-    expect(screen.getByText("Próximos temas sugeridos: Sepse.")).toBeTruthy();
+    // fim (18/10): 2 a 3 linhas de verdade e o próximo passo
+    expect(await screen.findByText("Você acertou 2 de 3 questões e travou em Asma.")).toBeTruthy();
+    expect(screen.getByText("10 questões de sepse")).toBeTruthy();
   });
 
   it("trava do professor: depois de um erro repetido, a próxima questão só libera quando o aluno explica o raciocínio", async () => {
     rpcImpl.app_tutor_start = () => session({ question_state: "answered", question: { ...QUESTION, state: "answered", correct_option: "A" }, last_answer: { selected: "B", is_correct: false }, gate: "explain" });
     await begin();
-    const dialog = await screen.findByRole("dialog", { name: "Nexus" });
+    const dialog = await screen.findByRole("dialog", { name: /^Stazia?$/ });
     expect(within(dialog).getByText("Antes da próxima: explique ao professor o seu raciocínio nesta questão.")).toBeTruthy();
     expect((within(dialog).getByText("Próxima").closest("button") as HTMLButtonElement).disabled).toBe(true);
     expect(within(dialog).getByText("Você marcou B; a correta é A")).toBeTruthy();

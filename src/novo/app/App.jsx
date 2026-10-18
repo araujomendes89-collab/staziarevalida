@@ -64,7 +64,7 @@ const TITLES = {
   plano: ["Planejamento", "Cronograma até a prova"],
   desempenho: ["Desempenho", "Seus dados reais"],
   analise: ["Análise Inteligente", "Minha Evolução · o que o Tutor percebeu nos seus erros e acertos"],
-  tutor: ["Nexus · Tutor com IA", "Seu professor particular para o Revalida"],
+  tutor: ["Tutor", "Stazi e Stazia, seus tutores para o Revalida"],
   trilha: ["Minha Trilha", "Stazia Arena · uma etapa de cada vez"],
   classificacao: ["Ranking", "Stazia Arena · ranking e liga da semana"],
   missoes: ["Missões", "Stazia Arena · metas de hoje e da semana"],
