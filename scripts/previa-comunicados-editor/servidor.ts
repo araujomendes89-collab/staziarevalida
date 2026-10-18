@@ -69,14 +69,16 @@ async function semear(dev: DevDatabase) {
   // 3) formatado e depois EDITADO (o aluno vê o selo "editado")
   const a = campoDoDoc(ANTES);
   const d = campoDoDoc(DEPOIS);
+  // Ana aceitou receber novidades por e-mail (onboarding): o simulado vai também por e-mail para ela (fica na fila: sem SMTP na prévia)
+  await dev.core.rpc({ id: ana.id, email: null } as any, "app_marketing_set", { p_opt_in: true, p_origin: "onboarding" });
   const simulado = await enviar({ p_titulo: "Simulado nacional neste sábado", p_texto: a.texto, p_rico: a.rico, p_link: "/simulados", p_idem: "previa-ce-simulado" });
+  await dev.core.rpc(eu, "app_admin_comunicado_email", { p_id: simulado.id });
   await dev.db.query(`update public.avisos_aluno set criado_em = now() - interval '26 hours' where comunicado_id = $1`, [antigo.id]);
   await dev.db.query(`update public.comunicados_equipe set enviado_em = now() - interval '26 hours' where id = $1`, [antigo.id]);
   await dev.db.query(`update public.avisos_aluno set criado_em = now() - interval '3 hours' where comunicado_id = $1`, [simulado.id]);
   await dev.db.query(`update public.comunicados_equipe set enviado_em = now() - interval '3 hours' where id = $1`, [simulado.id]);
   await dev.core.rpc({ id: ana.id, email: null } as any, "app_notificacoes_lidas", { p_ids: null });
   await dev.core.rpc(eu, "app_admin_comunicado_editar", { p_id: simulado.id, p_titulo: "Simulado nacional neste sábado (novo horário)", p_texto: d.texto, p_rico: d.rico, p_link: "/simulados", p_versao: 1 });
-  await dev.db.query(`update public.avisos_aluno set visto_em = null where comunicado_id = $1`, [simulado.id]);
   await dev.core.rpc(eu, "app_admin_comunicado_apagar", { p_id: errado.id, p_motivo: "Data errada; mandei de novo corrigido" });
 }
 

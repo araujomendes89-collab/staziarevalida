@@ -46,6 +46,16 @@ for (const [tam, vp] of [["computador", { width: 1440, height: 900 }], ["celular
     await page.goto(`${BASE}/novo/admin?aba=comunicados`);
     const lista = page.getByRole("list", { name: "Comunicados enviados" });
     await lista.waitFor({ timeout: 120000 });
+    // comunicado novo com "Enviar também por e-mail": a prévia diz quantos recebem por e-mail
+    await page.getByLabel("Título").fill("Plantão de dúvidas ao vivo");
+    await page.locator("[data-testid=admin-comunicados] .ProseMirror").first().click();
+    await page.keyboard.type("Quinta, às 20h, a equipe responde dúvidas de Clínica Médica.");
+    await page.getByRole("checkbox", { name: "Enviar também por e-mail" }).check({ force: true });
+    await page.getByRole("button", { name: /Ver prévia/ }).click();
+    await page.getByTestId("previa-comunicado").waitFor();
+    await page.getByTestId("previa-comunicado").evaluate((el) => (el.scrollIntoView({ block: "start" }), window.scrollBy(0, -16)));
+    await foto(page, "00-novo-com-email-previa");
+    await page.getByRole("button", { name: "Voltar e editar" }).click();
     await lista.scrollIntoViewIfNeeded();
     await foto(page, "01-lista-editar-apagar");
     // edição com o editor (o comunicado formatado e já editado)

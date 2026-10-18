@@ -5,6 +5,10 @@
  *                          Sem as variáveis SMTP_*: não faz nada ({ desligado: true }) e os e-mails ficam na fila.
  *   GET /api/legal/diaria  uma vez por dia: rotina de contas inativas e expurgo dos aceites (013810). As duas nascem DESLIGADAS
  *                          (chaves em public.app_rotinas_conta_config): desligadas, só devolvem o relatório do que fariam.
+ *   GET/POST /api/legal/descadastro?t=CÓDIGO  (013940) a ÚNICA rota pública: o link "Descadastrar" do e-mail de comunicado.
+ *                          GET mostra a página com o botão de confirmar (abrir o link não muda nada: programas de e-mail abrem
+ *                          links sozinhos); POST confirma (também é o "um clique" do cabeçalho List-Unsubscribe-Post, RFC 8058).
+ *                          O código é aleatório por conta (public.marketing_descadastro); a página nunca mostra o e-mail.
  * Fora da Vercel (servidor normal), startLegalScheduler faz o mesmo por intervalo.
  * O registro (log) leva só o número do e-mail na fila e a mensagem do erro; nunca o endereço nem a senha.
  */
@@ -12,7 +16,20 @@ import express, { type Response } from "express";
 import type { ContentDb } from "../contentHub/infra";
 import { shown } from "../auth/friendlyError";
 import { SmtpError, type Mailer } from "../email/smtp";
-import { renderItem, type ItemFila } from "./emails";
+import { LOGO, esc, renderItem, type ItemFila } from "./emails";
+
+/** Página simples do descadastro (sem script; mesmo visual dos e-mails). `corpo` já vem em HTML seguro. */
+export function paginaDescadastro(titulo: string, corpo: string): string {
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>${esc(titulo)} · StaziaMed</title></head>
+<body style="margin:0;padding:24px 16px;background:#F4F6F9;font-family:Arial,Helvetica,sans-serif;color:#0D1C42;">
+<main style="max-width:520px;margin:0 auto;background:#FFFFFF;border:1px solid #ECEFF3;border-radius:16px;padding:32px 28px;">
+<img src="${LOGO}" alt="StaziaMed Revalida" width="180" style="display:block;width:180px;height:auto;margin:0 0 24px 0;">
+<h1 style="margin:0 0 12px 0;font-size:22px;line-height:30px;">${esc(titulo)}</h1>
+${corpo}
+</main></body></html>`;
+}
+const pTxt = (t: string) => `<p style="margin:0 0 16px 0;font-size:16px;line-height:24px;color:#4F5A69;">${t}</p>`;
 
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
 
@@ -109,6 +126,50 @@ export function createLegalRouter(deps: LegalDeps | null) {
     } catch (error) {
       deps!.log?.(`[legal] fila de e-mail falhou: ${(error as Error).message}`);
       fail(res, 500, shown(error));
+    }
+  });
+
+  // Descadastro dos e-mails de novidades/comunicados (013940). Pública de propósito (o link vem no e-mail); só o código aleatório.
+  const descadastro = async (token: string, confirmar: boolean) =>
+    deps!.db.service<{ valido: boolean; recebe?: boolean }>("ch_worker_marketing_descadastro", { p_token: token, p_confirmar: confirmar });
+  const minhaConta = () => `${(deps?.baseUrl || "https://app.staziamed.com.br").replace(/\/+$/, "")}/novo/perfil?secao=priv`;
+  const codigo = (q: unknown) => (typeof q === "string" && /^[0-9a-f]{64}$/.test(q) ? q : null);
+  const invalido = () =>
+    paginaDescadastro("Link inválido", pTxt(`Este link de descadastro não vale mais. Você pode parar de receber novidades em <a href="${esc(minhaConta())}" style="color:#0B6F68;">Minha Conta → Privacidade e dados</a>.`));
+  router.get("/descadastro", async (req, res) => {
+    res.set({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex" });
+    const t = codigo(req.query.t);
+    if (!deps || !t) return res.status(t ? 503 : 400).type("html").send(invalido());
+    try {
+      const r = await descadastro(t, false);
+      if (!r?.valido) return res.status(404).type("html").send(invalido());
+      if (!r.recebe) return res.type("html").send(paginaDescadastro("Você já não recebe", pTxt("Você não recebe mais os e-mails de novidades e comunicados do StaziaMed. Os avisos da sua conta (pagamento, segurança) continuam.")));
+      res.type("html").send(
+        paginaDescadastro(
+          "Parar de receber novidades por e-mail?",
+          pTxt("Você deixa de receber os e-mails de novidades e comunicados do StaziaMed. Os comunicados continuam no sino do app, e os avisos da sua conta (pagamento, segurança) continuam chegando.") +
+            `<form method="post" action="?t=${esc(t)}" style="margin:0 0 16px 0;"><button type="submit" style="display:inline-block;padding:14px 24px;border:0;border-radius:12px;background:#0B6F68;color:#FFFFFF;font:bold 16px Arial,Helvetica,sans-serif;cursor:pointer;">Confirmar: não quero mais receber</button></form>` +
+            pTxt(`Mudou de ideia? É só fechar esta página. Dá para mudar quando quiser em <a href="${esc(minhaConta())}" style="color:#0B6F68;">Minha Conta → Privacidade e dados</a>.`)
+        )
+      );
+    } catch (error) {
+      deps.log?.(`[legal] descadastro (abrir) falhou: ${(error as Error).message}`);
+      res.status(500).type("html").send(paginaDescadastro("Não deu certo agora", pTxt("Tente de novo em alguns minutos.")));
+    }
+  });
+  router.post("/descadastro", async (req, res) => {
+    res.set({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex" });
+    const t = codigo(req.query.t);
+    if (!deps || !t) return res.status(t ? 503 : 400).type("html").send(invalido());
+    try {
+      const r = await descadastro(t, true);
+      if (!r?.valido) return res.status(404).type("html").send(invalido());
+      res.type("html").send(
+        paginaDescadastro("Pronto, descadastrado", pTxt(`Você não vai mais receber os e-mails de novidades e comunicados do StaziaMed. Os comunicados continuam no sino do app. Para voltar a receber, ligue em <a href="${esc(minhaConta())}" style="color:#0B6F68;">Minha Conta → Privacidade e dados</a>.`))
+      );
+    } catch (error) {
+      deps.log?.(`[legal] descadastro (confirmar) falhou: ${(error as Error).message}`);
+      res.status(500).type("html").send(paginaDescadastro("Não deu certo agora", pTxt("Tente de novo em alguns minutos.")));
     }
   });
 

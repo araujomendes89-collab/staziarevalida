@@ -65,12 +65,16 @@ let antes: string; // conta que já existia quando a 013810 entrou
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(ler("supabase/tests/bootstrap.sql"));
-  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && !NOVAS.includes(f)).sort()) {
+  // migrações escritas depois que a 013800/013810 já estavam em produção (produção ia até a 013900) vêm depois delas, como em
+  // produção (ex.: 013940 comunicados por e-mail usa a fila email_saida)
+  const posteriores = fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f.slice(0, 14) > "20261003013900").sort();
+  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && !NOVAS.includes(f) && !posteriores.includes(f)).sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
   antes = await signUp();
   for (const s of SQL) await db.exec(s);
   for (const s of SQL) await db.exec(s); // pode ser colada duas vezes
+  for (const f of posteriores) await db.exec(fs.readFileSync(path.join(MIGRATIONS, f), "utf8"));
 }, 300_000);
 
 /** põe um e-mail de serviço (aviso de conta inativa) na fila, como a rotina da 013810 faz */

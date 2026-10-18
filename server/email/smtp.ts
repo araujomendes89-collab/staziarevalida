@@ -41,6 +41,8 @@ export interface MailMessage {
   text: string;
   html: string;
   attachments?: MailAttachment[];
+  /** cabeçalhos extras (ex.: List-Unsubscribe do comunicado). Só nomes simples; quebras de linha no valor são retiradas. */
+  headers?: Record<string, string>;
 }
 
 export type Mailer = { send(msg: MailMessage): Promise<void>; from: string };
@@ -90,6 +92,9 @@ export function buildMessage(cfg: Pick<SmtpConfig, "from" | "fromName">, msg: Ma
     `Message-ID: <${crypto.randomUUID()}@${domain}>`,
     "MIME-Version: 1.0",
     "Auto-Submitted: auto-generated",
+    ...Object.entries(msg.headers ?? {})
+      .filter(([k]) => /^[A-Za-z][A-Za-z0-9-]{0,60}$/.test(k) && !/^(from|to|subject|date|message-id|mime-version|content-type|bcc|cc)$/i.test(k))
+      .map(([k, v]) => `${k}: ${String(v).replace(/[\r\n]+/g, " ").slice(0, 900)}`),
   ];
   let body: string[];
   if (msg.attachments?.length) {

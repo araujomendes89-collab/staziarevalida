@@ -2,25 +2,41 @@
  * E-mails de serviço do Contrato 3.0 (ramo termo-funcoes), no mesmo visual dos modelos do Supabase com a logo nova
  * (~/Downloads/emails-staziamed-logo-nova: fundo #F4F6F9, cartão branco de 560 px com borda #ECEFF3, texto #0D1C42 / #4F5A69,
  * botão #0B6F68, "Equipe StaziaMed — Tecnologia que transforma.").
- *   - aviso de conta inativa (Política 3.0, seção 5; Regulamento 1.0, 4.3).
+ *   - aviso de conta inativa (Política 3.0, seção 5; Regulamento 1.0, 4.3);
+ *   - comunicado da equipe (013940; decisão do dono 18/10): só para quem aceitou receber novidades, com o texto formatado da versão
+ *     atual (montado em ./comunicado.ts) e o rodapé de descadastro (link de um clique + confirmação, e cabeçalho List-Unsubscribe).
  * O contrato NÃO vai por e-mail (decisão do dono, 18/10/2026: "Contrato não é enviado ao cliente, fica dentro do app dele."):
  * o contrato aceito fica só em Minha Conta → Documentos.
  * Só texto vindo do banco; tudo que entra no HTML passa por esc().
  */
+import { docDoComunicado, htmlDoEmail, textoSimplesDoDoc } from "./comunicado";
 
 export interface ItemFila {
   id: number;
-  kind: "aviso_inatividade";
+  kind: "aviso_inatividade" | "comunicado";
   tentativas: number;
   email: string | null;
   nome: string | null;
-  payload: { acao?: "apagar_conta" | "zerar_coins"; ultimo_acesso?: string; prazo?: string };
+  payload: {
+    acao?: "apagar_conta" | "zerar_coins";
+    ultimo_acesso?: string;
+    prazo?: string;
+    // comunicado (montado pela fila na hora do envio, com a versão atual)
+    comunicado_id?: number;
+    titulo?: string;
+    texto?: string;
+    rico?: unknown;
+    link?: string | null;
+    descadastro?: string;
+  };
 }
 
 export interface EmailPronto {
   subject: string;
   text: string;
   html: string;
+  /** cabeçalhos extras (List-Unsubscribe do comunicado) */
+  headers?: Record<string, string>;
 }
 
 export const LOGO = "https://app.staziamed.com.br/brand/horizontal-480w.png";
@@ -29,9 +45,9 @@ const SUPORTE = "suporte@staziamed.com.br";
 const PRIVACIDADE = "privacidade@staziamed.com.br";
 const BASE_PADRAO = "https://app.staziamed.com.br";
 
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-const base = (url: string | null) => (url || BASE_PADRAO).replace(/\/+$/, "");
-const primeiroNome = (nome: string | null) => (nome ?? "").trim().split(/\s+/)[0] ?? "";
+export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+export const base = (url: string | null) => (url || BASE_PADRAO).replace(/\/+$/, "");
+export const primeiroNome = (nome: string | null) => (nome ?? "").trim().split(/\s+/)[0] ?? "";
 
 /** "2026-11-30" (data do banco) → "30/11/2026"; um instante → a data em Brasília. */
 export function dataBR(v: string): string {
@@ -40,7 +56,7 @@ export function dataBR(v: string): string {
 }
 
 /** Moldura dos modelos (logo, corpo, assinatura). `blocos` já vem em HTML seguro. */
-function moldura(titulo: string, blocos: string[]): string {
+export function moldura(titulo: string, blocos: string[]): string {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(titulo)}</title></head>
 <body style="margin:0;padding:0;background-color:#F4F6F9;">
 <div style="margin:0;padding:24px 12px;background-color:#F4F6F9;">
@@ -61,16 +77,16 @@ ${blocos.join("\n")}
 </div>
 </body></html>`;
 }
-const p = (html: string, ultimo = false, cinza = false) =>
+export const p = (html: string, ultimo = false, cinza = false) =>
   `        <p style="margin:0 0 ${ultimo ? 24 : 16}px 0;${cinza ? "color:#4F5A69;" : ""}">${html}</p>`;
-const botao = (href: string, rotulo: string) => `        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+export const botao = (href: string, rotulo: string) => `        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
           <tr>
             <td style="background-color:#0B6F68;border-radius:12px;">
               <a href="${esc(href)}" style="display:inline-block;padding:14px 24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;line-height:20px;color:#FFFFFF;text-decoration:none;">${esc(rotulo)}</a>
             </td>
           </tr>
         </table>`;
-const mail = (e: string) => `<a href="mailto:${e}" style="color:#0B6F68;">${e}</a>`;
+export const mail = (e: string) => `<a href="mailto:${e}" style="color:#0B6F68;">${e}</a>`;
 export function renderAvisoInatividade(item: ItemFila, baseUrl: string | null): EmailPronto {
   const { acao, ultimo_acesso, prazo } = item.payload ?? {};
   if ((acao !== "apagar_conta" && acao !== "zerar_coins") || !ultimo_acesso || !prazo) throw new Error("Aviso sem ação, último acesso ou prazo.");
@@ -123,5 +139,52 @@ export function renderAvisoInatividade(item: ItemFila, baseUrl: string | null): 
 }
 
 export function renderItem(item: ItemFila, baseUrl: string | null): EmailPronto {
+  if (item.kind === "comunicado") return renderComunicado(item, baseUrl);
   return renderAvisoInatividade(item, baseUrl);
+}
+
+/** Endereço de descadastro (página com confirmação; o mesmo endereço recebe o POST de um clique do List-Unsubscribe). */
+export const linkDescadastro = (baseUrl: string | null, token: string) => `${base(baseUrl)}/api/legal/descadastro?t=${encodeURIComponent(token)}`;
+
+export function renderComunicado(item: ItemFila, baseUrl: string | null): EmailPronto {
+  const { titulo, texto, rico, link, descadastro } = item.payload ?? {};
+  if (!titulo || !texto) throw new Error("Comunicado sem título ou texto.");
+  if (!descadastro || !/^[0-9a-f]{64}$/.test(descadastro)) throw new Error("Comunicado sem link de descadastro.");
+  const doc = docDoComunicado(texto, rico);
+  const nome = primeiroNome(item.nome);
+  const ola = nome ? `Olá, ${nome}!` : "Olá!";
+  const abrir = link ? (/^https:\/\//.test(link) ? link : `${base(baseUrl)}/novo${link}`) : `${base(baseUrl)}/novo/`;
+  const sair = linkDescadastro(baseUrl, descadastro);
+  const rodape = "Você recebe este e-mail porque aceitou receber novidades do StaziaMed por e-mail. Não responda: esta caixa não é lida.";
+  const html = moldura(titulo, [
+    p(esc(ola)),
+    `        <h1 style="margin:0 0 16px 0;font-size:22px;line-height:30px;color:#0D1C42;">${esc(titulo)}</h1>`,
+    `        <div style="margin:0 0 24px 0;color:#4F5A69;">${htmlDoEmail(doc)}</div>`,
+    botao(abrir, link ? "Abrir no app" : "Abrir o StaziaMed"),
+    p(`${esc(rodape)} Dúvidas: ${mail(SUPORTE)}.`, false, true),
+    p(`Não quer mais receber? <a href="${esc(sair)}" style="color:#0B6F68;">Descadastrar deste tipo de e-mail</a> (um clique e uma confirmação). Também dá para mudar em Minha Conta → Privacidade e dados.`, true, true),
+  ]);
+  const text = [
+    ola,
+    "",
+    titulo,
+    "",
+    textoSimplesDoDoc(doc),
+    "",
+    `${link ? "Abrir no app" : "Abrir o StaziaMed"}: ${abrir}`,
+    "",
+    `${rodape} Dúvidas: ${SUPORTE}.`,
+    `Não quer mais receber? Descadastrar: ${sair}`,
+    "",
+    "Equipe StaziaMed",
+    "Tecnologia que transforma.",
+    "www.staziamed.com.br",
+    "",
+  ].join("\n");
+  return {
+    subject: `${titulo} · StaziaMed`,
+    text,
+    html,
+    headers: { "List-Unsubscribe": `<${sair}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+  };
 }

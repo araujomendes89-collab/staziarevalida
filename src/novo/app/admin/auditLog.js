@@ -43,6 +43,7 @@ export const ACTION_LABEL = {
   "comunicado.editar": "Comunicado enviado editado", // 013940
   "comunicado.apagar": "Comunicado apagado (saiu do sino dos alunos)", // 013940
   "comunicado.restaurar": "Comunicado restaurado (voltou ao sino dos alunos)", // 013940
+  "comunicado.email": "Comunicado mandado também por e-mail (fila)", // 013950
   "carteira.cortesia": "Créditos de IA de cortesia dados a um aluno", // 013680
   "carteira.cortesia_cancelada": "Cortesia de créditos de IA cancelada", // 013680
   "direitos.fase_dada": "Plano por fase dado pela equipe (regra nova)", // 013690
@@ -396,9 +397,10 @@ const aiRequestResult = (d, noun) =>
 
 const SUMMARY = {
   "comunicado.enviar": (d) => join([d.titulo, publicoRotulo(d.publico, d.filtro), d.destinatarios != null ? `${d.destinatarios} ${d.destinatarios === 1 ? "aluno" : "alunos"}` : null]),
-  "comunicado.editar": (d) => join([d.titulo, d.titulo_antes && d.titulo_antes !== d.titulo ? `antes: ${d.titulo_antes}` : null, d.versao ? `versão ${d.versao}` : null, d.mudou_publico ? `público: ${publicoRotulo(d.publico, d.filtro)}` : null]),
+  "comunicado.editar": (d) => join([d.titulo, d.titulo_antes && d.titulo_antes !== d.titulo ? `antes: ${d.titulo_antes}` : null, d.versao ? `versão ${d.versao}` : null, d.mudou_publico ? `público: ${publicoRotulo(d.publico, d.filtro)}` : null, d.leitura_zerada ? `leitura zerada (${d.lidas_antes ?? 0} tinham lido)` : null]),
   "comunicado.apagar": (d) => join([d.titulo, d.motivo ? `Motivo: ${d.motivo}` : null]),
   "comunicado.restaurar": (d) => d.titulo,
+  "comunicado.email": (d) => join([d.titulo, d.emails != null ? `${d.emails} ${d.emails === 1 ? "e-mail" : "e-mails"} na fila` : null]),
   "user.role": (d, entry) => join([person(entry), `${ROLE_LABEL[d.from] ?? d.from} → ${ROLE_LABEL[d.to] ?? d.to}`]),
   "user.subscription": (d, entry) => join([person(entry), `${PLAN_LABEL[d.to?.plan] ?? d.to?.plan} · ${SUB_STATUS_LABEL[d.to?.status] ?? d.to?.status}`]),
   "user.delete": (d) => d.email,

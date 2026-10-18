@@ -1,9 +1,13 @@
 // @vitest-environment node
 /**
- * Comunicados: editar, apagar (lógico) e restaurar, com o editor profissional (migração 013940), no banco local (PGlite, todas as
+ * Comunicados: editar, apagar (lógico) e restaurar, com o editor profissional (migração 013940, já em produção) e a leitura por versão
+ * e o e-mail (migração 013950, por cima da 013940 aplicada), no banco local (PGlite, todas as
  * migrações do ramo, na ordem da produção):
- *   - editar: o aluno vê a versão nova com "editado" (lida continua lida); histórico com quem, quando, antes e depois; registro geral;
- *     edição sem mudança não cria versão; versão velha aberta em outra tela é recusada; público só muda enquanto ninguém leu;
+ *   - editar: o aluno vê a versão nova com "editado" e ela VOLTA A NÃO LIDA (decisão do dono 18/10; "lido antes da edição: N");
+ *     histórico com quem, quando, antes e depois; registro geral; edição sem mudança não cria versão; versão velha aberta em outra
+ *     tela é recusada; público só muda enquanto ninguém leu nenhuma versão;
+ *   - e-mail (decisão do dono 18/10): só para quem aceitou novidades; fila de serviço com o texto da versão atual na hora do envio;
+ *     editar não reenvia; apagar cancela o que não saiu; descadastro pelo link (com confirmação); limite do dia;
  *   - apagar: some do sino e da lista do aluno (também da leitura direta da tabela), com quem, quando e motivo; filtro "apagados";
  *     restaurar devolve tudo como era;
  *   - formatação (rico): guardada no comunicado e na notificação; forma inválida ou grande demais é recusada; comunicado antigo sem
@@ -23,6 +27,11 @@ const ROOT = path.resolve(__dirname, "../..");
 const MIGRACAO = fs.readFileSync(path.join(ROOT, "supabase/migrations/20261003013940_comunicados_editar_apagar.sql"), "utf8");
 const DESFAZER = fs.readFileSync(path.join(ROOT, "supabase/desfazer/20261003013940_comunicados_editar_apagar.desfazer.sql"), "utf8");
 const CONFERIR = fs.readFileSync(path.join(ROOT, "supabase/conferir/comunicados-editar-apagar.sql"), "utf8");
+const MIGRACAO_950 = fs.readFileSync(path.join(ROOT, "supabase/migrations/20261003013950_comunicados_email_leitura.sql"), "utf8");
+const DESFAZER_950 = fs.readFileSync(path.join(ROOT, "supabase/desfazer/20261003013950_comunicados_email_leitura.desfazer.sql"), "utf8");
+const CONFERIR_950 = fs.readFileSync(path.join(ROOT, "supabase/conferir/comunicados-email-leitura.sql"), "utf8");
+const OK_940 = "OK: Comunicados com editar, apagar e editor profissional (013940) no banco";
+const OK_950 = "OK: Comunicados com leitura por versão e e-mail (013950) no banco";
 
 const tmp = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), "comunicados-editar-"));
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -42,6 +51,11 @@ const comoAluno = (user: string, sql: string, args: unknown[] = []) =>
   });
 const enviar = (o: Record<string, unknown> = {}) =>
   rpc(ADMIN, "app_admin_comunicado_enviar", { p_titulo: "Aviso da equipe", p_texto: "Texto do comunicado.", p_link: null, p_publico: "todos", p_filtro: null, p_idem: `idem-${Math.random().toString(36).slice(2, 12)}`, ...o });
+/** enviar e, como a tela faz com "Enviar também por e-mail", mandar por e-mail logo depois (013950) */
+const enviarComEmail = async (o: Record<string, unknown> = {}) => {
+  const c = await enviar(o);
+  return { ...c, ...(await rpc(ADMIN, "app_admin_comunicado_email", { p_id: c.id })) };
+};
 const centralDe = async (u: string) => rpc(u, "app_minhas_notificacoes");
 const aviso = async (u: string, cid: number) => q1(`select * from public.avisos_aluno where user_id = $1 and comunicado_id = $2`, [u, cid]);
 const naCentral = async (u: string, cid: number) => {
@@ -119,22 +133,33 @@ describe("enviar com formatação", () => {
 });
 
 describe("editar", () => {
-  it("o aluno vê a versão nova com 'editado'; quem já leu continua com lida; histórico e registro com antes e depois", async () => {
+  it("o aluno vê a versão nova com 'editado' e ela volta a NÃO LIDA; a Administração mostra 'lido antes da edição'; histórico e registro", async () => {
     const c = await enviar({ p_titulo: "Aula ao vivo", p_texto: "Hoje às 20h." });
     await rpc(ANA, "app_notificacoes_lidas", { p_ids: [(await aviso(ANA, c.id)).id] });
     const e = await rpc(ADMIN2, "app_admin_comunicado_editar", { p_id: c.id, p_titulo: "Aula ao vivo (novo horário)", p_texto: CAMPO.texto, p_link: "/novo/atualizacoes", p_rico: CAMPO.rico, p_versao: 1 });
-    expect(e).toMatchObject({ mudou: true, versao: 2, titulo: "Aula ao vivo (novo horário)", link: "/atualizacoes", editado_por: "Outra Admin", enviado_por: "Admin Teste" });
+    expect(e).toMatchObject({ mudou: true, versao: 2, titulo: "Aula ao vivo (novo horário)", link: "/atualizacoes", editado_por: "Outra Admin", enviado_por: "Admin Teste", lidas: 0, lidas_antes: 1, pode_mudar_publico: false });
     const ana = (await naCentral(ANA, c.id)).item;
-    expect(ana).toMatchObject({ titulo: "Aula ao vivo (novo horário)", texto: CAMPO.texto, rico: CAMPO.rico, editado: true, lida: true, rota: "link", link: "/atualizacoes", acao: "Abrir" });
+    expect(ana).toMatchObject({ titulo: "Aula ao vivo (novo horário)", texto: CAMPO.texto, rico: CAMPO.rico, editado: true, lida: false, rota: "link", link: "/atualizacoes", acao: "Abrir" });
     expect((await naCentral(BRUNO, c.id)).item).toMatchObject({ editado: true, lida: false });
     const h = await rpc(ADMIN, "app_admin_comunicado_historico", { p_id: c.id });
     expect(h).toHaveLength(1);
     expect(h[0]).toMatchObject({ acao: "editar", versao: 2, por: "Outra Admin" });
-    expect(h[0].antes).toMatchObject({ titulo: "Aula ao vivo", texto: "Hoje às 20h.", rico: null, link: null });
+    expect(h[0].antes).toMatchObject({ titulo: "Aula ao vivo", texto: "Hoje às 20h.", rico: null, link: null, lidas: 1 });
     expect(h[0].depois).toMatchObject({ titulo: "Aula ao vivo (novo horário)", rico: CAMPO.rico, link: "/atualizacoes" });
     const log = await q1(`select * from public.admin_audit_log where action = 'comunicado.editar' and target = $1`, [String(c.id)]);
     expect(log.actor_id).toBe(ADMIN2);
-    expect(log.details).toMatchObject({ titulo: "Aula ao vivo (novo horário)", titulo_antes: "Aula ao vivo", versao: 2, mudou_publico: false });
+    expect(log.details).toMatchObject({ titulo: "Aula ao vivo (novo horário)", titulo_antes: "Aula ao vivo", versao: 2, mudou_publico: false, leitura_zerada: true, lidas_antes: 1 });
+  });
+
+  it("só o link ou só a formatação também zeram a leitura", async () => {
+    const c = await enviar({ p_titulo: "Correção pequena", p_texto: CAMPO.texto });
+    await rpc(BRUNO, "app_notificacoes_lidas", { p_ids: [(await aviso(BRUNO, c.id)).id] });
+    await rpc(ADMIN, "app_admin_comunicado_editar", { p_id: c.id, p_titulo: "Correção pequena", p_texto: CAMPO.texto, p_link: "/planos" });
+    expect((await naCentral(BRUNO, c.id)).item.lida).toBe(false);
+    await rpc(BRUNO, "app_notificacoes_lidas", { p_ids: [(await aviso(BRUNO, c.id)).id] });
+    const e = await rpc(ADMIN, "app_admin_comunicado_editar", { p_id: c.id, p_titulo: "Correção pequena", p_texto: CAMPO.texto, p_link: "/planos", p_rico: CAMPO.rico });
+    expect(e).toMatchObject({ versao: 3, lidas: 0, lidas_antes: 1 });
+    expect((await naCentral(BRUNO, c.id)).item.lida).toBe(false);
   });
 
   it("salvar sem mudar nada não cria versão nem histórico", async () => {
@@ -173,9 +198,11 @@ describe("editar", () => {
     // Ana lê: público fica fixo
     await rpc(ANA, "app_notificacoes_lidas", { p_ids: [(await aviso(ANA, c.id)).id] });
     await expect(rpc(ADMIN, "app_admin_comunicado_editar", { p_id: c.id, p_titulo: "Só PRO", p_texto: "Público novo.", p_link: null, p_publico: "todos", p_filtro: null })).rejects.toThrow(/já leu/);
-    // título e texto continuam editáveis (mesmo público = não conta como mudança de público)
+    // título e texto continuam editáveis (mesmo público = não conta como mudança de público); a leitura zera
     expect((await rpc(ADMIN, "app_admin_comunicado_editar", { p_id: c.id, p_titulo: "Só PRO (corrigido)", p_texto: "Público novo.", p_link: null, p_publico: "plano", p_filtro: "pro" })).mudou).toBe(true);
-    expect((await naCentral(ANA, c.id)).item).toMatchObject({ titulo: "Só PRO (corrigido)", lida: true });
+    expect((await naCentral(ANA, c.id)).item).toMatchObject({ titulo: "Só PRO (corrigido)", lida: false });
+    // ninguém leu a versão nova, mas alguém leu a anterior: o público continua fixo
+    await expect(rpc(ADMIN, "app_admin_comunicado_editar", { p_id: c.id, p_titulo: "Só PRO (corrigido)", p_texto: "Público novo.", p_link: null, p_publico: "todos", p_filtro: null })).rejects.toThrow(/já leu/);
   });
 });
 
@@ -224,6 +251,134 @@ describe("apagar e restaurar (apagamento lógico)", () => {
   });
 });
 
+describe("e-mail do comunicado (decisão do dono 18/10)", () => {
+  const servico = <T = any>(fn: string, args: Record<string, unknown> = {}) => db.service<T>(fn, args);
+  const filaDe = async (cid: number) =>
+    q(`select e.*, u.email as conta from public.email_saida e join auth.users u on u.id = e.user_id where e.kind = 'comunicado' and (e.payload ->> 'comunicado_id')::bigint = $1 order by e.id`, [cid]);
+  beforeAll(async () => {
+    await q(`delete from public.email_saida`);
+    // Ana e Carla aceitaram receber novidades (onboarding / Minha Conta); Bruno não respondeu (sem linha = não recebe)
+    await rpc(ANA, "app_marketing_set", { p_opt_in: true, p_origin: "onboarding" });
+    await rpc(CARLA, "app_marketing_set", { p_opt_in: true, p_origin: "minha_conta" });
+  });
+
+  it("prévia diz quantos recebem no sino e quantos também por e-mail", async () => {
+    expect(await rpc(ADMIN, "app_admin_comunicado_previa", { p_publico: "todos", p_filtro: null })).toEqual({ destinatarios: 3, por_email: 2 });
+    expect(await rpc(ADMIN, "app_admin_comunicado_previa", { p_publico: "plano", p_filtro: "teste" })).toEqual({ destinatarios: 1, por_email: 0 });
+  });
+
+  it("enviar com e-mail: só quem aceitou entra na fila; sem e-mail, nada na fila", async () => {
+    const sem = await enviar({ p_titulo: "Só no sino", p_texto: "Texto." });
+    expect(await filaDe(sem.id)).toEqual([]);
+    const c = await enviarComEmail({ p_titulo: "No sino e por e-mail", p_texto: CAMPO.texto, p_rico: CAMPO.rico });
+    expect(c).toMatchObject({ por_email: true, emails: 2, ja_enviado: false });
+    // de novo: uma vez só
+    expect(await rpc(ADMIN, "app_admin_comunicado_email", { p_id: c.id })).toMatchObject({ emails: 0, ja_enviado: true });
+    expect((await q1(`select details from public.admin_audit_log where action = 'comunicado.email' and target = $1`, [String(c.id)])).details).toMatchObject({ emails: 2 });
+    expect((await filaDe(c.id)).map((e) => e.user_id).sort()).toEqual([ANA, CARLA].sort());
+    const linha = (await rpc(ADMIN, "app_admin_comunicados", { p_limite: 100 })).find((x: any) => x.id === c.id);
+    expect(linha).toMatchObject({ por_email: true, email: { na_fila: 2, enviados: 0 }, pode_mudar_publico: false });
+    // repetir o mesmo envio (mesmo p_idem) não duplica
+    await q(`delete from public.email_saida where kind = 'comunicado'`);
+  });
+
+  it("a fila monta o e-mail com a VERSÃO ATUAL na hora do envio e o código de descadastro; editar não reenvia o que já saiu", async () => {
+    const c = await enviarComEmail({ p_titulo: "Versão 1", p_texto: "Texto um." });
+    await rpc(ADMIN, "app_admin_comunicado_editar", { p_id: c.id, p_titulo: "Versão 2", p_texto: "Texto dois.", p_link: null });
+    const lote = await servico<any[]>("ch_worker_email_pegar", { p_limite: 20 });
+    expect(lote).toHaveLength(2);
+    for (const item of lote) {
+      expect(item).toMatchObject({ kind: "comunicado", payload: { comunicado_id: c.id, titulo: "Versão 2", texto: "Texto dois.", versao: 2 } });
+      expect(item.payload.descadastro).toMatch(/^[0-9a-f]{64}$/);
+      await servico("ch_worker_email_marcar", { p_id: item.id, p_resultado: "enviado" });
+    }
+    // editar de novo não põe nada na fila (o e-mail já saiu) e pedir e-mail de novo também não
+    const e = await rpc(ADMIN, "app_admin_comunicado_editar", { p_id: c.id, p_titulo: "Versão 3", p_texto: "Texto três.", p_link: null });
+    expect(e).toMatchObject({ email: { enviados: 2, na_fila: 0 } });
+    expect(await rpc(ADMIN, "app_admin_comunicado_email", { p_id: c.id })).toMatchObject({ emails: 0, ja_enviado: true });
+    expect(await servico("ch_worker_email_pegar", { p_limite: 20 })).toEqual([]);
+    // o mesmo código de descadastro para a mesma pessoa
+    const t1 = lote.find((i) => i.email === "ce0@t.dev").payload.descadastro;
+    expect((await q1(`select token from public.marketing_descadastro where user_id = $1`, [ANA])).token).toBe(t1);
+  });
+
+  it("comunicado que só foi ao sino pode ir por e-mail depois, na edição (uma vez)", async () => {
+    const c = await enviar({ p_titulo: "Primeiro só no sino", p_texto: "Texto." });
+    const e = await rpc(ADMIN, "app_admin_comunicado_email", { p_id: c.id });
+    expect(e).toMatchObject({ emails: 2, por_email: true, versao: 1 });
+    expect(await filaDe(c.id)).toHaveLength(2);
+    await q(`delete from public.email_saida where kind = 'comunicado'`);
+  });
+
+  it("apagar cancela o e-mail que ainda não saiu; consentimento retirado antes do envio também cancela", async () => {
+    const c = await enviarComEmail({ p_titulo: "Vai ser apagado", p_texto: "Texto." });
+    const r = await rpc(ADMIN, "app_admin_comunicado_apagar", { p_id: c.id });
+    expect(r.emails_cancelados).toBe(2);
+    expect((await filaDe(c.id)).every((x) => x.status === "cancelado")).toBe(true);
+    await expect(rpc(ADMIN, "app_admin_comunicado_email", { p_id: c.id })).rejects.toThrow(/apagado/);
+    // restaurar não põe o e-mail de volta
+    await rpc(ADMIN, "app_admin_comunicado_restaurar", { p_id: c.id });
+    expect(await servico("ch_worker_email_pegar", { p_limite: 20 })).toEqual([]);
+
+    const d = await enviarComEmail({ p_titulo: "Carla desiste", p_texto: "Texto." });
+    await rpc(CARLA, "app_marketing_set", { p_opt_in: false });
+    const lote = await servico<any[]>("ch_worker_email_pegar", { p_limite: 20 });
+    expect(lote.map((i) => i.email)).toEqual(["ce0@t.dev"]);
+    expect((await filaDe(d.id)).find((x) => x.user_id === CARLA)).toMatchObject({ status: "cancelado", erro: expect.stringContaining("não quer mais") });
+    for (const item of lote) await servico("ch_worker_email_marcar", { p_id: item.id, p_resultado: "enviado" });
+    await rpc(CARLA, "app_marketing_set", { p_opt_in: true });
+  });
+
+  it("público não muda depois que o comunicado foi por e-mail", async () => {
+    const c = await enviarComEmail({ p_titulo: "Com e-mail", p_texto: "Texto." });
+    await expect(rpc(ADMIN, "app_admin_comunicado_editar", { p_id: c.id, p_titulo: "Com e-mail", p_texto: "Texto.", p_link: null, p_publico: "plano", p_filtro: "pro" })).rejects.toThrow(/e-mail/);
+    await q(`delete from public.email_saida where kind = 'comunicado'`);
+  });
+
+  it("descadastro pelo link: abrir não muda nada; confirmar retira o consentimento (histórico 'link_email') e cancela o que não saiu", async () => {
+    const token = (await servico<string>("marketing_token", { p_user: ANA }).catch(async () => (await q1(`select public.marketing_token($1) as t`, [ANA])).t)) as string;
+    expect(await servico("ch_worker_marketing_descadastro", { p_token: "x".repeat(64) })).toEqual({ valido: false });
+    expect(await servico("ch_worker_marketing_descadastro", { p_token: "0".repeat(64) })).toEqual({ valido: false });
+    const c = await enviarComEmail({ p_titulo: "Antes do descadastro", p_texto: "Texto." });
+    expect(await servico("ch_worker_marketing_descadastro", { p_token: token })).toEqual({ valido: true, recebe: true });
+    expect((await rpc(ANA, "app_marketing_get")).opt_in).toBe(true);
+    expect(await servico("ch_worker_marketing_descadastro", { p_token: token, p_confirmar: true })).toEqual({ valido: true, recebe: false });
+    expect((await rpc(ANA, "app_marketing_get")).opt_in).toBe(false);
+    expect((await q1(`select origin, texto from public.marketing_consent_log where user_id = $1 order by id desc limit 1`, [ANA]))).toMatchObject({ origin: "link_email" });
+    expect((await filaDe(c.id)).find((x) => x.user_id === ANA)).toMatchObject({ status: "cancelado" });
+    // confirmar de novo: nada muda
+    expect(await servico("ch_worker_marketing_descadastro", { p_token: token, p_confirmar: true })).toEqual({ valido: true, recebe: false });
+    await rpc(ANA, "app_marketing_set", { p_opt_in: true });
+    await q(`delete from public.email_saida where kind = 'comunicado'`);
+  });
+
+  it("limite do dia (Google Workspace): com o teto já usado hoje, a fila não pega mais nada; o aviso de conta inativa sai antes", async () => {
+    expect((await q1(`select public.email_saida_teto_dia() as t`)).t).toBe(1500);
+    const c = await enviarComEmail({ p_titulo: "Muita gente hoje", p_texto: "Texto." });
+    await q(`insert into public.email_saida (kind, user_id, chave, payload) values ('aviso_inatividade', $1, 'teste-inativo-1', '{"acao":"zerar_coins","ultimo_acesso":"2025-01-01T00:00:00Z"}')`, [BRUNO]);
+    const lote = await servico<any[]>("ch_worker_email_pegar", { p_limite: 1 });
+    expect(lote.map((i) => i.kind)).toEqual(["aviso_inatividade"]);
+    await servico("ch_worker_email_marcar", { p_id: lote[0].id, p_resultado: "enviado" });
+    // simula 1.500 envios hoje (o que já foi pego hoje conta)
+    await q(`insert into public.email_saida (kind, user_id, chave, status, pego_em, enviado_em)
+             select 'aviso_inatividade', $1, 'teste-cheio-' || g, 'enviado', now(), now() from generate_series(1, 1500) g`, [BRUNO]);
+    expect(await servico("ch_worker_email_pegar", { p_limite: 20 })).toEqual([]);
+    expect((await filaDe(c.id)).every((x) => x.status === "pendente")).toBe(true);
+    // virou o dia: sai
+    await q(`update public.email_saida set pego_em = now() - interval '2 days' where chave like 'teste-%'`);
+    expect(await servico<any[]>("ch_worker_email_pegar", { p_limite: 20 })).toHaveLength(2);
+    await q(`delete from public.email_saida`);
+  });
+
+  it("aluno e visitante não chegam à fila nem ao descadastro (só o servidor)", async () => {
+    for (const fn of ["ch_worker_email_pegar", "ch_worker_marketing_descadastro", "marketing_token", "comunicado_email_enfileirar"]) {
+      await expect(comoAluno(ANA, `select public.${fn}(${fn === "ch_worker_email_pegar" ? "20" : fn === "ch_worker_marketing_descadastro" ? "'x'" : fn === "marketing_token" ? `'${ANA}'::uuid` : "1"})`)).rejects.toThrow(/permission denied/);
+    }
+    await expect(comoAluno(ANA, `select * from public.marketing_descadastro`)).rejects.toThrow(/permission denied/);
+    await expect(comoAluno(ANA, `select * from public.email_saida`)).rejects.toThrow(/permission denied/);
+  });
+});
+
 describe("SEGURANÇA: só administrador; aluno, editor e revisora barrados (no servidor)", () => {
   it("aluno, editor e revisora não editam, não apagam, não restauram, não listam e não leem o histórico", async () => {
     const c = await enviar({ p_titulo: "Alvo de ataque", p_texto: "Texto original." });
@@ -233,6 +388,8 @@ describe("SEGURANÇA: só administrador; aluno, editor e revisora barrados (no s
       await expect(rpc(u, "app_admin_comunicado_restaurar", { p_id: c.id })).rejects.toThrow(/administradores/);
       await expect(rpc(u, "app_admin_comunicados", {})).rejects.toThrow(/administradores/);
       await expect(rpc(u, "app_admin_comunicado_historico", { p_id: c.id })).rejects.toThrow(/administradores/);
+      await expect(rpc(u, "app_admin_comunicado_email", { p_id: c.id })).rejects.toThrow(/administradores/);
+      await expect(rpc(u, "app_admin_comunicado_previa", { p_publico: "todos", p_filtro: null })).rejects.toThrow(/administradores/);
       await expect(rpc(u, "app_admin_comunicado_enviar", { p_titulo: "Falso", p_texto: "Falso.", p_link: null, p_publico: "todos", p_filtro: null, p_idem: `idem-ataque-${u}` })).rejects.toThrow(/administradores/);
     }
     const linha = await q1(`select titulo, texto, apagado_em, versao from public.comunicados_equipe where id = $1`, [c.id]);
@@ -271,31 +428,52 @@ describe("comunicado antigo (só texto) continua funcionando", () => {
   });
 });
 
-describe("migração: colar duas vezes, desfazer e colar de novo (ensaio)", () => {
+describe("migrações: 013950 por cima da 013940 já aplicada (ensaio)", () => {
   const conferir = async () => (await q1(CONFERIR)).resultado as string;
-  it("colar de novo não estraga nada", async () => {
+  const conferir950 = async () => (await q1(CONFERIR_950)).resultado as string;
+  it("com a 013950 aplicada, as duas conferências dão OK; colar a 013950 de novo não estraga nada", async () => {
+    expect(await conferir()).toBe(OK_940);
+    expect(await conferir950()).toBe(OK_950);
     const antes = (await q1(`select count(*)::int n from public.avisos_aluno`)).n;
-    expect(await conferir()).toBe("OK: Comunicados com editar, apagar e editor profissional (013940) no banco");
-    await dev.db.exec(MIGRACAO);
-    await dev.db.exec(MIGRACAO);
+    await dev.db.exec(MIGRACAO_950);
+    await dev.db.exec(MIGRACAO_950);
     expect((await q1(`select count(*)::int n from public.avisos_aluno`)).n).toBe(antes);
-    expect(await conferir()).toBe("OK: Comunicados com editar, apagar e editor profissional (013940) no banco");
+    expect(await conferir950()).toBe(OK_950);
+    expect(await conferir()).toBe(OK_940);
   });
 
-  it("desfazer volta à 013830 (apagados saem de vez do aluno) e pode ser colado de novo", async () => {
+  it("desfazer a 013950 volta à 013940 (que segue OK e funcionando) e pode ser colada de novo", async () => {
+    const c = await enviarComEmail({ p_titulo: "Antes do desfazer da 013950", p_texto: "Texto." });
+    await dev.db.exec(DESFAZER_950);
+    await dev.db.exec(DESFAZER_950);
+    expect(await conferir950()).toMatch(/^FALTA: .*marketing_descadastro/);
+    expect(await conferir()).toBe(OK_940);
+    expect((await q1(`select count(*)::int n from public.email_saida where kind = 'comunicado'`)).n).toBe(0);
+    await expect(q(`insert into public.email_saida (kind, user_id, chave) values ('comunicado', $1, 'x-comunicado')`, [ANA])).rejects.toThrow(/check/);
+    // a 013940 continua: editar mantém a leitura (regra antiga) e a prévia não fala de e-mail
+    await rpc(ANA, "app_notificacoes_lidas", { p_ids: [(await aviso(ANA, c.id)).id] });
+    await rpc(ADMIN, "app_admin_comunicado_editar", { p_id: c.id, p_titulo: "Editado na 013940", p_texto: "Texto.", p_link: null });
+    expect((await naCentral(ANA, c.id)).item).toMatchObject({ titulo: "Editado na 013940", lida: true, editado: true });
+    expect(await rpc(ADMIN, "app_admin_comunicado_previa", { p_publico: "todos", p_filtro: null })).toEqual({ destinatarios: 3 });
+    await dev.db.exec(MIGRACAO_950);
+    expect(await conferir950()).toBe(OK_950);
+  });
+
+  it("desfazer as duas (013950 e depois 013940) volta à 013830 e dá para colar as duas de novo", async () => {
     const c = await enviar({ p_titulo: "Apagado antes do desfazer", p_texto: "Texto." });
     await rpc(ADMIN, "app_admin_comunicado_apagar", { p_id: c.id });
+    await dev.db.exec(DESFAZER_950);
     await dev.db.exec(DESFAZER);
     await dev.db.exec(DESFAZER);
     expect(await conferir()).toMatch(/^FALTA: .*comunicados_historico/);
     expect((await q1(`select count(*)::int n from public.avisos_aluno where comunicado_id = $1`, [c.id])).n).toBe(0);
-    // a 013830 volta a valer: enviar de 6 parâmetros, lista de 1 parâmetro
     const velho = await rpc(ADMIN, "app_admin_comunicado_enviar", { p_titulo: "Depois do desfazer", p_texto: "Texto.", p_link: null, p_publico: "todos", p_filtro: null, p_idem: "idem-desfazer-1" });
     expect(velho.destinatarios).toBe(3);
-    expect((await rpc(ADMIN, "app_admin_comunicados", { p_limite: 5 }))[0].titulo).toBe("Depois do desfazer");
     expect((await centralDe(ANA)).aluno).toBe(true);
     await dev.db.exec(MIGRACAO);
-    expect(await conferir()).toBe("OK: Comunicados com editar, apagar e editor profissional (013940) no banco");
-    expect((await rpc(ADMIN, "app_admin_comunicados", { p_limite: 5 }))[0]).toMatchObject({ titulo: "Depois do desfazer", versao: 1 });
+    await dev.db.exec(MIGRACAO_950);
+    expect(await conferir()).toBe(OK_940);
+    expect(await conferir950()).toBe(OK_950);
+    expect((await rpc(ADMIN, "app_admin_comunicados", { p_limite: 5 }))[0]).toMatchObject({ titulo: "Depois do desfazer", versao: 1, lidas_antes: 0 });
   });
 });

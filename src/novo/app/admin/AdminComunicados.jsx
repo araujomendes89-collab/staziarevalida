@@ -6,9 +6,11 @@
 // mesmo de Questões, Aulas, Atualizações e Podcasts). Na lista, cada comunicado pode ser EDITADO (título, texto e link; o público só
 // enquanto nenhum aluno leu) e APAGADO (some do sino dos alunos; confirmação aqui mesmo, com "Desfazer" por alguns segundos e
 // "Restaurar" no filtro Apagados). Tudo conferido no banco (só administrador) e guardado no histórico (quem, quando, antes e depois).
-// Comunicado não vai por e-mail: editar ou apagar também não manda nada.
+// Decisões do dono (18/10): editar título, texto, formatação ou link faz o comunicado voltar a NÃO LIDO para todos (a lista mostra
+// quantos leram a versão atual e "lido antes da edição: N"); "Enviar também por e-mail" (no envio ou depois, na edição; uma vez só)
+// manda pela fila de e-mails de serviço só para quem aceitou receber novidades; editar não reenvia o e-mail que já saiu.
 import React from "react";
-import { Badge, Banner, Button, Card, SectionHeader, SegmentedControl, SelectField, TextField } from "../../ds";
+import { Badge, Banner, Button, Card, Checkbox, SectionHeader, SegmentedControl, SelectField, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
 import { LoadError, Loading, dateTimeBR, messageOf, useLoad } from "./common.jsx";
 import { CampoRico } from "../editorPro/CampoRico.jsx";
@@ -23,7 +25,19 @@ const TEXTO_MAX = 600;
 export const DESFAZER_MS = 10_000;
 const novoIdem = () => (globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `com-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 const alunos = (n) => `${n} ${n === 1 ? "aluno" : "alunos"}`;
-const SEM_EMAIL = "Comunicado não vai por e-mail: aparece só no sino dos alunos.";
+const CONSENTIMENTO = "só para quem aceitou receber novidades por e-mail (no começo do app ou em Minha Conta); os outros veem só no sino";
+
+/** Linha de leitura e e-mail de um comunicado da lista. */
+export function resumoLeitura(c) {
+  const partes = [`lido por ${c.lidas} de ${c.destinatarios}${c.versao > 1 ? " (versão atual)" : ""}`];
+  if (c.versao > 1 && Number(c.lidas_antes) > 0) partes.push(`lido antes da edição: ${c.lidas_antes}`);
+  if (c.por_email && c.email) {
+    const e = c.email;
+    const resto = [e.na_fila ? `${e.na_fila} na fila` : null, e.nao_enviados ? `${e.nao_enviados} não enviados` : null].filter(Boolean).join(", ");
+    partes.push(`e-mail: ${e.enviados} ${e.enviados === 1 ? "enviado" : "enviados"}${resto ? ` (${resto})` : ""}`);
+  }
+  return partes.join(" · ");
+}
 
 /** O que falta para poder ver a prévia ou salvar (null = pronto). */
 export function problemaDoComunicado({ titulo, texto, link }) {
@@ -100,8 +114,8 @@ export function AdminComunicados() {
   const { backend } = useSession();
   const [situacao, setSituacao] = React.useState("ativos");
   const enviados = useLoad(() => backend.rpc("app_admin_comunicados", { p_limite: 30, p_situacao: situacao }), [backend, situacao]);
-  const [form, setForm] = React.useState({ titulo: "", texto: "", rico: null, link: "", publico: "todos", filtro: "" });
-  const [previa, setPrevia] = React.useState(null); // { destinatarios, idem }
+  const [form, setForm] = React.useState({ titulo: "", texto: "", rico: null, link: "", publico: "todos", filtro: "", email: false });
+  const [previa, setPrevia] = React.useState(null); // { destinatarios, porEmail, idem }
   const [estado, setEstado] = React.useState({ ocupado: false, erro: null, enviado: null });
   const [apagado, setApagado] = React.useState(null); // { id, titulo } do último apagado (barra "Desfazer")
   const [aviso, setAviso] = React.useState(null); // { tom, texto } depois de editar/restaurar
@@ -118,7 +132,7 @@ export function AdminComunicados() {
     setEstado({ ocupado: true, erro: null, enviado: null });
     try {
       const r = await backend.rpc("app_admin_comunicado_previa", { p_publico: form.publico, p_filtro: filtro });
-      setPrevia({ destinatarios: Number(r?.destinatarios) || 0, idem: novoIdem() });
+      setPrevia({ destinatarios: Number(r?.destinatarios) || 0, porEmail: Number(r?.por_email) || 0, idem: novoIdem() });
       setEstado({ ocupado: false, erro: null, enviado: null });
     } catch (e) {
       setEstado({ ocupado: false, erro: messageOf(e), enviado: null });
@@ -137,8 +151,19 @@ export function AdminComunicados() {
         p_filtro: filtro,
         p_idem: previa.idem,
       });
-      setEstado({ ocupado: false, erro: null, enviado: r });
-      setForm({ titulo: "", texto: "", rico: null, link: "", publico: "todos", filtro: "" });
+      // "Enviar também por e-mail": logo depois do envio (uma vez só; o banco não repete)
+      let enviado = r;
+      let erro = null;
+      if (form.email && r?.id && !r.repetido) {
+        try {
+          const m = await backend.rpc("app_admin_comunicado_email", { p_id: r.id });
+          enviado = { ...r, por_email: true, emails: Number(m?.emails) || 0 };
+        } catch (e) {
+          erro = `O comunicado foi para o sino, mas o e-mail não entrou na fila (${messageOf(e)}). Abra o comunicado em “Editar” e marque “Enviar também por e-mail”.`;
+        }
+      }
+      setEstado({ ocupado: false, erro, enviado });
+      setForm({ titulo: "", texto: "", rico: null, link: "", publico: "todos", filtro: "", email: false });
       setPrevia(null);
       if (situacao === "ativos") enviados.reload();
       else setSituacao("ativos");
@@ -159,22 +184,28 @@ export function AdminComunicados() {
     enviados.reload();
   };
   const aoEditar = (c) => {
-    setAviso({ tom: "success", texto: `“${c.titulo}” foi atualizado. Os alunos veem a versão nova com o selo “editado”.` });
-    enviados.setData((enviados.data ?? []).map((x) => (x.id === c.id ? c : x)));
+    const { _conteudo, ...linha } = c;
+    const emails = Number(c.emails) > 0 ? `${c.emails} ${c.emails === 1 ? "e-mail entrou" : "e-mails entraram"} na fila (saem em alguns minutos).` : "";
+    const texto = _conteudo === false ? `“${c.titulo}”: ${emails || "nenhum aluno deste público aceitou receber novidades por e-mail."}` : `“${c.titulo}” foi atualizado. Os alunos veem a versão nova com o selo “editado”, como não lida.${emails ? ` ${emails}` : ""}`;
+    setAviso({ tom: "success", texto });
+    enviados.setData((enviados.data ?? []).map((x) => (x.id === c.id ? linha : x)));
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }} data-testid="admin-comunicados">
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <SectionHeader icon="megaphone" title="Novo comunicado" subtitle="Aparece no sino de notificações dos alunos escolhidos. Não vai por e-mail." />
+          <SectionHeader icon="megaphone" title="Novo comunicado" subtitle="Aparece no sino de notificações dos alunos escolhidos e, se você marcar, também por e-mail." />
           <CamposDoComunicado form={form} mudar={mudar} idBase="novo" />
           <ParaQuem form={form} mudar={mudar} />
+          <OpcaoEmail marcado={form.email} onChange={mudar("email")} />
           {problema && (form.titulo || form.texto || form.link) ? <span className="sm-field__hint">{problema}</span> : null}
           {estado.erro && <Banner tone="danger">{estado.erro}</Banner>}
           {estado.enviado && (
             <Banner tone="success" title="Comunicado enviado">
-              {estado.enviado.repetido ? "Este envio já tinha sido feito; nada foi mandado de novo." : `Foi para ${alunos(estado.enviado.destinatarios)}.`}
+              {estado.enviado.repetido
+                ? "Este envio já tinha sido feito; nada foi mandado de novo."
+                : `Foi para ${alunos(estado.enviado.destinatarios)}.${estado.enviado.por_email ? ` ${estado.enviado.emails} ${estado.enviado.emails === 1 ? "e-mail entrou" : "e-mails entraram"} na fila (saem em até alguns minutos).` : ""}`}
             </Banner>
           )}
           {!previa ? (
@@ -191,6 +222,15 @@ export function AdminComunicados() {
               </div>
               <p className="ntf-previa-p">
                 Vai para <b>{alunos(previa.destinatarios)}</b> ({publicoRotulo(form.publico, filtro)}). Depois de enviado, dá para editar ou apagar na lista abaixo.
+              </p>
+              <p className="ntf-previa-p" data-testid="previa-email">
+                {form.email ? (
+                  <>
+                    Por e-mail: <b>{alunos(previa.porEmail)}</b> ({CONSENTIMENTO}).
+                  </>
+                ) : (
+                  <>Sem e-mail: só no sino. ({alunos(previa.porEmail)} deste público aceitaram receber novidades por e-mail.)</>
+                )}
               </p>
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
                 <Button variant="secondary" onClick={() => setPrevia(null)} disabled={estado.ocupado}>
@@ -315,7 +355,7 @@ function ItemEnviado({ c, onApagado, onEditado, onRestaurado }) {
           <b>{c.titulo}</b>
           <ParagrafoRico texto={c.texto} rico={c.rico} className="ntf-rico" />
           <small>
-            {publicoRotulo(c.publico, c.filtro)} · {dateTimeBR(c.enviado_em)} · por {c.enviado_por} · lido por {c.lidas} de {c.destinatarios}
+            {publicoRotulo(c.publico, c.filtro)} · {dateTimeBR(c.enviado_em)} · por {c.enviado_por} · {resumoLeitura(c)}
           </small>
           {(c.editado_em || apagadoJa) && (
             <small>
@@ -356,7 +396,10 @@ function ItemEnviado({ c, onApagado, onEditado, onRestaurado }) {
           <b>Apagar “{c.titulo}”?</b>
           <p>
             Ele some do sino e da lista de notificações {c.destinatarios === 1 ? "do aluno que recebeu" : `dos ${c.destinatarios} alunos que receberam`}
-            {c.lidas > 0 ? ` (inclusive de quem já leu: ${c.lidas})` : ""}. Nada é apagado de vez: fica em “Apagados”, de onde dá para restaurar. Nenhum e-mail é enviado.
+            {c.lidas > 0 ? ` (inclusive de quem já leu: ${c.lidas})` : ""}. Nada é apagado de vez: fica em “Apagados”, de onde dá para restaurar.
+            {c.por_email
+              ? ` E-mail: ${c.email?.na_fila ? `os ${c.email.na_fila} que ainda estão na fila são cancelados; ` : ""}o que já saiu não volta (e restaurar não manda de novo).`
+              : " Nenhum e-mail é enviado."}
           </p>
           <TextField label="Motivo (opcional)" value={motivo} maxLength={300} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: data errada, mandei de novo corrigido" hint="Fica no histórico; o aluno não vê." />
           {estado.erro && <Banner tone="danger">{estado.erro}</Banner>}
@@ -397,7 +440,9 @@ function EditarComunicado({ c, onCancelar, onSalvo }) {
   const [form, setForm] = React.useState(inicial);
   const [estado, setEstado] = React.useState({ ocupado: false, erro: null });
   const [contagem, setContagem] = React.useState(null); // alunos do público novo (só quando o público muda)
-  const podeMudarPublico = Number(c.lidas) === 0;
+  const [email, setEmail] = React.useState(false); // mandar por e-mail agora (só se ainda não foi)
+  const [porEmail, setPorEmail] = React.useState(null); // quantos do público recebem o e-mail
+  const podeMudarPublico = c.pode_mudar_publico ?? Number(c.lidas) === 0;
   const filtro = form.publico === "todos" ? null : form.filtro;
   const mudouPublico = podeMudarPublico && (form.publico !== c.publico || (filtro ?? null) !== (c.filtro ?? null));
   const mudar = (campo) => (valor) => {
@@ -405,8 +450,21 @@ function EditarComunicado({ c, onCancelar, onSalvo }) {
     setEstado((e) => ({ ...e, erro: null }));
   };
   const problema = problemaDoComunicado(form);
-  const igual =
-    !mudouPublico && form.titulo.trim() === inicial.titulo && form.texto.trim() === inicial.texto && JSON.stringify(form.rico ?? null) === JSON.stringify(inicial.rico) && form.link.trim() === inicial.link;
+  const mudouConteudo =
+    form.titulo.trim() !== inicial.titulo || form.texto.trim() !== inicial.texto || JSON.stringify(form.rico ?? null) !== JSON.stringify(inicial.rico) || form.link.trim() !== inicial.link;
+  const igual = !mudouPublico && !mudouConteudo && !email;
+
+  React.useEffect(() => {
+    if (!email || c.por_email) return undefined;
+    let vivo = true;
+    backend
+      .rpc("app_admin_comunicado_previa", { p_publico: form.publico, p_filtro: filtro })
+      .then((r) => vivo && setPorEmail(Number(r?.por_email) || 0))
+      .catch(() => vivo && setPorEmail(null));
+    return () => {
+      vivo = false;
+    };
+  }, [email, c.por_email, form.publico, filtro, backend]);
 
   React.useEffect(() => {
     if (!mudouPublico) {
@@ -427,17 +485,22 @@ function EditarComunicado({ c, onCancelar, onSalvo }) {
   const salvar = async () => {
     setEstado({ ocupado: true, erro: null });
     try {
-      const r = await backend.rpc("app_admin_comunicado_editar", {
-        p_id: c.id,
-        p_titulo: form.titulo.trim(),
-        p_texto: form.texto.trim(),
-        p_rico: form.rico ?? null,
-        p_link: form.link.trim() || null,
-        p_publico: mudouPublico ? form.publico : null,
-        p_filtro: mudouPublico ? filtro : null,
-        p_versao: c.versao ?? null,
-      });
-      onSalvo(r ?? { ...c, ...form });
+      let r = c;
+      if (mudouConteudo || mudouPublico) {
+        r = await backend.rpc("app_admin_comunicado_editar", {
+          p_id: c.id,
+          p_titulo: form.titulo.trim(),
+          p_texto: form.texto.trim(),
+          p_rico: form.rico ?? null,
+          p_link: form.link.trim() || null,
+          p_publico: mudouPublico ? form.publico : null,
+          p_filtro: mudouPublico ? filtro : null,
+          p_versao: c.versao ?? null,
+        });
+      }
+      // mandar por e-mail agora (só se ainda não foi; o banco não repete)
+      if (email && !c.por_email) r = await backend.rpc("app_admin_comunicado_email", { p_id: c.id });
+      onSalvo({ ...(r ?? { ...c, ...form }), _conteudo: mudouConteudo || mudouPublico });
     } catch (e) {
       setEstado({ ocupado: false, erro: messageOf(e) });
     }
@@ -446,9 +509,15 @@ function EditarComunicado({ c, onCancelar, onSalvo }) {
   return (
     <div className="ntf-edita" data-testid="editar-comunicado">
       <div className="ntf-edita-t">Editar comunicado enviado</div>
-      <Banner tone="info" icon="mail-x">
-        A versão nova aparece no sino dos alunos com o selo “editado”, e quem já leu continua com ele como lido. {SEM_EMAIL} Editar não manda e-mail nem notificação nova.
+      <Banner tone="info" icon="bell-dot">
+        Ao salvar uma mudança no título, no texto, na formatação ou no link, o comunicado volta a aparecer como <b>não lido</b> para todos os alunos, com o selo “editado”.
+        {Number(c.lidas) > 0 ? ` Hoje ${c.lidas === 1 ? "1 aluno leu" : `${c.lidas} alunos leram`} esta versão; isso vira “lido antes da edição”.` : ""}
       </Banner>
+      {c.por_email && (
+        <Banner tone="warning" icon="mail-check" title="O e-mail já enviado não muda">
+          Este comunicado já foi por e-mail. Editar muda só o que aparece no app; não reenvia o e-mail.
+        </Banner>
+      )}
       <CamposDoComunicado form={form} mudar={mudar} idBase={`editar-${c.id}`} />
       {podeMudarPublico ? (
         <>
@@ -462,8 +531,15 @@ function EditarComunicado({ c, onCancelar, onSalvo }) {
         <div className="ntf-fixo" data-testid="publico-fixo">
           <b>Para quem: {publicoRotulo(c.publico, c.filtro)} ({alunos(c.destinatarios)})</b>
           <span>
-            O público não muda mais porque {c.lidas === 1 ? "1 aluno já leu" : `${c.lidas} alunos já leram`}. Dá para corrigir o título, o texto e o link. Para falar com outro público, envie um comunicado novo.
+            O público não muda mais porque{" "}
+            {c.por_email ? "o comunicado já foi por e-mail" : Number(c.lidas) > 0 ? (c.lidas === 1 ? "1 aluno já leu" : `${c.lidas} alunos já leram`) : "alunos já leram uma versão anterior"}. Dá para corrigir o título, o texto e o link. Para falar com outro público, envie um comunicado novo.
           </span>
+        </div>
+      )}
+      {!c.por_email && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <OpcaoEmail marcado={email} onChange={setEmail} />
+          {email && porEmail !== null && <span className="sm-field__hint">Vai por e-mail para {alunos(porEmail)} ({CONSENTIMENTO}). Uma vez só: depois disso, editar não reenvia.</span>}
         </div>
       )}
       <div className="ntf-previa-caixa">
@@ -479,6 +555,16 @@ function EditarComunicado({ c, onCancelar, onSalvo }) {
           {mudouPublico && contagem === 0 ? "Nenhum aluno neste público" : "Salvar alteração"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** "Enviar também por e-mail" (consentimento explicado embaixo). */
+function OpcaoEmail({ marcado, onChange }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }} data-testid="opcao-email">
+      <Checkbox label="Enviar também por e-mail" checked={Boolean(marcado)} onChange={(e) => onChange(e.target.checked)} />
+      <span className="sm-field__hint">Só para quem aceitou receber novidades por e-mail; os outros veem só no sino. O e-mail leva o link para descadastrar.</span>
     </div>
   );
 }
