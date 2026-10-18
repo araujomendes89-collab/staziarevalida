@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
-import { ACABAMENTO_VERSAO, acabarVoz, floatParaPcm, inicioDoRuidoFinal, planura, tirarRuidoDasPontas } from "../../server/tutor/vozAcabamento";
+import { ACABAMENTO_VERSAO, LUFS_ALVO, PICO_MAX_DB, acabarVoz, floatParaPcm, igualarVolume, inicioDoRuidoFinal, loudnessLufs, planura, tirarRuidoDasPontas } from "../../server/tutor/vozAcabamento";
 import { tirarRuidoDoPcm } from "../../server/tutor/ruidoTts";
 
 const TAXA = 24_000;
@@ -88,12 +88,32 @@ describe("chiado do Gemini TTS", () => {
   it("no acabamento inteiro (afinar, aparar, volume, MP3) o arquivo sai do tamanho da fala limpa, e a versão do acabamento mudou", async () => {
     const limpo = juntar(silencio(230), fala(1500), silencio(250));
     const [sujo, bom] = await Promise.all([
-      acabarVoz(floatParaPcm(comoOTtsEntrega()), TAXA, { semitons: 3, lufs: -13.1 }),
-      acabarVoz(floatParaPcm(limpo), TAXA, { semitons: 3, lufs: -13.1 }),
+      acabarVoz(floatParaPcm(comoOTtsEntrega()), TAXA, { semitons: 3, lufs: LUFS_ALVO.stazi }),
+      acabarVoz(floatParaPcm(limpo), TAXA, { semitons: 3, lufs: LUFS_ALVO.stazi }),
     ]);
     expect(Math.abs(sujo.segundos - bom.segundos)).toBeLessThan(0.03);
     expect(Math.abs(sujo.lufs - bom.lufs)).toBeLessThan(0.5);
     expect(ACABAMENTO_VERSAO).toBe("sem-chiado-2026-10-18"); // cache e aprovação da voz mudam junto
+  });
+
+  it("limitador gentil (a aspereza do Kore): fala que já chega em 0 dBFS quase não sofre redução de ganho", () => {
+    // fala "cortada" em 0 dBFS, como o Gemini entrega o Kore
+    const kore = fala(3000, 1.4).map((v) => Math.max(-1, Math.min(1, v)));
+    const alvo = LUFS_ALVO.stazia;
+    const ganho = Math.pow(10, (alvo - loudnessLufs(kore, TAXA)) / 20);
+    const out = igualarVolume(kore, TAXA, alvo);
+    const bloco = ms(5);
+    let reducoes = 0, blocos = 0;
+    for (let i = 0; i + bloco <= kore.length; i += bloco) {
+      let sp = 0, sl = 0;
+      for (let k = i; k < i + bloco; k++) (sp += (kore[k] * ganho) ** 2), (sl += out[k] ** 2);
+      if (sp < 1e-6) continue;
+      blocos++;
+      if (10 * Math.log10(sp / Math.max(sl, 1e-12)) > 3) reducoes++;
+    }
+    expect(reducoes / blocos).toBeLessThan(0.02);
+    expect(Math.max(...Array.from(out, Math.abs))).toBeLessThanOrEqual(Math.pow(10, PICO_MAX_DB / 20) + 1e-6);
+    expect(Math.abs(loudnessLufs(out, TAXA) - alvo)).toBeLessThan(0.5);
   });
 
   it("podcasts (PCM 16 bits): o mesmo corte, sem mexer no que não tem ruído", () => {

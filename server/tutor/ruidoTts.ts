@@ -77,14 +77,14 @@ export function inicioDoRuidoFinal(a: Float32Array, taxa: number): number | null
   const n = Math.floor(a.length / jan);
   if (n < 12) return null;
   const db = (k: number) => dbRms(a, k * jan, (k + 1) * jan);
-  // do fim para trás, até 450 ms: o primeiro silêncio de pelo menos 50 ms (abaixo de −45 dB; zeros exatos não contam, eles são
+  // do fim para trás, até 450 ms: o primeiro silêncio de pelo menos 50 ms (abaixo de −50 dBFS; zeros exatos não contam, eles são
   // parte do ruído) marca onde o trecho final começa. Depois de afinar ou virar MP3, o buraco de zeros vira um "quase silêncio"
   // curto (menos de 50 ms), então ele não engana a busca.
   let corrida = 0;
   let inicio = -1;
   for (let k = n - 1; k >= Math.max(0, n - 46); k--) {
     const v = db(k);
-    if (v < -45 && v > -170) {
+    if (v < -50 && v > -170) {
       if (++corrida >= 5) {
         inicio = k + corrida;
         break;

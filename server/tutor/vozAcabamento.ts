@@ -8,8 +8,8 @@
  *      termina de falar): ~170 ms de ruído largo e alto (−3 a −6 dB) depois de um silêncio no fim, e um estalo de ~20 ms no
  *      começo. O corte é por DETECÇÃO (energia + planura do espectro + silêncio antes), nunca por tempo fixo: fala não é cortada;
  *   3. apara o silêncio das pontas (janelas de 20 ms, 60 ms de folga; entrada suave de 20 ms e saída de 30 ms);
- *   4. iguala o volume ao das frases de espera do mesmo personagem (loudness EBU R128 integrada, com um limitador rápido que
- *      segura só os picos);
+ *   4. iguala o volume (loudness EBU R128 integrada, ~1,3 LU abaixo das frases de espera desde 18/10), com um limitador que segura
+ *      só os picos e solta devagar;
  *   5. MP3 mono 24 kHz 64 kbps (lamejs), como as frases de espera.
  *
  * O navegador toca o MP3 como chega (o tocador nunca afina o MP3 do professor: audioPlayer.js).
@@ -23,12 +23,18 @@ import { tirarRuidoDasPontas } from "./ruidoTts";
 export const ACABAMENTO_VERSAO = "sem-chiado-2026-10-18";
 export const MP3_KBPS = 64;
 /**
- * Volume medido nas frases de espera aprovadas (public/novo-assets/tutor/espera/manifesto.json, média de cada personagem):
- * Stazi −13,1 LUFS e Stazia −13,7 LUFS.
+ * Volume alvo. Até 17/10: o das frases de espera (Stazi −13,1 e Stazia −13,7 LUFS), com teto de −3,5 dB e soltura de 60 ms. Em
+ * 18/10 (a "aspereza" do Kore, que o Gemini já entrega batendo em 0 dBFS): o limitador mexia o ganho o tempo todo (13,7% do tempo
+ * com mais de 3 dB de redução e +0,37 dB de agudo acima de 4 kHz criado por ele, medido em 10 falas por scripts/voz-teste/
+ * medir-limitador.ts). Com 1,3 LU a menos, teto de −2 dB e soltura de 180 ms: 0,7% do tempo e nenhum agudo a mais.
  */
-export const LUFS_ALVO = { stazi: -13.1, stazia: -13.7 } as const;
-/** Teto dos picos antes do MP3 (o MP3 passa ~2 a 3 dB do pico do PCM; as frases de espera usaram o mesmo teto). */
-export const PICO_MAX_DB = -3.5;
+export const LUFS_ALVO = { stazi: -14.4, stazia: -15.0 } as const;
+/** Teto dos picos antes do MP3. */
+export const PICO_MAX_DB = -2.0;
+/** Soltura do limitador (s): devagar, para o ganho não "tremer" entre sílabas. */
+let SOLTURA_S = 0.18;
+/** Só para a bancada de medição (scripts/voz-teste/medir-limitador.ts). */
+export const definirSolturaParaMedir = (s: number) => (SOLTURA_S = s);
 
 export function pcmParaFloat(pcm: Buffer): Float32Array {
   const n = pcm.length >> 1;
@@ -129,10 +135,10 @@ export function loudnessLufs(a: Float32Array, taxa: number): number {
 }
 
 /**
- * Ganho + limitador (como o alimiter das frases de espera: ataque de 3 ms, soltura de 60 ms): olha 3 ms à frente e abaixa o
+ * Ganho + limitador (ataque de 3 ms, soltura de 180 ms desde 18/10): olha 3 ms à frente e abaixa o
  * ganho só onde o pico passaria do teto, depois volta devagar. Nenhuma amostra sai acima do teto.
  */
-export function ganhoComLimite(a: Float32Array, taxa: number, ganhoDb: number, tetoDb = PICO_MAX_DB): Float32Array {
+export function ganhoComLimite(a: Float32Array, taxa: number, ganhoDb: number, tetoDb = PICO_MAX_DB, solturaS = SOLTURA_S): Float32Array {
   const g = Math.pow(10, ganhoDb / 20);
   const teto = Math.pow(10, tetoDb / 20);
   const n = a.length;
@@ -152,7 +158,7 @@ export function ganhoComLimite(a: Float32Array, taxa: number, ganhoDb: number, t
     frente[i] = precisa[fila[0]];
   }
   // rampa de descida ao longo do ataque (sem degrau) e soltura exponencial
-  const soltura = Math.exp(-1 / (taxa * 0.06));
+  const soltura = Math.exp(-1 / (taxa * solturaS));
   const desce = 1 / ataque;
   const out = new Float32Array(n);
   let atual = 1;
@@ -167,16 +173,16 @@ export function ganhoComLimite(a: Float32Array, taxa: number, ganhoDb: number, t
 }
 
 /** Sobe/abaixa até o volume alvo; o limitador tira um pouco, então mede de novo e corrige (até 3 passos, 0,3 LU). */
-export function igualarVolume(a: Float32Array, taxa: number, alvoLufs: number): Float32Array {
+export function igualarVolume(a: Float32Array, taxa: number, alvoLufs: number, tetoDb = PICO_MAX_DB): Float32Array {
   const medido = loudnessLufs(a, taxa);
   if (!Number.isFinite(medido)) return a;
   let ganho = alvoLufs - medido;
-  let out = ganhoComLimite(a, taxa, ganho);
+  let out = ganhoComLimite(a, taxa, ganho, tetoDb);
   for (let passo = 0; passo < 3; passo++) {
     const d = alvoLufs - loudnessLufs(out, taxa);
     if (Math.abs(d) < 0.3 || ganho > 30) break;
     ganho += d;
-    out = ganhoComLimite(a, taxa, ganho);
+    out = ganhoComLimite(a, taxa, ganho, tetoDb);
   }
   return out;
 }
