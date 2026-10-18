@@ -267,7 +267,8 @@ describe("audição interna autenticada (sem ElevenLabs real)", () => {
     const app = express();
     const db = {
       authenticate: async (req: any) => req.headers.authorization ? { id: req.headers.authorization, email: null } : null,
-      asUser: async (user: any) => { if (user.id !== "Bearer admin") throw new Error("denied"); return {}; },
+      // a sessão única confere a sessão antes de qualquer rota de IA (e recusa se não conseguir conferir): aqui ela vale
+      asUser: async (user: any, fn?: string) => { if (fn === "app_session_check") return { vigente: true, regra: false }; if (user.id !== "Bearer admin") throw new Error("denied"); return {}; },
       // o painel lê aprovações e audições no banco; a audição fica registrada pelo servidor
       service: async (fn: string) => (fn === "ch_worker_tutor_voice_panel" ? { approvals: {}, heard: [] } : null),
     };

@@ -202,23 +202,24 @@ describe("cada passo é validado e salvo no Supabase", () => {
     await expect(salvar(NOVO, "tutor", { personagem: "outro", personalidade: "durona" })).rejects.toThrow(/Stazi ou a Stazia/);
     const e = await salvar(NOVO, "tutor", { personagem: "stazia", personalidade: "durona" });
     expect(e.preferencias).toMatchObject({ tutor_personagem: "stazia", tutor_personalidade: "durona" });
-    // sem a função do personagem no banco (ramo tutor-personagens), a escolha fica só guardada aqui
-    expect(e.tutor_aplicado).toBe(false);
+    // com o Tutor novo no banco (app_tutor_set_character, 013610; Pacote 1), o personagem escolhido já vale no Tutor
+    expect(e.tutor_aplicado).toBe(true);
+    expect((await q(`select "character" from public.tutor_preferences where user_id = $1`, [NOVO]))[0]?.character).toBe("stazia");
   });
   it("Tutor: com app_tutor_set_character no banco, o personagem é aplicado; se ela recusar, a escolha continua salva", async () => {
-    await db.exec(`create table public.teste_set_character (user_id uuid, personagem text);
-      create function public.app_tutor_set_character(p_character text) returns jsonb language plpgsql security definer set search_path = '' as $$
-      begin insert into public.teste_set_character values ((select auth.uid()), p_character); return '{}'::jsonb; end $$;`);
+    // a função de verdade (013610) aplica o personagem
+    expect((await salvar(NOVO, "tutor", { personagem: "stazi", personalidade: "acolhedor" })).tutor_aplicado).toBe(true);
+    expect((await q(`select "character" from public.tutor_preferences where user_id = $1`, [NOVO]))[0]?.character).toBe("stazi");
+    // se ela recusar, o onboarding não quebra: a escolha fica guardada aqui
+    const original = (await q(`select pg_get_functiondef('public.app_tutor_set_character(text)'::regprocedure) d`))[0].d;
+    await db.exec(`create or replace function public.app_tutor_set_character(p_character text) returns jsonb language plpgsql security definer set search_path = '' as $$
+      begin raise exception 'Professor não encontrado.'; end $$;`);
     try {
-      expect((await salvar(NOVO, "tutor", { personagem: "stazi", personalidade: "acolhedor" })).tutor_aplicado).toBe(true);
-      expect(await q(`select user_id, personagem from public.teste_set_character`)).toEqual([{ user_id: NOVO, personagem: "stazi" }]);
-      await db.exec(`create or replace function public.app_tutor_set_character(p_character text) returns jsonb language plpgsql security definer set search_path = '' as $$
-        begin raise exception 'Professor não encontrado.'; end $$;`);
       const e = await salvar(NOVO, "tutor", { personagem: "stazia", personalidade: "tranquila" });
       expect(e.tutor_aplicado).toBe(false);
       expect(e.preferencias).toMatchObject({ tutor_personagem: "stazia", tutor_personalidade: "tranquila" });
     } finally {
-      await db.exec(`drop function public.app_tutor_set_character(text); drop table public.teste_set_character;`);
+      await db.exec(original);
     }
   });
   it("lembretes: só a preferência (horário válido); fecha a configuração e marca o primeiro passo 'perfil'", async () => {

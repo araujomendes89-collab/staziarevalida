@@ -40,6 +40,7 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   ch_raw_tutor_truth: { classe: "so_oficiais", como: "filtra" },
   tutor_answer_for: { classe: "so_oficiais", como: "filtra" },
   app_tutor_start: { classe: "so_oficiais", como: "filtra" },
+  ch_worker_tutor_opening_prep_claim: { classe: "so_oficiais", como: "filtra" }, // 013805: a abertura preparada só aceita questão oficial
   app_admin_questions: { classe: "so_oficiais", como: "filtra" },
   app_admin_question: { classe: "so_oficiais", como: "filtra" },
   admin_import_merge_question: { classe: "so_oficiais", como: "filtra" },
@@ -95,6 +96,13 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   tutor_mastery: { classe: "as_duas", como: "historico" },
   app_tutor_report: { classe: "as_duas", como: "historico" },
   ch_worker_tutor_play_context: { classe: "as_duas", como: "historico" },
+  // cérebro do Tutor (013620, Pacote 1): explicações de questão oficial E StaziaMed entram no índice; a busca decide pelo acesso
+  // (só questão já respondida; Inédita só a liberada no plano). Gravar, origens e rótulos são do indexador do servidor.
+  ch_worker_tutor_kb_buscar: { classe: "as_duas", como: "historico" },
+  tutor_kb_versao_atual: { classe: "as_duas", como: "historico" }, // o portão de aprovação de cada origem do índice
+  ch_worker_tutor_kb_gravar: { classe: "as_duas", como: "equipe" },
+  ch_worker_tutor_kb_origens: { classe: "as_duas", como: "equipe" },
+  ch_worker_tutor_kb_rotulos_a_vetorizar: { classe: "as_duas", como: "equipe" },
   question_attempts_ineditas_gate: { classe: "as_duas", como: "historico" },
   ineditas_option: { classe: "as_duas", como: "historico" },
   ineditas_released_ids_for: { classe: "as_duas", como: "historico" }, // 010300: quais inéditas o plano libera (+ as já respondidas)
@@ -337,6 +345,10 @@ describe("Migração", () => {
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003012200_simulado_ineditas_misturadas.sql", import.meta.url)), "utf8"));
     // a 013120 (editor profissional nas questões) redefine as visões do aluno e o salvar por cima: colar a 9801 de novo pede colar a 013120 depois
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003013120_editor_pro_questoes.sql", import.meta.url)), "utf8"));
+    // a 013590 (4 personalidades) e a 013630 (mini tutor) remendam app_tutor_start por cima da 9801: colar a 9801 de novo pede colar
+    // as duas depois, nesta ordem (Pacote 1)
+    await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003013590_tutor_quatro_personalidades.sql", import.meta.url)), "utf8"));
+    await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003013630_mini_tutor.sql", import.meta.url)), "utf8"));
     expect(await snap()).toEqual(before);
   });
 });

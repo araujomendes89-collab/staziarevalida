@@ -25,8 +25,10 @@ describe("TD01: frases prontas do banco passam inteiras", () => {
       const sql = fs.readFileSync(path.join(dir, f), "utf8");
       for (const m of sql.matchAll(/raise exception '([^']*)'/g)) {
         const text = m[1].replace(/''/g, "'");
-        // "Cole antes a migração …" aparece só no editor do Supabase, para quem cola o SQL (cita nomes de tabela); não vai às telas
-        if (!text.includes("%") && /[.!?]$/.test(text) && !/^Cole antes a migra/.test(text)) found.add(text);
+        // "Cole antes a migração …" aparece só no editor do Supabase, para quem cola o SQL (cita nomes de tabela); não vai às telas.
+        // O mesmo vale para as travas que começam pelo nome da função ("app_tutor_start: trecho … não encontrado."): são dos remendos
+        // de migração (quem cola o SQL) ou de função interna do servidor, nunca de uma tela do aluno.
+        if (!text.includes("%") && /[.!?]$/.test(text) && !/^Cole antes a migra/.test(text) && !/^[a-z][a-z0-9_]*: /.test(text)) found.add(text);
       }
     }
     expect(found.size).toBeGreaterThan(200);
