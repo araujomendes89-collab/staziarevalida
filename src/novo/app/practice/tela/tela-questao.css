@@ -426,3 +426,37 @@
   .tq-stem { font-size: clamp(18px, 1vw, 20px); }
   .tq-ask__text { font-size: 23px; }
 }
+
+/* ===== Hotfix iPhone (18/10/2026): nada da tela de questão pode ficar mais largo que o celular ===== */
+/* palavras e números longos (endereços de site, "<https://…>", sequências sem espaço) quebram em vez de empurrar a página */
+.tq-stem, .tq-ask__text, .tq-hint__t, .tq-chip, .tq-pending__t { overflow-wrap: break-word; overflow-wrap: anywhere; }
+.tq-chip { max-width: 100%; }
+/* tabelas e quadros rolam DENTRO do cartão, com sombra na borda indicando que há mais para o lado */
+.tq .tr-tabela-rolagem, .tq .tq-tabela-rolagem {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  background:
+    linear-gradient(to right, var(--surface-card) 30%, transparent) left center / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--surface-card) 30%, transparent) right center / 28px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(13, 28, 66, 0.22), transparent) left center / 12px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(13, 28, 66, 0.22), transparent) right center / 12px 100% no-repeat scroll;
+  background-color: var(--surface-card);
+}
+.tq .tr-tabela-rolagem:focus-visible, .tq .tq-tabela-rolagem:focus-visible { outline-offset: 0; }
+.tq .tr-tabela-rolagem table, .tq .tq-tabela-rolagem table { overflow-wrap: normal; }
+@media (max-width: 720px) {
+  /* cabeçalho: os 3 blocos podem encolher; o rótulo do cronômetro corta com reticências em vez de passar da borda */
+  .tq-head__in > * { min-width: 0; }
+  .tq-tools { flex-shrink: 1; min-width: 0; }
+  .tq-timer { min-width: 0; }
+  .tq-timer:not(:has(.tq-round)) { padding-right: 12px; }
+  .tq-timer__col--main { min-width: 0; overflow: hidden; }
+  .tq-timer__lab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tq-prog__label { min-width: 0; }
+  .tq-prog__count { flex-shrink: 0; }
+  /* "CASO CLÍNICO" e o A−/A+ dividem a linha; o A−/A+ nunca encolhe */
+  .tq-case__head > .tq-over { min-width: 0; }
+  .tq-case__head > .tq-fs { flex-shrink: 0; }
+  .tq .tr-tabela-rolagem table, .tq .tq-tabela-rolagem table { font-size: 0.9em; }
+}

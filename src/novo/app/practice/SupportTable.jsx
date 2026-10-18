@@ -6,7 +6,8 @@ export function SupportTable({ support }) {
   const rows = support?.rows;
   if (!Array.isArray(rows) || rows.length === 0) return null;
   return (
-    <div style={{ margin: "18px 0 0", overflowX: "auto", maxWidth: "100%", border: "1px solid var(--border-default)", borderRadius: 12 }}>
+    // tq-tabela-rolagem: na tela de questão, a sombra na borda mostra que dá para rolar a tabela de lado (tela-questao.css)
+    <div className="tq-tabela-rolagem" role="region" aria-label={support.title || "Dados de apoio"} tabIndex={0} style={{ margin: "18px 0 0", overflowX: "auto", maxWidth: "100%", border: "1px solid var(--border-default)", borderRadius: 12 }}>
       <table aria-label={support.title || "Dados de apoio"} style={{ borderCollapse: "collapse", width: "100%", font: "var(--type-body-sm)" }}>
         {support.title && <caption style={{ textAlign: "left", padding: "10px 12px", font: "600 14px var(--font-sans)" }}>{support.title}</caption>}
         <tbody>

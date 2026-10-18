@@ -40,8 +40,9 @@ export function BrandLogo() {
     <>
       <img className="tq-logo tq-logo--sym tq-logo--light" src="/brand/simbolo-96w.png" alt="" aria-hidden="true" />
       <img className="tq-logo tq-logo--sym tq-logo--dark" src="/brand/simbolo-escuro-96w.png" alt="" aria-hidden="true" />
-      <img className="tq-logo tq-logo--light" src="/brand/horizontal-480w.png" alt="StaziaMed Revalida" />
-      <img className="tq-logo tq-logo--dark" src="/brand/horizontal-escuro-480w.png" alt="" aria-hidden="true" />
+      {/* height: o logo horizontal tem 480 px de largura; sem a altura, enquanto o estilo não chega ele empurra a página para os lados */}
+      <img className="tq-logo tq-logo--light" src="/brand/horizontal-480w.png" alt="StaziaMed Revalida" height={44} />
+      <img className="tq-logo tq-logo--dark" src="/brand/horizontal-escuro-480w.png" alt="" aria-hidden="true" height={44} />
     </>
   );
 }
