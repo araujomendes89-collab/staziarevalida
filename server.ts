@@ -28,6 +28,7 @@ import {
   evaluateTransitSpokenAnswer,
 } from "./server/ai/voiceTutor";
 import { adminDesignCloneRouter } from "./server/routes/adminDesignClone";
+import { aquecerConexoesIa, manterConexoesIaAbertas } from "./server/ai/conexoes";
 import { adminPdfIngestionRouter } from "./server/routes/adminPdfIngestion";
 import { adminContentPublicationRouter } from "./server/routes/adminContentPublication";
 import { adminUsersRouter } from "./server/routes/adminUsers";
@@ -89,6 +90,8 @@ function getGenAI(): GoogleGenAI | null {
  * `serverless`: sem worker da Central (processo não fica vivo) e sem varredura por intervalo (vira tarefa agendada).
  */
 export async function createApp(opts: { serverless?: boolean } = {}) {
+  // conexões com as IAs e o Supabase abertas por 60 s parado (o padrão do Node fecha em 4 s); fora dos testes (server/ai/conexoes.ts)
+  if (!process.env.VITEST && manterConexoesIaAbertas()) aquecerConexoesIa();
   const app = express();
   app.disable("x-powered-by"); // não anuncia "Express" nas respostas (auditoria de segurança 17/10)
   if (opts.serverless) process.env.CONTENT_HUB_WORKER = "0";
