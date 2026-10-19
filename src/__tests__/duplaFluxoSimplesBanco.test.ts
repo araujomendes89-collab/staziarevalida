@@ -7,7 +7,18 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
+import { PGlite } from "@electric-sql/pglite";
 import { MIGRATIONS_DIR, STATION, U, abrirPorta, addProfile, addSession, addStation, makeRoom, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
+
+const ROOT = path.resolve(__dirname, "../..");
+const NOVAS = ["20261003014130_treino_dupla_fluxo_convite.sql", "20261003014140_treino_dupla_fluxo_sigilo.sql", "20261003014150_treino_dupla_fluxo_sala.sql"];
+const ler = (f: string) => fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8");
+const desfazer = (f: string) => fs.readFileSync(path.join(ROOT, "supabase/desfazer", f.replace(/\.sql$/, ".desfazer.sql")), "utf8");
+// Retrato do Treino no banco: funções (assinatura, texto, permissões) e gatilhos do esquema public.
+const RETRATO_FN = `select p.oid::regprocedure::text as f, md5(pg_get_functiondef(p.oid)) as h, coalesce(array_to_string(p.proacl, ','), '') as acl
+                      from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname ~ '^(app_)?dupla_' order by 1`;
+const RETRATO_TRG = `select c.relname as t, t.tgname as n, pg_get_triggerdef(t.oid) as def from pg_trigger t join pg_class c on c.oid = t.tgrelid
+                      where c.relnamespace = 'public'::regnamespace and not t.tgisinternal order by 1, 2`;
 
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
 const ABERTO = { aberto: true, planos: ["trial", "pro", "elite"] };
@@ -596,4 +607,70 @@ describe("Fluxo simples do Treino em Dupla (014130–014150)", () => {
       await expect(act(U.ana, fn, sala, args), fn).rejects.toThrow("Sem acesso ao Treinamento em Dupla.");
     }
   });
+
+  // ------------------------------------------------------------------ colar de novo, permissões e desfazer
+  const foto = () => d.sql(RETRATO_FN);
+  const assinatura = async (sig: string) => (await d.sql<any>(`select to_regprocedure($1) is not null as ok`, [sig]))[0].ok as boolean;
+  const gatilho = async () => (await d.sql(`select 1 from pg_trigger where tgname = 'study_invites_accepted_setup'`)).length === 1;
+
+  it("permissões: as app_* sem visitante; o miolo do convite e o gatilho só por dentro", async () => {
+    const pode = async (papel: string, sig: string) =>
+      (await d.sql<any>(`select has_function_privilege($1, $2, 'execute') as ok`, [papel, sig]))[0].ok as boolean;
+    for (const sig of ["public.app_dupla_invite(uuid,text)", "public.app_dupla_next_station(uuid,text)", "public.app_dupla_start(uuid)", "public.app_dupla_set_station(uuid,text)", "public.app_dupla_radar(text,text)", "public.app_dupla_invites()", "public.app_dupla_requests()", "public.app_dupla_room_content(uuid)", "public.app_dupla_swipe(uuid,text,text)", "public.app_dupla_link_lookup(text,text)", "public.app_dupla_link_request(text,text)", "public.app_dupla_answer_request(uuid,boolean)", "public.app_dupla_print_path(uuid,text)", "public.app_dupla_result(uuid,integer)", "public.app_dupla_history_result(uuid,integer)", "public.app_dupla_history(integer)"]) {
+      expect(await pode("anon", sig), sig).toBe(false);
+      expect(await pode("authenticated", sig), sig).toBe(true);
+    }
+    for (const sig of ["public.dupla_invite_core(uuid,uuid,text,boolean,uuid,boolean)", "public.dupla_invite_accepted_setup()", "public.dupla_room_state(public.checklist_rooms,uuid)", "public.dupla_porta(text)", "public.dupla_antes_do_inicio(public.checklist_rooms)"]) {
+      expect(await pode("anon", sig), sig).toBe(false);
+      expect(await pode("authenticated", sig), sig).toBe(false);
+    }
+  });
+
+  it("colar as três migrações de novo não muda nada (mesmas funções, mesmos textos, mesmas permissões)", async () => {
+    const antes = await foto();
+    for (const f of NOVAS) await d.db.exec(ler(f));
+    expect(await foto()).toEqual(antes);
+  });
+
+  it("desfazer em ordem inversa volta as assinaturas da etapa 2; colar de novo volta o fluxo simples", async () => {
+    const depois = await foto();
+    const gatilhosDepois = await d.sql(RETRATO_TRG);
+    for (const f of [...NOVAS].reverse()) await d.db.exec(desfazer(f));
+    expect(await assinatura("public.dupla_invite_core(uuid,uuid,text,boolean,uuid)")).toBe(true);
+    expect(await assinatura("public.dupla_invite_core(uuid,uuid,text,boolean,uuid,boolean)")).toBe(false);
+    expect(await assinatura("public.app_dupla_next_station(uuid)")).toBe(true);
+    expect(await assinatura("public.app_dupla_next_station(uuid,text)")).toBe(false);
+    expect(await gatilho()).toBe(false);
+    expect(await assinatura("public.dupla_porta(text)")).toBe(false);
+    expect(await assinatura("public.dupla_antes_do_inicio(public.checklist_rooms)")).toBe(false);
+    const fonte = async (nome: string) =>
+      (await d.sql<any>(`select prosrc as s from pg_proc where proname = $1 and pronamespace = 'public'::regnamespace`, [nome]))[0].s as string;
+    for (const f of ["dupla_room_state", "app_dupla_room_content", "app_dupla_print_path"]) expect(await fonte(f), f).not.toContain("dupla_antes_do_inicio");
+    for (const f of ["app_dupla_result", "app_dupla_history_result", "app_dupla_history"]) expect(await fonte(f), f).not.toContain("now() < s.started_at");
+    const [{ s }] = await d.sql<any>(`select prosrc as s from pg_proc where proname = 'app_dupla_start' and pronamespace = 'public'::regnamespace`);
+    expect(s).toContain("Os dois precisam estar prontos.");
+    const [{ l }] = await d.sql<any>(`select prosrc as l from pg_proc where proname = 'app_dupla_link_request' and pronamespace = 'public'::regnamespace`);
+    expect(l).not.toContain("O convite por link saiu.");
+
+    // retrato completo: o banco desfeito é igual a um banco que só recebeu a cadeia ATÉ a 014120 (funções, textos, permissões e gatilhos)
+    const etapa2 = new PGlite();
+    try {
+      await etapa2.exec(fs.readFileSync(path.join(ROOT, "supabase/tests/bootstrap.sql"), "utf8"));
+      for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.endsWith(".sql") && x < NOVAS[0]).sort()) await etapa2.exec(ler(f));
+      expect(await foto()).toEqual((await etapa2.query(RETRATO_FN)).rows);
+      expect(await d.sql(RETRATO_TRG)).toEqual((await etapa2.query(RETRATO_TRG)).rows);
+    } finally {
+      await etapa2.close();
+    }
+
+    // desfazer colado duas vezes não quebra nem muda nada
+    const desfeito = await foto();
+    for (const f of [...NOVAS].reverse()) await d.db.exec(desfazer(f));
+    expect(await foto()).toEqual(desfeito);
+
+    for (const f of NOVAS) await d.db.exec(ler(f));
+    expect(await foto()).toEqual(depois);
+    expect(await d.sql(RETRATO_TRG)).toEqual(gatilhosDepois);
+    expect(await gatilho()).toBe(true);
+  }, 300_000);
 });

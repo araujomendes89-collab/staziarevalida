@@ -26,7 +26,7 @@
 --   app_dupla_link_lookup, app_dupla_link_request, app_dupla_requests e app_dupla_answer_request ← 014080 (recusam / lista
 --   vazia). Conferido em 19/10: nenhuma migração depois delas as refaz.
 --
--- COMO DESFAZER: supabase/desfazer/20261003014130_treino_dupla_fluxo_convite.desfazer.sql (volta as cinco funções da etapa 2,
+-- COMO DESFAZER: supabase/desfazer/20261003014130_treino_dupla_fluxo_convite.desfazer.sql (volta as sete funções da etapa 2,
 --   apaga o miolo de 6 argumentos e recria o de 5). Salas e convites já criados ficam.
 -- =============================================================================
 

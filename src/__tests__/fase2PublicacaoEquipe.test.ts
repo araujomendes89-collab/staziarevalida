@@ -195,6 +195,10 @@ describe("etapa 2 (radar, convite, @, Stazia Match, créditos, treino sozinho co
     ["app_admin_dupla_handle_log", {}],
     ["app_admin_credit_config", {}],
     ["app_admin_dupla_ia", {}],
+    ["app_dupla_next_station", { p_room_id: QUALQUER, p_papel: "trocar" }],
+    ["app_dupla_start", { p_room_id: QUALQUER }],
+    ["app_dupla_set_station", { p_room_id: QUALQUER, p_station_id: "inep2025-1-e07" }],
+    ["app_dupla_room_content", { p_room_id: QUALQUER }],
   ];
   const TABELAS = ["study_handle_log", "study_train_requests", "credit_ledger", "credit_wallets", "credit_daily", "study_room_charges", "study_room_claims"];
 
@@ -214,6 +218,13 @@ describe("etapa 2 (radar, convite, @, Stazia Match, créditos, treino sozinho co
     const etapa2 = fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql") && f > "20261003013980");
     expect(etapa2.length).toBeGreaterThanOrEqual(14);
     expect(etapa2.every((f) => f.includes("treino_dupla"))).toBe(true);
+  });
+
+  it("fluxo simples (014130–014150): as migrações estão na cadeia, depois da etapa 2, e a chave do Treino segue desligada", async () => {
+    const fluxo = fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.includes("_treino_dupla_fluxo_")).sort();
+    expect(fluxo).toEqual(["20261003014130_treino_dupla_fluxo_convite.sql", "20261003014140_treino_dupla_fluxo_sigilo.sql", "20261003014150_treino_dupla_fluxo_sala.sql"]);
+    const [{ value }] = await d.sql(`select value from public.app_settings where key = 'treino_dupla'`);
+    expect(value.aberto).toBe(false);
   });
 
   for (const [tipo, uid] of Object.entries(alunos)) {
