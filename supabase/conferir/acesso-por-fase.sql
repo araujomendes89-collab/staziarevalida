@@ -16,6 +16,10 @@ select item, ok from (values
      and not has_function_privilege('anon', 'public.app_dupla_access()', 'execute')),
   ('fase2_allowed: equipe ou 2ª fase liberada/amostra pela regra por fase',
      pg_get_functiondef('public.fase2_allowed()'::regprocedure) like '%fase2_acesso((select auth.uid()), ''estacoes'')%'),
+  ('app_fase2_banco: Banco de estações pelo porteiro da 2ª fase; só quem entra chama',
+     pg_get_functiondef('public.app_fase2_banco()'::regprocedure) like '%public.fase2_assert()%'
+     and has_function_privilege('authenticated', 'public.app_fase2_banco()', 'execute')
+     and not has_function_privilege('anon', 'public.app_fase2_banco()', 'execute')),
   ('gatilho da amostra da 2ª fase em station_attempts',
      exists (select 1 from pg_trigger where tgname = 'fase2_amostra_station_attempts' and tgrelid = 'public.station_attempts'::regclass and not tgisinternal)),
   ('gatilho "só o PRO à venda até a 2ª fase abrir" em billing_pedidos',

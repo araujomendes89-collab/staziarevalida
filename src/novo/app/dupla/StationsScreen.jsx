@@ -8,11 +8,12 @@
 // continua no leitor de tela) e, ao tocar, mostra "Conteúdo em preparação" (decisão de 17/10). O aluno nunca recebe cartão sem conteúdo (o banco não entrega) e não vê o filtro.
 // Clique numa estação: `go("dupla", { estacao: id })` abre o Praticar com ela escolhida.
 import React from "react";
-import { Button, Dialog, Icon, SegmentedControl, StationCard, StationLevel, Switch, TextField, useWaitHint, WAIT_HINT } from "../../ds";
+import { Banner, Button, Dialog, Icon, SegmentedControl, StationCard, StationLevel, Switch, TextField, useWaitHint, WAIT_HINT } from "../../ds";
 import { formatDecimal } from "../../ds/format.js";
 import { useSession } from "../session.jsx";
 import { isStaffRole, LoadError, Loading, useLoad } from "../admin/common.jsx";
 import { AREAS, areaByCode, areaVars, originLabel } from "./labels.js";
+import { duplaAllowed, soloAllowed } from "./DuplaGate.jsx";
 
 // Estilos da tela: só tokens (var(--…)). Classes `dst-` próprias para ter foco, hover e celular sem tocar no CSS do design system.
 const CSS = `
@@ -149,11 +150,17 @@ function Grid({ items, onOpen, staff }) {
 }
 
 export function StationsScreen({ go }) {
-  const { backend, boot } = useSession();
-  const { data, error, reload } = useLoad(() => backend.rpc("app_dupla_stations"), [backend]);
-  // Banco de estações único (decisão do dono, 16/10): quem pode treinar sozinho (as telas da 2ª fase com dados, hoje só a equipe)
-  // escolhe entre sozinho e em dupla; os demais vão direto para a dupla, como antes.
-  const canSolo = isStaffRole(boot?.role);
+  const { backend, boot, dupla } = useSession();
+  // Banco de estações único (decisão do dono, 16/10). Quem pode treinar sozinho segue o acesso do banco (decisão do dono 19/10,
+  // migração 014220): equipe, 2ª fase paga (PRÁTICA/ELITE) e a amostra (1 estação por dia). Com a Dupla também, escolhe entre
+  // sozinho e em dupla; só sozinho (amostra), abre direto a estação; só a Dupla (banco antigo), vai direto para a dupla.
+  const comDupla = duplaAllowed(boot, dupla);
+  const canSolo = soloAllowed(boot, dupla);
+  const staff = isStaffRole(boot?.role);
+  // só sozinho (sem a Dupla): a lista vem pelo porteiro da 2ª fase (app_fase2_banco: a mesma lista, sem passar pela Dupla)
+  const soSozinho = canSolo && !comDupla;
+  const { data, error, reload } = useLoad(() => backend.rpc(soSozinho ? "app_fase2_banco" : "app_dupla_stations"), [backend, soSozinho]);
+  const amostra = !staff && dupla?.fase2?.acesso === "amostra" ? dupla.fase2 : null;
   const [choosing, setChoosing] = React.useState(null);
   const [area, setArea] = React.useState("all");
   const [q, setQ] = React.useState("");
@@ -166,9 +173,10 @@ export function StationsScreen({ go }) {
   if (!data) return <Loading />;
 
   const all = Array.isArray(data) ? data : [];
-  const bank = canSolo && onlyContent ? all.filter((s) => !awaiting(s)) : all;
+  const bank = staff && onlyContent ? all.filter((s) => !awaiting(s)) : all;
   const hiddenByContent = all.length - bank.length;
-  const open = (station) => (canSolo ? setChoosing(station) : go("dupla", { estacao: station.id }));
+  const open = (station) =>
+    canSolo && comDupla ? setChoosing(station) : canSolo ? go("estacao", { id: station.id }) : go("dupla", { estacao: station.id });
   const count = (code) => bank.filter((s) => s.area_code === code).length;
   const needle = plain(q.trim());
 
@@ -201,7 +209,27 @@ export function StationsScreen({ go }) {
       )}
 
       <style>{CSS}</style>
-      <p className="dst__lead">Escolha uma estação para treinar em dupla. Cada uma traz o enunciado, os impressos e o checklist PEP.</p>
+      <p className="dst__lead">
+        {!soSozinho
+          ? "Escolha uma estação para treinar em dupla. Cada uma traz o enunciado, os impressos e o checklist PEP."
+          : "Escolha uma estação para treinar sozinho. Cada uma traz o enunciado, os impressos e o checklist PEP."}
+      </p>
+      {amostra && (
+        <div data-testid="amostra-estacoes">
+          <Banner
+            tone="brand"
+            icon="gift"
+            title={`Amostra: ${amostra.amostra?.limite ?? 1} ${amostra.amostra?.limite === 1 || amostra.amostra?.limite == null ? "estação" : "estações"} sozinho por dia`}
+            action={
+              <Button size="sm" icon="sparkles" onClick={() => go("planos")}>
+                Ver planos
+              </Button>
+            }
+          >
+            {amostra.mensagem || "Você usa uma amostra da 2ª fase por dia."} O Treino em Dupla é dos planos PRÁTICA e ELITE.
+          </Banner>
+        </div>
+      )}
 
       <div className="dst__blocks" role="group" aria-label="Resumo por área">
         {AREAS.map((a) => (
@@ -218,7 +246,7 @@ export function StationsScreen({ go }) {
             <TextField icon="search" aria-label="Buscar por estação, tema ou queixa" placeholder="Buscar por estação, tema ou queixa" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <SegmentedControl label="Ordenar" value={sort} onChange={setSort} options={[{ value: "prova", label: "Ordem da prova" }, { value: "az", label: "A–Z" }]} />
-          {canSolo && (
+          {staff && (
             <div className="dst__only">
               <Switch
                 label="Só com conteúdo"
@@ -273,7 +301,7 @@ export function StationsScreen({ go }) {
       {list.length > 0 && view === "list" && (
         <div className="dst__list">
           {list.map((s) => (
-            <Row key={s.id} station={s} staff={canSolo} onOpen={() => open(s)} />
+            <Row key={s.id} station={s} staff={staff} onOpen={() => open(s)} />
           ))}
         </div>
       )}
@@ -287,13 +315,13 @@ export function StationsScreen({ go }) {
                 {a.label}
                 <span className="dst__h-n">{items.length}</span>
               </h2>
-              <Grid items={items} onOpen={open} staff={canSolo} />
+              <Grid items={items} onOpen={open} staff={staff} />
             </section>
           ))}
-          {orphans.length > 0 && <Grid items={orphans} onOpen={open} staff={canSolo} />}
+          {orphans.length > 0 && <Grid items={orphans} onOpen={open} staff={staff} />}
         </>
       ) : (
-        <Grid items={list} onOpen={open} staff={canSolo} />
+        <Grid items={list} onOpen={open} staff={staff} />
       ))}
     </div>
   );

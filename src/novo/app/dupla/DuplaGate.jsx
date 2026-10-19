@@ -12,6 +12,16 @@ export function duplaAllowed(boot, dupla) {
   return isStaffRole(boot?.role) || dupla?.equipe === true || dupla?.permitido === true;
 }
 
+/**
+ * Pode treinar SOZINHO (botão "Sozinho" do Banco de estações e a tela da estação)? Equipe sempre; os demais pelo acesso do
+ * banco à 2ª fase (app_dupla_access().fase2, migração 014220): liberado (PRÁTICA/ELITE pagos) ou amostra (teste da 2ª fase,
+ * 2ª fase vencida: 1 estação por dia). Chave desligada = o banco diz "trancado" e nada muda para o aluno. Decisão do dono 19/10.
+ */
+export function soloAllowed(boot, dupla) {
+  if (isStaffRole(boot?.role) || dupla?.equipe === true) return true;
+  return dupla?.aberto === true && ["liberado", "amostra"].includes(dupla?.fase2?.acesso);
+}
+
 /** Planos que liberam o Treino em Dupla (PRÁTICA ou ELITE), com "em breve" quando nenhum está à venda. */
 export function planOf(access) {
   const ofertas = Array.isArray(access?.dupla?.ofertas) ? access.dupla.ofertas.filter((o) => o?.tipo === "assinar" && o.nome) : [];
@@ -28,11 +38,12 @@ export function planOf(access) {
 const CONVITE = "Encontre um colega com os mesmos objetivos e treine as estações da 2ª fase.";
 
 /**
- * @param {{ go: (route: string, query?: Record<string, string>) => void, children: React.ReactNode }} props
+ * `sozinho`: a tela também abre para quem só pode treinar sozinho (Banco de estações; a Dupla segue fechada dentro dela).
+ * @param {{ go: (route: string, query?: Record<string, string>) => void, children: React.ReactNode, sozinho?: boolean }} props
  */
-export function DuplaGate({ go, children }) {
+export function DuplaGate({ go, children, sozinho = false }) {
   const { boot, dupla } = useSession();
-  if (duplaAllowed(boot, dupla)) return <>{children}</>;
+  if (duplaAllowed(boot, dupla) || (sozinho && soloAllowed(boot, dupla))) return <>{children}</>;
   const mensagem = typeof dupla?.dupla?.mensagem === "string" ? dupla.dupla.mensagem : "";
   return (
     <LockedFeature

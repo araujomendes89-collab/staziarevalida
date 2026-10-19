@@ -33,6 +33,8 @@
 --   6) gatilho NOVO em billing_pedidos: enquanto a 2ª fase não abrir aos alunos (direitos_config.fase2_aberta_alunos), nenhum
 --      pedido NOVO de plano que traga a 2ª fase (PRÁTICA, ELITE) é aberto, mesmo que alguém marque "à venda" por engano
 --      ("até a 2ª fase abrir, SÓ O PRO À VENDA", dono 17/10). Renovação de contrato existente não é barrada.
+--   7) app_fase2_banco() NOVA: o Banco de estações (mesma lista de app_dupla_stations) para quem pode treinar sozinho sem ter a
+--      Dupla (amostra). A tela usa o acesso do banco para mostrar o botão "Sozinho" (decisão do dono 19/10).
 --
 -- O QUE NÃO MUDA: direitos_do_aluno e a matriz (Administração > Planos), cadeados da 1ª fase, app_fase2_start e as demais
 -- funções app_dupla_*/app_fase2_* (todas passam por dupla_assert_access/fase2_assert, que chamam as funções acima), créditos,
@@ -229,3 +231,60 @@ revoke execute on function public.fase2_venda_pedidos() from public, anon, authe
 drop trigger if exists fase2_venda_pedidos on public.billing_pedidos;
 create trigger fase2_venda_pedidos before insert on public.billing_pedidos
   for each row execute function public.fase2_venda_pedidos();
+
+-- ---------------------------------------------------------------- 7) Banco de estações para quem treina só sozinho (decisão do dono 19/10)
+-- O botão "Sozinho" segue o acesso do banco: PRÁTICA/ELITE pagos e a amostra (teste da 2ª fase, 2ª fase vencida). Quem está na
+-- amostra não tem o Treino em Dupla, então não lê app_dupla_stations (porteiro da Dupla). Esta função devolve EXATAMENTE a mesma
+-- lista (mesmo texto da consulta de app_dupla_stations, …013425), com o porteiro da 2ª fase (fase2_assert). Só o catálogo:
+-- nenhum conteúdo de estação sai por aqui. Quem refizer app_dupla_stations deve refazer esta junto (o teste acessoPorFaseBanco
+-- compara as duas respostas).
+create or replace function public.app_fase2_banco() returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := public.fase2_assert();
+begin
+  return coalesce((
+    select jsonb_agg(x.j order by (x.ed is null), x.ed collate "C" desc, x.reap, x.num, x.nome collate "C", x.id)
+    from (
+      select
+        jsonb_build_object(
+          'id', s.id, 'name', s.name, 'topic', s.topic, 'area', s.area, 'area_code', public.dupla_area_code(s.area),
+          'number', m -> 'number', 'edition', m -> 'edition', 'reapplication', m -> 'reapplication',
+          'institution', s.institution, 'styles', to_jsonb(s.styles), 'duration_ms', s.duration_ms, 'is_pro_only', s.is_pro_only,
+          'criteria_count', case when jsonb_typeof(k.content -> 'checklist_items') = 'array'
+                                 then jsonb_array_length(k.content -> 'checklist_items') else 0 end,
+          'pressing_count', case when jsonb_typeof(k.content -> 'pressings') = 'array'
+                                 then jsonb_array_length(k.content -> 'pressings') else 0 end,
+          'difficulty', dif.level,
+          'origin_label', nullif(btrim(s.origin_label), ''),
+          'content_status', s.content_status,
+          'my_last_pct', mine.pct,
+          'average_pct', case when coalesce(ev.n, 0) >= 5 then round(ev.a, 1) end,
+          'evaluations', coalesce(ev.n, 0)
+        ) as j,
+        m ->> 'edition' as ed,
+        (m ->> 'reapplication')::boolean as reap,
+        (m ->> 'number')::integer as num,
+        s.name as nome,
+        s.id as id
+      from public.checklist_stations s
+      cross join lateral public.dupla_station_meta(s.id) m
+      left join public.checklist_station_contents k on k.station_id = s.id
+      left join public.checklist_station_difficulty dif on dif.station_id = s.id
+      left join (
+        select t.station_id, count(*) as n, avg(t.correctness) as a
+        from public.checklist_study_sessions t group by t.station_id
+      ) ev on ev.station_id = s.id
+      left join (
+        select distinct on (t.station_id) t.station_id, round(t.correctness)::integer as pct
+        from public.checklist_study_sessions t where t.doctor_id = v_uid
+        order by t.station_id, t.finished_at desc, t.created_at desc, t.id desc
+      ) mine on mine.station_id = s.id
+      where s.medical_review = 'approved' or public.is_staff()
+    ) x
+  ), '[]'::jsonb);
+end
+$$;
+revoke execute on function public.app_fase2_banco() from public, anon;
+grant execute on function public.app_fase2_banco() to authenticated;

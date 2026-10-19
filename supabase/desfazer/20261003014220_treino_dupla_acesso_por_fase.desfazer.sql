@@ -3,6 +3,7 @@
 -- fase2_allowed ao da 013330 (só a equipe); tira os dois gatilhos novos e a função fase2_acesso. Não apaga dado nenhum.
 -- ATENÇÃO: com a chave treino_dupla LIGADA, desfazer volta a deixar o PRO entrar no Treino em Dupla (a regra antiga).
 -- Pode ser colado duas vezes.
+drop function if exists public.app_fase2_banco();
 drop trigger if exists fase2_amostra_station_attempts on public.station_attempts;
 drop function if exists public.fase2_amostra_station_attempts();
 drop trigger if exists fase2_venda_pedidos on public.billing_pedidos;

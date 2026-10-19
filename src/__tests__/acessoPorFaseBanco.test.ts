@@ -146,6 +146,26 @@ describe("2ª fase pela chave 'prática' (014220)", () => {
     await ligar(false);
   });
 
+  it("Banco de estações para quem treina sozinho (app_fase2_banco, decisão do dono 19/10): mesma lista da Dupla, porteiro da 2ª fase", async () => {
+    await ligar(true);
+    const lista = await d.rpc(P.elitePago, "app_fase2_banco");
+    expect(lista.length).toBeGreaterThanOrEqual(3);
+    expect(lista).toEqual(await d.rpc(P.elitePago, "app_dupla_stations"));
+    // amostra: lê o Banco sem ter a Dupla
+    for (const uid of [P.teste2, P.praticaVencido]) {
+      expect((await d.rpc(uid, "app_fase2_banco")).map((x: any) => x.id), NOME[uid]).toEqual(lista.map((x: any) => x.id));
+      await expect(d.rpc(uid, "app_dupla_stations"), NOME[uid]).rejects.toThrow(/Sem acesso ao Treinamento em Dupla/);
+    }
+    for (const uid of [P.teste1, P.proPago, P.proVencido]) {
+      await expect(d.rpc(uid, "app_fase2_banco"), NOME[uid]).rejects.toThrow(/2ª fase ainda não está aberta para o seu perfil/);
+    }
+    await expect(d.rpc(null, "app_fase2_banco")).rejects.toThrow();
+    // chave desligada: só a equipe
+    await ligar(false);
+    await expect(d.rpc(P.elitePago, "app_fase2_banco")).rejects.toThrow(/ainda não está aberta/);
+    expect(Array.isArray(await d.rpc(U.admin, "app_fase2_banco"))).toBe(true);
+  });
+
   it("visitante: nada abre", async () => {
     await ligar(true);
     for (const fn of ["app_dupla_access", "app_dupla_stations", "app_fase2_overview", "app_fase2_stations"]) {
@@ -281,7 +301,7 @@ describe("2ª fase pela chave 'prática' (014220)", () => {
   it("colar duas vezes não muda nada; desfazer volta à regra antiga (PRO entra com a chave ligada) e colar de novo corrige", async () => {
     const defs = async () =>
       d.sql(`select p.oid::regprocedure::text id, pg_get_functiondef(p.oid) def from pg_proc p where p.pronamespace = 'public'::regnamespace
-             and p.proname in ('fase2_acesso', 'dupla_allowed', 'app_dupla_access', 'fase2_allowed', 'fase2_assert', 'fase2_amostra_station_attempts', 'fase2_venda_pedidos') order by 1`);
+             and p.proname in ('fase2_acesso', 'dupla_allowed', 'app_dupla_access', 'fase2_allowed', 'fase2_assert', 'fase2_amostra_station_attempts', 'fase2_venda_pedidos', 'app_fase2_banco') order by 1`);
     const antes = await defs();
     await d.db.exec(fs.readFileSync(MIGRACAO, "utf8"));
     expect(await defs()).toEqual(antes);
@@ -292,7 +312,7 @@ describe("2ª fase pela chave 'prática' (014220)", () => {
     expect((await acesso(P.proPago)).permitido).toBe(true); // a regra antiga: é exatamente o problema que a 014220 corrige
     expect((await acesso(P.proPago)).fase2).toBeUndefined();
     expect(await d.sql(`select tgname from pg_trigger where tgname in ('fase2_amostra_station_attempts', 'fase2_venda_pedidos')`)).toEqual([]);
-    expect(await d.sql(`select 1 from pg_proc where proname = 'fase2_acesso'`)).toEqual([]);
+    expect(await d.sql(`select 1 from pg_proc where proname in ('fase2_acesso', 'app_fase2_banco')`)).toEqual([]);
 
     await d.db.exec(fs.readFileSync(MIGRACAO, "utf8"));
     expect((await acesso(P.proPago)).permitido).toBe(false);

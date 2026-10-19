@@ -29,7 +29,7 @@ import { Fase2Peps } from "./fase2/Fase2Peps.jsx";
 import { Fase2Patient } from "./fase2/Fase2Patient.jsx";
 import { Fase2Performance } from "./fase2/Fase2Performance.jsx";
 // Treino em Dupla (Praticar, perfil de estudo, banco de estações da dupla e sala)
-import { DuplaGate, duplaAllowed } from "./dupla/DuplaGate.jsx";
+import { DuplaGate, duplaAllowed, soloAllowed } from "./dupla/DuplaGate.jsx";
 import { StationsScreen } from "./dupla/StationsScreen.jsx";
 import { PracticeScreen } from "./dupla/PracticeScreen.jsx";
 import { StudyProfileScreen } from "./dupla/StudyProfileScreen.jsx";
@@ -140,6 +140,8 @@ function Screen({ view }) {
   const phase2Locked = isPhase2Locked(boot.role, dupla);
   // aluno com a 2ª fase aberta: começa no Banco de estações e o resto da 2ª fase fica "Em breve"
   const studentPhase2 = !phase2Locked && !isStaffRole(boot.role);
+  // treino sozinho (decisão do dono 19/10): a tela da estação abre para quem o banco libera (2ª fase paga ou amostra)
+  const soon = studentPhase2 && soloAllowed(boot, dupla) ? SOON.filter((r) => r !== "estacao") : SOON;
 
   const defaultRoute = profile.phase === 2 && !phase2Locked ? (studentPhase2 ? "estacoes" : "home2") : "home";
   const route = view ?? params.route ?? defaultRoute;
@@ -166,7 +168,7 @@ function Screen({ view }) {
   // equipe (admin/editor) ou revisor médico de alguma área (só a revisão da Central de Conteúdo)
   if (route === "admin" && !isStaffRole(boot.role) && !boot.reviewer_areas?.length) return <Navigate to="/" replace />;
   if (phase2Locked && PHASE2_ROUTES.includes(route)) return <Navigate to="/" replace />;
-  if (studentPhase2 && SOON.includes(route)) return <Navigate to="/estacoes" replace />;
+  if (studentPhase2 && soon.includes(route)) return <Navigate to="/estacoes" replace />;
   // Aulas fechadas ao aluno por enquanto (ver features.js): quem abrir o endereço antigo cai no início
   if (route === "aulas" && !aulasParaAluno() && !isStaffRole(boot.role)) return <Navigate to="/" replace />;
 
@@ -222,7 +224,7 @@ function Screen({ view }) {
   else if (route === "conquistas") body = <AchievementsScreen go={go} />;
   else if (route === "home2") body = <Fase2Home go={go} />;
   // Banco de estações único (sozinho e em dupla), no desenho do pacote de 11/10
-  else if (route === "estacoes") body = <DuplaGate go={go}><StationsScreen go={go} /></DuplaGate>;
+  else if (route === "estacoes") body = <DuplaGate go={go} sozinho><StationsScreen go={go} /></DuplaGate>;
   else if (route === "teoria2") body = <Fase2Theory go={go} />;
   else if (route === "dupla") body = <DuplaGate go={go}><PracticeScreen go={go} /></DuplaGate>;
   else if (route === "dupla-perfil") body = <DuplaGate go={go}><StudyProfileScreen go={go} /></DuplaGate>;
@@ -264,7 +266,7 @@ function Screen({ view }) {
       phase={phase}
       setPhase={setPhase}
       phase2Locked={phase2Locked}
-      soon={studentPhase2 ? SOON : []}
+      soon={studentPhase2 ? soon : []}
       studentPhase2={studentPhase2}
       bare={route === "dupla-sala" && duplaAllowed(boot, dupla)}
       title={title}

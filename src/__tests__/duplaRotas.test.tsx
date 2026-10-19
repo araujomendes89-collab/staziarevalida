@@ -250,6 +250,29 @@ describe("Chave ligada, PRO (só 1ª fase) pelo plano por fase", () => {
     expect(screen.getByText(/Recurso Stazia PRÁTICA ou ELITE$/)).toBeTruthy();
   });
 
+  // Botão "Sozinho" (decisão do dono 19/10): a tela da estação segue o acesso do banco à 2ª fase
+  const AMOSTRA = { ...ABERTO_PRO_POR_FASE, fase2: { acesso: "amostra", motivo: "amostra_do_teste", amostra: { modo: "por_dia", limite: 1, unidade: "estação por dia" } } };
+  it.each([
+    ["chave desligada", FECHADO, false, false],
+    ["PRO (trancado)", ABERTO_PRO_POR_FASE, false, false],
+    ["amostra (teste da 2ª fase / 2ª fase vencida)", AMOSTRA, true, true],
+    ["PRÁTICA/ELITE pagos", { ...ABERTO_PRO_POR_FASE, permitido: true, fase2: { acesso: "liberado" }, dupla: { acesso: "liberado" } }, true, false],
+  ])("%s: /estacao abre? /estacoes sem a Dupla?", (_quem, acesso, abreEstacao, bancoSemDupla) => {
+    renderApp("/estacao", bootOf("student", 2), acesso);
+    expect(Boolean(screen.queryByTestId("tela-estacao"))).toBe(abreEstacao);
+    cleanup();
+    renderApp("/estacoes", bootOf("student", 2), acesso);
+    // amostra: o Banco abre (só sozinho), sem o convite da Dupla
+    if (bancoSemDupla) expect(screen.getByTestId("tela-estacoes")).toBeTruthy();
+    if (acesso === ABERTO_PRO_POR_FASE) expect(screen.getByRole("heading", { level: 3, name: "Praticar em dupla" })).toBeTruthy();
+  });
+
+  it("amostra: /dupla continua com o cadeado (amostra sem Dupla)", () => {
+    renderApp("/dupla", bootOf("student", 2), AMOSTRA);
+    expect(screen.getByRole("heading", { level: 3, name: "Praticar em dupla" })).toBeTruthy();
+    expect(screen.queryByTestId("tela-dupla")).toBeNull();
+  });
+
   it("2ª fase paga (PRÁTICA/ELITE): o banco diz 'permitido' e as telas abrem", () => {
     renderApp("/dupla", bootOf("student", 2), { ...ABERTO_PRO_POR_FASE, permitido: true, fase2: { acesso: "liberado" }, dupla: { acesso: "liberado" } });
     expect(screen.getByTestId("tela-dupla")).toBeTruthy();
