@@ -1,8 +1,7 @@
 // Sala do Treinamento em Dupla, ao vivo: escolhe a fase a partir do que o servidor gravou (`room.phase`) e entrega a cada fase
 // ({ room, content, marks, result, actions, go, remainingMs, askLeave, … }). O estado vem só das funções do banco (tempo real só
 // avisa); o cronômetro conta a partir de `ends_at`/`paused_left_ms` do servidor corrigidos pela diferença de relógio.
-// Aqui também: sinal de presença na sala, apito (início e fim do tempo), aviso "Reconectando…", confirmação de saída e a
-// "sala do avaliador" aberta antes do início (estado só desta aba, em sessionStorage; o servidor continua em "setup").
+// Aqui também: sinal de presença na sala, apito (início e fim do tempo), aviso "Reconectando…" e confirmação de saída. Fluxo simples (19/10): em "setup", o ator com a estação escolhida vê direto a sala do avaliador (RunningPhase antes do início) com "Iniciar estação".
 import React from "react";
 import { Button, Dialog, Icon, useToast } from "../../../ds";
 import { LoadError } from "../../admin/common.jsx";
@@ -30,23 +29,6 @@ const PHASES = {
 };
 
 const frame = { display: "flex", flexDirection: "column", flex: 1, minHeight: "100vh", width: "100%", background: "var(--bg-app)" };
-
-/** Chave da "sala do avaliador" aberta antes do início, por sala e rodada (só nesta aba). */
-export const evaluatorRoomKey = (roomId, round) => `smn-dupla-sala-avaliador:${roomId}:${round}`;
-function readSession(key) {
-  try {
-    return window.sessionStorage.getItem(key) === "1";
-  } catch {
-    return false;
-  }
-}
-function writeSession(key) {
-  try {
-    window.sessionStorage.setItem(key, "1");
-  } catch {
-    /* sem armazenamento: vale enquanto a tela estiver aberta */
-  }
-}
 
 /** Hora do aparelho atualizada a cada 250 ms enquanto o cronômetro corre (o tempo em si vem do servidor). */
 function useNow(running) {
@@ -113,17 +95,6 @@ export function RoomScreen({ roomId, go }) {
   const remaining = fromServer ?? (typeof room?.duration_ms === "number" ? room.duration_ms : null);
   useWhistle(room, fromServer);
 
-  // Sala do avaliador aberta antes do início (só nesta aba).
-  const evalKey = room ? evaluatorRoomKey(room.id, room.round) : null;
-  const [evalOpen, setEvalOpen] = React.useState(false);
-  React.useEffect(() => {
-    setEvalOpen(evalKey ? readSession(evalKey) : false);
-  }, [evalKey]);
-  const openEvaluatorRoom = React.useCallback(() => {
-    if (evalKey) writeSession(evalKey);
-    setEvalOpen(true);
-  }, [evalKey]);
-
   if (error && !room) {
     return (
       <div style={{ ...frame, padding: "32px 28px", boxSizing: "border-box" }}>
@@ -136,7 +107,8 @@ export function RoomScreen({ roomId, go }) {
   }
 
   const isEval = room.me.role === "evaluator";
-  const inEvaluatorRoom = room.phase === "setup" && isEval && evalOpen;
+  // Fluxo simples: o ator com a estação escolhida vai direto à sala do avaliador (lê roteiro, impressos e PEP e inicia).
+  const inEvaluatorRoom = room.phase === "setup" && isEval && Boolean(room.station);
   const Phase = inEvaluatorRoom ? RunningPhase : PHASES[room.phase];
   if (!Phase) return null;
   const access = Boolean(session?.dupla?.permitido || session?.dupla?.equipe);
@@ -179,7 +151,6 @@ export function RoomScreen({ roomId, go }) {
         remainingMs={remaining}
         started={room.phase !== "setup"}
         askLeave={(kind = "sair") => setLeaveAsk(kind)}
-        openEvaluatorRoom={openEvaluatorRoom}
         progress={{ access, channelReady, partnerPresent: partnerPresent === true }}
       />
       {leaveAsk && (

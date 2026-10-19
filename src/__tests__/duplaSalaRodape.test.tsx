@@ -25,7 +25,6 @@ let srv: Srv;
 
 /** Avaliador já dentro da sala do avaliador (sessionStorage), com a sala em "setup" no servidor. */
 async function mountEvaluatorRoom(over: Record<string, any> = {}) {
-  window.sessionStorage.setItem("smn-dupla-sala-avaliador:r1:1", "1");
   srv.room = baseRoom(over);
   const view = render(<RoomScreen roomId="r1" go={vi.fn()} />);
   await advance(0);
@@ -59,13 +58,13 @@ const footer = () => screen.getByRole("region", { name: "Controles da estação"
 const timeButton = () => within(footer()).getByRole("button", { name: /^Ajustar tempo, / });
 
 describe("Sala do avaliador: rodapé e cronômetro", () => {
-  it("antes de iniciar: 'Aguardando início', duração escolhida, −/+ 30 s com mínimo 1 min e máximo oficial, Desafio de tempo e Iniciar desligado sem os dois prontos", async () => {
+  it("antes de iniciar: 'Aguardando início', duração escolhida, −/+ 30 s com mínimo 1 min e máximo oficial, Desafio de tempo; Iniciar ligado sem prontidão e desligado só com convite pendente ou sem estação", async () => {
     await mountEvaluatorRoom({ duration_ms: 480000, partner: { ...baseRoom().partner, ready: false } });
     expect(screen.getByText("Aguardando início")).toBeTruthy();
     expect(screen.getByRole("heading", { name: STATION.name })).toBeTruthy();
     expect(timeButton().getAttribute("aria-label")).toBe("Ajustar tempo, 08:00");
     expect(within(footer()).getByText("Tempo reduzido")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Iniciar estação" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Iniciar estação" }) as HTMLButtonElement).disabled).toBe(false); // sem prontidão (fluxo simples)
 
     fireEvent.click(timeButton());
     const panel = screen.getByRole("region", { name: "Ajustar tempo" });
@@ -85,6 +84,11 @@ describe("Sala do avaliador: rodapé e cronômetro", () => {
     expect((screen.getByRole("button", { name: "Reduzir 30 segundos" }) as HTMLButtonElement).disabled).toBe(true);
     // −3 min de 10 min = 7 min: permitido; abaixo de 1 min fica desligado
     expect((screen.getByRole("radio", { name: "−3 min" }) as HTMLButtonElement).disabled).toBe(false);
+    cleanup();
+
+    // convite ainda não aceito: Iniciar desligado
+    await mountEvaluatorRoom({ invite_pending: true });
+    expect((screen.getByRole("button", { name: "Iniciar estação" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("Iniciar chama start uma vez; depois: cronômetro do servidor '09:59', Pausar congela, Retomar volta, selos", async () => {
@@ -205,7 +209,6 @@ describe("Sala do avaliador: rodapé e cronômetro", () => {
   });
 
   it("avaliador em duas abas: o início de uma aparece na outra e nada se duplica", async () => {
-    window.sessionStorage.setItem("smn-dupla-sala-avaliador:r1:1", "1");
     const a = render(<RoomScreen roomId="r1" go={vi.fn()} />);
     const b = render(<RoomScreen roomId="r1" go={vi.fn()} />);
     await advance(0);

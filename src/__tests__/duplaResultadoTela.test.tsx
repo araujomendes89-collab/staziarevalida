@@ -116,7 +116,7 @@ describe("Resultado: revisão da nota", () => {
     expect(calls("app_dupla_swap")).toHaveLength(0);
     await advance(0);
     expect(screen.getByText("Papéis desta rodada")).toBeTruthy();
-    expect(document.body.textContent).toMatch(/Rodada 2: definam de novo os papéis; a estação precisa ser diferente/);
+    expect(document.body.textContent).toMatch(/Rodada 2: definam os papéis; a estação precisa ser diferente/);
     expect(document.body.textContent).not.toContain(STATION.name);
     cleanup();
 

@@ -46,11 +46,17 @@ function marksByItem(rows) {
   return map;
 }
 
-/** O conteúdo do meu papel muda com a rodada, a fase (papéis → sala → resultado), o papel, a estação e, para o candidato, os liberados. */
+/**
+ * O conteúdo do meu papel muda com a rodada, a fase (papéis → espera/sala → resultado), o papel, a estação e, para o candidato,
+ * os liberados. Fluxo simples (014140, DONO-2): quem não é o ator não recebe nada antes do início marcado ("espera"), inclusive
+ * em "running" durante os 2 s do apito (o servidor manda `station` nulo); quando o estado traz a estação (porta aberta), a
+ * chave muda e o conteúdo é lido de novo.
+ */
 function contentKeyOf(room) {
   if (!room || room.phase === "closed") return null;
-  const stage = room.phase === "roles" ? "roles" : room.phase === "result" ? "result" : "sala";
   const role = room.me?.role ?? "";
+  const waiting = role !== "evaluator" && (["connecting", "setup"].includes(room.phase) || (room.phase === "running" && !room.station));
+  const stage = room.phase === "roles" ? "roles" : room.phase === "result" ? "result" : waiting ? "espera" : "sala";
   const station = room.station ? room.station.id ?? room.station.label ?? "?" : "";
   const released = role === "candidate" ? (room.released_pressings || []).join(",") : "";
   return [room.round, stage, role, station, released].join("|");

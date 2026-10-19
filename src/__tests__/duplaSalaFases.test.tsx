@@ -160,9 +160,9 @@ describe("Sala: fases a partir do estado gravado", () => {
     await mount({ room: roles("candidate", { match_note: note, invite_pending: true }), content: contentFor("candidate") });
     expect(screen.getByText("Dupla com Bruno Lima")).toBeTruthy();
     // candidato: "Estação 3 · Clínica Médica", nunca o nome da estação
-    expect(screen.getByText(/Estação 3 · Clínica Médica · Revalida 2020 · INEP\./)).toBeTruthy();
+    expect(screen.getByText(/Estação 3 · Clínica Médica · Revalida 2020 · INEP/)).toBeTruthy();
     expect(document.body.textContent).not.toContain("Estação de teste");
-    expect(screen.getByText(/Antes de conectar, definam quem será o candidato e quem será o ator\/avaliador\./)).toBeTruthy();
+    expect(screen.getByText(/Com os papéis definidos, a sala vai direto para a preparação\./)).toBeTruthy();
     expect(screen.getByText(note)).toBeTruthy();
     expect(screen.getByText("Aguardando Bruno Lima entrar na sala")).toBeTruthy();
     expect(screen.getByText("Papéis desta rodada")).toBeTruthy();
@@ -174,7 +174,7 @@ describe("Sala: fases a partir do estado gravado", () => {
     // só o avaliador escolhe ou troca a estação
     expect(screen.queryByRole("button", { name: "Trocar estação" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Escolher estação" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Confirmar papéis e conectar" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Confirmar papéis e conectar" })).toBeNull(); // fluxo simples: sem confirmar
     cleanup();
 
     // candidato sem estação: aguarda o avaliador escolher
@@ -185,7 +185,6 @@ describe("Sala: fases a partir do estado gravado", () => {
 
     // avaliador: Trocar estação com o nome
     await mount({ room: roles("evaluator"), content: contentFor(null) });
-    expect(screen.getByText(/Estação 3 · Estação de teste · Revalida 2020 · INEP\./)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Trocar estação" })).toBeTruthy();
     cleanup();
 
@@ -199,11 +198,6 @@ describe("Sala: fases a partir do estado gravado", () => {
     expect(screen.queryByText(/Definido pelo match/)).toBeNull();
     expect(screen.queryByText(/^Estação \d/)).toBeNull();
     cleanup();
-
-    // confirmado por mim
-    await mount({ room: roles("evaluator", { me: { confirmed: true } }), content: contentFor(null) });
-    expect(screen.getByText("Aguardando Bruno Lima confirmar os papéis")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Confirmar papéis e conectar" })).toBeNull();
   });
 
   it("papéis: o seletor de estação lista por área 'Estação {n} · {nome}', busca e escolhe", async () => {
@@ -234,7 +228,7 @@ describe("Sala: fases a partir do estado gravado", () => {
       { id: "s2", name: "Apendicite", topic: "Abdome", area: "Cirurgia Geral", area_code: "CR", number: 7 },
     ];
     await mount({ room: roles("evaluator", { station: null, round: 2 }), content: contentFor(null), stations, done: ["s1"] });
-    expect(document.body.textContent).toMatch(/Rodada 2: definam de novo os papéis; a estação precisa ser diferente das que vocês já treinaram nesta sala\./);
+    expect(document.body.textContent).toMatch(/Rodada 2: definam os papéis; a estação precisa ser diferente das que vocês já treinaram nesta sala\./);
     fireEvent.click(screen.getByRole("button", { name: "Escolher estação" }));
     const dialog = await screen.findByRole("dialog");
     await waitFor(() => expect(within(dialog).getByText("Já treinada nesta sala")).toBeTruthy());
@@ -262,45 +256,25 @@ describe("Sala: fases a partir do estado gravado", () => {
     expect(screen.getByRole("button", { name: "Sair da sala" })).toBeTruthy();
   });
 
-  it("preparação: só a prontidão; avaliador abre a sala do avaliador com os dois prontos; candidato vê 'Só o avaliador inicia'", async () => {
-    // avaliador
+  it("preparação (fluxo simples, 19/10): ator com a estação vê 'Aguardando início' e 'Iniciar estação'; candidato vê a espera, sem prontidão", async () => {
+    // ator com a estação: direto na sala do avaliador, sem prontidão
     await mount({ room: roles("evaluator", { phase: "setup" }), content: contentFor("evaluator") });
-    expect(screen.getByText("Sala com Bruno Lima")).toBeTruthy();
-    expect(screen.getByText("Confirmem a prontidão para iniciar a estação.")).toBeTruthy();
-    expect(screen.getByText("Aguardando prontidão")).toBeTruthy();
-    expect(screen.getByText("Papéis definidos")).toBeTruthy();
-    expect(screen.getByText(/Você é/).textContent).toBe("Você é Ator/Avaliador · Bruno Lima é Candidato");
-    expect(screen.getByText("1. Prontidão")).toBeTruthy();
-    expect(screen.getByText("Ana Souza (você)")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Estou pronto para iniciar" })).toBeTruthy();
-    // sem link da chamada (D3), sem leitura prévia e sem cronômetro na preparação (vai ao rodapé da sala do avaliador)
+    expect(screen.getByText("Aguardando início")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Iniciar estação" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Estou pronto para iniciar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Abrir sala do avaliador" })).toBeNull();
     expect(screen.queryByLabelText("Link da reunião")).toBeNull();
-    expect(screen.queryByText("Leitura prévia do avaliador")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Reduzir 30 segundos" })).toBeNull();
-    expect(screen.queryByText("Paciente de teste, 40 anos.")).toBeNull();
-    expect(screen.getByText("Aguardando os dois confirmarem prontidão")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Abrir sala do avaliador" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.queryByRole("button", { name: "Iniciar estação" })).toBeNull();
     cleanup();
 
-    // candidato
-    await mount({ room: roles("candidate", { phase: "setup", me: { ready: true } }), content: contentFor("candidate") });
-    expect(screen.getByText("Só o avaliador inicia")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Pronto · aguardando o colega" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Abrir sala do avaliador" })).toBeNull();
+    // candidato: espera de frente para a porta, sem nada da estação
+    const espera = { ...roles("candidate", { phase: "setup" }), station: null, duration_ms: null, station_ready: true, porta: 1 };
+    await mount({ room: espera, content: { role: "candidate", station: null, pressing_count: 0, pressings: [], waiting: true } });
+    expect(screen.getByText("Sala com Bruno Lima")).toBeTruthy();
+    expect(screen.getByText("Aguardando Bruno iniciar a estação")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Porta 1" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /pronto/i })).toBeNull();
     expect(screen.queryByText("Paciente de teste, 40 anos.")).toBeNull();
     expect(screen.queryByText("Cenário de teste, bloco um.")).toBeNull();
-    cleanup();
-
-    // os dois prontos: selo some e o avaliador abre a sala do avaliador
-    await mount({ room: roles("evaluator", { phase: "setup", me: { ready: true }, partner: { ready: true } }), content: contentFor("evaluator") });
-    expect(screen.queryByText("Aguardando prontidão")).toBeNull();
-    expect(screen.getByText("Prontidão confirmada. Entre na sala do avaliador para controlar o cronômetro.")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Abrir sala do avaliador" }) as HTMLButtonElement).disabled).toBe(false);
-    cleanup();
-
-    await mount({ room: roles("candidate", { phase: "setup", me: { ready: true }, partner: { ready: true } }), content: contentFor("candidate") });
-    expect(screen.getByText("Dupla conectada. Aguardando Bruno (avaliador) iniciar a estação…")).toBeTruthy();
   });
 
   it("sem link da chamada em nenhuma fase (os dois conversam fora do app)", async () => {
@@ -414,19 +388,21 @@ describe("Sala: fases a partir do estado gravado", () => {
     expect(screen.getByText("no documento oficial: Impresso 2")).toBeTruthy();
   });
 
-  it("preparação (Etapa P): candidato vê só 'Estação N · Área' e 'O enunciado aparece quando o avaliador iniciar a estação.'", async () => {
-    const setup = { phase: "setup", call_link: null };
-    await mount({ room: roles("candidate", setup), content: contentFor("candidate", [], true) });
-    expect(screen.getByText("Estação 3 · Clínica Médica · Revalida 2020 · INEP")).toBeTruthy();
-    expect(screen.getByText("O enunciado aparece quando o avaliador iniciar a estação.")).toBeTruthy();
+  it("preparação (fluxo simples, 19/10): candidato não vê nada da estação antes de começar", async () => {
+    const espera = { ...roles("candidate", { phase: "setup" }), station: null, duration_ms: null, station_ready: true, porta: 3 };
+    await mount({ room: espera, content: { role: "candidate", station: null, pressing_count: 0, pressings: [], waiting: true } });
+    expect(screen.getByText("Aguardando Bruno iniciar a estação")).toBeTruthy();
+    expect(screen.getByText("O enunciado aparece quando a porta abrir.")).toBeTruthy();
     expect(screen.queryByText("Leitura prévia do avaliador")).toBeNull();
     expect(screen.getByRole("button", { name: "Sair da sala" })).toBeTruthy();
+    expect(document.body.textContent).not.toContain("Estação 3");
     expect(document.body.textContent).not.toContain("Estação de teste");
     cleanup();
 
-    await mount({ room: roles("evaluator", setup), content: contentFor("evaluator", [], true) });
+    await mount({ room: roles("evaluator", { phase: "setup" }), content: contentFor("evaluator", [], true) });
     expect(screen.queryByText("Leitura prévia do avaliador")).toBeNull();
-    expect(screen.getByRole("button", { name: "Abrir sala do avaliador" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Iniciar estação" })).toBeTruthy();
+    expect(screen.queryByRole("img", { name: /Porta/ })).toBeNull(); // o ator nunca vê a porta
   });
 
   it("decisões do dono (16/10): origem sempre visível ao candidato e aviso a quem escolheu a estação e ficou como candidato", async () => {
@@ -496,21 +472,21 @@ describe("Sala: fases a partir do estado gravado", () => {
     expect(screen.queryByText(AVISO)).toBeNull();
     cleanup();
 
-    // a preparação: o servidor recusa "pronto" com a mensagem neutra; a tela mostra e relê a sala (que voltou aos papéis)
-    const prep = roles("candidate", { phase: "setup", me: { confirmed: true, connected: true }, partner: { confirmed: true, connected: true } });
-    const depois = roles("candidate", { rev: 9, station: null, notice: AVISO });
+    // a preparação: o servidor recusa "Iniciar estação" com a mensagem neutra; a tela mostra e relê a sala (que voltou aos papéis)
+    const prep = roles("evaluator", { phase: "setup" });
+    const depois = roles("evaluator", { rev: 9, station: null, notice: AVISO });
     let lido = 0;
     rpc.mockImplementation(async (fn: string) => {
       if (fn === "app_dupla_room") return lido++ === 0 ? prep : depois;
-      if (fn === "app_dupla_room_content") return contentFor("candidate");
-      if (fn === "app_dupla_ready") throw new Error(AVISO);
+      if (fn === "app_dupla_room_content") return contentFor("evaluator");
+      if (fn === "app_dupla_start") throw new Error(AVISO);
       if (fn === "app_dupla_heartbeat") return { server_now: NOW };
       return [];
     });
     const view = render(<RoomScreen roomId="r1" go={vi.fn()} />);
     await waitFor(() => expect(view.container.querySelector("[aria-busy='true']")).toBeNull());
     const antes = rpc.mock.calls.filter(([fn]) => fn === "app_dupla_room").length;
-    fireEvent.click(screen.getByRole("button", { name: /pronto/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Iniciar estação" }));
     await waitFor(() => expect(rpc.mock.calls.filter(([fn]) => fn === "app_dupla_room").length).toBeGreaterThan(antes));
     await waitFor(() => expect(screen.getAllByText(AVISO).length).toBeGreaterThan(0));
   });

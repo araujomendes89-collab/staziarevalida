@@ -82,13 +82,12 @@ describe("Tema reservado: o candidato não recebe nem vê o tema da estação an
       const { texto, bruto } = await telaComo(U.carla, sala);
       expect(marcas("AA", 6).filter((m) => bruto.includes(m)), `${fase} (respostas)`).toEqual([]);
       expect(marcas("AA", 6).filter((m) => texto.includes(m)), `${fase} (tela)`).toEqual([]);
-      // e o avaliador vê o nome (na preparação, dentro da "sala do avaliador", aberta antes do início)
-      if (fase === "setup") window.sessionStorage.setItem(`smn-dupla-sala-avaliador:${sala}:1`, "1");
+      // e o avaliador vê o nome (na preparação, direto na sala do avaliador: fluxo simples)
       const aval = await telaComo(U.fabio, sala);
       window.sessionStorage.clear();
       expect(aval.bruto, fase).toContain("AANOME");
       // a tela foi mesmo desenhada (prova de que a conferência olha o que a pessoa vê)
-      expect(texto, fase).toMatch(/Estação 6 · Clínica Médica|Carregando a estação|Aguardando avaliação/);
+      expect(texto, fase).toMatch(/Estação 6 · Clínica Médica|Carregando a estação|Aguardando avaliação|Definam quem será|iniciar a estação|escolhendo a estação/);
       if (fase === "running") expect(texto).toContain("Relato inicial.");
       if (fase === "setup" || fase === "running") expect(aval.texto, fase).toContain("AANOME");
       await d.sql(`delete from public.checklist_rooms`);

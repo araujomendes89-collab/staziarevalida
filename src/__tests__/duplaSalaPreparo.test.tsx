@@ -87,12 +87,11 @@ afterEach(() => {
 });
 
 describe("Sala ao vivo: papéis", () => {
-  it("papéis: escolher, sortear, trocar estação (só o avaliador) e confirmar chamam as funções; 'Aguardando Bruno Lima confirmar os papéis'", async () => {
+  it("papéis: escolher, sortear e trocar estação (só o avaliador) chamam as funções; sem 'Confirmar papéis e conectar' (fluxo simples)", async () => {
     room = base();
     content = contentOf(null);
     serve({
       app_dupla_set_roles: (a) => (a.p_candidate_id === "u-ana" ? asCandidate(room) : {}),
-      app_dupla_confirm_roles: () => ({ me: { ...room.me, confirmed: true } }),
     });
     await mount();
     fireEvent.click(screen.getByRole("button", { name: "Trocar estação" }));
@@ -106,10 +105,7 @@ describe("Sala ao vivo: papéis", () => {
     await advance(0);
     expect(fnCalls("app_dupla_draw_roles")).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole("button", { name: "Confirmar papéis e conectar" }));
-    await advance(0);
-    expect(fnCalls("app_dupla_confirm_roles")).toHaveLength(1);
-    expect(screen.getByText("Aguardando Bruno Lima confirmar os papéis")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Confirmar papéis e conectar" })).toBeNull();
 
     // escolher ser candidato: o servidor faz de mim o candidato; Trocar estação some (só o avaliador escolhe)
     fireEvent.click(screen.getByRole("button", { name: /^Candidato/ }));
@@ -190,60 +186,21 @@ describe("Sala ao vivo: conexão", () => {
 });
 
 describe("Sala ao vivo: preparação", () => {
-  it("preparação: só prontidão; sem link e sem leitura prévia; dois prontos liberam 'Abrir sala do avaliador' só para o avaliador", async () => {
-    room = base({ phase: "setup" });
-    content = contentOf("evaluator");
-    serve({ app_dupla_ready: (a) => ({ me: { ...room.me, ready: a.p_ready } }) });
-    await mount();
-    expect(screen.queryByLabelText("Link da reunião")).toBeNull();
-    expect(screen.queryByText("Leitura prévia do avaliador")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Estou pronto para iniciar" }));
-    await advance(0);
-    expect(fnCalls("app_dupla_ready")[0][1]).toEqual({ p_room_id: "r1", p_ready: true });
-    expect(screen.getByRole("button", { name: "Pronto · aguardando o colega" })).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Abrir sala do avaliador" }) as HTMLButtonElement).disabled).toBe(true);
-
-    // o candidato fica pronto (chega pela consulta de 2 s)
-    room = { ...room, rev: room.rev + 1, partner: { ...room.partner, ready: true } };
-    await advance(2000);
-    const open = screen.getByRole("button", { name: "Abrir sala do avaliador" }) as HTMLButtonElement;
-    expect(open.disabled).toBe(false);
-    fireEvent.click(open);
-    // sala do avaliador: "Aguardando início", rodapé com Iniciar; o servidor continua em "setup"
-    expect(screen.getByText("Aguardando início")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Iniciar estação" })).toBeTruthy();
-    expect(window.sessionStorage.getItem("smn-dupla-sala-avaliador:r1:1")).toBe("1");
-    expect(fnCalls("app_dupla_start")).toHaveLength(0);
-  });
-
-  it("abrir a sala do avaliador guarda o estado por sala e rodada e sobrevive a recarregar", async () => {
-    room = base({ phase: "setup", me: { ...base().me, ready: true }, partner: { ...base().partner, ready: true } });
-    content = contentOf("evaluator");
-    serve();
-    window.sessionStorage.setItem("smn-dupla-sala-avaliador:r1:1", "1");
-    await mount();
-    expect(screen.getByText("Aguardando início")).toBeTruthy();
-    cleanup();
-    // outra rodada: começa de novo na preparação
-    room = { ...room, round: 2 };
-    await mount();
-    expect(screen.getByRole("button", { name: "Abrir sala do avaliador" })).toBeTruthy();
-  });
-
   it("candidato espera e entra sozinho quando a fase vira running (inclusive aba escondida e reconexão)", async () => {
-    room = asCandidate(base({ phase: "setup", me: { ...base().me, ready: true }, partner: { ...base().partner, ready: true } }));
-    content = contentOf("candidate");
+    room = { ...asCandidate(base({ phase: "setup" })), station: null, duration_ms: null, station_ready: true, porta: 1 };
+    content = { role: "candidate", station: null, pressing_count: 0, pressings: [], waiting: true };
     serve();
     await mount();
-    expect(screen.getByText("Só o avaliador inicia")).toBeTruthy();
+    expect(screen.getByText("Aguardando Bruno iniciar a estação")).toBeTruthy();
     // o avaliador inicia em outro aparelho; a aba do candidato está escondida e a rede caiu
     setVisibility("hidden");
     rpc.mockImplementation(async () => {
       throw new Error("Failed to fetch");
     });
-    room = { ...room, rev: room.rev + 1, phase: "running", started_at: NOW, ends_at: "2026-10-11T15:10:00.000Z" };
+    room = { ...room, rev: room.rev + 1, phase: "running", station: CAND_STATION, duration_ms: 600000, started_at: NOW, ends_at: "2026-10-11T15:10:00.000Z" };
+    content = contentOf("candidate");
     await advance(4000);
-    expect(screen.getByText("Só o avaliador inicia")).toBeTruthy(); // sem rede, nada muda (e nada quebra)
+    expect(screen.getByText("Aguardando Bruno iniciar a estação")).toBeTruthy(); // sem rede, nada muda (e nada quebra)
     serve();
     setVisibility("visible");
     await act(async () => {
@@ -251,7 +208,7 @@ describe("Sala ao vivo: preparação", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
     await advance(0);
-    expect(screen.queryByText("Só o avaliador inicia")).toBeNull();
+    expect(screen.queryByText("Aguardando Bruno iniciar a estação")).toBeNull();
     expect(screen.getByText("Em andamento")).toBeTruthy();
     expect(screen.getByRole("timer").textContent).toMatch(/10:00|09:59/);
     expect(screen.getByText("INSTRUÇÕES AO PARTICIPANTE")).toBeTruthy();

@@ -1,65 +1,28 @@
-// Fase "setup" (Setup.jsx do protótipo de 11/10): só a prontidão. Sem campo de link (os dois conversam fora do app, decisão D3
-// do dono) e sem leitura prévia: o avaliador entra na "sala do avaliador" (resumo, impressos, cronômetro e PEP) antes de iniciar,
-// e o cronômetro fica no rodapé dela. O candidato espera aqui e passa sozinho à estação quando o avaliador inicia.
+// Fase "setup" no fluxo simples (dono, 19/10): sem prontidão, sem conexão e sem link (a conversa é por fora). O ator com a estação
+// escolhida vai direto à "sala do avaliador" (RunningPhase antes do início, decidido em RoomScreen). Aqui ficam só:
+//  - o ator ainda SEM estação (sala do match ou rodada nova): escolhe pela lista do Banco de estações;
+//  - o candidato, de frente para a PORTA com o número da área (dono, 19/10) e SEM mais nada da estação (nem nome, número da
+//    estação, área por escrito ou origem: o servidor nem manda, 014140). Sem estação escolhida: "O ator está escolhendo a
+//    estação", sem porta (nunca há porta sem número).
 import React from "react";
-import { Avatar, Badge, Button, Card, Icon } from "../../../ds";
+import { Button, Card, Icon } from "../../../ds";
 import { OwnQuotaLine } from "../CreditHeader.jsx";
-import { CardBlock, PairHeader, RoleBand, firstName, pageStyle, stationLine } from "./parts.jsx";
+import { PairHeader, RoleBand, firstName, pageStyle } from "./parts.jsx";
+import { Porta } from "./Porta.jsx";
+import { StationPicker } from "./StationPicker.jsx";
 
-const overline = { font: "var(--type-overline)", letterSpacing: "var(--tracking-overline)", textTransform: "uppercase", color: "var(--text-tertiary)" };
+const status = { display: "flex", alignItems: "center", gap: 10, font: "600 var(--text-sm)/1.45 var(--font-sans)", color: "var(--text-primary)" };
+const note = { margin: "10px 0 0", font: "var(--type-body-sm)", color: "var(--text-secondary)" };
 
-function ReadyCard({ room, actions }) {
-  const people = [
-    [`${room.me.public_name} (você)`, room.me.public_name, room.me.ready],
-    [room.partner.public_name, room.partner.public_name, room.partner.ready],
-  ];
-  return (
-    <CardBlock title="1. Prontidão">
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-        {people.map(([shown, name, ready]) => (
-          <div
-            key={shown}
-            style={{
-              flex: "1 1 220px",
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "12px 14px",
-              borderRadius: "var(--radius-md)",
-              background: ready ? "var(--success-bg)" : "var(--surface-sunken)",
-            }}
-          >
-            <Avatar name={name} size={32} />
-            <span style={{ flex: 1, font: "600 var(--text-sm) var(--font-sans)", color: "var(--text-primary)" }}>{shown}</span>
-            <Badge size="sm" tone={ready ? "success" : "neutral"} icon={ready ? "check" : "clock"}>{ready ? "Pronto" : "Aguardando"}</Badge>
-          </div>
-        ))}
-        <Button variant="secondary" icon={room.me.ready ? "x" : "hand"} onClick={() => actions.setReady(!room.me.ready)}>
-          {room.me.ready ? (room.partner.ready ? "Cancelar" : "Pronto · aguardando o colega") : "Estou pronto para iniciar"}
-        </Button>
-      </div>
-    </CardBlock>
-  );
+/** Texto da espera do candidato: o servidor diz só se a estação já foi escolhida (`station_ready`), nunca qual é. */
+export function candidateWaitText(room) {
+  const ator = firstName(room.partner?.public_name) || "o ator";
+  return room.station_ready ? `Aguardando ${ator} iniciar a estação` : "O ator está escolhendo a estação";
 }
 
-/** Candidato: só "Estação N · Área · origem", sem o tema; o enunciado aparece quando o avaliador iniciar. */
-function CandidateWaiting({ room }) {
-  const station = room.station;
-  if (!station) return null;
-  return (
-    <Card padding={20}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Icon name="stethoscope" size={22} style={{ color: "var(--text-brand)" }} />
-        <div style={overline}>{stationLine(station)}</div>
-      </div>
-      <p style={{ margin: "10px 0 0", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>O enunciado aparece quando o avaliador iniciar a estação.</p>
-    </Card>
-  );
-}
-
-export function SetupPhase({ room, actions, askLeave, openEvaluatorRoom }) {
+export function SetupPhase({ room, actions, askLeave }) {
+  const [picking, setPicking] = React.useState(false);
   const isEval = room.me.role === "evaluator";
-  const both = room.me.ready && room.partner.ready;
   const partner = room.partner.public_name;
   const leave = () => (askLeave ? askLeave("sair") : actions.leave());
 
@@ -68,51 +31,49 @@ export function SetupPhase({ room, actions, askLeave, openEvaluatorRoom }) {
       <PairHeader
         room={room}
         title={`Sala com ${partner}`}
-        subtitle="Confirmem a prontidão para iniciar a estação."
-        right={!both && <Badge tone="warning">Aguardando prontidão</Badge>}
+        subtitle={isEval ? "Você é o ator: escolha a estação para começar." : "A conversa é por fora (WhatsApp, Meet ou ligação)."}
       />
       <RoleBand room={room} />
-      <ReadyCard room={room} actions={actions} />
       <OwnQuotaLine roomId={room.id} />
-      {!isEval && <CandidateWaiting room={room} />}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 16,
-          flexWrap: "wrap",
-          padding: "16px 20px",
-          borderRadius: "var(--radius-lg)",
-          background: both ? "var(--success-bg)" : "var(--surface-sunken)",
-        }}
-      >
-        <div
-          role="status"
-          style={{ display: "flex", alignItems: "center", gap: 10, font: "600 var(--text-sm) var(--font-sans)", color: both ? "var(--success-text)" : "var(--text-secondary)" }}
-        >
-          <Icon name={both ? "link-2" : "loader"} size={18} />
-          {!both
-            ? "Aguardando os dois confirmarem prontidão"
-            : isEval
-              ? "Prontidão confirmada. Entre na sala do avaliador para controlar o cronômetro."
-              : `Dupla conectada. Aguardando ${firstName(partner)} (avaliador) iniciar a estação…`}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <Button variant="ghost" icon="log-out" onClick={leave}>
-            Sair da sala
-          </Button>
-          {isEval ? (
-            <Button size="lg" icon="arrow-right" disabled={!both} onClick={() => openEvaluatorRoom?.()}>
-              Abrir sala do avaliador
+      {isEval ? (
+        <Card padding={20}>
+          <div style={status}>
+            <Icon name="clipboard-list" size={20} style={{ color: "var(--text-brand)" }} />
+            Escolha a estação na lista do Banco de estações.
+          </div>
+          <p style={note}>{`${firstName(partner)} só vê a estação quando você iniciar o atendimento.`}</p>
+          <div style={{ marginTop: 14 }}>
+            <Button size="lg" icon="clipboard-list" onClick={() => setPicking(true)}>
+              Escolher estação
             </Button>
-          ) : (
-            <Badge tone={both ? "success" : "neutral"} icon="lock">
-              Só o avaliador inicia
-            </Badge>
-          )}
-        </div>
+          </div>
+        </Card>
+      ) : (
+        <Card padding={20}>
+          {room.station_ready && room.porta ? <Porta numero={room.porta} /> : null}
+          <div role="status" style={{ ...status, justifyContent: "center", marginTop: room.station_ready && room.porta ? 14 : 0 }}>
+            <Icon name="loader" size={20} style={{ color: "var(--text-brand)" }} />
+            {candidateWaitText(room)}
+          </div>
+          <p style={{ ...note, textAlign: "center" }}>O enunciado aparece quando a porta abrir.</p>
+        </Card>
+      )}
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <Button variant="ghost" icon="log-out" onClick={leave}>
+          Sair da sala
+        </Button>
       </div>
+      {picking && isEval && (
+        <StationPicker
+          roomId={room.id}
+          title="Escolher estação"
+          onClose={() => setPicking(false)}
+          onPick={(id) => {
+            setPicking(false);
+            actions.setStation(id);
+          }}
+        />
+      )}
     </main>
   );
 }

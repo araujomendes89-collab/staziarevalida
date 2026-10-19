@@ -51,7 +51,6 @@ export function RolesPhase({ room, actions }) {
   const [picking, setPicking] = React.useState(false);
   const station = room.station;
   const partnerName = room.partner.public_name;
-  const ready = Boolean(station && room.me.role);
   // Só o avaliador escolhe ou troca a estação (o candidato não pode saber o tema antes do resultado).
   const isEval = room.me.role === "evaluator";
   const evaluatorName = room.partner.role === "evaluator" ? partnerName : null;
@@ -71,8 +70,8 @@ export function RolesPhase({ room, actions }) {
         title={`Dupla com ${partnerName}`}
         subtitle={
           room.round > 1
-            ? `Rodada ${room.round}: ${station ? stationLine(station) + ". " : ""}definam de novo os papéis; a estação precisa ser diferente das que vocês já treinaram nesta sala.`
-            : `${station ? stationLine(station) + ". " : ""}Antes de conectar, definam quem será o candidato e quem será o ator/avaliador.`
+            ? `Rodada ${room.round}: definam os papéis; a estação precisa ser diferente das que vocês já treinaram nesta sala.`
+            : "Definam quem será o candidato e quem será o ator/avaliador. Com os papéis definidos, a sala vai direto para a preparação."
         }
       />
       {room.match_note && (
@@ -177,15 +176,6 @@ export function RolesPhase({ room, actions }) {
                 ? `Aguardando ${firstName(evaluatorName)} escolher a estação.`
                 : "Definam os papéis antes de escolher a estação."}
           </div>
-        )}
-        {room.me.confirmed ? (
-          <Button size="lg" variant="secondary" icon="loader" disabled>
-            Aguardando {partnerName} confirmar os papéis
-          </Button>
-        ) : (
-          <Button size="lg" icon="plug-zap" disabled={!ready} onClick={() => actions.confirmRoles()}>
-            Confirmar papéis e conectar
-          </Button>
         )}
       </div>
       {picking && isEval && (

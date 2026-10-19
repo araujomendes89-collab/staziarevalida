@@ -364,8 +364,10 @@ describe("Sala em preparação", () => {
 
   it("a tela do colega nunca traz o saldo ou o motivo dele", async () => {
     creditNow = credit({ disponivel: 0 });
-    setup("evaluator");
-    room.partner = { ...room.partner, ready: false };
+    // fluxo simples: o ator com a estação vai direto à sala de trabalho; a linha da cota está na espera do candidato
+    setup("candidate");
+    room = { ...room, station: null, duration_ms: null, station_ready: true, porta: 1 };
+    content = { role: "candidate", station: null, pressing_count: 0, pressings: [], waiting: true };
     await mount();
     const text = document.body.textContent ?? "";
     expect(text).toContain("Bruno Lima");
@@ -379,7 +381,6 @@ describe("Sala em preparação", () => {
   it("início recusado: mensagem neutra do servidor e a preparação continua para os dois", async () => {
     creditNow = credit({ ativa: false });
     setup("evaluator");
-    window.sessionStorage.setItem("smn-dupla-sala-avaliador:r1:1", "1");
     await mount();
     fireEvent.click(screen.getByRole("button", { name: "Iniciar estação" }));
     await advance(0);

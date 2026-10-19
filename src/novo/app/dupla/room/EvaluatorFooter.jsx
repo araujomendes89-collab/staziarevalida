@@ -5,6 +5,8 @@ import React from "react";
 import { Button, Icon, IconButton, SegmentedControl } from "../../../ds";
 import { formatDecimal } from "../../../ds/format.js";
 import { formatClock } from "../clock.js";
+import { firstName } from "./parts.jsx";
+import { StationPicker } from "./StationPicker.jsx";
 
 const MIN_MS = 60000;
 const STEP_SETUP = 30000;
@@ -16,6 +18,7 @@ const STEP_RUN = 60000;
 export function EvaluatorFooter({ room, remainingMs, actions, started, onLeave }) {
   const [open, setOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const [picking, setPicking] = React.useState(false);
   const boxRef = React.useRef(null);
   const triggerRef = React.useRef(null);
   const closeRef = React.useRef(null);
@@ -24,7 +27,8 @@ export function EvaluatorFooter({ room, remainingMs, actions, started, onLeave }
   const paused = typeof room.paused_left_ms === "number";
   const left = started ? remainingMs ?? 0 : duration;
   const expired = started && left <= 0;
-  const both = room.me.ready && room.partner.ready;
+  // Fluxo simples (19/10): um toque do ator. Precisa só da estação e do convite aceito (o servidor confere de novo).
+  const canStart = Boolean(room.station) && !room.invite_pending;
   const shown = formatClock(left);
 
   const close = React.useCallback((focusBack = true) => {
@@ -150,9 +154,30 @@ export function EvaluatorFooter({ room, remainingMs, actions, started, onLeave }
           </Button>
         </>
       ) : (
-        <Button icon="play" disabled={!both || busy} onClick={once(() => actions.start())}>
-          Iniciar estação
-        </Button>
+        <>
+          {room.invite_pending && (
+            <span role="status" className="dupla-time__mode" data-state="reduced">
+              {`Aguardando ${firstName(room.partner.public_name)} aceitar`}
+            </span>
+          )}
+          <Button variant="ghost" icon="clipboard-list" disabled={busy} onClick={() => setPicking(true)}>
+            Trocar estação
+          </Button>
+          <Button icon="play" disabled={!canStart || busy} onClick={once(() => actions.start())}>
+            Iniciar estação
+          </Button>
+        </>
+      )}
+      {picking && (
+        <StationPicker
+          roomId={room.id}
+          title="Trocar estação"
+          onClose={() => setPicking(false)}
+          onPick={(id) => {
+            setPicking(false);
+            actions.setStation(id);
+          }}
+        />
       )}
     </div>
   );
