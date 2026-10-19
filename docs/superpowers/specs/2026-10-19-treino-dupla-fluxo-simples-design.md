@@ -37,14 +37,29 @@ plataformas, estilo Pense Revalida; quem escolhe a estação é o ator/avaliador
    não mostra a estação, a área nem a origem. Vale 60 s (regra do radar, 014000). Recusa ou fim do prazo avisam o ator.
 3. **Sala (ao aceitar).** Nasce com papéis e estação definidos, direto na fase de preparação.
    - Ator: roteiro, impressos e PEP para ler, e **"Iniciar estação"**.
-   - Candidato: "Aguardando o ator iniciar" (sem número, nome, área ou origem da estação).
-4. **Atendimento (10 min).** O candidato vê a folha e os impressos liberados; o ator libera impressos e marca o PEP. Termina
+   - Candidato: **só o desenho de uma porta com um número** (decisão do dono, 19/10). Nada de nome, tema, origem ou folha.
+     O número é a porta da área, como na prova:
+
+     | Porta | Área |
+     |---|---|
+     | 1 | Clínica Médica |
+     | 2 | Cirurgia Geral |
+     | 3 | Pediatria |
+     | 4 | Ginecologia e Obstetrícia |
+     | 5 | Medicina de Família e Comunidade / Saúde Coletiva |
+
+     Antes de o ator escolher a estação, a porta aparece sem número ("Aguardando o ator").
+4. **Início com apito e porta.** O ator aperta "Iniciar estação". Os dois ouvem o **apito** (o que já existe, 2 s). Quando o
+   apito acaba, **a porta se abre** (animação curta) e a estação começa para o candidato: aparece a folha e os 10 minutos
+   contam a partir da porta aberta (o servidor marca o início = toque do ator + duração do apito). Com som desligado, a porta
+   abre no mesmo instante; com movimento reduzido, troca sem animação.
+5. **Atendimento (10 min).** O candidato vê a folha e os impressos liberados; o ator libera impressos e marca o PEP. Termina
    pelo tempo ou por **"Encerrar"** do ator.
-5. **Nota.** O ator confere o PEP, escreve um comentário opcional e aperta **"Enviar nota"**. Os dois veem a nota, os itens e
+6. **Nota.** O ator confere o PEP, escreve um comentário opcional e aperta **"Enviar nota"**. Os dois veem a nota, os itens e
    o comentário. O candidato pode **"Pedir revisão"**; o ator revisa (mantém ou muda), como já existe hoje.
-6. **Depois.** **"Nova estação · mesmo papel"**, **"Nova estação · trocar de papel"** e **"Sair"**. A sala continua com os
+7. **Depois.** **"Nova estação · mesmo papel"**, **"Nova estação · trocar de papel"** e **"Sair"**. A sala continua com os
    dois; quem for ator na rodada nova escolhe a estação dentro da sala (lista do Banco de estações).
-7. **Match (secundário) = o mecanismo que já existe (dono, 19/10).** A pessoa preenche o perfil de estudo com as preferências
+8. **Match (secundário) = o mecanismo que já existe (dono, 19/10).** A pessoa preenche o perfil de estudo com as preferências
    dela (`app_dupla_save_profile`: papel preferido, áreas, horários etc.) e o sistema busca pessoas compatíveis (baralho,
    `app_dupla_deck` / `app_dupla_swipe`, "Deu match!"). Os papéis saem das preferências como hoje (`dupla_assign`), com a
    escolha de papéis que já existe só quando as preferências não decidem. Nada disso muda. Depois do match, a sala segue o
@@ -69,8 +84,8 @@ ROLLBACK antes de gravar.
 - **Nota.** O comentário único usa `feedback_gen`; `feedback_pos`/`feedback_neg` ficam vazios (colunas mantidas). O pedido de
   revisão (`app_dupla_request_review`, `app_dupla_redo_review`) não muda.
 - **Lista.** `app_dupla_radar` deixa de entregar a aba "Ator"; ficam "Online" e "Perto de você".
-- **Segurança (não pode regredir):** o candidato nunca recebe nome, número, área, origem, versão do conteúdo nem id da estação
-  antes de `running` (inclusive no convite e na sala em `setup`); aluno comum continua sem acesso (2ª fase só equipe, chave
+- **Segurança (não pode regredir):** antes de `running` o candidato recebe SÓ o número da porta (área); nunca nome, tema,
+  número da estação, origem, versão do conteúdo, id ou folha da estação (inclusive no convite e na sala em `setup`); aluno comum continua sem acesso (2ª fase só equipe, chave
   `treino_dupla` desligada); estação pendente só entre duas pessoas da equipe (`dupla_station_liberada`).
 
 ## 5. O que muda nas telas (src/novo/app/dupla)
