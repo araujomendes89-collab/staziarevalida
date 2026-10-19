@@ -47,6 +47,7 @@ export function Nivelamento({ modo, go, aoSair = null }) {
   const [idxQuestao, setIdxQuestao] = useState(0);
   const [respostasLocais, setRespostasLocais] = useState({});
   const [escolha, setEscolha] = useState(null);
+  const [riscadas, setRiscadas] = useState({}); // alternativas riscadas por questão (só na tela, nada vai ao banco)
   const [painelFaltam, setPainelFaltam] = useState(false);
   const [confirmarSair, setConfirmarSair] = useState(false);
 
@@ -270,6 +271,14 @@ export function Nivelamento({ modo, go, aoSair = null }) {
       if (!respondida) setEscolha(letra);
     };
 
+    // Riscar é só da tela; riscar a escolhida desmarca (como no treino).
+    const struck = riscadas[item.ordem] ?? [];
+    const onStrike = (letra) => {
+      if (respondida) return;
+      if (escolha === letra && !struck.includes(letra)) setEscolha(null);
+      setRiscadas((todas) => ({ ...todas, [item.ordem]: struck.includes(letra) ? struck.filter((l) => l !== letra) : [...struck, letra] }));
+    };
+
     const primaryAction = () => {
       if (allDone && isLast && respondida) {
         finalizar();
@@ -337,7 +346,9 @@ export function Nivelamento({ modo, go, aoSair = null }) {
                 }}
                 revealed={false}
                 locked={!!respondida || loadingAction}
+                struck={struck}
                 onPick={onPick}
+                onStrike={onStrike}
               />
             }
             footer={footer}

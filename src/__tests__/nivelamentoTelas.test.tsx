@@ -229,6 +229,24 @@ describe("Telas de Nivelamento", () => {
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_nivelamento_responder", { p_ordem: 1, p_resposta: "A" }));
   });
 
+  it("Riscar alternativa funciona e desfaz (relato de aluno, 19/10)", async () => {
+    backendState.situacao = "bloco1";
+    backendState.bloco = 1;
+    render(<Nivelamento modo="rota" go={go} />);
+    expect(await screen.findByText("Questao 1")).toBeTruthy();
+
+    const riscarB = screen.getByRole("button", { name: "Riscar alternativa B" });
+    fireEvent.click(riscarB);
+    const desfazerB = screen.getByRole("button", { name: "Desfazer risco da alternativa B" });
+    expect(desfazerB.getAttribute("aria-pressed")).toBe("true");
+    expect(desfazerB.closest(".tq-alt")?.getAttribute("data-struck")).toBe("true");
+
+    fireEvent.click(desfazerB);
+    expect(screen.getByRole("button", { name: "Riscar alternativa B" }).closest(".tq-alt")?.getAttribute("data-struck")).toBe("false");
+    // riscar é só da tela: nada vai ao banco
+    expect(backend.rpc).not.toHaveBeenCalledWith("app_nivelamento_responder", expect.anything());
+  });
+
   it("Finalizar", async () => {
     // Fill all answers
     for (let i = 1; i <= 15; i++) {
