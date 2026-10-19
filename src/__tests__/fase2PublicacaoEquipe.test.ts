@@ -177,7 +177,7 @@ describe("etapa 2 (radar, convite, @, Stazia Match, créditos, treino sozinho co
   const CHAMADAS: [string, Record<string, unknown>][] = [
     ["app_dupla_radar", {}],
     ["app_dupla_radar", { p_aba: "perto" }],
-    ["app_dupla_invite", { p_to: U.admin }],
+    ["app_dupla_invite", { p_to: U.admin, p_station_id: "inep2025-1-e07" }],
     ["app_dupla_handle_check", { p_handle: "colega.teste" }],
     ["app_dupla_set_handle", { p_handle: "colega.teste" }],
     ["app_dupla_link_lookup", { p_handle: "colega.teste" }],

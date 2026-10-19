@@ -68,6 +68,16 @@ export function migrationFiles(opts: { semTreino?: boolean } = {}): string[] {
     .sort();
 }
 
+/**
+ * Fluxo simples (014130–014150, desenho de 19/10): um teste que cola de novo uma migração ANTIGA do Treino (que refaz funções
+ * que o fluxo simples também refaz) chama isto logo depois, para o banco voltar ao estado da cadeia inteira.
+ */
+export async function recolarFluxoSimples(db: PGlite): Promise<void> {
+  for (const f of migrationFiles().filter((x) => x.includes("_treino_dupla_fluxo_"))) {
+    await db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+  }
+}
+
 export async function openDuplaDb(opts: { realtime?: boolean; semTreino?: boolean } = {}): Promise<DuplaDb> {
   const db = new PGlite();
   await db.exec(fs.readFileSync(path.join(ROOT, "supabase/tests/bootstrap.sql"), "utf8"));

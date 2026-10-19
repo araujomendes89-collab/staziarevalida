@@ -9,7 +9,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
-import { MIGRATIONS_DIR, STATION, U, addProfile, addStation, makeRoom, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
+import { MIGRATIONS_DIR, STATION, U, addProfile, addStation, makeRoom, openDuplaDb, recolarFluxoSimples, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
 const SQL_1 = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003014000_treino_dupla_radar.sql"), "utf8");
 const SQL_2 = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003014010_treino_dupla_radar_refeitas.sql"), "utf8");
@@ -36,8 +36,7 @@ describe("Migrações 014000 e 014010 — radar e convite direto", () => {
 
   const radar = (uid: string, estacao?: string | null, aba?: string) =>
     d.rpc(uid, "app_dupla_radar", { ...(estacao === undefined ? {} : { p_station_id: estacao }), ...(aba ? { p_aba: aba } : {}) });
-  const convidar = (de: string, para: string, estacao?: string | null) =>
-    d.rpc(de, "app_dupla_invite", { p_to: para, ...(estacao === undefined ? {} : { p_station_id: estacao }) });
+  const convidar = (de: string, para: string, estacao?: string | null) => d.rpc(de, "app_dupla_invite", { p_to: para, p_station_id: estacao === undefined ? STATION.id : estacao });
   const deck = (uid: string) => d.rpc(uid, "app_dupla_deck");
   const nomes = (r: any) => r.people.map((p: any) => p.public_name);
   const bloquear = (quem: string, alvo: string) => d.sql(`insert into public.study_chat_blocks (blocker_id, blocked_id) values ($1, $2) on conflict do nothing`, [quem, alvo]);
@@ -175,9 +174,8 @@ describe("Migrações 014000 e 014010 — radar e convite direto", () => {
 
 
   // ------------------------------------------------------------------ abas: Ator/avaliador e Perto de você
-  it("aba Ator/avaliador: só quem topa esse papel (ator ou qualquer papel)", async () => {
-    const r = await radar(U.carla, null, "atores");
-    expect(new Set(nomes(r))).toEqual(new Set(["Ana Souza", "Bruno Lima", "Diego Melo", "Gil Nunes"]));
+  it("aba Ator/avaliador saiu (fluxo simples, 19/10): 'atores' é recusada", async () => {
+    await expect(radar(U.carla, null, "atores")).rejects.toThrow(/Aba inválida\./);
     await expect(radar(U.carla, null, "outra")).rejects.toThrow(/Aba inválida\./);
   });
 
@@ -291,21 +289,18 @@ describe("Migrações 014000 e 014010 — radar e convite direto", () => {
   });
 
   // ------------------------------------------------------------------ convite direto
-  it("convidar: sala em 'papéis' com a estação, sem match, convite 'direto' de 60 s e papéis sugeridos", async () => {
+  it("convidar: quem convida é o ator, sala na preparação com a estação, sem match, convite 'direto' de 60 s", async () => {
     const r = await convidar(U.ana, U.bruno, STATION.id); // Ana topa qualquer papel, Bruno quer ser ator
     expect(r.partner).toEqual({ user_id: U.bruno, public_name: "Bruno Lima" });
     const [sala] = await d.sql<any>(`select * from public.checklist_rooms where id = $1`, [r.room_id]);
-    expect(sala).toMatchObject({ phase: "roles", round: 1, match_id: null, station_id: STATION.id, candidate_id: U.ana, evaluator_id: U.bruno, duration_ms: 600000 });
+    expect(sala).toMatchObject({ phase: "setup", round: 1, match_id: null, station_id: STATION.id, candidate_id: U.bruno, evaluator_id: U.ana, duration_ms: 600000 });
     expect(sala.member_ids.sort()).toEqual([U.ana, U.bruno].sort());
     const [conv] = await d.sql<any>(`select kind, status, from_user, to_user, extract(epoch from (expires_at - created_at))::int as prazo from public.study_invites where room_id = $1`, [r.room_id]);
     expect(conv).toMatchObject({ kind: "direto", status: "pending", from_user: U.ana, to_user: U.bruno });
     expect(conv.prazo).toBe(60);
     expect(await d.sql(`select 1 from public.study_matches`)).toEqual([]);
     expect(await d.sql(`select 1 from public.study_swipes`)).toEqual([]);
-    // sem estação também vale (a estação se escolhe na sala)
-    await d.sql(`delete from public.checklist_rooms`);
-    const sem = await convidar(U.ana, U.bruno);
-    expect((await d.sql<any>(`select station_id, duration_ms from public.checklist_rooms where id = $1`, [sem.room_id]))[0]).toEqual({ station_id: null, duration_ms: null });
+    await expect(convidar(U.ana, U.bruno, null)).rejects.toThrow("Escolha a estação antes de convidar.");
   });
 
   it("quem recebe vê o convite com kind e a estação SEM nome nem id (o tema não vai ao candidato)", async () => {
@@ -313,8 +308,9 @@ describe("Migrações 014000 e 014010 — radar e convite direto", () => {
     const v = await d.rpc(U.bruno, "app_dupla_invites");
     expect(v.invites).toHaveLength(1);
     expect(v.invites[0]).toMatchObject({ kind: "direto", from: { user_id: U.ana, public_name: "Ana Souza" } });
-    expect(v.invites[0].station).toMatchObject({ area: "Clínica Médica", area_code: "CM", duration_ms: 600000 });
     const cru = JSON.stringify(v);
+    expect(v.invites[0]).toMatchObject({ station: null, role: "candidate" });
+    expect(cru).not.toContain("Clínica Médica");
     expect(cru).not.toContain(STATION.name);
     expect(cru).not.toContain(STATION.id);
     expect(cru).not.toContain(STATION.topic);
@@ -334,7 +330,7 @@ describe("Migrações 014000 e 014010 — radar e convite direto", () => {
     const a = await convidar(U.ana, U.bruno, STATION.id);
     const [{ id }] = await d.sql<any>(`select id from public.study_invites where room_id = $1`, [a.room_id]);
     expect(await d.rpc(U.bruno, "app_dupla_answer_invite", { p_invite_id: id, p_accept: true })).toEqual({ room_id: a.room_id });
-    expect((await d.sql<any>(`select phase from public.checklist_rooms where id = $1`, [a.room_id]))[0].phase).toBe("roles");
+    expect((await d.sql<any>(`select phase from public.checklist_rooms where id = $1`, [a.room_id]))[0].phase).toBe("setup");
     await d.sql(`delete from public.checklist_rooms`);
 
     const b = await convidar(U.carla, U.diego);
@@ -570,6 +566,7 @@ describe("Migrações 014000 e 014010 — radar e convite direto", () => {
     // o administrador ainda pode mudar o prazo; colar a migração de novo não desfaz
     await d.sql(`update public.app_settings set value = jsonb_set(value, '{guarda_denuncia_dias}', '30') where key = 'treino_dupla_chat'`);
     await d.db.exec(SQL_1);
+    await recolarFluxoSimples(d.db); // a 014000 sozinha volta o convite e a lista de antes do fluxo simples (014130)
     expect((await d.sql<any>(`select value -> 'guarda_denuncia_dias' as v from public.app_settings where key = 'treino_dupla_chat'`))[0].v).toBe(30);
   });
 
