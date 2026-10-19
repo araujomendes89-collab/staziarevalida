@@ -17,8 +17,11 @@ const desfazer = (f: string) => fs.readFileSync(path.join(ROOT, "supabase/desfaz
 // Retrato do Treino no banco: funções (assinatura, texto, permissões) e gatilhos do esquema public.
 const RETRATO_FN = `select p.oid::regprocedure::text as f, md5(pg_get_functiondef(p.oid)) as h, coalesce(array_to_string(p.proacl, ','), '') as acl
                       from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname ~ '^(app_)?dupla_' order by 1`;
+// (sem os gatilhos do espelho dos planos antigos, que só existem nos testes: helpers/duplaDb.ts)
 const RETRATO_TRG = `select c.relname as t, t.tgname as n, pg_get_triggerdef(t.oid) as def from pg_trigger t join pg_class c on c.oid = t.tgrelid
-                      where c.relnamespace = 'public'::regnamespace and not t.tgisinternal order by 1, 2`;
+                      where c.relnamespace = 'public'::regnamespace and not t.tgisinternal and t.tgname not like 'zz_teste_%' order by 1, 2`;
+// acesso por fase (014220): vem depois do fluxo simples e refaz dupla_allowed/app_dupla_access; sai antes e volta depois
+const ACESSO = "20261003014220_treino_dupla_acesso_por_fase.sql";
 
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
 const ABERTO = { aberto: true, planos: ["trial", "pro", "elite"] };
@@ -635,6 +638,7 @@ describe("Fluxo simples do Treino em Dupla (014130–014150)", () => {
   it("desfazer em ordem inversa volta as assinaturas da etapa 2; colar de novo volta o fluxo simples", async () => {
     const depois = await foto();
     const gatilhosDepois = await d.sql(RETRATO_TRG);
+    await d.db.exec(desfazer(ACESSO));
     for (const f of [...NOVAS].reverse()) await d.db.exec(desfazer(f));
     expect(await assinatura("public.dupla_invite_core(uuid,uuid,text,boolean,uuid)")).toBe(true);
     expect(await assinatura("public.dupla_invite_core(uuid,uuid,text,boolean,uuid,boolean)")).toBe(false);
@@ -669,6 +673,7 @@ describe("Fluxo simples do Treino em Dupla (014130–014150)", () => {
     expect(await foto()).toEqual(desfeito);
 
     for (const f of NOVAS) await d.db.exec(ler(f));
+    await d.db.exec(ler(ACESSO));
     expect(await foto()).toEqual(depois);
     expect(await d.sql(RETRATO_TRG)).toEqual(gatilhosDepois);
     expect(await gatilho()).toBe(true);

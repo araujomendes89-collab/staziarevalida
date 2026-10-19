@@ -4,6 +4,7 @@ import React from "react";
 import { Button, Card, Icon } from "../../ds";
 import { useSession } from "../session.jsx";
 import { isPhase2Locked } from "../admin/common.jsx";
+import { duplaAllowed } from "../dupla/DuplaGate.jsx";
 import { ACABARAM, TITULO, VER_PLANOS, VOLTAM_AMANHA, modeloCreditosHoje, useCreditosHoje } from "./creditosHoje.js";
 
 const mono = { font: "700 15px var(--font-mono)", color: "var(--text-primary)" };
@@ -54,9 +55,11 @@ export function CreditosHojeView({ modelo, go }) {
 }
 
 // Os créditos são do Treino em Dupla (2ª fase): com a 2ª fase "Em breve" para quem olha, o bloco não aparece e nem lê o saldo.
+// Chave ligada, mas o plano não traz o Treino em Dupla (ex.: PRO, só 1ª fase; migração 014220): também não aparece.
 export function CreditosHoje({ go }) {
   const { boot, dupla } = useSession();
   if (isPhase2Locked(boot?.role, dupla)) return null;
+  if (dupla?.dupla && !duplaAllowed(boot, dupla)) return null;
   return <CreditosHojeLido go={go} />;
 }
 

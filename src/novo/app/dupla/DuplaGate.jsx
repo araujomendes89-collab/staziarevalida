@@ -1,21 +1,31 @@
-// Portão do Treinamento em Dupla: equipe e quem o banco libera (`permitido`) veem a tela; os demais veem o convite do plano.
-// A tela nunca decide plano: o que vale é o que app_dupla_access devolveu (useSession().dupla).
+// Portão do Treinamento em Dupla: equipe e quem o banco libera (`permitido`) veem a tela; os demais veem o cadeado com o convite.
+// A tela nunca decide plano: o que vale é o que app_dupla_access devolveu (useSession().dupla). Desde a 014220 o banco segue o
+// plano por fase (chave "prática": PRÁTICA ou ELITE; o PRO é só a 1ª fase) e manda, em `dupla`, a mensagem de compra e os planos
+// que liberam, com "à venda" ou "em breve" (até a 2ª fase abrir, só o PRO está à venda).
 import React from "react";
 import { LockedFeature } from "../../ds";
 import { useSession } from "../session.jsx";
 import { isStaffRole, PLAN_LABEL } from "../admin/common.jsx";
 
-/** Pode ver as telas do módulo? Equipe, ou quem o banco libera (`permitido`: plano marcado com a chave ligada, revisor médico). */
+/** Pode ver as telas do módulo? Equipe, ou quem o banco libera (`permitido`: 2ª fase paga com a chave ligada, revisor médico). */
 export function duplaAllowed(boot, dupla) {
   return isStaffRole(boot?.role) || dupla?.equipe === true || dupla?.permitido === true;
 }
 
-/** Primeiro dos planos pagos (Pro, depois Elite) marcado no painel; sem nenhum, "Pro". */
-function planOf(access) {
+/** Planos que liberam o Treino em Dupla (PRÁTICA ou ELITE), com "em breve" quando nenhum está à venda. */
+export function planOf(access) {
+  const ofertas = Array.isArray(access?.dupla?.ofertas) ? access.dupla.ofertas.filter((o) => o?.tipo === "assinar" && o.nome) : [];
+  if (ofertas.length) {
+    const nomes = ofertas.map((o) => o.nome).join(" ou ");
+    return ofertas.some((o) => o.a_venda === true) ? nomes : `${nomes} · em breve`;
+  }
+  // banco sem a 014220: a lista "planos" da chave
   const marked = Array.isArray(access?.planos) ? access.planos : [];
-  const first = ["pro", "elite"].find((plan) => marked.includes(plan)) ?? "pro";
-  return PLAN_LABEL[first];
+  const first = ["pratica", "pro", "elite"].find((plan) => marked.includes(plan)) ?? "pratica";
+  return first === "pratica" ? "Prática" : PLAN_LABEL[first];
 }
+
+const CONVITE = "Encontre um colega com os mesmos objetivos e treine as estações da 2ª fase.";
 
 /**
  * @param {{ go: (route: string, query?: Record<string, string>) => void, children: React.ReactNode }} props
@@ -23,10 +33,11 @@ function planOf(access) {
 export function DuplaGate({ go, children }) {
   const { boot, dupla } = useSession();
   if (duplaAllowed(boot, dupla)) return <>{children}</>;
+  const mensagem = typeof dupla?.dupla?.mensagem === "string" ? dupla.dupla.mensagem : "";
   return (
     <LockedFeature
       title="Praticar em dupla"
-      description="Encontre um colega com os mesmos objetivos e treine as estações da 2ª fase."
+      description={mensagem ? `${mensagem} ${CONVITE}` : CONVITE}
       plan={planOf(dupla)}
       cta="Ver planos"
       onUpgrade={() => go("planos")}

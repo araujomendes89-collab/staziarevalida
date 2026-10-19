@@ -2,8 +2,8 @@
  * Treino em Dupla: apoio das rotas de teste do BANCO LOCAL (`POST /api/dev-db/dupla/preparar` e `/dupla/sala-teste`).
  * Só existem no servidor de desenvolvimento (createDevDbRouter nunca é montado em produção) e só falam com o banco local.
  *
- *  - prepararContas: deixa contas do banco local prontas para o módulo (plano Pro ativo, aceites vigentes, WhatsApp de teste e
- *    chave do módulo aberta).
+ *  - prepararContas: deixa contas do banco local prontas para o módulo (plano ELITE ativo, que traz a 2ª fase pela chave
+ *    "prática" desde a migração 014220 — o Pro é só a 1ª fase —, aceites vigentes, WhatsApp de teste e chave do módulo aberta).
  *  - criarSalaTeste: cria (se faltarem) a conta do candidato e a do avaliador, e uma sala entre elas na estação de teste
  *    `teste-inep2020-e01` já na fase pedida, com o que cada fase precisa (papéis, confirmações, prontidão, cronômetro, marcações e
  *    avaliação). Tudo é dado de teste; nada disso existe no Supabase.
@@ -43,7 +43,7 @@ async function idDaConta(dev: DevDatabase, email: string): Promise<string | null
 }
 
 /**
- * Prepara as contas (pelo e-mail) para usar o módulo no banco local: plano Pro ativo por 30 dias, aceites vigentes (mesmo SQL de
+ * Prepara as contas (pelo e-mail) para usar o módulo no banco local: plano ELITE ativo por 30 dias, aceites vigentes (mesmo SQL de
  * src/__tests__/helpers/aceites.ts), WhatsApp de teste quando vazio (+5511999990001, +5511999990002, … pela ordem da lista) e a
  * chave do módulo aberta para Pro e Elite.
  */
@@ -60,8 +60,8 @@ export async function prepararContas(dev: DevDatabase, emails: unknown): Promise
   await dev.db.transaction(async (tx) => {
     for (const [i, id] of ids.entries()) {
       await tx.query(
-        `insert into public.subscriptions (user_id, plan, status, current_period_end) values ($1, 'pro', 'active', now() + interval '30 days')
-         on conflict (user_id) do update set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days'`,
+        `insert into public.subscriptions (user_id, plan, status, current_period_end) values ($1, 'elite', 'active', now() + interval '30 days')
+         on conflict (user_id) do update set plan = 'elite', status = 'active', current_period_end = now() + interval '30 days'`,
         [id]
       );
       await tx.query(

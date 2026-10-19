@@ -4,7 +4,7 @@
  *
  *   npm run dupla:sala-teste -- --fase setup                    cria a sala já na fase (padrão: roles) e imprime o link e as contas
  *   npm run dupla:sala-teste -- --fase closed --motivo sem_sinal  fase "closed" com o motivo (saiu, convite_recusado, convite_expirado, sem_sinal)
- *   npm run dupla:sala-teste -- --preparar a@x.com b@x.com      deixa as contas prontas (Pro ativo, aceites, WhatsApp de teste, chave aberta)
+ *   npm run dupla:sala-teste -- --preparar a@x.com b@x.com      deixa as contas prontas (ELITE ativo, aceites, WhatsApp de teste, chave aberta)
  *   --porta 3001                                                porta do servidor local (padrão 3000)
  *
  * Fases: roles, connecting, setup, running, review, result, closed.
@@ -65,7 +65,7 @@ export async function executar(argv: string[], chamar: Chamada = fetch as unknow
   const linhas: string[] = [];
   if (o.preparar) {
     await post("/dupla/preparar", { emails: o.preparar });
-    linhas.push(`Contas preparadas (Pro ativo, aceites, WhatsApp de teste, módulo aberto): ${o.preparar.join(", ")}`);
+    linhas.push(`Contas preparadas (ELITE ativo, aceites, WhatsApp de teste, módulo aberto): ${o.preparar.join(", ")}`);
     if (!o.faseInformada) return linhas;
   }
   const sala = await post("/dupla/sala-teste", { fase: o.fase, ...(o.motivo ? { motivo: o.motivo } : {}) });

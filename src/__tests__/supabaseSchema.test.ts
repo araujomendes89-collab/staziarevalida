@@ -219,7 +219,8 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
   it("acesso: chave desligada barra o aluno, mesmo Pro; a equipe entra", async () => {
     await zerar();
     await setPlan(d.db, U.carla, "pro", "active");
-    expect(await d.rpc(U.ana, "app_dupla_access")).toEqual({ aberto: false, permitido: false, planos: ["pro", "elite"], equipe: false });
+    // desde a 014220 "planos" são os planos que trazem a 2ª fase; a regra por fase pura está em acessoPorFaseBanco.test.ts
+    expect(await d.rpc(U.ana, "app_dupla_access")).toMatchObject({ aberto: false, permitido: false, planos: ["pratica", "elite"], equipe: false });
     expect(await d.rpc(U.carla, "app_dupla_access")).toMatchObject({ aberto: false, permitido: false, equipe: false });
     expect(await d.rpc(U.admin, "app_dupla_access")).toMatchObject({ aberto: false, permitido: true, equipe: true });
     await expect(d.rpc(U.carla, "app_dupla_room_content", { p_room_id: uuidFalso })).rejects.toThrow(SEM_ACESSO);
@@ -243,7 +244,7 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
     expect(await permitido(U.fabio)).toBe(false);
     expect(await permitido(U.diego)).toBe(false);
     expect(await permitido(U.admin)).toBe(true);
-    expect(await d.rpc(U.carla, "app_dupla_access")).toEqual({ aberto: true, permitido: true, planos: ["pro", "elite"], equipe: false });
+    expect(await d.rpc(U.carla, "app_dupla_access")).toMatchObject({ aberto: true, permitido: true, planos: ["pratica", "elite"], equipe: false });
   });
 
   it("acesso: com o teste grátis marcado, só trialing dentro do prazo", async () => {
@@ -260,8 +261,9 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
     // Só Pro marcado: o teste grátis volta a ficar de fora, mesmo dentro do prazo.
     await setDupla(d.db, { aberto: true, planos: ["pro"] });
     expect(await permitido(U.ana)).toBe(false);
+    // ELITE traz a 2ª fase pelo plano por fase (014220): entra mesmo sem estar marcado na lista antiga
     await setPlan(d.db, U.carla, "elite", "active");
-    expect(await permitido(U.carla)).toBe(false); // Elite não está marcado
+    expect(await permitido(U.carla)).toBe(true);
   });
 
   it("perfil de estudo: cada um lê só o seu e ninguém grava direto", async () => {

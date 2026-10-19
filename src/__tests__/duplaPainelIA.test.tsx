@@ -263,9 +263,10 @@ describe("Painel completo e quem o vê", () => {
     const uso = screen.getByRole("heading", { name: "Uso do mês" });
     expect(modulo.compareDocumentPosition(bloco) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(bloco.compareDocumentPosition(uso) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // o bloco de aberto e planos do módulo segue igual
+    // o bloco do módulo: a chave e "quem entra" pelo plano por fase (a lista antiga de planos saiu da tela, 014220)
     expect(screen.getByRole("switch", { name: /Abrir para os alunos/ })).toBeTruthy();
-    expect(screen.getByRole("checkbox", { name: "Pro" })).toBeTruthy();
+    expect(screen.getByTestId("dupla-quem-entra")).toBeTruthy();
+    expect(screen.queryByRole("checkbox", { name: "Pro" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Abrir a Central de IAs" }));
     expect(await screen.findByTestId("central-de-ias")).toBeTruthy();
   });

@@ -212,6 +212,50 @@ describe("Chave ligada, sem plano", () => {
   });
 });
 
+// Plano por fase (migração 014220): o banco manda em "dupla" a mensagem de compra e os planos que liberam a 2ª fase.
+const DUPLA_PRO = {
+  acesso: "trancado",
+  motivo: "fase_nao_incluida",
+  mensagem: "Faz parte da 2ª fase (prova prática), que não está no seu acesso.",
+  ofertas: [
+    { tipo: "assinar", plano: "pratica", nome: "PRÁTICA", a_venda: false, em_breve: true },
+    { tipo: "assinar", plano: "elite", nome: "ELITE", a_venda: false, em_breve: true },
+  ],
+};
+const ABERTO_PRO_POR_FASE = {
+  aberto: true,
+  permitido: false,
+  planos: ["pratica", "elite"],
+  equipe: false,
+  regra: "por_fase",
+  fase2: { ...DUPLA_PRO, recurso: "estacoes" },
+  dupla: { ...DUPLA_PRO, recurso: "treino_dupla" },
+};
+
+describe("Chave ligada, PRO (só 1ª fase) pelo plano por fase", () => {
+  it.each(["estacoes", "dupla"])("/%s: cadeado com a mensagem do banco, PRÁTICA ou ELITE em breve, e 'Ver planos'", (route) => {
+    renderApp(`/${route}`, bootOf("student", 1, { subscription: { plan: "pro", status: "active", current_period_end: "2026-11-30T12:00:00Z" } }), ABERTO_PRO_POR_FASE);
+    expect(screen.getByRole("heading", { level: 3, name: "Praticar em dupla" })).toBeTruthy();
+    expect(screen.getByText(/Faz parte da 2ª fase \(prova prática\), que não está no seu acesso\./)).toBeTruthy();
+    expect(screen.getByText(/Recurso Stazia PRÁTICA ou ELITE · em breve/)).toBeTruthy();
+    expect(screen.queryByTestId("tela-estacoes")).toBeNull();
+    expect(screen.queryByTestId("tela-dupla")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Ver planos/ }));
+    expect(screen.getByTestId("tela-planos")).toBeTruthy();
+  });
+
+  it("com PRÁTICA à venda (quando a 2ª fase abrir), o selo não diz 'em breve'", () => {
+    const aVenda = { ...DUPLA_PRO, ofertas: DUPLA_PRO.ofertas.map((o) => ({ ...o, a_venda: true, em_breve: false })) };
+    renderApp("/dupla", bootOf("student"), { ...ABERTO_PRO_POR_FASE, dupla: aVenda });
+    expect(screen.getByText(/Recurso Stazia PRÁTICA ou ELITE$/)).toBeTruthy();
+  });
+
+  it("2ª fase paga (PRÁTICA/ELITE): o banco diz 'permitido' e as telas abrem", () => {
+    renderApp("/dupla", bootOf("student", 2), { ...ABERTO_PRO_POR_FASE, permitido: true, fase2: { acesso: "liberado" }, dupla: { acesso: "liberado" } });
+    expect(screen.getByTestId("tela-dupla")).toBeTruthy();
+  });
+});
+
 describe("Chave ligada, com plano", () => {
   it("a 2ª fase começa no Banco de estações; Início, Teoria, PEPs, Paciente e Desempenho ficam 'Em breve' no menu", () => {
     const { updateProfile } = renderApp("/", bootOf("student", 2), ABERTO_COM_PLANO);
@@ -557,33 +601,31 @@ describe("Painel · Treinamento em Dupla", () => {
     return rpc;
   }
 
-  it("mostra a chave e os planos gravados", async () => {
+  it("mostra a chave e quem entra pelo plano por fase (sem a lista antiga de planos)", async () => {
     openPanel({ aberto: false, planos: ["pro", "elite"] });
     expect(await screen.findByText("Treinamento em Dupla")).toBeTruthy();
     expect(screen.getByRole("switch", { name: /Abrir para os alunos/ })).not.toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Teste grátis" })).not.toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Pro" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Elite" })).toBeChecked();
+    expect(screen.queryByRole("checkbox", { name: "Teste grátis" })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: "Pro" })).toBeNull();
+    const quem = screen.getByTestId("dupla-quem-entra");
+    expect(quem.textContent).toMatch(/PRÁTICA e ELITE pagos/);
+    expect(quem.textContent).toMatch(/PRO e teste da 1ª fase: cadeado/);
   });
 
-  it("salva a chave e os planos marcados e avisa", async () => {
+  it("salva a chave e manda a lista antiga de planos como estava", async () => {
     const rpc = openPanel({ aberto: false, planos: ["pro", "elite"] });
     await screen.findByText("Treinamento em Dupla");
     fireEvent.click(screen.getByRole("switch", { name: /Abrir para os alunos/ }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Teste grátis" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Elite" }));
     fireEvent.click(screen.getByRole("button", { name: "Salvar configurações" }));
     expect(await screen.findByText("Configurações salvas.")).toBeTruthy();
-    expect(rpc).toHaveBeenCalledWith("app_admin_save_dupla", { p_aberto: true, p_planos: ["trial", "pro"] });
+    expect(rpc).toHaveBeenCalledWith("app_admin_save_dupla", { p_aberto: true, p_planos: ["pro", "elite"] });
     expect(screen.getByRole("switch", { name: /Abrir para os alunos/ })).toBeChecked();
   });
 
-  it("sem a chave gravada, abre desligada com Pro e Elite", async () => {
+  it("sem a chave gravada, abre desligada", async () => {
     openPanel(undefined);
     await screen.findByText("Treinamento em Dupla");
     expect(screen.getByRole("switch", { name: /Abrir para os alunos/ })).not.toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Pro" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Elite" })).toBeChecked();
   });
 
   it("recusa do banco aparece em português e nada some", async () => {

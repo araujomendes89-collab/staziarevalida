@@ -10,7 +10,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
-import { MIGRATIONS_DIR, STATION, U, addStation, makeRoom, migrationFiles, openDuplaDb, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
+import { MIGRATIONS_DIR, STATION, U, addStation, darPratica, makeRoom, migrationFiles, openDuplaDb, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
 const MIGRACAO = "20261003013300_treino_dupla_dados.sql";
 const SQL = fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8");
@@ -259,17 +259,19 @@ describe("Migração 9750: quem vê o quê por papel", () => {
   let sala = "";
 
   beforeAll(async () => {
-    d = await openDuplaDb();
+    // regra por fase pura (014220), sem o espelho dos planos antigos dos outros testes do Treino
+    d = await openDuplaDb({ espelhoPlanosAntigos: false });
     await addStation(d.db);
     await d.db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [U2.editor]);
     await d.db.query(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'PEDIATRIA')`, [U2.revisor]);
     await setDupla(d.db, { aberto: true, planos: ["pro", "elite"] });
-    // ana: aluna sem acesso (teste grátis, "trial" não marcado); bruno: Pro; carla: teste vencido; diego: Elite; eva: Pro cancelado
+    // ana: teste grátis da 1ª fase; bruno: PRÁTICA (2ª fase paga, dada pela equipe); carla: teste vencido; diego: ELITE;
+    // eva: PRO pago (só a 1ª fase: desde a 014220 não entra no Treino em Dupla)
     await setPlan(d.db, U.ana, "trial", "trialing", daqui(5));
-    await setPlan(d.db, U.bruno, "pro", "active");
+    await darPratica(d.db, U.bruno);
     await setPlan(d.db, U.carla, "trial", "trialing", daqui(-2));
     await setPlan(d.db, U.diego, "elite", "active");
-    await setPlan(d.db, U.eva, "pro", "canceled");
+    await setPlan(d.db, U.eva, "pro", "active");
     sala = await makeRoom(d.db, { members: [U.bruno, U.diego], phase: "running", candidate: U.bruno, evaluator: U.diego });
   }, 60_000);
   afterAll(async () => {
@@ -277,19 +279,19 @@ describe("Migração 9750: quem vê o quê por papel", () => {
   });
 
   const pessoas: Array<[string, string | null, boolean, boolean]> = [
-    // [quem, uid, permitido com a chave ligada (Pro/Elite), permitido com o teste grátis marcado também]
+    // [quem, uid, permitido com a chave ligada, permitido com "trial" também marcado na lista antiga (não muda nada desde a 014220)]
     ["visitante", null, false, false],
-    ["aluno em teste válido (sem 'trial' marcado)", U.ana, false, true],
-    ["aluno Pro", U.bruno, true, true],
+    ["aluno em teste válido da 1ª fase", U.ana, false, false],
+    ["aluno PRÁTICA (2ª fase paga)", U.bruno, true, true],
     ["aluno em teste vencido", U.carla, false, false],
     ["aluno Elite", U.diego, true, true],
-    ["aluno com plano cancelado", U.eva, false, false],
+    ["aluno PRO pago (só 1ª fase)", U.eva, false, false],
     ["editor (equipe)", U2.editor, true, true],
     ["revisor médico", U2.revisor, true, true],
     ["administrador", U.admin, true, true],
   ];
 
-  it("chave ligada: entra a equipe, o revisor médico e quem tem plano pago marcado; os outros não", async () => {
+  it("chave ligada: entra a equipe, o revisor médico e quem tem a 2ª fase paga (PRÁTICA/ELITE); PRO e teste da 1ª fase não", async () => {
     for (const [quem, uid, esperado] of pessoas) {
       if (uid === null) {
         await expect(d.rpc(null, "app_dupla_access"), quem).rejects.toThrow(/permission denied/);
@@ -299,7 +301,7 @@ describe("Migração 9750: quem vê o quê por papel", () => {
     }
   });
 
-  it("com o teste grátis marcado, entra também quem está em teste dentro do prazo (e nunca o vencido)", async () => {
+  it("a lista antiga de planos da chave não muda nada: marcar o teste grátis não abre para quem está em teste da 1ª fase", async () => {
     await setDupla(d.db, { aberto: true, planos: ["trial", "pro", "elite"] });
     for (const [quem, uid, , esperado] of pessoas.filter((p) => p[1])) expect((await d.rpc(uid!, "app_dupla_access")).permitido, quem).toBe(esperado);
     await setDupla(d.db, { aberto: true, planos: ["pro", "elite"] });
@@ -316,16 +318,22 @@ describe("Migração 9750: quem vê o quê por papel", () => {
     await setDupla(d.db, { aberto: true, planos: ["pro", "elite"] });
   });
 
-  it("chave com valor estragado (texto no lugar de verdadeiro/falso, planos que não é lista) não abre para o aluno nem dá erro", async () => {
-    for (const ruim of ['"sim"', '{"aberto": "sim", "planos": ["pro"]}', '{"aberto": true, "planos": "pro"}', '{"aberto": true}', "null", "[]"]) {
+  it("chave com valor estragado (texto no lugar de verdadeiro/falso) não abre para o aluno nem dá erro; a lista de planos não importa", async () => {
+    for (const ruim of ['"sim"', '{"aberto": "sim", "planos": ["pro"]}', "null", "[]"]) {
       await d.db.query(`update public.app_settings set value = $1::jsonb where key = 'treino_dupla'`, [ruim]);
       expect((await d.rpc(U.bruno, "app_dupla_access")).permitido, ruim).toBe(false);
       expect((await d.rpc(U.admin, "app_dupla_access")).permitido, ruim).toBe(true);
     }
+    // "aberto" verdadeiro com a lista estragada ou sem lista: vale o plano por fase (PRÁTICA entra, PRO não)
+    for (const lista of ['{"aberto": true, "planos": "pro"}', '{"aberto": true}']) {
+      await d.db.query(`update public.app_settings set value = $1::jsonb where key = 'treino_dupla'`, [lista]);
+      expect((await d.rpc(U.bruno, "app_dupla_access")).permitido, lista).toBe(true);
+      expect((await d.rpc(U.eva, "app_dupla_access")).permitido, lista).toBe(false);
+    }
     await setDupla(d.db, { aberto: true, planos: ["pro", "elite"] });
   });
 
-  it("conteúdo da estação: só a equipe lê direto; aluno (Pro ou não), revisor médico e visitante não; o revisor segue lendo pela função da aba Estações", async () => {
+  it("conteúdo da estação: só a equipe lê direto; aluno (com ou sem plano), revisor médico e visitante não; o revisor segue lendo pela função da aba Estações", async () => {
     const direto = (uid: string) => d.asUser(uid, `select station_id from public.checklist_station_contents`);
     expect(await direto(U.admin)).toHaveLength(1);
     expect(await direto(U2.editor)).toHaveLength(1);

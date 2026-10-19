@@ -73,12 +73,61 @@ export function migrationFiles(opts: { semTreino?: boolean } = {}): string[] {
  * que o fluxo simples também refaz) chama isto logo depois, para o banco voltar ao estado da cadeia inteira.
  */
 export async function recolarFluxoSimples(db: PGlite): Promise<void> {
-  for (const f of migrationFiles().filter((x) => x.includes("_treino_dupla_fluxo_"))) {
+  // o acesso por fase (014220) refaz dupla_allowed/app_dupla_access/fase2_allowed da 013300/013330: volta junto
+  for (const f of migrationFiles().filter((x) => x.includes("_treino_dupla_fluxo_") || x.includes("_treino_dupla_acesso_por_fase"))) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
   }
 }
 
-export async function openDuplaDb(opts: { realtime?: boolean; semTreino?: boolean } = {}): Promise<DuplaDb> {
+/**
+ * ESPELHO DOS PLANOS ANTIGOS (só nos testes; migração 014220). A regra de acesso da 2ª fase passou a seguir o plano por fase
+ * (chave "prática": PRÁTICA/ELITE). Os testes antigos do Treino em Dupla falam a língua dos planos antigos (setPlan "pro"/"trial"
+ * + a lista "planos" da chave) para dizer "esta pessoa entra no módulo"; o assunto deles é a sala, o match, o radar etc., não
+ * o plano. O espelho traduz: quem a regra ANTIGA deixaria entrar (chave ligada, plano marcado em "planos", pago ou teste no
+ * prazo) ganha a 2ª fase paga (aluno_fases, origem "equipe", marcada com inicio = 2000-01-01); quem deixa de cumprir perde.
+ * Recalcula a cada mudança da assinatura ou da chave. Os testes da REGRA de acesso abrem o banco com
+ * `{ espelhoPlanosAntigos: false }` (acessoPorFaseBanco, duplaMigracaoDados, supabaseSchema) e veem a regra nova pura.
+ */
+const ESPELHO_PLANOS_ANTIGOS = `
+  create or replace function public.teste_espelho_planos_antigos() returns trigger
+    language plpgsql security definer set search_path = ''
+  as $$
+  declare
+    c jsonb := (select x.value from public.app_settings x where x.key = 'treino_dupla');
+    r record;
+    v_ok boolean;
+  begin
+    for r in select s.user_id, s.plan, s.status, s.trial_ends_at, s.current_period_end from public.subscriptions s loop
+      v_ok := jsonb_typeof(c) = 'object' and c -> 'aberto' = 'true'::jsonb and jsonb_typeof(c -> 'planos') = 'array'
+        and (c -> 'planos') ? r.plan::text
+        and ((r.plan = 'trial' and r.status = 'trialing' and r.trial_ends_at > now())
+          or (r.plan in ('pro', 'elite') and public.subscription_is_paid(r.plan, r.status, r.current_period_end)));
+      if coalesce(v_ok, false) then
+        insert into public.aluno_fases as a (user_id, fase, situacao, plano, inicio, fim, origem)
+        values (r.user_id, 'pratica', 'paga', 'pratica', '2000-01-01T00:00:00Z', now() + interval '1 year', 'equipe')
+        on conflict (user_id, fase) do update set situacao = 'paga', plano = 'pratica', inicio = excluded.inicio,
+          fim = excluded.fim, origem = 'equipe'
+        where a.inicio is distinct from excluded.inicio or a.situacao <> 'paga';
+      elsif exists (select 1 from public.aluno_fases a where a.user_id = r.user_id and a.fase = 'pratica' and a.origem = 'equipe'
+                    and a.inicio = '2000-01-01T00:00:00Z') then
+        delete from public.aluno_fases a where a.user_id = r.user_id and a.fase = 'pratica' and a.origem = 'equipe'
+          and a.inicio = '2000-01-01T00:00:00Z';
+        perform public.direitos_sincronizar_assinatura(r.user_id);
+      end if;
+    end loop;
+    return null;
+  end
+  $$;
+  revoke execute on function public.teste_espelho_planos_antigos() from public, anon, authenticated;
+  drop trigger if exists zz_teste_espelho_planos_antigos on public.subscriptions;
+  create trigger zz_teste_espelho_planos_antigos after insert or update on public.subscriptions
+    for each statement execute function public.teste_espelho_planos_antigos();
+  drop trigger if exists zz_teste_espelho_planos_antigos on public.app_settings;
+  create trigger zz_teste_espelho_planos_antigos after insert or update on public.app_settings
+    for each statement execute function public.teste_espelho_planos_antigos();
+`;
+
+export async function openDuplaDb(opts: { realtime?: boolean; semTreino?: boolean; espelhoPlanosAntigos?: boolean } = {}): Promise<DuplaDb> {
   const db = new PGlite();
   await db.exec(fs.readFileSync(path.join(ROOT, "supabase/tests/bootstrap.sql"), "utf8"));
   if (opts.realtime) await db.exec(REALTIME_FALSO);
@@ -89,6 +138,7 @@ export async function openDuplaDb(opts: { realtime?: boolean; semTreino?: boolea
     await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)`, [id, `${nome}@teste.dev`, { name: nome.toUpperCase() }]);
   }
   await db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [U.admin]);
+  if (!opts.semTreino && opts.espelhoPlanosAntigos !== false) await db.exec(ESPELHO_PLANOS_ANTIGOS);
 
   const claims = (uid: string | null) => JSON.stringify(uid ? { sub: uid, role: "authenticated" } : {});
   const asJson = (v: unknown) => (v !== null && typeof v === "object" && !Array.isArray(v) ? JSON.stringify(v) : v);
@@ -133,6 +183,24 @@ export async function setPlan(db: PGlite, uid: string, plan: "trial" | "pro" | "
       where user_id = $1`,
     [uid, plan, status, trialEndsAt ?? null]
   );
+}
+
+/**
+ * 2ª fase pela chave "prática" dos planos novos (migração 014220): com a chave do Treino ligada, só entra quem tem a 2ª fase
+ * paga (PRÁTICA ou ELITE). Aqui, direto no banco, como o plano por fase que a equipe dá em Administração > Usuários
+ * (aluno_fases, origem "equipe"): não mexe na assinatura antiga (Pro, teste grátis), que outras regras ainda leem.
+ * `situacao` "teste" = teste grátis da 2ª fase; `dias` negativo = 2ª fase vencida.
+ */
+export async function darPratica(db: PGlite, uids: string | string[], opts: { situacao?: "paga" | "teste"; dias?: number } = {}): Promise<void> {
+  for (const uid of Array.isArray(uids) ? uids : [uids]) {
+    await db.query(
+      `insert into public.aluno_fases (user_id, fase, situacao, plano, inicio, fim, origem)
+       values ($1, 'pratica', $2, case when $2 = 'paga' then 'pratica' end, now() - interval '1 day', now() + make_interval(days => $3), 'equipe')
+       on conflict (user_id, fase) do update set situacao = excluded.situacao, plano = excluded.plano, inicio = excluded.inicio,
+         fim = excluded.fim, origem = 'equipe', atualizado_em = now()`,
+      [uid, opts.situacao ?? "paga", opts.dias ?? 30]
+    );
+  }
 }
 
 /** Chave do módulo (`app_settings.treino_dupla`) direto no banco. */

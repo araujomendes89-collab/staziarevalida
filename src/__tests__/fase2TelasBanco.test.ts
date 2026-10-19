@@ -667,8 +667,9 @@ describe("Banco da 2ª Fase (PGlite) - Migração 20261003013330_fase2_telas_rea
   });
 
   it("10. Desfazer: aplicar o script desfazer.sql remove as funções app_fase2_* e a tabela station_attempts", async () => {
-    // Executa os scripts de desfazer: primeiro os do treino sozinho (014120 a 014090, em ordem inversa), depois o da própria 013330
-    for (const nome of ["014120_treino_dupla_sozinho_uso_exportacao", "014110_treino_dupla_sozinho_ia", "014100_treino_dupla_sozinho_funcoes", "014090_treino_dupla_sozinho_dados"]) {
+    // Executa os scripts de desfazer: primeiro o do acesso por fase (014220), os do treino sozinho (014120 a 014090, em ordem
+    // inversa), depois o da própria 013330
+    for (const nome of ["014220_treino_dupla_acesso_por_fase", "014120_treino_dupla_sozinho_uso_exportacao", "014110_treino_dupla_sozinho_ia", "014100_treino_dupla_sozinho_funcoes", "014090_treino_dupla_sozinho_dados"]) {
       await db.exec(fs.readFileSync(path.join(ROOT, `supabase/desfazer/20261003${nome}.desfazer.sql`), "utf8"));
     }
     const undoSql = fs.readFileSync(DESFAZER, "utf8");

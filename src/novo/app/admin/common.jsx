@@ -9,7 +9,8 @@ export const isStaffRole = (role) => role === "admin" || role === "editor";
 /**
  * 2ª fase · prática "em breve": a equipe sempre entra. Os demais só com a chave do Treinamento em Dupla ligada
  * (`access` = `useSession().dupla`, lido de app_dupla_access) ou quando o banco já os libera (`permitido`, ex.: revisor médico).
- * Chave ligada não quer dizer plano: quem não tem o plano vê o convite dentro das telas (DuplaGate).
+ * Chave ligada não quer dizer plano: quem não tem a 2ª fase no plano (chave "prática": PRÁTICA ou ELITE, migração 014220) vê o
+ * cadeado com o convite dentro das telas (DuplaGate). O PRO é só a 1ª fase.
  */
 export const isPhase2Locked = (role, access) => !isStaffRole(role) && access?.aberto !== true && access?.permitido !== true;
 export const PLAN_LABEL = { trial: "Teste grátis", pro: "Pro", elite: "Elite" };

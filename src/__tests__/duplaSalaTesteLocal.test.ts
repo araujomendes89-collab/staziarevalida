@@ -61,7 +61,7 @@ afterAll(async () => {
 });
 
 describe("Rota /dupla/preparar", () => {
-  it("deixa a conta com Pro ativo, aceites vigentes, WhatsApp de teste e a chave aberta", async () => {
+  it("deixa a conta com ELITE ativo, aceites vigentes, WhatsApp de teste e a chave aberta", async () => {
     const a = await criarConta("preparar-a@teste.dev");
     const b = await criarConta("preparar-b@teste.dev");
     // antes: aluno novo, no teste grátis, com a tela de aceite obrigatória e o módulo fechado
@@ -74,8 +74,9 @@ describe("Rota /dupla/preparar", () => {
 
     const depois = await rpc(a.token, "app_bootstrap");
     expect(depois.legal.gate_required).toBe(false);
-    expect(depois.subscription).toMatchObject({ plan: "pro", status: "active" });
-    expect(await rpc(a.token, "app_dupla_access")).toEqual({ aberto: true, permitido: true, planos: ["pro", "elite"], equipe: false });
+    // ELITE (as duas fases): o Pro é só a 1ª fase e não entra no Treino em Dupla desde a 014220
+    expect(depois.subscription).toMatchObject({ plan: "elite", status: "active" });
+    expect(await rpc(a.token, "app_dupla_access")).toMatchObject({ aberto: true, permitido: true, planos: ["pratica", "elite"], equipe: false, dupla: { acesso: "liberado" } });
     const fones = (await dev.db.query<any>(`select id, phone from public.profiles where id in ($1, $2) order by phone`, [a.id, b.id])).rows;
     expect(fones.map((f) => f.phone)).toEqual(["+5511999990001", "+5511999990002"]);
     expect(fones.find((f) => f.id === a.id).phone).toBe("+5511999990001");

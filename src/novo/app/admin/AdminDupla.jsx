@@ -1,5 +1,8 @@
-// Administração › Configurações › Treinamento em Dupla: abre ou fecha o módulo para os alunos e escolhe quais planos entram.
-// Equipe (administrador e editor) e revisores médicos entram sempre; quem decide o acesso é o banco (dupla_allowed).
+// Administração › Configurações › Treinamento em Dupla: abre ou fecha a 2ª fase para os alunos (chave treino_dupla).
+// Quem entra segue o plano por fase (migração 014220, chave "prática"): PRÁTICA e ELITE pagos têm tudo; teste da 2ª fase e 2ª
+// fase vencida ficam na amostra (estação sozinho, 1 por dia, sem Dupla); PRO e teste da 1ª fase veem o cadeado com o convite.
+// Equipe (administrador e editor) e revisores médicos entram sempre; quem decide o acesso é o banco (dupla_allowed). A antiga
+// lista "Planos com acesso" (Teste grátis / Pro / Elite) não vale mais: fica gravada como está, sem campo na tela.
 // Também: "Avaliação por IA no treino sozinho" (DuplaIA: abre, planos e limites por aluno; o estado da função vem da Central de IAs)
 // e "Uso do mês" (a dupla e, separado, o treino sozinho).
 import React from "react";
@@ -183,11 +186,11 @@ export function AdminDupla({ onOpenIAs }) {
     setForm((f) => ({ ...f, ...patch }));
     setState((s) => ({ ...s, done: false }));
   };
-  const togglePlan = (plan, on) => change({ planos: PLANS.filter((p) => (p === plan ? on : form.planos.includes(p))) });
   const save = async (event) => {
     event.preventDefault();
     setState({ saving: true, error: null, done: false });
     try {
+      // a lista antiga de planos vai como está (o banco não a usa mais para decidir quem entra)
       const saved = normalize(await backend.rpc("app_admin_save_dupla", { p_aberto: form.aberto, p_planos: form.planos }));
       setForm(saved);
       setState({ saving: false, error: null, done: true });
@@ -203,12 +206,13 @@ export function AdminDupla({ onOpenIAs }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Treinamento em Dupla</h3>
             <Switch label="Abrir para os alunos" checked={form.aberto} onChange={(e) => change({ aberto: e.target.checked })} />
-            <fieldset style={{ margin: 0, padding: 0, border: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-              <legend style={{ padding: 0, marginBottom: 8, font: "var(--type-label)", color: "var(--text-primary)" }}>Planos com acesso</legend>
-              {PLANS.map((plan) => (
-                <Checkbox key={plan} label={PLAN_LABEL[plan]} checked={form.planos.includes(plan)} onChange={(e) => togglePlan(plan, e.target.checked)} />
-              ))}
-            </fieldset>
+            <div data-testid="dupla-quem-entra" style={{ display: "flex", flexDirection: "column", gap: 6, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+              <strong style={{ font: "var(--type-label)", color: "var(--text-primary)" }}>Quem entra (pelo plano de cada aluno)</strong>
+              <span>PRÁTICA e ELITE pagos: toda a 2ª fase, com o Treino em Dupla.</span>
+              <span>Teste grátis da 2ª fase ou 2ª fase vencida: amostra (1 estação sozinho por dia, sem Dupla).</span>
+              <span>PRO e teste da 1ª fase: cadeado com o convite para assinar. Equipe e revisores médicos: sempre.</span>
+              <span>A amostra e os planos à venda se ajustam em Administração › Planos.</span>
+            </div>
             {state.error && <Banner tone="danger">{state.error}</Banner>}
             <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
               {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Configurações salvas.</span>}

@@ -394,14 +394,15 @@ describe("Migração 9760 — leituras das telas, perfil de estudo e chave no pa
 
     // Aberto só para Pro e Elite: Ana (teste grátis) fica de fora; a equipe entra sempre.
     expect(await salvar(U.admin, true, ["elite", "pro", "pro"])).toEqual({ aberto: true, planos: ["pro", "elite"] });
-    expect(await d.rpc(U.ana, "app_dupla_access")).toEqual({ aberto: true, permitido: false, planos: ["pro", "elite"], equipe: false });
+    // "planos" da resposta: desde a 014220, os planos que trazem a 2ª fase (a lista da chave fica só gravada)
+    expect(await d.rpc(U.ana, "app_dupla_access")).toMatchObject({ aberto: true, permitido: false, planos: ["pratica", "elite"], equipe: false });
     expect(await d.rpc(U.admin, "app_dupla_access")).toMatchObject({ aberto: true, permitido: true, equipe: true });
     // Com o teste grátis marcado, Ana entra.
     expect(await salvar(U.admin, true, ["trial", "pro"])).toEqual({ aberto: true, planos: ["trial", "pro"] });
-    expect(await d.rpc(U.ana, "app_dupla_access")).toMatchObject({ aberto: true, permitido: true, planos: ["trial", "pro"] });
+    expect(await d.rpc(U.ana, "app_dupla_access")).toMatchObject({ aberto: true, permitido: true, planos: ["pratica", "elite"] });
     // Fechar (e "aberto" nulo também fecha); lista vazia vale.
     expect(await salvar(U.admin, false, [])).toEqual({ aberto: false, planos: [] });
-    expect(await d.rpc(U.ana, "app_dupla_access")).toMatchObject({ aberto: false, permitido: false, planos: [] });
+    expect(await d.rpc(U.ana, "app_dupla_access")).toMatchObject({ aberto: false, permitido: false });
     expect(await salvar(U.admin, null, ["pro"])).toEqual({ aberto: false, planos: ["pro"] });
     // A linha da chave guarda o valor, quem mexeu e foi para o registro.
     const [linha] = await d.sql(`select value, updated_by from public.app_settings where key = 'treino_dupla'`);

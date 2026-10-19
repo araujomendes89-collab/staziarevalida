@@ -215,10 +215,14 @@ describe("Treino sozinho no banco (014090 a 014120)", () => {
   // ------------------------------------------------------------------ 014100: fluxo do aluno
   describe("fluxo do treino sozinho (014100)", () => {
     it("visitante e aluno ficam de fora; as funções novas existem só para quem entra", async () => {
+      // chave desligada: só a equipe (com a chave ligada, quem tem a 2ª fase paga também treina sozinho; ver acessoPorFaseBanco)
+      const [{ value: chave }] = await sql(`select value from public.app_settings where key = 'treino_dupla'`);
+      await setDupla(d.db, { aberto: false, planos: ["pro"] });
       for (const fn of ["app_fase2_save_answers", "app_fase2_deliver", "app_fase2_open_pressing", "app_fase2_print_path"]) {
         await expect(rpc(null, fn, { p_attempt_id: "00000000-0000-0000-0000-000000000000", ...(fn.includes("pressing") || fn.includes("print") ? { p_pressing_id: "p1" } : { p_answers: [] }) })).rejects.toThrow(/permission denied/i);
         await expect(rpc(U.ana, fn, { p_attempt_id: "00000000-0000-0000-0000-000000000000", ...(fn.includes("pressing") || fn.includes("print") ? { p_pressing_id: "p1" } : { p_answers: [] }) })).rejects.toThrow(/ainda não está aberta/);
       }
+      await setDupla(d.db, chave);
     });
 
     it("leitura e atendimento: o aluno nunca recebe roteiro do ator nem itens do PEP; o texto vem sem 'Liberação'", async () => {
@@ -327,7 +331,12 @@ describe("Treino sozinho no banco (014090 a 014120)", () => {
     it("outra pessoa não vê nem mexe no treino de alguém", async () => {
       await limpar();
       const e = await entregue(U.admin);
+      // aluno com a chave desligada: nem chega à tentativa
+      await setDupla(d.db, { aberto: false, planos: ["pro"] });
       await expect(rpc(U.ana, "app_fase2_attempt", { p_attempt_id: e.attempt_id })).rejects.toThrow(/ainda não está aberta/);
+      await setDupla(d.db, { aberto: true, planos: ["pro"] });
+      // com a chave ligada e a 2ª fase paga, entra nas telas, mas a tentativa de outra pessoa continua fechada
+      await expect(rpc(U.ana, "app_fase2_attempt", { p_attempt_id: e.attempt_id })).rejects.toThrow(/Tentativa não encontrada/);
       await sql(`update public.user_roles set role = 'editor' where user_id = $1`, [U.bruno]);
       for (const [fn, a] of [["app_fase2_attempt", {}], ["app_fase2_deliver", {}], ["app_fase2_finish", {}], ["app_fase2_save_answers", { p_answers: [] }], ["app_fase2_abandon", {}]] as const) {
         if (fn === "app_fase2_abandon") continue;
