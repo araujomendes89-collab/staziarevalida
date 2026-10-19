@@ -14,7 +14,8 @@ function TextoDaOpcao({ option, formatacao }) {
   return rico ? <ParagrafoRico texto={option.text} rico={rico} /> : option.text;
 }
 
-export function QuestionCard({ session, marked, busy = false, gate = null, onMark, onAnswer, onHint, onReveal, onNext }) {
+/** error: o motivo de uma recusa de "Responder" ou "Próxima", mostrado no próprio cartão, junto do botão que o aluno tocou. */
+export function QuestionCard({ session, marked, busy = false, gate = null, error = null, onMark, onAnswer, onHint, onReveal, onNext }) {
   const q = session.question;
   if (!q) return null;
   const open = q.state === "open";
@@ -59,6 +60,7 @@ export function QuestionCard({ session, marked, busy = false, gate = null, onMar
           {gate === "explain" && <span className="nx-q__tip">Antes da próxima: explique ao professor o seu raciocínio nesta questão.</span>}
         </div>
       )}
+      {error && <p className="nx-q__erro" role="alert">{error}</p>}
     </section>
   );
 }

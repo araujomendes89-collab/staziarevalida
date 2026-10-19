@@ -15,6 +15,7 @@ import { StaziaVoiceOrb, orbEmotion } from "./StaziaVoiceOrb.jsx";
 import { PersonagemTutor } from "../personagens/PersonagemTutor.jsx";
 import { PERSONAGENS, gravarPersonagem, personagemDaConversa, personagemDe } from "../personagens/personagens.js";
 import "../personagens/escolha.css";
+import { Icon } from "../../../ds";
 import { VoiceControls } from "./VoiceControls.jsx";
 import { VoiceStatus } from "./VoiceStatus.jsx";
 import { VoiceCaptions, VoiceChatSheet } from "./VoiceTranscript.jsx";
@@ -78,8 +79,10 @@ const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabin
  * onWrite: quando a voz não abriu, "Escrever pelo Chat" pede antes à tela um jeito em que o Chat manda (a Nexus passa para por escrito).
  * captions / onCaptions: as Legendas (desligadas por padrão; quem guarda a escolha por aluno é a Nexus). Sem onCaptions, a escolha
  * fica só nesta tela. closing: o aluno tocou em Encerrar e o professor está se despedindo.
+ * onBack / backLabel (relato de 19/10): "‹ Voltar" no topo, para sair da conversa SEM encerrar (quem abriu decide para onde volta;
+ * o nome acessível diz o destino, ex.: "Voltar para a questão"). O Esc continua sendo o Encerrar.
  */
-export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, entitlement = null, note = null, onClose, jeitoLabel = null, card = null, onWrite = null, personagem = null, motor = "2d", semitons = null, captions = undefined, onCaptions = null, closing = false }) {
+export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, entitlement = null, note = null, onClose, jeitoLabel = null, card = null, onWrite = null, personagem = null, motor = "2d", semitons = null, captions = undefined, onCaptions = null, closing = false, onBack = null, backLabel = "Voltar para a tela anterior" }) {
   const [chatOpen, setChatOpen] = React.useState(false);
   const [localCaptions, setLocalCaptions] = React.useState(false);
   const showCaptions = captions ?? localCaptions;
@@ -197,6 +200,12 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
   return createPortal(
     <div className={`svm${card ? " svm--with-card" : ""}`} data-emo={semPersonagem ? undefined : emo.emotion} style={{ "--svm-emo-i": emo.intensity.toFixed(2) }} role="dialog" aria-modal="true" aria-labelledby="svm-title" aria-describedby="svm-desc" ref={dialog} onKeyDown={onKey}>
       <div className="svm__top">
+        {onBack && (
+          <button type="button" className="svm__voltar" aria-label={backLabel} onClick={onBack}>
+            <Icon name="chevron-left" size={22} />
+            <span>Voltar</span>
+          </button>
+        )}
         <span className="svm__persona">{persona?.name ?? "Tutor"}</span>
         {jeitoLabel && <span className="svm__jeito">{jeitoLabel}</span>}
         {!semPersonagem && !personagemFixo && (
