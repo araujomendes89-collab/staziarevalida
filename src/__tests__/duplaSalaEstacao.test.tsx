@@ -213,8 +213,8 @@ describe("PEP ao vivo", () => {
     // conferência: mudar uma nota e finalizar em seguida
     const grader = screen.getByRole("radiogroup", { name: "Nota do critério 2" });
     fireEvent.click(within(grader).getAllByRole("radio")[0]);
-    fireEvent.click(screen.getByRole("button", { name: "Finalizar e liberar resultado" }));
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Finalizar e liberar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Enviar nota" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Enviar nota" }));
     await advance(0);
     const order2 = rpc.mock.calls.map((c: any[]) => c[0]).filter((f: string) => f === "app_dupla_mark" || f === "app_dupla_finalize");
     expect(order2.slice(-2)).toEqual(["app_dupla_mark", "app_dupla_finalize"]);

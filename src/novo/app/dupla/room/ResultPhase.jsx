@@ -1,10 +1,9 @@
 // Fase "result" (Result.jsx:85-139 do protótipo, com ResultData do servidor): nota, critérios, detalhes e feedback.
 // Nada é calculado aqui além da contagem por nível e dos pontos perdidos: a nota e a % vêm do servidor.
 // Revisão da nota (Tarefa 18): o candidato pede uma vez, com motivo; o avaliador vê o pedido e "Rever a nota" (a sala volta à
-// conferência); depois aparece "Nota revisada". "Treinar outra estação" abre a rodada seguinte com o mesmo par, de volta à
-// escolha dos papéis e de uma estação DIFERENTE (decisão do dono de 16/10: não há inverter papéis na mesma estação, porque o
-// novo candidato já viu o tema como avaliador; o banco recusa estação já treinada na sala). "Encerrar treino" pede
-// confirmação. O nome da estação aparece aos dois só aqui, no resultado.
+// conferência); depois aparece "Nota revisada". Fim (dono, 19/10): "Nova estação · mesmo papel", "Nova estação · trocar de
+// papel" (rodada seguinte com o mesmo par, na preparação, estação DIFERENTE das já treinadas; o banco recusa repetida) e "Sair"
+// (pede confirmação). O nome da estação aparece aos dois só aqui, no resultado.
 // Só leitura (`readOnly`, decisão do dono de 17/10): o mesmo resultado aberto pelo histórico (Meus PEPs), inclusive depois de a
 // sala fechar; sem as ações da sala (encerrar, outra estação, pedir ou rever a revisão), com "Voltar" (`onBack`).
 // "O que mudou desde a prova" (decisão do dono de 17/10, migração 013560): as notas de conduta atual que os revisores deixaram
@@ -97,6 +96,12 @@ function ReviewRequest({ actions, requested }) {
 export function ResultPhase({ room, result, actions, askLeave, readOnly = false, onBack }) {
   const [filter, setFilter] = React.useState("all");
   const [nexting, setNexting] = React.useState(false);
+  const next = async (papel) => {
+    if (nexting) return;
+    setNexting(true);
+    await actions.nextStation(papel);
+    setNexting(false);
+  };
   if (!result) return null;
   const review = result.review || {};
   const requested = Boolean(review.requested_at);
@@ -142,19 +147,14 @@ export function ResultPhase({ room, result, actions, askLeave, readOnly = false,
           )
         ) : (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Button variant="ghost" onClick={() => (askLeave ? askLeave("encerrar") : actions.leave())}>
-              Encerrar treino
+            <Button variant="ghost" icon="log-out" onClick={() => (askLeave ? askLeave("encerrar") : actions.leave())}>
+              Sair
             </Button>
-            <Button
-              icon="clipboard-list"
-              disabled={nexting}
-              onClick={async () => {
-                setNexting(true);
-                await actions.nextStation();
-                setNexting(false);
-              }}
-            >
-              Treinar outra estação
+            <Button variant="secondary" icon="shuffle" disabled={nexting} onClick={() => next("trocar")}>
+              Nova estação · trocar de papel
+            </Button>
+            <Button icon="clipboard-list" disabled={nexting} onClick={() => next("mesmo")}>
+              Nova estação · mesmo papel
             </Button>
           </div>
         )}
@@ -169,7 +169,7 @@ export function ResultPhase({ room, result, actions, askLeave, readOnly = false,
               icon="rotate-ccw"
               onClick={() => {
                 // a conferência reabre com o feedback que já foi enviado, para o avaliador ajustar
-                writeDraft(feedbackKey(room.id, room.round), { pos: result.feedback?.pos ?? "", neg: result.feedback?.neg ?? "", gen: result.feedback?.gen ?? "" });
+                writeDraft(feedbackKey(room.id, room.round), { gen: result.feedback?.gen ?? "" });
                 actions.redoReview();
               }}
             >
@@ -310,20 +310,20 @@ export function ResultPhase({ room, result, actions, askLeave, readOnly = false,
 
         <aside aria-labelledby="res-fb" style={{ ...box, flex: "1 1 280px", minWidth: 0, padding: "16px 20px", display: "flex", flexDirection: "column" }}>
           <h2 id="res-fb" style={{ ...h2, marginBottom: 4 }}>
-            Feedback do avaliador
+            Comentário do ator
           </h2>
           {evaluator && (
             <div style={{ font: "var(--text-xs) var(--font-sans)", color: "var(--text-secondary)", marginBottom: 8 }}>{`Escrito por ${evaluator}`}</div>
           )}
           {[
-            ["Pontos positivos", feedback.pos],
-            ["Pontos para melhorar", feedback.neg],
-            ["Orientações gerais", feedback.gen],
+            ["Comentário", feedback.gen],
+            // avaliações de antes de 19/10 tinham três campos: os antigos aparecem só se foram preenchidos
+            ...[["Pontos positivos", feedback.pos], ["Pontos para melhorar", feedback.neg]].filter(([, value]) => value),
           ].map(([title, value]) => (
             <div key={title} style={{ padding: "12px 0", borderTop: "1px solid var(--border-subtle)" }}>
               <div style={{ font: "600 var(--text-sm) var(--font-sans)", color: "var(--text-primary)", marginBottom: 4 }}>{title}</div>
               <p style={{ margin: 0, font: "var(--type-body-sm)", lineHeight: 1.6, whiteSpace: "pre-wrap", color: value ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-                {value || "Sem comentários."}
+                {value || "Sem comentário."}
               </p>
             </div>
           ))}

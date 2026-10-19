@@ -68,7 +68,7 @@ describe("Meus PEPs com o histórico do Treino em Dupla", () => {
     expect(await screen.findByRole("heading", { name: "ZZNOME estação de teste", level: 1 })).toBeTruthy();
     expect(screen.getByText("Boa anamnese.")).toBeTruthy();
     // só leitura: nada das ações da sala
-    for (const nome of ["Treinar outra estação", "Encerrar treino", "Solicitar revisão da nota", "Rever a nota"]) {
+    for (const nome of ["Nova estação · mesmo papel", "Nova estação · trocar de papel", "Sair", "Solicitar revisão da nota", "Rever a nota"]) {
       expect(screen.queryByRole("button", { name: nome })).toBeNull();
     }
     fireEvent.click(screen.getByRole("button", { name: "Voltar para Meus PEPs" }));

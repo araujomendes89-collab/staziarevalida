@@ -334,3 +334,86 @@ describe("Fluxo simples · apito e porta", () => {
     expect(finalizar().disabled).toBe(false);
   });
 });
+
+const resultado = (viewer: "candidate" | "evaluator", feedback: Record<string, string>) => ({
+  round: 1, viewer, station: { ...CAND_STATION, id: "teste-dupla-e01", name: "Estação de teste" }, score: 7.5, max_score: 10, pct: 75, previous_pct: null,
+  items: [{ id: "i1", order: 1, content: "Item um", max_points: 2.5, grade: "correct", points: 2.5 }],
+  evaluator: { user_id: "u-ana", public_name: "Ana Souza" }, candidate: { user_id: "u-bruno", public_name: "Bruno Lima" },
+  finished_at: NOW, used_ms: 452000, feedback: { pos: "", neg: "", gen: "", ...feedback },
+  review: { requested_at: null, reason: null, revised_at: null, score_before_review: null },
+});
+
+describe("Fluxo simples · nota e fim", () => {
+  it("conferência: um comentário opcional e 'Enviar nota'; vai só no 'gen'", async () => {
+    srv.room = baseRoom({ phase: "review", finished_at: NOW });
+    await mount();
+    expect(screen.queryByLabelText("Pontos positivos")).toBeNull();
+    expect(screen.queryByLabelText("Pontos para melhorar")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Comentário (opcional)"), { target: { value: "Boa anamnese." } });
+    fireEvent.click(screen.getByRole("button", { name: "Enviar nota" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Enviar nota" }));
+    await advance(0);
+    await advance(0);
+    expect(calls("app_dupla_finalize")[0][1]).toEqual({ p_room_id: "r1", p_feedback: { pos: "", neg: "", gen: "Boa anamnese." } });
+  });
+
+  it("enviar sem comentário também vale", async () => {
+    srv.room = baseRoom({ phase: "review", finished_at: NOW });
+    await mount();
+    fireEvent.click(screen.getByRole("button", { name: "Enviar nota" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Enviar nota" }));
+    await advance(0);
+    await advance(0);
+    expect(calls("app_dupla_finalize")[0][1]).toEqual({ p_room_id: "r1", p_feedback: { pos: "", neg: "", gen: "" } });
+  });
+
+  it("resultado: o comentário aparece como 'Comentário do ator'; avaliação antiga mostra os campos antigos preenchidos", async () => {
+    srv.room = baseRoom({ phase: "result", finished_at: NOW });
+    srv.result = resultado("evaluator", { gen: "Boa anamnese." });
+    await mount();
+    expect(screen.getByRole("heading", { name: "Comentário do ator" })).toBeTruthy();
+    expect(screen.getByText("Boa anamnese.")).toBeTruthy();
+    expect(screen.queryByText("Pontos positivos")).toBeNull();
+    cleanup();
+    srv.result = resultado("evaluator", { pos: "Boa escuta." });
+    await mount();
+    expect(screen.getByText("Pontos positivos")).toBeTruthy();
+    expect(screen.getByText("Boa escuta.")).toBeTruthy();
+    expect(screen.getByText("Sem comentário.")).toBeTruthy();
+  });
+
+  it("fim: 'Nova estação · mesmo papel', 'Nova estação · trocar de papel' e 'Sair'", async () => {
+    srv.room = baseRoom({ phase: "result", finished_at: NOW });
+    srv.result = resultado("evaluator", {});
+    srv.steps.app_dupla_next_station = () => ({ phase: "setup", round: 2, station: null, station_ready: false, finished_at: null });
+    srv.content = () => ({ role: null, station: null, pressing_count: 0, pressings: [] });
+    await mount();
+    fireEvent.click(screen.getByRole("button", { name: "Nova estação · trocar de papel" }));
+    await advance(0);
+    expect(calls("app_dupla_next_station")[0][1]).toEqual({ p_room_id: "r1", p_papel: "trocar" });
+    cleanup();
+    rpc.mockClear();
+    srv.room = baseRoom({ phase: "result", finished_at: NOW });
+    await mount();
+    fireEvent.click(screen.getByRole("button", { name: "Nova estação · mesmo papel" }));
+    await advance(0);
+    expect(calls("app_dupla_next_station")[0][1]).toEqual({ p_room_id: "r1", p_papel: "mesmo" });
+    cleanup();
+    srv.room = baseRoom({ phase: "result", finished_at: NOW });
+    srv.steps.app_dupla_leave = () => ({ phase: "closed", closed_reason: "saiu", closed_by: { user_id: "u-ana", public_name: "Ana Souza", me: true } });
+    const { go } = await mount();
+    fireEvent.click(screen.getByRole("button", { name: "Sair" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Encerrar treino" }));
+    await advance(0);
+    expect(go).toHaveBeenCalledWith("dupla");
+  });
+
+  it("candidato no resultado pode pedir revisão da nota", async () => {
+    srv.room = asCandidate(baseRoom({ phase: "result", finished_at: NOW }));
+    srv.result = resultado("candidate", { gen: "Boa anamnese." });
+    srv.content = contentOf("candidate");
+    await mount();
+    expect(screen.getByRole("button", { name: "Solicitar revisão da nota" })).toBeTruthy();
+  });
+});

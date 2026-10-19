@@ -203,7 +203,8 @@ export function useRoom(roomId) {
       finalize: async (feedback) => {
         await flushMarks();
         const r = roomRef.current;
-        const res = await call("app_dupla_finalize", { p_feedback: { pos: feedback?.pos ?? "", neg: feedback?.neg ?? "", gen: feedback?.gen ?? "" } });
+        // Fluxo simples (19/10): um comentário só, em "gen"; "pos" e "neg" vão vazios (colunas mantidas).
+        const res = await call("app_dupla_finalize", { p_feedback: { pos: "", neg: "", gen: feedback?.gen ?? "" } });
         if (res && r) {
           dropDraft(feedbackKey(r.id, r.round));
           dropDraft(notesKey(r.id, r.round));
@@ -213,9 +214,9 @@ export function useRoom(roomId) {
       leave: () => call("app_dupla_leave"),
       requestReview: (reason) => call("app_dupla_request_review", { p_round: round(), p_reason: reason }),
       redoReview: () => call("app_dupla_redo_review", { p_round: round() }),
-      // "Treinar outra estação": rodada seguinte com o mesmo par, sem papéis e sem estação (decisão do dono de 16/10: sem
-      // inverter papéis na mesma estação, porque o novo candidato já viu o tema como avaliador).
-      nextStation: () => call("app_dupla_next_station"),
+      // "Nova estação · mesmo papel" | "Nova estação · trocar de papel" (dono, 19/10): rodada seguinte com o mesmo par, na
+      // preparação e sem estação; o ator da rodada escolhe uma estação diferente das já treinadas na sala.
+      nextStation: (papel = "mesmo") => call("app_dupla_next_station", { p_papel: papel === "trocar" ? "trocar" : "mesmo" }),
       printUrl: (pressingId) => fetchPrintUrl(backend, roomId, pressingId).catch(() => null),
     };
   }, [backend, roomId, say]);

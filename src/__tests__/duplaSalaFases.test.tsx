@@ -499,7 +499,7 @@ describe("Sala: fases a partir do estado gravado", () => {
     ];
     await mount({ room: roles("evaluator", { phase: "review" }), content: contentFor("evaluator"), marks });
     expect(screen.getByText("Conferência da avaliação")).toBeTruthy();
-    expect(screen.getByText("Revise as notas e escreva o feedback antes de liberar o resultado para Bruno.")).toBeTruthy();
+    expect(screen.getByText("Confira o PEP, escreva um comentário se quiser e envie a nota para Bruno.")).toBeTruthy();
     expect(screen.getByText("Nota provisória")).toBeTruthy();
     const provisional = within(screen.getByRole("region", { name: "Nota provisória" }));
     expect(provisional.getByText("5,00")).toBeTruthy();
@@ -507,10 +507,8 @@ describe("Sala: fases a partir do estado gravado", () => {
     expect(screen.getByText("3 de 3 critérios avaliados")).toBeTruthy();
     expect(screen.getByText("Tudo avaliado")).toBeTruthy();
     expect(screen.queryByText("Voltar ao checklist")).toBeNull();
-    expect(screen.getByLabelText("Pontos positivos")).toBeTruthy();
-    expect(screen.getByLabelText("Pontos para melhorar")).toBeTruthy();
-    expect(screen.getByLabelText("Orientações gerais")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Finalizar e liberar resultado" })).toBeTruthy();
+    expect(screen.getByLabelText("Comentário (opcional)")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Enviar nota" })).toBeTruthy();
     // o item 3 está marcado como Parcial
     const g3 = screen.getByRole("radiogroup", { name: "Nota do critério 3" });
     expect(within(g3).getByRole("radio", { name: /Parcial/ }).getAttribute("aria-checked")).toBe("true");
@@ -523,9 +521,9 @@ describe("Sala: fases a partir do estado gravado", () => {
     fireEvent.click(screen.getByRole("radio", { name: /Pendentes/ }));
     expect(screen.queryByText("Item um")).toBeNull();
     expect(screen.getByText("Item dois")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Finalizar e liberar resultado" }));
+    fireEvent.click(screen.getByRole("button", { name: "Enviar nota" }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Finalizar avaliação?")).toBeTruthy();
+    expect(within(dialog).getByText("Enviar nota?")).toBeTruthy();
     expect(within(dialog).getByText(/2 critério\(s\) pendente\(s\) serão registrados como não avaliados\. Depois de finalizada, a nota só muda por solicitação de revisão\./)).toBeTruthy();
     cleanup();
 
@@ -555,12 +553,15 @@ describe("Sala: fases a partir do estado gravado", () => {
     expect(screen.getByText("Escrito por Bruno Lima")).toBeTruthy();
     expect(screen.getByText("Boa comunicação.")).toBeTruthy();
     expect(screen.getByText("Organize o raciocínio.")).toBeTruthy();
-    expect(screen.getAllByText("Sem comentários.")).toHaveLength(1);
+    // pos e gen preenchidos, neg vazio: o campo antigo vazio não aparece e o comentário está preenchido
+    expect(screen.queryByText("Sem comentário.")).toBeNull();
+    expect(screen.queryByText("Pontos para melhorar")).toBeNull();
     expect(screen.getByText("2,50 / 2,50")).toBeTruthy();
     expect(screen.getByText("3,75 / 10,00")).toBeTruthy();
     expect(screen.getByText("6,25 pt perdidos")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Encerrar treino" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Treinar outra estação" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sair" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Nova estação · mesmo papel" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Nova estação · trocar de papel" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Inverter papéis/ })).toBeNull();
     expect(screen.getByRole("button", { name: "Solicitar revisão da nota" })).toBeTruthy();
     expect(rpc).toHaveBeenCalledWith("app_dupla_result", { p_room_id: "r1", p_round: 1 });
@@ -577,7 +578,7 @@ describe("Sala: fases a partir do estado gravado", () => {
     });
     expect(screen.queryByRole("button", { name: "Solicitar revisão da nota" })).toBeNull();
     expect(screen.queryByText(/última tentativa/)).toBeNull();
-    expect(screen.getAllByText("Sem comentários.")).toHaveLength(3);
+    expect(screen.getAllByText("Sem comentário.")).toHaveLength(1);
     cleanup();
 
     // igual e queda

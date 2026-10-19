@@ -1,5 +1,5 @@
 /**
- * Treinamento em Dupla · etapa 6 · tarefa 18 (tela): resultado com revisão da nota, "Treinar outra estação" (013380: sem
+ * Treinamento em Dupla · etapa 6 · tarefa 18 (tela): resultado com revisão da nota, "Nova estação" (mesmo papel ou trocar de papel; 013380: sem
  * inverter papéis na mesma estação), encerrar e "Uso do mês".
  * Servidor simulado (helpers/duplaSala). Pessoas, estação e notas de teste.
  */
@@ -25,7 +25,7 @@ function result(viewer: "candidate" | "evaluator", rev: Record<string, any> = {}
     round: 1, viewer, station: STATION, score: 7.5, max_score: 10, pct: 75, previous_pct: null,
     items: [{ id: "i1", order: 1, content: "Item um", max_points: 2.5, grade: "correct", points: 2.5 }],
     evaluator: { user_id: "u-ana", public_name: "Ana Souza" }, candidate: { user_id: "u-bruno", public_name: "Bruno Lima" },
-    finished_at: NOW, used_ms: 452000, feedback: { pos: "Boa escuta.", neg: "", gen: "" }, review: review(rev),
+    finished_at: NOW, used_ms: 452000, feedback: { pos: "", neg: "", gen: "Boa escuta." }, review: review(rev),
   };
 }
 async function mount(go = vi.fn()) {
@@ -87,7 +87,7 @@ describe("Resultado: revisão da nota", () => {
     await advance(0);
     expect(screen.getByText("Conferência da avaliação")).toBeTruthy();
     // a conferência reabre com o feedback já enviado
-    expect((screen.getByLabelText("Pontos positivos") as HTMLTextAreaElement).value).toBe("Boa escuta.");
+    expect((screen.getByLabelText("Comentário (opcional)") as HTMLTextAreaElement).value).toBe("Boa escuta.");
     cleanup();
 
     srv.room = { ...srv.room, phase: "result", rev: srv.room.rev + 1 };
@@ -97,33 +97,28 @@ describe("Resultado: revisão da nota", () => {
     expect(screen.queryByRole("button", { name: "Rever a nota" })).toBeNull();
   });
 
-  it("Treinar outra estação (sem inverter papéis): volta à escolha dos papéis e da estação; Encerrar treino com confirmação", async () => {
-    // a rodada 2 começa sem papéis e sem estação (app_dupla_next_station)
-    srv.steps.app_dupla_next_station = () => ({
-      phase: "roles", round: 2, finished_at: null, station: null, duration_ms: null,
-      me: { ...srv.room.me, role: null, confirmed: false, connected: false, ready: false, seen_station: false },
-      partner: { ...srv.room.partner, role: null, confirmed: false, connected: false, ready: false },
-    });
+  it("Nova estação · mesmo papel: uma chamada só (clique duplo não duplica) e volta à escolha da estação; Sair com confirmação", async () => {
+    // a rodada 2 começa na preparação, sem estação (app_dupla_next_station)
+    srv.steps.app_dupla_next_station = () => ({ phase: "setup", round: 2, station: null, station_ready: false, finished_at: null, duration_ms: null });
     srv.content = () => ({ role: null, station: null, pressing_count: 0, pressings: [] });
     await mount();
     expect(screen.queryByRole("button", { name: /Inverter papéis/ })).toBeNull();
-    expect(document.body.textContent).not.toMatch(/Inverter/);
-    const next = screen.getByRole("button", { name: "Treinar outra estação" });
+    const next = screen.getByRole("button", { name: "Nova estação · mesmo papel" });
     fireEvent.click(next);
     fireEvent.click(next);
     await advance(0);
     expect(calls("app_dupla_next_station")).toHaveLength(1);
+    expect(calls("app_dupla_next_station")[0][1]).toEqual({ p_room_id: "r1", p_papel: "mesmo" });
     expect(calls("app_dupla_swap")).toHaveLength(0);
     await advance(0);
-    expect(screen.getByText("Papéis desta rodada")).toBeTruthy();
-    expect(document.body.textContent).toMatch(/Rodada 2: definam os papéis; a estação precisa ser diferente/);
+    expect(screen.getByText("Escolher estação")).toBeTruthy();
     expect(document.body.textContent).not.toContain(STATION.name);
     cleanup();
 
     srv.room = baseRoom({ phase: "result", finished_at: NOW });
     srv.steps.app_dupla_leave = () => ({ phase: "closed", closed_reason: "saiu", closed_by: { user_id: "u-ana", public_name: "Ana Souza", me: true } });
     const { go } = await mount();
-    fireEvent.click(screen.getByRole("button", { name: "Encerrar treino" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sair" }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText("Encerrar treino?")).toBeTruthy();
     expect(within(dialog).getByText("O treino termina para os dois.")).toBeTruthy();

@@ -17,11 +17,8 @@ const LEVELS = [
   { grade: "incorrect", short: "Inadequado", full: "Inadequado", color: "var(--score-none)", on: "var(--pep-sheet)" },
 ];
 
-const FEEDBACK = [
-  ["pos", "Pontos positivos", "O que o candidato realizou adequadamente.", "thumbs-up", "var(--success-solid)"],
-  ["neg", "Pontos para melhorar", "Quais ações precisam de maior atenção.", "target", "var(--warning-solid)"],
-  ["gen", "Orientações gerais", "Postura, comunicação, organização e execução.", "message-square", "var(--info-solid)"],
-];
+// Fluxo simples (dono, 19/10): um comentário opcional só (vai em "gen"; "pos" e "neg" ficam vazios).
+const FEEDBACK = [["gen", "Comentário (opcional)", "Para o candidato: o que foi bem e o que melhorar.", "message-square", "var(--info-solid)"]];
 
 const card = { background: "var(--surface-card)", borderRadius: "var(--radius-xl)", boxShadow: "var(--shadow-sm)" };
 
@@ -101,7 +98,7 @@ function Evaluation({ room, content, marks, actions }) {
   const [filter, setFilter] = React.useState("all");
   const [confirm, setConfirm] = React.useState(false);
   const draftKey = feedbackKey(room.id, room.round);
-  const [fb, setFbState] = React.useState(() => ({ pos: "", neg: "", gen: "", ...readDraft(draftKey, {}) }));
+  const [fb, setFbState] = React.useState(() => ({ gen: String(readDraft(draftKey, {})?.gen ?? "") }));
   const setFb = (next) => {
     setFbState(next);
     writeDraft(draftKey, next);
@@ -129,7 +126,7 @@ function Evaluation({ room, content, marks, actions }) {
         </div>
         <h1 style={{ margin: "10px 0 0", font: "800 30px/1.15 var(--font-sans)", letterSpacing: "-.02em", color: "var(--text-primary)" }}>Conferência da avaliação</h1>
         <p style={{ margin: "6px 0 0", font: "var(--type-body)", color: "var(--text-secondary)" }}>
-          Revise as notas e escreva o feedback antes de liberar o resultado para {firstName(partner)}.
+          Confira o PEP, escreva um comentário se quiser e envie a nota para {firstName(partner)}.
         </p>
       </header>
 
@@ -279,7 +276,7 @@ function Evaluation({ room, content, marks, actions }) {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Avatar name={partner} size={36} />
             <div>
-              <h2 style={sectionTitle}>Feedback ao candidato</h2>
+              <h2 style={sectionTitle}>Comentário ao candidato</h2>
               <div style={{ font: "var(--text-xs) var(--font-sans)", color: "var(--text-secondary)" }}>Aparece junto com a nota no resultado</div>
             </div>
           </div>
@@ -299,7 +296,7 @@ function Evaluation({ room, content, marks, actions }) {
               </div>
             )}
             <Button size="lg" fullWidth icon="send" onClick={() => setConfirm(true)}>
-              Finalizar e liberar resultado
+              Enviar nota
             </Button>
           </div>
         </aside>
@@ -307,7 +304,7 @@ function Evaluation({ room, content, marks, actions }) {
 
       {confirm && (
         <Dialog
-          title="Finalizar avaliação?"
+          title="Enviar nota?"
           description={`${pending.length ? `${pending.length} critério(s) pendente(s) serão registrados como não avaliados. ` : ""}Depois de finalizada, a nota só muda por solicitação de revisão.`}
           onClose={() => setConfirm(false)}
           actions={
@@ -318,10 +315,10 @@ function Evaluation({ room, content, marks, actions }) {
               <Button
                 onClick={() => {
                   setConfirm(false);
-                  actions.finalize({ pos: fb.pos, neg: fb.neg, gen: fb.gen });
+                  actions.finalize({ gen: fb.gen });
                 }}
               >
-                Finalizar e liberar
+                Enviar nota
               </Button>
             </>
           }
