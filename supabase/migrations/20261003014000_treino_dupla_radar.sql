@@ -90,6 +90,10 @@ create table if not exists public.study_handle_log (
 );
 create index if not exists study_handle_log_when_idx on public.study_handle_log (changed_at desc);
 alter table public.study_handle_log enable row level security;
+-- Junção da etapa 2: como a 013780 fez com as tabelas antigas, ninguém de fora grava direto (só as funções do banco gravam);
+-- o visitante não tem nada.
+revoke all on public.study_handle_log from anon;
+revoke insert, update, delete on public.study_handle_log from authenticated;
 
 alter table public.study_profiles add column if not exists handle text;
 

@@ -59,6 +59,10 @@ create unique index if not exists study_train_requests_pair_key
 create index if not exists study_train_requests_to_idx on public.study_train_requests (to_user, status, expires_at);
 create index if not exists study_train_requests_from_idx on public.study_train_requests (from_user, created_at desc);
 alter table public.study_train_requests enable row level security;
+-- Junção da etapa 2: como a 013780 fez com as tabelas antigas, ninguém de fora grava direto (só as funções do banco gravam);
+-- o visitante não tem nada.
+revoke all on public.study_train_requests from anon;
+revoke insert, update, delete on public.study_train_requests from authenticated;
 
 -- ---------------------------------------------------------------- apoios
 -- Fecha o que venceu e apaga o muito antigo (fechamento preguiçoso, sem tarefa agendada).
