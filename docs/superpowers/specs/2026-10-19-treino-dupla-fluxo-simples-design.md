@@ -26,6 +26,14 @@ plataformas, estilo Pense Revalida; quem escolhe a estação é o ator/avaliador
 | 7 | O **match** (baralho e "Deu match!") **fica como opção secundária**. |
 | 8 | A lista tem **duas abas: "Online" e "Perto de você"**. A aba "Ator" sai. |
 
+## 2b. Decisões do dono (19/10, segunda rodada)
+
+- Convite **por link do @ sai** (botão e rota); fica só a lista.
+- Match: os papéis seguem **as escolhas de cada pessoa** no perfil (mecanismo atual, `dupla_assign`), sem regra nova.
+- Match: se quem escolheu a estação virar candidato, **a estação é limpa** e o ator escolhe outra.
+- O menu da 2ª fase **continua "Praticar"** (dá para praticar sozinho com IA).
+- Execução: um agente por tarefa e outro confere antes da próxima. **Nenhum modelo do Vertex/Gemini** (nem para revisar).
+
 ## 3. Fluxo
 
 1. **Começar (ator).**
@@ -48,11 +56,16 @@ plataformas, estilo Pense Revalida; quem escolhe a estação é o ator/avaliador
      | 4 | Ginecologia e Obstetrícia |
      | 5 | Medicina de Família e Comunidade / Saúde Coletiva |
 
-     Antes de o ator escolher a estação, a porta aparece sem número ("Aguardando o ator").
-4. **Início com apito e porta.** O ator aperta "Iniciar estação". Os dois ouvem o **apito** (o que já existe, 2 s). Quando o
-   apito acaba, **a porta se abre** (animação curta) e a estação começa para o candidato: aparece a folha e os 10 minutos
-   contam a partir da porta aberta (o servidor marca o início = toque do ator + duração do apito). Com som desligado, a porta
-   abre no mesmo instante; com movimento reduzido, troca sem animação.
+     **A porta já aparece com o número desde a entrada na sala** (dono, 19/10: "na prova real ele já fica de frente para a
+     porta"). No convite a estação vem escolhida, então a porta nasce numerada. No match e na rodada nova, enquanto o ator
+     ainda escolhe, o candidato vê só "O ator está escolhendo a estação" (sem porta); a porta numerada aparece assim que a
+     estação é escolhida. Nunca há porta sem número.
+4. **Início com apito e porta, sincronizados** (dono, 19/10: "é como se o aluno estivesse entrando na sala real"). O ator
+   aperta "Iniciar estação". Nos dois aparelhos, **o apito (o que já existe, 2 s) e a abertura da porta acontecem juntos**: a
+   porta abre durante o apito e, quando o apito termina, o candidato "entra": aparece a folha e os 10 minutos começam. O servidor
+   marca o início = toque do ator + duração do apito, e os dois aparelhos disparam apito e porta pelo relógio do servidor (não
+   pelo clique), para ficarem em sincronia. Com som desligado, a porta abre no mesmo tempo sem som; com movimento reduzido, a
+   porta troca sem animação.
 5. **Atendimento (10 min).** O candidato vê a folha e os impressos liberados; o ator libera impressos e marca o PEP. Termina
    pelo tempo ou por **"Encerrar"** do ator.
 6. **Nota.** O ator confere o PEP, escreve um comentário opcional e aperta **"Enviar nota"**. Os dois veem a nota, os itens e
