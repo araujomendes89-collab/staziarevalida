@@ -181,8 +181,11 @@ describe("Migração 9750 sobre o estado de produção", () => {
       "checklist_study_sessions / checklist_study_sessions_actor_id_not_null",
       "checklist_study_sessions / checklist_study_sessions_doctor_id_not_null",
     ]);
+    // A 012200 (desde 18/10) já aceita as chaves do Treino: montado pelos arquivos, a regra das chaves pode já vir igual. Em produção a
+    // 012200 foi colada com o texto antigo (3 chaves) e a regra MUDA com esta migração.
+    const chavesJaAceitas = /treino_dupla/.test(antes.regras["app_settings / app_settings_key_check"] ?? "");
     expect(r.mudados).toEqual([
-      "app_settings / app_settings_key_check",
+      ...(chavesJaAceitas ? [] : ["app_settings / app_settings_key_check"]),
       "checklist_study_sessions / checklist_study_sessions_actor_id_fkey",
       "checklist_study_sessions / checklist_study_sessions_doctor_id_fkey",
     ]);
