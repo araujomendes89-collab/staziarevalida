@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
-  addStation, makeRoom, MIGRATIONS_DIR, openDuplaDb, setDupla, setPlan, STATION, stationAssets, U, type DuplaDb, type Phase,
+  addStation, caminhoImpresso, makeRoom, MIGRATIONS_DIR, openDuplaDb, setDupla, setPlan, STATION, stationAssets, U, type DuplaDb, type Phase,
 } from "./helpers/duplaDb";
 
 const MIGRACAO = "20261003013350_treino_dupla_sala.sql";
@@ -21,6 +21,10 @@ const SEM_ACESSO = "Sem acesso ao Treinamento em Dupla.";
 const A1 = "a0000000-0000-4000-8000-0000000000a1";
 const A3 = "a0000000-0000-4000-8000-0000000000a3";
 const AF = "a0000000-0000-4000-8000-0000000000af";
+// Caminhos opacos de teste (a 014200 só aceita dupla/impressos/<sha256>.<ext>).
+const CA1 = caminhoImpresso("a1", "jpg");
+const CA3 = caminhoImpresso("a3");
+const CAF = caminhoImpresso("folha", "webp");
 
 // Estação de TESTE com marcas fáceis de procurar no texto bruto (nada disto é conteúdo real). Impressos: 1 inicial e 2
 // liberáveis com display_number com buraco (1 e 3) → números de tela 1 e 2.
@@ -354,32 +358,32 @@ describe("Migração 013350: ações da sala do Treino em Dupla", () => {
   });
 
   // ------------------------------------------------------------------ caminho da imagem
-  it("caminho da imagem: folha e impresso inicial/liberado só em running para o candidato; avaliador em setup, running e review; sem tabela ou sem chave → null", async () => {
+  it("caminho da imagem: folha e impresso inicial/liberado só em running para o candidato; avaliador em setup, running e review; sem linha ou sem chave → null", async () => {
     const caminho = (uid: string, room: string, p: string) => d.rpc<string | null>(uid, "app_dupla_print_path", { p_room_id: room, p_pressing_id: p });
     const id = await sala("running", { station: SECRETA.id });
-    // sem a tabela station_assets: sempre null
-    expect(await d.sql(`select to_regclass('public.station_assets') as t`)).toEqual([{ t: null }]);
+    // tabela station_assets (014200) sem as linhas: sempre null
+    expect(await d.sql(`select count(*)::int as n from public.station_assets`)).toEqual([{ n: 0 }]);
     expect(await caminho(U.ana, id, "candidate_sheet")).toBeNull();
     expect(await caminho(U.bruno, id, "teste-inep2020-e07-p3")).toBeNull();
     await stationAssets(d.db, [
-      { id: A1, storage_path: "dupla/a1.jpg" },
-      { id: A3, storage_path: "dupla/a3.png" },
-      { id: AF, storage_path: "dupla/folha.webp" },
+      { id: A1, storage_path: CA1 },
+      { id: A3, storage_path: CA3 },
+      { id: AF, storage_path: CAF },
     ]);
     // candidato em running
-    expect(await caminho(U.ana, id, "candidate_sheet")).toBe("dupla/folha.webp");
-    expect(await caminho(U.ana, id, "i1")).toBe("dupla/a1.jpg");
+    expect(await caminho(U.ana, id, "candidate_sheet")).toBe(CAF);
+    expect(await caminho(U.ana, id, "i1")).toBe(CA1);
     await expect(caminho(U.ana, id, "d2")).rejects.toThrow("Impresso não liberado.");
     await expect(caminho(U.ana, id, "teste-inep2020-e07-p3")).rejects.toThrow("Impresso não liberado.");
     await act(U.bruno, "release", id, { p_pressing_id: "teste-inep2020-e07-p3", p_released: true });
-    expect(await caminho(U.ana, id, "d2")).toBe("dupla/a3.png");
+    expect(await caminho(U.ana, id, "d2")).toBe(CA3);
     await act(U.bruno, "release", id, { p_pressing_id: "teste-inep2020-e07-p2", p_released: true });
     expect(await caminho(U.ana, id, "d1")).toBeNull(); // liberado, mas sem imagem
     // avaliador: id verdadeiro, em setup, running e review
     for (const fase of ["setup", "running", "review"] as Phase[]) {
       await d.sql(`update public.checklist_rooms set phase = $2 where id = $1`, [id, fase]);
-      expect(await caminho(U.bruno, id, "teste-inep2020-e07-p3"), fase).toBe("dupla/a3.png");
-      expect(await caminho(U.bruno, id, "candidate_sheet"), fase).toBe("dupla/folha.webp");
+      expect(await caminho(U.bruno, id, "teste-inep2020-e07-p3"), fase).toBe(CA3);
+      expect(await caminho(U.bruno, id, "candidate_sheet"), fase).toBe(CAF);
       expect(await caminho(U.bruno, id, "teste-inep2020-e07-p2"), fase).toBeNull();
     }
     await expect(caminho(U.bruno, id, "zz")).rejects.toThrow("Impresso não encontrado.");

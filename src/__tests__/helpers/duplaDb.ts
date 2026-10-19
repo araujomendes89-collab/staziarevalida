@@ -279,16 +279,23 @@ export async function seen(db: PGlite, uid: string, agoSeconds = 0, status: "liv
 }
 
 /**
- * Arquivos de imagem das estações (`public.station_assets`, da Montagem de estações, migração 6000 de outro ramo). Sem a
- * tabela no banco, cria uma de teste só com o que o Treino lê (`id uuid`, `storage_path text`); depois grava as linhas.
+ * Arquivos de imagem das estações (`public.station_assets`, migração 014200: só o que a sala lê). O caminho tem de ser o
+ * opaco que o banco exige (`dupla/impressos/<sha256>.png|jpg|webp`); use `caminhoImpresso(...)` para montar um de teste.
  */
 export async function stationAssets(db: PGlite, rows: { id: string; storage_path: string }[]): Promise<void> {
-  const existe = (await db.query<{ t: string | null }>(`select to_regclass('public.station_assets')::text as t`)).rows[0].t;
-  if (!existe) await db.exec(`create table public.station_assets (id uuid primary key, storage_path text not null)`);
   for (const r of rows) {
+    const sha = /^dupla\/impressos\/([0-9a-f]{64})\.(png|jpg|webp)$/.exec(r.storage_path)?.[1];
+    if (!sha) throw new Error(`caminho de teste fora do padrão opaco: ${r.storage_path}`);
     await db.query(
-      `insert into public.station_assets (id, storage_path) values ($1, $2) on conflict (id) do update set storage_path = excluded.storage_path`,
-      [r.id, r.storage_path]
+      `insert into public.station_assets (id, storage_path, sha256) values ($1, $2, $3)
+       on conflict (id) do update set storage_path = excluded.storage_path, sha256 = excluded.sha256`,
+      [r.id, r.storage_path, sha]
     );
   }
+}
+
+/** Caminho opaco de teste para station_assets: `dupla/impressos/<64 hex>.<ext>` a partir de uma marca curta. */
+export function caminhoImpresso(marca: string, ext: "png" | "jpg" | "webp" = "png"): string {
+  const hex = Buffer.from(marca).toString("hex").padEnd(64, "0").slice(0, 64);
+  return `dupla/impressos/${hex}.${ext}`;
 }
