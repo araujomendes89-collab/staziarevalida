@@ -35,3 +35,6 @@ dist-worker/
 
 # copias de trabalho (git worktree) criadas pelas ferramentas de desenvolvimento
 .claude/worktrees/
+
+# atalho de pacotes de pastas de trabalho (nunca versionar)
+node_modules
