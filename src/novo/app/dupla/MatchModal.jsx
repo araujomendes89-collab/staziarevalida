@@ -138,6 +138,7 @@ export function MatchModal({ meName, partnerName, busy = false, onOpen, onMessag
           )}
           <button
             type="button"
+            className="f2-toque"
             onClick={handleClose}
             disabled={busy}
             style={{ border: 0, background: "transparent", cursor: busy ? "default" : "pointer", font: "600 15px var(--font-sans)", color: "var(--text-brand)", padding: 8, opacity: busy ? 0.6 : 1 }}
@@ -148,6 +149,7 @@ export function MatchModal({ meName, partnerName, busy = false, onOpen, onMessag
       </div>
       <button
         type="button"
+        className="f2-toque-q"
         onClick={toggleSound}
         aria-label={sound ? "Desativar som" : "Ativar som"}
         title={sound ? "Som ligado" : "Som desligado"}

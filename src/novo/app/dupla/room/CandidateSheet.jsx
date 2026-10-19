@@ -186,6 +186,7 @@ function ReleasedPrint({ pressing, actions }) {
     <div style={{ borderBottom: "1px solid var(--border-subtle)" }}>
       <button
         type="button"
+        className="f2-toque"
         aria-expanded={open}
         aria-label={`${open ? "Fechar" : "Abrir"} ${label}`}
         onClick={() => setOpen(!open)}

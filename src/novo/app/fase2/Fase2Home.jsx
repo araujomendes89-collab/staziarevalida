@@ -49,7 +49,7 @@ export function Fase2Home({ go }) {
           <div className="f2-hero-card">
             <span className="f2-hero-overline">Estação em andamento</span>
             <h2 className="f2-hero-title">Continue sua estação</h2>
-            <div style={{ font: "var(--type-h4)", color: "var(--text-inverse)" }}>
+            <div style={{ font: "var(--type-h4)", color: "var(--gray-0)" }}>
               {open_attempt.name}
             </div>
             <p className="f2-hero-desc">
@@ -248,7 +248,7 @@ export function Fase2Home({ go }) {
               Distribuição das estações com revisão médica aprovada.
             </p>
           </div>
-          <Button variant="link" onClick={() => go("estacoes")}>
+          <Button variant="link" className="f2-toque" onClick={() => go("estacoes")}>
             Ver todas
           </Button>
         </div>

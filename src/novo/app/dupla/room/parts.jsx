@@ -159,7 +159,7 @@ export function PressingBody({ pressing, actions }) {
 export function ActorScript({ script, fallback }) {
   if (!script.length) return <div style={{ color: "var(--text-secondary)" }}>{fallback}</div>;
   return (
-    <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "minmax(96px, 120px) 1fr", rowGap: 10, columnGap: 12 }}>
+    <dl className="dupla-roteiro">
       {script.map(([label, value], i) => (
         <React.Fragment key={label + i}>
           {label && <dt style={{ font: "600 var(--text-xs)/1.6 var(--font-sans)", color: "var(--text-secondary)" }}>{label}</dt>}

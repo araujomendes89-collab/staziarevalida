@@ -188,7 +188,7 @@
 /* pílula compacta da fase (celular e tablet): ~100x36, alvo de 44 px; abre o seletor logo abaixo */
 .smn-pp{position:relative;flex:none}
 .smn-mtop-phase{position:relative;min-height:36px;height:36px;white-space:nowrap}
-.smn-mtop-phase::after{content:"";position:absolute;inset:-4px 0}
+.smn-mtop-phase::after{content:"";position:absolute;inset:-5px 0}
 .smn-mtop-phase:hover{border-color:var(--border-strong)}
 .smn-pp-chev{color:var(--text-tertiary)}
 .smn-pp-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:40;padding:6px;border-radius:16px;background:var(--surface-card);border:1px solid var(--border-default);box-shadow:var(--shadow-lg);animation:smn-in var(--dur-base) var(--ease-out)}
@@ -277,3 +277,19 @@
 .smn-saldo-rot{font-weight:600}
 .smn-saldo-sep{width:1px;height:14px;margin:0 3px;background:currentColor;opacity:.3}
 @media (max-width:719px){.smn-saldo{padding:0 10px}.smn-saldo-rot{display:none}.smn-ph-l>.smn-chips{flex-direction:column;align-items:flex-end;gap:6px}}
+/* Área segura (19/10/2026, com viewport-fit=cover no novo.html): o iPhone passa a informar os recortes da tela. Embaixo, a barra
+   de abas, o rodapé da sala e as janelas já somam env(safe-area-inset-bottom). Nas laterais (iPhone deitado, recorte da câmera),
+   o conteúdo, o menu do tablet e a barra de abas se afastam do recorte. Sem recorte o valor é 0 e nada muda. */
+.smn{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.smn-rail{left:calc(12px + env(safe-area-inset-left,0px))}
+.smn-side{left:calc(16px + env(safe-area-inset-left,0px))}
+.smn-fly{left:calc(112px + env(safe-area-inset-left,0px))}
+.smn-tabs{left:env(safe-area-inset-left,0px);right:env(safe-area-inset-right,0px)}
+/* Toque de 44 px (19/10/2026): logotipo do menu do tablet (o desenho segue com 34 px). O seletor de fase do celular (desenho de
+   36 px) e o contador de dias (32 px) têm a área de toque estendida por ::after: no seletor o ::after parte de dentro da borda
+   (34 px), por isso -5px (34 + 5 + 5 = 44; com -4px ficava 42); no contador, 32 + 6 + 6 = 44. */
+.smn-rail .smn-logo{min-width:44px;min-height:44px;align-items:center}
+/* Em cima: só soma quando o aparelho informa recorte por cima do conteúdo (app instalado com a barra de status transparente);
+   com a barra de status normal o valor é 0. */
+.smn{padding-top:env(safe-area-inset-top,0px)}
+.smn-sbar{top:env(safe-area-inset-top,0px)}

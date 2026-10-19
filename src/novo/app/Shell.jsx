@@ -695,7 +695,7 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
       )}
       {!full && layout === "desktop" && <Sidebar route={navRoute} go={go} phase={phase} info={info} theme={theme} collapsed={collapsed} setCollapsed={setCollapsed} soon={phase === 2 ? soon : []} />}
       {!full && layout === "tablet" && <Rail route={navRoute} go={go} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info} theme={theme} setTheme={setTheme} />}
-      <main id="conteudo" tabIndex={-1} style={{ marginLeft, transition: "margin-left var(--dur-base) var(--ease-standard)", padding: bare ? 0 : PAD[layout], outline: "none" }}>
+      <main id="conteudo" tabIndex={-1} data-fase={phase} style={{ marginLeft, transition: "margin-left var(--dur-base) var(--ease-standard)", padding: bare ? 0 : PAD[layout], outline: "none" }}>
         {bare ? (
           children
         ) : (

@@ -84,7 +84,7 @@ function SwipeHint({ onClose }) {
   return (
     <div
       role="status"
-      style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "var(--surface-inverse)", color: "var(--text-inverse)", borderRadius: 14, font: "600 13px var(--font-sans)" }}
+      style={{ display: "flex", alignItems: "center", gap: 12, padding: "6px 6px 6px 14px", background: "var(--navy-900)", color: "var(--gray-0)", borderRadius: 14, font: "600 14px var(--font-sans)" }}
     >
       <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--red-200)" }}>
         <Icon name="arrow-left" size={16} />
@@ -95,7 +95,7 @@ function SwipeHint({ onClose }) {
         Estudar
         <Icon name="arrow-right" size={16} />
       </span>
-      <button type="button" aria-label="Fechar dica" onClick={onClose} style={{ border: 0, background: "transparent", color: "var(--teal-200)", cursor: "pointer", display: "inline-flex", padding: 0 }}>
+      <button type="button" className="f2-toque-q" aria-label="Fechar dica" onClick={onClose} style={{ border: 0, background: "transparent", color: "var(--teal-200)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 6, borderRadius: 10 }}>
         <Icon name="x" size={15} />
       </button>
     </div>
@@ -352,7 +352,8 @@ function PracticeBoard({ go, profile, saved, stationId, station, onRemoveStation
                 style={{
                   ...pill,
                   background: matches ? "var(--teal-700)" : "var(--surface-card)",
-                  color: matches ? "var(--text-inverse)" : "var(--text-primary)",
+                  // fundo azul fixo nos dois temas: texto branco (com o inverso do modo noite ficava 3,7:1)
+                  color: matches ? "var(--gray-0)" : "var(--text-primary)",
                   border: matches ? 0 : "1px solid var(--border-subtle)",
                 }}
               >

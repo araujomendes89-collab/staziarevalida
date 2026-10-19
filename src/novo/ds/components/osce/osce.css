@@ -92,7 +92,7 @@
 .osce-station__scores{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-card)}
 .osce-station__score{padding:14px 18px}
 .osce-station__score--avg{border-left:1px solid var(--border-subtle)}
-.osce-station__k{font:600 11px var(--font-sans);color:var(--text-secondary)}
+.osce-station__k{font:600 12px var(--font-sans);color:var(--text-secondary)}
 .osce-station__v{margin-top:4px;font:800 22px/1.1 var(--font-sans);color:var(--text-primary)}
 .osce-station__v--mine{color:var(--osce-base)}
 .osce-station__v--mine[data-empty="true"]{color:var(--text-tertiary)}

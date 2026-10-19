@@ -38,6 +38,7 @@ function AreaChip({ area, on, onClick }) {
   return (
     <button
       type="button"
+      className="f2-toque"
       aria-pressed={on}
       onClick={onClick}
       style={{
@@ -124,6 +125,7 @@ export function StudyProfileScreen({ go }) {
         <div>
           <button
             type="button"
+            className="f2-toque"
             onClick={() => go("dupla")}
             style={{ display: "inline-flex", alignItems: "center", gap: 6, border: 0, background: "transparent", padding: 0, cursor: "pointer", font: "600 13px var(--font-sans)", color: "var(--text-brand)" }}
           >

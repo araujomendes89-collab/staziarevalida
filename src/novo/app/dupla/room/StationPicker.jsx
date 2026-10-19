@@ -70,6 +70,7 @@ export function StationPicker({ title, onPick, onClose, roomId = null }) {
                   <button
                     key={s.id}
                     type="button"
+                    className="f2-toque"
                     disabled={used}
                     onClick={() => onPick(s.id)}
                     style={{
