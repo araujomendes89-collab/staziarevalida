@@ -15,19 +15,22 @@ import { AdminStations } from "../../src/novo/app/admin/AdminPanels.jsx";
 import { Fase2Peps } from "../../src/novo/app/fase2/Fase2Peps.jsx";
 import { CreditosHojeView } from "../../src/novo/app/home/CreditosHoje.jsx";
 import { modeloCreditosHoje } from "../../src/novo/app/home/creditosHoje.js";
+import { Fase2Player } from "../../src/novo/app/fase2/Fase2Player.jsx";
+import { AdminDupla } from "../../src/novo/app/admin/AdminDupla.jsx";
 
 const params = new URLSearchParams(location.search);
 const tela = params.get("t") || "praticar";
 document.documentElement.dataset.theme = params.get("tema") === "escuro" ? "dark" : "light";
 
-const ROTAS = { dupla: "praticar", "dupla-perfil": "perfil", estacoes: "estacoes", "dupla-sala": "sala", peps: "peps" };
-const KEEP = ["tema", "perfil", "convite", "radar", "limite"];
+const ROTAS = { dupla: "praticar", "dupla-perfil": "perfil", estacoes: "estacoes", "dupla-sala": "sala", peps: "peps", estacao: "sozinho" };
+const KEEP = ["tema", "perfil", "convite", "radar", "limite", "ia", "atraso", "funcao", "elite"];
 function go(route, query = {}) {
   if (route === "planos" || !ROTAS[route]) { location.href = "/"; return; }
   const next = new URLSearchParams();
   KEEP.forEach((k) => params.get(k) && next.set(k, params.get(k)));
   next.set("t", ROTAS[route]);
   if (route === "dupla-sala") next.set("sala", query.sala || "roles-candidate");
+  else if (route === "estacao") { if (query.id) next.set("id", query.id); if (query.tentativa) next.set("tentativa", query.tentativa); }
   else {
     if (query.estacao) next.set("estacao", query.estacao);
     if (query.modo) next.set("modo", query.modo);
@@ -80,6 +83,8 @@ function Tela() {
   if (tela === "vitrine") return <Vitrine />;
   if (tela === "estacoes-adm") return <AdminStations />;
   if (tela === "peps") return <Fase2Peps go={go} />;
+  if (tela === "sozinho") return <Fase2Player go={go} />;
+  if (tela === "painel") return <AdminDupla onOpenIAs={() => alert("Abriria a Central de IAs (prévia).")} />;
   return <PracticeScreen go={go} />;
 }
 

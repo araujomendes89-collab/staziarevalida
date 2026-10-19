@@ -148,6 +148,8 @@ describe("Administração: Uso do mês", () => {
     cleanup();
     rpc.mockResolvedValueOnce({ month: "2026-10", salas: 0, rodadas_avaliadas: 0, alunos: 0, impressos_por_rodada: null });
     render(<DuplaUsage />);
-    expect(await screen.findByText("—")).toBeTruthy();
+    // o '—' da dupla (impressos por rodada) e as quatro linhas do treino sozinho, que vêm à parte e também sem dado
+    expect((await screen.findAllByText("—")).length).toBe(5);
+    expect(within(screen.getByTestId("uso-sozinho")).getAllByText("—")).toHaveLength(4);
   });
 });

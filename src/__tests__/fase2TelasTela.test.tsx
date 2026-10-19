@@ -3,7 +3,7 @@
  * Cobre as telas em src/novo/app/fase2/:
  *  - Fase2Home (Início com estado honesto, contadores e retomada)
  *  - Fase2Stations (Catálogo com filtros de texto, área, status de conclusão, Pro e erro de carga)
- *  - Fase2Player (Ciclo leitura -> atendimento com impressos sob demanda -> PEP com marcações -> tela final)
+ *  - Fase2Player (Ciclo leitura -> atendimento por escrito com impressos sob demanda -> entrega -> autoavaliação pelo PEP -> resultado)
  *  - Fase2Peps (Lista de avaliações: sozinho abre o PEP; em dupla vem do histórico da 013400 e abre o resultado)
  *  - Fase2Performance (Desempenho prático real sem variações inventadas)
  *  - Fase2Patient (Paciente IA em breve, estático e sem tráfego de rede)
@@ -315,86 +315,105 @@ describe("Telas da 2ª Fase (React Testing Library)", () => {
   // 3. ESTAÇÃO (PLAYER - Fase2Player)
   // ---------------------------------------------------------------------------
   describe("Estação (Player - Fase2Player)", () => {
-    it("ciclo completo: start -> leitura -> atendimento com impressos -> PEP com marcações -> tela final; sem vazar roteiro do ator", async () => {
+    it("ciclo completo: start -> leitura -> atendimento (impressos só trazem o texto ao abrir) -> entrega -> PEP com marcações -> tela final; sem vazar roteiro do ator", async () => {
+      const STATION = {
+        id: "st-1",
+        name: "Cetoacidose diabética",
+        topic: "DM1 descompensado",
+        area: "Clínica Médica",
+        setting: "Pronto-socorro",
+        duration_ms: 600000,
+      };
       const READING_PAYLOAD = {
         attempt_id: "att-player-01",
         status: "reading",
         server_now: "2026-10-15T12:00:00Z",
-        station: {
-          id: "st-1",
-          name: "Cetoacidose diabética",
-          topic: "DM1 descompensado",
-          area: "Clínica Médica",
-          setting: "Pronto-socorro",
-          duration_ms: 600000,
-        },
+        station: STATION,
         scene: "Pronto-socorro. Paciente jovem com dor abdominal e náuseas.",
-        tasks: "Realizar anamnese, exame físico e solicitar exames complementares.",
+        tasks: "1. Realizar anamnese e exame físico.\n2. Solicitar exames complementares.",
         actor_script_secret: "SEGREDO-DO-ATOR", // Campo extra simulado para conferência de segurança
         started_at: "2026-10-15T12:00:00Z",
       };
 
-      const ATTENDING_PAYLOAD = {
+      // o servidor só manda o texto dos impressos já abertos
+      const pressings = (opened: string[]) => [
+        { id: "pr-1", number: 1, name: "Gasometria venosa", initial: false, opened: opened.includes("pr-1"), content: opened.includes("pr-1") ? "pH 7.15, HCO3 8" : null, has_image: false },
+        { id: "pr-2", number: 2, name: "Glicemia capilar", initial: false, opened: opened.includes("pr-2"), content: opened.includes("pr-2") ? "Glicemia 480 mg/dL" : null, has_image: false },
+      ];
+      const nowIso = () => new Date().toISOString();
+      const ATTENDING_PAYLOAD = () => ({
         ...READING_PAYLOAD,
         status: "attending",
-        attendance_started_at: "2026-10-15T12:00:05Z",
-        pressings: [
-          { id: "pr-1", name: "Gasometria venosa", content: "pH 7.15, HCO3 8" },
-          { id: "pr-2", name: "Glicemia capilar", content: "Glicemia 480 mg/dL" },
-        ],
-      };
-
-      const SCORING_PAYLOAD = {
-        ...ATTENDING_PAYLOAD,
+        server_now: nowIso(),
+        attendance_started_at: nowIso(),
+        ends_at: new Date(Date.now() + 600000).toISOString(),
+        answers: [],
+        pressings: pressings([]),
+      });
+      const SUBMITTED_PAYLOAD = () => ({
+        ...ATTENDING_PAYLOAD(),
+        status: "submitted",
+        submitted_at: nowIso(),
+        answers: [{ task: 1, text: "Pergunto a história." }, { task: 2, text: "" }],
+        ia: { available: false, reason: "Disponível em outro plano.", consent_required: false },
+        ia_message: null,
+      });
+      const SCORING_PAYLOAD = () => ({
+        ...SUBMITTED_PAYLOAD(),
         status: "scoring",
-        attendance_ended_at: "2026-10-15T12:10:05Z",
+        ia: undefined,
         checklist: [
-          {
-            order: 1,
-            phase: "Apresentação",
-            content: "Apresenta-se ao paciente e pede permissão.",
-            max: 4.0,
-            partial: null,
-          },
-          {
-            order: 2,
-            phase: "Conduta",
-            content: "Prescreve hidratação venosa vigorosa.",
-            max: 6.0,
-            partial: 3.0,
-          },
+          { order: 1, phase: "Apresentação", content: "Apresenta-se ao paciente e pede permissão.", max: 4.0, partial: null },
+          { order: 2, phase: "Conduta", content: "Prescreve hidratação venosa vigorosa.", max: 6.0, partial: 3.0 },
         ],
-      };
-
+      });
       const DONE_PAYLOAD = {
         attempt_id: "att-player-01",
         status: "done",
-        station: READING_PAYLOAD.station,
+        station: STATION,
         result: {
           score: 7.0,
           max_score: 10.0,
           score10: 7.0,
           finished_at: "2026-10-15T12:12:00Z",
+          source: "autoavaliacao",
+          used_ms: 600000,
           marks: [
             { order: 1, phase: "Apresentação", content: "Item 1", grade: "correct", points: 4.0, max: 4.0 },
             { order: 2, phase: "Conduta", content: "Item 2", grade: "partial", points: 3.0, max: 6.0 },
           ],
+          ia: null,
+          positive: ["Item 1"],
+          negative: ["Item 2"],
         },
         actor_script_secret: "SEGREDO-DO-ATOR",
       };
 
       backend.rpc.mockImplementation(async (fn: string, args: any) => {
+        if (fn === "app_dupla_heartbeat") return { ok: true };
         if (fn === "app_fase2_start") {
           expect(args).toEqual({ p_station_id: "st-1" });
           return READING_PAYLOAD;
         }
         if (fn === "app_fase2_begin") {
           expect(args).toEqual({ p_attempt_id: "att-player-01" });
-          return ATTENDING_PAYLOAD;
+          return ATTENDING_PAYLOAD();
+        }
+        if (fn === "app_fase2_open_pressing") {
+          expect(args).toEqual({ p_attempt_id: "att-player-01", p_pressing_id: "pr-1" });
+          return { id: "pr-1", number: 1, name: "Gasometria venosa", content: "pH 7.15, HCO3 8", has_image: false };
+        }
+        if (fn === "app_fase2_save_answers") return { ok: true, saved_at: nowIso() };
+        if (fn === "app_fase2_deliver") {
+          expect(args).toEqual({
+            p_attempt_id: "att-player-01",
+            p_answers: [{ task: 1, text: "Pergunto a história." }, { task: 2, text: "" }],
+          });
+          return SUBMITTED_PAYLOAD();
         }
         if (fn === "app_fase2_finish") {
           expect(args).toEqual({ p_attempt_id: "att-player-01" });
-          return SCORING_PAYLOAD;
+          return SCORING_PAYLOAD();
         }
         if (fn === "app_fase2_submit") {
           expect(args).toEqual({
@@ -417,39 +436,42 @@ describe("Telas da 2ª Fase (React Testing Library)", () => {
       expect(screen.getByText("Pronto-socorro. Paciente jovem com dor abdominal e náuseas.")).toBeTruthy();
 
       // Aba de tarefas
-      const tabTarefas = screen.getByRole("button", { name: /Tarefas/i });
-      fireEvent.click(tabTarefas);
-      expect(screen.getByText("Realizar anamnese, exame físico e solicitar exames complementares.")).toBeTruthy();
+      fireEvent.click(screen.getByRole("tab", { name: /Tarefas/i }));
+      expect(screen.getByText(/1\. Realizar anamnese e exame físico\./)).toBeTruthy();
 
       // Não mostra impressos nem checklist na leitura
-      expect(screen.queryByRole("button", { name: /Impressos/i })).toBeNull();
+      expect(screen.queryByText("Impressos")).toBeNull();
       expect(screen.queryByText("Padrão Esperado de Procedimentos")).toBeNull();
       expect(document.body.textContent).not.toContain("SEGREDO-DO-ATOR");
 
       // Iniciar atendimento
-      const btnBegin = screen.getByRole("button", { name: /Iniciar atendimento/i });
-      fireEvent.click(btnBegin);
+      fireEvent.click(screen.getByRole("button", { name: /Iniciar atendimento/i }));
 
-      // ETAPA 2: Atendimento
-      await screen.findByRole("button", { name: /Impressos \(2\)/i });
-      const tabImpressos = screen.getByRole("button", { name: /Impressos \(2\)/i });
-      fireEvent.click(tabImpressos);
-
-      // Cada impresso começa fechado (conteúdo ausente)
-      expect(screen.getByText("Gasometria venosa")).toBeTruthy();
+      // ETAPA 2: Atendimento, uma caixa por tarefa e impressos fechados (só o nome)
+      await screen.findByRole("textbox", { name: "Sua resposta à tarefa 1" });
+      expect(screen.getByRole("textbox", { name: "Sua resposta à tarefa 2" })).toBeTruthy();
+      expect(screen.getByText("Impresso 1 · Gasometria venosa")).toBeTruthy();
       expect(screen.queryByText("pH 7.15, HCO3 8")).toBeNull();
 
-      // Solicitar impresso revela o conteúdo
-      const btnSolicitar = screen.getAllByRole("button", { name: /Solicitar este impresso/i })[0];
-      fireEvent.click(btnSolicitar);
-      expect(screen.getByText("pH 7.15, HCO3 8")).toBeTruthy();
+      // Pedir impresso traz o texto
+      fireEvent.click(screen.getByRole("button", { name: /Pedir impresso 1: Gasometria venosa/i }));
+      await screen.findByText("pH 7.15, HCO3 8");
+      expect(screen.getByText("Impresso aberto")).toBeTruthy();
+      expect(screen.queryByText("Glicemia 480 mg/dL")).toBeNull();
 
-      // Encerrar atendimento com confirmação
-      const btnFinish = screen.getByRole("button", { name: /Encerrar atendimento e abrir o PEP/i });
-      fireEvent.click(btnFinish);
-      expect(window.confirm).toHaveBeenCalled();
+      // Sem auto-encerramento e sem janela do PEP: entregar pede confirmação
+      fireEvent.change(screen.getByRole("textbox", { name: "Sua resposta à tarefa 1" }), { target: { value: "Pergunto a história." } });
+      fireEvent.click(screen.getByRole("button", { name: "Entregar" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Sim, entregar" }));
 
-      // ETAPA 3: Avaliação PEP (scoring)
+      // ETAPA 3: Entregue -> "Como você quer corrigir?" (IA desligada com o motivo; PEP ainda fechado)
+      const choose = await screen.findByRole("dialog", { name: "Como você quer corrigir?" });
+      expect(within(choose).getByText("Disponível em outro plano.")).toBeTruthy();
+      expect(within(choose).getByRole("button", { name: "Avaliar com IA" })).toBeDisabled();
+      expect(screen.queryByText("Padrão Esperado de Procedimentos")).toBeNull();
+      fireEvent.click(within(choose).getByRole("button", { name: "Eu mesmo avalio com o PEP" }));
+
+      // ETAPA 4: Autoavaliação (scoring)
       await screen.findByText("Padrão Esperado de Procedimentos");
       const btnSubmit = screen.getByRole("button", { name: /Concluir e ver a nota/i });
 
@@ -465,24 +487,20 @@ describe("Telas da 2ª Fase (React Testing Library)", () => {
       const groupItem2 = screen.getByRole("radiogroup", { name: "Item 2" });
       const radioParcial2 = within(groupItem2).getByRole("radio", { name: "Parcial" });
 
-      // Marca item 1
       fireEvent.click(radioAdequado1);
       expect(btnSubmit).toBeDisabled(); // ainda falta o item 2
-
-      // Marca item 2
       fireEvent.click(radioParcial2);
       expect(btnSubmit).not.toBeDisabled();
 
       // Conclui e submete
       fireEvent.click(btnSubmit);
 
-      // ETAPA 4: Tela Final (done)
-      await screen.findByText("Resultado oficial da estação");
-      // Nota que veio do servidor
-      expect(screen.getByText("7")).toBeTruthy();
-      expect(screen.getByText("Pontuação total: 7 de 10 pontos")).toBeTruthy();
+      // ETAPA 5: Resultado (done), com a nota que veio do servidor
+      await screen.findByRole("heading", { name: "Resultado do treino sozinho" });
+      expect(within(screen.getByRole("region", { name: "Resumo da nota" })).getByText("7,00")).toBeTruthy();
+      expect(screen.getByText("/ 10,00")).toBeTruthy();
 
-      // Roteiro do ator nunca apareceu
+      // Nenhuma chamada de encerramento automático e roteiro do ator nunca apareceu
       expect(document.body.textContent).not.toContain("SEGREDO-DO-ATOR");
     });
 

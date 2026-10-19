@@ -334,8 +334,8 @@ describe("Banco", () => {
       expect((await save("criacao", { mode: "sozinha", primary_ref: C, max_searches: 4 })).max_searches).toBeNull();
 
       const s = await t.db.asUser<any>(t.editorUser, "app_ai_summary");
-      expect(s.functions).toHaveLength(9);
-      expect(s.functions.map((f: any) => f.key)).toEqual(["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes", "similaridade", "analise_mudancas"]); // 9910 e 9941 somaram as duas últimas
+      expect(s.functions).toHaveLength(10);
+      expect(s.functions.map((f: any) => f.key)).toEqual(["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes", "similaridade", "analise_mudancas", "treino_avaliacao"]); // 9910, 9941 e 13430 somaram as três últimas
       expect(s.functions.find((f: any) => f.key === "busca_fontes")).toMatchObject({ configured: true, mode: "sozinha" });
 
       // tirar a configuração só desliga (a linha sai)

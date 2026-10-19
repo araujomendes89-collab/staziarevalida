@@ -12,7 +12,7 @@ import type { AiProviderId } from "./models";
 import { estimateCostUsd, type ModelPrice } from "./prices";
 import { googleAiAccess, GOOGLE_KEY_MISSING } from "./googleKey";
 
-export type AiFunctionKey = "criacao" | "verificacao" | "engenharia_reversa" | "assistente_preencher" | "assistente_conferir" | "assistente_revisar" | "busca_fontes" | "similaridade" | "analise_mudancas";
+export type AiFunctionKey = "criacao" | "verificacao" | "engenharia_reversa" | "assistente_preencher" | "assistente_conferir" | "assistente_revisar" | "busca_fontes" | "similaridade" | "analise_mudancas" | "treino_avaliacao";
 export type AiMode = "sozinha" | "linha" | "comite";
 
 export interface ModelRef {
@@ -58,7 +58,20 @@ export const isSearchFunction = (fn: AiFunctionKey): boolean => fn === "busca_fo
  * definem): a busca de fontes oficiais e as Questões parecidas (similaridade: vetores das questões e classificação dos pares
  * duvidosos; começa desligada por decisão do dono, 2026-10-12).
  */
-export const requiresSavedConfig = (fn: AiFunctionKey): boolean => isSearchFunction(fn) || fn === "similaridade" || fn === "analise_mudancas";
+export const requiresSavedConfig = (fn: AiFunctionKey): boolean => isSearchFunction(fn) || fn === "similaridade" || fn === "analise_mudancas" || fn === "treino_avaliacao";
+
+/**
+ * Avaliação do treino sozinho (2ª fase, 2026-10-17): a IA que atende o aluno. Só roda com a configuração SALVA (nasce DESLIGADA, sem
+ * linha salva). Decisão do dono: UM avaliador, o Gemini mais forte do Vertex que a Central oferece (TREINO_MODELOS_SUGERIDOS), e a
+ * segunda IA é OPCIONAL: a equipe liga escolhendo o modo "comitê" (principal + mais uma IA, de qualquer empresa cadastrada), desligado
+ * por padrão. Com as duas, se divergirem em um item vale o nível menor (D4). A conferência por outra empresa NÃO é exigida (D3 de 12/10).
+ */
+/** Modelos Gemini sugeridos para esta função, do mais forte para o menos (os que a chave do Vertex em modo expresso aceita; ver VERTEX_EXPRESS_MODELS). */
+export const TREINO_MODELOS_SUGERIDOS = ["gemini-3.1-pro-preview", "gemini-2.5-pro"];
+export const isTreinoFunction = (fn: AiFunctionKey): boolean => fn === "treino_avaliacao";
+/** A empresa por trás da IA cadastrada (o nome do modelo pode não dizer). */
+export const COMPANY_OF_PROVIDER: Record<AiProviderId, string> = { anthropic: "anthropic", openai: "openai", gemini: "google", ollama: "ollama" };
+export const companyOf = (ref: ModelRef): string => COMPANY_OF_PROVIDER[ref.provider] ?? ref.provider;
 
 export const isProviderId = (v: unknown): v is AiProviderId => PROVIDER_IDS.includes(v as AiProviderId);
 
@@ -122,6 +135,9 @@ export const TYPICAL_CALLS: Record<AiFunctionKey, TypicalCall[]> = {
   similaridade: [{ use: "pares duvidosos de questões parecidas", inputChars: 24_000, maxOut: 4096 }],
   // Vigilância científica (vigilance/analysis.ts): os trechos que mudaram (até 40 de 3 mil caracteres) e as instruções
   analise_mudancas: [{ use: "análise do que mudou (Vigilância científica)", inputChars: 40_000, maxOut: 4096 }],
+  // Avaliação do treino sozinho (dupla/soloEval.ts): itens do PEP (~3 mil tokens), enunciado, texto do aluno (até 20 mil caracteres) e
+  // instruções, ~24 mil caracteres; saída de até 3.000 tokens por membro do comitê
+  treino_avaliacao: [{ use: "avaliação do treino sozinho", inputChars: 24_000, maxOut: 3000 }],
 };
 
 /** As chamadas típicas da função; a de busca usa o máximo de buscas salvo nela (senão o padrão). */
@@ -501,6 +517,12 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig, opts: 
     if (max !== null && max !== undefined && !(Number.isInteger(max) && max >= 1 && max <= 10)) add("Máximo de buscas por pedido: de 1 a 10.");
   }
 
+  // Avaliação do treino sozinho: uma IA (padrão) ou, opcionalmente, o comitê de duas IAs (de qualquer empresa cadastrada)
+  if (isTreinoFunction(fc.key)) {
+    if (fc.mode === "linha") add("A avaliação do treino sozinho usa uma IA ou, opcionalmente, o comitê de duas IAs.");
+    else if (fc.mode === "comite" && (fc.primary ? 1 : 0) + reviewers.length !== 2) add("O comitê da avaliação do treino sozinho tem exatamente duas IAs: a principal e mais uma.");
+  }
+
   // modelo pago sem preço (IA09). Com os tetos ligados, refProblems já bloqueia. Com os tetos desligados o gasto dele apareceria
   // como US$ 0: ao SALVAR a função (requirePrice, a rota) é problema, porque o preço é exigido para ligar o modelo; no que já está
   // salvo e rodando é só aviso, porque um problema aqui pararia uma função que hoje funciona (o maestro não olha este aviso)
@@ -542,7 +564,7 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig, opts: 
     if (new Set(fams).size < fams.length) warnings.push("Há membros da mesma família no comitê: não é independente.");
   }
   // Linha de produção e Comitê ainda não chamam conferentes nem membros: o uso real é principal e reserva (correção IA04, 2026-10-10)
-  if (fc.mode === "linha" || fc.mode === "comite") {
+  if ((fc.mode === "linha" || fc.mode === "comite") && !isTreinoFunction(fc.key)) {
     const who = fc.mode === "linha" ? "os conferentes da Linha de produção" : "os membros do Comitê";
     warnings.push(
       fc.key === "verificacao"
@@ -559,6 +581,8 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig, opts: 
     ...(fc.primary ? [{ ref: fc.primary, role: "principal" as const, calls: uses, care: fc.care }] : []),
     ...(fc.fallback ? [{ ref: fc.fallback, role: "reserva" as const, calls: uses, care: fc.care }] : []),
     ...(others ? reviewers.map((ref) => ({ ref, role: others, calls: [DRAFT_REVIEW_CALL], care: undefined })) : []),
+    // no comitê da avaliação do treino sozinho todos os membros recebem o mesmo pedido da função
+    ...(isTreinoFunction(fc.key) && fc.mode === "comite" ? reviewers.map((ref) => ({ ref, role: "membro" as const, calls: uses, care: fc.care })) : []),
   ];
   for (const w of perRunCapWarnings(members, cfg)) if (!warnings.includes(w)) warnings.push(w);
   // depois de uma falha cobrada da principal: a nova tentativa e a reserva com o gasto já feito (rodada 4)
@@ -575,7 +599,7 @@ export interface FunctionCheck {
   warnings: string[];
 }
 
-export const FUNCTION_KEYS: AiFunctionKey[] = ["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes", "similaridade", "analise_mudancas"];
+export const FUNCTION_KEYS: AiFunctionKey[] = ["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes", "similaridade", "analise_mudancas", "treino_avaliacao"];
 
 /**
  * Função salva: além da validação da configuração, confere o que ESTE servidor consegue chamar. Bloqueia só o que não
@@ -631,7 +655,7 @@ function savedFunctionCheck(saved: FunctionConfig, cfg: AiConfig, env: NodeJS.Pr
 }
 
 /**
- * Situação de cada uma das 8 funções: pronta ou o motivo. Função sem configuração salva usa as variáveis de ambiente, menos a
+ * Situação de cada função (FUNCTION_KEYS): pronta ou o motivo. Função sem configuração salva usa as variáveis de ambiente, menos a
  * de busca na internet, que sem configuração fica desligada.
  */
 export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): Record<AiFunctionKey, FunctionCheck> {

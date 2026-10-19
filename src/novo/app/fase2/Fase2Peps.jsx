@@ -4,7 +4,7 @@ import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { useLoad, Loading, LoadError, dateTimeBR } from "../admin/common.jsx";
 import { fase2Api } from "./api.js";
-import { fmtScore, getArea, ORIGIN_LABEL } from "./labels.js";
+import { fmtScore, getArea, ORIGIN_LABEL, SOURCE_LABEL } from "./labels.js";
 import { ResultPhase } from "../dupla/room/ResultPhase.jsx";
 import "./fase2.css";
 
@@ -250,6 +250,7 @@ function SoloRow({ row, go }) {
           <Badge tone="neutral" size="sm">
             {ORIGIN_LABEL.solo}
           </Badge>
+          {SOURCE_LABEL[row.source] && <span style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>{SOURCE_LABEL[row.source]}</span>}
           <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>·</span>
           <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{dateTimeBR(row.at)}</span>
         </div>

@@ -4,7 +4,7 @@ import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { useLoad, Loading, LoadError, dateTimeBR } from "../admin/common.jsx";
 import { fase2Api } from "./api.js";
-import { AREAS, fmtScore, ORIGIN_LABEL } from "./labels.js";
+import { AREAS, fmtScore, ORIGIN_LABEL, SOURCE_LABEL } from "./labels.js";
 import "./fase2.css";
 
 export function Fase2Home({ go }) {
@@ -224,6 +224,9 @@ export function Fase2Home({ go }) {
             <Badge tone="neutral" size="sm">
               {ORIGIN_LABEL[last.origin] || "Sozinho"}
             </Badge>
+            {last.origin !== "dupla" && SOURCE_LABEL[last.source] && (
+              <span style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>{SOURCE_LABEL[last.source]}</span>
+            )}
             <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
               {dateTimeBR(last.at)}
             </span>

@@ -3,6 +3,7 @@
 import React from "react";
 import ESTACOES from "./estacoes-inep2020-teste.json";
 import CATALOGO from "./catalogo-cartoes.json";
+import { criarSolo } from "./soloSimulado.js";
 
 const NOW = () => new Date().toISOString();
 const EM = (ms) => new Date(Date.now() + ms).toISOString();
@@ -408,8 +409,34 @@ const respostasAdm = {
     return resumoDe(p_station_id);
   },
 };
+// Treino sozinho (2ª fase): app_fase2_* simuladas (soloSimulado.js); a "IA" é um roteiro de teste, não avalia nada.
+const solo = criarSolo({ dados, NOW, EM });
+// Administração › Configurações › Treinamento em Dupla (painel da avaliação por IA do treino sozinho), DADOS DE TESTE em memória.
+// ?funcao=pronta (padrão) | naopronta mostra o estado da função da Central de IAs; ?elite=1 liga a linha do benefício Elite.
+let painelIA = { aberto: false, planos: [], limite_dia: null, limite_mes: null };
+const pronta = new URLSearchParams(location.search).get("funcao") !== "naopronta";
+const respostasPainel = {
+  app_admin_settings: () => ({ treino_dupla: { aberto: true, planos: ["pro", "elite"] } }),
+  app_admin_save_dupla: ({ p_aberto, p_planos }) => ({ aberto: p_aberto, planos: p_planos }),
+  app_admin_dupla_ia: () => ({
+    ...painelIA, funcao_pronta: pronta,
+    funcao_motivo: pronta ? null : "A IA da função está desligada na Central.",
+    elite_libera: new URLSearchParams(location.search).get("elite") === "1",
+  }),
+  app_admin_save_dupla_ia: ({ p_config }) => {
+    const dia = p_config.limite_dia, mes = p_config.limite_mes;
+    if ((dia != null && dia < 1) || (mes != null && dia != null && mes < dia)) throw new Error("Limites inválidos: use números inteiros de 1 em diante, com o do mês maior ou igual ao do dia.");
+    painelIA = { aberto: p_config.aberto, planos: p_config.planos, limite_dia: dia ?? null, limite_mes: mes ?? null };
+    return painelIA;
+  },
+  app_admin_dupla_usage: () => ({
+    month: new Date().toISOString().slice(0, 7), salas: 12, rodadas_avaliadas: 9, alunos: 7, impressos_por_rodada: 1.4,
+    sozinho: { treinos: 31, ia: 18, autoavaliacao: 13, alunos: 9, gasto_ia_usd: 0.4235 },
+  }),
+};
 const respostas = {
   ...respostasChat,
+  ...respostasPainel,
   ...respostasAdm,
   ...respostasHistorico,
   // ----- radar, @ e convite por link (dados de teste)
@@ -450,6 +477,8 @@ const respostas = {
     pedidos = [];
     return p_accept ? { room_id: "roles-candidate", expires_at: EM(60000), partner: { user_id: "t-3", public_name: "Colega Teste Três" } } : { room_id: null };
   },
+  ...solo.respostas,
+  app_fase2_peps: () => [...solo.respostas.app_fase2_peps(), ...respostasHistorico.app_fase2_peps()],
   app_dupla_access: () => ({ aberto: true, permitido: true, equipe: true, planos: ["pro", "elite"] }),
   app_dupla_profile: () => ({ profile: perfil, defaults: perfil ? null : { public_name: "Aluno de Teste", exam: "2026/2" }, stats: { done: 3, avg: 7.8 } }),
   app_dupla_save_profile: ({ p_profile }) => {
@@ -478,6 +507,8 @@ const backend = {
     await new Promise((r) => setTimeout(r, 120));
     return f(args);
   },
+  // as rotas do servidor do treino sozinho (/api/dupla/solo) são atendidas em soloSimulado.js; o token é só de teste
+  accessToken: async () => "token-de-teste-da-previa",
   // imagens da estação 1 (folha do candidato e esfregaço) vindas do protótipo, só no servidor da prévia
   duplaPrintUrl: async (_roomId, id) => (IMAGEM[id] ? `/previa-imagens/${IMAGEM[id]}` : null),
 };
