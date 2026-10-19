@@ -44,8 +44,11 @@ plataformas, estilo Pense Revalida; quem escolhe a estação é o ator/avaliador
    o comentário. O candidato pode **"Pedir revisão"**; o ator revisa (mantém ou muda), como já existe hoje.
 6. **Depois.** **"Nova estação · mesmo papel"**, **"Nova estação · trocar de papel"** e **"Sair"**. A sala continua com os
    dois; quem for ator na rodada nova escolhe a estação dentro da sala (lista do Banco de estações).
-7. **Match (secundário).** Depois do "Deu match!", a escolha de papéis que já existe (`app_dupla_set_roles` /
-   `app_dupla_draw_roles`) define quem é o ator. Daí segue do passo 3, com o ator escolhendo a estação na sala.
+7. **Match (secundário) = o mecanismo que já existe (dono, 19/10).** A pessoa preenche o perfil de estudo com as preferências
+   dela (`app_dupla_save_profile`: papel preferido, áreas, horários etc.) e o sistema busca pessoas compatíveis (baralho,
+   `app_dupla_deck` / `app_dupla_swipe`, "Deu match!"). Os papéis saem das preferências como hoje (`dupla_assign`), com a
+   escolha de papéis que já existe só quando as preferências não decidem. Nada disso muda. Depois do match, a sala segue o
+   fluxo novo: o ator escolhe a estação na sala e daí segue do passo 3 (preparação → "Iniciar estação").
 
 ## 4. O que muda no banco (sobre o ramo fase2-etapa2)
 
