@@ -309,4 +309,31 @@ describe("Fluxo simples do Treino em Dupla (014130–014150)", () => {
     expect((await conteudo(U.bruno, sala)).station).toMatchObject({ doctor_scene: SECRETA.doctor_scene, doctor_tasks: SECRETA.doctor_tasks });
     await d.rpc(U.bruno, "app_dupla_print_path", { p_room_id: sala, p_pressing_id: "candidate_sheet" }); // não recusa
   });
+
+  // Rodada de correção 1 da Tarefa 2: o aviso "você já viu esta estação" é tirado da própria estação (dupla_room_seen); antes do
+  // início marcado ele não chega a quem não é o ator (nem ao convidado pendente). O ator continua recebendo o seu e o do parceiro.
+  it("aviso 'já viu esta estação': o candidato que já fez a estação recebe falso no convite, na preparação e no apito; o ator recebe o dele; passado o horário, o candidato recebe verdadeiro", async () => {
+    // Bruno já fez a SECRETA como candidato numa sala antiga (o que dupla_room_seen lê: avaliação com ele como médico)
+    const velha = await makeRoom(d.db, { members: [U.carla, U.bruno], phase: "closed", candidate: U.bruno, evaluator: U.carla, station: SECRETA.id });
+    await addSession(d.db, { room: velha, round: 1, doctor: U.bruno, actor: U.carla, station: SECRETA.id, correctness: 70 });
+
+    const { room_id: sala } = await convidar(U.ana, U.bruno);
+    const confere = async (quando: string) => {
+      const b = await estado(U.bruno, sala);
+      expect(b.me.seen_station, quando).toBe(false);
+      expect(b.partner.seen_station, quando).toBe(false);
+      const a = await estado(U.ana, sala);
+      expect(a.partner, quando).toMatchObject({ role: "candidate", seen_station: true }); // o ator fica sabendo
+    };
+    await confere("convite pendente");
+    await aceitar(U.bruno, sala);
+    await confere("preparação");
+    await d.sql(`update public.checklist_rooms set phase = 'running', started_at = now() + interval '1 day', ends_at = now() + interval '2 days' where id = $1`, [sala]);
+    await confere("início marcado no futuro");
+
+    // a porta abre: o candidato recebe o aviso (como antes do fluxo simples)
+    await d.sql(`update public.checklist_rooms set started_at = now() - interval '1 second', ends_at = now() + interval '10 minutes' where id = $1`, [sala]);
+    expect((await estado(U.bruno, sala)).me).toMatchObject({ role: "candidate", seen_station: true });
+    expect((await estado(U.ana, sala)).partner.seen_station).toBe(true);
+  });
 });

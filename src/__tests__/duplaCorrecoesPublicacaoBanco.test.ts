@@ -3,7 +3,8 @@
  * Publicação da 2ª fase (17/10): os 6 achados da revisão, um teste por achado, sobre o banco local (PGlite, migrações reais,
  * até a 013405). Cada teste reproduz o caminho do achado e falha sem a 013405 (ou sem a correção do cabeçalho da 013330).
  * Regra do dono: o candidato nunca recebe o tema, o nome ou o id da estação antes do resultado; quem já viu a estação pode ser
- * candidato, com o aviso "Você já viu esta estação". Estações e pessoas daqui são SÓ de teste.
+ * candidato, com o aviso "Você já viu esta estação" (fluxo simples, 014140: ao candidato só depois do início marcado; o
+ * avaliador fica sabendo antes). Estações e pessoas daqui são SÓ de teste.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -76,9 +77,10 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
     a = await act(U.ana, "set_roles", id, { p_candidate_id: U.bruno });
     expect(a.me.role).toBe("evaluator");
     expect(a.station.name).toBe(SECRETA.name);
-    // volta a candidata: o aviso acende, e o nome e o id continuam fora do estado e do conteúdo
+    // volta a candidata: o nome e o id continuam fora do estado e do conteúdo
     a = await act(U.ana, "set_roles", id, { p_candidate_id: U.ana });
-    expect(a.me).toMatchObject({ role: "candidate", seen_station: true });
+    // fluxo simples (014140, rodada de correção 1): antes do início marcado o aviso não chega ao candidato; o avaliador fica sabendo
+    expect(a.me).toMatchObject({ role: "candidate", seen_station: false });
     expect(a.me).not.toHaveProperty("picked_station");
     expect(vaza(a)).toEqual([]);
     expect(vaza(await estado(U.ana, id))).toEqual([]);
@@ -105,8 +107,10 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
       s = await act(U.ana, "draw_roles", id);
       if (s.me.role === "candidate") break;
     }
-    expect(s.me).toMatchObject({ role: "candidate", seen_station: true });
+    // fluxo simples (014140, rodada de correção 1): antes do início marcado o aviso não chega ao candidato; o avaliador fica sabendo
+    expect(s.me).toMatchObject({ role: "candidate", seen_station: false });
     expect(vaza(s)).toEqual([]);
+    expect((await estado(U.bruno, id)).partner).toMatchObject({ role: "candidate", seen_station: true });
   });
 
   // ------------------------------------------------------------------ achado 2 (tentativa e erro)
@@ -144,7 +148,8 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
       const [sala] = await d.sql(`select station_id, station_chosen_by, candidate_id, evaluator_id from public.checklist_rooms where id = $1`, [m.room_id]);
       expect(sala).toEqual({ station_id: SECRETA.id, station_chosen_by: U.ana, candidate_id: U.ana, evaluator_id: U.bruno });
       const a = await estado(U.ana, m.room_id);
-      expect(a.me).toMatchObject({ role: "candidate", seen_station: true });
+      // fluxo simples (014140, rodada de correção 1): antes do início marcado o aviso não chega ao candidato; o avaliador fica sabendo
+      expect(a.me).toMatchObject({ role: "candidate", seen_station: false });
       expect(vaza(a)).toEqual([]);
       expect((await estado(U.bruno, m.room_id)).partner.seen_station).toBe(true);
       expect(await d.sql(`select user_id, how from public.checklist_room_station_views where room_id = $1 order by how`, [m.room_id])).toEqual([
@@ -210,17 +215,24 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
     const id = await salaPapeis(); // bruno avaliador viu SECRETA
     await act(U.bruno, "set_station", id, { p_station_id: STATION.id }); // e depois STATION
     let b = await act(U.bruno, "set_roles", id, { p_candidate_id: U.bruno }); // bruno vira candidato, ainda em STATION
-    expect(b.me).toMatchObject({ role: "candidate", seen_station: true });
+    // fluxo simples (014140, rodada de correção 1): antes do início marcado o aviso não chega ao candidato; o avaliador fica sabendo
+    expect(b.me).toMatchObject({ role: "candidate", seen_station: false });
     expect(vaza(b)).toEqual([]);
     expect((await estado(U.ana, id)).partner.seen_station).toBe(true);
     // a nova avaliadora troca para OUTRA (bruno nunca viu): sem aviso
     await act(U.ana, "set_station", id, { p_station_id: OUTRA.id });
     b = await estado(U.bruno, id);
     expect(b.me.seen_station).toBe(false);
-    // volta para SECRETA (bruno viu antes da troca): aviso de novo
+    expect((await estado(U.ana, id)).partner.seen_station).toBe(false);
+    // volta para SECRETA (bruno viu antes da troca): aviso de novo (à avaliadora; ao candidato só depois do início marcado)
     await act(U.ana, "set_station", id, { p_station_id: SECRETA.id });
     b = await estado(U.bruno, id);
-    expect(b.me.seen_station).toBe(true);
+    expect(b.me.seen_station).toBe(false);
+    expect((await estado(U.ana, id)).partner.seen_station).toBe(true);
+    await d.sql(`update public.checklist_rooms set phase = 'running', started_at = now() - interval '1 second', ends_at = now() + interval '10 minutes' where id = $1`, [id]);
+    expect((await estado(U.bruno, id)).me).toMatchObject({ role: "candidate", seen_station: true });
+    await d.sql(`update public.checklist_rooms set phase = 'roles', started_at = null, ends_at = null where id = $1`, [id]);
+    b = await estado(U.bruno, id);
     expect(vaza(b)).toEqual([]);
     expect(vaza(await conteudo(U.bruno, id))).toEqual([]);
   });

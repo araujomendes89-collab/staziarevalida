@@ -14,7 +14,8 @@
 --  cronômetro, id, folha, impressos iniciais ou liberados, imagem, resultado), A NÃO SER o número da porta, o horário de
 --  abertura (started_at) e a hora do servidor (server_now):
 --   - dupla_porta(área) → 1..5 (apoio novo, só por dentro);
---   - dupla_room_state: station, duration_ms, ends_at e paused_left_ms nulos, released_pressings vazio, e as chaves novas
+--   - dupla_room_state: station, duration_ms, ends_at e paused_left_ms nulos, released_pressings vazio, aviso "já viu esta
+--     estação" (me.seen_station e partner.seen_station) falso, também ao convidado pendente, e as chaves novas
 --     "station_ready" (a sala já tem estação, sem dizer qual) e "porta" (número da área da estação da rodada, para os dois
 --     membros; nulo sem estação: nunca há porta sem número). Ao convidado que AINDA NÃO ACEITOU (a sala do convite nasce em
 --     "setup" com ele dentro) nem a porta: "porta" nula e "station_ready" falso, porque o convite não mostra a porta (desenho §4);
@@ -111,6 +112,12 @@ begin
   v_me_seen := coalesce(public.dupla_room_seen(p_room, p_uid), false);
   -- O parceiro só conta quando ele é o candidato (o avaliador fica sabendo; para o candidato isto é sempre falso).
   v_partner_seen := coalesce(v_partner is not null and v_partner = p_room.candidate_id and public.dupla_room_seen(p_room, v_partner), false);
+  -- 014140 (DONO-2, rodada de correção 1): o aviso é tirado da própria estação; antes do início marcado ele não sai a quem não
+  -- é o ator, nem ao convidado pendente (falso = a tela não mostra). O ator continua recebendo o seu e o do parceiro.
+  if v_hide or v_convidado then
+    v_me_seen := false;
+    v_partner_seen := false;
+  end if;
 
   select greatest(0, least(extract(epoch from (now() - p.last_seen_at)) * 1000, 2147483647))::integer into v_seen
     from public.study_profiles p where p.user_id = v_partner;

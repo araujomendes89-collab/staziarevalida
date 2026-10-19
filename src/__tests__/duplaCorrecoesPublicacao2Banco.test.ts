@@ -1,7 +1,8 @@
 // @vitest-environment node
 /**
  * Publicação da 2ª fase (17/10), 2ª leva de correções: migração 013406, sobre o banco local (PGlite, migrações reais).
- *  1) o aviso "Você já viu esta estação" vale em QUALQUER sala (e nas avaliações como avaliador), sem dizer qual estação é;
+ *  1) o aviso "Você já viu esta estação" vale em QUALQUER sala (e nas avaliações como avaliador), sem dizer qual estação é
+ *     (fluxo simples, 014140: ao candidato só depois do início marcado; o avaliador fica sabendo antes);
  *  2) estação que voltou a pendente com aluno na sala: nada do conteúdo sai e a rodada volta aos papéis, sem nota;
  *  3) a exportação dos dados traz as tentativas do treino sozinho (station_attempts), com as colunas listadas;
  *  4) refeito pelo fluxo simples (014140): em connecting/setup o candidato não recebe nada da estação (a folha vem no início).
@@ -76,12 +77,17 @@ describe("Migração 013406: correções da revisão antes de publicar (2ª leva
     const s2 = await makeRoom(d.db, { members: [U.ana, U.bruno], phase: "roles", station: null, candidate: U.ana, evaluator: U.bruno });
     await act(U.bruno, "set_station", s2, { p_station_id: SECRETA.id });
     const a = await estado(U.ana, s2);
-    expect(a.me).toMatchObject({ role: "candidate", seen_station: true });
+    // fluxo simples (014140, rodada de correção 1): antes do início marcado o aviso não chega ao candidato (é tirado da estação)
+    expect(a.me).toMatchObject({ role: "candidate", seen_station: false });
     expect(a.station).toBeNull(); // fluxo simples (014140): antes de começar, nada da estação ao candidato (nem nome nem id)
     expect(vaza(a)).toEqual([]);
     expect(vaza(await conteudo(U.ana, s2))).toEqual([]);
     // o avaliador fica sabendo (para combinarem trocar)
     expect((await estado(U.bruno, s2)).partner).toMatchObject({ role: "candidate", seen_station: true });
+    // a estação começa (início no passado): agora o candidato recebe o aviso
+    await d.sql(`update public.checklist_rooms set phase = 'running', started_at = now() - interval '1 second', ends_at = now() + interval '10 minutes' where id = $1`, [s2]);
+    expect((await estado(U.ana, s2)).me).toMatchObject({ role: "candidate", seen_station: true });
+    await d.sql(`update public.checklist_rooms set phase = 'roles', started_at = null, ends_at = null where id = $1`, [s2]);
     // outra estação que a ana nunca viu: sem aviso
     await act(U.bruno, "set_station", s2, { p_station_id: OUTRA.id });
     expect((await estado(U.ana, s2)).me.seen_station).toBe(false);
@@ -101,8 +107,13 @@ describe("Migração 013406: correções da revisão antes de publicar (2ª leva
     const s3 = await makeRoom(d.db, { members: [U.bruno, U.ana], phase: "roles", station: null, candidate: U.bruno, evaluator: U.ana });
     await act(U.ana, "set_station", s3, { p_station_id: SECRETA.id });
     const b = await estado(U.bruno, s3);
-    expect(b.me).toMatchObject({ role: "candidate", seen_station: true });
+    // fluxo simples (014140, rodada de correção 1): antes do início marcado, falso ao candidato; o avaliador fica sabendo
+    expect(b.me).toMatchObject({ role: "candidate", seen_station: false });
     expect(vaza(b)).toEqual([]);
+    expect((await estado(U.ana, s3)).partner).toMatchObject({ role: "candidate", seen_station: true });
+    expect((await estado(U.diego, s2)).partner.seen_station).toBe(false); // a carla nunca viu
+    await d.sql(`update public.checklist_rooms set phase = 'running', started_at = now() - interval '1 second', ends_at = now() + interval '10 minutes' where id = $1`, [s3]);
+    expect((await estado(U.bruno, s3)).me).toMatchObject({ role: "candidate", seen_station: true });
   });
 
   it("1: avaliação em que a pessoa foi a avaliadora (actor_id), mesmo sem linha de 'quem já viu' (app antigo), acende o aviso", async () => {
@@ -112,8 +123,10 @@ describe("Migração 013406: correções da revisão antes de publicar (2ª leva
     const s = await makeRoom(d.db, { members: [U.diego, U.ana], phase: "roles", station: null, candidate: U.diego, evaluator: U.ana });
     await act(U.ana, "set_station", s, { p_station_id: SECRETA.id });
     const dg = await estado(U.diego, s);
-    expect(dg.me).toMatchObject({ role: "candidate", seen_station: true });
+    // fluxo simples (014140, rodada de correção 1): antes do início marcado, falso ao candidato; a avaliadora fica sabendo
+    expect(dg.me).toMatchObject({ role: "candidate", seen_station: false });
     expect(vaza(dg)).toEqual([]);
+    expect((await estado(U.ana, s)).partner).toMatchObject({ role: "candidate", seen_station: true });
     // a exportação da sala nova continua sem o tema para ele (o aviso diz "já viu", a exportação não diz qual)
     const exp = (await d.rpc<any>(U.diego, "dupla_export_rooms")).find((r: any) => r.id === s);
     expect(exp).not.toHaveProperty("station_id");
