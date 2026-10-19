@@ -6,10 +6,11 @@
  * Tudo é dado de TESTE com marcas fáceis de procurar no texto bruto.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { addSession, addStation, makeRoom, openDuplaDb, setDupla, setPlan, STATION, stationAssets, U, type DuplaDb } from "./helpers/duplaDb";
+import { addSession, addStation, caminhoImpresso, makeRoom, openDuplaDb, setDupla, setPlan, STATION, stationAssets, U, type DuplaDb } from "./helpers/duplaDb";
 
 const tem = (x: unknown, marca: string) => JSON.stringify(x).includes(marca);
 const ASSET = "11111111-1111-4111-8111-111111111111";
+const MONITOR = caminhoImpresso("monitor");
 
 // Estação do tipo 2025-1/08: relato na folha, monitor e bandeja "em cima da maca" (visíveis desde o início), exame liberável.
 const MACA = {
@@ -41,7 +42,7 @@ describe("Migração 013560 (2ª leva de decisões do dono, 17/10)", () => {
     d = await openDuplaDb();
     await setDupla(d.db, { aberto: true, planos: ["pro", "elite"] });
     for (const u of [U.ana, U.bruno]) await setPlan(d.db, u, "pro", "active");
-    await stationAssets(d.db, [{ id: ASSET, storage_path: "teste/monitor.png" }]);
+    await stationAssets(d.db, [{ id: ASSET, storage_path: MONITOR }]);
     await addStation(d.db, MACA);
     await addStation(d.db, SEM_NOTA);
   }, 240_000);
@@ -138,11 +139,11 @@ describe("Migração 013560 (2ª leva de decisões do dono, 17/10)", () => {
 
     it("imagem: o candidato abre o impresso visível pela chave de tela v1; o liberável sem liberar e a chave 'd' errada seguem barrados", async () => {
       const id = await sala("running");
-      expect(await d.rpc(U.ana, "app_dupla_print_path", { p_room_id: id, p_pressing_id: "v1" })).toBe("teste/monitor.png");
+      expect(await d.rpc(U.ana, "app_dupla_print_path", { p_room_id: id, p_pressing_id: "v1" })).toBe(MONITOR);
       await expect(d.rpc(U.ana, "app_dupla_print_path", { p_room_id: id, p_pressing_id: "d2" })).rejects.toThrow(/não liberado/);
       await expect(d.rpc(U.ana, "app_dupla_print_path", { p_room_id: id, p_pressing_id: "d1" })).rejects.toThrow(/não liberado/);
       // o avaliador abre pelo id verdadeiro
-      expect(await d.rpc(U.bruno, "app_dupla_print_path", { p_room_id: id, p_pressing_id: "m-p2" })).toBe("teste/monitor.png");
+      expect(await d.rpc(U.bruno, "app_dupla_print_path", { p_room_id: id, p_pressing_id: "m-p2" })).toBe(MONITOR);
     });
 
     it("estação só com relato e liberáveis: tudo como antes (i1 e d1, d2)", async () => {

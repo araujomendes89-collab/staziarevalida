@@ -17,7 +17,7 @@ import {
 } from "../../server/dupla/soloEval";
 import { validate } from "../../server/contentHub/ai/schema";
 import { aceitarTermos } from "./helpers/aceites";
-import { addProfile, addStation, openDuplaDb, setDupla, setPlan, stationAssets, STATION, U, type DuplaDb } from "./helpers/duplaDb";
+import { addProfile, addStation, caminhoImpresso, openDuplaDb, setDupla, setPlan, stationAssets, STATION, U, type DuplaDb } from "./helpers/duplaDb";
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -263,7 +263,7 @@ describe("avaliação por IA do treino sozinho (rota, maestro simulado e banco)"
   beforeAll(async () => {
     d = await openDuplaDb();
     await addStation(d.db, ST);
-    await stationAssets(d.db, [{ id: "11111111-1111-4111-8111-111111111111", storage_path: "teste/p2.png" }]);
+    await stationAssets(d.db, [{ id: "11111111-1111-4111-8111-111111111111", storage_path: caminhoImpresso("p2") }]);
     for (const u of [U.ana, U.bruno]) await aceitarTermos(d.db, u);
     await addProfile(d.db, U.ana, { public_name: "Ana Souza da Silva" });
     db = {

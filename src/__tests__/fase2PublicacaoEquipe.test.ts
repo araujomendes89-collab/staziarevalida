@@ -109,7 +109,8 @@ describe("2ª fase só para a equipe, com uma estação carregada", () => {
     expect(content._montagem).toBeUndefined();
     expect(content.difficulty).toBeUndefined();
     expect(content.pressings.every((p: any) => p.image_url === null)).toBe(true);
-    expect(content.version).toMatch(/^inep2025-1-e07@[0-9a-f]{12}$/);
+    // sem o id da estação: a sala entrega "version" ao candidato (correção de 18/10, ramo fase2-imagens)
+    expect(content.version).toMatch(/^m-[0-9a-f]{12}$/);
     expect(content.pressing_assets).toBeUndefined();
     const dif = await d.sql(`select 1 from public.checklist_station_difficulty where station_id = 'inep2025-1-e07'`);
     expect(dif).toHaveLength(0);

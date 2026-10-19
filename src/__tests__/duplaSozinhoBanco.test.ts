@@ -8,9 +8,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { aceitarTermos } from "./helpers/aceites";
-import { addProfile, addSession, addStation, makeRoom, MIGRATIONS_DIR, openDuplaDb, setDupla, setPlan, stationAssets, STATION, U, type DuplaDb } from "./helpers/duplaDb";
+import { addProfile, addSession, addStation, caminhoImpresso, makeRoom, MIGRATIONS_DIR, openDuplaDb, setDupla, setPlan, stationAssets, STATION, U, type DuplaDb } from "./helpers/duplaDb";
 
 const ASSET = "11111111-1111-4111-8111-111111111111";
+// Caminho opaco de teste (a 014200 só aceita dupla/impressos/<sha256>.<ext>).
+const P2 = caminhoImpresso("p2");
 const ST = { ...STATION, pressing_assets: { p2: { asset_id: ASSET } } };
 const TEXTO_BOM = "Eu me apresento ao paciente, pergunto a queixa, os sintomas, o tempo de evolução e as doenças anteriores. Examino o abdome e peço o hemograma. Explico a hipótese e oriento o retorno.";
 const RESPOSTAS = [{ task: 1, text: TEXTO_BOM }, { task: 2, text: "Peço hemograma e radiografia de tórax." }];
@@ -32,7 +34,7 @@ describe("Treino sozinho no banco (014090 a 014120)", () => {
   beforeAll(async () => {
     d = await openDuplaDb();
     await addStation(d.db, ST);
-    await stationAssets(d.db, [{ id: ASSET, storage_path: "teste/p2.png" }]);
+    await stationAssets(d.db, [{ id: ASSET, storage_path: P2 }]);
     for (const u of [U.ana, U.bruno]) await aceitarTermos(d.db, u);
   }, 240_000);
   afterAll(async () => {
@@ -265,7 +267,7 @@ describe("Treino sozinho no banco (014090 a 014120)", () => {
       expect(pl.pressings[1]).toMatchObject({ id: "p2", opened: false });
       expect(pl.pressings[1].content).toBeNull();
       await rpc(U.admin, "app_fase2_open_pressing", { p_attempt_id: id, p_pressing_id: "p2" });
-      expect(await rpc(U.admin, "app_fase2_print_path", { p_attempt_id: id, p_pressing_id: "p2" })).toBe("teste/p2.png");
+      expect(await rpc(U.admin, "app_fase2_print_path", { p_attempt_id: id, p_pressing_id: "p2" })).toBe(P2);
       expect(await rpc(U.admin, "app_fase2_print_path", { p_attempt_id: id, p_pressing_id: "p1" })).toBeNull(); // aberto, mas sem imagem
     });
 

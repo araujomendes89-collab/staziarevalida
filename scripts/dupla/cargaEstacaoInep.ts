@@ -16,7 +16,9 @@
  * com três diferenças: sai o bloco interno "_montagem" e os campos de dificuldade (o grau é definido pelo revisor médico na
  * tela, 013410); image_url dos impressos vira nulo (era o caminho do arquivo no Mac; a imagem só entra pelo depósito e pela
  * tabela station_assets, que ainda não existe em produção: sem ela o impresso aparece em TEXTO, que é a transcrição conferida);
- * "version" passa a ser o código do arquivo (sha256 curto), para saber qual conteúdo foi avaliado.
+ * "version" passa a ser o código do arquivo (sha256 curto), para saber qual conteúdo foi avaliado. SEM o id da estação
+ * (correção de 18/10, ramo fase2-imagens): a sala entrega "version" também ao CANDIDATO (app_dupla_room_content), e o id
+ * (ex.: inep2025-1-e07) diria a prova e o número da estação, ou seja, o tema.
  * conduct_notes ("o que mudou desde a prova") entram só se o estacao-app.json as tiver; nada é escrito aqui.
  */
 import { createHash } from "node:crypto";
@@ -45,7 +47,7 @@ export function buildCargaEstacao(estacaoAppJson: string, aprovacaoDono: string)
   if (raw?._montagem?.pep_situacao && raw._montagem.pep_situacao !== "DEFINITIVO") {
     throw new Error("PEP preliminar: esta carga só aceita estação com PEP definitivo.");
   }
-  const version = `${raw.id}@${createHash("sha256").update(estacaoAppJson).digest("hex").slice(0, 12)}`;
+  const version = `m-${createHash("sha256").update(estacaoAppJson).digest("hex").slice(0, 12)}`;
   const [station] = loadStations([{ ...raw, medical_review: "pending", pressings: (raw.pressings ?? []).map((p: any) => ({ ...p, image_url: null })) }]);
   const conduct = Array.isArray(raw.conduct_notes) && raw.conduct_notes.length ? { conduct_notes: raw.conduct_notes } : {};
   const content = { ...station, version, ...conduct };

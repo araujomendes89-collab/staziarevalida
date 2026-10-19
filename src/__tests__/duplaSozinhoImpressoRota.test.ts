@@ -12,7 +12,7 @@ import path from "path";
 import type { Server } from "http";
 import { localStorageDir, type ContentDb, type Identity, type Storage } from "../../server/contentHub/infra";
 import { createDuplaRouter } from "../../server/dupla/router";
-import { addStation, openDuplaDb, stationAssets, STATION, U, type DuplaDb } from "./helpers/duplaDb";
+import { addStation, caminhoImpresso, openDuplaDb, stationAssets, STATION, U, type DuplaDb } from "./helpers/duplaDb";
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -162,11 +162,12 @@ describe("Impresso do treino sozinho com o banco de verdade", () => {
   let url = "";
   let server: Server;
   const ASSET = "11111111-1111-4111-8111-111111111111";
+  const P2 = caminhoImpresso("p2"); // caminho opaco (014200)
 
   beforeAll(async () => {
     d = await openDuplaDb();
     await addStation(d.db, { ...STATION, pressing_assets: { p2: { asset_id: ASSET } } });
-    await stationAssets(d.db, [{ id: ASSET, storage_path: "teste/p2.png" }]);
+    await stationAssets(d.db, [{ id: ASSET, storage_path: P2 }]);
     real = {
       mode: "dev",
       async service() {
@@ -200,7 +201,7 @@ describe("Impresso do treino sozinho com o banco de verdade", () => {
     const rota = (pressing: string, token = "tok-admin") => get(`${url}/solo/${p.attempt_id}/prints/${pressing}/link`, token);
     expect(await rota("p2")).toMatchObject({ status: 403, body: { error: "Impresso não liberado." } });
     await d.rpc(U.admin, "app_fase2_open_pressing", { p_attempt_id: p.attempt_id, p_pressing_id: "p2" });
-    expect(await rota("p2")).toMatchObject({ status: 200, body: { url: "https://deposito.test/teste/p2.png?expira=600" } });
+    expect(await rota("p2")).toMatchObject({ status: 200, body: { url: `https://deposito.test/${P2}?expira=600` } });
     await d.rpc(U.admin, "app_fase2_open_pressing", { p_attempt_id: p.attempt_id, p_pressing_id: "p1" });
     expect(await rota("p1")).toMatchObject({ status: 404, body: { error: "Impresso sem imagem." } });
     expect((await rota("p2", "tok-ana")).status).toBe(403); // a aluna não entra no treino da equipe
