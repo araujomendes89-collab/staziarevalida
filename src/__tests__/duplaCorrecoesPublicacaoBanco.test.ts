@@ -71,9 +71,14 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
    * Fluxo simples (014150): escolher papéis ou a estação leva a sala à preparação e quem trouxe a estação e vira candidato fica
    * sem ela. Os achados abaixo (aviso "já viu", 013405) trocam os papéis com a estação já escolhida, o que só acontece em sala
    * antiga, ainda nos papéis: isto devolve a sala aos papéis, sem "quem escolheu" (a troca não limpa a estação; a regra nova é
-   * testada em duplaFluxoSimplesBanco).
+   * testada em duplaFluxoSimplesBanco). Correção 1 da revisão da 014150: "quem trouxe" também é lido da lista de quem já viu
+   * (how = 'escolheu', o caso dos dois escolherem a mesma estação no match); por isso aqui quem escolheu passa a constar só
+   * como quem viu ('avaliador'). O aviso "já viu" não olha o how: continua igual.
    */
-  const salaAntiga = (id: string) => d.sql(`update public.checklist_rooms set phase = 'roles', station_chosen_by = null where id = $1`, [id]);
+  const salaAntiga = async (id: string) => {
+    await d.sql(`update public.checklist_rooms set phase = 'roles', station_chosen_by = null where id = $1`, [id]);
+    await d.sql(`update public.checklist_room_station_views set how = 'avaliador' where room_id = $1 and how = 'escolheu'`, [id]);
+  };
 
   // ------------------------------------------------------------------ achado 1 (bloqueia)
   it("achado 1: a candidata vira avaliadora (cartão), vê o nome e volta a candidata → recebe o aviso; o avaliador também sabe", async () => {

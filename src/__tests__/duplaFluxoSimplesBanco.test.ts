@@ -483,6 +483,55 @@ describe("Fluxo simples do Treino em Dupla (014130–014150)", () => {
     expect(await linha(n.room_id)).toMatchObject({ candidate_id: U.ana, evaluator_id: U.bruno, station_id: SECRETA.id, station_chosen_by: U.bruno });
   });
 
+  it("match: os dois escolheram a mesma estação no baralho → a sala nasce sem estação (a candidata também a trouxe); só o futuro ator escolheu → fica", async () => {
+    await d.sql(`update public.study_profiles set role_pref = 'ator' where user_id = $1`, [U.bruno]); // Ana 'med', Bruno 'ator'
+    const limpar = async () => {
+      await d.sql(`delete from public.checklist_rooms`);
+      await d.sql(`delete from public.study_matches`);
+      await d.sql(`delete from public.study_swipes`);
+    };
+    // Ana escolhe a SECRETA e o ator Bruno completa com a SECRETA
+    await d.rpc(U.ana, "app_dupla_swipe", { p_to: U.bruno, p_direction: "right", p_station_id: SECRETA.id });
+    const m = await d.rpc<any>(U.bruno, "app_dupla_swipe", { p_to: U.ana, p_direction: "right", p_station_id: SECRETA.id });
+    expect(m.matched).toBe(true);
+    expect(await linha(m.room_id)).toMatchObject({ candidate_id: U.ana, evaluator_id: U.bruno, station_id: null, station_chosen_by: null, duration_ms: null });
+    expect((await d.sql<any>(`select station_id from public.study_matches where id = (select match_id from public.checklist_rooms where id = $1)`, [m.room_id]))[0].station_id).toBeNull();
+    // ao contrário: o ator Bruno escolhe primeiro e a candidata Ana completa com a mesma
+    await limpar();
+    await d.rpc(U.bruno, "app_dupla_swipe", { p_to: U.ana, p_direction: "right", p_station_id: SECRETA.id });
+    const n = await d.rpc<any>(U.ana, "app_dupla_swipe", { p_to: U.bruno, p_direction: "right", p_station_id: SECRETA.id });
+    expect(await linha(n.room_id)).toMatchObject({ candidate_id: U.ana, evaluator_id: U.bruno, station_id: null, station_chosen_by: null });
+    // sem regressão: só o futuro ator escolheu (a candidata não trouxe estação) → a estação fica
+    await limpar();
+    await d.rpc(U.bruno, "app_dupla_swipe", { p_to: U.ana, p_direction: "right", p_station_id: SECRETA.id });
+    const o = await d.rpc<any>(U.ana, "app_dupla_swipe", { p_to: U.bruno, p_direction: "right" });
+    expect(await linha(o.room_id)).toMatchObject({ candidate_id: U.ana, evaluator_id: U.bruno, station_id: SECRETA.id, station_chosen_by: U.bruno });
+  });
+
+  it("papéis escolhidos ou sorteados na sala depois de um match em que os dois escolheram a mesma estação: quem vira candidato também a trouxe → a estação é limpa", async () => {
+    await d.sql(`update public.study_profiles set role_pref = 'any' where user_id = any ($1::uuid[])`, [[U.ana, U.bruno]]);
+    const formar = async () => {
+      await d.sql(`delete from public.checklist_rooms`);
+      await d.sql(`delete from public.study_matches`);
+      await d.sql(`delete from public.study_swipes`);
+      await d.rpc(U.bruno, "app_dupla_swipe", { p_to: U.ana, p_direction: "right", p_station_id: SECRETA.id });
+      const m = await d.rpc<any>(U.ana, "app_dupla_swipe", { p_to: U.bruno, p_direction: "right", p_station_id: SECRETA.id });
+      // papéis não decididos: a sala nasce nos papéis com a estação de Ana (quem completou); Bruno também a escolheu
+      expect(await linha(m.room_id)).toMatchObject({ phase: "roles", candidate_id: null, station_id: SECRETA.id, station_chosen_by: U.ana });
+      return m.room_id as string;
+    };
+    // Bruno (que não ficou gravado como quem escolheu, mas também escolheu) vira candidato: limpa
+    const a = await formar();
+    await act(U.ana, "set_roles", a, { p_candidate_id: U.bruno });
+    expect(await linha(a)).toMatchObject({ phase: "setup", candidate_id: U.bruno, evaluator_id: U.ana, station_id: null, station_chosen_by: null, duration_ms: null });
+    // sorteio: seja quem for o candidato, ele trouxe a estação → sempre limpa
+    for (let i = 0; i < 4; i++) {
+      const b = await formar();
+      await act(U.bruno, "draw_roles", b);
+      expect(await linha(b)).toMatchObject({ phase: "setup", station_id: null, station_chosen_by: null, duration_ms: null });
+    }
+  });
+
   it("papéis escolhidos na sala: se quem trouxe a estação vira candidato, a estação é limpa; se vira ator, fica", async () => {
     const a = await makeRoom(d.db, { members: [U.ana, U.bruno], phase: "roles", station: SECRETA.id, extra: { station_chosen_by: U.ana } });
     await act(U.bruno, "set_roles", a, { p_candidate_id: U.ana });
@@ -534,10 +583,11 @@ describe("Fluxo simples do Treino em Dupla (014130–014150)", () => {
         has_function_privilege('authenticated', 'public.app_dupla_next_station(uuid, text)', 'execute') as next_auth,
         has_function_privilege('authenticated', 'public.dupla_invite_accepted_setup()', 'execute') as gatilho_auth,
         has_function_privilege('anon', 'public.dupla_invite_accepted_setup()', 'execute') as gatilho_anon,
+        has_function_privilege('authenticated', 'public.dupla_room_trouxe(public.checklist_rooms, uuid)', 'execute') as trouxe_auth,
         to_regprocedure('public.app_dupla_next_station(uuid)') is null as antiga_sumiu`);
     expect(p).toEqual({
       start_anon: false, next_anon: false, roles_anon: false, draw_anon: false, station_anon: false, swipe_anon: false,
-      finish_anon: false, finalize_anon: false, next_auth: true, gatilho_auth: false, gatilho_anon: false, antiga_sumiu: true,
+      finish_anon: false, finalize_anon: false, next_auth: true, gatilho_auth: false, gatilho_anon: false, trouxe_auth: false, antiga_sumiu: true,
     });
     // só equipe: com a chave desligada, o porteiro recusa antes de qualquer regra nova
     const sala = await makeRoom(d.db, { members: [U.ana, U.bruno], phase: "setup", candidate: U.bruno, evaluator: U.ana, station: SECRETA.id });

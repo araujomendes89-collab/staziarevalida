@@ -14,9 +14,11 @@
 --     Durante esses 2 s o candidato não recebe nada da estação (DONO-2: regra da 014140, now() < started_at).
 --  2) app_dupla_set_roles / app_dupla_draw_roles: definidos os papéis, a sala vai DIRETO a "setup" (sem "connecting", "pronto"
 --     e "confirmar"). O sorteio é de PAPÉIS (não existe sortear estação). Se quem trouxe a estação (station_chosen_by) virar o
---     candidato, a estação é limpa (dono, 19/10: ele já conhece o tema) e o ator escolhe outra.
+--     candidato, a estação é limpa (dono, 19/10: ele já conhece o tema) e o ator escolhe outra. Correção 1 da revisão: "quem
+--     trouxe" inclui quem também escolheu a MESMA estação no baralho (dupla_room_trouxe, nova, só por dentro).
 --  2b) app_dupla_swipe (match): perfil, baralho, compatibilidade e dupla_assign iguais à 014050; a única mudança é a mesma
---     regra: se quem trouxe a estação virar o candidato, a sala nasce sem estação.
+--     regra: se quem trouxe a estação virar o candidato, a sala nasce sem estação. Correção 1 da revisão: vale também quando os
+--     dois escolheram a mesma estação no baralho (a candidata também a trouxe).
 --  3) app_dupla_set_station: só o avaliador, em "roles" (com os papéis definidos: estação que caiu, 013406) ou em "setup"; a sala
 --     fica em "setup". Mesmas regras de estação (dupla_station_liberada, já treinada na sala, Pro/Elite).
 --  4) app_dupla_next_station(p_room_id, p_papel): 'mesmo' (padrão) ou 'trocar'. A rodada seguinte nasce em "setup", com os
@@ -36,7 +38,8 @@
 --   app_dupla_set_roles(uuid, uuid) e app_dupla_draw_roles(uuid) ← 013350 (322-364); app_dupla_set_station(uuid, text) ← 013405
 --   (266-303); app_dupla_finish(uuid) e app_dupla_finalize(uuid, jsonb) ← 013350 (695-714 e 719-807).
 --   Apagada: app_dupla_next_station(uuid) (014050, 132-162);
---   nova: app_dupla_next_station(uuid, text). Novas: dupla_invite_accepted_setup() e o gatilho study_invites_accepted_setup.
+--   nova: app_dupla_next_station(uuid, text). Novas: dupla_invite_accepted_setup(), o gatilho study_invites_accepted_setup e
+--   dupla_room_trouxe(checklist_rooms, uuid) (correção 1).
 --
 -- COMO DESFAZER: supabase/desfazer/20261003014150_treino_dupla_fluxo_sala.desfazer.sql (apaga o gatilho e as funções novas,
 --   volta as refeitas e recria app_dupla_next_station(uuid) da 014050).
@@ -45,25 +48,39 @@
 drop function if exists public.app_dupla_next_station(uuid);
 
 -- ---------------------------------------------------------------- 2) papéis → preparação (base: 013350)
+-- A pessoa trouxe a estação ATUAL da sala? station_chosen_by guarda só um; quando os dois escolheram a MESMA estação no
+-- baralho (match sem papéis decididos), o outro fica gravado como 'escolheu' em checklist_room_station_views (app_dupla_swipe).
+-- Correção 1 da revisão da 014150: nos dois casos quem virar candidato fica sem a estação.
+create or replace function public.dupla_room_trouxe(p_room public.checklist_rooms, p_uid uuid) returns boolean
+  language sql stable security definer set search_path = ''
+as $$
+  select p_room.station_id is not null and p_uid is not null and (
+    p_room.station_chosen_by = p_uid
+    or exists (select 1 from public.checklist_room_station_views v
+                where v.room_id = p_room.id and v.station_id = p_room.station_id and v.user_id = p_uid and v.how = 'escolheu'))
+$$;
+
 create or replace function public.app_dupla_set_roles(p_room_id uuid, p_candidate_id uuid) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
   v_uid uuid := public.dupla_assert_access();
   r public.checklist_rooms;
+  v_limpa boolean;
 begin
   select * into r from public.dupla_room_for_action(p_room_id, v_uid);
   perform public.dupla_room_need(r, v_uid, array['roles'], false);
   if p_candidate_id is null or not (p_candidate_id = any (r.member_ids)) then
     raise exception 'Escolha inválida.' using errcode = '22023';
   end if;
+  -- quem trouxe a estação e virou candidato fica sem ela (já conhece o tema): o ator escolhe outra
+  v_limpa := public.dupla_room_trouxe(r, p_candidate_id);
   update public.checklist_rooms
      set candidate_id = p_candidate_id,
          evaluator_id = (select x from unnest(r.member_ids) x where x <> p_candidate_id limit 1),
-         -- quem trouxe a estação e virou candidato fica sem ela (já conhece o tema): o ator escolhe outra
-         station_id = case when r.station_chosen_by = p_candidate_id then null else station_id end,
-         duration_ms = case when r.station_chosen_by = p_candidate_id then null else duration_ms end,
-         station_chosen_by = case when r.station_chosen_by = p_candidate_id then null else station_chosen_by end,
+         station_id = case when v_limpa then null else station_id end,
+         duration_ms = case when v_limpa then null else duration_ms end,
+         station_chosen_by = case when v_limpa then null else station_chosen_by end,
          phase = 'setup', confirmed_ids = '{}', connected_ids = '{}', ready_ids = '{}',
          rev = rev + 1, updated_by = v_uid
    where id = r.id
@@ -79,16 +96,18 @@ declare
   v_uid uuid := public.dupla_assert_access();
   r public.checklist_rooms;
   v_cand uuid;
+  v_limpa boolean;
 begin
   select * into r from public.dupla_room_for_action(p_room_id, v_uid);
   perform public.dupla_room_need(r, v_uid, array['roles'], false);
   v_cand := r.member_ids[1 + floor(random() * 2)::integer];
+  v_limpa := public.dupla_room_trouxe(r, v_cand);
   update public.checklist_rooms
      set candidate_id = v_cand,
          evaluator_id = (select x from unnest(r.member_ids) x where x <> v_cand limit 1),
-         station_id = case when r.station_chosen_by = v_cand then null else station_id end,
-         duration_ms = case when r.station_chosen_by = v_cand then null else duration_ms end,
-         station_chosen_by = case when r.station_chosen_by = v_cand then null else station_chosen_by end,
+         station_id = case when v_limpa then null else station_id end,
+         duration_ms = case when v_limpa then null else duration_ms end,
+         station_chosen_by = case when v_limpa then null else station_chosen_by end,
          phase = 'setup', confirmed_ids = '{}', connected_ids = '{}', ready_ids = '{}',
          rev = rev + 1, updated_by = v_uid
    where id = r.id
@@ -366,8 +385,12 @@ begin
     v_cand := p_to; v_eval := v_uid;
   end if;
   -- 014150 (dono, 19/10): quem trouxe a estação e virou candidato não fica com ela (já conhece o tema); o ator escolhe outra na
-  -- sala. Papéis e o resto do match não mudam.
-  if v_station is not null and v_chooser is not null and v_chooser = v_cand then
+  -- sala. Papéis e o resto do match não mudam. Vale também quando os dois escolheram a MESMA estação no baralho (correção 1 da
+  -- revisão): v_chooser guarda só um, mas o candidato também a trouxe.
+  if v_station is not null and v_cand is not null
+     and (v_chooser = v_cand
+          or (v_cand = v_uid and p_station_id = v_station)
+          or (v_cand = p_to and v_theirs.station_id = v_station)) then
     v_station := null; v_chooser := null; v_dur := null;
   end if;
 
@@ -533,3 +556,4 @@ revoke execute on function public.app_dupla_next_station(uuid, text) from public
 revoke execute on function public.app_dupla_finish(uuid) from public, anon;
 revoke execute on function public.app_dupla_finalize(uuid, jsonb) from public, anon;
 revoke execute on function public.dupla_invite_accepted_setup() from public, anon, authenticated;
+revoke execute on function public.dupla_room_trouxe(public.checklist_rooms, uuid) from public, anon, authenticated;
