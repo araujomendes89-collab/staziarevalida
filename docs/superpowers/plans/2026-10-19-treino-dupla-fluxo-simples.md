@@ -84,16 +84,14 @@ export TMPDIR=/Volumes/StaziaMed/.tmp-aulas/tmp-correcoes
   - `app_dupla_radar(p_station_id text default null, p_aba text default 'online')` aceita só `'online'` e `'perto'`.
   - Teste: `recolarFluxoSimples(db: PGlite): Promise<void>` em `helpers/duplaDb.ts`.
 
-- [ ] **Step 1: Registrar os números**
+- [ ] **Step 1: Conferir o registro dos números**
 
-Em `/Volumes/StaziaMed/.tmp-aulas/NUMEROS-MIGRACAO.md`, troque a linha `| 014130–014199 | fase2-etapa2: folga da etapa 2 | reservado (ramo fase2-etapa2) |` por:
+Os números já foram registrados ao escrever este plano (19/10). Confira antes de começar (ninguém pode ter usado):
 
-```markdown
-| 014130 | fase2-etapa2, fluxo simples (desenho 19/10): convite direto com papéis fixos (quem convida é o ator) e estação obrigatória, sala nasce em setup; convite e pedido sem dados da estação; radar só "online" e "perto" | reservado (ramo fase2-etapa2; NÃO aplicada em produção) |
-| 014140 | fase2-etapa2, fluxo simples: sigilo — estado e conteúdo da sala sem nada da estação para quem não é o ator antes de running | reservado (ramo fase2-etapa2; NÃO aplicada em produção) |
-| 014150 | fase2-etapa2, fluxo simples: início por um toque do ator, papéis → setup, estação em setup, nova rodada mesmo/trocar, aceite do match → setup | reservado (ramo fase2-etapa2; NÃO aplicada em produção) |
-| 014160–014199 | fase2-etapa2: folga da etapa 2 | reservado (ramo fase2-etapa2) |
+```bash
+grep -n "| 01413\|| 01414\|| 01415\|| 014160" /Volumes/StaziaMed/.tmp-aulas/NUMEROS-MIGRACAO.md && ls "$W/supabase/migrations" | grep -E "^2026100301(413|414|415)"
 ```
+Esperado: as linhas de 014130, 014140, 014150 ("fluxo simples", ramo fase2-etapa2) e de 014160–014199 (folga); nenhum arquivo de migração com esses números ainda. Se outro ramo tiver tomado um deles, pare e avise o dono.
 
 - [ ] **Step 2: Escrever o teste que falha**
 
