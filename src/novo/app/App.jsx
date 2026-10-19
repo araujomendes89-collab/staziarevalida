@@ -28,6 +28,8 @@ import { Fase2Player } from "./fase2/Fase2Player.jsx";
 import { Fase2Peps } from "./fase2/Fase2Peps.jsx";
 import { Fase2Patient } from "./fase2/Fase2Patient.jsx";
 import { Fase2Performance } from "./fase2/Fase2Performance.jsx";
+// 2ª fase no celular e no tablet (19/10): alvos de toque de 44 px só nas telas da 2ª fase (main com data-fase="2").
+import "./fase2/toque.css";
 // Treino em Dupla (Praticar, perfil de estudo, banco de estações da dupla e sala)
 import { DuplaGate, duplaAllowed } from "./dupla/DuplaGate.jsx";
 import { StationsScreen } from "./dupla/StationsScreen.jsx";

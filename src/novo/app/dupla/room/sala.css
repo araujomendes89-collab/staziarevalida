@@ -41,3 +41,33 @@
 .dupla-time__value{min-width:96px;text-align:center;font:600 28px/1 var(--font-mono);font-variant-numeric:tabular-nums;color:var(--text-primary)}
 .dupla-time__note{margin:0;font:var(--text-xs)/1.45 var(--font-sans);color:var(--text-secondary)}
 @media (max-width:900px){.dupla-foot{padding:10px 16px calc(10px + env(safe-area-inset-bottom, 0px))}}
+
+/* Tabela de critérios do resultado: três colunas; no celular o critério ocupa a linha inteira (antes ficava com ~50 px e uma
+   palavra por linha) e o resultado e os pontos vão logo abaixo. */
+.dupla-res__row{display:grid;grid-template-columns:minmax(0,1fr) 120px 96px;gap:12px}
+@media (max-width:600px){
+  .dupla-res__row{grid-template-columns:minmax(0,1fr) auto;row-gap:6px}
+  .dupla-res__row > :first-child{grid-column:1 / -1}
+}
+
+/* Roteiro do ator: rótulo e texto lado a lado; no celular, o rótulo em cima do texto (a coluna do texto ficava estreita). */
+.dupla-roteiro{margin:0;display:grid;grid-template-columns:minmax(96px,120px) 1fr;row-gap:10px;column-gap:12px}
+@media (max-width:600px){
+  .dupla-roteiro{grid-template-columns:minmax(0,1fr);row-gap:2px}
+  .dupla-roteiro dd{margin-bottom:10px!important}
+}
+
+/* Celular e tablet (19/10): o rótulo "Cronômetro" sai (o botão do tempo já diz "Ajustar tempo, 10:00" ao leitor de tela) para o
+   rodapé caber em duas linhas: tempo e Sair em cima; ações embaixo, com a principal esticada até a borda (perto do polegar). */
+@media (max-width:900px){
+  .dupla-time__text{display:none}
+}
+@media (max-width:600px){
+  .dupla-aval{padding:16px}
+  .dupla-aval .sm-acc--icon .sm-acc__body{padding:4px 18px 18px}
+  .dupla-foot > .sm-btn:last-child{flex:1 1 auto}
+}
+
+/* Botões com sombra escrita no próprio elemento (filtro "Todos/Pendentes" e notas da conferência): a sombra apagava o anel de
+   foco do teclado. */
+.dupla-foco:focus-visible{outline:none;box-shadow:var(--focus-ring)!important}

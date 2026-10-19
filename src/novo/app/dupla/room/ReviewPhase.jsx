@@ -9,6 +9,7 @@ import { areaVars } from "../labels.js";
 import { maxScoreOf } from "../content.js";
 import { StationChip, firstName, pageStyle } from "./parts.jsx";
 import { feedbackKey, readDraft, writeDraft } from "./useRoom.js";
+import "./sala.css";
 
 // Cada nível: rótulo na lista, rótulo completo (leitor de tela) e a cor do tema de pontuação.
 const LEVELS = [
@@ -61,6 +62,7 @@ function Grader({ number, item, grade, onMark }) {
             key={level.grade}
             type="button"
             role="radio"
+            className="f2-toque dupla-foco"
             aria-checked={on}
             aria-label={`${level.full}, ${formatDecimal(points)} ponto(s)`}
             title={level.full}
@@ -81,8 +83,8 @@ function Grader({ number, item, grade, onMark }) {
               gap: 1,
             }}
           >
-            <span style={{ font: "700 11px var(--font-sans)" }}>{level.short}</span>
-            <span style={{ font: "600 11px var(--font-mono)" }}>{formatDecimal(points)}</span>
+            <span style={{ font: "700 12px var(--font-sans)" }}>{level.short}</span>
+            <span style={{ font: "600 12px var(--font-mono)" }}>{formatDecimal(points)}</span>
           </button>
         );
       })}
@@ -196,6 +198,7 @@ function Evaluation({ room, content, marks, actions }) {
                   key={id}
                   type="button"
                   role="radio"
+                  className="f2-toque dupla-foco"
                   aria-checked={filter === id}
                   onClick={() => setFilter(id)}
                   style={{

@@ -14,6 +14,7 @@ import { formatDecimal, formatDuration } from "../../../ds/format.js";
 import { areaVars } from "../labels.js";
 import { StationChip, pageStyle } from "./parts.jsx";
 import { feedbackKey, writeDraft } from "./useRoom.js";
+import "./sala.css";
 
 const GRADES = {
   correct: { text: "Adequado", color: "var(--score-full)" },
@@ -124,7 +125,6 @@ export function ResultPhase({ room, result, actions, askLeave, readOnly = false,
   const shown = filter === "lost" ? lostRows : rows;
   const feedback = result.feedback || {};
   const evaluator = result.evaluator?.public_name;
-  const rowGrid = { display: "grid", gridTemplateColumns: "minmax(0,1fr) 120px 96px", gap: 12 };
   const conductNotes = (Array.isArray(result.conduct_notes) ? result.conduct_notes : []).filter((n) => typeof n?.text === "string" && n.text.trim());
 
   return (
@@ -261,12 +261,12 @@ export function ResultPhase({ room, result, actions, askLeave, readOnly = false,
           <div role="table" aria-label="Critérios do PEP">
             <div
               role="row"
+              className="dupla-res__row"
               style={{
-                ...rowGrid,
                 padding: "10px 20px",
                 background: "var(--surface-subtle)",
                 borderBottom: "1px solid var(--border-subtle)",
-                font: "600 11px var(--font-sans)",
+                font: "600 12px var(--font-sans)",
                 letterSpacing: ".04em",
                 textTransform: "uppercase",
                 color: "var(--text-secondary)",
@@ -284,7 +284,7 @@ export function ResultPhase({ room, result, actions, askLeave, readOnly = false,
               </div>
             )}
             {shown.map(({ item, kind, got, lost }) => (
-              <div key={item.id} role="row" style={{ ...rowGrid, alignItems: "baseline", padding: "12px 20px", borderBottom: "1px solid var(--border-subtle)" }}>
+              <div key={item.id} role="row" className="dupla-res__row" style={{ alignItems: "baseline", padding: "12px 20px", borderBottom: "1px solid var(--border-subtle)" }}>
                 <span role="cell" style={{ font: "var(--type-body-sm)", lineHeight: 1.5, color: "var(--text-primary)", textWrap: "pretty" }}>
                   <span style={{ font: "500 var(--text-xs) var(--font-mono)", color: "var(--text-tertiary)", marginRight: 8 }}>{item.order}</span>
                   {item.content}

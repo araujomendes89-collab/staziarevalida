@@ -83,7 +83,7 @@ export function EvaluatorFooter({ room, remainingMs, actions, started, onLeave, 
       <div className="dupla-time" ref={boxRef}>
         <span className="dupla-time__label">
           <Icon name="timer" size={18} />
-          Cronômetro
+          <span className="dupla-time__text">Cronômetro</span>
         </span>
         <button
           ref={triggerRef}

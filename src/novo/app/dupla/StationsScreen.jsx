@@ -34,7 +34,7 @@ const CSS = `
 .dst__tab[aria-pressed="true"]:not([style]){color:var(--action-on-strong)}
 .dst__dot{width:8px;height:8px;border-radius:3px;background:var(--dst-solid)}
 .dst__tab[aria-pressed="true"] .dst__dot{background:var(--surface-card)}
-.dst__tab-n{font:600 11px var(--font-mono);opacity:.75}
+.dst__tab-n{font:600 12px var(--font-mono);opacity:.75}
 .dst__empty{padding:40px 24px;text-align:center;color:var(--text-secondary);background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-xl)}
 .dst__empty-t{margin:10px 0 4px;font:600 16px var(--font-sans);color:var(--text-primary)}
 .dst__empty-a{margin-top:14px}
@@ -47,11 +47,11 @@ const CSS = `
 .dst__row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;width:100%;padding:14px 18px;border:0;border-top:1px solid var(--border-subtle);box-shadow:inset 4px 0 0 var(--dst-solid);background:transparent;text-align:left;cursor:pointer;font:inherit;color:inherit}
 .dst__row:first-child{border-top:0}
 .dst__row:hover{background:var(--surface-subtle)}
-.dst__row-a{display:flex;align-items:center;gap:6px;font:700 11px var(--font-sans);letter-spacing:.04em;text-transform:uppercase;color:var(--dst-ink)}
+.dst__row-a{display:flex;align-items:center;gap:6px;font:700 12px var(--font-sans);letter-spacing:.04em;text-transform:uppercase;color:var(--dst-ink)}
 .dst__row-t{display:block;margin-top:3px;font:700 15px/1.35 var(--font-sans);color:var(--text-primary)}
 .dst__row-m{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:6px;font:600 12px var(--font-sans);color:var(--dst-ink)}
 .dst__row .osce-level{height:24px;background:var(--surface-subtle)}
-.dst__wait{display:inline-flex;align-items:center;height:22px;margin-left:8px;padding:0 8px;border-radius:var(--radius-pill);background:var(--warning-bg);border:1px solid var(--warning-border);color:var(--warning-text);font:700 10px var(--font-sans);letter-spacing:0;text-transform:none;white-space:nowrap}
+.dst__wait{display:inline-flex;align-items:center;height:22px;margin-left:8px;padding:0 8px;border-radius:var(--radius-pill);background:var(--warning-bg);border:1px solid var(--warning-border);color:var(--warning-text);font:700 12px var(--font-sans);letter-spacing:0;text-transform:none;white-space:nowrap}
 .dst__only{flex:none}
 .dst__row[data-waiting="true"]{cursor:not-allowed}
 .dst__row[data-waiting="true"]:hover{background:transparent}
@@ -60,11 +60,13 @@ const CSS = `
 .dst__hint[data-on="false"]{margin:0}
 .dst__scores{display:flex;gap:18px;align-items:center}
 .dst__score{text-align:right}
-.dst__k{display:block;font:600 10px var(--font-sans);letter-spacing:.05em;text-transform:uppercase;color:var(--text-tertiary)}
+.dst__k{display:block;font:600 12px var(--font-sans);letter-spacing:.05em;text-transform:uppercase;color:var(--text-tertiary)}
 .dst__v{font:600 15px var(--font-mono);color:var(--text-primary)}
 .dst__v--mine{color:var(--dst-ink)}
 .dst__v[data-empty="true"]{color:var(--text-tertiary)}
 @media (max-width:640px){
+  /* celular: a barra de busca e filtros não gruda no topo (grudada, ocupava ~300 px dos 844 da tela e sobrava pouco para a lista) */
+  .dst__bar{position:static}
   .dst__row{grid-template-columns:minmax(0,1fr);padding:14px 14px 14px 18px}
   .dst__scores{justify-content:flex-start}
   .dst__score{text-align:left}
