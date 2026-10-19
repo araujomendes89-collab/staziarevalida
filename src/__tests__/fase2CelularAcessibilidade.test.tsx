@@ -69,7 +69,7 @@ describe("Toque de 44 px nas telas da 2ª fase", () => {
     expect(read("src/novo/app/App.jsx")).toMatch(/import "\.\/fase2\/toque\.css";/);
   });
 
-  it("vale só com dedo ou tela estreita, só na 2ª fase (e nas janelas abertas sobre ela), e leva os controles a 44 px", () => {
+  it("vale só com dedo ou tela estreita, só na 2ª fase (casca, treino sozinho e janelas abertas sobre eles), e leva os controles a 44 px", () => {
     expect(toque).toMatch(/@media \(pointer: coarse\), \(max-width: 640px\)/);
     const semEscopo = toque
       .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -77,9 +77,10 @@ describe("Toque de 44 px nas telas da 2ª fase", () => {
       .filter((_, i) => i % 2 === 1) // seletores dentro do @media
       .flatMap((sel) => sel.split(","))
       .map((s) => s.trim())
-      .filter((s) => s && !s.startsWith("#conteudo[data-fase=\"2\"]") && !s.startsWith("body:has(#conteudo[data-fase=\"2\"])") && !s.startsWith("--") && !/^(min-|height|justify|align)/.test(s));
+      .filter((s) => s && !/^(#conteudo\[data-fase="2"\]|\.f2-player|body:has\(#conteudo\[data-fase="2"\])/.test(s) && !s.startsWith("--") && !/^(min-|height|justify|align)/.test(s));
     expect(semEscopo).toEqual([]);
     expect(toque).toMatch(/--control-sm: 44px;/);
+    expect(toque).toMatch(/\.f2-player,\s*body:has\(#conteudo\[data-fase="2"\], \.f2-player\) \.sm-dialog-overlay \{\s*--control-sm: 44px;/);
     for (const cls of [".sm-seg__opt", ".sm-chip", ".dst__tab", ".dupla-time__btn", ".f2-pep-radio", ".f2-toque", ".osce-print__toggle", ".f2-toque-q"]) {
       expect(toque, cls).toContain(cls);
     }
@@ -94,6 +95,7 @@ describe("Toque de 44 px nas telas da 2ª fase", () => {
     expect(match).toMatch(/className="f2-toque-q"\s+onClick=\{toggleSound\}/);
     expect(match).toMatch(/className="f2-toque"\s+onClick=\{handleClose\}/);
     expect(read("src/novo/app/dupla/room/StationPicker.jsx")).toMatch(/className="f2-toque"/);
+    expect(read("src/novo/app/dupla/room/CandidateSheet.jsx")).toMatch(/className="f2-toque"\s+aria-expanded=\{open\}/);
     expect(read("src/novo/app/dupla/room/ReviewPhase.jsx").match(/className="f2-toque dupla-foco"/g)?.length).toBe(2);
   });
 });

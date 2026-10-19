@@ -2,28 +2,33 @@
    Alvo de toque de pelo menos 44 px (recomendação da Apple e do WCAG 2.5.5) nas telas da 2ª fase: Início, Teoria, Banco de
    estações, Praticar (radar e match), Perfil de estudo, sala do Treino em Dupla, Meus PEPs, Desempenho, Paciente IA e treino
    sozinho. Vale só com dedo (pointer: coarse) ou em tela estreita; no computador com mouse nada muda.
-   Escopo: o <main id="conteudo" data-fase="2"> da casca e as janelas (portal no body) abertas enquanto ele está na tela.
-   Só tamanho; nenhuma cor nova. */
+   Escopo: o <main id="conteudo" data-fase="2"> da casca, o treino sozinho (.f2-player, tela cheia fora da casca) e as janelas
+   (portal no body) abertas sobre eles. Só tamanho; nenhuma cor nova. */
 @media (pointer: coarse), (max-width: 640px) {
   #conteudo[data-fase="2"],
-  body:has(#conteudo[data-fase="2"]) .sm-dialog-overlay {
+  .f2-player,
+  body:has(#conteudo[data-fase="2"], .f2-player) .sm-dialog-overlay {
     --control-sm: 44px;
   }
   #conteudo[data-fase="2"] .sm-seg__opt,
-  body:has(#conteudo[data-fase="2"]) .sm-dialog-overlay .sm-seg__opt {
+  .f2-player .sm-seg__opt,
+  body:has(#conteudo[data-fase="2"], .f2-player) .sm-dialog-overlay .sm-seg__opt {
     height: 44px;
   }
   #conteudo[data-fase="2"] .sm-chip,
   #conteudo[data-fase="2"] .dst__tab,
   #conteudo[data-fase="2"] .dupla-time__btn,
-  #conteudo[data-fase="2"] .f2-pep-radio,
   #conteudo[data-fase="2"] .f2-toque,
-  body:has(#conteudo[data-fase="2"]) .sm-dialog-overlay .f2-toque {
+  .f2-player .f2-pep-radio,
+  .f2-player .f2-toque,
+  body:has(#conteudo[data-fase="2"], .f2-player) .sm-dialog-overlay .f2-toque {
     min-height: 44px;
   }
   #conteudo[data-fase="2"] .osce-print__toggle,
   #conteudo[data-fase="2"] .f2-toque-q,
-  body:has(#conteudo[data-fase="2"]) .sm-dialog-overlay .f2-toque-q {
+  .f2-player .osce-print__toggle,
+  .f2-player .f2-toque-q,
+  body:has(#conteudo[data-fase="2"], .f2-player) .sm-dialog-overlay .f2-toque-q {
     min-width: 44px;
     min-height: 44px;
     justify-content: center;
