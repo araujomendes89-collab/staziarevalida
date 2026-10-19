@@ -1,4 +1,4 @@
-// Treino em Dupla · campo "Nome de usuário (@)" do perfil de estudo (migrações 013470/013480). O servidor sorteia um @ neutro
+// Treino em Dupla · campo "Nome de usuário (@)" do perfil de estudo (migrações 014000/014010). O servidor sorteia um @ neutro
 // ("revalida.k7m2") ao criar o perfil; a pessoa pode trocar. Enquanto digita, a tela pergunta ao servidor e mostra "Disponível." ou o
 // motivo ("Esse @ já está em uso." etc.). No máximo 1 troca a cada 15 dias; o @ sorteado não conta. Trocar o @ NÃO muda o nome
 // público nem nada que dependa da conta, mas o link de convite antigo deixa de valer.

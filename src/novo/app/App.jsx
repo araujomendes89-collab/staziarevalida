@@ -101,7 +101,8 @@ const TITLES = {
 };
 // planos etapa 4: a faixa da amostra do dia nas telas que gastam a amostra
 const AMOSTRA_ROTA = { questoes: "questoes", simulados: "simulados_teoricos", flash: "flashcards" };
-const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "dupla-perfil", "dupla-sala", "peps", "paciente", "desempenho2"];
+// "convite" (convite por link do @, radar): com a 2ª fase fechada o endereço leva ao início, como as outras telas da dupla.
+const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "dupla-perfil", "dupla-sala", "convite", "peps", "paciente", "desempenho2"];
 // Aluno com o Treino em Dupla aberto: o Banco de estações (um só, decisão do dono de 16/10: o do pacote de 11/10) e o Praticar
 // em dupla abrem; as outras telas da 2ª fase com dados (fase2_allowed, hoje só a equipe) ficam "Em breve" e o endereço leva ao
 // Banco de estações. "estacoes" NÃO entra aqui (entraria em ciclo, mandando o aluno para a própria tela).

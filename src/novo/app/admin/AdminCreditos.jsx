@@ -1,4 +1,4 @@
-// Administração › Configurações › Treinamento em Dupla › Créditos (migração 20261003013530; só administrador, o banco confere).
+// Administração › Configurações › Treinamento em Dupla › Créditos (migração 20261003014060; só administrador, o banco confere).
 // Cinco blocos: configuração da cota, uso de hoje, conceder créditos, extrato do aluno (com estorno) e conferência de saldos.
 // Moeda "match" (créditos de matches). A moeda "ia" ainda não tem tela: a configuração dela volta ao banco como veio.
 // Todo número de limite começa VAZIO e a cota começa DESLIGADA; nada aqui inventa valor.

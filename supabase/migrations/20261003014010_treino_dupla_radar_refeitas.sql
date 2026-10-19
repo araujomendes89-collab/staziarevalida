@@ -1,6 +1,11 @@
 -- =============================================================================
--- Treino em Dupla, radar e convite direto (Etapa 6C, tarefa R1; parte 2 de 2). Número 013480, reservado em
--- .tmp-aulas/NUMEROS-MIGRACAO.md. Depende da 013470 (colunas allow_direct_invites e kind, dupla_hides).
+-- JUNÇÃO DA ETAPA 2 (fase2-etapa2, 19/10/2026): renumerada de 013480 para 014010, para ficar DEPOIS da 013980 (a ordem dos
+-- arquivos passa a ser a mesma da produção, onde a 2ª fase base já está gravada). Ordem: 013990 (3ª leva), radar 014000/014010,
+-- Stazia Match 014020–014070, convite por link 014080, treino sozinho 014090–014120.
+-- Na junção: app_dupla_swipe parte da 013990 (= 013405 + trava por pessoa), que é a de produção mais a 3ª leva, e só
+-- reaplica o acréscimo do radar (bloqueio, sozinho, pedido cancelado). As outras quatro funções são iguais às de produção na base.
+-- Treino em Dupla, radar e convite direto (Etapa 6C, tarefa R1; parte 2 de 2). Número 014010, reservado em
+-- .tmp-aulas/NUMEROS-MIGRACAO.md. Depende da 014000 (colunas allow_direct_invites e kind, dupla_hides).
 -- Pode ser colada duas vezes: só "create or replace function" e permissões. Não cria tabela nem grava dado.
 --
 -- O QUE FAZ
@@ -120,6 +125,7 @@ declare
   v_theirs public.study_swipes;
   st public.checklist_stations;
   v_station text;
+  v_chooser uuid;
   v_dur integer;
   v_assign text;
   v_cand uuid;
@@ -131,6 +137,7 @@ begin
     raise exception 'Escolha inválida.' using errcode = '22023';
   end if;
   perform pg_advisory_xact_lock(hashtextextended('dupla-par:' || least(v_uid, p_to)::text || ':' || greatest(v_uid, p_to)::text, 0));
+  perform public.dupla_lock_users(v_uid, p_to);
   perform public.dupla_sweep();
 
   select * into me from public.study_profiles where user_id = v_uid;
@@ -141,8 +148,11 @@ begin
   if not found then
     raise exception 'Colega não encontrado.' using errcode = '22023';
   end if;
-  if p_station_id is not null and not exists (
-       select 1 from public.checklist_stations s where s.id = p_station_id and (s.medical_review = 'approved' or public.is_staff())) then
+  -- Estação da escolha: aprovada, ou não aprovada só entre duas pessoas da equipe.
+  if p_station_id is not null and not public.dupla_station_liberada(p_station_id, array[v_uid, p_to]) then
+    if public.is_staff() and exists (select 1 from public.checklist_stations s where s.id = p_station_id) then
+      raise exception 'Estação ainda sem aprovação médica: só dá para treinar entre a equipe.' using errcode = '42501';
+    end if;
     raise exception 'Estação não encontrada.' using errcode = '22023';
   end if;
   -- Bloqueio entre os dois (chat): a escolha não é gravada e não há match; quem escolheu não fica sabendo do motivo.
@@ -174,14 +184,17 @@ begin
     return jsonb_build_object('matched', false);
   end if;
 
-  -- Estação: a minha, senão a da escolha dele; só aprovada e, se for dos planos Pro/Elite, só com plano pago nos dois.
+  -- Estação: a minha, senão a da escolha dele; só liberada para os dois e, se for dos planos Pro/Elite, só com plano pago nos
+  -- dois. Quem forneceu a estação fica gravado como quem a escolheu (já viu o tema).
   v_station := coalesce(p_station_id, v_theirs.station_id);
+  v_chooser := case when p_station_id is not null then v_uid when v_theirs.station_id is not null then p_to end;
   if v_station is not null then
-    select * into st from public.checklist_stations s
-     where s.id = v_station and (s.medical_review = 'approved' or public.is_staff());
+    select * into st from public.checklist_stations s where s.id = v_station;
     if not found
+       or not public.dupla_station_liberada(v_station, array[v_uid, p_to])
        or (st.is_pro_only and not (public.tutor_is_pro(v_uid) and public.tutor_is_pro(p_to))) then
       v_station := null;
+      v_chooser := null;
     else
       v_dur := case when st.duration_ms between 60000 and 3600000 then st.duration_ms end;
     end if;
@@ -195,9 +208,13 @@ begin
   end if;
 
   insert into public.study_matches (user_a, user_b, station_id) values (p_to, v_uid, v_station) returning id into v_match;
-  insert into public.checklist_rooms (member_ids, phase, round, match_id, station_id, candidate_id, evaluator_id, duration_ms)
-  values (array[v_uid, p_to], 'roles', 1, v_match, v_station, v_cand, v_eval, v_dur)
+  insert into public.checklist_rooms (member_ids, phase, round, match_id, station_id, station_chosen_by, candidate_id, evaluator_id, duration_ms)
+  values (array[v_uid, p_to], 'roles', 1, v_match, v_station, v_chooser, v_cand, v_eval, v_dur)
   returning id into v_room;
+  -- Os dois escolheram a mesma estação no Banco: os dois já viram.
+  if v_station is not null and p_station_id is not null and v_theirs.station_id = v_station then
+    perform public.dupla_room_seen_add(v_room, v_station, p_to, 'escolheu');
+  end if;
   update public.study_matches set room_id = v_room where id = v_match;
   insert into public.study_invites (from_user, to_user, room_id) values (v_uid, p_to, v_room);
   -- Pedido de treino por link pendente entre os dois: o match já resolveu.

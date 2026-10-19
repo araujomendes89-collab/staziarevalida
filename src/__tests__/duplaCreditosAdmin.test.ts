@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Stazia Match · Etapa M4a: a migração 013530 (supabase/migrations/…013530_treino_dupla_creditos_admin.sql).
+ * Stazia Match · Etapa M4a: a migração 014060 (supabase/migrations/…014060_treino_dupla_creditos_admin.sql).
  * Administração dos créditos: configuração (validação, antes e depois no registro), concessão (sempre BÔNUS), estorno (mesmo
  * balde, uma vez só, consumo de dia passado e compensação), extrato (sem chave interna, com a leitura no registro), uso de hoje,
  * conciliação, quem pode chamar (só administrador) e colar duas vezes. Postgres em memória (PGlite) com todas as migrações.
@@ -12,7 +12,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { MIGRATIONS_DIR, U, makeRoom, openDuplaDb, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
-const MIGRACAO = "20261003013530_treino_dupla_creditos_admin.sql";
+const MIGRACAO = "20261003014060_treino_dupla_creditos_admin.sql";
 const SQL = fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8");
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
 const PADRAO = { ativa: false, match: { cobra_rodada_extra: true }, ia: {} };
@@ -29,7 +29,7 @@ const FUNCOES = [
   "app_admin_credit_reconcile(text)",
 ];
 
-describe("Migração 013530 — administração dos créditos do Stazia Match", () => {
+describe("Migração 014060 — administração dos créditos do Stazia Match", () => {
   let d: DuplaDb;
   const editor = U.fabio;
   const revisor = U.gil;

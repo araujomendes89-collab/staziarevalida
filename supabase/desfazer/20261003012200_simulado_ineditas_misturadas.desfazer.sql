@@ -207,5 +207,5 @@ drop function if exists public.practice_draw(jsonb, integer);
 drop function if exists public.simulado_ineditas_pct();
 delete from public.app_settings where key = 'simulado_ineditas_pct';
 alter table public.app_settings drop constraint if exists app_settings_key_check;
--- 18/10/2026: as chaves do Treino em Dupla (2ª fase, 013300 e 013370) continuam aceitas; só sai a do simulado.
-alter table public.app_settings add constraint app_settings_key_check check (key in ('trial_days', 'announcement', 'treino_dupla', 'treino_dupla_chat'));
+-- 18/10/2026: as chaves do Treino em Dupla (2ª fase, 013300 e 013370; 'creditos' da 014020 desde 19/10) continuam aceitas; só sai a do simulado.
+alter table public.app_settings add constraint app_settings_key_check check (key in ('trial_days', 'announcement', 'treino_dupla', 'treino_dupla_chat', 'creditos'));

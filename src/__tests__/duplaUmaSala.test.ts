@@ -1,26 +1,26 @@
 // @vitest-environment node
 /**
- * Treino em Dupla (Stazia Match) · migração 013510, parte 1: UMA PESSOA, UMA SALA ABERTA, garantido no banco.
+ * Treino em Dupla (Stazia Match) · migração 014040, parte 1: UMA PESSOA, UMA SALA ABERTA, garantido no banco.
  * A tabela study_room_claims (user_id é a chave primária) e o gatilho checklist_rooms_claims, conferidos num Postgres em
  * memória (PGlite) com as regras reais (todas as migrações, em ordem). Com a cota de créditos desligada (o padrão), a
- * app_dupla_swipe da 013520 se comporta como a da 013510.
+ * app_dupla_swipe da 014050 se comporta como a da 014040.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
 import { MIGRATIONS_DIR, U, addProfile, addStation, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
-const MIGRACAO = "20261003013510_treino_dupla_integridade.sql";
+const MIGRACAO = "20261003014040_treino_dupla_integridade.sql";
 const SQL = fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8");
-// A 013510 refaz app_dupla_swipe sem crédito; a 013520 refaz de novo, com crédito. Quem cola a primeira cola a segunda em seguida.
-const SQL_CREDITOS = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013520_treino_dupla_creditos_inicio.sql"), "utf8");
+// A 014040 refaz app_dupla_swipe sem crédito; a 014050 refaz de novo, com crédito. Quem cola a primeira cola a segunda em seguida.
+const SQL_CREDITOS = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003014050_treino_dupla_creditos_inicio.sql"), "utf8");
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
 const ABERTO = { aberto: true, planos: ["trial", "pro", "elite"] };
 const JA_EM_SALA = /Você já está em uma sala\./;
 
 const NOMES = ["ana", "bruno", "carla", "diego", "eva", "fabio", "gil"] as const;
 
-describe("Migração 013510 — uma pessoa, uma sala aberta (study_room_claims e gatilho)", () => {
+describe("Migração 014040 — uma pessoa, uma sala aberta (study_room_claims e gatilho)", () => {
   let d: DuplaDb;
 
   const swipe = (de: string, para: string, direcao: "right" | "left" = "right", estacao?: string | null) =>
@@ -350,9 +350,9 @@ describe("Migração 013510 — uma pessoa, uma sala aberta (study_room_claims e
       reservas: await d.sql(`select user_id, room_id from public.study_room_claims order by user_id`),
     });
     const antes = await retrato();
-    // A 013510 não mexe na lista de chaves de app_settings (a linha 'creditos' fica), então não há o que apagar antes de colar.
+    // A 014040 não mexe na lista de chaves de app_settings (a linha 'creditos' fica), então não há o que apagar antes de colar.
     await d.db.exec(SQL);
-    // (A 013520 refaz app_dupla_swipe a partir desta; colada em seguida, a função volta igual.)
+    // (A 014050 refaz app_dupla_swipe a partir desta; colada em seguida, a função volta igual.)
     await d.db.exec(SQL_CREDITOS);
     expect(await retrato()).toEqual(antes);
 

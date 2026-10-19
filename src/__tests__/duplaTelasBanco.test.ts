@@ -451,8 +451,8 @@ describe("Migração 9760 — leituras das telas, perfil de estudo e chave no pa
     const antes = await retrato();
     await d.db.exec(SQL);
     // As do Treino que vêm depois refazem funções desta (a 012900 refaz dupla_room_state): colar de novo na ordem.
-    // A lista de chaves de app_settings da 013370 não tem 'creditos' (013490): colada de novo antes dela, seria recusada pela
-    // linha dos créditos. A linha sai antes e a 013490, colada em seguida na ordem, devolve a lista e a linha, como antes.
+    // A lista de chaves de app_settings da 013370 não tem 'creditos' (014020): colada de novo antes dela, seria recusada pela
+    // linha dos créditos. A linha sai antes e a 014020, colada em seguida na ordem, devolve a lista e a linha, como antes.
     await d.sql(`delete from public.app_settings where key = 'creditos'`);
     for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.includes("treino_dupla") && f > MIGRACAO).sort()) {
       await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));

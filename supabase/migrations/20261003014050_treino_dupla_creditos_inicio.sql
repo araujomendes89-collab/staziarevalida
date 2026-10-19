@@ -1,7 +1,12 @@
 -- =============================================================================
+-- JUNÇÃO DA ETAPA 2 (fase2-etapa2, 19/10/2026): renumerada de 013520 para 014050, para ficar DEPOIS da 013980 (a ordem dos
+-- arquivos passa a ser a mesma da produção, onde a 2ª fase base já está gravada). Ordem: 013990 (3ª leva), radar 014000/014010,
+-- Stazia Match 014020–014070, convite por link 014080, treino sozinho 014090–014120.
+-- Na junção: app_dupla_swipe parte da 014040 e app_dupla_answer_invite parte da 014010 (radar: bloqueio); só reaplicam a
+-- pré-checagem de crédito. app_dupla_start e app_dupla_next_station: iguais às de produção na base (conferido).
 -- Stazia Match, Etapas M2a e M2b: o crédito dos DOIS sai no início confirmado da sala, e a pré-checagem ao formar o match.
--- (Plano de 12/10: "migrações 9970 e 9971", juntas; este arquivo usa 013520, reservado em .tmp-aulas/NUMEROS-MIGRACAO.md.)
--- Depende da 013350 (app_dupla_start), 013380 (rodadas: "Treinar outra estação"), 013490/013500 (livro e funções) e 013510
+-- (Plano de 12/10: "migrações 9970 e 9971", juntas; este arquivo usa 014050, reservado em .tmp-aulas/NUMEROS-MIGRACAO.md.)
+-- Depende da 013350 (app_dupla_start), 013380 (rodadas: "Treinar outra estação"), 014020/014030 (livro e funções) e 014040
 -- (reservas por pessoa, app_dupla_swipe com o par canônico).
 -- Pode ser colada duas vezes: só "create or replace function" e permissões. Não grava dado. Nenhuma IA. Sem pagamento.
 -- COTA DESLIGADA (creditos.ativa = false, o padrão): tudo se comporta como antes desta migração (nada debita, nada limita).
@@ -22,7 +27,7 @@
 --       - Chamar start de novo (clique duplo, outra aba, depois de timeout) continua recusado pela fase ('Esta ação não vale
 --         nesta fase da sala.'), como na 013350: nunca debita duas vezes.
 --       - Sair da sala depois de iniciar, fechar por falta de sinal, convite vencido/recusado: NÃO devolvem (app_dupla_leave e
---         dupla_sweep ficam como estão). Estorno só manual pela Administração (013530).
+--         dupla_sweep ficam como estão). Estorno só manual pela Administração (014060).
 --  2) Pré-checagem (spec §3.4), sem debitar: app_dupla_swipe e app_dupla_answer_invite conferem o crédito ANTES de formar o par.
 --       - "Estudar junto" de quem está sem crédito: { matched: false, reason: 'quota' } (a tela mostra "Sua cota de matches
 --         acabou"); a escolha NÃO é gravada. "Pular" nunca é barrado.
@@ -44,15 +49,15 @@
 -- FUNÇÕES REDEFINIDAS E A BASE DE CADA UMA
 --   app_dupla_start(uuid) ← 013350 (igual, mais o débito dos dois);
 --   app_dupla_next_station(uuid) ← 013380 (igual, mais a pré-checagem de crédito dos dois);
---   app_dupla_swipe(uuid, text, text) ← 013510 (igual, mais a pré-checagem);
+--   app_dupla_swipe(uuid, text, text) ← 014040 (igual, mais a pré-checagem);
 --   app_dupla_answer_invite(uuid, boolean) ← 013320 (igual, mais a pré-checagem ao aceitar).
---   Usadas sem mudar: dupla_room_for_action, dupla_room_need, dupla_room_state (013350), credit_* (013500).
+--   Usadas sem mudar: dupla_room_for_action, dupla_room_need, dupla_room_state (013350), credit_* (014030).
 --
 -- JUNÇÃO COM OUTROS GRUPOS: app_dupla_swipe, app_dupla_answer_invite e app_dupla_start são peças comuns. Quando existir o
 --   CONVITE DIRETO do radar (app_dupla_invite), ele precisa chamar credit_available para os DOIS antes de criar a sala (mesmo
---   padrão do swipe) e responder igual ao "indisponível" sem dizer o motivo. A reserva por pessoa (013510) já cobre a sala.
+--   padrão do swipe) e responder igual ao "indisponível" sem dizer o motivo. A reserva por pessoa (014040) já cobre a sala.
 --
--- COMO DESFAZER: colar de novo app_dupla_start da 013350, app_dupla_swipe da 013510 e app_dupla_answer_invite da 013320.
+-- COMO DESFAZER: colar de novo app_dupla_start da 013350, app_dupla_swipe da 014040 e app_dupla_answer_invite da 013320.
 --   (Cobranças já feitas ficam no livro; devolvê-las é decisão do dono.)
 -- =============================================================================
 
@@ -156,7 +161,7 @@ begin
 end
 $$;
 
--- ---------------------------------------------------------------- 2) escolha com pré-checagem (base: 013510)
+-- ---------------------------------------------------------------- 2) escolha com pré-checagem (base: 014040)
 create or replace function public.app_dupla_swipe(p_to uuid, p_direction text, p_station_id text default null) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
@@ -167,6 +172,7 @@ declare
   v_theirs public.study_swipes;
   st public.checklist_stations;
   v_station text;
+  v_chooser uuid;
   v_dur integer;
   v_assign text;
   v_cand uuid;
@@ -178,6 +184,7 @@ begin
     raise exception 'Escolha inválida.' using errcode = '22023';
   end if;
   perform pg_advisory_xact_lock(hashtextextended('dupla-par:' || least(v_uid, p_to)::text || ':' || greatest(v_uid, p_to)::text, 0));
+  perform public.dupla_lock_users(v_uid, p_to);
   perform public.dupla_sweep();
 
   select * into me from public.study_profiles where user_id = v_uid;
@@ -188,11 +195,17 @@ begin
   if not found then
     raise exception 'Colega não encontrado.' using errcode = '22023';
   end if;
-  if p_station_id is not null and not exists (
-       select 1 from public.checklist_stations s where s.id = p_station_id and (s.medical_review = 'approved' or public.is_staff())) then
+  -- Estação da escolha: aprovada, ou não aprovada só entre duas pessoas da equipe.
+  if p_station_id is not null and not public.dupla_station_liberada(p_station_id, array[v_uid, p_to]) then
+    if public.is_staff() and exists (select 1 from public.checklist_stations s where s.id = p_station_id) then
+      raise exception 'Estação ainda sem aprovação médica: só dá para treinar entre a equipe.' using errcode = '42501';
+    end if;
     raise exception 'Estação não encontrada.' using errcode = '22023';
   end if;
-
+  -- Bloqueio entre os dois (chat): a escolha não é gravada e não há match; quem escolheu não fica sabendo do motivo.
+  if public.dupla_hides(v_uid, p_to) then
+    return jsonb_build_object('matched', false);
+  end if;
   -- Pré-checagem (sem debitar): sem crédito meu, não há "Estudar junto" (a escolha nem é gravada). "Pular" nunca é barrado.
   if p_direction = 'right' and not public.credit_available(v_uid, 'match') then
     update public.study_profiles set last_seen_at = now(), status = case when status = 'fora' then 'livre' else status end
@@ -216,23 +229,27 @@ begin
   if not found then
     return jsonb_build_object('matched', false);
   end if;
-  -- (O outro sem crédito cai aqui, na MESMA resposta de "o outro não escolheu": nada vaza.)
   if not coalesce(other.last_seen_at > now() - interval '2 minutes' and other.status <> 'fora', false)
+     or other.status = 'sozinho' or me.status = 'sozinho'
      or not public.dupla_allowed(p_to)
+     -- (O outro sem crédito cai aqui, na MESMA resposta de "o outro não escolheu": nada vaza.)
      or not public.credit_available(p_to, 'match')
      or exists (select 1 from public.checklist_rooms r
                 where r.phase <> 'closed' and (v_uid = any (r.member_ids) or p_to = any (r.member_ids))) then
     return jsonb_build_object('matched', false);
   end if;
 
-  -- Estação: a minha, senão a da escolha dele; só aprovada e, se for dos planos Pro/Elite, só com plano pago nos dois.
+  -- Estação: a minha, senão a da escolha dele; só liberada para os dois e, se for dos planos Pro/Elite, só com plano pago nos
+  -- dois. Quem forneceu a estação fica gravado como quem a escolheu (já viu o tema).
   v_station := coalesce(p_station_id, v_theirs.station_id);
+  v_chooser := case when p_station_id is not null then v_uid when v_theirs.station_id is not null then p_to end;
   if v_station is not null then
-    select * into st from public.checklist_stations s
-     where s.id = v_station and (s.medical_review = 'approved' or public.is_staff());
+    select * into st from public.checklist_stations s where s.id = v_station;
     if not found
+       or not public.dupla_station_liberada(v_station, array[v_uid, p_to])
        or (st.is_pro_only and not (public.tutor_is_pro(v_uid) and public.tutor_is_pro(p_to))) then
       v_station := null;
+      v_chooser := null;
     else
       v_dur := case when st.duration_ms between 60000 and 3600000 then st.duration_ms end;
     end if;
@@ -246,20 +263,29 @@ begin
   end if;
 
   -- Match + sala + convite numa só unidade: se a reserva da pessoa falhar (outra sala aberta que nasceu agora), nada fica.
+  -- O mesmo par reusa a conexão (par canônico): não nasce um segundo match dos dois.
   begin
     select m.id into v_match from public.study_matches m
      where least(m.user_a, m.user_b) = least(v_uid, p_to) and greatest(m.user_a, m.user_b) = greatest(v_uid, p_to);
     if not found then
       insert into public.study_matches (user_a, user_b, station_id) values (p_to, v_uid, v_station) returning id into v_match;
     end if;
-    insert into public.checklist_rooms (member_ids, phase, round, match_id, station_id, candidate_id, evaluator_id, duration_ms)
-    values (array[v_uid, p_to], 'roles', 1, v_match, v_station, v_cand, v_eval, v_dur)
+    insert into public.checklist_rooms (member_ids, phase, round, match_id, station_id, station_chosen_by, candidate_id, evaluator_id, duration_ms)
+    values (array[v_uid, p_to], 'roles', 1, v_match, v_station, v_chooser, v_cand, v_eval, v_dur)
     returning id into v_room;
+    -- Os dois escolheram a mesma estação no Banco: os dois já viram.
+    if v_station is not null and p_station_id is not null and v_theirs.station_id = v_station then
+      perform public.dupla_room_seen_add(v_room, v_station, p_to, 'escolheu');
+    end if;
     update public.study_matches set room_id = v_room, station_id = v_station where id = v_match;
     insert into public.study_invites (from_user, to_user, room_id) values (v_uid, p_to, v_room);
   exception when unique_violation then
     return jsonb_build_object('matched', false);
   end;
+  -- Pedido de treino por link pendente entre os dois: o match já resolveu.
+  if to_regclass('public.study_train_requests') is not null then
+    execute 'update public.study_train_requests set status = ''canceled'', answered_at = now() where status = ''pending'' and least(from_user, to_user) = least($1, $2) and greatest(from_user, to_user) = greatest($1, $2)' using v_uid, p_to;
+  end if;
 
   return jsonb_build_object('matched', true, 'room_id', v_room,
                             'partner', jsonb_build_object('user_id', p_to, 'public_name', other.public_name));
@@ -279,7 +305,7 @@ begin
     raise exception 'Escolha inválida.' using errcode = '22023';
   end if;
   select * into inv from public.study_invites where id = p_invite_id and to_user = v_uid for update;
-  if not found then
+  if not found or public.dupla_hides(v_uid, inv.from_user) then
     raise exception 'Convite não encontrado.' using errcode = '42501';
   end if;
   if inv.status <> 'pending' then

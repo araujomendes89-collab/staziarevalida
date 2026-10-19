@@ -119,7 +119,7 @@ describe("Migração 013370 — chat entre os dois do match", () => {
     await expect(msgs(U.ana, "00000000-0000-4000-8000-000000000999")).rejects.toThrow(SEM_MATCH);
     expect((await d.rpc(U.bruno, "app_dupla_chat_open", { p_partner: U.ana })).chat_id).toBe(chat);
     // O mesmo par deu match de novo: continua uma conversa só.
-    // (Desde a 013510 o banco nem aceita o mesmo par duas vezes em study_matches: uma conexão por par.)
+    // (Desde a 014040 o banco nem aceita o mesmo par duas vezes em study_matches: uma conexão por par.)
     await expect(d.sql(`insert into public.study_matches (user_a, user_b) values ($1, $2)`, [U.bruno, U.ana])).rejects.toThrow(/study_matches_par_uniq/);
     expect(await d.sql(`select count(*)::int as n from public.study_chats where $1 in (user_a, user_b)`, [U.ana])).toEqual([{ n: 1 }]);
     expect((await d.rpc(U.ana, "app_dupla_chat_open", { p_partner: U.bruno })).chat_id).toBe(chat);
@@ -334,7 +334,7 @@ describe("Migração 013370 — chat entre os dois do match", () => {
       conversas: await d.sql(`select id, user_a, user_b from public.study_chats order by id`),
     });
     const antes = await retrato();
-    // A lista de chaves desta migração não tem 'creditos' (013490): a linha sai antes e a 013490, colada em seguida, a devolve.
+    // A lista de chaves desta migração não tem 'creditos' (014020): a linha sai antes e a 014020, colada em seguida, a devolve.
     await d.sql(`delete from public.app_settings where key = 'creditos'`);
     await d.db.exec(SQL);
     // A 013406 refaz app_export_my_data (base: esta): colada de novo, a cadeia segue na ordem, depois desta (a dos créditos devolve a linha 'creditos').

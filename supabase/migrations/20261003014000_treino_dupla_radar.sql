@@ -1,7 +1,13 @@
 -- =============================================================================
+-- JUNÇÃO DA ETAPA 2 (fase2-etapa2, 19/10/2026): renumerada de 013470 para 014000, para ficar DEPOIS da 013980 (a ordem dos
+-- arquivos passa a ser a mesma da produção, onde a 2ª fase base já está gravada). Ordem: 013990 (3ª leva), radar 014000/014010,
+-- Stazia Match 014020–014070, convite por link 014080, treino sozinho 014090–014120.
+-- Na junção: dupla_invite_core ganhou p_chosen_by (quem trouxe a estação fica em station_chosen_by: aviso "já viu", 013405),
+-- a trava por pessoa dupla_lock_users (013990) e a regra de estação dupla_station_liberada (013405: não aprovada só entre duas
+-- pessoas da equipe), no lugar de "aprovada ou equipe".
 -- Treino em Dupla, radar de quem está online + convite direto (adendo de 12/10, Etapa 6C, tarefa R1; parte 1 de 2).
--- (Plano de 12/10: "migração 9920"; número 013470, reservado para esta frente em .tmp-aulas/NUMEROS-MIGRACAO.md. A parte 2,
--- 013480, refaz o baralho, o match, os convites e o perfil para respeitarem o que nasce aqui.)
+-- (Plano de 12/10: "migração 9920"; número 014000, reservado para esta frente em .tmp-aulas/NUMEROS-MIGRACAO.md. A parte 2,
+-- 014010, refaz o baralho, o match, os convites e o perfil para respeitarem o que nasce aqui.)
 -- Depende das migrações do Treino: 013300 (dados, dupla_allowed), 013310 (dupla_sweep, dupla_public_name), 013320 (match:
 -- dupla_compat, dupla_assign) e 013370 (chat: study_chat_blocks, dupla_chat_sweep).
 -- Pode ser colada duas vezes: colunas e índices "if not exists", "drop constraint if exists", "create or replace" e permissões.
@@ -43,7 +49,7 @@
 --
 -- DECISÕES PEQUENAS (fora do texto do plano; o dono pode mudar)
 --  - O convite NUNCA leva o nome da estação ao convidado: quem recebe ainda pode virar o candidato, e o tema não vai ao
---    candidato antes do resultado. O convite traz só "Estação N", a área e a duração (a 013480 monta isso).
+--    candidato antes do resultado. O convite traz só "Estação N", a área e a duração (a 014010 monta isso).
 --  - Quem desligou "Aparecer no radar" pode convidar (é quem escolhe chamar) e vê a lista.
 --  - Convite direto só para quem está online (sinal < 2 min e situação diferente de "fora"), livre (nem em sala nem treinando
 --    sozinho), com o radar e os convites diretos ligados, sem convite pendente de outra pessoa e sem bloqueio entre os dois.
@@ -61,7 +67,7 @@
 --   study_profiles_handle_key e a coluna study_profiles.handle podem ficar. Apagar as funções criadas aqui (dupla_radar_settings(), dupla_blocked(uuid, uuid), dupla_hides(uuid, uuid),
 --   app_dupla_radar(text, text), dupla_place(text), dupla_near(jsonb, jsonb), app_dupla_invite(uuid, text), app_admin_dupla_radar(), app_admin_save_dupla_radar(jsonb)); tirar o
 --   índice study_invites_from_idx e a restrição study_invites_kind_check; as colunas study_invites.kind e
---   study_profiles.allow_direct_invites podem ficar (inofensivas); recolocar as funções da 013480 pelas da 013310/013320.
+--   study_profiles.allow_direct_invites podem ficar (inofensivas); recolocar as funções da 014010 pelas da 013310/013320.
 --   Salas e convites já criados ficam. O prazo de 180 dias das denúncias volta a vazio em Administração › Configurações.
 -- =============================================================================
 
@@ -587,7 +593,7 @@ $$;
 -- → { room_id, partner: { user_id, public_name }, expires_at }
 -- O miolo (dupla_invite_core) também serve ao convite por link e à resposta a um pedido de treino (p_free = true): aí a pessoa
 -- convidada pode estar com o radar desligado (o link é compartilhado por ela) e os limites de quantidade não se aplicam.
-create or replace function public.dupla_invite_core(v_uid uuid, p_to uuid, p_station_id text, p_free boolean) returns jsonb
+create or replace function public.dupla_invite_core(v_uid uuid, p_to uuid, p_station_id text, p_free boolean, p_chosen_by uuid default null) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -614,6 +620,9 @@ begin
   -- Quem recebe também é travado: dois convites de pessoas diferentes para a mesma não passam juntos.
   perform pg_advisory_xact_lock(hashtextextended('dupla-recebe:' || p_to::text, 0));
   perform pg_advisory_xact_lock(hashtextextended('dupla-par:' || least(v_uid, p_to)::text || ':' || greatest(v_uid, p_to)::text, 0));
+  -- Trava por pessoa (013990), a mesma do match e do "Abrir sala" do chat: uma sala aberta por pessoa também na corrida
+  -- entre um convite e um match ao mesmo tempo.
+  perform public.dupla_lock_users(v_uid, p_to);
   perform public.dupla_sweep();
 
   select * into me from public.study_profiles where user_id = v_uid;
@@ -653,13 +662,16 @@ begin
     raise exception '% não pode receber convites agora.', other.public_name using errcode = '42501';
   end if;
 
-  -- Estação: aprovada (ou equipe); só dos planos Pro/Elite exige plano pago nos dois.
+  -- Estação: liberada para os dois (aprovada, ou não aprovada só entre duas pessoas da equipe: dupla_station_liberada, 013405);
+  -- só dos planos Pro/Elite exige plano pago nos dois.
   if p_station_id is not null then
-    select * into st from public.checklist_stations s
-     where s.id = p_station_id and (s.medical_review = 'approved' or public.is_staff());
-    if not found then
+    if not public.dupla_station_liberada(p_station_id, array[v_uid, p_to]) then
+      if public.is_staff() and exists (select 1 from public.checklist_stations s where s.id = p_station_id) then
+        raise exception 'Estação ainda sem aprovação médica: só dá para treinar entre a equipe.' using errcode = '42501';
+      end if;
       raise exception 'Estação não encontrada.' using errcode = '22023';
     end if;
+    select * into st from public.checklist_stations s where s.id = p_station_id;
     if st.is_pro_only and not (public.tutor_is_pro(v_uid) and public.tutor_is_pro(p_to)) then
       raise exception 'Estação exclusiva dos planos Pro e Elite.' using errcode = '42501';
     end if;
@@ -702,8 +714,10 @@ begin
     v_cand := p_to; v_eval := v_uid;
   end if;
 
-  insert into public.checklist_rooms (member_ids, phase, round, match_id, station_id, candidate_id, evaluator_id, duration_ms)
-  values (array[v_uid, p_to], 'roles', 1, null, v_station, v_cand, v_eval, v_dur)
+  -- Quem trouxe a estação (quem convida, ou quem pediu o treino pelo link) fica gravado como quem a escolheu: já viu o tema
+  -- (aviso "Você já viu esta estação", 013405). Quem recebe o convite vê só "Estação N".
+  insert into public.checklist_rooms (member_ids, phase, round, match_id, station_id, station_chosen_by, candidate_id, evaluator_id, duration_ms)
+  values (array[v_uid, p_to], 'roles', 1, null, v_station, case when v_station is not null then coalesce(p_chosen_by, v_uid) end, v_cand, v_eval, v_dur)
   returning id into v_room;
   insert into public.study_invites (from_user, to_user, room_id, kind) values (v_uid, p_to, v_room, 'direto')
   returning expires_at into v_exp;
@@ -795,7 +809,7 @@ revoke execute on function public.app_dupla_radar(text, text) from public, anon;
 revoke execute on function public.dupla_place(text) from public, anon, authenticated;
 revoke execute on function public.dupla_near(jsonb, jsonb) from public, anon, authenticated;
 revoke execute on function public.app_dupla_invite(uuid, text) from public, anon;
-revoke execute on function public.dupla_invite_core(uuid, uuid, text, boolean) from public, anon, authenticated;
+revoke execute on function public.dupla_invite_core(uuid, uuid, text, boolean, uuid) from public, anon, authenticated;
 revoke execute on function public.dupla_credit_ok(uuid) from public, anon, authenticated;
 revoke execute on function public.app_admin_dupla_radar() from public, anon;
 revoke execute on function public.app_admin_save_dupla_radar(jsonb) from public, anon;

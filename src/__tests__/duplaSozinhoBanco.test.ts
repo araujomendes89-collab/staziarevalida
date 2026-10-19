@@ -1,8 +1,8 @@
 // @vitest-environment node
 /**
- * Treino sozinho (grupo dupla-sozinho-ia) no banco: migrações 013430 a 013460 sobre o PGlite com as migrações reais.
- * Cobre: dados e regras da IA (013430), o fluxo do aluno entregue/PEP/nota (013440), as funções de serviço da IA (013450),
- * o uso do mês e a exportação (013460). IA SIMULADA: nenhuma chamada de rede aqui (o banco só guarda o que o servidor entrega).
+ * Treino sozinho (grupo dupla-sozinho-ia) no banco: migrações 014090 a 014120 sobre o PGlite com as migrações reais.
+ * Cobre: dados e regras da IA (014090), o fluxo do aluno entregue/PEP/nota (014100), as funções de serviço da IA (014110),
+ * o uso do mês e a exportação (014120). IA SIMULADA: nenhuma chamada de rede aqui (o banco só guarda o que o servidor entrega).
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -27,7 +27,7 @@ function comite(db: DuplaDb["db"], refs: { provider: string; model: string }[], 
 }
 const DUAS = [{ provider: "anthropic", model: "claude-sonnet-5-5" }, { provider: "gemini", model: "gemini-3.8-flash" }];
 
-describe("Treino sozinho no banco (013430 a 013460)", () => {
+describe("Treino sozinho no banco (014090 a 014120)", () => {
   let d: DuplaDb;
   beforeAll(async () => {
     d = await openDuplaDb();
@@ -59,8 +59,8 @@ describe("Treino sozinho no banco (013430 a 013460)", () => {
     await sql(`delete from public.station_attempts`);
   };
 
-  // ------------------------------------------------------------------ 013430: dados e regras da IA
-  describe("dados, painel e regras da IA (013430)", () => {
+  // ------------------------------------------------------------------ 014090: dados e regras da IA
+  describe("dados, painel e regras da IA (014090)", () => {
     it("avaliações antigas ficam como dupla/avaliador; modo e fonte só aceitam os valores certos", async () => {
       await addProfile(d.db, U.ana);
       const sala = await makeRoom(d.db, { members: [U.ana, U.bruno], phase: "result", candidate: U.ana, evaluator: U.bruno });
@@ -148,7 +148,8 @@ describe("Treino sozinho no banco (013430 a 013460)", () => {
 
     it("solo_ia_status: equipe passa; aluno passa por cada barreira, na ordem, sem gastar cota", async () => {
       await limpar();
-      await sql(`delete from public.legal_acceptances where user_id = $1`, [U.ana]);
+      // Termo 3.0 (013740): a prova do aceite só sai com a chave de expurgo na própria transação.
+      await d.db.exec(`begin; set local app.legal_expurgo = 'on'; delete from public.legal_acceptances where user_id = '${U.ana}'; commit;`);
       const status = () => sql<{ r: any }>(`select public.solo_ia_status($1) as r`, [U.ana]).then((x) => x[0].r);
       await setDupla(d.db, { aberto: true, planos: ["pro"] });
       await sql(`update public.app_settings set value = value || '{"sozinho":{"ia":{"aberto":false}}}'::jsonb where key = 'treino_dupla'`);
@@ -209,8 +210,8 @@ describe("Treino sozinho no banco (013430 a 013460)", () => {
     });
   });
 
-  // ------------------------------------------------------------------ 013440: fluxo do aluno
-  describe("fluxo do treino sozinho (013440)", () => {
+  // ------------------------------------------------------------------ 014100: fluxo do aluno
+  describe("fluxo do treino sozinho (014100)", () => {
     it("visitante e aluno ficam de fora; as funções novas existem só para quem entra", async () => {
       for (const fn of ["app_fase2_save_answers", "app_fase2_deliver", "app_fase2_open_pressing", "app_fase2_print_path"]) {
         await expect(rpc(null, fn, { p_attempt_id: "00000000-0000-0000-0000-000000000000", ...(fn.includes("pressing") || fn.includes("print") ? { p_pressing_id: "p1" } : { p_answers: [] }) })).rejects.toThrow(/permission denied/i);
@@ -353,8 +354,8 @@ describe("Treino sozinho no banco (013430 a 013460)", () => {
     });
   });
 
-  // ------------------------------------------------------------------ 013450: IA (funções de serviço)
-  describe("avaliação por IA: funções de serviço (013450)", () => {
+  // ------------------------------------------------------------------ 014110: IA (funções de serviço)
+  describe("avaliação por IA: funções de serviço (014110)", () => {
     const aluna = async (answers: unknown = RESPOSTAS) => {
       await limpar();
       const [{ id }] = await sql(
@@ -386,7 +387,8 @@ describe("Treino sozinho no banco (013430 a 013460)", () => {
       const barra = async () => servico<any>("ch_worker_solo_prepare", { p_user: U.ana, p_attempt: id });
       expect(await barra()).toMatchObject({ ok: false, status: 403, message: "A avaliação por IA está indisponível agora." });
       await liberar();
-      await sql(`delete from public.legal_acceptances where user_id = $1 and document = 'tutor_ia'`, [U.ana]);
+      // Termo 3.0 (013740): a prova do aceite só sai com a chave de expurgo na própria transação.
+      await d.db.exec(`begin; set local app.legal_expurgo = 'on'; delete from public.legal_acceptances where user_id = '${U.ana}' and document = 'tutor_ia'; commit;`);
       expect(await barra()).toMatchObject({ ok: false, status: 403, message: "Aceite o aviso para usar a IA." });
       await aceitarTermos(d.db, U.ana);
       expect(await servico("ch_worker_solo_prepare", { p_user: U.bruno, p_attempt: id })).toMatchObject({ ok: false, status: 403 }); // treino de outra pessoa
@@ -518,8 +520,8 @@ describe("Treino sozinho no banco (013430 a 013460)", () => {
     });
   });
 
-  // ------------------------------------------------------------------ 013460: uso do mês e exportação
-  describe("uso do mês e exportação (013460)", () => {
+  // ------------------------------------------------------------------ 014120: uso do mês e exportação
+  describe("uso do mês e exportação (014120)", () => {
     it("o sozinho aparece à parte no 'Uso do mês', sem mexer nos números da dupla", async () => {
       await limpar();
       await sql(`delete from public.checklist_rooms`);

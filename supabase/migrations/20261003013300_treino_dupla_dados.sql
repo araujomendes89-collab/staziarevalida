@@ -47,9 +47,11 @@
 -- A lista de chaves aceitas: a união de todas as que existem (hoje as duas de …1300) mais a do Treino.
 -- 2026-10-17: já inclui 'treino_dupla_chat' (gravada pela 013370) para que colar esta migração de novo DEPOIS da 013370
 -- não esbarre na linha do chat (antes dava "app_settings_key_check is violated by some row").
+-- 19/10/2026 (fase2-etapa2): a lista também aceita 'creditos' (Stazia Match, 014020), para colar esta migração de novo DEPOIS
+-- da 014020 não esbarrar na linha gravada. Sem a 014020 nada muda: a chave só passa a ser aceita.
 alter table public.app_settings drop constraint if exists app_settings_key_check;
 alter table public.app_settings
-  add constraint app_settings_key_check check (key in ('trial_days', 'announcement', 'simulado_ineditas_pct', 'treino_dupla', 'treino_dupla_chat'));
+  add constraint app_settings_key_check check (key in ('trial_days', 'announcement', 'simulado_ineditas_pct', 'treino_dupla', 'treino_dupla_chat', 'creditos'));
 
 insert into public.app_settings (key, value)
 values ('treino_dupla', '{"aberto": false, "planos": ["pro", "elite"]}'::jsonb)

@@ -1,9 +1,13 @@
 -- =============================================================================
+-- JUNÇÃO DA ETAPA 2 (fase2-etapa2, 19/10/2026): renumerada de 013430 para 014090, para ficar DEPOIS da 013980 (a ordem dos
+-- arquivos passa a ser a mesma da produção, onde a 2ª fase base já está gravada). Ordem: 013990 (3ª leva), radar 014000/014010,
+-- Stazia Match 014020–014070, convite por link 014080, treino sozinho 014090–014120.
+-- Na junção: dupla_result_payload parte da 013560 (produção: "O que mudou desde a prova") e só reaplica o corte por mode.
 -- TREINO SOZINHO (2ª fase, grupo dupla-sozinho-ia) · PARTE 1 de 4: dados, regras da IA e peças compartilhadas.
 -- Spec:  docs/superpowers/specs/2026-10-12-treino-dupla-sozinho-e-radar.md (e as decisões do dono de 12/10 no fim dela)
 -- Plano: docs/superpowers/plans/2026-10-12-treino-dupla-sozinho-e-radar.md (tarefas S1, S8, S8b e A1, adaptadas à casca da 2ª fase)
--- Números: 013430 a 013460 (NUMEROS-MIGRACAO.md). Esta é a primeira; depois dela vêm a 013440 (funções do treino sozinho),
--- a 013450 (avaliação por IA) e a 013460 (uso do mês e exportação).
+-- Números: 014090 a 014120 (NUMEROS-MIGRACAO.md). Esta é a primeira; depois dela vêm a 014100 (funções do treino sozinho),
+-- a 014110 (avaliação por IA) e a 014120 (uso do mês e exportação).
 --
 -- COMO O TREINO SOZINHO SE ENCAIXA (decisão do coordenador, ao ler o ramo fase2-telas):
 --   * a casca da 2ª fase já tem o treino sozinho (013330: tabela station_attempts e as funções app_fase2_*). Em vez de criar uma
@@ -30,13 +34,13 @@
 --  7) Regras da IA no banco: solo_ia_function_ready() e solo_ia_status(uid) (internas) dizem se a avaliação por IA está liberada
 --     e o motivo curto quando não está. A cota fica na própria tentativa (ia_reserved_at), no fuso de São Paulo.
 --  8) Cortes por mode: app_dupla_history, dupla_result_payload ("Última vez" só do mesmo modo) e app_admin_dupla_usage (nesta
---     parte só ganha o filtro; as linhas do sozinho ficam na 013460).
+--     parte só ganha o filtro; as linhas do sozinho ficam na 014120).
 --
 -- FUNÇÕES REFEITAS (base = a definição mais nova no ramo fase2-telas):
 --   app_dupla_heartbeat ← 013320:141; app_admin_save_dupla ← 013310:471; app_dupla_history ← 013400:139;
 --   dupla_result_payload ← 013400:43; app_admin_dupla_usage ← 013360:139.
 --
--- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003013430_treino_dupla_sozinho_dados.desfazer.sql
+-- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003014090_treino_dupla_sozinho_dados.desfazer.sql
 -- =============================================================================
 
 -- ---------------------------------------------------------------- 1) tentativas do treino sozinho (station_attempts)
@@ -487,13 +491,21 @@ begin
     'used_ms', s.used_ms,
     'feedback', jsonb_build_object('pos', s.feedback_pos, 'neg', s.feedback_neg, 'gen', s.feedback_gen),
     'review', jsonb_build_object('requested_at', s.review_requested_at, 'reason', s.review_reason,
-                                 'revised_at', s.revised_at, 'score_before_review', s.score_before_review)
+                                 'revised_at', s.revised_at, 'score_before_review', s.score_before_review),
+    -- "O que mudou desde a prova" (013560): só aqui, no resultado; não mexe na nota
+    'conduct_notes', coalesce((
+      select jsonb_agg(jsonb_build_object('item_order', case when jsonb_typeof(n.e -> 'item_order') = 'number' then n.e -> 'item_order' end,
+                                          'text', btrim(n.e ->> 'text')) order by n.o)
+        from jsonb_array_elements(case when jsonb_typeof(c -> 'conduct_notes') = 'array' then c -> 'conduct_notes' else '[]'::jsonb end)
+             with ordinality as n(e, o)
+       where jsonb_typeof(n.e) = 'object' and jsonb_typeof(n.e -> 'text') = 'string' and btrim(n.e ->> 'text') <> ''
+    ), '[]'::jsonb)
   );
 end
 $$;
 
 -- Uso do mês (base: 013360:139). Nesta parte só ganha o corte por modo: salas, rodadas avaliadas, alunos e impressos continuam
--- só da dupla. As linhas do treino sozinho entram na 013460.
+-- só da dupla. As linhas do treino sozinho entram na 014120.
 create or replace function public.app_admin_dupla_usage(p_month text default null) returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$

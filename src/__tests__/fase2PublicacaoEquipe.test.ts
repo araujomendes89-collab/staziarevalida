@@ -167,6 +167,111 @@ describe("2ª fase só para a equipe, com uma estação carregada", () => {
   });
 });
 
+describe("etapa 2 (radar, convite, @, Stazia Match, créditos, treino sozinho com IA): continua só para a equipe", () => {
+  // Mesmo banco de produção em memória, com as migrações da etapa 2 (013990 a 014120) e as chaves como nascem.
+  let d: DuplaDb;
+  const editor = U.eva;
+  const alunos = { teste: U.ana, pro: U.bruno, vencido: U.carla } as const;
+  const QUALQUER = "00000000-0000-4000-8000-0000000000ff";
+  // Funções novas da etapa 2 que o aluno chamaria pela API, com argumentos válidos.
+  const CHAMADAS: [string, Record<string, unknown>][] = [
+    ["app_dupla_radar", {}],
+    ["app_dupla_radar", { p_aba: "perto" }],
+    ["app_dupla_invite", { p_to: U.admin }],
+    ["app_dupla_handle_check", { p_handle: "colega.teste" }],
+    ["app_dupla_set_handle", { p_handle: "colega.teste" }],
+    ["app_dupla_link_lookup", { p_handle: "colega.teste" }],
+    ["app_dupla_link_request", { p_handle: "colega.teste" }],
+    ["app_dupla_requests", {}],
+    ["app_dupla_answer_request", { p_request_id: QUALQUER, p_accept: true }],
+    ["app_dupla_swipe", { p_to: U.admin, p_direction: "right" }],
+    ["app_dupla_invites", {}],
+    ["app_dupla_deck", {}],
+    ["app_dupla_heartbeat", { p_status: "livre" }],
+    ["app_fase2_start", { p_station_id: "inep2025-1-e07" }],
+    ["app_fase2_save_answers", { p_attempt_id: QUALQUER, p_answers: [] }],
+    ["app_fase2_deliver", { p_attempt_id: QUALQUER }],
+    ["app_fase2_report_ia", { p_attempt_id: QUALQUER }],
+    ["app_admin_dupla_handle_log", {}],
+    ["app_admin_credit_config", {}],
+    ["app_admin_dupla_ia", {}],
+  ];
+  const TABELAS = ["study_handle_log", "study_train_requests", "credit_ledger", "credit_wallets", "credit_daily", "study_room_charges", "study_room_claims"];
+
+  beforeAll(async () => {
+    d = await openDuplaDb();
+    await setPlan(d.db, U.ana, "trial", "trialing", daqui(7));
+    await setPlan(d.db, U.bruno, "pro", "active");
+    await setPlan(d.db, U.carla, "pro", "expired");
+    await d.sql(`update public.subscriptions set current_period_end = now() - interval '10 days' where user_id = $1`, [U.carla]);
+    await d.sql(`update public.user_roles set role = 'editor' where user_id = $1`, [editor]);
+  }, 240_000);
+  afterAll(async () => {
+    await d?.db.close();
+  });
+
+  it("as migrações da etapa 2 estão na cadeia, depois da 013980 (mesma ordem da produção)", () => {
+    const etapa2 = fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql") && f > "20261003013980");
+    expect(etapa2.length).toBeGreaterThanOrEqual(14);
+    expect(etapa2.every((f) => f.includes("treino_dupla"))).toBe(true);
+  });
+
+  for (const [tipo, uid] of Object.entries(alunos)) {
+    it(`aluno (${tipo}): radar, convite, @, link, pedido, match, créditos da Administração e treino sozinho recusam`, async () => {
+      expect(await d.rpc(uid, "app_dupla_access")).toMatchObject({ aberto: false, permitido: false });
+      for (const [fn, args] of CHAMADAS) await expect(d.rpc(uid, fn, args), fn).rejects.toThrow();
+      for (const t of TABELAS) {
+        const linhas = await d.asUser(uid, `select * from public.${t}`).catch(() => [] as any[]);
+        expect(linhas, t).toHaveLength(0);
+      }
+      // nem o @ de ninguém pela leitura direta do perfil de estudo
+      const perfis = await d.asUser(uid, `select handle from public.study_profiles`).catch(() => [] as any[]);
+      expect(perfis).toHaveLength(0);
+      // créditos: com a cota desligada o saldo nem existe (a tela do Início também não lê com a 2ª fase fechada)
+      expect(await d.rpc(uid, "app_credit_state", { p_pool: "match" })).toMatchObject({ ativa: false });
+      expect(await d.rpc(uid, "app_credit_state", { p_pool: "ia" })).toMatchObject({ ativa: false });
+    });
+  }
+
+  it("visitante (sem login): tudo da etapa 2 recusa", async () => {
+    for (const [fn, args] of CHAMADAS) await expect(d.rpc(null, fn, args), fn).rejects.toThrow();
+    await expect(d.rpc(null, "app_credit_state", { p_pool: "match" })).rejects.toThrow();
+  });
+
+  it("a cota de créditos nasce DESLIGADA e sem números por plano; 'Treinar outra estação' cobra quando ligar", async () => {
+    const [{ value }] = await d.sql(`select value from public.app_settings where key = 'creditos'`);
+    expect(value.ativa).toBe(false);
+    expect(value.match?.cobra_rodada_extra).not.toBe(false);
+    expect(await d.sql(`select 1 from public.credit_ledger`)).toHaveLength(0);
+  });
+
+  it("a avaliação por IA do treino sozinho nasce DESLIGADA: função sem configuração, chave fechada, ninguém consegue usar", async () => {
+    expect(await d.sql(`select 1 from public.ai_functions where key = 'treino_avaliacao'`)).toHaveLength(0);
+    const [{ r }] = await d.sql(`select public.solo_ia_function_ready() r`);
+    expect(r).toMatchObject({ ready: false });
+    const [{ value }] = await d.sql(`select value from public.app_settings where key = 'treino_dupla'`);
+    expect(value.aberto).toBe(false);
+    expect(value?.sozinho?.ia?.aberto ?? false).toBe(false);
+    for (const uid of [U.admin, editor, U.ana, U.bruno]) {
+      const [{ st }] = await d.sql(`select public.solo_ia_status($1) st`, [uid]);
+      expect(st.disponivel, uid).toBe(false);
+    }
+  });
+
+  it("equipe (administrador e editor): entra no radar, tem @ e vê os quadros da Administração que lhe cabem", async () => {
+    for (const uid of [U.admin, editor]) {
+      await d.rpc(uid, "app_dupla_save_profile", { p_profile: { public_name: uid === U.admin ? "Equipe Um" : "Equipe Dois", role_pref: "any", radar_visible: true } });
+      const radar: any = await d.rpc(uid, "app_dupla_radar", {});
+      expect(Array.isArray(radar.people)).toBe(true);
+      const [{ handle }] = await d.sql(`select handle from public.study_profiles where user_id = $1`, [uid]);
+      expect(handle).toMatch(/^[a-z0-9._]{3,20}$/);
+      expect((await d.rpc(uid, "app_dupla_handle_check", { p_handle: handle })).ok).toBe(true);
+    }
+    expect(await d.rpc(U.admin, "app_admin_credit_config")).toBeTruthy();
+    await expect(d.rpc(editor, "app_admin_credit_config")).rejects.toThrow();
+  });
+});
+
 describe.runIf(temE07)("Revalida 2025/1, estação 7 (pasta da Montagem neste computador)", () => {
   it("o conteúdo é o do estacao-app.json aprovado, com só as diferenças previstas; PEP soma 10", () => {
     const original = JSON.parse(fs.readFileSync(path.join(PASTA_E07, "estacao-app.json"), "utf8"));

@@ -5,15 +5,15 @@ Plano: `docs/superpowers/plans/2026-10-12-stazia-match-engenharia.md`. **A cota 
 com ela desligada nada debita, nada limita e nenhum aluno é cobrado. **Pagamento (Stripe) está parado:** não há pedido, pacote, preço, rota
 nem webhook; o livro só tem o tipo `purchase` e o balde `purchased` prontos para quando a compra voltar.
 
-## Migrações (faixa 013490 a 013540, reservada em `.tmp-aulas/NUMEROS-MIGRACAO.md`)
+## Migrações (faixa 014020 a 014070, reservada em `.tmp-aulas/NUMEROS-MIGRACAO.md`)
 | Número | Arquivo | O que faz | Etapa do plano |
 |---|---|---|---|
-| 013490 | `treino_dupla_creditos_tabelas` | `credit_wallets`, `credit_daily`, `credit_ledger` (só acrescenta), `study_room_charges`, `checklist_rooms.charged_at`, chave `creditos` | M1a |
-| 013500 | `treino_dupla_creditos_funcoes` | funções `credit_*` internas, `app_credit_state`, exportação (`study_credits`) | M1b, M1c |
-| 013510 | `treino_dupla_integridade` | `study_room_claims` (uma pessoa, uma sala aberta), índice do par canônico, `app_dupla_swipe` reusa a conexão | M2c, M2e |
-| 013520 | `treino_dupla_creditos_inicio` | débito dos dois em `app_dupla_start` (com a cota ligada exige o convite aceito; cobra também cada estação nova), pré-checagem em `app_dupla_next_station`, pré-checagem em `app_dupla_swipe` e `app_dupla_answer_invite` | M2a, M2b |
-| 013530 | `treino_dupla_creditos_admin` | configuração, concessão, estorno, extrato, uso de hoje e conciliação (só administrador) | M4a |
-| 013540 | `treino_dupla_creditos_ia` | PREPARAÇÃO da M3: moeda `ia` com janelas de dia, semana e mês (`credit_avail`, `credit_state`) e `credit_refund_ref`. NÃO liga o treino sozinho: a ligação (`ch_worker_solo_prepare` e `_fail`) está descrita no cabeçalho e espera juntar o ramo `dupla-sozinho-ia` e os números do dono | M3 (parte) |
+| 014020 | `treino_dupla_creditos_tabelas` | `credit_wallets`, `credit_daily`, `credit_ledger` (só acrescenta), `study_room_charges`, `checklist_rooms.charged_at`, chave `creditos` | M1a |
+| 014030 | `treino_dupla_creditos_funcoes` | funções `credit_*` internas, `app_credit_state`, exportação (`study_credits`) | M1b, M1c |
+| 014040 | `treino_dupla_integridade` | `study_room_claims` (uma pessoa, uma sala aberta), índice do par canônico, `app_dupla_swipe` reusa a conexão | M2c, M2e |
+| 014050 | `treino_dupla_creditos_inicio` | débito dos dois em `app_dupla_start` (com a cota ligada exige o convite aceito; cobra também cada estação nova), pré-checagem em `app_dupla_next_station`, pré-checagem em `app_dupla_swipe` e `app_dupla_answer_invite` | M2a, M2b |
+| 014060 | `treino_dupla_creditos_admin` | configuração, concessão, estorno, extrato, uso de hoje e conciliação (só administrador) | M4a |
+| 014070 | `treino_dupla_creditos_ia` | PREPARAÇÃO da M3: moeda `ia` com janelas de dia, semana e mês (`credit_avail`, `credit_state`) e `credit_refund_ref`. NÃO liga o treino sozinho: a ligação (`ch_worker_solo_prepare` e `_fail`) está descrita no cabeçalho e espera juntar o ramo `dupla-sozinho-ia` e os números do dono | M3 (parte) |
 
 ## Quem pode o quê
 - **Aluno:** `app_credit_state('match')` (o próprio estado). Lê as próprias linhas de `credit_daily`, `study_room_charges` e `credit_ledger`
@@ -29,7 +29,7 @@ nem webhook; o livro só tem o tipo `purchase` e o balde `purchased` prontos par
   `creditos.match.cobra_rodada_extra` vale verdadeiro por padrão (ausente = cobra); só um `false` explícito deixa de cobrar. Antes de abrir a
   estação nova (`app_dupla_next_station`) os dois são pré-checados, sem debitar. Recarregar ou repetir o início nunca cobra de novo.
 - **Treino sozinho com IA:** cada sessão com avaliação por IA gasta crédito de IA (decisão do dono de 17/10). A ligação fica para quando o
-  ramo `dupla-sozinho-ia` for juntado (ver cabeçalho da 013540).
+  ramo `dupla-sozinho-ia` for juntado (ver cabeçalho da 014070).
 - Ordem: diária, bônus, comprados (`creditos.match.ordem` pode trocar). Dia = `America/Sao_Paulo`.
 - Plano com a cota ligada e sem número = zero. Abandono depois de iniciar mantém o débito; estorno só manual pela Administração.
 - Pré-checagem (sem debitar): sem crédito meu, "Estudar junto" devolve `{ matched: false, reason: 'quota' }` e a escolha não é gravada;

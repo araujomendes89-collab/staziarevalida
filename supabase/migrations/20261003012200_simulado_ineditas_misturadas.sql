@@ -31,11 +31,13 @@ begin
     execute format('alter table public.app_settings drop constraint %I', r.conname);
   end loop;
 end $$;
+-- 19/10/2026 (fase2-etapa2): a lista também aceita 'creditos' (Stazia Match, 014020), para colar esta migração de novo DEPOIS
+-- da 014020 não esbarrar na linha gravada. Sem a 014020 nada muda: a chave só passa a ser aceita.
 alter table public.app_settings drop constraint if exists app_settings_key_check;
 -- 18/10/2026 (2ª fase, publicar-fase2-v2): a lista já inclui as chaves do Treino em Dupla ('treino_dupla', 013300, e
 -- 'treino_dupla_chat', 013370), para colar esta migração de novo DEPOIS delas não esbarrar nas linhas gravadas ("app_settings_key_check
 -- is violated by some row"). Em banco sem a 2ª fase nada muda: as duas chaves só passam a ser aceitas.
-alter table public.app_settings add constraint app_settings_key_check check (key in ('trial_days', 'announcement', 'simulado_ineditas_pct', 'treino_dupla', 'treino_dupla_chat'));
+alter table public.app_settings add constraint app_settings_key_check check (key in ('trial_days', 'announcement', 'simulado_ineditas_pct', 'treino_dupla', 'treino_dupla_chat', 'creditos'));
 -- Padrão do dono: até 10% do simulado. "on conflict do nothing": colar de novo não desfaz o que o administrador mudou.
 insert into public.app_settings (key, value) values ('simulado_ineditas_pct', '10'::jsonb) on conflict (key) do nothing;
 

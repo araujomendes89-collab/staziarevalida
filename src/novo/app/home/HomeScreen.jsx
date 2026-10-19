@@ -24,6 +24,7 @@ import { CONVITE } from "../nivelamento/textos.js";
 import { useCobrancaLigada } from "../plan/Assinatura.jsx";
 import { ConviteOnboarding, PrimeirosPassosCartao, PrimeirosPassosFaixa, useOnboardingAtual } from "../onboarding/Inicio.jsx";
 import { CreditosHoje } from "./CreditosHoje.jsx";
+import { isPhase2Locked } from "../admin/common.jsx";
 
 const DIAGNOSTIC_SIZE = 10;
 const R = { borderRadius: 24 };
@@ -649,7 +650,7 @@ function HomeActive({ go, home, plan, startTask, busy, play, startNode, ineditas
 }
 
 export function HomeScreen({ go, mobile }) {
-  const { backend, boot } = useSession();
+  const { backend, boot, dupla } = useSession();
   const onboarding = useOnboardingAtual();
   const play = usePlayHome(go);
   const radar = useRadarAvisos(boot.role === "admin");
@@ -713,7 +714,8 @@ export function HomeScreen({ go, mobile }) {
   return (
     <>
       {error && <Banner tone="danger">{error}</Banner>}
-      <CreditosHoje go={go} />
+      {/* Créditos do Treino em Dupla (Stazia Match): só com a 2ª fase aberta para quem olha; com ela "Em breve", nem lê o saldo */}
+      {!isPhase2Locked(boot.role, dupla) && <CreditosHoje go={go} />}
       {boot.role === "admin" && <RadarAvisoFaixa avisos={radar} go={go} />}
       {data.announcement && (
         <Banner tone={data.announcement.tone} icon="megaphone" title={data.announcement.title}>

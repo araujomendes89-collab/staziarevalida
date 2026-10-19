@@ -1,8 +1,14 @@
 -- =============================================================================
+-- JUNÇÃO DA ETAPA 2 (fase2-etapa2, 19/10/2026): renumerada de 013460 para 014120, para ficar DEPOIS da 013980 (a ordem dos
+-- arquivos passa a ser a mesma da produção, onde a 2ª fase base já está gravada). Ordem: 013990 (3ª leva), radar 014000/014010,
+-- Stazia Match 014020–014070, convite por link 014080, treino sozinho 014090–014120.
+-- Na junção: app_export_my_data parte da 014030 (produção + 'study_credits') e só acrescenta 'solo_attempts'. A chave
+-- 'station_attempts' (013406, já em produção) continua: as duas listam os treinos sozinhos; 'solo_attempts' traz também o texto
+-- escrito e o resultado da avaliação.
 -- TREINO SOZINHO (2ª fase, grupo dupla-sozinho-ia) · PARTE 4 de 4: "Uso do mês" com o sozinho à parte e exportação dos dados.
--- Depende da 013430 (corte por mode), da 013440 e da 013450 (solo_ia_month_cost). Plano: tarefa S8b e a exportação da §5 da spec.
+-- Depende da 014090 (corte por mode), da 014100 e da 014110 (solo_ia_month_cost). Plano: tarefa S8b e a exportação da §5 da spec.
 --
---  1) app_admin_dupla_usage (base: 013430, que veio da 013360:139): os números da dupla ficam como estavam (salas, rodadas avaliadas,
+--  1) app_admin_dupla_usage (base: 014090, que veio da 013360:139): os números da dupla ficam como estavam (salas, rodadas avaliadas,
 --     alunos, impressos por rodada, só mode = 'dupla') e ganha o bloco "sozinho" SEPARADO, nunca somado:
 --     { treinos, ia, autoavaliacao, alunos, gasto_ia_usd } (mês de Brasília; treinos concluídos; gasto = soma das chamadas da
 --     função treino_avaliacao no registro da Central de IAs).
@@ -11,7 +17,7 @@
 --     ATENÇÃO NA JUNÇÃO: outras frentes também refazem app_export_my_data; quem colar por último precisa partir da definição MAIS NOVA
 --     e manter as chaves das outras (esta só acrescenta 'solo_attempts' no fim).
 --
--- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003013460_treino_dupla_sozinho_uso_exportacao.desfazer.sql
+-- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003014120_treino_dupla_sozinho_uso_exportacao.desfazer.sql
 -- =============================================================================
 
 create or replace function public.app_admin_dupla_usage(p_month text default null) returns jsonb
@@ -127,7 +133,7 @@ as $$
     'checklist_rooms', public.dupla_export_rooms(),
     'acceptances', (select coalesce(jsonb_agg(jsonb_build_object('document', t.document, 'version', t.version,
                                                                   'accepted_at', t.accepted_at, 'origin', t.origin,
-                                                                  'user_agent', t.user_agent)
+                                                                  'user_agent', t.user_agent, 'ip', host(t.ip), 'text_sha256', t.text_sha256, 'companions', t.companions)
                                               order by t.accepted_at, t.id), '[]'::jsonb)
                     from public.legal_acceptances t where t.user_id = (select auth.uid())),
     'declarations', (select coalesce(jsonb_agg(jsonb_build_object('document', a.document, 'version', a.version,
@@ -136,6 +142,11 @@ as $$
                      from public.legal_declarations d join public.legal_acceptances a on a.id = d.acceptance_id
                      where a.user_id = (select auth.uid())),
     'study_chat', public.dupla_export_chat(),
+    -- treino sozinho (013330): a própria pessoa escolhe a estação; o PEP só é gravado ao concluir
+    'station_attempts', public.export_station_attempts(),
+    -- Stazia Match (014030): o livro de créditos da própria pessoa
+    'study_credits', public.dupla_export_creditos(),
+    -- treino sozinho com texto (014120): o que a pessoa escreveu e o resultado da avaliação, sem empresa, modelo nem custo
     'solo_attempts', public.dupla_export_solo()
   )
   where (select auth.uid()) is not null

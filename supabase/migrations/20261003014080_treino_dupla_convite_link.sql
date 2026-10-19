@@ -1,7 +1,12 @@
 -- =============================================================================
+-- JUNÇÃO DA ETAPA 2 (fase2-etapa2, 19/10/2026): renumerada de 013550 para 014080, para ficar DEPOIS da 013980 (a ordem dos
+-- arquivos passa a ser a mesma da produção, onde a 2ª fase base já está gravada). Ordem: 013990 (3ª leva), radar 014000/014010,
+-- Stazia Match 014020–014070, convite por link 014080, treino sozinho 014090–014120.
+-- Na junção: o pedido por link e a resposta ao pedido usam dupla_station_liberada (013405) e gravam quem pediu como quem
+-- escolheu a estação (p_chosen_by da 014000).
 -- Treino em Dupla, convite por link do @ e pedido de treino de 24 horas (pedido do dono de 17/10, junto do radar).
--- Número 013550, reservado para esta frente em .tmp-aulas/NUMEROS-MIGRACAO.md. Depende da 013470 (handle, dupla_invite_core,
--- dupla_hides, dupla_radar_settings) e da 013480.
+-- Número 014080, reservado para esta frente em .tmp-aulas/NUMEROS-MIGRACAO.md. Depende da 014000 (handle, dupla_invite_core,
+-- dupla_hides, dupla_radar_settings) e da 014010.
 -- Pode ser colada duas vezes: tabela e índices "if not exists", "create or replace" e permissões. Não grava dado e não abre nada
 -- ao aluno (o módulo continua mandado pela chave "treino_dupla").
 --
@@ -21,7 +26,7 @@
 -- FUNÇÕES: dupla_can_receive_now (apoio), app_dupla_link_lookup, app_dupla_link_request, app_dupla_requests,
 --   app_dupla_answer_request. Todas novas; nenhuma redefinida. Usadas sem mudar: dupla_assert_access, dupla_allowed (013300),
 --   dupla_sweep, dupla_public_name (013310), dupla_compat (013320), dupla_station_meta, dupla_area_code (013300),
---   dupla_invite_core, dupla_hides, dupla_radar_settings (013470), tutor_is_pro (…9550), is_staff (…0100).
+--   dupla_invite_core, dupla_hides, dupla_radar_settings (014000), tutor_is_pro (…9550), is_staff (…0100).
 --
 -- DECISÕES PEQUENAS (fora do pedido; o dono pode mudar)
 --  - O pedido, como o convite, nunca leva o nome da estação ao outro lado: só "Estação N", a área e a duração.
@@ -211,7 +216,8 @@ begin
   end if;
   if p_station_id is not null then
     v_pub := public.dupla_station_public(p_station_id);
-    if v_pub is null then
+    -- Estação não aprovada só entre duas pessoas da equipe (013405): para o outro, é como se não existisse.
+    if v_pub is null or not public.dupla_station_liberada(p_station_id, array[v_uid, o.user_id]) then
       raise exception 'Estação não encontrada.' using errcode = '22023';
     end if;
     if (v_pub ->> 'is_pro_only')::boolean and not (public.tutor_is_pro(v_uid) and public.tutor_is_pro(o.user_id)) then
@@ -319,8 +325,10 @@ begin
   end if;
 
   -- Estação que deixou de estar aprovada durante as 24 h: segue sem estação (escolhem na sala), em vez de travar o aceite.
+  -- Quem trouxe a estação foi quem pediu (r.from_user): fica como quem a escolheu.
   v_res := public.dupla_invite_core(v_uid, r.from_user,
-             case when r.station_id is not null and public.dupla_station_public(r.station_id) is not null then r.station_id end, true);
+             case when r.station_id is not null and public.dupla_station_public(r.station_id) is not null
+                       and public.dupla_station_liberada(r.station_id, array[v_uid, r.from_user]) then r.station_id end, true, r.from_user);
   update public.study_train_requests
      set status = 'accepted', answered_at = now(), room_id = (v_res ->> 'room_id')::uuid where id = r.id;
   return v_res;

@@ -1,24 +1,24 @@
 // @vitest-environment node
 /**
- * Treino em Dupla (Stazia Match) · migração 013510, parte 2: UM PAR, UMA CONEXÃO (índice único sobre o par em ordem canônica
+ * Treino em Dupla (Stazia Match) · migração 014040, parte 2: UM PAR, UMA CONEXÃO (índice único sobre o par em ordem canônica
  * de study_matches) e o reuso da conexão pela app_dupla_swipe. Conferido num Postgres em memória (PGlite) com as regras reais
- * (todas as migrações, em ordem). Com a cota de créditos desligada (o padrão), a app_dupla_swipe da 013520 se comporta como
- * a da 013510.
+ * (todas as migrações, em ordem). Com a cota de créditos desligada (o padrão), a app_dupla_swipe da 014050 se comporta como
+ * a da 014040.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
 import { MIGRATIONS_DIR, STATION, U, addProfile, addStation, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
-const SQL = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013510_treino_dupla_integridade.sql"), "utf8");
-// A 013520 refaz app_dupla_swipe a partir da 013510; quem cola a primeira cola a segunda em seguida.
-const SQL_CREDITOS = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013520_treino_dupla_creditos_inicio.sql"), "utf8");
+const SQL = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003014040_treino_dupla_integridade.sql"), "utf8");
+// A 014050 refaz app_dupla_swipe a partir da 014040; quem cola a primeira cola a segunda em seguida.
+const SQL_CREDITOS = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003014050_treino_dupla_creditos_inicio.sql"), "utf8");
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
 const ABERTO = { aberto: true, planos: ["trial", "pro", "elite"] };
 const ESTACAO_2 = { ...STATION, id: "teste-dupla-e02", name: "Segunda estação de teste" };
 const NOMES = ["ana", "bruno", "carla", "diego", "eva", "fabio", "gil"] as const;
 
-describe("Migração 013510 — um par, uma conexão (study_matches_par_uniq e reuso na escolha)", () => {
+describe("Migração 014040 — um par, uma conexão (study_matches_par_uniq e reuso na escolha)", () => {
   let d: DuplaDb;
 
   const swipe = (de: string, para: string, direcao: "right" | "left" = "right", estacao?: string | null) =>

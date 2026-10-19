@@ -2,7 +2,7 @@
 /**
  * Treino sozinho · avaliação por IA no servidor (tarefa A3): material, instruções, regras duras de cada membro, mescla dos dois
  * membros, rota POST /api/dupla/solo/:id/evaluate e devolução da cota. IA SIMULADA: provedores falsos injetados no maestro
- * (makeProviderFor); nenhuma chamada de rede, nenhuma chave. Banco: PGlite com as migrações reais (013430 a 013460).
+ * (makeProviderFor); nenhuma chamada de rede, nenhuma chave. Banco: PGlite com as migrações reais (014090 a 014120).
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
@@ -600,7 +600,8 @@ describe("avaliação por IA do treino sozinho (rota, maestro simulado e banco)"
     await setPlan(d.db, U.ana, "trial", "trialing", new Date(Date.now() + 86_400_000).toISOString());
     expect(await evaluate(id)).toMatchObject({ status: 403, body: { error: "Disponível em outro plano." } });
     await setPlan(d.db, U.ana, "pro", "active");
-    await sql(`delete from public.legal_acceptances where user_id = $1 and document = 'tutor_ia'`, [U.ana]);
+    // Termo 3.0 (013740): a prova do aceite só sai com a chave de expurgo na própria transação.
+    await d.db.exec(`begin; set local app.legal_expurgo = 'on'; delete from public.legal_acceptances where user_id = '${U.ana}' and document = 'tutor_ia'; commit;`);
     expect(await evaluate(id)).toMatchObject({ status: 403, body: { error: "Aceite o aviso para usar a IA." } });
     await aceitarTermos(d.db, U.ana);
     await rpc(U.admin, "app_admin_save_dupla_ia", { p_config: { aberto: true, planos: ["pro"], limite_dia: 1, limite_mes: 10 } });

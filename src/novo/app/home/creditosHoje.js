@@ -1,5 +1,5 @@
 // Início do aluno · "Créditos de hoje": o modelo da tela e a leitura do estado.
-// Fonte única: app_credit_state('match') e app_credit_state('ia') (013500/013540), que só devolvem o saldo do PRÓPRIO aluno.
+// Fonte única: app_credit_state('match') e app_credit_state('ia') (014030/014070), que só devolvem o saldo do PRÓPRIO aluno.
 // O número vem sempre do servidor; a tela nunca desconta nem soma por conta própria. Ela se relê quando a janela volta ao foco e
 // quando passa o instante `renova_em` (meia-noite de Brasília), sem o aluno recarregar a página.
 import React from "react";

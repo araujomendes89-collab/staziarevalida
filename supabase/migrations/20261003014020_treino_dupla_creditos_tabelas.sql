@@ -1,10 +1,13 @@
 -- =============================================================================
+-- JUNÇÃO DA ETAPA 2 (fase2-etapa2, 19/10/2026): renumerada de 013490 para 014020, para ficar DEPOIS da 013980 (a ordem dos
+-- arquivos passa a ser a mesma da produção, onde a 2ª fase base já está gravada). Ordem: 013990 (3ª leva), radar 014000/014010,
+-- Stazia Match 014020–014070, convite por link 014080, treino sozinho 014090–014120.
 -- Stazia Match, Etapa M1a: o livro de créditos único (tabelas, regras de acesso e chave de configuração). DESLIGADO.
--- (Plano de 12/10: "migração 9960"; este arquivo usa 013490, reservado em .tmp-aulas/NUMEROS-MIGRACAO.md.)
+-- (Plano de 12/10: "migração 9960"; este arquivo usa 014020, reservado em .tmp-aulas/NUMEROS-MIGRACAO.md.)
 -- Depende da 013300 (app_settings com lista de chaves, checklist_rooms) e da 013370 (última lista de chaves de app_settings).
 -- Pode ser colada duas vezes: "create table if not exists", "drop policy/trigger if exists", "create or replace function" e permissões.
 -- Não grava dado de aluno. Nenhuma IA. Nenhum pagamento (a Stripe segue parada). NÃO cria função de crédito: as funções
--- ficam na 013500. Nada muda para ninguém: a chave "creditos" nasce com "ativa": false e sem número.
+-- ficam na 014030. Nada muda para ninguém: a chave "creditos" nasce com "ativa": false e sem número.
 --
 -- O QUE FAZ
 --  1) app_settings: a lista de chaves aceitas passa a ser a UNIÃO das chaves que já existem no sistema
@@ -28,7 +31,7 @@
 --    consumo e estorno (concessão e compra só existem nos baldes bonus e purchased).
 --  - Na leitura do aluno ficam de fora: idem_key (chave interna) e created_by (quem da equipe lançou).
 --  - A chave "creditos" (limites por plano) só a equipe lê: a política "leitura para logados" de app_settings foi retirada na
---    …9600 (configuração só equipe). O aluno vê o próprio estado por app_credit_state (013500), nunca a tabela de limites.
+--    …9600 (configuração só equipe). O aluno vê o próprio estado por app_credit_state (014030), nunca a tabela de limites.
 --
 -- FUNÇÕES REDEFINIDAS E A BASE DE CADA UMA: nenhuma (só app_settings_key_check, que é constraint). Gatilho novo
 -- credit_ledger_guard, função nova credit_ledger_guard().

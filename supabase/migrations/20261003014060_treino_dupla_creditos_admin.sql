@@ -1,7 +1,10 @@
 -- =============================================================================
+-- JUNÇÃO DA ETAPA 2 (fase2-etapa2, 19/10/2026): renumerada de 013530 para 014060, para ficar DEPOIS da 013980 (a ordem dos
+-- arquivos passa a ser a mesma da produção, onde a 2ª fase base já está gravada). Ordem: 013990 (3ª leva), radar 014000/014010,
+-- Stazia Match 014020–014070, convite por link 014080, treino sozinho 014090–014120.
 -- Stazia Match, Etapa M4a: administração dos créditos (configuração, concessão, estorno, extrato, uso de hoje e conciliação).
--- (Plano de 12/10: "migração 9980"; este arquivo usa 013530, reservado em .tmp-aulas/NUMEROS-MIGRACAO.md.)
--- Depende da 013490/013500 (livro e funções credit_*) e de assert_admin/admin_log (…1300).
+-- (Plano de 12/10: "migração 9980"; este arquivo usa 014060, reservado em .tmp-aulas/NUMEROS-MIGRACAO.md.)
+-- Depende da 014020/014030 (livro e funções credit_*) e de assert_admin/admin_log (…1300).
 -- Pode ser colada duas vezes: só "create or replace function" e permissões. Não grava dado. Nenhuma IA. Sem pagamento.
 -- SÓ ADMINISTRADOR (assert_admin: editor, revisor médico e aluno são barrados). Toda ação vai para o registro da Administração
 -- (admin_log), com o autor: a configuração (antes e depois), a concessão, o estorno, a conciliação e a LEITURA do extrato.

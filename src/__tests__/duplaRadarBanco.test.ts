@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
- * Treino em Dupla · radar de quem está online e convite direto (Etapa 6C, R1): as migrações 013470 e 013480
- * (supabase/migrations/…013470_treino_dupla_radar.sql e …013480_treino_dupla_radar_refeitas.sql).
+ * Treino em Dupla · radar de quem está online e convite direto (Etapa 6C, R1): as migrações 014000 e 014010
+ * (supabase/migrations/…014000_treino_dupla_radar.sql e …014010_treino_dupla_radar_refeitas.sql).
  * Radar (quem aparece, cartão público, situação, ordem), convite direto (sala, limites, bloqueio, estação Pro, corrida),
  * bloqueio do chat escondendo do baralho, do radar e do convite, "Permitir convites diretos", painel dos limites e as
  * denúncias do chat guardadas por 180 dias. Postgres em memória (PGlite) com todas as migrações, em ordem.
@@ -11,8 +11,8 @@ import fs from "fs";
 import path from "path";
 import { MIGRATIONS_DIR, STATION, U, addProfile, addStation, makeRoom, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
-const SQL_1 = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013470_treino_dupla_radar.sql"), "utf8");
-const SQL_2 = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013480_treino_dupla_radar_refeitas.sql"), "utf8");
+const SQL_1 = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003014000_treino_dupla_radar.sql"), "utf8");
+const SQL_2 = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003014010_treino_dupla_radar_refeitas.sql"), "utf8");
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
 const ABERTO = { aberto: true, planos: ["trial", "pro", "elite"] };
 const SEM_ACESSO = /Sem acesso ao Treinamento em Dupla\./;
@@ -31,7 +31,7 @@ const PERFIS: Record<string, Record<string, unknown>> = {
 };
 const COM_SINAL = ["ana", "bruno", "carla", "diego", "eva", "fabio", "gil"] as const;
 
-describe("Migrações 013470 e 013480 — radar e convite direto", () => {
+describe("Migrações 014000 e 014010 — radar e convite direto", () => {
   let d: DuplaDb;
 
   const radar = (uid: string, estacao?: string | null, aba?: string) =>
@@ -63,8 +63,7 @@ describe("Migrações 013470 e 013480 — radar e convite direto", () => {
     d = await openDuplaDb();
     await addStation(d.db);
     await addStation(d.db, ESTACAO_PRO);
-    // O treino sozinho (outra frente) cria a situação 'sozinho' no perfil; aqui ela só é lida, então abre-se a restrição.
-    await d.sql(`alter table public.study_profiles drop constraint if exists study_profiles_status_check`);
+    // Junção da etapa 2: a situação 'sozinho' já é aceita pela restrição do perfil (014090, treino sozinho); nada a abrir.
   }, 120_000);
   beforeEach(async () => {
     await montar();
@@ -411,11 +410,12 @@ describe("Migrações 013470 e 013480 — radar e convite direto", () => {
   });
 
   // ------------------------------------------------------------------ crédito do Stazia Match (ponto de chamada)
-  it("crédito do Stazia Match: sem a função não bloqueia; com a função, as duas pessoas precisam de crédito e ninguém vê o saldo do outro", async () => {
-    // Sem credit_available neste ramo: o convite passa (os testes acima já mostram isso). Agora um substituto de TESTE da função do Match.
+  it("crédito do Stazia Match: com a cota desligada não bloqueia; com crédito em falta, as duas pessoas precisam de crédito e ninguém vê o saldo do outro", async () => {
+    // Junção da etapa 2: a função do Match (014030) já está no banco; o teste troca o corpo por um substituto e devolve o original.
+    const [{ original }] = await d.sql<any>(`select pg_get_functiondef('public.credit_available(uuid,text,integer,timestamptz)'::regprocedure) as original`);
     await d.sql(`create table public.teste_sem_credito (uid uuid primary key)`);
     await d.sql(
-      `create function public.credit_available(p_uid uuid, p_pool text, p_n integer default 1, p_now timestamptz default now()) returns boolean
+      `create or replace function public.credit_available(p_uid uuid, p_pool text, p_n integer default 1, p_now timestamptz default now()) returns boolean
          language sql stable security definer set search_path = '' as $$ select not exists (select 1 from public.teste_sem_credito t where t.uid = p_uid) and p_pool = 'match' $$`
     );
     try {
@@ -430,7 +430,7 @@ describe("Migrações 013470 e 013480 — radar e convite direto", () => {
       await d.sql(`delete from public.teste_sem_credito`);
       expect((await convidar(U.ana, U.bruno)).room_id).toBeTruthy(); // com crédito dos dois, passa
     } finally {
-      await d.sql(`drop function public.credit_available(uuid, text, integer, timestamptz)`);
+      await d.db.exec(original);
       await d.sql(`drop table public.teste_sem_credito`);
     }
   });
@@ -587,6 +587,10 @@ describe("Migrações 013470 e 013480 — radar e convite direto", () => {
     const antes = await retrato();
     await d.db.exec(SQL_1);
     await d.db.exec(SQL_2);
+    // Junção da etapa 2: as do Treino que vêm depois refazem funções destas (app_dupla_swipe na 014040/014050); recoladas na ordem.
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.includes("treino_dupla") && x > "20261003014010").sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect(await retrato()).toEqual(antes);
     const acl = Object.fromEntries((antes.funcoes as any[]).map((f) => [f.id, f.acl]));
     for (const f of ["app_dupla_radar(text,text)", "app_dupla_invite(uuid,text)", "app_dupla_deck()", "app_dupla_save_profile(jsonb)"]) expect(acl[f], f).toBe(acl["app_dupla_room(uuid,integer)"]);

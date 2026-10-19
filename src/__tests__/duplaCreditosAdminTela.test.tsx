@@ -1,5 +1,5 @@
 /**
- * Treinamento em Dupla · Créditos da Administração (tela, jsdom). O banco é simulado pelo contrato da migração 013530:
+ * Treinamento em Dupla · Créditos da Administração (tela, jsdom). O banco é simulado pelo contrato da migração 014060:
  * app_admin_credit_config, app_admin_save_credit_config, app_admin_credit_today, app_admin_users, app_admin_credit_grant,
  * app_admin_credit_statement, app_admin_credit_refund e app_admin_credit_reconcile. Pessoas e números de teste.
  */

@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Stazia Match · livro de créditos · tabelas (migração 013490) e funções internas credit_* (migração 013500), conferidos num
+ * Stazia Match · livro de créditos · tabelas (migração 014020) e funções internas credit_* (migração 014030), conferidos num
  * Postgres em memória (PGlite) com as regras reais (todas as migrações, em ordem).
  *
  * As funções credit_* são internas: aqui são chamadas pelo dono do banco, como o servidor faria. O que o aluno enxerga
@@ -16,9 +16,9 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { MIGRATIONS_DIR, U, makeRoom, openDuplaDb, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
-// (A 013540 refaz credit_avail e credit_state da 013500: quem cola as duas primeiras de novo cola a terceira em seguida.)
+// (A 014070 refaz credit_avail e credit_state da 014030: quem cola as duas primeiras de novo cola a terceira em seguida.)
 const MIGRACOES = [
-  "20261003013490_treino_dupla_creditos_tabelas.sql", "20261003013500_treino_dupla_creditos_funcoes.sql", "20261003013540_treino_dupla_creditos_ia.sql",
+  "20261003014020_treino_dupla_creditos_tabelas.sql", "20261003014030_treino_dupla_creditos_funcoes.sql", "20261003014070_treino_dupla_creditos_ia.sql",
 ];
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
 const CHAVE_INICIAL = { ativa: false, match: { cobra_rodada_extra: true }, ia: {} };
@@ -1079,7 +1079,11 @@ describe("Livro de créditos · tabelas e funções internas", () => {
       });
       const antes = await retrato();
       expect((antes.chaves as any[]).map((x) => x.key)).toContain("creditos");
-      for (const f of MIGRACOES) await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+      // (Junção da etapa 2: as do Treino que vêm depois refazem funções destas, como a exportação na 014120; recoladas na ordem, o
+      // banco volta igual.)
+      for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.includes("treino_dupla") && x >= MIGRACOES[0]).sort()) {
+        await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+      }
       expect(await retrato()).toEqual(antes);
       // e o sistema continua funcionando
       await cota(true);

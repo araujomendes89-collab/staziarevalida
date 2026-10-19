@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Stazia Match · M2b · pré-checagem de crédito ao formar o match (migração 013520: app_dupla_swipe e
+ * Stazia Match · M2b · pré-checagem de crédito ao formar o match (migração 014050: app_dupla_swipe e
  * app_dupla_answer_invite), conferida num Postgres em memória (PGlite) com as regras reais (todas as migrações, em ordem).
  *
  * A pré-checagem NUNCA debita (quem debita é o início da estação, em duplaCreditosInicio.test.ts) e nunca revela o saldo
@@ -18,7 +18,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { MIGRATIONS_DIR, addProfile, addStation, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
-const MIGRACAO = "20261003013520_treino_dupla_creditos_inicio.sql";
+const MIGRACAO = "20261003014050_treino_dupla_creditos_inicio.sql";
 const SQL = fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8");
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
 const ABERTO = { aberto: true, planos: ["trial", "pro", "elite"] };
@@ -334,7 +334,7 @@ describe("Stazia Match · pré-checagem de crédito (escolha e convite)", () => 
   });
 
   // ------------------------------------------------------------------ colar duas vezes
-  it("colar a 013520 duas vezes dá o mesmo banco (funções, permissões, índices e políticas) e a pré-checagem segue valendo", async () => {
+  it("colar a 014050 duas vezes dá o mesmo banco (funções, permissões, índices e políticas) e a pré-checagem segue valendo", async () => {
     const retrato = async () => ({
       funcoes: await d.sql(
         `select p.oid::regprocedure::text as id, pg_get_functiondef(p.oid) as def, p.proacl::text as acl

@@ -1,7 +1,10 @@
 -- =============================================================================
+-- JUNÇÃO DA ETAPA 2 (fase2-etapa2, 19/10/2026): renumerada de 013540 para 014070, para ficar DEPOIS da 013980 (a ordem dos
+-- arquivos passa a ser a mesma da produção, onde a 2ª fase base já está gravada). Ordem: 013990 (3ª leva), radar 014000/014010,
+-- Stazia Match 014020–014070, convite por link 014080, treino sozinho 014090–014120.
 -- Stazia Match, Etapa M3 (PREPARAÇÃO): a moeda "ia" no mesmo livro, com janelas de dia, semana e mês, e estorno por referência.
--- (Plano de 12/10: "migração 9975"; este arquivo usa 013540, reservado em .tmp-aulas/NUMEROS-MIGRACAO.md.)
--- Depende da 013490/013500. Pode ser colada duas vezes: só "create or replace function" e permissões. Não grava dado.
+-- (Plano de 12/10: "migração 9975"; este arquivo usa 014070, reservado em .tmp-aulas/NUMEROS-MIGRACAO.md.)
+-- Depende da 014020/014030. Pode ser colada duas vezes: só "create or replace function" e permissões. Não grava dado.
 -- COTA DESLIGADA (creditos.ativa = false, o padrão): nada muda. Nenhuma IA é chamada aqui. Sem pagamento.
 --
 -- POR QUE É "PREPARAÇÃO" E NÃO A M3 INTEIRA
@@ -24,7 +27,7 @@
 --       (peso vazio = bloqueada: 'Avaliação por IA indisponível.'; sem saldo → a mesma mensagem de "Você usou as avaliações de hoje");
 --     - ch_worker_solo_fail: perform public.credit_refund_ref('solo_run', p_attempt, 'Falha da avaliação por IA');
 --     - solo_ia_status: ler public.credit_state(p_uid, 'ia') (usados_hoje, disponivel) no lugar de usadas_dia/usadas_mes;
---     - tela do sozinho: app_credit_state('ia') (já existe, 013500).
+--     - tela do sozinho: app_credit_state('ia') (já existe, 014030).
 --   O ai_usage_ledger segue só para CUSTO. O Tutor não muda.
 --
 -- DECISÕES PEQUENAS (fora do texto do plano; o dono pode mudar)
@@ -32,9 +35,9 @@
 --  - As janelas somam credit_daily.used (consumo diário líquido de estornos): estornar um consumo diário reduz o dia do consumo
 --    e, portanto, também a semana e o mês dele. Bônus e comprados não entram em janela nenhuma.
 --
--- FUNÇÕES REDEFINIDAS E A BASE DE CADA UMA: credit_avail(uuid, text, timestamptz) ← 013500; credit_state(uuid, text, timestamptz)
---   ← 013500 (igual, mais as chaves de semana e mês). Nova: credit_refund_ref.
--- COMO DESFAZER: colar de novo credit_avail e credit_state da 013500; apagar credit_refund_ref(text, uuid, text, timestamptz).
+-- FUNÇÕES REDEFINIDAS E A BASE DE CADA UMA: credit_avail(uuid, text, timestamptz) ← 014030; credit_state(uuid, text, timestamptz)
+--   ← 014030 (igual, mais as chaves de semana e mês). Nova: credit_refund_ref.
+-- COMO DESFAZER: colar de novo credit_avail e credit_state da 014030; apagar credit_refund_ref(text, uuid, text, timestamptz).
 -- =============================================================================
 
 create or replace function public.credit_avail(p_uid uuid, p_pool text, p_now timestamptz default now()) returns jsonb

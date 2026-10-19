@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Stazia Match · Etapa M3 (preparação), migração 013540: a moeda "ia" no mesmo livro, com as janelas de dia, semana e mês, e o
+ * Stazia Match · Etapa M3 (preparação), migração 014070: a moeda "ia" no mesmo livro, com as janelas de dia, semana e mês, e o
  * estorno por referência. NÃO liga o treino sozinho (o ramo dupla-sozinho-ia ainda não foi juntado): a ligação está descrita no
  * cabeçalho da migração. Num Postgres em memória (PGlite) com as regras reais.
  */
@@ -9,13 +9,13 @@ import fs from "fs";
 import path from "path";
 import { MIGRATIONS_DIR, U, openDuplaDb, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
-const MIGRACAO = "20261003013540_treino_dupla_creditos_ia.sql";
+const MIGRACAO = "20261003014070_treino_dupla_creditos_ia.sql";
 const SQL = fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8");
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
 // 2026-10-14 é uma quarta-feira (semana de segunda 12 a domingo 18); o mês é outubro. Instantes ao meio-dia de São Paulo.
 const DIA = (d: number) => `2026-10-${String(d).padStart(2, "0")}T15:00:00Z`;
 
-describe("Migração 013540 — moeda 'ia': janelas de dia, semana e mês e estorno por referência", () => {
+describe("Migração 014070 — moeda 'ia': janelas de dia, semana e mês e estorno por referência", () => {
   let d: DuplaDb;
   let n = 0;
   const conta = async () => {

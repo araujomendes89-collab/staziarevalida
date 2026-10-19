@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Treino em Dupla · nome de usuário com @ (013470/013480) e convite por link com pedido de treino de 24 h (013550).
+ * Treino em Dupla · nome de usuário com @ (014000/014010) e convite por link com pedido de treino de 24 h (014080).
  * Postgres em memória (PGlite) com todas as migrações, em ordem.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -8,9 +8,9 @@ import fs from "fs";
 import path from "path";
 import { MIGRATIONS_DIR, STATION, U, addProfile, addStation, makeRoom, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
-const SQL_RADAR = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013470_treino_dupla_radar.sql"), "utf8");
-const SQL_REFEITAS = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013480_treino_dupla_radar_refeitas.sql"), "utf8");
-const SQL_LINK = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013550_treino_dupla_convite_link.sql"), "utf8");
+const SQL_RADAR = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003014000_treino_dupla_radar.sql"), "utf8");
+const SQL_REFEITAS = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003014010_treino_dupla_radar_refeitas.sql"), "utf8");
+const SQL_LINK = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003014080_treino_dupla_convite_link.sql"), "utf8");
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
 const ABERTO = { aberto: true, planos: ["trial", "pro", "elite"] };
 const FORMATO = /Use de 3 a 20 caracteres/;
@@ -260,7 +260,7 @@ describe("Convite por link e pedido de treino de 24 h", () => {
     d = await openDuplaDb();
     await addStation(d.db);
     await addStation(d.db, ESTACAO_PRO);
-    await d.sql(`alter table public.study_profiles drop constraint if exists study_profiles_status_check`);
+    // Junção da etapa 2: a situação 'sozinho' já é aceita pela restrição do perfil (014090, treino sozinho); nada a abrir.
   }, 120_000);
   beforeEach(async () => {
     await d.sql(`delete from public.study_train_requests`);
@@ -510,9 +510,11 @@ describe("Convite por link e pedido de treino de 24 h", () => {
   });
 
   it("crédito do Stazia Match no link e no pedido: sem crédito do dono o link vira pedido; aceitar exige crédito dos dois", async () => {
+    // Junção da etapa 2: a função do Match (014030) já está no banco; o teste troca o corpo por um substituto e devolve o original.
+    const [{ original }] = await d.sql<any>(`select pg_get_functiondef('public.credit_available(uuid,text,integer,timestamptz)'::regprocedure) as original`);
     await d.sql(`create table public.teste_sem_credito (uid uuid primary key)`);
     await d.sql(
-      `create function public.credit_available(p_uid uuid, p_pool text, p_n integer default 1, p_now timestamptz default now()) returns boolean
+      `create or replace function public.credit_available(p_uid uuid, p_pool text, p_n integer default 1, p_now timestamptz default now()) returns boolean
          language sql stable security definer set search_path = '' as $$ select not exists (select 1 from public.teste_sem_credito t where t.uid = p_uid) and p_pool = 'match' $$`
     );
     try {
@@ -527,7 +529,7 @@ describe("Convite por link e pedido de treino de 24 h", () => {
       await d.sql(`delete from public.teste_sem_credito`);
       expect((await responder(U.bruno, r.request_id, true)).room_id).toBeTruthy();
     } finally {
-      await d.sql(`drop function public.credit_available(uuid, text, integer, timestamptz)`);
+      await d.db.exec(original);
       await d.sql(`drop table public.teste_sem_credito`);
     }
   });
@@ -548,12 +550,16 @@ describe("Convite por link e pedido de treino de 24 h", () => {
     await d.db.exec(SQL_RADAR);
     await d.db.exec(SQL_REFEITAS);
     await d.db.exec(SQL_LINK);
+    // Junção da etapa 2: as do Treino que vêm depois da 014010 refazem funções (swipe na 014040/014050); recoladas na ordem.
+    for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.includes("treino_dupla") && x > "20261003014010").sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+    }
     expect(await retrato()).toEqual(antes);
     const acl = Object.fromEntries((antes.funcoes as any[]).map((f) => [f.id, f.acl]));
     for (const f of ["app_dupla_link_lookup(text,text)", "app_dupla_link_request(text,text)", "app_dupla_requests()", "app_dupla_answer_request(uuid,boolean)", "app_dupla_set_handle(text)", "app_dupla_handle_check(text)"]) {
       expect(acl[f], f).toBe(acl["app_dupla_room(uuid,integer)"]);
     }
-    for (const f of ["dupla_requests_sweep()", "dupla_can_receive_now(uuid)", "dupla_station_public(text)", "dupla_invite_core(uuid,uuid,text,boolean)", "dupla_handle_generate()", "dupla_handle_problem(text,uuid)", "dupla_has_banned_word(text,boolean)", "dupla_name_reserved(text)", "dupla_credit_ok(uuid)"]) {
+    for (const f of ["dupla_requests_sweep()", "dupla_can_receive_now(uuid)", "dupla_station_public(text)", "dupla_invite_core(uuid,uuid,text,boolean,uuid)", "dupla_handle_generate()", "dupla_handle_problem(text,uuid)", "dupla_has_banned_word(text,boolean)", "dupla_name_reserved(text)", "dupla_credit_ok(uuid)"]) {
       expect(acl[f], f).not.toContain("authenticated");
       expect(acl[f], f).not.toContain("anon");
     }

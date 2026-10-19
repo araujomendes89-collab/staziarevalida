@@ -1,6 +1,9 @@
 -- =============================================================================
+-- JUNÇÃO DA ETAPA 2 (fase2-etapa2, 19/10/2026): renumerada de 013450 para 014110, para ficar DEPOIS da 013980 (a ordem dos
+-- arquivos passa a ser a mesma da produção, onde a 2ª fase base já está gravada). Ordem: 013990 (3ª leva), radar 014000/014010,
+-- Stazia Match 014020–014070, convite por link 014080, treino sozinho 014090–014120.
 -- TREINO SOZINHO (2ª fase, grupo dupla-sozinho-ia) · PARTE 3 de 4: avaliação por IA (funções de SERVIÇO).
--- Depende da 013430 (solo_ia_status, função treino_avaliacao na Central) e da 013440 (solo_pep_rows, solo_finalize).
+-- Depende da 014090 (solo_ia_status, função treino_avaliacao na Central) e da 014100 (solo_pep_rows, solo_finalize).
 -- Plano: tarefa A1. Decisões do dono de 12/10: D5 (é o benefício Elite "correção de estação"), D6 (planos e limites ainda vazios =
 -- IA bloqueada), D13 (usa o aceite do Tutor, sem documento novo).
 --
@@ -17,7 +20,7 @@
 -- por tarefa, os impressos abertos (com a hora) e o tempo usado. Não tem nome, e-mail, perfil, plano nem o roteiro do ator.
 -- A cota é a própria tentativa: ia_reserved_at preenchido = uma avaliação usada hoje e no mês (fuso de São Paulo); uma falha devolve.
 --
--- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003013450_treino_dupla_sozinho_ia.desfazer.sql
+-- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003014110_treino_dupla_sozinho_ia.desfazer.sql
 -- =============================================================================
 
 create or replace function public.ch_worker_solo_prepare(p_user uuid, p_attempt uuid) returns jsonb

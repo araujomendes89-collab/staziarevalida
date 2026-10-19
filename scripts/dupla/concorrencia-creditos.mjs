@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Stazia Match, Etapa M5b: roteiro de CONCORRÊNCIA REAL do livro de créditos e das garantias de integridade (013490 a 013520).
+ * Stazia Match, Etapa M5b: roteiro de CONCORRÊNCIA REAL do livro de créditos e das garantias de integridade (014020 a 014050).
  * Roda fora da suíte padrão. O PGlite (usado nos testes) tem UMA conexão só e serializa as chamadas: ele prova o resultado final,
  * não a corrida. Este roteiro dispara as chamadas por conexões diferentes de um Postgres de verdade.
  *

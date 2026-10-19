@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Stazia Match · M2a · o crédito dos DOIS alunos sai no início confirmado da estação (migração 013520, app_dupla_start),
+ * Stazia Match · M2a · o crédito dos DOIS alunos sai no início confirmado da estação (migração 014050, app_dupla_start),
  * conferido num Postgres em memória (PGlite) com as regras reais (todas as migrações, em ordem).
  *
  * Regras que estes testes seguram (Review Focus do plano):
@@ -20,7 +20,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { MIGRATIONS_DIR, STATION, addStation, makeRoom, openDuplaDb, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
-const MIGRACAO = "20261003013520_treino_dupla_creditos_inicio.sql";
+const MIGRACAO = "20261003014050_treino_dupla_creditos_inicio.sql";
 const SQL = fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8");
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
 
@@ -712,7 +712,7 @@ describe("Stazia Match · crédito no início da estação (app_dupla_start)", (
     expect(f).toMatchObject({ prosecdef: true, proconfig: ['search_path=""'], provolatile: "v" });
   });
 
-  it("colar a 013520 duas vezes dá o mesmo banco (funções, permissões, índices e políticas)", async () => {
+  it("colar a 014050 duas vezes dá o mesmo banco (funções, permissões, índices e políticas)", async () => {
     const retrato = async () => ({
       funcoes: await d.sql(
         `select p.oid::regprocedure::text as id, pg_get_functiondef(p.oid) as def, p.proacl::text as acl

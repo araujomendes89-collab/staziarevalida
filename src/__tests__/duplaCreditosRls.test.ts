@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Stazia Match · livro de créditos · o que o aluno vê (migrações 013490 e 013500): app_credit_state, leitura do próprio
+ * Stazia Match · livro de créditos · o que o aluno vê (migrações 014020 e 014030): app_credit_state, leitura do próprio
  * livro, uso do dia e cobranças, a carteira fechada, a exportação dos dados, a exclusão da conta e as permissões.
  * Conferido num Postgres em memória (PGlite) com as regras reais (todas as migrações, em ordem).
  *
@@ -460,7 +460,7 @@ describe("Livro de créditos · o que o aluno vê, exportação, exclusão da co
       expect(await contagem("credit_ledger", aluno)).toBe(0);
     });
 
-    // (Bug achado na 013490 e corrigido no gatilho do livro: zerar created_by de conta excluída é permitido.)
+    // (Bug achado na 014020 e corrigido no gatilho do livro: zerar created_by de conta excluída é permitido.)
     // credit_ledger.created_by tem "on delete set null", mas o gatilho credit_ledger_guard recusa todo UPDATE (a única exceção é DELETE
     // de conta já excluída). Excluir a conta de um administrador que já concedeu ou estornou crédito dispara o "set null" e
     // a exclusão inteira falha com "O livro de créditos só aceita novas linhas." Esperado: a conta sai e created_by vira nulo.

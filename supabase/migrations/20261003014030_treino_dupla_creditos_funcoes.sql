@@ -1,7 +1,12 @@
 -- =============================================================================
+-- JUNÇÃO DA ETAPA 2 (fase2-etapa2, 19/10/2026): renumerada de 013500 para 014030, para ficar DEPOIS da 013980 (a ordem dos
+-- arquivos passa a ser a mesma da produção, onde a 2ª fase base já está gravada). Ordem: 013990 (3ª leva), radar 014000/014010,
+-- Stazia Match 014020–014070, convite por link 014080, treino sozinho 014090–014120.
+-- Na junção: app_export_my_data parte da definição de PRODUÇÃO (013406 com station_attempts + remendo do Termo 3.0 da
+-- 013740/013980: ip, text_sha256, companions) e só acrescenta 'study_credits'.
 -- Stazia Match, Etapas M1b e M1c: as funções do livro de créditos, o que o aluno vê, exportação e exclusão da conta.
--- (Plano de 12/10: "migrações 9961 e 9962", juntas; este arquivo usa 013500, reservado em .tmp-aulas/NUMEROS-MIGRACAO.md.)
--- Depende da 013490 (tabelas), 013370 (última app_export_my_data) e das regras de acesso (user_has_full_access, subscription_is_paid).
+-- (Plano de 12/10: "migrações 9961 e 9962", juntas; este arquivo usa 014030, reservado em .tmp-aulas/NUMEROS-MIGRACAO.md.)
+-- Depende da 014020 (tabelas), 013370 (última app_export_my_data) e das regras de acesso (user_has_full_access, subscription_is_paid).
 -- Pode ser colada duas vezes: só "create or replace function" e permissões. Não grava dado. Nenhuma IA. Sem pagamento.
 -- Com "creditos.ativa" = false (nasce assim) NENHUMA função debita, limita ou grava lançamento: o sistema segue como era.
 --
@@ -12,7 +17,7 @@
 --    credit_consume (um aluno), credit_consume_pair (os dois, ou nenhum), credit_refund, credit_grant, credit_reconcile.
 --  Do aluno: app_credit_state(pool) (só o próprio estado: cota do dia, bônus, comprados, quando renova).
 --  Exportação: dupla_export_creditos() + app_export_my_data refeita (chave nova "study_credits", com colunas LISTADAS).
---  Exclusão da conta: as 4 tabelas somem junto, por "on delete cascade" (013490); a conta do colega não é tocada.
+--  Exclusão da conta: as 4 tabelas somem junto, por "on delete cascade" (014020); a conta do colega não é tocada.
 --
 -- REGRAS (spec §3.6 e §4; o dono pode mudar)
 --  - Dia = America/Sao_Paulo, calculado UMA vez por operação a partir de p_now (nunca exposto ao navegador).
@@ -29,7 +34,7 @@
 --
 -- FUNÇÕES REDEFINIDAS E A BASE DE CADA UMA
 --   app_export_my_data() ← 013370 (igual, mais "study_credits" no fim). Todas as credit_* e app_credit_state são novas.
---   Usadas sem mudar: user_has_full_access, subscription_is_paid (…9550); admin_log (…1300) só nas funções do administrador (013530).
+--   Usadas sem mudar: user_has_full_access, subscription_is_paid (…9550); admin_log (…1300) só nas funções do administrador (014060).
 --
 -- JUNÇÃO COM OUTROS GRUPOS: app_export_my_data é peça comum. Quem juntar deve partir da definição MAIS NOVA entre os ramos e
 --   acrescentar apenas a linha 'study_credits' (a função dupla_export_creditos faz o trabalho).
@@ -542,7 +547,7 @@ as $$
     'checklist_rooms', public.dupla_export_rooms(),
     'acceptances', (select coalesce(jsonb_agg(jsonb_build_object('document', t.document, 'version', t.version,
                                                                   'accepted_at', t.accepted_at, 'origin', t.origin,
-                                                                  'user_agent', t.user_agent)
+                                                                  'user_agent', t.user_agent, 'ip', host(t.ip), 'text_sha256', t.text_sha256, 'companions', t.companions)
                                               order by t.accepted_at, t.id), '[]'::jsonb)
                     from public.legal_acceptances t where t.user_id = (select auth.uid())),
     'declarations', (select coalesce(jsonb_agg(jsonb_build_object('document', a.document, 'version', a.version,
@@ -551,6 +556,9 @@ as $$
                      from public.legal_declarations d join public.legal_acceptances a on a.id = d.acceptance_id
                      where a.user_id = (select auth.uid())),
     'study_chat', public.dupla_export_chat(),
+    -- treino sozinho (013330): a própria pessoa escolhe a estação; o PEP só é gravado ao concluir
+    'station_attempts', public.export_station_attempts(),
+    -- Stazia Match (014030): o livro de créditos da própria pessoa
     'study_credits', public.dupla_export_creditos()
   )
   where (select auth.uid()) is not null

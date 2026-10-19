@@ -61,7 +61,7 @@ export function fase2Api(backend) {
       return backend.rpc("app_fase2_abandon", { p_attempt_id: attemptId });
     },
 
-    // Treino sozinho com texto (migração 013440). `answers` = [{ task: 1..30, text }].
+    // Treino sozinho com texto (migração 014100). `answers` = [{ task: 1..30, text }].
     saveAnswers(attemptId, answers) {
       return backend.rpc("app_fase2_save_answers", { p_attempt_id: attemptId, p_answers: answers });
     },

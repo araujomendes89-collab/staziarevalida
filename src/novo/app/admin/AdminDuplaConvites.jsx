@@ -1,4 +1,4 @@
-// Administração › Configurações › Convites diretos do radar (migração 013470). Só administrador.
+// Administração › Configurações › Convites diretos do radar (migração 014000). Só administrador.
 // Três limites ainda a definir pelo dono (D9 de 12/10): convites por hora, por dia e espera para reconvidar a mesma pessoa depois
 // de recusa ou vencimento. CAMPO VAZIO = SEM LIMITE. "1 convite pendente por vez" é fixo, por segurança. Nada aqui tem número
 // de partida: os valores vêm do banco (app_settings.treino_dupla › convites) e começam vazios.

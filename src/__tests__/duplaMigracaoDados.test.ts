@@ -235,7 +235,7 @@ describe("Migração 9750 sobre o estado de produção", () => {
     await d.sql(`delete from public.app_settings where key in ('treino_dupla_chat', 'creditos')`);
     await d.db.exec(SQL);
     await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013370_treino_dupla_chat.sql"), "utf8"));
-    await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003013490_treino_dupla_creditos_tabelas.sql"), "utf8"));
+    await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003014020_treino_dupla_creditos_tabelas.sql"), "utf8"));
     expect(await d.sql(`select phase, closed_reason from public.checklist_rooms where id = $1`, [viva])).toEqual([{ phase: "running", closed_reason: null }]);
     expect(await d.sql(`select value from public.app_settings where key = 'treino_dupla'`)).toEqual([{ value: { aberto: true, planos: ["trial"] } }]);
     await setDupla(d.db, { aberto: false, planos: ["pro", "elite"] });

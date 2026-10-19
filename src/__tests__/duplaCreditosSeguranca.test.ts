@@ -231,7 +231,7 @@ describe("Créditos · segurança (§47 do documento) e jornada completa", () =>
     await d.sql(`delete from public.study_room_claims`);
     const fs = await import("fs");
     const path = await import("path");
-    for (const f of ["20261003013510_treino_dupla_integridade.sql", "20261003013520_treino_dupla_creditos_inicio.sql"]) {
+    for (const f of ["20261003014040_treino_dupla_integridade.sql", "20261003014050_treino_dupla_creditos_inicio.sql"]) {
       await d.db.exec(fs.readFileSync(path.join(__dirname, "../../supabase/migrations", f), "utf8"));
     }
     expect(await d.sql(`select phase, closed_reason from public.checklist_rooms where id = $1`, [sala.id])).toEqual([{ phase: "closed", closed_reason: "sem_sinal" }]);

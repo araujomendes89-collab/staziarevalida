@@ -1,5 +1,5 @@
 // Treino SOZINHO na prévia (porta configurável): as funções app_fase2_* simuladas em memória, no MESMO contrato do banco
-// (migrações 013430 a 013460). TUDO É DADO DE TESTE: a "IA" aqui é um roteiro fixo que mostra os estados da tela (item com trecho,
+// (migrações 014090 a 014120). TUDO É DADO DE TESTE: a "IA" aqui é um roteiro fixo que mostra os estados da tela (item com trecho,
 // item sem trecho, não citado, divergência, sem avaliação); ela NÃO avalia nada de verdade e NÃO chama nenhuma IA.
 //   ?ia=ligada (padrão) | desligada | plano | aceite | cota | falha     — como o botão "Avaliar com IA" aparece
 //   ?atraso=1500 — tempo (ms) do "Avaliando…" simulado (padrão 3500)

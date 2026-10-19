@@ -290,7 +290,7 @@ describe("Migração 013360 (+013380): resultado, revisão da nota, treinar outr
     await d.sql(`update public.checklist_study_sessions set pressings_released = $2::jsonb where id = $1`, [s1, JSON.stringify(["p1", "p2"])]);
     await d.sql(`update public.checklist_study_sessions set pressings_released = $2::jsonb where id = $1`, [s2, JSON.stringify(["p1"])]);
     await d.sql(`update public.checklist_study_sessions set pressings_released = '[]'::jsonb where id = $1`, [s3]);
-    // (o bloco "sozinho" do treino sozinho vem à parte, 013460: aqui só os números da dupla)
+    // (o bloco "sozinho" do treino sozinho vem à parte, 014120: aqui só os números da dupla)
     const { sozinho: _s1, ...ago } = await d.rpc<any>(U.admin, "app_admin_dupla_usage", { p_month: "2026-08" });
     expect(ago).toEqual({ month: "2026-08", salas: 2, rodadas_avaliadas: 3, alunos: 3, impressos_por_rodada: 1 });
     const { sozinho: _s2, ...jul } = await d.rpc<any>(U.admin, "app_admin_dupla_usage", { p_month: "2026-07" });

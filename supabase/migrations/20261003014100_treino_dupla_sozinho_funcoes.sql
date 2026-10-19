@@ -1,11 +1,14 @@
 -- =============================================================================
+-- JUNÇÃO DA ETAPA 2 (fase2-etapa2, 19/10/2026): renumerada de 013440 para 014100, para ficar DEPOIS da 013980 (a ordem dos
+-- arquivos passa a ser a mesma da produção, onde a 2ª fase base já está gravada). Ordem: 013990 (3ª leva), radar 014000/014010,
+-- Stazia Match 014020–014070, convite por link 014080, treino sozinho 014090–014120.
 -- TREINO SOZINHO (2ª fase, grupo dupla-sozinho-ia) · PARTE 2 de 4: as funções do treino sozinho (app_fase2_*).
--- Depende da 013430 (colunas e peças) e da 013330 (a casca da 2ª fase). Plano: tarefas S2, S3 (banco) e S6 (nota).
+-- Depende da 014090 (colunas e peças) e da 013330 (a casca da 2ª fase). Plano: tarefas S2, S3 (banco) e S6 (nota).
 --
 -- O fluxo do aluno (todo na tabela station_attempts, estado decidido pelo servidor):
 --   reading → (Iniciar) attending → (Entregar) submitted → escolhe a correção:
 --       "Eu mesmo avalio com o PEP" → scoring → (Concluir) done           [fonte autoavaliacao]
---       "Avaliar com IA"            → evaluating → done  (ou volta a submitted se falhar)   [fonte ia; migração 013450]
+--       "Avaliar com IA"            → evaluating → done  (ou volta a submitted se falhar)   [fonte ia; migração 014110]
 --   O PEP (itens, pontos e critérios) só sai em scoring e done; o roteiro do ator nunca sai.
 --   Escrito por tarefa (answers), impressos abertos com a hora (pressings_opened) e a nota calculada pelo servidor.
 --
@@ -23,7 +26,7 @@
 -- NOVAS: solo_clean_text, solo_pep_rows, solo_has_image, solo_finalize, solo_sweep, app_fase2_save_answers, app_fase2_open_pressing,
 --   app_fase2_print_path, app_fase2_deliver, app_fase2_report_ia.
 --
--- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003013440_treino_dupla_sozinho_funcoes.desfazer.sql
+-- Pode ser colada duas vezes. Para desfazer: supabase/desfazer/20261003014100_treino_dupla_sozinho_funcoes.desfazer.sql
 -- =============================================================================
 
 -- ---------------------------------------------------------------- peças compartilhadas
