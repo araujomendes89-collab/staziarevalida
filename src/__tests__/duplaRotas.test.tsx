@@ -82,6 +82,9 @@ vi.mock("../novo/app/dupla/StudyProfileScreen.jsx", () => ({
     </div>
   ),
 }));
+vi.mock("../novo/app/dupla/InviteLinkScreen.jsx", () => ({
+  InviteLinkScreen: ({ handle }: any) => <div data-testid="tela-convite" data-handle={handle} />,
+}));
 vi.mock("../novo/app/dupla/room/RoomScreen.jsx", () => ({
   RoomScreen: ({ roomId }: any) => <div data-testid="tela-dupla-sala" data-room={roomId} />,
 }));
@@ -151,17 +154,31 @@ afterEach(() => {
 
 describe("Chave desligada", () => {
   it("aluno: '2ª Fase · Em breve' e as rotas da 2ª fase levam ao início", () => {
-    for (const route of ["estacoes", "dupla", "dupla/perfil", "dupla/sala/sala-123"]) {
+    // "convite/<@>" (convite por link do radar, etapa 2): fechado com a 2ª fase, como as outras telas da dupla
+    for (const route of ["estacoes", "dupla", "dupla/perfil", "dupla/sala/sala-123", "convite/colega.teste"]) {
       renderApp(`/${route}`, bootOf("student"), FECHADO);
       expect(screen.getByTestId("tela-home")).toBeTruthy();
       expect(screen.queryByTestId("tela-estacoes")).toBeNull();
       expect(screen.queryByTestId("tela-dupla")).toBeNull();
       expect(screen.queryByTestId("tela-dupla-perfil")).toBeNull();
       expect(screen.queryByTestId("tela-dupla-sala")).toBeNull();
+      expect(screen.queryByTestId("tela-convite")).toBeNull();
       expect(window.location.pathname).toMatch(AT_HOME);
       const second = within(screen.getByRole("radiogroup", { name: "Fase do Revalida" })).getAllByRole("radio")[1];
       expect(textOf(second)).toMatch(/^2ª Fase ?· Em breve$/);
       expect(second).toBeDisabled();
+      cleanup();
+    }
+  });
+
+  it("convite por link: a equipe abre a tela do link; o aluno com a chave desligada (ou sem a leitura do acesso) cai no início", () => {
+    renderApp("/convite/colega.teste", bootOf("editor"), FECHADO_EQUIPE);
+    expect(screen.getByTestId("tela-convite").getAttribute("data-handle")).toBe("colega.teste");
+    cleanup();
+    for (const acesso of [FECHADO, null]) {
+      renderApp("/convite/colega.teste", bootOf("student"), acesso);
+      expect(screen.queryByTestId("tela-convite")).toBeNull();
+      expect(window.location.pathname).toMatch(AT_HOME);
       cleanup();
     }
   });

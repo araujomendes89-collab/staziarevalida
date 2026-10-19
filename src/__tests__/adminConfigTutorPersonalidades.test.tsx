@@ -29,6 +29,8 @@ vi.mock("../novo/app/admin/radar/RadarFila.jsx", () => ({ RadarFila: () => null 
 // painéis da 2ª fase nas Configurações (chave do Treino em Dupla e do chat) e aba de denúncias: têm testes próprios
 vi.mock("../novo/app/admin/AdminDupla.jsx", () => ({ AdminDupla: () => null }));
 vi.mock("../novo/app/admin/AdminDuplaChat.jsx", () => ({ AdminDuplaChatReports: () => null, AdminDuplaChatSettings: () => null }));
+// convites do radar (etapa 2 da 2ª fase): quadro próprio em Configurações, testado em adminDuplaConvitesTela
+vi.mock("../novo/app/admin/AdminDuplaConvites.jsx", () => ({ AdminDuplaConvites: () => null, AdminDuplaHandleLog: () => null }));
 vi.mock("../novo/app/admin/OfficialVoicesPanel.jsx", () => ({ OfficialVoicesPanel: () => <div data-testid="painel-vozes">Aprovar vozes</div> }));
 vi.mock("../novo/app/admin/VoiceReactionsPanel.jsx", () => ({ VoiceReactionsPanel: () => <div data-testid="painel-linguagem">Linguagem forte</div> }));
 

@@ -121,7 +121,7 @@ describe("creditKind e hora da renovação", () => {
 
   it("BackendError guarda a dica e continua igual sem ela; a dica-código não vaza para a mensagem da tela", () => {
     expect(new BackendError("unknown", "x", "H").hint).toBe("H");
-    expect(new BackendError("unknown", "x").hint).toBeUndefined();
+    expect(new BackendError("unknown", "x").hint ?? null).toBeNull(); // no main a dica ausente é null
     expect(messageOf(new BackendError("unknown", QUOTA_TITLE, "INSUFFICIENT_CREDITS"))).toBe(QUOTA_TITLE);
     expect(messageOf(new BackendError("unknown", START_REFUSED_TEXT, "INSUFFICIENT_CREDITS"))).toBe(START_REFUSED_TEXT);
   });

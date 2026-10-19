@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 const backend: any = { rpc: vi.fn() };
-const session: any = { backend, boot: { role: "student" }, user: { id: "u1" } };
+const session: any = { backend, boot: { role: "student" }, dupla: { aberto: true, permitido: true }, user: { id: "u1" } };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => session }));
 
 import { CreditosHoje, CreditosHojeView } from "../novo/app/home/CreditosHoje.jsx";
@@ -45,6 +45,17 @@ const montar = async () => {
 const nada = () => expect(screen.queryByTestId("creditos-hoje")).toBeNull();
 
 describe("Início · Créditos de hoje", () => {
+  it("2ª fase fechada para o aluno (chave desligada ou sem leitura do acesso): o bloco não aparece e o saldo nem é lido", async () => {
+    for (const dupla of [{ aberto: false, permitido: false }, null]) {
+      session.dupla = dupla;
+      await montar();
+      nada();
+      expect(backend.rpc).not.toHaveBeenCalled();
+      cleanup();
+    }
+    session.dupla = { aberto: true, permitido: true };
+  });
+
   it("com saldo: 'Créditos de hoje', 'X de Y' do servidor e o detalhe de para que servem", async () => {
     respostas = { match: estado({ limite_dia: 5, usados_hoje: 2, disponivel: 3 }), ia: estado({ limite_dia: 4, usados_hoje: 1, disponivel: 3, pool: "ia" }) };
     await montar();

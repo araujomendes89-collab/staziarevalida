@@ -291,12 +291,14 @@ describe("Livro de créditos · o que o aluno vê, exportação, exclusão da co
 
     it("a configuração 'creditos' (limites por plano) não é lida direto pelo aluno: só a equipe lê app_settings", async () => {
       const a = await conta("pro");
-      expect(await d.asUser(a, `select value from public.app_settings where key = 'creditos'`)).toEqual([]);
+      // (Desde a 013780 do main o aluno nem tem permissão na tabela: recusa ou lista vazia, nunca a linha.)
+      expect(await d.asUser(a, `select value from public.app_settings where key = 'creditos'`).catch(() => [])).toEqual([]);
       const lida = await d.asUser(U.admin, `select value from public.app_settings where key = 'creditos'`);
       expect(lida).toHaveLength(1);
       expect(lida[0].value.match.pro).toBe(3);
       // e o aluno não grava
-      await expect(d.asUser(a, `update public.app_settings set value = '{"ativa": false}'::jsonb where key = 'creditos'`)).resolves.toMatchObject({ affectedRows: 0 });
+      const gravou = await d.asUser(a, `update public.app_settings set value = '{"ativa": false}'::jsonb where key = 'creditos'`).then((r) => r.affectedRows).catch(() => 0);
+      expect(gravou).toBe(0);
       expect((await d.sql(`select value from public.app_settings where key = 'creditos'`))[0].value.ativa).toBe(true);
     });
   });
@@ -308,6 +310,8 @@ describe("Livro de créditos · o que o aluno vê, exportação, exclusão da co
       "error_notes", "plan_tasks", "flashcards", "flashcard_states", "flashcard_reviews", "checklist_favorites",
       "checklist_station_reports", "checklist_event_confirmations", "checklist_study_sessions", "study_profile", "study_swipes",
       "study_matches", "checklist_rooms", "acceptances", "declarations", "study_chat",
+      // junção da etapa 2: station_attempts (013406, já em produção) e solo_attempts (treino sozinho, 014120)
+      "station_attempts", "solo_attempts",
     ];
 
     it("traz study_credits com wallets, daily, ledger e room_charges só do aluno, sem idem_key nem created_by", async () => {

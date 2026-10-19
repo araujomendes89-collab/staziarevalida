@@ -65,6 +65,9 @@ revoke all on table public.station_attempts from public, anon, authenticated;
 
 -- ---------------------------------------------------------------- avaliações (sozinho + em dupla como médico)
 -- Uma linha por estação avaliada do próprio aluno; nota de 0 a 10.
+-- 19/10/2026 (fase2-etapa2): o treino sozinho (014100) refaz esta função com uma coluna a mais (source); para esta migração
+-- continuar colável de novo depois dela, a versão antiga sai antes (só a forma muda; recole a cadeia na ordem depois).
+drop function if exists public.fase2_evaluations(uuid);
 create or replace function public.fase2_evaluations(p_uid uuid)
   returns table (id text, origin text, station_id text, at timestamptz, score10 numeric)
   language sql stable security definer set search_path = ''

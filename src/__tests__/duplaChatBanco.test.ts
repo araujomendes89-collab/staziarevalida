@@ -333,6 +333,9 @@ describe("Migração 013370 — chat entre os dois do match", () => {
       dados: await d.sql(`select key, value from public.app_settings order by key`),
       conversas: await d.sql(`select id, user_a, user_b from public.study_chats order by id`),
     });
+    // Os testes acima deixaram guarda_denuncia_dias vazio; a 014000 (radar), recolada, o preenche com 180 (só se vazio): parte-se
+    // do valor que as migrações deixam.
+    await d.sql(`update public.app_settings set value = jsonb_set(value, '{guarda_denuncia_dias}', '180') where key = 'treino_dupla_chat' and value -> 'guarda_denuncia_dias' = 'null'::jsonb`);
     const antes = await retrato();
     // A lista de chaves desta migração não tem 'creditos' (014020): a linha sai antes e a 014020, colada em seguida, a devolve.
     await d.sql(`delete from public.app_settings where key = 'creditos'`);

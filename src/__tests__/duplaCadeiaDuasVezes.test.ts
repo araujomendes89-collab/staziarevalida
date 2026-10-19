@@ -43,7 +43,8 @@ describe("2ª fase: cadeia 013300–013406 colada duas vezes", () => {
 
   it("depois da 2ª colagem: as chaves seguem as mesmas, o Treino segue desligado e o aluno não lê station_id do match", async () => {
     expect(await d.sql(`select key from public.app_settings order by key`)).toEqual([
-      { key: "announcement" }, { key: "simulado_ineditas_pct" }, { key: "treino_dupla" }, { key: "treino_dupla_chat" }, { key: "trial_days" },
+      // 'creditos' (Stazia Match, 014020, etapa 2) já estava no banco antes da 2ª colagem e continua
+      { key: "announcement" }, { key: "creditos" }, { key: "simulado_ineditas_pct" }, { key: "treino_dupla" }, { key: "treino_dupla_chat" }, { key: "trial_days" },
     ]);
     expect((await d.sql<{ v: unknown }>(`select value->'aberto' as v from public.app_settings where key = 'treino_dupla'`))[0].v).toBe(false);
     await expect(d.sql(`insert into public.app_settings (key, value) values ('outra', '1')`)).rejects.toThrow(/check constraint/);

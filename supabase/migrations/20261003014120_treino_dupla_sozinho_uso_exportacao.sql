@@ -72,17 +72,30 @@ $$;
 -- Os treinos sozinhos da própria pessoa, para a exportação (a tabela é fechada ao navegador; esta função lê como o dono).
 -- O resultado da IA sai SEM empresa, modelo nem custo.
 create or replace function public.dupla_export_solo() returns jsonb
-  language sql stable security definer set search_path = ''
+  language plpgsql stable security definer set search_path = ''
 as $$
-  select coalesce(jsonb_agg(jsonb_build_object(
-           'id', t.id, 'station_id', t.station_id, 'status', t.status, 'started_at', t.started_at,
-           'attendance_started_at', t.attendance_started_at, 'submitted_at', t.submitted_at, 'finished_at', t.finished_at,
-           'answers', t.answers, 'pressings_opened', t.pressings_opened, 'how', t.how, 'source', t.source,
-           'score', t.score, 'max_score', t.max_score, 'correctness', t.correctness, 'marks', t.marks,
-           'ia', case when t.ia is null then null else t.ia - 'members' - 'cost_usd' end)
-           order by t.started_at), '[]'::jsonb)
-  from public.station_attempts t
-  where (select auth.uid()) is not null and t.user_id = (select auth.uid())
+-- Junção da etapa 2: como export_station_attempts (013406), sem a tabela (desfazer da 013330) devolve lista vazia em vez de quebrar a
+-- exportação inteira.
+declare
+  v_uid uuid := (select auth.uid());
+  v_out jsonb;
+begin
+  if v_uid is null or to_regclass('public.station_attempts') is null then
+    return '[]'::jsonb;
+  end if;
+  execute $q$
+    select coalesce(jsonb_agg(jsonb_build_object(
+             'id', t.id, 'station_id', t.station_id, 'status', t.status, 'started_at', t.started_at,
+             'attendance_started_at', t.attendance_started_at, 'submitted_at', t.submitted_at, 'finished_at', t.finished_at,
+             'answers', t.answers, 'pressings_opened', t.pressings_opened, 'how', t.how, 'source', t.source,
+             'score', t.score, 'max_score', t.max_score, 'correctness', t.correctness, 'marks', t.marks,
+             'ia', case when t.ia is null then null else t.ia - 'members' - 'cost_usd' end)
+             order by t.started_at), '[]'::jsonb)
+      from public.station_attempts t
+     where t.user_id = $1
+  $q$ into v_out using v_uid;
+  return v_out;
+end
 $$;
 
 -- Exportação dos dados da pessoa (base: 013370:710). Novo: 'solo_attempts', os treinos sozinhos dela (texto escrito, impressos abertos,
