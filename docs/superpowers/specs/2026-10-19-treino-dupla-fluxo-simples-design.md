@@ -64,7 +64,8 @@ ROLLBACK antes de gravar.
   para as salas antigas, mas o caminho do convite não depende delas.
 - **Nova rodada.** `app_dupla_next_station` ganha a escolha "mesmo papel" | "trocar"; a sala volta a `setup` com a estação
   vazia, e só o ator da rodada escolhe a estação (`app_dupla_set_station`).
-- **Match.** Depois do match, a sala nasce em `roles` como hoje; a escolha de quem é o ator leva direto a `setup`.
+- **Match.** Perfil, baralho, compatibilidade e `dupla_assign` não mudam. A sala do match nasce em `roles` como hoje; definidos os
+  papéis, vai direto a `setup` (sem `connecting`, "pronto" e "confirmar"), e o ator escolhe a estação ali.
 - **Nota.** O comentário único usa `feedback_gen`; `feedback_pos`/`feedback_neg` ficam vazios (colunas mantidas). O pedido de
   revisão (`app_dupla_request_review`, `app_dupla_redo_review`) não muda.
 - **Lista.** `app_dupla_radar` deixa de entregar a aba "Ator"; ficam "Online" e "Perto de você".
