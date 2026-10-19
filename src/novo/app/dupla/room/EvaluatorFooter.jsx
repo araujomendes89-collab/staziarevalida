@@ -15,7 +15,7 @@ const STEP_RUN = 60000;
 /**
  * @param {{ room: object, remainingMs: number | null, actions: object, started: boolean, onLeave: () => void }} props
  */
-export function EvaluatorFooter({ room, remainingMs, actions, started, onLeave }) {
+export function EvaluatorFooter({ room, remainingMs, actions, started, onLeave, entradaAberta = true }) {
   const [open, setOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [picking, setPicking] = React.useState(false);
@@ -149,7 +149,7 @@ export function EvaluatorFooter({ room, remainingMs, actions, started, onLeave }
           <Button variant="secondary" icon={paused ? "play" : "pause"} disabled={expired || busy} onClick={once(() => (paused ? actions.resume() : actions.pause()))}>
             {paused ? "Retomar" : "Pausar"}
           </Button>
-          <Button variant="danger" icon="square" disabled={busy} onClick={once(() => actions.finish())}>
+          <Button variant="danger" icon="square" disabled={busy || !entradaAberta} onClick={once(() => actions.finish())}>
             Finalizar estação
           </Button>
         </>

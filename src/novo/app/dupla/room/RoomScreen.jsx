@@ -9,6 +9,8 @@ import { useSession } from "../../session.jsx";
 import { useHeartbeat } from "../live.js";
 import { installAudioWake, playWhistle } from "../sound.js";
 import { remainingMs as remainingFrom } from "../clock.js";
+import { deveApitar, entrada, tempoMostrado } from "../porta.js";
+import { PortaEntrada } from "./Porta.jsx";
 import { ClosedPhase } from "./ClosedPhase.jsx";
 import { ConnectingPhase } from "./ConnectingPhase.jsx";
 import { ResultPhase } from "./ResultPhase.jsx";
@@ -43,18 +45,26 @@ function useNow(running) {
 }
 
 /**
- * Apito: ao ver a fase passar a "running" nesta tela e uma vez por rodada ao chegar a 00:00. Volta a armar se o tempo passar de
- * zero de novo (+1 min). Abrir ou recarregar a sala no meio não apita o início; abrir já em 00:00 não apita.
+ * Apito (dono, 19/10), nos DOIS aparelhos (DONO-1: o ator não vê a porta, mas ouve o apito). O do início toca quando a porta
+ * começa a abrir, pelo relógio do SERVIDOR (deveApitar, porta.js): uma vez por rodada e só com atraso de até 1 s (rede lenta,
+ * aba no fundo, sala aberta depois: a porta abre sem som). O efeito depende só da etapa e da hora do apito (ruling D4), não do
+ * objeto `porta` (novo a cada 250 ms). O do fim toca uma vez por rodada ao chegar a 00:00 e volta a armar se o tempo passar de
+ * zero de novo (+1 min). Abrir já em 00:00 não apita. Som desligado: playWhistle não toca (sound.js), e a porta abre no mesmo
+ * tempo.
  */
-function useWhistle(room, remaining) {
-  const prevPhase = React.useRef(null);
+function useWhistle(room, porta, serverNowMs, remaining) {
+  const inicio = React.useRef({ round: null, feito: false });
+  const agora = React.useRef(serverNowMs);
+  agora.current = serverNowMs;
   const armed = React.useRef({ round: null, on: false });
   const phase = room?.phase ?? null;
   const round = room?.round ?? null;
+  const { etapa, apitoEm } = porta;
   React.useEffect(() => {
-    if (prevPhase.current === "setup" && phase === "running") playWhistle();
-    prevPhase.current = phase;
-  }, [phase]);
+    if (inicio.current.round !== round) inicio.current = { round, feito: false };
+    if (deveApitar({ etapa, apitoEm }, agora.current, inicio.current.feito)) playWhistle();
+    if (etapa !== "fechada") inicio.current.feito = true;
+  }, [round, etapa, apitoEm]);
   React.useEffect(() => {
     if (phase !== "running" || remaining == null) return;
     if (armed.current.round !== round) armed.current = { round, on: false };
@@ -64,6 +74,23 @@ function useWhistle(room, remaining) {
       playWhistle();
     }
   }, [phase, round, remaining]);
+}
+
+/**
+ * DONO-2 (dono, 19/10): o servidor só entrega a estação ao candidato depois do início marcado, e abrir a porta não muda o `rev`
+ * da sala (a consulta "mudou algo?" diria que não). Quando a porta abre e o estado ainda está sem a estação, pede o estado
+ * INTEIRO de novo (`reload` = app_dupla_room sem p_since_rev) na hora e a cada 1 s até chegar; com a estação no estado, a chave
+ * do conteúdo muda (useRoom) e a folha é pedida.
+ */
+function useEstacaoAoAbrir(aguardando, reload) {
+  const reloadRef = React.useRef(reload);
+  reloadRef.current = reload;
+  React.useEffect(() => {
+    if (!aguardando) return undefined;
+    reloadRef.current();
+    const t = setInterval(() => reloadRef.current(), 1000);
+    return () => clearInterval(t);
+  }, [aguardando]);
 }
 
 /**
@@ -89,11 +116,17 @@ export function RoomScreen({ roomId, go }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [closedByMe]);
 
-  const ticking = room?.phase === "running" && Boolean(room.ends_at) && typeof room.paused_left_ms !== "number";
+  // DONO-2: durante o apito o candidato ainda não tem `ends_at` (só `started_at`); o relógio anda do mesmo jeito para a porta abrir.
+  const ticking = room?.phase === "running" && Boolean(room.ends_at || room.started_at) && typeof room.paused_left_ms !== "number";
   const now = useNow(ticking);
+  // Entrada na estação (dono, 19/10): apito (nos dois aparelhos) e porta (só no do candidato) pelo relógio do SERVIDOR (porta.js).
+  const serverNow = now + (Number.isFinite(offsetMs) ? offsetMs : 0);
+  const porta = entrada(room, serverNow);
   const fromServer = remainingFrom(room, now, offsetMs);
-  const remaining = fromServer ?? (typeof room?.duration_ms === "number" ? room.duration_ms : null);
-  useWhistle(room, fromServer);
+  const remaining = tempoMostrado(porta, fromServer, typeof room?.duration_ms === "number" ? room.duration_ms : null);
+  useWhistle(room, porta, serverNow, fromServer);
+  // DONO-2: a porta abriu e o estado do candidato ainda não tem a estação → pede o estado de novo até chegar.
+  useEstacaoAoAbrir(room?.phase === "running" && room.me?.role !== "evaluator" && !room.station && porta.etapa === "aberta", reload);
 
   if (error && !room) {
     return (
@@ -111,6 +144,9 @@ export function RoomScreen({ roomId, go }) {
   const inEvaluatorRoom = room.phase === "setup" && isEval && Boolean(room.station);
   const Phase = inEvaluatorRoom ? RunningPhase : PHASES[room.phase];
   if (!Phase) return null;
+  // Porta só na tela do CANDIDATO (DONO-1): enquanto abre (apito tocando) e até a estação chegar (DONO-2). O ator segue na
+  // tela de trabalho (RunningPhase), com o cronômetro em 10:00 até a porta abrir.
+  const entrando = room.phase === "running" && !isEval && (porta.etapa !== "aberta" || !room.station);
   const access = Boolean(session?.dupla?.permitido || session?.dupla?.equipe);
   const showAway = partnerAway && ["connecting", "setup", "running", "review"].includes(room.phase);
 
@@ -141,6 +177,9 @@ export function RoomScreen({ roomId, go }) {
           </Button>
         </div>
       )}
+      {entrando ? (
+        <PortaEntrada room={room} entrada={porta} />
+      ) : (
       <Phase
         room={room}
         content={content}
@@ -152,7 +191,9 @@ export function RoomScreen({ roomId, go }) {
         started={room.phase !== "setup"}
         askLeave={(kind = "sair") => setLeaveAsk(kind)}
         progress={{ access, channelReady, partnerPresent: partnerPresent === true }}
+        entradaAberta={porta.etapa === "aberta"}
       />
+      )}
       {leaveAsk && (
         <Dialog
           title={leaveAsk === "encerrar" ? "Encerrar treino?" : "Sair da sala?"}

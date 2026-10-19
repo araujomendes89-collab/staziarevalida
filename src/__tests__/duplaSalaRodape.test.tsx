@@ -179,13 +179,13 @@ describe("Sala do avaliador: rodapé e cronômetro", () => {
   });
 
   it("apito ao começar e uma vez no 00:00; recarregar no meio não apita de novo", async () => {
-    srv.steps.app_dupla_start = () => ({ phase: "running", started_at: NOW, ends_at: at(3000) });
+    srv.steps.app_dupla_start = () => ({ phase: "running", started_at: at(2000), ends_at: at(5000) }); // o início fica 2 s à frente (apito)
     await mountEvaluatorRoom();
     expect(whistle.n).toBe(0);
     fireEvent.click(screen.getByRole("button", { name: "Iniciar estação" }));
     await advance(0);
-    expect(whistle.n).toBe(1);
-    await advance(3500);
+    expect(whistle.n).toBe(1); // o ator ouve o apito, sem porta (DONO-1)
+    await advance(5500);
     expect(screen.getAllByText("Tempo esgotado").length).toBeGreaterThan(0);
     expect(whistle.n).toBe(2);
     await advance(5000);

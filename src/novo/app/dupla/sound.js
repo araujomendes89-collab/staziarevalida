@@ -2,6 +2,8 @@
 // (fanfarra e pular) do pacote de design, sem cor e sem texto. A chave "sz-sound" ("off" desliga) vale para os três; o aparelho
 // que não tem AudioContext fica em silêncio, sem erro.
 
+import { APITO_MS } from "./porta.js";
+
 const SOUND_KEY = "sz-sound";
 
 /** Som ligado? Só o valor "off" em localStorage["sz-sound"] desliga. */
@@ -63,14 +65,14 @@ export function installAudioWake() {
   ["pointerdown", "keydown", "touchstart"].forEach((ev) => window.addEventListener(ev, wake, { capture: true, passive: true }));
 }
 
-/** Apito de treinador: tom duplo firme, sem trinado, 2 s em 1.400 Hz; vibra 800 ms. */
+/** Apito de treinador: tom duplo firme, sem trinado, APITO_MS (2 s) em 1.400 Hz; vibra 800 ms. */
 export function playWhistle() {
   try {
     if (!soundOn()) return;
     const ctx = audioContext();
     if (!ctx) return;
     const T = ctx.currentTime + 0.005;
-    const DUR = 2;
+    const DUR = APITO_MS / 1000; // a porta abre no mesmo tempo (porta.js, 014150)
     const F = 1400;
     const VOL = 0.75;
     const comp = ctx.createDynamicsCompressor();

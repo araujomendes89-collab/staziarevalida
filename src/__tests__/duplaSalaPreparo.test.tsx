@@ -197,7 +197,7 @@ describe("Sala ao vivo: preparação", () => {
     rpc.mockImplementation(async () => {
       throw new Error("Failed to fetch");
     });
-    room = { ...room, rev: room.rev + 1, phase: "running", station: CAND_STATION, duration_ms: 600000, started_at: NOW, ends_at: "2026-10-11T15:10:00.000Z" };
+    room = { ...room, rev: room.rev + 1, phase: "running", station: CAND_STATION, duration_ms: 600000, started_at: new Date(Date.parse(NOW) + 1500).toISOString(), ends_at: new Date(Date.parse(NOW) + 1500 + 600000).toISOString() };
     content = contentOf("candidate");
     await advance(4000);
     expect(screen.getByText("Aguardando Bruno iniciar a estação")).toBeTruthy(); // sem rede, nada muda (e nada quebra)
@@ -207,10 +207,10 @@ describe("Sala ao vivo: preparação", () => {
       document.dispatchEvent(new Event("visibilitychange"));
       await vi.advanceTimersByTimeAsync(0);
     });
-    await advance(0);
+    await advance(1600); // a porta abre 1,5 s depois do início marcado
     expect(screen.queryByText("Aguardando Bruno iniciar a estação")).toBeNull();
     expect(screen.getByText("Em andamento")).toBeTruthy();
-    expect(screen.getByRole("timer").textContent).toMatch(/10:00|09:59/);
+    expect(screen.getByRole("timer").textContent).toMatch(/10:00|09:5\d/);
     expect(screen.getByText("INSTRUÇÕES AO PARTICIPANTE")).toBeTruthy();
     expect(whistle.n).toBe(1); // apito ao ver a estação começar
   });

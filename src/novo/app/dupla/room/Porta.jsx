@@ -52,3 +52,26 @@ export function Porta({ numero, estado = "fechada", jaPassouMs = 0 }) {
     </svg>
   );
 }
+
+/**
+ * Tela do CANDIDATO enquanto a porta abre (apito tocando) e até a estação chegar do servidor (DONO-1: o ator não vê a porta;
+ * DONO-2: com a porta aberta, a tela pede estado e conteúdo de novo e só então troca para a estação). Sem número de porta
+ * (nunca deve acontecer: o servidor manda a porta de toda estação da prova), só o texto.
+ * O atraso da animação é fixado na primeira vez que a porta aparece abrindo NESTA tela (ruling D1): recalcular a cada 250 ms
+ * mudaria o atraso de uma animação em curso (não a reinicia) e a porta abriria mais rápido que o apito.
+ * @param {{ room: { porta?: number | null }, entrada: { etapa: "fechada" | "abrindo" | "aberta", faltaMs: number } }} p
+ */
+export function PortaEntrada({ room, entrada }) {
+  const jaPassou = React.useRef(null);
+  if (entrada.etapa === "abrindo" && jaPassou.current == null) jaPassou.current = APITO_MS - (entrada.faltaMs ?? APITO_MS);
+  return (
+    <main
+      role="status"
+      aria-live="polite"
+      style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, padding: "32px 16px", boxSizing: "border-box" }}
+    >
+      {room.porta ? <Porta numero={room.porta} estado={entrada.etapa} jaPassouMs={jaPassou.current ?? 0} /> : null}
+      <p style={{ margin: 0, font: "700 var(--text-lg)/1.3 var(--font-sans)", color: "var(--text-primary)", textAlign: "center" }}>A estação vai começar</p>
+    </main>
+  );
+}

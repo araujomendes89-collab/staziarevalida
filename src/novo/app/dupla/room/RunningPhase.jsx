@@ -319,7 +319,7 @@ function CandidateBar({ onLeave }) {
   );
 }
 
-export function RunningPhase({ room, content, marks, actions, remainingMs, started = true, askLeave }) {
+export function RunningPhase({ room, content, marks, actions, remainingMs, started = true, askLeave, entradaAberta = true }) {
   const isEval = room.me.role === "evaluator";
   const leave = () => (askLeave ? askLeave("sair") : actions.leave());
   return (
@@ -333,7 +333,7 @@ export function RunningPhase({ room, content, marks, actions, remainingMs, start
             <CandidateView room={room} content={content} actions={actions} />
           ))}
       </div>
-      {isEval ? <EvaluatorFooter room={room} remainingMs={remainingMs} actions={actions} started={started} onLeave={leave} /> : <CandidateBar onLeave={leave} />}
+      {isEval ? <EvaluatorFooter room={room} remainingMs={remainingMs} actions={actions} started={started} entradaAberta={entradaAberta} onLeave={leave} /> : <CandidateBar onLeave={leave} />}
     </div>
   );
 }
