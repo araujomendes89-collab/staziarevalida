@@ -10,6 +10,7 @@ import { OwnQuotaLine } from "../CreditHeader.jsx";
 import { PairHeader, RoleBand, firstName, pageStyle } from "./parts.jsx";
 import { Porta } from "./Porta.jsx";
 import { StationPicker } from "./StationPicker.jsx";
+import { useAudioBloqueado } from "../audioLiberado.js";
 
 const status = { display: "flex", alignItems: "center", gap: 10, font: "600 var(--text-sm)/1.45 var(--font-sans)", color: "var(--text-primary)" };
 const note = { margin: "10px 0 0", font: "var(--type-body-sm)", color: "var(--text-secondary)" };
@@ -18,6 +19,42 @@ const note = { margin: "10px 0 0", font: "var(--type-body-sm)", color: "var(--te
 export function candidateWaitText(room) {
   const ator = firstName(room.partner?.public_name) || "o ator";
   return room.station_ready ? `Aguardando ${ator} iniciar a estação` : "O ator está escolhendo a estação";
+}
+
+/**
+ * "Ativar som do apito" (dono, 19/10): só na espera do candidato e só quando o navegador ainda não liberou o som (a sala aberta
+ * por link, sem nenhum toque). Tocar destrava o áudio; com o som desligado ("sz-sound") ou sem áudio no aparelho, não aparece.
+ */
+function AtivarSomApito() {
+  const [bloqueado, destravar] = useAudioBloqueado(true);
+  const [ativado, setAtivado] = React.useState(false);
+  if (!bloqueado && !ativado) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, marginTop: 14 }}>
+      {bloqueado ? (
+        <>
+          <Button
+            variant="secondary"
+            icon="volume-2"
+            aria-describedby="dupla-som-apito-dica"
+            onClick={async () => {
+              await destravar();
+              setAtivado(true);
+            }}
+          >
+            Ativar som do apito
+          </Button>
+          <span id="dupla-som-apito-dica" style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", textAlign: "center" }}>
+            O navegador só toca o apito depois de um toque na tela.
+          </span>
+        </>
+      ) : (
+        <span role="status" style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>
+          Som do apito ativado.
+        </span>
+      )}
+    </div>
+  );
 }
 
 export function SetupPhase({ room, actions, askLeave }) {
@@ -56,6 +93,7 @@ export function SetupPhase({ room, actions, askLeave }) {
             {candidateWaitText(room)}
           </div>
           <p style={{ ...note, textAlign: "center" }}>O enunciado aparece quando a porta abrir.</p>
+          <AtivarSomApito />
         </Card>
       )}
       <div style={{ display: "flex", justifyContent: "flex-end" }}>

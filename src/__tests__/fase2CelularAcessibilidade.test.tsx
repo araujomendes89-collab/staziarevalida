@@ -12,7 +12,7 @@ import React from "react";
 import fs from "fs";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { NOW, STATION, advance, asCandidate, baseRoom, contentOf, serve, type Srv } from "./helpers/duplaSala";
 
 const rpc = vi.fn();
@@ -182,5 +182,100 @@ describe("Contraste e celular nas outras telas", () => {
     const css = read("src/novo/app/fase2/fase2.css");
     expect(css).toMatch(/\.f2-player-toolbar \{[^}]*bottom: calc\(var\(--space-6\) \+ env\(safe-area-inset-bottom, 0px\)\)/);
     expect(css.match(/140px \+ env\(safe-area-inset-bottom, 0px\)/g)?.length).toBe(2);
+  });
+});
+
+describe("Casca comum às duas fases: área segura e toque", () => {
+  const shell = read("src/novo/app/shell/shell.css");
+
+  it("novo.html com viewport-fit=cover (o iPhone passa a informar a área segura)", () => {
+    expect(read("novo.html")).toMatch(/<meta name="viewport" content="width=device-width, initial-scale=1\.0, viewport-fit=cover" \/>/);
+  });
+
+  it("embaixo a barra de abas e o conteúdo já somam a área segura; nas laterais o conteúdo, o menu do tablet e as abas se afastam do recorte", () => {
+    expect(shell).toMatch(/\.smn-tabs\{position:fixed;[^}]*height:calc\(var\(--smn-tabs-h\) \+ env\(safe-area-inset-bottom\)\);padding:8px 6px calc\(8px \+ env\(safe-area-inset-bottom\)\)/);
+    expect(read("src/novo/app/Shell.jsx")).toMatch(/mobile: "24px 18px calc\(104px \+ env\(safe-area-inset-bottom\)\)"/);
+    expect(shell).toContain(".smn{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}");
+    expect(shell).toContain(".smn-rail{left:calc(12px + env(safe-area-inset-left,0px))}");
+    expect(shell).toContain(".smn-side{left:calc(16px + env(safe-area-inset-left,0px))}");
+    expect(shell).toContain(".smn-tabs{left:env(safe-area-inset-left,0px);right:env(safe-area-inset-right,0px)}");
+    expect(read("src/novo/app/fase2/fase2.css")).toMatch(/\.f2-player \{[^}]*padding-left: env\(safe-area-inset-left, 0px\);\s*padding-right: env\(safe-area-inset-right, 0px\);/);
+  });
+
+  it("toque de 44 px: logotipo do menu do tablet; seletor de fase do celular (34 por dentro da borda + 5 + 5) e contador de dias (32 + 6 + 6) pela área estendida", () => {
+    expect(shell).toContain(".smn-rail .smn-logo{min-width:44px;min-height:44px;align-items:center}");
+    expect(shell).toMatch(/\.smn-mtop-phase\{position:relative;min-height:36px;height:36px;[^}]*\}\s*\.smn-mtop-phase::after\{content:"";position:absolute;inset:-5px 0\}/);
+    expect(shell).toMatch(/\.smn-streak\{position:relative;[^}]*min-height:32px;[^}]*\}\s*\.smn-streak::after\{content:"";position:absolute;inset:-6px 0\}/);
+  });
+});
+
+describe("Ativar som do apito (espera do candidato)", () => {
+  class AudioFalso {
+    state = "suspended";
+    sampleRate = 44100;
+    destination = {};
+    createBuffer() { return {}; }
+    createBufferSource() { return { buffer: null, connect() {}, start() {} }; }
+    resume() { this.state = "running"; return Promise.resolve(); }
+  }
+  const w = window as any;
+  const esperando = () => {
+    srv.room = { ...asCandidate(baseRoom({ phase: "setup" })), station: null, duration_ms: null, station_ready: true, porta: 1 };
+    srv.content = { role: "candidate", station: null, pressing_count: 0, pressings: [], waiting: true } as any;
+  };
+  beforeEach(() => {
+    delete w.__szAudio;
+    w.AudioContext = AudioFalso;
+    esperando();
+  });
+  afterEach(() => {
+    delete w.__szAudio;
+    delete w.AudioContext;
+  });
+
+  it("som bloqueado: aparece o botão com a dica ligada (aria-describedby); tocar destrava o áudio, o botão some e o status avisa", async () => {
+    await mount();
+    const botao = screen.getByRole("button", { name: "Ativar som do apito" });
+    expect(botao.getAttribute("aria-describedby")).toBe("dupla-som-apito-dica");
+    expect(document.getElementById("dupla-som-apito-dica")?.textContent).toMatch(/só toca o apito depois de um toque/);
+    fireEvent.click(botao);
+    await advance(100);
+    expect(w.__szAudio?.state).toBe("running");
+    expect(screen.queryByRole("button", { name: "Ativar som do apito" })).toBeNull();
+    expect(screen.getByText("Som do apito ativado.").getAttribute("role")).toBe("status");
+  });
+
+  it("som já liberado (contexto rodando): não aparece", async () => {
+    w.__szAudio = { state: "running" };
+    await mount();
+    expect(screen.queryByRole("button", { name: "Ativar som do apito" })).toBeNull();
+  });
+
+  it("som desligado neste aparelho (sz-sound = off): não aparece", async () => {
+    window.localStorage.setItem("sz-sound", "off");
+    await mount();
+    expect(screen.queryByRole("button", { name: "Ativar som do apito" })).toBeNull();
+  });
+
+  it("aparelho sem áudio: não aparece", async () => {
+    delete w.AudioContext;
+    await mount();
+    expect(screen.queryByRole("button", { name: "Ativar som do apito" })).toBeNull();
+  });
+
+  it("um toque em qualquer lugar da página que libere o som também tira o botão", async () => {
+    await mount();
+    expect(screen.getByRole("button", { name: "Ativar som do apito" })).toBeTruthy();
+    w.__szAudio = { state: "running" }; // o que installAudioWake faz no primeiro toque
+    fireEvent.pointerDown(document.body);
+    await advance(100);
+    expect(screen.queryByRole("button", { name: "Ativar som do apito" })).toBeNull();
+  });
+
+  it("o ator não vê o botão (só a espera do candidato)", async () => {
+    srv.room = baseRoom({ phase: "setup", station_ready: true, porta: 1 });
+    srv.content = contentOf("evaluator");
+    await mount();
+    expect(screen.queryByRole("button", { name: "Ativar som do apito" })).toBeNull();
   });
 });
