@@ -26,8 +26,16 @@
   color: var(--svm-text);
   font-family: var(--font-sans, system-ui, sans-serif);
   padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-  overflow: hidden;
+  /* 19/10 (revisão do "Voltar"): com o cartão da questão, a tela passa da altura da janela (celular; questão longa no notebook).
+     Rola com o dedo e com a rodinha, para Responder, Próxima e os controles ficarem sempre ao alcance; a página de trás não rola. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   box-sizing: border-box;
+}
+/* o foco fica no próprio diálogo só enquanto a voz conecta (o microfone ainda está desabilitado) */
+.svm:focus {
+  outline: none;
 }
 .svm *,
 .svm *::before,
@@ -35,6 +43,7 @@
   box-sizing: border-box;
 }
 .svm__top {
+  flex: none;
   width: 100%;
   display: flex;
   justify-content: space-between;
@@ -94,7 +103,10 @@
     display: grid;
     grid-template-columns: minmax(380px, 1fr) minmax(480px, 640px);
     column-gap: 28px;
+    /* "safe": se o cartão for mais alto que a janela, começa do topo (o Voltar visível) e rola até o Próxima, em vez de cortar
+       igual em cima e embaixo */
     align-content: center;
+    align-content: safe center;
   }
   .svm--with-card > * {
     grid-column: 1;
@@ -319,7 +331,8 @@
   color: var(--svm-faint);
 }
 .svm__sheet {
-  position: absolute;
+  /* fixo na janela (a tela de voz agora rola): o Chat abre sempre no rodapé (à direita, no computador), mesmo com a tela rolada */
+  position: fixed;
   left: 0;
   right: 0;
   bottom: 0;

@@ -288,6 +288,41 @@ describe("Tutor por voz ao vivo: o cartão da questão acompanha a conversa e o 
     await waitFor(() => expect(within(cartao()).getByText(/nº 42/)).toBeTruthy());
   });
 
+  it("GPT-Live: a delegação ao motor do Tutor que abre a próxima questão também faz o cartão acompanhar (conversa que não muda: não relê)", async () => {
+    const LIVE_CALL = "66666666-6666-4666-8666-666666666666";
+    server["/api/tutor/status"] = () => ({ body: { ready: true, simulated: false, neural_voice: false, realtime_voice: true, live_voice: true, voice_hint: null } });
+    server["/api/tutor/voice/start"] = () => ({ body: { provider: "live", voice_call_id: LIVE_CALL, sdp: "v=0 answer", live_session_id: "ls_1", lease_seconds: 120, entitlement: { voice: { remaining_s: 60 } } } });
+    let intencao = "chat";
+    server["/api/tutor/voice/delegate"] = () => {
+      if (intencao === "next") avancar(); // o motor do Tutor abriu a próxima questão na conversa
+      return { body: { say: ["Certo."], thinking: [], tone: null, intent: intencao } };
+    };
+    const { NexusScreen } = await import("../novo/app/tutor/nexus/NexusScreen.jsx");
+    render(<NexusScreen go={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: /^Começar com/ }));
+    await waitFor(() => expect(dc).not.toBeNull());
+    act(() => {
+      dc.onmessage({ data: JSON.stringify({ type: "session.started" }) });
+    });
+    await screen.findByRole("region", { name: "Questão" });
+    await responderNoCartaoOpenAI("D");
+    // delegação que só conversa: não relê a conversa
+    const lidas = db.reads;
+    act(() => {
+      dc.onmessage({ data: JSON.stringify({ type: "session.delegation.created", delegation: { id: "d0" } }) });
+    });
+    await waitFor(() => expect(sent.some((m) => m.type === "session.commentary.append" && m.delegation_id === "d0")).toBe(true));
+    await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+    expect(db.reads).toBe(lidas);
+    // o aluno pede a próxima falando; o motor do Tutor abre a próxima questão (intent "next")
+    intencao = "next";
+    act(() => {
+      dc.onmessage({ data: JSON.stringify({ type: "session.delegation.created", delegation: { id: "d1" } }) });
+    });
+    await waitFor(() => expect(within(cartao()).getByText(/nº 42/)).toBeTruthy());
+    expect(within(cartao()).getByRole("button", { name: "Responder" })).toBeTruthy();
+  });
+
   it("rede de segurança: a conversa já está noutra questão no servidor; 'Próxima' recusado relê e o cartão pula para ela, sem mensagem de erro", async () => {
     await abrirVozAoVivo();
     await responderNoCartao("D");
@@ -335,6 +370,16 @@ async function responderNoCartaoOpenAI(letra: string) {
   await within(cartao()).findByText("Você acertou");
 }
 
+describe("Tela de voz: avisos da tela", () => {
+  it("o aviso de minutos e o motivo de uma troca que falhou aparecem os dois (um não esconde o outro)", async () => {
+    const { StaziaVoiceMode } = await import("../novo/app/tutor/voice/StaziaVoiceMode.jsx");
+    const rt = { state: "listening", muted: false, captions: {}, streams: null, setVolume() {}, toggleMute() {}, sendText() {}, start() {} };
+    render(<StaziaVoiceMode rt={rt} persona={{ id: "durona", name: "Durona" }} note={[AVISO_MINUTO, "Não foi possível abrir o chat agora.", null]} onClose={() => {}} />);
+    expect(screen.getByText(AVISO_MINUTO)).toBeTruthy();
+    expect(screen.getByText("Não foi possível abrir o chat agora.")).toBeTruthy();
+  });
+});
+
 // ------------------------------------------------------------------------------------------------ "Voltar"
 const iso = (ms: number) => new Date(ms).toISOString();
 const NOW = Date.now();
@@ -374,14 +419,21 @@ describe("'Voltar' na conversa por voz do Tutor", () => {
     const enunciado = screen.getByText(/Pré-escolar de 4 anos/);
     const relogio = screen.getByRole("timer", { name: /^Tempo respondendo/ });
     const lidasDaSessao = rpcCalls("app_get_session").length;
-    // abre o Tutor por cima da questão e começa a conversa por voz
-    fireEvent.click(screen.getByRole("button", { name: /Conversar com o Tutor/ }));
+    // abre o Tutor por cima da questão e começa a conversa por voz (o botão fica com o foco, como no toque/Enter do navegador)
+    const abrir = screen.getByRole("button", { name: /Conversar com o Tutor/ });
+    abrir.focus();
+    fireEvent.click(abrir);
     fireEvent.click(await screen.findByRole("button", { name: /^Começar com/ }));
     await waitFor(() => expect(opened).toHaveLength(1));
+    // enquanto a voz conecta (microfone desabilitado), o foco fica no próprio diálogo, nunca na página de trás
+    const conectando = await screen.findByRole("dialog", { name: /Stazia/ });
+    expect(document.activeElement).toBe(conectando);
     act(() => {
     opened[0].handlers.onReady();
   });
     const voz = await screen.findByRole("dialog", { name: /Stazia/ });
+    // a voz conectou: o foco passa para o microfone
+    await waitFor(() => expect(document.activeElement).toBe(within(voz).getByRole("button", { name: "Desligar o microfone" })));
     const voltar = within(voz).getByRole("button", { name: "Voltar para a questão" });
     expect(voltar.className).toContain("svm__voltar");
     fireEvent.click(voltar);
@@ -397,12 +449,15 @@ describe("'Voltar' na conversa por voz do Tutor", () => {
     expect(gem.closed).toBeGreaterThan(0);
     await waitFor(() => expect(bodies("/api/tutor/voice/end")[0]).toMatchObject({ voice_call_id: GEMINI_CALL, reason: "student" }));
     expect(document.body.style.overflow).not.toBe("hidden"); // a página de baixo volta a rolar
+    // teclado e leitor de tela: o foco volta para o botão que abriu o Tutor (não cai no <body>)
+    await waitFor(() => expect(document.activeElement).toBe(abrir));
     // e o treino segue: "Próxima questão" anda
     fireEvent.click(screen.getByRole("button", { name: "Próxima questão" }));
     expect(await screen.findByText(/Segunda questão do treino/)).toBeTruthy();
   });
 
-  it("pela página do Tutor (menu): 'Voltar para a tela anterior' volta uma página no app sem encerrar; sem página anterior, vai para o Início", async () => {
+  it("pela página do Tutor (menu): 'Voltar para a tela anterior' volta uma página no app sem encerrar; a voz para no primeiro toque mesmo se a rota não mudar", async () => {
+    // history.back de mentira não muda a rota: é o caso da tela anterior ser o próprio Tutor (o menu empilha /tutor de novo)
     const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
     window.history.replaceState({ usr: null, key: "k2", idx: 2 }, "");
     const { go } = await abrirVozAoVivo();
@@ -410,13 +465,54 @@ describe("'Voltar' na conversa por voz do Tutor", () => {
     fireEvent.click(within(voz).getByRole("button", { name: "Voltar para a tela anterior" }));
     expect(back).toHaveBeenCalledTimes(1);
     expect(go).not.toHaveBeenCalled();
+    // a tela de voz saiu, a voz desligou e o servidor parou de contar os minutos; a conversa NÃO foi encerrada
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /Stazia/ })).toBeNull());
+    expect(gem.closed).toBeGreaterThan(0);
+    await waitFor(() => expect(bodies("/api/tutor/voice/end")[0]).toMatchObject({ voice_call_id: GEMINI_CALL, reason: "student" }));
     expect(rpcCalls("app_tutor_close")).toHaveLength(0);
-    // aberto direto pelo endereço (nada antes no app): vai para o Início
+    expect(await screen.findByRole("button", { name: /^Começar com/ })).toBeTruthy(); // a entrada do Tutor
+  });
+
+  it("pela página do Tutor aberta direto pelo endereço (nada antes no app): o nome diz o destino, 'Voltar para o Início'", async () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
     window.history.replaceState(null, "");
-    fireEvent.click(within(voz).getByRole("button", { name: "Voltar para a tela anterior" }));
+    const { go } = await abrirVozAoVivo();
+    const voz = screen.getByRole("dialog", { name: /Stazia/ });
+    expect(within(voz).queryByRole("button", { name: "Voltar para a tela anterior" })).toBeNull();
+    fireEvent.click(within(voz).getByRole("button", { name: "Voltar para o Início" }));
     expect(go).toHaveBeenCalledWith("home");
-    expect(back).toHaveBeenCalledTimes(1);
+    expect(back).not.toHaveBeenCalled();
     expect(rpcCalls("app_tutor_close")).toHaveLength(0);
+  });
+
+  it("foco: se o botão que abriu o Tutor saiu da tela, ao fechar a camada o foco vai para o título da questão", async () => {
+    const { TutorDockProvider, useTutorDock } = await import("../novo/app/tutor/TutorDrawer.jsx");
+    function Tela() {
+      const abrir = useTutorDock();
+      const [mostra, setMostra] = React.useState(true);
+      return (
+        <main>
+          <h1>Enunciado da questão</h1>
+          {mostra && (
+            <button type="button" onClick={() => (abrir({ mode: "livre", questionId: "rq1" }), setMostra(false))}>
+              Abrir o Tutor
+            </button>
+          )}
+        </main>
+      );
+    }
+    render(
+      <TutorDockProvider go={vi.fn()}>
+        <Tela />
+      </TutorDockProvider>
+    );
+    const botao = screen.getByRole("button", { name: "Abrir o Tutor" });
+    botao.focus();
+    fireEvent.click(botao);
+    await screen.findByRole("button", { name: /^Começar com/ }); // a entrada do Tutor carregou (o "Fechar" do carregando sai)
+    fireEvent.click(screen.getByRole("button", { name: "Fechar o Tutor" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Tutor" })).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Enunciado da questão" })));
   });
 
   it("por escrito (ou modo reserva): 'Voltar' fecha a chamada de voz no servidor na hora (os minutos param) e a conversa continua aberta", async () => {
@@ -433,6 +529,27 @@ describe("'Voltar' na conversa por voz do Tutor", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(bodies("/api/tutor/voice/end")[0]).toMatchObject({ voice_call_id: ESC, reason: "student" }));
     expect(rpcCalls("app_tutor_close")).toHaveLength(0);
+  });
+
+  it("a tela de voz rola (dedo e rodinha) e, no computador, o cartão alto começa do topo: Voltar e Próxima sempre ao alcance", () => {
+    const css = fs.readFileSync(path.resolve(__dirname, "../novo/app/tutor/voice/voiceMode.css"), "utf8");
+    // o primeiro bloco de regras do seletor exato (no começo da linha, com ou sem recuo de @media)
+    const bloco = (sel: string) => css.match(new RegExp("(?:^|\\n)\\s*" + sel.replace(/\./g, "\\.") + "\\s*\\{([^}]*)\\}"))?.[1] ?? "";
+    const svm = bloco(".svm");
+    expect(svm).toMatch(/overflow-y:\s*auto/);
+    expect(svm).not.toMatch(/overflow:\s*hidden/);
+    expect(bloco(".svm__top")).toMatch(/flex:\s*none/); // o topo (com o Voltar de 44 px) não encolhe quando a tela passa da altura
+    expect(bloco(".svm--with-card")).toMatch(/align-content:\s*safe center/);
+    expect(bloco(".svm__sheet")).toMatch(/position:\s*fixed/); // o Chat continua no rodapé com a tela rolada
+  });
+
+  it("o motivo da recusa no cartão usa os tokens do design system (com versão do modo noite)", () => {
+    const css = fs.readFileSync(path.resolve(__dirname, "../novo/app/tutor/nexus/nexus.css"), "utf8");
+    const bloco = css.match(/\.nx-q__erro\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(bloco).toMatch(/color:\s*var\(--danger-text\)/);
+    expect(bloco).toMatch(/background:\s*var\(--danger-bg\)/);
+    expect(bloco).toMatch(/var\(--danger-border\)/);
+    expect(css).not.toContain("--text-danger");
   });
 
   it("alvo de toque do 'Voltar' com pelo menos 44 px (celular)", () => {

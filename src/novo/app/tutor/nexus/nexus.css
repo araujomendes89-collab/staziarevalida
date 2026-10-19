@@ -563,9 +563,10 @@
   margin: 0;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(180, 35, 24, 0.28);
-  background: rgba(180, 35, 24, 0.07);
-  color: var(--text-danger, #b42318);
+  /* tokens do design system (têm versão do modo noite; o nome usado antes, "text-danger", não existe: o texto ficava #b42318 com contraste 2,58:1 no escuro) */
+  border: 1px solid var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-text);
   font-size: 14px;
   line-height: 1.45;
 }

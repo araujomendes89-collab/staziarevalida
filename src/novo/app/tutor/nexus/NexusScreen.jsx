@@ -501,13 +501,31 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose, go = nu
    * de Hoje, do Caderno de erros…), fecha a camada e a tela de baixo continua exatamente como estava (resposta, correção, tempo).
    * Pela página do Tutor (menu), volta para a tela anterior do app; aberta direto pelo endereço, vai para o Início.
    */
+  const temTelaAnterior = () => typeof window !== "undefined" && Number(window.history.state?.idx) > 0;
+  /**
+   * Página do Tutor: sai da tela de voz JÁ (a voz para e os minutos param; a conversa continua aberta no Histórico) e a Nexus volta
+   * para a entrada. Sem isso, se a tela anterior do histórico também for o Tutor (tocar em "Tutor" no menu estando no Tutor empilha
+   * /tutor de novo), a rota não mudava, a Nexus não desmontava e a voz seguia aberta no primeiro toque.
+   */
+  const deixarConversa = () => {
+    if (opened?.jeito === "aovivo") void Promise.resolve(live.stop?.()).catch(() => {});
+    else void Promise.resolve(tts.stop?.()).catch(() => {});
+    setOpened(null);
+    releaseMic();
+    setMicStream(null);
+    setPicked(null);
+    setCardNote(null);
+    setLiveNote(null);
+    toLobby();
+  };
   const voltar = overlay
     ? onClose
     : () => {
-        if (Number(window.history.state?.idx) > 0) window.history.back();
+        deixarConversa();
+        if (temTelaAnterior()) window.history.back();
         else go?.("home");
       };
-  const voltarRotulo = overlay && request?.questionId ? "Voltar para a questão" : "Voltar para a tela anterior";
+  const voltarRotulo = overlay ? (request?.questionId ? "Voltar para a questão" : "Voltar para a tela anterior") : temTelaAnterior() ? "Voltar para a tela anterior" : "Voltar para o Início";
 
   const errorBox = error && (
     <div className="nx-error" role="alert">
@@ -576,7 +594,8 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose, go = nu
         messages={session.messages ?? []}
         avatar={aoVivo ? liveAvatar : tts.avatar}
         entitlement={aoVivo ? status.entitlement : null}
-        note={aoVivo ? liveNote ?? fallback?.note ?? null : error?.message ?? fallback?.note ?? null}
+        // voz ao vivo: o aviso de minutos E o motivo de uma troca que falhou (ex.: "Escrever pelo Chat"); um não esconde o outro
+        note={aoVivo ? [liveNote, fallback?.note] : error?.message ?? fallback?.note ?? null}
         jeitoLabel={JEITO_LABEL[opened.jeito]}
         card={card}
         captions={legendas}
@@ -587,9 +606,10 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose, go = nu
         onBack={
           voltar
             ? () => {
-                // a voz para já: a voz do professor e o por escrito fecham a chamada no servidor aqui (a voz ao vivo fecha a dela ao
-                // desmontar a tela de voz); a conversa NÃO é encerrada
-                if (!aoVivo) void Promise.resolve(tts.stop?.()).catch(() => {});
+                // a voz para já e a conversa NÃO é encerrada. Por cima da questão: a voz do professor e o por escrito fecham a chamada
+                // no servidor aqui; a voz ao vivo fecha a dela quando a camada sai (a Nexus desmonta). Na página do Tutor, quem para a
+                // voz é deixarConversa (dentro de voltar)
+                if (overlay && !aoVivo) void Promise.resolve(tts.stop?.()).catch(() => {});
                 voltar();
               }
             : null

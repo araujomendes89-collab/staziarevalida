@@ -81,6 +81,7 @@ const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabin
  * fica só nesta tela. closing: o aluno tocou em Encerrar e o professor está se despedindo.
  * onBack / backLabel (relato de 19/10): "‹ Voltar" no topo, para sair da conversa SEM encerrar (quem abriu decide para onde volta;
  * o nome acessível diz o destino, ex.: "Voltar para a questão"). O Esc continua sendo o Encerrar.
+ * note: um aviso da tela ou uma lista deles (todos aparecem na faixa, sem repetir).
  */
 export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, entitlement = null, note = null, onClose, jeitoLabel = null, card = null, onWrite = null, personagem = null, motor = "2d", semitons = null, captions = undefined, onCaptions = null, closing = false, onBack = null, backLabel = "Voltar para a tela anterior" }) {
   const [chatOpen, setChatOpen] = React.useState(false);
@@ -133,15 +134,20 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rt.provider]);
 
-  // tela cheia: a página de trás não rola; o foco começa no microfone e volta para quem abriu
+  // tela cheia: a página de trás não rola; o foco começa no microfone e volta para quem abriu. O microfone fica desabilitado enquanto
+  // a voz conecta: aí o foco fica no próprio diálogo (nunca na página de trás, onde o Tab sairia da tela de voz) e passa para o
+  // microfone quando a voz conecta. Se quem abriu já saiu da tela (o "Começar"), quem devolve o foco é a camada do Tutor.
+  // Sem rolar (preventScroll): no celular a tela de voz é mais alta que a janela e abre do topo (Voltar e questão), não no rodapé.
   React.useEffect(() => {
     const before = document.activeElement;
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    (mic.current ?? dialog.current?.querySelector(FOCUSABLE))?.focus?.();
+    const m = mic.current;
+    if (m && !m.disabled) m.focus({ preventScroll: true });
+    else dialog.current?.focus?.({ preventScroll: true });
     return () => {
       document.body.style.overflow = overflow;
-      before?.focus?.();
+      if (before && before !== document.body && before.isConnected) before.focus?.();
       releaseAudioContext();
     };
   }, []);
@@ -158,7 +164,7 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
     if (!items.length) return;
     const first = items[0];
     const last = items[items.length - 1];
-    if (e.shiftKey && document.activeElement === first) {
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) {
       e.preventDefault();
       last.focus();
     } else if (!e.shiftKey && document.activeElement === last) {
@@ -173,10 +179,15 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
   }, [rt.chatRequest]);
 
   const err = rt.state === "error" ? rt.error : null;
-  // avisos curtos: o da voz (ex.: "Não entendi, pode repetir?") e o da tela (ex.: modo reserva), sem repetir
-  const avisos = [...new Set([rt.notice, note].filter(Boolean))];
+  // avisos curtos: o da voz (ex.: "Não entendi, pode repetir?") e os da tela (ex.: modo reserva; na voz ao vivo, o aviso de minutos
+  // E o motivo de uma troca que falhou — um não esconde o outro), sem repetir
+  const avisos = [...new Set([rt.notice, ...[].concat(note)].filter(Boolean))];
   const shownNote = avisos[0] ?? null;
   const connected = ["ready", "listening", "thinking", "speaking", "interrupted", "paused"].includes(rt.state);
+  // o foco ficou no próprio diálogo enquanto a voz conectava: com a voz pronta, vai para o microfone
+  React.useEffect(() => {
+    if (connected && !closing && document.activeElement === dialog.current && mic.current && !mic.current.disabled) mic.current.focus({ preventScroll: true });
+  }, [connected, closing]);
   const quota = voiceQuotaText(entitlement, rt.remaining);
   const nome = PERSONAGENS[quem]?.nome ?? persona?.name ?? "Tutor";
   const tutorCaption = (rt.captions?.tutor ?? "").trim();
@@ -198,7 +209,7 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
   );
 
   return createPortal(
-    <div className={`svm${card ? " svm--with-card" : ""}`} data-emo={semPersonagem ? undefined : emo.emotion} style={{ "--svm-emo-i": emo.intensity.toFixed(2) }} role="dialog" aria-modal="true" aria-labelledby="svm-title" aria-describedby="svm-desc" ref={dialog} onKeyDown={onKey}>
+    <div className={`svm${card ? " svm--with-card" : ""}`} data-emo={semPersonagem ? undefined : emo.emotion} style={{ "--svm-emo-i": emo.intensity.toFixed(2) }} role="dialog" aria-modal="true" aria-labelledby="svm-title" aria-describedby="svm-desc" tabIndex={-1} ref={dialog} onKeyDown={onKey}>
       <div className="svm__top">
         {onBack && (
           <button type="button" className="svm__voltar" aria-label={backLabel} onClick={onBack}>
