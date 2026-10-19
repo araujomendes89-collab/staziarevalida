@@ -89,7 +89,7 @@ afterEach(() => {
   document.querySelectorAll("input.fora-do-baralho").forEach((n) => n.remove());
 });
 
-async function openPractice(url = "/dupla") {
+async function openPractice(url = "/dupla?modo=baralho") {
   render(
     <MemoryRouter initialEntries={[url]}>
       <PracticeScreen go={go} />
@@ -98,7 +98,7 @@ async function openPractice(url = "/dupla") {
   await screen.findByText("Como a compatibilidade é calculada");
 }
 /** Com relógio falso o findBy do Testing Library não anda: deixa as promessas e os relógios correrem à mão. */
-async function openPracticeFake(url = "/dupla") {
+async function openPracticeFake(url = "/dupla?modo=baralho") {
   render(
     <MemoryRouter initialEntries={[url]}>
       <PracticeScreen go={go} />
@@ -240,7 +240,7 @@ describe("Praticar com baralho", () => {
   });
 
   it("a estação escolhida no Banco vai junto no 'Estudar junto'", async () => {
-    await openPractice("/dupla?estacao=teste-inep2020-e03");
+    await openPractice("/dupla?estacao=teste-inep2020-e03&modo=baralho");
     await screen.findByText("Estação 3 · Cefaleia na gestante");
     await press("ArrowRight");
     await waitFor(() => expect(rpcCalls("app_dupla_swipe")).toHaveLength(1));

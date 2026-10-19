@@ -1,5 +1,5 @@
 /**
- * Treinamento em Dupla · radar de quem está online (jsdom): RadarScreen e o atalho do Praticar (`?modo=online`).
+ * Treinamento em Dupla · radar de quem está online (jsdom): RadarScreen e o atalho do Praticar (a lista é a tela padrão; o baralho fica em `?modo=baralho`).
  * O banco é simulado pelo contrato de app_dupla_radar / app_dupla_invite / app_dupla_save_profile; todas as pessoas abaixo são de
  * TESTE (nenhuma pessoa real). O tempo real do radar e o aviso de convite ficam em duplaRadarTempoReal.test.tsx.
  */
@@ -118,11 +118,11 @@ describe("Radar · lista", () => {
     expect(rpcCalls("app_dupla_invite")).toEqual([["app_dupla_invite", { p_to: "u-um", p_station_id: "est-teste-3" }]]);
   });
 
-  it("sem estação escolhida o convite vai com p_station_id nulo", async () => {
+  it("sem estação escolhida, Convidar abre a lista de estações e nenhum convite sai antes da escolha", async () => {
     await openRadar();
     fireEvent.click(screen.getByRole("button", { name: "Convidar Colega Teste Um" }));
-    await waitFor(() => expect(go).toHaveBeenCalled());
-    expect(rpcCalls("app_dupla_invite")[0][1]).toEqual({ p_to: "u-um", p_station_id: null });
+    expect(await screen.findByRole("dialog", { name: /Escolha a estação para treinar com Colega Teste Um/ })).toBeTruthy();
+    expect(rpcCalls("app_dupla_invite")).toHaveLength(0);
   });
 
   it("'Em sala' e 'Treinando sozinho' ficam sem botão; 'Não recebe convites.' mostra o texto sem botão", async () => {
@@ -213,16 +213,11 @@ describe("Radar · interruptores", () => {
 
 describe("Radar · abas", () => {
   it("cada aba chama app_dupla_radar com o p_aba certo", async () => {
-    radarByAba.atores = radarBody([person("u-ator", "Colega Teste Ator", { handle: "colega.ator" })]);
     radarByAba.perto = radarBody([person("u-perto", "Colega Teste Perto", { handle: "colega.perto", near: "cidade" })]);
     await openRadar();
     expect(rpcCalls("app_dupla_radar")[0][1]).toEqual({ p_station_id: null, p_aba: "online" });
     const group = screen.getByRole("radiogroup", { name: "Lista" });
-    expect(within(group).getAllByRole("radio").map((r) => r.textContent)).toEqual(["Online", "Ator/avaliador", "Perto de você"]);
-    fireEvent.click(within(group).getByRole("radio", { name: "Ator/avaliador" }));
-    expect(await screen.findByText("Colega Teste Ator")).toBeTruthy();
-    expect(rpcCalls("app_dupla_radar").some((c) => c[1].p_aba === "atores")).toBe(true);
-    expect(screen.queryByText("Colega Teste Um")).toBeNull();
+    expect(within(group).getAllByRole("radio").map((r) => r.textContent)).toEqual(["Online", "Perto de você"]);
     fireEvent.click(within(group).getByRole("radio", { name: "Perto de você" }));
     expect(await screen.findByText("Colega Teste Perto")).toBeTruthy();
     expect(rpcCalls("app_dupla_radar").some((c) => c[1].p_aba === "perto")).toBe(true);
@@ -370,7 +365,7 @@ describe("Radar · lista vazia", () => {
 describe("Radar · erros", () => {
   it("erro de limite do servidor vira aviso e a tela continua funcionando", async () => {
     inviteError = new Error("Muitos convites seguidos. Tente de novo em 12 min.");
-    await openRadar();
+    await openRadar({ station: STATION, stationId: "est-teste-3" });
     fireEvent.click(screen.getByRole("button", { name: "Convidar Colega Teste Um" }));
     expect(await screen.findByText("Muitos convites seguidos. Tente de novo em 12 min.")).toBeTruthy();
     expect(go).not.toHaveBeenCalled();
@@ -383,7 +378,7 @@ describe("Radar · erros", () => {
   });
 
   it("erro ao atualizar mantém a lista anterior ('Mostrando a última')", async () => {
-    await openRadar();
+    await openRadar({ station: STATION, stationId: "est-teste-3" });
     expect(rows()).toHaveLength(4);
     radarError = new Error("Falha de rede.");
     // o convite que falha também reconsulta o radar

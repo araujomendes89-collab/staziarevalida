@@ -339,7 +339,7 @@ function PracticeBoard({ go, profile, saved, stationId, station, onRemoveStation
           <Button variant="secondary" size="sm" icon="message-circle" onClick={chat.openList}>
             Conversas
           </Button>
-          <Button variant="secondary" size="sm" icon="radar" onClick={() => go("dupla", stationId ? { estacao: stationId, modo: "online" } : { modo: "online" })}>
+          <Button variant="secondary" size="sm" icon="radar" onClick={() => go("dupla", stationId ? { estacao: stationId } : undefined)}>
             Ver quem está online
           </Button>
           {deck.loaded && (
@@ -506,8 +506,9 @@ export function PracticeScreen({ go }) {
     setParams(next, { replace: true });
   };
 
-  // `?modo=online` abre o radar de quem está online (tela própria); sem perfil de estudo o radar não existe (cai na tela abaixo).
-  if (saved && modo === "online") {
+  // Fluxo simples (dono, 19/10): o Praticar abre a lista de colegas (radar) por padrão; o baralho do match é a opção
+  // secundária (`?modo=baralho`). Sem perfil de estudo o radar não existe (cai na tela abaixo).
+  if (saved && modo !== "baralho") {
     return <RadarScreen go={go} profile={profile} saved={saved} station={station} stationId={stationId} />;
   }
   if (saved) {

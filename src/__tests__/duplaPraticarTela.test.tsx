@@ -30,7 +30,7 @@ function Where() {
   return <div data-testid="onde">{l.pathname + l.search}</div>;
 }
 const rpcCalls = (fn: string) => backend.rpc.mock.calls.filter((c: any[]) => c[0] === fn);
-async function open(url = "/dupla") {
+async function open(url = "/dupla?modo=baralho") {
   render(
     <MemoryRouter initialEntries={[url]}>
       <PracticeScreen go={go} />
@@ -130,15 +130,15 @@ describe("Praticar (baralho vazio)", () => {
   });
 
   it("faixa da estação escolhida; remover tira o parâmetro", async () => {
-    await open("/dupla?estacao=teste-inep2020-e03&outro=1");
+    await open("/dupla?estacao=teste-inep2020-e03&outro=1&modo=baralho");
     expect(await screen.findByText("Estação 3 · Cefaleia na gestante")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Remover estação escolhida" }));
     await waitFor(() => expect(screen.queryByText("Estação 3 · Cefaleia na gestante")).toBeNull());
-    expect(screen.getByTestId("onde").textContent).toBe("/dupla?outro=1");
+    expect(screen.getByTestId("onde").textContent).toBe("/dupla?outro=1&modo=baralho");
   });
 
   it("estação que não existe: sem faixa", async () => {
-    await open("/dupla?estacao=nao-existe");
+    await open("/dupla?estacao=nao-existe&modo=baralho");
     await waitFor(() => expect(rpcCalls("app_dupla_stations")).toHaveLength(1));
     expect(screen.queryByText(/^Estação \d/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Remover estação escolhida" })).toBeNull();

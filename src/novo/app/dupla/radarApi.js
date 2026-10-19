@@ -2,10 +2,9 @@
 // regras (quem aparece, ordem, "Perto de você") são do banco (`app_dupla_radar`); aqui só ficam os textos e a busca na tela.
 import { areaByCode } from "./labels.js";
 
-/** Abas do radar, na ordem da tela. O valor vai em `p_aba`. */
+/** Abas do radar, na ordem da tela (fluxo simples, 19/10: a aba "Ator" saiu). O valor vai em `p_aba`. */
 export const ABAS = [
   { value: "online", label: "Online" },
-  { value: "atores", label: "Ator/avaliador" },
   { value: "perto", label: "Perto de você" },
 ];
 

@@ -1,8 +1,9 @@
-// Treino em Dupla · radar de quem está online (tela própria): "Praticar" com `?modo=online`. Porte do visual de Match.jsx do pacote de
+// Treino em Dupla · radar de quem está online: é a tela padrão do "Praticar" (rota "dupla") desde o fluxo simples de 19/10; o baralho do match fica em `?modo=baralho`. Porte do visual de Match.jsx do pacote de
 // design (RadarPulse, chave "Aparecer no radar", chave "Permitir convites diretos", abas, busca e lista com "Convidar"), com os
 // dados REAIS de `app_dupla_radar`: nenhuma pessoa de exemplo. Fora desta tela, por decisão do dono: busca automática de duplas,
 // "Salas abertas", convite rápido, grupo de WhatsApp. A aba "Perto de você" usa a cidade e o estado do perfil de estudo (sem GPS).
 // Convite direto: quem convida entra na sala; quem recebe vê o aviso (InviteWatcher, em MatchModal.jsx).
+// Fluxo simples: quem convida é o ator e escolhe a estação (sem estação, a lista do Banco de estações abre antes do convite).
 import React from "react";
 import { Avatar, Badge, Banner, Button, EmptyState, Icon, SegmentedControl, Switch, TextField, useToast } from "../../ds";
 import { useSession } from "../session.jsx";
@@ -11,6 +12,7 @@ import { ROLE_PREF_LABEL, areaByLabel } from "./labels.js";
 import { useDuplaChannel, useHeartbeat, useRadar } from "./live.js";
 import { InviteWatcher } from "./MatchModal.jsx";
 import { installAudioWake } from "./sound.js";
+import { StationPicker } from "./room/StationPicker.jsx";
 import { ABAS, NEAR_LABEL, STATE_LABEL, filterPeople, invitePerson } from "./radarApi.js";
 
 const STYLE = `
@@ -174,6 +176,7 @@ export function RadarScreen({ go, profile, saved, station, stationId }) {
   const [query, setQuery] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [inviting, setInviting] = React.useState(null);
+  const [picking, setPicking] = React.useState(null);
 
   // Mesmos sinal e canal do baralho: a pessoa aparece online, recebe convites e o áudio fica pronto antes do primeiro clique.
   useHeartbeat("livre");
@@ -204,11 +207,13 @@ export function RadarScreen({ go, profile, saved, station, stationId }) {
     }
   };
 
-  const invite = async (person) => {
+  // Fluxo simples (dono, 19/10): quem convida é o ator e escolhe a estação. Sem estação escolhida, a lista do Banco de estações
+  // abre antes do convite; o convite sempre leva a estação (o banco recusa sem ela).
+  const sendInvite = async (person, chosen) => {
     if (inviting) return;
     setInviting(person.user_id);
     try {
-      const res = await invitePerson(backend, person.user_id, stationId);
+      const res = await invitePerson(backend, person.user_id, chosen);
       go("dupla-sala", { sala: res.room_id });
     } catch (e) {
       showToast(messageOf(e), "danger");
@@ -216,6 +221,7 @@ export function RadarScreen({ go, profile, saved, station, stationId }) {
       setInviting(null);
     }
   };
+  const invite = (person) => (stationId ? sendInvite(person, stationId) : setPicking(person));
 
   if (radar.error && !radar.loading && radar.people.length === 0 && !radar.me) {
     return (
@@ -231,28 +237,36 @@ export function RadarScreen({ go, profile, saved, station, stationId }) {
       {toastNode}
       <style>{STYLE}</style>
       <InviteWatcher go={go} meName={saved.public_name} inviteTick={inviteTick} live={live} />
+      {picking && (
+        <StationPicker
+          title={`Escolha a estação para treinar com ${picking.public_name}`}
+          onClose={() => setPicking(null)}
+          onPick={(id) => {
+            const person = picking;
+            setPicking(null);
+            void sendInvite(person, id);
+          }}
+        />
+      )}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div>
-          <button
-            type="button"
-            onClick={() => go("dupla", stationId ? { estacao: stationId } : undefined)}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, border: 0, background: "transparent", padding: 0, cursor: "pointer", font: "600 13px var(--font-sans)", color: "var(--text-brand)" }}
-          >
-            <Icon name="arrow-left" size={14} />
-            Voltar para Praticar
-          </button>
-          <h2 style={{ margin: "6px 0 0", font: "700 22px var(--font-sans)", color: "var(--text-primary)" }}>Quem está online</h2>
+          <h2 style={{ margin: 0, font: "700 22px var(--font-sans)", color: "var(--text-primary)" }}>Quem está online</h2>
         </div>
-        <Button variant="secondary" size="sm" icon="user-pen" onClick={() => go("dupla-perfil")}>
-          Meu perfil de estudo
-        </Button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Button variant="secondary" size="sm" icon="layers" onClick={() => go("dupla", stationId ? { estacao: stationId, modo: "baralho" } : { modo: "baralho" })}>
+            Encontrar por perfil (match)
+          </Button>
+          <Button variant="secondary" size="sm" icon="user-pen" onClick={() => go("dupla-perfil")}>
+            Meu perfil de estudo
+          </Button>
+        </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: "var(--radius-lg)", background: "var(--surface-brand-soft)", border: "1px solid var(--border-subtle)", flexWrap: "wrap" }}>
         <Icon name="clipboard-list" size={18} style={{ color: "var(--text-brand)" }} />
         <span style={{ flex: 1, minWidth: 0, font: "600 14px var(--font-sans)", color: "var(--text-primary)" }}>
-          {station ? [station.number != null ? `Estação ${station.number}` : "Estação", area?.card ?? station.area].filter(Boolean).join(" · ") : "Nenhuma estação escolhida: vocês escolhem na sala"}
+          {station ? [station.number != null ? `Estação ${station.number}` : "Estação", area?.card ?? station.area].filter(Boolean).join(" · ") : "Nenhuma estação escolhida: você escolhe ao convidar"}
         </span>
         <Button variant="ghost" size="sm" onClick={() => go("estacoes")}>
           {station ? "Trocar estação" : "Escolher estação"}

@@ -15,7 +15,11 @@ vi.mock("../novo/app/dupla/sound.js", async (importOriginal) => {
   return { ...real, playMatchSound: vi.fn(), installAudioWake: vi.fn() };
 });
 
+import { MemoryRouter } from "react-router-dom";
 import { InviteWatcher } from "../novo/app/dupla/MatchModal.jsx";
+import { RadarScreen } from "../novo/app/dupla/RadarScreen.jsx";
+import { PracticeScreen } from "../novo/app/dupla/PracticeScreen.jsx";
+import { GROUPS_FASE2 } from "../novo/app/shell/navModel.js";
 
 let invitesNow: any[];
 let go: any;
@@ -82,5 +86,72 @@ describe("Fluxo simples · convite ao candidato", () => {
         expect(txt, `${f}: ${proibido}`).not.toContain(proibido);
       }
     }
+  });
+});
+
+const SAVED = {
+  public_name: "Ana Souza", handle: "ana.teste", school: null, city: "Curitiba · PR", goal: "", exam: "2026/2", bio: "", areas: [], role_pref: "any",
+  pace: "livre", days: [], shifts: [], radar_visible: true, allow_direct_invites: true, show_school: false, show_stats: false,
+};
+const COLEGA = { user_id: "u-bruno", public_name: "Bruno Lima", handle: "bruno.teste", school: null, city: "Curitiba · PR", areas: [], role_pref: "med", state: "livre", compat: 80, can_invite: true, why_not: null, near: "cidade" };
+const ESTACOES = [{ id: "s9", name: "Outra estação", area: "Pediatria", area_code: "PED", number: 9 }];
+function servidorDaLista() {
+  backend.rpc.mockImplementation(async (fn: string, args: any) => {
+    if (fn === "app_dupla_radar") return { people: [COLEGA], online: 1, needs_city: false, open_room: null, me: { radar_visible: true } };
+    if (fn === "app_dupla_invite") return { room_id: "sala-nova", partner: { user_id: args.p_to }, expires_at: new Date(Date.now() + 60000).toISOString() };
+    if (fn === "app_dupla_stations") return ESTACOES;
+    if (fn === "app_dupla_profile") return { profile: SAVED, defaults: null, stats: { done: 0, avg: null } };
+    if (fn === "app_dupla_heartbeat") return { server_now: new Date().toISOString() };
+    if (fn === "app_dupla_invites") return { invites: [], server_now: new Date().toISOString() };
+    if (fn === "app_dupla_requests") return { requests: [] };
+    if (fn === "app_dupla_deck") return { cards: [], hidden_by_role: 0, online: 0, matches_today: 0, open_room: null, server_now: new Date().toISOString() };
+    throw new Error(`rpc não simulada: ${fn}`);
+  });
+}
+
+describe("Fluxo simples · lista de colegas", () => {
+  it("duas abas: 'Online' e 'Perto de você' (a aba 'Ator/avaliador' saiu)", async () => {
+    servidorDaLista();
+    render(<MemoryRouter><RadarScreen go={go} profile={{ setData: vi.fn() }} saved={SAVED} station={null} stationId={null} /></MemoryRouter>);
+    await screen.findByText("Bruno Lima");
+    expect(screen.getByRole("radio", { name: "Online" })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "Perto de você" })).toBeTruthy();
+    expect(screen.queryByRole("radio", { name: /Ator/ })).toBeNull();
+  });
+
+  it("pelo colega: sem estação escolhida, 'Convidar' abre a lista de estações e o convite leva a estação", async () => {
+    servidorDaLista();
+    render(<MemoryRouter><RadarScreen go={go} profile={{ setData: vi.fn() }} saved={SAVED} station={null} stationId={null} /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: "Convidar Bruno Lima" }));
+    const dialog = await screen.findByRole("dialog", { name: /Escolha a estação para treinar com Bruno Lima/ });
+    expect(rpcCalls("app_dupla_invite")).toHaveLength(0);
+    fireEvent.click(await within(dialog).findByRole("button", { name: /Outra estação/ }));
+    await waitFor(() => expect(go).toHaveBeenCalledWith("dupla-sala", { sala: "sala-nova" }));
+    expect(rpcCalls("app_dupla_invite")).toEqual([["app_dupla_invite", { p_to: "u-bruno", p_station_id: "s9" }]]);
+    expect(document.body.textContent).not.toMatch(/Sortear estação/);
+  });
+
+  it("pela estação: com a estação escolhida, 'Convidar' manda direto", async () => {
+    servidorDaLista();
+    render(<MemoryRouter><RadarScreen go={go} profile={{ setData: vi.fn() }} saved={SAVED} station={ESTACOES[0]} stationId="s9" /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: "Convidar Bruno Lima" }));
+    await waitFor(() => expect(go).toHaveBeenCalledWith("dupla-sala", { sala: "sala-nova" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("o Praticar abre a lista; o match fica como opção secundária ('Encontrar por perfil (match)')", async () => {
+    servidorDaLista();
+    render(<MemoryRouter initialEntries={["/dupla?estacao=s9"]}><PracticeScreen go={go} /></MemoryRouter>);
+    expect(await screen.findByText("Quem está online")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Encontrar por perfil (match)" }));
+    expect(go).toHaveBeenCalledWith("dupla", { estacao: "s9", modo: "baralho" });
+    cleanup();
+    render(<MemoryRouter initialEntries={["/dupla?modo=baralho"]}><PracticeScreen go={go} /></MemoryRouter>);
+    expect(await screen.findByText("Encontrar dupla")).toBeTruthy();
+  });
+
+  it("menu da 2ª fase continua 'Praticar' (guarda: já passa; não renomear)", () => {
+    const grupo = (GROUPS_FASE2 as any[]).find((g) => g.id === "menu2");
+    expect(grupo.items.find((i: any[]) => i[0] === "dupla")[2]).toBe("Praticar");
   });
 });

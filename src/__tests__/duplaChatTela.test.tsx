@@ -94,7 +94,7 @@ afterEach(() => {
 
 async function openPractice() {
   render(
-    <MemoryRouter initialEntries={["/dupla"]}>
+    <MemoryRouter initialEntries={["/dupla?modo=baralho"]}>
       <PracticeScreen go={go} />
     </MemoryRouter>,
   );
