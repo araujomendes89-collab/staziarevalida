@@ -4,21 +4,22 @@
 >
 > **Nada deste plano foi construído.** Ele começa só com a ordem do dono. Tudo continua **só para a equipe**.
 
-**Goal:** do convite aceito ao atendimento começar, um toque do ator ("Iniciar estação"): o ator escolhe a estação e convida pela lista de colegas; antes do início o candidato vê só uma porta com o número da área; o apito e a porta abrindo acontecem juntos nos dois aparelhos e, quando o apito acaba, o candidato "entra" (folha e 10 minutos); a nota tem um comentário opcional e o fim oferece "mesmo papel" ou "trocar de papel".
+**Goal:** do convite aceito ao atendimento começar, um toque do ator ("Iniciar estação"): o ator escolhe a estação e convida pela lista de colegas; antes do início o candidato vê só uma porta com o número da área; o apito toca nos dois aparelhos ao mesmo tempo e a porta abre só no do candidato (o ator segue na tela de trabalho, DONO-1); nada da estação chega ao aparelho do candidato antes do início marcado (DONO-2) e, quando o apito acaba, a tela dele pede o conteúdo e o candidato "entra" (folha e 10 minutos); a nota tem um comentário opcional e o fim oferece "mesmo papel" ou "trocar de papel".
 
-**Architecture:** três migrações novas sobre o ramo `fase2-etapa2` (014130 convite e lista, com o convite por link do @ desligado; 014140 sigilo antes do início, com a porta numerada; 014150 início com o apito, papéis e rodadas), cada uma partindo da definição mais nova de cada função e só reaplicando o acréscimo, com arquivo de desfazer. O servidor grava o início = toque do ator + 2 s do apito; os aparelhos calculam a entrada (porta fechada → abrindo → aberta) por uma função pura sobre o relógio do servidor (`src/novo/app/dupla/porta.js`). Nas telas (`src/novo/app/dupla`), a sala some com prontidão/conexão/confirmar no caminho novo: o ator em `setup` vai direto à "sala do avaliador" com "Iniciar estação"; o candidato vê só a porta numerada (`room/Porta.jsx`). O Praticar abre a lista de colegas (radar) e o baralho do match fica secundário; o menu continua "Praticar". Perfil, baralho, compatibilidade e `dupla_assign` não mudam.
+**Architecture:** três migrações novas sobre o ramo `fase2-etapa2` (014130 convite e lista, com o convite por link do @ desligado; 014140 sigilo antes do início marcado, com a porta numerada; 014150 início com o apito, papéis e rodadas), cada uma partindo da definição mais nova de cada função e só reaplicando o acréscimo, com arquivo de desfazer. O servidor grava o início = toque do ator + 2 s do apito; o banco esconde do candidato tudo da estação até esse horário (apoio `dupla_antes_do_inicio`, usado no estado, no conteúdo, na imagem do impresso, no resultado e no histórico). Os aparelhos calculam a entrada (porta fechada → abrindo → aberta) por uma função pura sobre o relógio do servidor (`src/novo/app/dupla/porta.js`). Nas telas (`src/novo/app/dupla`), a sala some com prontidão/conexão/confirmar no caminho novo: o ator em `setup` vai direto à "sala do avaliador" com "Iniciar estação" e nela fica durante o apito; o candidato vê só a porta numerada (`room/Porta.jsx`) e, quando ela abre, a tela pede estado e conteúdo de novo. O Praticar abre a lista de colegas (radar) e o baralho do match fica secundário; o menu continua "Praticar". Perfil, baralho, compatibilidade e `dupla_assign` não mudam.
 
 **Tech Stack:** Postgres/Supabase (plpgsql, `security definer`, `search_path = ''`), PGlite nos testes de banco, React 18 + Vite, Vitest + Testing Library (jsdom), Node para os roteiros de ensaio.
 
-**Spec:** `docs/superpowers/specs/2026-10-19-treino-dupla-fluxo-simples-design.md` (desenho aprovado pelo dono em 19/10, com a 2ª rodada de decisões: commit e8d458e5, seções 2b e 3). Leia o desenho inteiro antes de cada tarefa.
+**Spec:** `docs/superpowers/specs/2026-10-19-treino-dupla-fluxo-simples-design.md` (desenho aprovado pelo dono em 19/10, com a 2ª rodada de decisões, commit e8d458e5, seções 2b e 3, e a 3ª rodada, seção 2c: DONO-1 "o ator não vê a porta" e DONO-2 "nada da estação ao candidato antes do início marcado"; variações aceitas na seção 5b). Leia o desenho inteiro antes de cada tarefa. Decisões da varredura do plano: `.superpowers/sdd/2026-10-19-treino-dupla-fluxo-simples/progress.md` ("Rulings do preflight").
 
 ## Global Constraints
 
 - **Só equipe:** a chave `treino_dupla` continua desligada (`aberto: false`); aluno (teste grátis, PRO pago, PRO vencido) e visitante são recusados em toda função nova ou refeita (`dupla_assert_access`). Nada abre a 2ª fase aos alunos.
-- **Sigilo:** antes de `running` o candidato recebe SÓ o número da porta da área (`porta`: 1 Clínica Médica, 2 Cirurgia Geral, 3 Pediatria, 4 Ginecologia e Obstetrícia, 5 Medicina de Família e Comunidade/Saúde Coletiva) — nunca nome, tema, área por escrito, número da estação, origem (edição/instituição), versão do conteúdo, id, duração ou folha. Vale no convite (`app_dupla_invites`: nem a porta), no estado (`dupla_room_state`) e no conteúdo (`app_dupla_room_content`) em `roles`, `connecting` e `setup`, e em sala fechada antes de começar. Nunca há porta sem número: sem estação escolhida, o candidato vê só "O ator está escolhendo a estação".
+- **Sigilo (DONO-2, 19/10):** o sigilo não depende só da fase. Para quem não é o avaliador da rodada, **antes do início marcado** — fase `roles`, `connecting` ou `setup`, sala fechada sem `started_at`, ou `now() < started_at` em qualquer fase (os 2 s do apito) — o banco entrega SÓ o número da porta da área (`porta`: 1 Clínica Médica, 2 Cirurgia Geral, 3 Pediatria, 4 Ginecologia e Obstetrícia, 5 Medicina de Família e Comunidade/Saúde Coletiva), o horário de abertura (`started_at`) e `server_now` — nunca nome, tema, área por escrito, número da estação, origem (edição/instituição), versão do conteúdo, id, duração, fim do cronômetro (`ends_at`, `paused_left_ms`), folha, impressos (iniciais ou liberados, `released_pressings`) ou imagem. A regra mora no apoio `dupla_antes_do_inicio(checklist_rooms)` (014140) e vale no estado (`dupla_room_state`), no conteúdo (`app_dupla_room_content`), na imagem do impresso/folha (`app_dupla_print_path`, base da URL assinada de `server/dupla/router.ts`), no resultado (`app_dupla_result`, `app_dupla_history_result`) e no histórico (`app_dupla_history`); no convite (`app_dupla_invites`) nem a porta. O ator recebe tudo, sempre. Nunca há porta sem número: sem estação escolhida, o candidato vê só "O ator está escolhendo a estação".
 - **Convite por link do @ sai** (botão "Copiar link de convite", rota `/convite/<@>`, pedido de 24 h): as funções do link passam a recusar ('O convite por link saiu. …'); a tabela `study_train_requests` e o @ ficam (dados antigos inofensivos, nada mais os lê).
 - **Menu da 2ª fase continua "Praticar"** (não renomear). A lista de colegas abre dentro do Praticar e pelo "Em dupla" do Banco de estações.
-- **Apito e porta:** `APITO_MS = 2000` (o apito de `playWhistle` em `src/novo/app/dupla/sound.js` dura 2 s); o servidor grava `started_at = toque do ator + 2 s`. Tela e som seguem o relógio do servidor (`server_now`), nunca o clique; som desligado = porta sem som no mesmo tempo; `prefers-reduced-motion` = porta troca sem animação.
+- **Apito e porta:** `APITO_MS = 2000` (o apito de `playWhistle` em `src/novo/app/dupla/sound.js` dura 2 s); o servidor grava `started_at = toque do ator + 2 s`. Tela e som seguem o relógio do servidor (`server_now`), nunca o clique; som desligado = porta sem som no mesmo tempo; `prefers-reduced-motion` = porta troca sem animação. **O apito toca nos dois aparelhos; a porta aparece só no do candidato** (DONO-1: o ator fica na tela de trabalho — roteiro, impressos, PEP — durante os 2 s). Quando a porta abre, a tela do candidato pede estado e conteúdo de novo (DONO-2) e só então mostra a folha.
+- **Não juntar `origin/main` neste ramo** (ruling A24): a junção com o main é de outro trabalho. Nunca usar o nome `main` em comando (o `main` local 77852960 é resto antigo: não usar nem mexer).
 - **Nenhum modelo do Vertex/Gemini** em nenhum passo, nem para revisar. Execução: um agente por tarefa e outro confere antes da próxima (superpowers:subagent-driven-development, revisores Claude).
 - **Estação pendente** só entre duas pessoas da equipe: toda escolha de estação passa por `dupla_station_liberada(p_station_id, membros)`.
 - **Sem link de chamada:** nenhum botão nem campo de link de chamada (WhatsApp/Meet) em nenhuma tela. A conversa é por fora.
@@ -28,17 +29,19 @@
 - **Migrações:** números **014130, 014140 e 014150** (faixa de folga 014130–014199, reservada ao ramo `fase2-etapa2` em `/Volumes/StaziaMed/.tmp-aulas/NUMEROS-MIGRACAO.md`; a 014200 é do ramo `fase2-imagens` e não toca nas funções deste plano). Nome do arquivo sempre com `treino_dupla` (o teste `fase2PublicacaoEquipe` exige). Cada migração pode ser colada duas vezes; função refeita parte da definição mais nova (arquivo e linhas citados no cabeçalho); `app_*` com `revoke execute … from public, anon`; apoios e gatilhos com `revoke … from public, anon, authenticated`. Cada migração tem `supabase/desfazer/<arquivo>.desfazer.sql`.
 - **Testes:** sempre com `TMPDIR=/Volumes/StaziaMed/.tmp-aulas/tmp-correcoes`, pela fila `bash "/Volumes/StaziaMed/STAZIAMED REVALIDA/StaziaMed Revalida/.claude/worktrees/vaga-de-teste.sh"`, com `nice` e `npx vitest run <arquivos> --maxWorkers=2`. Mac de 16 GB: **uma suíte por vez**. Suíte inteira só na Tarefa 10 (`VITEST_TUDO=1`).
 - **Build:** `npx vite build --outDir $TMPDIR/dist-fluxo` e apagar a pasta depois.
-- **Git:** só no worktree `/Volumes/StaziaMed/STAZIAMED REVALIDA/StaziaMed Revalida/.claude/worktrees/fase2-etapa2` (ramo `fase2-etapa2`). `git add <caminhos explícitos>`. Mensagens em português **sem acento**, terminando com a linha `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. **Nunca `git push`, nunca Vercel, nunca gravar em produção, nunca `supabase db push`.**
+- **Git:** só no worktree `/Volumes/StaziaMed/STAZIAMED REVALIDA/StaziaMed Revalida/.claude/worktrees/fase2-etapa2` (ramo `fase2-etapa2`). `git add <caminhos explícitos>` (nunca `git add -A` nem `.`): o `git add` de cada tarefa leva **todos** os arquivos que ela mudou, inclusive todo teste antigo ajustado. Antes de cada commit, `git status --short`; se aparecer outro arquivo mudado por esta tarefa, acrescente o caminho; depois do commit, `git status --short` tem de sair vazio (árvore limpa ao fim de cada tarefa). Mensagens em português **sem acento**, terminando com a linha `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. **Nunca `git push`, nunca Vercel, nunca gravar em produção, nunca `supabase db push`.**
 - **Textos** que o dono vê: português, simples. Mensagens do banco terminam em ponto.
-- **Testes antigos:** só se muda expectativa que contradiz o desenho (fase `setup` no lugar de `roles`/`connecting`, papéis fixos no convite direto, estação obrigatória, convite/estado/conteúdo sem a estação antes do início (só a porta), início 2 s depois do toque, um comentário, "mesmo/trocar", lista sem a aba Ator, radar como tela padrão do Praticar, convite por link do @ removido) ou teste que recola migração antiga (acrescentar `recolarFluxoSimples`). Cada tarefa traz a tabela das quebras já previstas; quebra fora da tabela que também for consequência direta do desenho pode ser ajustada, com uma linha no corpo do commit dizendo qual e por quê; qualquer outra falha: **pare** e investigue (é defeito, não expectativa).
+- **Testes antigos:** só se muda expectativa que contradiz o desenho (fase `setup` no lugar de `roles`/`connecting`, papéis fixos no convite direto, estação obrigatória, convite/estado/conteúdo/imagem sem a estação antes do início marcado (só a porta e o horário), início 2 s depois do toque (no banco de teste, `abrirPorta` depois de `app_dupla_start` quando o teste lê o que o candidato recebe), porta só no candidato, um comentário, "mesmo/trocar", lista sem a aba Ator, radar como tela padrão do Praticar, convite por link do @ removido) ou teste que recola só PARTE da cadeia (acrescentar `recolarFluxoSimples`; onde o teste já recola todas as migrações `treino_dupla` posteriores, as do fluxo simples já entram e não se acrescenta nada — ruling D7/A23). Cada tarefa traz a tabela das quebras já previstas; quebra fora da tabela que também for consequência direta do desenho pode ser ajustada, com uma linha no corpo do commit dizendo qual e por quê; qualquer outra falha: **pare** e investigue (é defeito, não expectativa).
 
 ## Review Focus
 
 1. **Tela antiga aberta durante a publicação** chama `app_dupla_next_station` só com `p_room_id`, e as salas antigas ainda chamam `ready`/`confirm_roles`/`connected`: a pessoa espera que continue funcionando (nova rodada com o mesmo papel; salas antigas ainda andam) — teste na Tarefa 3 ("tela antiga, sem p_papel" e "salas antigas").
 2. **O candidato aceita depois de o ator trocar a estação durante os 60 s**, ou o ator aperta "Iniciar" antes do aceite: espera-se que o candidato nunca veja a estação e que o início espere o aceite — teste na Tarefa 3 ("um toque do ator") e na Tarefa 5 ("convite ainda não aceito").
 3. **Rodada nova ou match sem estação**, com o candidato recarregando a página: espera-se "O ator está escolhendo a estação", sem porta e sem nada da estação, e o início recusado até haver estação — testes na Tarefa 3 ("nova rodada") e na Tarefa 5 ("candidato sem estação escolhida").
-4. **Aparelho que recebe o início atrasado** (rede lenta, aba no fundo, relógio do aparelho adiantado): espera-se que a porta abra no tempo do SERVIDOR nos dois aparelhos, que o apito não toque atrasado mais de 1 s (porta abre sem som) e que quem abre a sala depois da porta aberta caia direto na estação, sem apito — testes na Tarefa 6 (linha do tempo pura e "apito atrasado").
-5. **Celular:** o rodapé da sala (Iniciar/Finalizar), a porta e a lista de estações aberta pelo radar não podem ficar escondidos pela barra de baixo nem pela área do gesto do iPhone — testes na Tarefa 5 (CSS do rodapé com `safe-area-inset-bottom`; porta com largura `min(220px, 60vw)`) e na Tarefa 9 (a escolha de estação abre como janela `Dialog`, que usa `--z-modal` 90).
+4. **Aparelho que recebe o início atrasado** (rede lenta, aba no fundo, relógio do aparelho adiantado): espera-se que a porta do candidato abra no tempo do SERVIDOR, que o apito (nos dois aparelhos) não toque atrasado mais de 1 s (porta abre sem som) e que quem abre a sala depois da porta aberta caia direto na estação, sem apito — testes na Tarefa 6 (linha do tempo pura, "dois aparelhos com offsets diferentes" e "apito atrasado").
+5. **Candidato que lê a API durante os 2 s do apito** (DONO-2), inclusive com o ator liberando um impresso nesse meio tempo ou encerrando e enviando a nota antes de a porta abrir: espera-se que o banco não entregue NADA da estação (estado, conteúdo, impressos liberados, imagem da folha, resultado, histórico) até `started_at`, só a porta, o horário e `server_now`; e que a tela, ao abrir a porta, peça estado e conteúdo de novo (e repita a cada 1 s se o servidor ainda não entregar) — testes na Tarefa 2 ("DONO-2…"), na Tarefa 3 ("DONO-2 com o início de verdade") e na Tarefa 6 ("candidato: … pede de novo", "servidor ainda sem a estação").
+6. **O ator durante os 2 s** (DONO-1): espera-se que ele NÃO veja porta, continue na tela de trabalho (roteiro, impressos, PEP) com o cronômetro em 10:00 e ouça o apito — teste na Tarefa 6 ("ator: … sem porta").
+7. **Celular:** o rodapé da sala (Iniciar/Finalizar), a porta e a lista de estações aberta pelo radar não podem ficar escondidos pela barra de baixo nem pela área do gesto do iPhone — testes na Tarefa 5 (CSS do rodapé com `safe-area-inset-bottom`; porta com largura `min(220px, 60vw)`) e na Tarefa 9 (a escolha de estação abre como janela `Dialog`, que usa `--z-modal` 90).
 
 ---
 
@@ -47,13 +50,13 @@
 | Arquivo | O que faz | Tarefa |
 |---|---|---|
 | `supabase/migrations/20261003014130_treino_dupla_fluxo_convite.sql` (novo) | convite direto com papéis fixos e estação obrigatória, sala nasce em `setup`; convite sem dados da estação; radar só "online" e "perto"; convite por link do @ e pedido de 24 h recusam | 1 |
-| `supabase/migrations/20261003014140_treino_dupla_fluxo_sigilo.sql` (novo) | estado e conteúdo da sala sem nada da estação para quem não é o ator antes de `running`; só a `porta` (número da área) | 2 |
+| `supabase/migrations/20261003014140_treino_dupla_fluxo_sigilo.sql` (novo) | antes do início marcado (`dupla_antes_do_inicio`: fase antes de começar ou `now() < started_at`), quem não é o ator não recebe nada da estação no estado, no conteúdo, na imagem do impresso, no resultado nem no histórico; só a `porta` (número da área), `started_at` e `server_now` (DONO-2) | 2 |
 | `supabase/migrations/20261003014150_treino_dupla_fluxo_sala.sql` (novo) | início por um toque do ator, gravado 2 s à frente (apito); papéis → `setup`; estação escolhida em `setup`; nova rodada "mesmo"/"trocar"; aceite do match → `setup`; quem trouxe a estação e virou candidato fica sem ela | 3 |
 | `supabase/desfazer/20261003014130…014150_*.desfazer.sql` (novos) | desfazer de cada migração | 4 |
-| `src/__tests__/helpers/duplaDb.ts` | `recolarFluxoSimples(db)` para os testes que recolam migrações antigas | 1 |
+| `src/__tests__/helpers/duplaDb.ts` | `recolarFluxoSimples(db)` para os testes que recolam só parte da cadeia (T1); `abrirPorta(db, sala)` traz o início marcado para o passado depois de `app_dupla_start` (T3) | 1, 3 |
 | `src/__tests__/duplaFluxoSimplesBanco.test.ts` (novo) | banco: convite, sigilo, início, rodadas, match, colar duas vezes, desfazer | 1–4 |
 | `src/novo/app/dupla/room/RoomScreen.jsx`, `SetupPhase.jsx`, `EvaluatorFooter.jsx`, `RolesPhase.jsx`, `useRoom.js`, `sala.css`, `room/Porta.jsx` (novo) | preparação do ator com "Iniciar estação", candidato de frente para a porta numerada, papéis sem confirmar | 5 |
-| `src/novo/app/dupla/porta.js` (novo), `room/Porta.jsx`, `room/RoomScreen.jsx`, `sound.js` | linha do tempo da entrada (função pura do relógio do servidor), apito e porta abrindo juntos, cronômetro a partir da porta aberta | 6 |
+| `src/novo/app/dupla/porta.js` (novo), `room/Porta.jsx`, `room/RoomScreen.jsx`, `sound.js` | linha do tempo da entrada (função pura do relógio do servidor), apito nos dois aparelhos e porta abrindo só no candidato, estado e conteúdo pedidos de novo ao abrir a porta, cronômetro a partir da porta aberta | 6 |
 | `src/novo/app/dupla/room/ReviewPhase.jsx`, `ResultPhase.jsx`, `useRoom.js` | um comentário opcional e "Enviar nota"; fim com "mesmo papel", "trocar de papel" e "Sair" | 7 |
 | `src/novo/app/dupla/MatchModal.jsx`, `live.js`, `radarApi.js`, `HandleField.jsx`, `RadarScreen.jsx`, `src/novo/app/App.jsx`; apagados `InviteLinkButton.jsx` e `InviteLinkScreen.jsx` | aviso do convite "te chamou para treinar como candidato", sem estação; convite por link do @ sai das telas e das rotas | 8 |
 | `src/novo/app/dupla/RadarScreen.jsx`, `radarApi.js`, `PracticeScreen.jsx` | lista Online/Perto; escolher estação ao convidar; o Praticar abre a lista; match secundário; menu continua "Praticar" | 9 |
@@ -469,9 +472,9 @@ por
 Confira que só essas trocas aconteceram:
 
 ```bash
-cd "$W" && F=supabase/migrations/20261003014130_treino_dupla_fluxo_convite.sql && grep -c "p_fixed" "$F" && grep -c "atores" "$F"
+cd "$W" && F=supabase/migrations/20261003014130_treino_dupla_fluxo_convite.sql && grep -c "p_fixed" "$F" && grep -c "atores" "$F" && grep -c "O convite por link saiu" "$F"
 ```
-Esperado: `p_fixed` em 8 linhas (cabeçalho 3, assinatura 1, (b) 1, (c) 2, (d) 1); `atores` em 1 linha (no cabeçalho); `O convite por link saiu` em 3 linhas.
+Esperado: `p_fixed` em 8 linhas (cabeçalho 3, assinatura 1, (b) 1, (c) 2, (d) 1); `atores` em 1 linha (no cabeçalho); `O convite por link saiu` em **4** linhas (as três funções que recusam e a linha do cabeçalho, item 4).
 
 - [ ] **Step 6: Apoio dos testes que recolam migrações antigas**
 
@@ -513,12 +516,14 @@ Quebras esperadas e a correção de cada uma (outras: siga a regra "Testes antig
 | `duplaRadarBanco` · "aceitar leva os dois à mesma sala…" | `toBe("roles")` vira `toBe("setup")` |
 | `duplaRadarBanco` · "colar as duas migrações de novo…" | já recola as posteriores (`x > "20261003014010"`): passa sem mudar; se falhar, acrescente `await recolarFluxoSimples(d.db);` depois do laço |
 | `duplaArrobaLinkBanco` · `describe("Convite por link e pedido de treino de 24 h")`, testes das linhas 283 a 512 (link, pedido, aceitar/recusar pedido) | apague esses testes (o link saiu; a recusa está em `duplaFluxoSimplesBanco` "convite por link do @ saiu"); os do `describe("Nome de usuário com @")` ficam todos |
-| `duplaArrobaLinkBanco` · "a tabela de pedidos não é lida nem escrita direto; colar de novo dá o mesmo banco" (linha 537) | troque `await pedir(U.ana, "bruno.link");` por `` await d.sql(`insert into public.study_train_requests (from_user, to_user) values ($1, $2)`, [U.ana, U.bruno]); ``; acrescente `await recolarFluxoSimples(d.db);` depois do laço de recolagem; na lista de ACL troque `"dupla_invite_core(uuid,uuid,text,boolean,uuid)"` por `"dupla_invite_core(uuid,uuid,text,boolean,uuid,boolean)"` (importe `recolarFluxoSimples` de `./helpers/duplaDb`) |
+| `duplaArrobaLinkBanco` · "a tabela de pedidos não é lida nem escrita direto; colar de novo dá o mesmo banco" (linha 537) | troque `await pedir(U.ana, "bruno.link");` por `` await d.sql(`insert into public.study_train_requests (from_user, to_user) values ($1, $2)`, [U.ana, U.bruno]); ``; na lista de ACL troque `"dupla_invite_core(uuid,uuid,text,boolean,uuid)"` por `"dupla_invite_core(uuid,uuid,text,boolean,uuid,boolean)"`. **Não** acrescente `recolarFluxoSimples`: o laço da linha 554 já recola todas as `treino_dupla` depois da 014010, inclusive as do fluxo simples (ruling D7/A23) |
 | `fase2PublicacaoEquipe` · `["app_dupla_invite", { p_to: U.admin }]` | vire `["app_dupla_invite", { p_to: U.admin, p_station_id: "inep2025-1-e07" }]` (a recusa tem de vir do acesso, não da falta de estação) |
 
 Rode de novo o mesmo comando. Esperado: PASS.
 
 - [ ] **Step 9: Commit**
+
+Antes, `cd "$W" && git status --short`: todo arquivo mudado por esta tarefa entra no `git add` abaixo (acrescente o caminho de qualquer teste ajustado que não esteja na lista, por exemplo `duplaUmaSala` ou `duplaCreditosPreChecagem` se precisaram de `recolarFluxoSimples`). Depois do commit, `git status --short` vazio.
 
 ```bash
 cd "$W" && git add supabase/migrations/20261003014130_treino_dupla_fluxo_convite.sql src/__tests__/duplaFluxoSimplesBanco.test.ts src/__tests__/helpers/duplaDb.ts src/__tests__/duplaRadarBanco.test.ts src/__tests__/duplaArrobaLinkBanco.test.ts src/__tests__/fase2PublicacaoEquipe.test.ts && git commit -m "$(cat <<'EOF'
@@ -531,26 +536,29 @@ EOF
 
 ---
 
-### Task 2: Migração 014140 — antes de começar, quem não é o ator recebe só a porta numerada da área
+### Task 2: Migração 014140 — antes do início marcado, quem não é o ator recebe só a porta numerada da área e o horário (DONO-2)
 
 **Files:**
 - Create: `supabase/migrations/20261003014140_treino_dupla_fluxo_sigilo.sql`
-- Modify: `src/__tests__/duplaFluxoSimplesBanco.test.ts` (novos testes no fim do `describe`)
-- Modify: `src/__tests__/duplaCorrecoesPublicacao2Banco.test.ts`, `src/__tests__/duplaSalaTesteLocal.test.ts` e os que recolam 013406/013980 (expectativas que o desenho muda)
+- Modify: `src/__tests__/duplaFluxoSimplesBanco.test.ts` (novos testes no fim do `describe`; `addSession` no import)
+- Modify: `src/__tests__/duplaCorrecoesPublicacao2Banco.test.ts`, `duplaSalaTesteLocal.test.ts`, `duplaPacoteBanco.test.ts`, `duplaTelasBanco.test.ts` e os que recolam só parte da cadeia (expectativas que o desenho muda; tabela do Step 5)
 
 **Interfaces:**
-- Consumes: `dupla_room_state(checklist_rooms, uuid)` (013406:199-313), `app_dupla_room_content(uuid)` (013980:25-127).
+- Consumes: `dupla_room_state(checklist_rooms, uuid)` (013406:199-313), `app_dupla_room_content(uuid)` (013980:25-127), `app_dupla_print_path(uuid, text)` (013560:256-332), `app_dupla_result(uuid, integer)` (013400:107-127), `app_dupla_history_result(uuid, integer)` (013400:181-200), `app_dupla_history(integer)` (014090:391-432). Conferido em 19/10 (grep de `create or replace function` em todas as migrações): são as definições mais novas e são TODAS as funções que entregam ao candidato algo da estação (nome, número, área, folha, impressos, imagem ou PEP). As outras que leem a sala não entregam conteúdo: `app_dupla_marks` (só o avaliador), `app_dupla_room_done_stations` (ids de rodadas ANTERIORES, já começadas), `open_room` de `app_dupla_deck`/`app_dupla_radar` (só id, fase e nome do parceiro), `dupla_room_notify` (só o `rev`), `app_dupla_chat_room` (sem estação), `dupla_export_rooms` (sem `station_id`, conferido em `duplaCorrecoesPublicacao2Banco`). A URL assinada da imagem (`server/dupla/router.ts`) só existe se `app_dupla_print_path`, chamada como a própria pessoa, devolver o caminho.
 - Produces:
   - `dupla_porta(p_area text) returns integer` (apoio, só por dentro): 1 Clínica Médica, 2 Cirurgia Geral, 3 Pediatria, 4 Ginecologia e Obstetrícia, 5 Medicina de Família e Comunidade; outra área → nulo.
-  - `dupla_room_state` devolve `station: null` e `duration_ms: null` para quem não é o avaliador quando a sala está em `roles`, `connecting` ou `setup`, ou fechada antes de começar (`started_at` nulo); chaves novas `station_ready: boolean` (a sala já tem estação, sem dizer qual) e `porta: integer | null` (número da área da estação da rodada; nulo sem estação), para os dois membros.
-  - `app_dupla_room_content` devolve `{ role, station: null, pressing_count: 0, pressings: [], waiting: true }` nesses mesmos casos.
+  - `dupla_antes_do_inicio(p_room checklist_rooms) returns boolean` (apoio, só por dentro; `stable`): verdadeiro em `roles`, `connecting`, `setup`, sala fechada sem `started_at`, ou `now() < started_at` em qualquer fase (os 2 s do apito gravados pela 014150). Sala começada sem `started_at` não existe em produção (`app_dupla_start` sempre grava; o ensaio confere, T10 item 20) e conta como começada (salas antigas e de teste montadas assim continuam iguais).
+  - `dupla_room_state`: para quem não é o avaliador e `dupla_antes_do_inicio`: `station: null`, `duration_ms: null`, `ends_at: null`, `paused_left_ms: null`, `released_pressings: []`; saem `started_at` (horário de abertura) e `server_now`. Chaves novas para os dois membros: `station_ready: boolean` (a sala já tem estação, sem dizer qual) e `porta: integer | null` (número da área da estação da rodada; nulo sem estação).
+  - `app_dupla_room_content`: `{ role, station: null, pressing_count: 0, pressings: [], waiting: true }` nesses mesmos casos.
+  - `app_dupla_print_path`: o candidato é recusado (`'Esta ação não vale nesta fase da sala.'`) também durante o apito.
+  - `app_dupla_result` / `app_dupla_history_result`: `'Resultado ainda não liberado.'` ao candidato enquanto `now() < started_at` da avaliação; `app_dupla_history` não lista essa rodada ao candidato até lá.
 
 - [ ] **Step 1: Escrever o teste que falha**
 
-No fim do `describe` de `src/__tests__/duplaFluxoSimplesBanco.test.ts`, acrescente:
+No import do topo de `src/__tests__/duplaFluxoSimplesBanco.test.ts`, acrescente `addSession` (fica `import { MIGRATIONS_DIR, STATION, U, addProfile, addSession, addStation, makeRoom, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";`). No fim do `describe`, acrescente:
 
 ```ts
-  // ------------------------------------------------------------------ 014140: sigilo antes do início
+  // ------------------------------------------------------------------ 014140: sigilo antes do início marcado
   it("antes de 'running' o candidato não recebe nada da estação (estado, conteúdo e imagem), em nenhuma fase; o ator recebe tudo", async () => {
     for (const phase of ["roles", "connecting", "setup"] as const) {
       const sala = await makeRoom(d.db, { members: [U.ana, U.bruno], phase, candidate: U.bruno, evaluator: U.ana, station: SECRETA.id });
@@ -596,12 +604,12 @@ No fim do `describe` de `src/__tests__/duplaFluxoSimplesBanco.test.ts`, acrescen
     expect((await d.sql<any>(`select public.dupla_porta('Área que não existe') as n`))[0].n).toBeNull();
   });
 
-  it("sala fechada antes de começar: o candidato segue sem a estação; em andamento ele recebe 'Estação N · área' sem o nome", async () => {
+  it("sala fechada antes de começar: o candidato segue sem a estação; em andamento (início no passado) ele recebe 'Estação N · área' sem o nome", async () => {
     const fechada = await makeRoom(d.db, { members: [U.ana, U.bruno], phase: "closed", candidate: U.bruno, evaluator: U.ana, station: SECRETA.id });
     expect((await estado(U.bruno, fechada)).station).toBeNull();
     const andando = await makeRoom(d.db, {
       members: [U.ana, U.bruno], phase: "running", candidate: U.bruno, evaluator: U.ana, station: SECRETA.id,
-      extra: { started_at: new Date().toISOString(), ends_at: daqui(1) },
+      extra: { started_at: new Date(Date.now() - 60_000).toISOString(), ends_at: daqui(1) },
     });
     const e = await estado(U.bruno, andando);
     expect(e.station).toMatchObject({ area: SECRETA.area });
@@ -611,6 +619,73 @@ No fim do `describe` de `src/__tests__/duplaFluxoSimplesBanco.test.ts`, acrescen
     expect(c.role).toBe("candidate");
     expect(c.station).toMatchObject({ doctor_scene: expect.any(String) });
   });
+
+  it("DONO-2: com o início marcado no futuro (o apito), o candidato não recebe nada da estação — estado, conteúdo, impressos liberados e imagem —, só a porta e o horário; o ator recebe tudo; passado o horário, o candidato recebe", async () => {
+    const inicio = daqui(1); // no PGlite o now() é fixo em cada transação: "no futuro" = bem à frente
+    const sala = await makeRoom(d.db, {
+      members: [U.ana, U.bruno], phase: "running", candidate: U.bruno, evaluator: U.ana, station: SECRETA.id,
+      extra: { started_at: inicio, ends_at: daqui(2), duration_ms: 600000, released_pressings: ["p1"] }, // o ator liberou o hemograma durante o apito
+    });
+    const e = await estado(U.bruno, sala);
+    expect(e).toMatchObject({
+      phase: "running", station: null, duration_ms: null, ends_at: null, paused_left_ms: null, released_pressings: [], station_ready: true, porta: 1,
+    });
+    expect(Date.parse(e.started_at)).toBe(Date.parse(inicio)); // o horário de abertura sai
+    expect(typeof e.server_now).toBe("string");
+    const c = await conteudo(U.bruno, sala);
+    expect(c).toEqual({ role: "candidate", station: null, pressing_count: 0, pressings: [], waiting: true });
+    expect(vaza([e, c])).toEqual([]);
+    expect(JSON.stringify([e, c])).not.toContain("Hemograma");
+    expect(JSON.stringify(e)).not.toContain("p1");
+    for (const p of ["candidate_sheet", "i1", "v1", "d1"]) {
+      await expect(d.rpc(U.bruno, "app_dupla_print_path", { p_room_id: sala, p_pressing_id: p }), p).rejects.toThrow("Esta ação não vale nesta fase da sala.");
+    }
+    // o ator recebe tudo, sempre (DONO-1: ele está na tela de trabalho durante o apito)
+    const a = await estado(U.ana, sala);
+    expect(a.station).toMatchObject({ id: SECRETA.id, name: SECRETA.name });
+    expect(a.ends_at).not.toBeNull();
+    expect(a.released_pressings).toEqual(["p1"]);
+    expect((await conteudo(U.ana, sala)).station).toMatchObject({ actor_script: expect.any(String) });
+    await d.rpc(U.ana, "app_dupla_print_path", { p_room_id: sala, p_pressing_id: "candidate_sheet" }); // não recusa
+
+    // a porta abre: o início marcado passa (no PGlite, trazendo o horário para o passado)
+    await d.sql(`update public.checklist_rooms set started_at = now() - interval '1 second', ends_at = now() + interval '10 minutes' where id = $1`, [sala]);
+    const e2 = await estado(U.bruno, sala);
+    expect(e2.station).toMatchObject({ area: SECRETA.area });
+    expect(e2.station).not.toHaveProperty("name");
+    expect(e2.ends_at).not.toBeNull();
+    expect(e2.released_pressings).not.toContain("p1"); // sempre pela chave de tela, nunca o id verdadeiro
+    const c2 = await conteudo(U.bruno, sala);
+    expect(c2.station).toMatchObject({ doctor_scene: SECRETA.doctor_scene });
+    expect(JSON.stringify(c2.pressings)).toContain("Hemograma");
+    await d.rpc(U.bruno, "app_dupla_print_path", { p_room_id: sala, p_pressing_id: "candidate_sheet" }); // não recusa mais
+  });
+
+  it("DONO-2: resultado e histórico também esperam o início marcado (ator que encerrasse e enviasse a nota durante o apito); o ator vê na hora", async () => {
+    const sala = await makeRoom(d.db, {
+      members: [U.ana, U.bruno], phase: "result", candidate: U.bruno, evaluator: U.ana, station: SECRETA.id,
+      extra: { started_at: daqui(1), finished_at: new Date().toISOString() },
+    });
+    const sess = await addSession(d.db, { room: sala, round: 1, doctor: U.bruno, actor: U.ana, station: SECRETA.id, correctness: 80 });
+    await d.sql(`update public.checklist_study_sessions set started_at = $2 where id = $1`, [sess, daqui(1)]);
+    const pede = (uid: string, fn: string) => d.rpc<any>(uid, fn, { p_room_id: sala, p_round: 1 });
+    const daSala = async (uid: string) => ((await d.rpc<any[]>(uid, "app_dupla_history")) ?? []).filter((h: any) => h.room_id === sala);
+    await expect(pede(U.bruno, "app_dupla_result")).rejects.toThrow("Resultado ainda não liberado.");
+    await expect(pede(U.bruno, "app_dupla_history_result")).rejects.toThrow("Resultado ainda não liberado.");
+    expect(await daSala(U.bruno)).toEqual([]);
+    const e = await estado(U.bruno, sala);
+    expect(e.station).toBeNull();
+    expect(vaza(e)).toEqual([]);
+    expect((await pede(U.ana, "app_dupla_result")).station).toMatchObject({ id: SECRETA.id });
+    expect(await daSala(U.ana)).toHaveLength(1);
+
+    await d.sql(`update public.checklist_rooms set started_at = now() - interval '1 minute' where id = $1`, [sala]);
+    await d.sql(`update public.checklist_study_sessions set started_at = now() - interval '1 minute' where id = $1`, [sess]);
+    expect((await pede(U.bruno, "app_dupla_result")).station).toMatchObject({ name: SECRETA.name });
+    expect((await pede(U.bruno, "app_dupla_history_result")).station).toMatchObject({ name: SECRETA.name });
+    expect(await daSala(U.bruno)).toHaveLength(1);
+    expect((await estado(U.bruno, sala)).station).toMatchObject({ name: SECRETA.name }); // no resultado o nome aparece aos dois
+  });
 ```
 
 - [ ] **Step 2: Rodar e ver falhar**
@@ -618,36 +693,49 @@ No fim do `describe` de `src/__tests__/duplaFluxoSimplesBanco.test.ts`, acrescen
 ```bash
 cd "$W" && nice bash "$FILA" npx vitest run src/__tests__/duplaFluxoSimplesBanco.test.ts --maxWorkers=2
 ```
-Esperado: FAIL nos quatro testes novos (`station` com `label`/`area`, `station_ready` e `porta` indefinidos, conteúdo com a folha em `connecting`/`setup`, `dupla_porta` não existe).
+Esperado: FAIL nos seis testes novos (`station` com `label`/`area`, `station_ready` e `porta` indefinidos, conteúdo com a folha em `connecting`/`setup` e durante o apito, imagem liberada durante o apito, resultado e histórico entregues antes do início, `dupla_porta` não existe).
 
 - [ ] **Step 3: Escrever a migração**
 
 ```bash
 cd "$W" && F=supabase/migrations/20261003014140_treino_dupla_fluxo_sigilo.sql && cat > "$F" <<'SQL'
 -- =============================================================================
--- Treino em Dupla, FLUXO SIMPLES (desenho de 19/10), parte 2 de 3: SIGILO ANTES DO INÍCIO. Número 014140 (folga do ramo
--- fase2-etapa2, registrado em .tmp-aulas/NUMEROS-MIGRACAO.md). Depende da 013406 (estado da sala) e da 013980 (conteúdo).
+-- Treino em Dupla, FLUXO SIMPLES (desenho de 19/10), parte 2 de 3: SIGILO ANTES DO INÍCIO MARCADO. Número 014140 (folga do ramo
+-- fase2-etapa2, registrado em .tmp-aulas/NUMEROS-MIGRACAO.md). Depende da 013406 (estado da sala), 013980 (conteúdo), 013560
+-- (imagem do impresso), 013400 (resultado) e 014090 (histórico).
 -- Pode ser colada duas vezes: só "create or replace function" e permissões. Não grava dado. Nenhuma IA.
 --
 -- O QUE FAZ (decisões do dono de 19/10: "o candidato só vê a estação quando o atendimento começa, como na prova"; "só o desenho
 -- de uma porta com um número": a porta da área, 1 Clínica Médica, 2 Cirurgia Geral, 3 Pediatria, 4 Ginecologia e Obstetrícia,
--- 5 Medicina de Família e Comunidade / Saúde Coletiva)
---  Quem NÃO é o avaliador da rodada não recebe NADA da estação (nem nome, número, área por escrito, origem, versão, duração ou
---  id) quando a sala está em "roles", "connecting" ou "setup", ou foi fechada antes de começar (started_at nulo), A NÃO SER o
---  número da porta:
+-- 5 Medicina de Família e Comunidade / Saúde Coletiva; DONO-2, 3ª rodada: a folha e qualquer conteúdo da estação NÃO chegam ao
+-- aparelho do candidato antes do início marcado, toque do ator + 2 s do apito, gravado pela 014150)
+--  O sigilo não depende só da fase. "Antes do início" (apoio novo dupla_antes_do_inicio) = fase "roles", "connecting" ou
+--  "setup", sala fechada sem started_at, ou now() < started_at em qualquer fase (os 2 s do apito). Nesse tempo, quem NÃO é o
+--  avaliador da rodada não recebe NADA da estação (nem nome, número, área por escrito, origem, versão, duração, fim do
+--  cronômetro, id, folha, impressos iniciais ou liberados, imagem, resultado), A NÃO SER o número da porta, o horário de
+--  abertura (started_at) e a hora do servidor (server_now):
 --   - dupla_porta(área) → 1..5 (apoio novo, só por dentro);
---   - dupla_room_state: station nulo, duration_ms nulo e as chaves novas "station_ready" (a sala já tem estação, sem dizer
---     qual) e "porta" (número da área da estação da rodada, para os dois membros; nulo sem estação: nunca há porta sem número);
+--   - dupla_room_state: station, duration_ms, ends_at e paused_left_ms nulos, released_pressings vazio, e as chaves novas
+--     "station_ready" (a sala já tem estação, sem dizer qual) e "porta" (número da área da estação da rodada, para os dois
+--     membros; nulo sem estação: nunca há porta sem número);
 --   - app_dupla_room_content: { role, station: null, pressing_count: 0, pressings: [], waiting: true }. Muda a decisão da 013406
---     ("o candidato recebe a folha em connecting/setup"): agora a folha aparece quando o ator inicia (pergunta 4 do dono).
---  Em "running", "review" e "result" nada muda (o candidato recebe "Estação N · área" e a folha; o nome só no resultado).
---  A imagem da folha (app_dupla_print_path) já era só em "running" para o candidato (013560): não muda.
+--     ("o candidato recebe a folha em connecting/setup"): agora a folha chega quando a porta abre;
+--   - app_dupla_print_path (base da URL assinada em server/dupla/router.ts): o candidato é recusado ('Esta ação não vale nesta
+--     fase da sala.') também durante o apito (antes já era só em "running");
+--   - app_dupla_result e app_dupla_history_result: 'Resultado ainda não liberado.' ao candidato enquanto now() for anterior ao
+--     início gravado na avaliação (só aconteceria se o ator encerrasse e enviasse a nota durante o apito); app_dupla_history não
+--     lista essa rodada ao candidato até lá.
+--  O avaliador recebe tudo, sempre. Passado o início marcado nada muda em relação à etapa 2 (o candidato recebe "Estação N ·
+--  área" e a folha; o nome só no resultado).
 --
 -- FUNÇÕES REDEFINIDAS E A BASE DE CADA UMA
---   dupla_room_state(checklist_rooms, uuid) ← 013406 (linhas 199-313); app_dupla_room_content(uuid) ← 013980 (linhas 25-127).
---   Conferido em 19/10: nenhuma migração depois delas as refaz. Nova: dupla_porta(text).
+--   dupla_room_state(checklist_rooms, uuid) ← 013406 (linhas 199-313); app_dupla_room_content(uuid) ← 013980 (25-127);
+--   app_dupla_print_path(uuid, text) ← 013560 (256-332); app_dupla_result(uuid, integer) ← 013400 (107-127);
+--   app_dupla_history_result(uuid, integer) ← 013400 (181-200); app_dupla_history(integer) ← 014090 (391-432).
+--   Conferido em 19/10: nenhuma migração depois delas as refaz. Novas: dupla_porta(text) e dupla_antes_do_inicio(checklist_rooms).
 --
--- COMO DESFAZER: supabase/desfazer/20261003014140_treino_dupla_fluxo_sigilo.desfazer.sql (volta as duas funções e apaga a nova).
+-- COMO DESFAZER: supabase/desfazer/20261003014140_treino_dupla_fluxo_sigilo.desfazer.sql (volta as seis funções e apaga as duas
+--   novas).
 -- =============================================================================
 
 -- ---------------------------------------------------------------- 0) porta da área
@@ -658,32 +746,58 @@ as $$
   select case public.dupla_area_code(p_area) when 'CM' then 1 when 'CR' then 2 when 'PED' then 3 when 'GO' then 4 when 'MFC' then 5 end
 $$;
 
+-- ---------------------------------------------------------------- 0b) antes do início marcado (DONO-2)
+-- Verdadeiro enquanto a estação ainda não começou: fases antes de começar, sala fechada sem início, ou o início marcado ainda no
+-- futuro (os 2 s do apito, 014150). Sala já começada sem started_at não existe em produção (o início sempre grava; conferido no
+-- ensaio) e conta como começada (salas antigas e de teste).
+create or replace function public.dupla_antes_do_inicio(p_room public.checklist_rooms) returns boolean
+  language sql stable security definer set search_path = ''
+as $$
+  select p_room.phase in ('roles', 'connecting', 'setup')
+         or (p_room.phase = 'closed' and p_room.started_at is null)
+         or coalesce(now() < p_room.started_at, false)
+$$;
+
 -- ---------------------------------------------------------------- 1) estado da sala (base: 013406, linhas 199-313)
 SQL
 sed -n '199,313p' supabase/migrations/20261003013406_treino_dupla_correcoes_publicacao_2.sql >> "$F"
 printf '\n-- ---------------------------------------------------------------- 2) conteúdo por papel (base: 013980, linhas 25-127)\n' >> "$F"
 sed -n '25,127p' supabase/migrations/20261003013980_treino_dupla_juncao_main.sql >> "$F"
+printf '\n-- ---------------------------------------------------------------- 3) imagem do impresso e da folha (base: 013560, linhas 256-332)\n' >> "$F"
+sed -n '256,332p' supabase/migrations/20261003013560_treino_dupla_estacoes_decisoes2.sql >> "$F"
+printf '\n-- ---------------------------------------------------------------- 4) resultado da rodada na sala (base: 013400, linhas 107-127)\n' >> "$F"
+sed -n '107,127p' supabase/migrations/20261003013400_treino_dupla_decisoes_1710.sql >> "$F"
+printf '\n-- ---------------------------------------------------------------- 5) resultado pelo histórico (base: 013400, linhas 181-200)\n' >> "$F"
+sed -n '181,200p' supabase/migrations/20261003013400_treino_dupla_decisoes_1710.sql >> "$F"
+printf '\n-- ---------------------------------------------------------------- 6) histórico (base: 014090, linhas 391-432)\n' >> "$F"
+sed -n '391,432p' supabase/migrations/20261003014090_treino_dupla_sozinho_dados.sql >> "$F"
 cat >> "$F" <<'SQL'
 
 -- ---------------------------------------------------------------- permissões
 revoke execute on function public.dupla_room_state(public.checklist_rooms, uuid) from public, anon, authenticated;
 revoke execute on function public.app_dupla_room_content(uuid) from public, anon;
 revoke execute on function public.dupla_porta(text) from public, anon, authenticated;
+revoke execute on function public.dupla_antes_do_inicio(public.checklist_rooms) from public, anon, authenticated;
+revoke execute on function public.app_dupla_print_path(uuid, text) from public, anon;
+revoke execute on function public.app_dupla_result(uuid, integer) from public, anon;
+revoke execute on function public.app_dupla_history_result(uuid, integer) from public, anon;
+revoke execute on function public.app_dupla_history(integer) from public, anon;
 SQL
 ```
 
+Confira que cada cópia começa e termina na função certa: `grep -n "^create or replace function\|^\$\$;" "$F"` deve listar, em ordem, `dupla_porta`, `dupla_antes_do_inicio`, `dupla_room_state`, `app_dupla_room_content`, `app_dupla_print_path`, `app_dupla_result`, `app_dupla_history_result`, `app_dupla_history`, cada uma seguida do seu `$$;`.
+
 Depois, com a ferramenta de edição no mesmo arquivo:
 
-(a) Troque
+(a) Estado. Troque
 ```sql
   v_named boolean := p_room.evaluator_id is not null and p_uid = p_room.evaluator_id or p_room.phase = 'result';
 ```
 por
 ```sql
   v_named boolean := p_room.evaluator_id is not null and p_uid = p_room.evaluator_id or p_room.phase = 'result';
-  -- 014140: antes de começar, quem não é o avaliador não recebe nada da estação.
-  v_hide boolean := p_uid is distinct from p_room.evaluator_id
-                    and (p_room.phase in ('roles', 'connecting', 'setup') or (p_room.phase = 'closed' and p_room.started_at is null));
+  -- 014140 (DONO-2): antes do início marcado, quem não é o avaliador não recebe nada da estação (só a porta e o horário).
+  v_hide boolean := p_uid is distinct from p_room.evaluator_id and public.dupla_antes_do_inicio(p_room);
 ```
 
 (b) Troque
@@ -711,7 +825,28 @@ por
     'duration_ms', case when v_hide then null else coalesce(p_room.duration_ms, st.duration_ms) end,
 ```
 
-(d) No conteúdo, troque
+(d) Troque
+```sql
+    'started_at', p_room.started_at,
+    'ends_at', p_room.ends_at,
+    'paused_left_ms', p_room.paused_left_ms,
+    'paused_at', p_room.paused_at,
+    'finished_at', p_room.finished_at,
+    'released_pressings', v_released,
+```
+por
+```sql
+    'started_at', p_room.started_at,
+    -- 014140 (DONO-2): o fim e o que falta revelam a duração; os liberados, os impressos (com o id verdadeiro, porque o bloco
+    -- da estação acima não roda). Antes do início marcado, nada disso a quem não é o avaliador.
+    'ends_at', case when v_hide then null else p_room.ends_at end,
+    'paused_left_ms', case when v_hide then null else p_room.paused_left_ms end,
+    'paused_at', p_room.paused_at,
+    'finished_at', p_room.finished_at,
+    'released_pressings', case when v_hide then '[]'::jsonb else v_released end,
+```
+
+(e) Conteúdo. Troque
 ```sql
                    then jsonb_build_object('notice', 'Esta estação ficou indisponível. Escolham outra.')
                    else '{}'::jsonb end;
@@ -722,51 +857,124 @@ por
                    then jsonb_build_object('notice', 'Esta estação ficou indisponível. Escolham outra.')
                    else '{}'::jsonb end;
   end if;
-  -- 014140 (fluxo simples): antes de começar, quem não é o avaliador não recebe nada da estação (nem número, área, origem,
-  -- versão ou a folha). A folha aparece quando o ator inicia.
-  if v_uid is distinct from r.evaluator_id
-     and (r.phase in ('roles', 'connecting', 'setup') or (r.phase = 'closed' and r.started_at is null)) then
+  -- 014140 (fluxo simples, DONO-2): antes do início marcado (fases antes de começar ou os 2 s do apito), quem não é o avaliador
+  -- não recebe nada da estação (nem número, área, origem, versão, a folha ou os impressos). A folha chega quando a porta abre.
+  if v_uid is distinct from r.evaluator_id and public.dupla_antes_do_inicio(r) then
     return jsonb_build_object('role', case when v_uid = r.candidate_id then 'candidate' end, 'station', null,
                               'pressing_count', 0, 'pressings', '[]'::jsonb, 'waiting', true);
   end if;
 ```
 
-Confira: `grep -c "v_hide" "$F"` → 3 (declaração, (b) e (c)); `grep -c "'waiting', true" "$F"` → 1; `grep -c "dupla_porta" "$F"` → 5 (cabeçalho 2, criação 1, estado 1, permissão 1).
+(f) Imagem. Troque
+```sql
+  if not (v_cand and r.phase = 'running'
+          or coalesce(r.evaluator_id = v_uid, false) and r.phase in ('setup', 'running', 'review')) then
+    raise exception 'Esta ação não vale nesta fase da sala.' using errcode = '55000';
+  end if;
+```
+por
+```sql
+  if not (v_cand and r.phase = 'running'
+          or coalesce(r.evaluator_id = v_uid, false) and r.phase in ('setup', 'running', 'review')) then
+    raise exception 'Esta ação não vale nesta fase da sala.' using errcode = '55000';
+  end if;
+  -- 014140 (DONO-2): durante os 2 s do apito (início marcado no futuro) o candidato não recebe a folha nem impresso algum.
+  if v_cand and public.dupla_antes_do_inicio(r) then
+    raise exception 'Esta ação não vale nesta fase da sala.' using errcode = '55000';
+  end if;
+```
+
+(g) Resultado na sala. Troque
+```sql
+    if found and r.round = p_round and r.phase <> 'result' then
+      raise exception 'Resultado ainda não liberado.' using errcode = '42501';
+    end if;
+  end if;
+```
+por
+```sql
+    if found and r.round = p_round and r.phase <> 'result' then
+      raise exception 'Resultado ainda não liberado.' using errcode = '42501';
+    end if;
+  end if;
+  -- 014140 (DONO-2): antes do início marcado da rodada (o ator encerrou e enviou a nota durante o apito), nada ao candidato.
+  if v_uid = s.doctor_id and v_uid is distinct from s.actor_id and coalesce(now() < s.started_at, false) then
+    raise exception 'Resultado ainda não liberado.' using errcode = '42501';
+  end if;
+```
+
+(h) Resultado pelo histórico. Troque
+```sql
+  if not public.dupla_history_released(s) then
+    raise exception 'Aguardando revisão da nota.' using errcode = '55000';
+  end if;
+```
+por
+```sql
+  if not public.dupla_history_released(s) then
+    raise exception 'Aguardando revisão da nota.' using errcode = '55000';
+  end if;
+  -- 014140 (DONO-2): antes do início marcado da rodada, nada ao candidato.
+  if v_uid = s.doctor_id and v_uid is distinct from s.actor_id and coalesce(now() < s.started_at, false) then
+    raise exception 'Resultado ainda não liberado.' using errcode = '42501';
+  end if;
+```
+
+(i) Histórico. Troque
+```sql
+         where s.room_id is not null and s.mode = 'dupla'
+           and (s.doctor_id = v_uid or s.actor_id = v_uid)
+```
+por
+```sql
+         where s.room_id is not null and s.mode = 'dupla'
+           and (s.doctor_id = v_uid or s.actor_id = v_uid)
+           -- 014140 (DONO-2): a rodada do candidato só aparece depois do início marcado
+           and not (s.doctor_id = v_uid and s.actor_id is distinct from v_uid and coalesce(now() < s.started_at, false))
+```
+
+Confira: `grep -c "v_hide" "$F"` → 6 (declaração, (b), duração em (c), e os três de (d)); `grep -c "'waiting', true" "$F"` → 1; `grep -c "dupla_porta" "$F"` → 5 (cabeçalho 2, criação 1, estado 1, permissão 1); `grep -c "dupla_antes_do_inicio" "$F"` → 7 (cabeçalho 2, criação 1, estado 1, conteúdo 1, imagem 1, permissão 1); `grep -c "now() < s.started_at" "$F"` → 3 ((g), (h), (i)).
 
 - [ ] **Step 4: Rodar e ver passar**
 
 ```bash
 cd "$W" && nice bash "$FILA" npx vitest run src/__tests__/duplaFluxoSimplesBanco.test.ts --maxWorkers=2
 ```
-Esperado: PASS (10 testes).
+Esperado: PASS (12 testes).
 
 - [ ] **Step 5: Rodar os vizinhos e ajustar só o que o desenho muda**
 
 ```bash
-cd "$W" && nice bash "$FILA" npx vitest run src/__tests__/duplaCorrecoesPublicacao2Banco.test.ts src/__tests__/duplaSalaTesteLocal.test.ts src/__tests__/duplaPacoteBanco.test.ts src/__tests__/duplaSalaBanco.test.ts src/__tests__/duplaDecisoes2Banco.test.ts src/__tests__/duplaFolhaCandidatoBanco.test.ts src/__tests__/duplaMigracaoDados.test.ts src/__tests__/duplaCadeiaDuasVezes.test.ts src/__tests__/fase2PublicacaoEquipe.test.ts src/__tests__/duplaTarefasRelato.test.ts --maxWorkers=2
+cd "$W" && nice bash "$FILA" npx vitest run src/__tests__/duplaCorrecoesPublicacao2Banco.test.ts src/__tests__/duplaSalaTesteLocal.test.ts src/__tests__/duplaPacoteBanco.test.ts src/__tests__/duplaTelasBanco.test.ts src/__tests__/duplaSalaBanco.test.ts src/__tests__/duplaDecisoes2Banco.test.ts src/__tests__/duplaFolhaCandidatoBanco.test.ts src/__tests__/duplaImpressoRota.test.ts src/__tests__/duplaResultadoBanco.test.ts src/__tests__/duplaHistoricoBanco.test.ts src/__tests__/duplaMigracaoDados.test.ts src/__tests__/duplaCadeiaDuasVezes.test.ts src/__tests__/fase2PublicacaoEquipe.test.ts src/__tests__/duplaTarefasRelato.test.ts --maxWorkers=2
 ```
 
 | Arquivo · teste | Correção |
 |---|---|
 | `duplaCorrecoesPublicacao2Banco` · "4: em connecting e setup o candidato recebe só a folha…" | troque o corpo do laço por `expect(c, phase).toMatchObject({ role: "candidate", station: null, pressing_count: 0, pressings: [], waiting: true }); expect(vaza(c), phase).toEqual([]); expect(vaza(await estado(U.ana, id)), phase).toEqual([]);` e o título por `"4 (refeito pelo fluxo simples, 014140): em connecting e setup o candidato não recebe nada da estação; a folha vem no início"` |
-| `duplaCorrecoesPublicacao2Banco` · teste que recola a 013406 e o da linha 260-272 (junção 013980) | acrescente `await recolarFluxoSimples(d.db);` logo depois da recolagem; onde o teste confere o texto da função da 013980 (`pg_proc … app_dupla_room_content`), confira que contém `'waiting', true` e `dupla_sweep` |
-| `duplaSalaTesteLocal` · linha 189-192 (fases sem `roles`/`closed`) | troque a condição `if (fase !== "roles" && fase !== "closed")` por `if (["running", "review", "result"].includes(fase))` e acrescente, para `connecting`/`setup`, `expect((await rpc(cand, "app_dupla_room_content", { p_room_id: id })).station).toBeNull();` |
-| `duplaCadeiaDuasVezes` / `fase2PublicacaoEquipe` (recolam 013406/013980) | se falharem só porque a versão do fluxo simples foi sobrescrita, acrescente `await recolarFluxoSimples(d.db);` depois da recolagem |
-| `duplaFolhaCandidatoBanco`, `duplaPacoteBanco`, `duplaDecisoes2Banco`, `duplaSalaBanco`, `duplaMigracaoDados`, `duplaTarefasRelato` | devem passar sem mudança (o candidato recebe ainda menos). Se `duplaMigracaoDados` "conteúdo por papel" falhar por `role` em sala `roles`/`setup`, monte a sala do teste em `running` (é o que o teste quer provar: quem tem acesso e é da sala recebe) |
+| `duplaCorrecoesPublicacao2Banco` · "2: estação volta a pendente com aluno na sala (setup)…" (linha 129) | troque `expect((await conteudo(U.ana, id)).station.doctor_scene).toBe(STATION.doctor_scene); // antes: a folha sai` por `expect(await conteudo(U.ana, id)).toMatchObject({ role: "candidate", station: null, waiting: true }); // fluxo simples (014140): antes de começar, nada da estação ao candidato`. O resto do teste fica (depois da varredura a sala volta aos papéis sem estação e o conteúdo é o do bloco "sem estação", com o aviso) |
+| `duplaCorrecoesPublicacao2Banco` · teste que recola as migrações (linhas 260-272) | sem mudança: o laço já recola todas as `treino_dupla` desde a 013406, inclusive as do fluxo simples (ruling D7/A23); esse teste não confere texto de função |
+| `duplaSalaTesteLocal` · linhas 152-154 (estado do candidato) | troque as três linhas por: `const antes = ["roles", "connecting", "setup"].includes(fase) \|\| (fase === "closed" && !c.started_at);` e `if (antes) { expect(c.station).toBeNull(); expect(c.porta).toBe(1); } else { if (fase === "result") expect(c.station).toMatchObject({ id: "teste-inep2020-e01", area_code: "CM" }); else expect(c.station).toEqual(expect.not.objectContaining({ id: expect.anything(), name: expect.anything() })); expect(c.station).toMatchObject({ label: "Estação 1", area_code: "CM" }); }` (a estação de teste é de Clínica Médica: porta 1) |
+| `duplaSalaTesteLocal` · linhas 189-192 (fases sem `roles`/`closed`) | troque a condição `if (fase !== "roles" && fase !== "closed")` por `if (["running", "review", "result"].includes(fase))` e acrescente, para `connecting`/`setup`, `expect((await rpc(cand, "app_dupla_room_content", { p_room_id: id })).station).toBeNull();` |
+| `duplaPacoteBanco` · "candidato: texto bruto … em todas as fases até review…" (linhas 59-69) | troque as três linhas `expect(r.estado.station.label…`, `…name…`, `…id…` por: `if (["roles", "connecting", "setup"].includes(fase)) { expect(r.estado.station, fase).toBeNull(); expect(r.conteudo.station, fase).toBeNull(); } else { expect(r.estado.station.label, fase).toBe("Estação 5"); expect(r.estado.station.name, fase).toBeUndefined(); expect(r.estado.station.id, fase).toBeUndefined(); }` (antes de começar, só a porta) |
+| `duplaPacoteBanco` · "fase roles sem papéis: ninguém recebe o nome, só 'Estação N'" (linhas 87-94) | troque as duas linhas de `label` por `expect(r.estado.station).toBeNull(); expect(r.estado.station_ready).toBe(true); expect(r.conteudo.station).toBeNull();` e o título por `"fase roles sem papéis: ninguém recebe nada da estação (fluxo simples, 014140)"` |
+| `duplaTelasBanco` · estado da candidata em `roles` (linhas 180-200) | no `toMatchObject`, `duration_ms: 480000` vira `duration_ms: null`, `station: { label: "Estação", … }` vira `station: null` e acrescente `station_ready: true, porta: 1`; troque as duas linhas `expect(carla.station).not.toHaveProperty("name")` / `("id")` por `expect(carla.station).toBeNull();` (o avaliador `fabio` continua recebendo a estação) |
+| `duplaCadeiaDuasVezes` / `fase2PublicacaoEquipe` (recolam só a 013406/013980) | se falharem só porque a versão do fluxo simples foi sobrescrita, acrescente `await recolarFluxoSimples(d.db);` depois da recolagem (importe de `./helpers/duplaDb`) |
+| `duplaSalaBanco`, `duplaDecisoes2Banco`, `duplaFolhaCandidatoBanco`, `duplaImpressoRota`, `duplaResultadoBanco`, `duplaHistoricoBanco`, `duplaMigracaoDados`, `duplaTarefasRelato` | devem passar sem mudança: as salas em andamento desses testes têm início no passado ou sem início gravado (conta como começada), e as avaliações de `addSession` começam 10 min antes do fim. Se `duplaMigracaoDados` "conteúdo por papel" falhar por `role` em sala `roles`/`setup`, monte a sala do teste em `running` (é o que o teste quer provar: quem tem acesso e é da sala recebe) |
 
 Rode de novo. Esperado: PASS.
 
 - [ ] **Step 6: Commit**
 
+Antes, `cd "$W" && git status --short`: todo arquivo mudado por esta tarefa entra no `git add` abaixo (acrescente qualquer outro teste ajustado). Depois do commit, `git status --short` vazio.
+
 ```bash
-cd "$W" && git add supabase/migrations/20261003014140_treino_dupla_fluxo_sigilo.sql src/__tests__/duplaFluxoSimplesBanco.test.ts src/__tests__/duplaCorrecoesPublicacao2Banco.test.ts src/__tests__/duplaSalaTesteLocal.test.ts src/__tests__/duplaCadeiaDuasVezes.test.ts src/__tests__/fase2PublicacaoEquipe.test.ts src/__tests__/duplaMigracaoDados.test.ts && git commit -m "$(cat <<'EOF'
-Treino em Dupla, fluxo simples (014140): antes de comecar, quem nao e o ator recebe so a porta numerada da area (estado e conteudo)
+cd "$W" && git add supabase/migrations/20261003014140_treino_dupla_fluxo_sigilo.sql src/__tests__/duplaFluxoSimplesBanco.test.ts src/__tests__/duplaCorrecoesPublicacao2Banco.test.ts src/__tests__/duplaSalaTesteLocal.test.ts src/__tests__/duplaPacoteBanco.test.ts src/__tests__/duplaTelasBanco.test.ts src/__tests__/duplaCadeiaDuasVezes.test.ts src/__tests__/fase2PublicacaoEquipe.test.ts src/__tests__/duplaMigracaoDados.test.ts && git commit -m "$(cat <<'EOF'
+Treino em Dupla, fluxo simples (014140): antes do inicio marcado, quem nao e o ator recebe so a porta numerada da area e o horario (estado, conteudo, imagem, resultado e historico)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 EOF
 )"
 ```
-(Se algum dos arquivos listados não mudou, tire-o do `git add`.)
 
 ---
 
@@ -774,6 +982,7 @@ EOF
 
 **Files:**
 - Create: `supabase/migrations/20261003014150_treino_dupla_fluxo_sala.sql`
+- Modify: `src/__tests__/helpers/duplaDb.ts` (acrescentar `abrirPorta`)
 - Modify: `src/__tests__/duplaFluxoSimplesBanco.test.ts`
 - Modify: testes de banco da sala, do resultado e dos créditos (tabela do Step 5)
 
@@ -786,10 +995,30 @@ EOF
   - `app_dupla_set_station(p_room_id uuid, p_station_id text)`: em `roles` (com papéis) ou `setup`, só o avaliador; a sala fica em `setup`.
   - `app_dupla_next_station(p_room_id uuid, p_papel text default 'mesmo')`: `'mesmo'` | `'trocar'`; só em `result`; rodada seguinte em `setup`, sem estação. A assinatura `(uuid)` deixa de existir (a chamada só com `p_room_id` continua valendo e quer dizer "mesmo").
   - Gatilho `study_invites_accepted_setup` (função `dupla_invite_accepted_setup()`): convite aceito numa sala em `roles` com os dois papéis definidos leva a sala a `setup` (match, chat e link).
+  - Com o início 2 s à frente, a regra de sigilo da 014140 (`dupla_antes_do_inicio`, `now() < started_at`) passa a valer de verdade nos 2 s do apito: logo depois de `app_dupla_start` o candidato recebe só a porta e o horário (DONO-2). Nada muda nas funções da 014140.
+  - Teste: `abrirPorta(db: PGlite, roomId: string): Promise<void>` em `helpers/duplaDb.ts` (traz `started_at` e `ends_at` 3 s para trás: simula a porta aberta no PGlite, onde o `now()` é fixo em cada transação).
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [ ] **Step 1: Apoio `abrirPorta` e o teste que falha**
 
-No fim do `describe` de `src/__tests__/duplaFluxoSimplesBanco.test.ts`, acrescente:
+Em `src/__tests__/helpers/duplaDb.ts`, logo depois de `makeRoom`, acrescente:
+
+```ts
+/**
+ * Fluxo simples (DONO-2, 19/10): app_dupla_start grava o início 2 s à frente (o apito) e, até lá, o candidato não recebe nada
+ * da estação (014140). No PGlite o now() é fixo em cada transação; para o teste ler "depois de a porta abrir", isto traz o
+ * início e o fim 3 s para trás (a duração não muda). Use logo depois de app_dupla_start quando o teste for ler o que o
+ * candidato recebe (estado, conteúdo, imagem, resultado).
+ */
+export async function abrirPorta(db: PGlite, roomId: string): Promise<void> {
+  await db.query(
+    `update public.checklist_rooms set started_at = started_at - interval '3 seconds', ends_at = ends_at - interval '3 seconds'
+      where id = $1 and started_at is not null`,
+    [roomId]
+  );
+}
+```
+
+No import do topo de `src/__tests__/duplaFluxoSimplesBanco.test.ts`, acrescente `abrirPorta` (fica `import { MIGRATIONS_DIR, STATION, U, abrirPorta, addProfile, addSession, addStation, makeRoom, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";`). No fim do `describe`, acrescente:
 
 ```ts
   // ------------------------------------------------------------------ 014150: início, papéis e rodadas
@@ -820,8 +1049,33 @@ No fim do `describe` de `src/__tests__/duplaFluxoSimplesBanco.test.ts`, acrescen
     expect(t.falta).toBeGreaterThan(1000);
     expect(t.falta).toBeLessThanOrEqual(2000);
     expect(t.dur).toBe(600000);
+    // DONO-2: até o início marcado (os 2 s do apito) o candidato recebe só a porta e o horário; com a porta aberta, a estação
+    expect(await estado(U.bruno, r.room_id)).toMatchObject({ station: null, ends_at: null, station_ready: true, porta: 1 });
+    await abrirPorta(d.db, r.room_id);
     expect((await estado(U.bruno, r.room_id)).station).toMatchObject({ area: OUTRA.area });
     await expect(act(U.ana, "start", r.room_id)).rejects.toThrow("Esta ação não vale nesta fase da sala.");
+  });
+
+  it("DONO-2 com o início de verdade: logo depois do toque o candidato recebe só a porta e o horário (estado, conteúdo, impressos, imagem); o ator recebe tudo; com a porta aberta, o candidato recebe a folha", async () => {
+    const r = await convidar(U.ana, U.bruno);
+    await aceitar(U.bruno, r.room_id);
+    await act(U.ana, "start", r.room_id);
+    await act(U.ana, "release", r.room_id, { p_pressing_id: "p1", p_released: true }); // o ator libera durante o apito
+    const e = await estado(U.bruno, r.room_id);
+    expect(e).toMatchObject({ phase: "running", station: null, duration_ms: null, ends_at: null, released_pressings: [], station_ready: true, porta: 1 });
+    expect(Date.parse(e.started_at)).toBe(new Date((await linha(r.room_id)).started_at).getTime()); // o horário de abertura sai
+    const c = await conteudo(U.bruno, r.room_id);
+    expect(c).toEqual({ role: "candidate", station: null, pressing_count: 0, pressings: [], waiting: true });
+    expect(vaza([e, c])).toEqual([]);
+    await expect(d.rpc(U.bruno, "app_dupla_print_path", { p_room_id: r.room_id, p_pressing_id: "candidate_sheet" })).rejects.toThrow("Esta ação não vale nesta fase da sala.");
+    expect((await estado(U.ana, r.room_id)).station).toMatchObject({ id: SECRETA.id, name: SECRETA.name });
+    expect((await conteudo(U.ana, r.room_id)).station).toMatchObject({ actor_script: expect.any(String) });
+    await abrirPorta(d.db, r.room_id);
+    expect((await estado(U.bruno, r.room_id)).station).toMatchObject({ area: SECRETA.area });
+    const c2 = await conteudo(U.bruno, r.room_id);
+    expect(c2.station).toMatchObject({ doctor_scene: SECRETA.doctor_scene });
+    expect(JSON.stringify(c2.pressings)).toContain("Hemograma");
+    await d.rpc(U.bruno, "app_dupla_print_path", { p_room_id: r.room_id, p_pressing_id: "candidate_sheet" }); // não recusa mais
   });
 
   it("só o ator libera, marca, encerra e envia a nota; a nota guarda o comentário em feedback_gen; o candidato pede revisão", async () => {
@@ -933,7 +1187,7 @@ No fim do `describe` de `src/__tests__/duplaFluxoSimplesBanco.test.ts`, acrescen
 ```bash
 cd "$W" && nice bash "$FILA" npx vitest run src/__tests__/duplaFluxoSimplesBanco.test.ts --maxWorkers=2
 ```
-Esperado: FAIL — "Os dois precisam estar prontos.", início sem os 2 s, `next_station` volta a `roles`, `p_papel` desconhecido, aceite do match deixa em `roles`, `set_roles` fica em `roles` e não limpa a estação, o match guarda a estação de quem virou candidato, `set_station` em `setup` recusa pela fase.
+Esperado: FAIL — "Os dois precisam estar prontos.", início sem os 2 s (o candidato recebe a estação logo depois do toque), `next_station` volta a `roles`, `p_papel` desconhecido, aceite do match deixa em `roles`, `set_roles` fica em `roles` e não limpa a estação, o match guarda a estação de quem virou candidato, `set_station` em `setup` recusa pela fase.
 
 - [ ] **Step 3: Escrever a migração**
 
@@ -950,8 +1204,9 @@ cd "$W" && F=supabase/migrations/20261003014150_treino_dupla_fluxo_sala.sql && c
 --     iniciar.') e o convite da sala já aceito ('O convite ainda não foi aceito.', agora sempre, não só com a cota ligada). Sai a
 --     exigência dos dois "prontos". O débito de crédito da 014050 continua igual (só com a cota ligada).
 --     APITO E PORTA (dono, 19/10): started_at = toque do ator + 2 s (a duração do apito, APITO_MS de src/novo/app/dupla/porta.js e
---     de playWhistle) e ends_at = started_at + duração. Os dois aparelhos tocam o apito e abrem a porta pelo relógio do
---     servidor nesses 2 s; o cronômetro conta a partir da porta aberta.
+--     de playWhistle) e ends_at = started_at + duração. Nesses 2 s, pelo relógio do servidor, os dois aparelhos tocam o apito e
+--     só o do candidato abre a porta (DONO-1: o ator fica na tela de trabalho); o cronômetro conta a partir da porta aberta.
+--     Durante esses 2 s o candidato não recebe nada da estação (DONO-2: regra da 014140, now() < started_at).
 --  2) app_dupla_set_roles / app_dupla_draw_roles: definidos os papéis, a sala vai DIRETO a "setup" (sem "connecting", "pronto"
 --     e "confirmar"). O sorteio é de PAPÉIS (não existe sortear estação). Se quem trouxe a estação (station_chosen_by) virar o
 --     candidato, a estação é limpa (dono, 19/10: ele já conhece o tema) e o ator escolhe outra.
@@ -1212,7 +1467,7 @@ Confira: `grep -c "Os dois precisam estar prontos" "$F"` → 0; `grep -c "Escolh
 ```bash
 cd "$W" && nice bash "$FILA" npx vitest run src/__tests__/duplaFluxoSimplesBanco.test.ts --maxWorkers=2
 ```
-Esperado: PASS (20 testes).
+Esperado: PASS (23 testes).
 
 - [ ] **Step 5: Rodar os vizinhos e ajustar só o que o desenho muda**
 
@@ -1225,15 +1480,20 @@ cd "$W" && nice bash "$FILA" npx vitest run src/__tests__/duplaSalaBanco.test.ts
 | `duplaSalaBanco` · "papéis: … os dois → connecting" | `set_roles`/`draw_roles` agora levam a `setup`: espere `phase: "setup"` depois do primeiro `set_roles`; troque o trecho de `confirm_roles` por uma sala montada com `makeRoom(…, "roles")` com papéis e estação (sala antiga) para provar que `confirm_roles` ainda leva a `connecting`; título: `"papéis: escolher ou sortear leva à preparação (fluxo simples); confirmar segue valendo em sala antiga"` |
 | `duplaSalaBanco` · "estação: só o avaliador escolhe, só depois dos papéis…" | escolher a estação deixa a sala em `setup`; onde o teste esperava `roles` depois de `set_station`, espere `setup`; "só depois dos papéis" continua (sala `roles` sem papéis → `'Definam os papéis antes de escolher a estação.'`) |
 | `duplaSalaBanco` · "cronômetro: … iniciar exige os dois prontos" | troque a expectativa `'Os dois precisam estar prontos.'` por: sala `setup` com convite pendente → `'O convite ainda não foi aceito.'`; sala `setup` sem estação → `'Escolha a estação antes de iniciar.'`; título sem "exige os dois prontos" |
-| `duplaSalaBanco` · "nenhuma resposta ao candidato contém o nome…" | apague as linhas de `confirm_roles`, `connected` e `ready` (depois de `set_station` a sala já está em `setup`); o resto fica |
-| `duplaSalaBanco` / `duplaResumoBanco` / `duplaCorrecoesPublicacaoBanco` / `duplaCreditosInicio` / `duplaCreditosSeguranca` / `duplaCreditosPreChecagem` / `duplaParCanonico` / `duplaUmaSala` · testes "colar … duas vezes" | acrescente `await recolarFluxoSimples(d.db);` logo depois da recolagem |
+| `duplaSalaBanco` · "nenhuma resposta ao candidato contém o nome…" (linha 403) | apague as linhas de `confirm_roles`, `connected` e `ready` (depois de `set_roles` e `set_station` a sala já está em `setup`) e, logo depois de `await act(U.bruno, "start", id);`, acrescente `await abrirPorta(d.db, id);` (DONO-2: sem isso o candidato ainda está antes do início marcado e a imagem da folha, pedida mais abaixo, é recusada); o resto fica |
+| `duplaSalaBanco` · "aviso de tempo real: cada ação que muda o rev…" (linha 510) | depois de `set_roles` a sala já está em `setup`: apague as seis linhas de `confirm_roles`, `connected` e `ready` (Ana e Bruno) e troque `expect(n).toBe(9);` por `expect(n).toBe(3);` (set_roles, set_station e start); o resto fica (`n + 6` e a sequência de `rev`) |
+| testes "colar … duas vezes" que recolam só PARTE da cadeia: `duplaCreditosInicio` (linha 726), `duplaCreditosPreChecagem` (linha 347), `duplaParCanonico`, `duplaUmaSala` | acrescente `await recolarFluxoSimples(d.db);` logo depois da recolagem (importe de `./helpers/duplaDb`) |
+| testes "colar … duas vezes" que já recolam todas as `treino_dupla` posteriores: `duplaSalaBanco` (linha 571), `duplaResumoBanco` (linha 170), `duplaCorrecoesPublicacaoBanco` (linhas 285 e 302) | sem mudança (as do fluxo simples já entram no laço; ruling D7/A23). `duplaCreditosSeguranca` (linha 235): olhe a lista que ele recola; só se for parcial, acrescente `recolarFluxoSimples` |
+| `duplaResultadoBanco` · helper `rodada` (linhas 64-81) e "tempo esgotado não fecha a sala…" (linha 152) | `salaPronta` escolhe a estação com os papéis definidos, e agora a sala vai a `setup`: no helper apague `confirm_roles` (dois), `await ler?.("connecting");`, `connected` (dois) e `ready` (dois); logo depois de `await act(aval, "start", id);` acrescente `await abrirPorta(d.db, id);` (DONO-2: o resultado e o estado do candidato esperam o início marcado). No teste "tempo esgotado", apague as seis linhas de `confirm_roles`/`connected`/`ready` (o `start` sai direto de `setup`) |
 | `duplaResultadoBanco` · "Treinar outra estação…" (linhas 175-261) | `next_station` agora volta a `setup` com os papéis mantidos: espere `{ phase: "setup", round: 2, station: null, … }` e, onde o teste definia papéis de novo com `set_roles` na rodada 2, chame `set_station` direto pelo avaliador; título: `"nova rodada (fluxo simples): preparação sem estação, mesmos papéis"` |
-| `duplaResultadoBanco` · linhas 312 e 336 | `"app_dupla_next_station(uuid)"` vira `"app_dupla_next_station(uuid,text)"` |
+| `duplaResultadoBanco` · linha 336 | `"app_dupla_next_station(uuid)"` vira `"app_dupla_next_station(uuid,text)"` (a linha 312 só chama `["next_station", {}]`, que continua valendo: sem mudança) |
+| `duplaCorrecoesPublicacao2Banco` · "2: estação volta a pendente…" (linhas 151-152) | `set_station` numa sala em `roles` com os papéis definidos agora leva a `setup`: `expect(s).toMatchObject({ phase: "roles", round: 1, notice: null })` vira `expect(s).toMatchObject({ phase: "setup", round: 1, notice: null })` |
 | `duplaCreditosInicio` · início "com os dois prontos" | tire os `ready` do preparo; mantenha a expectativa de débito; o caso "convite ainda não foi aceito" agora vale também com a cota desligada |
 | `duplaMatchBanco` · "aceitar libera a sala" (linha 474) | o match de teste tem os papéis decididos? Se `candidate_id`/`evaluator_id` estiverem preenchidos, espere `{ phase: "setup", rev: antes.rev + 2, closed_reason: null }`; se não, mantenha `roles` e `rev + 1` |
 | `duplaMatchBanco` / `duplaCorrecoesPublicacaoBanco` · match com estação escolhida no Banco por quem virou candidato | a estação agora vem nula (decisão do dono, 19/10); espere `station_id: null` e, onde o teste conferia o aviso "já viu" dessa estação, monte o caso com quem trouxe a estação como ator |
 | `duplaSalaBanco` · "cronômetro: … grava ends_at = started_at + duração" | `ends_at - started_at` continua igual à duração; `started_at` fica ~2 s depois da chamada (espere `started_at > now()` logo depois do início) |
-| `duplaCreditosInicio` / `duplaResultadoBanco` · tempo usado (`used_ms`) de rodada encerrada logo depois do início | o início está 2 s à frente: o tempo usado pode dar 0 (`greatest(0, …)`); onde o teste fixa `used_ms`, ajuste `started_at` direto no banco antes de encerrar |
+| `duplaCreditosInicio` / `duplaResultadoBanco` · tempo usado (`used_ms`) de rodada encerrada logo depois do início | o início está 2 s à frente: sem `abrirPorta` o tempo usado dá 0 (`greatest(0, …)`); com `abrirPorta` dá ~1 s. Onde o teste fixa `used_ms`, ajuste `started_at` direto no banco antes de encerrar |
+| qualquer outro teste de banco que chama `app_dupla_start` e depois lê o que o CANDIDATO recebe (estado, conteúdo, `app_dupla_print_path`, `app_dupla_result`) | acrescente `await abrirPorta(d.db, <sala>);` logo depois do início (DONO-2: consequência direta do desenho; anote no corpo do commit) |
 | `duplaChatBanco` · "Abrir sala" (linha 287) | sala criada pelo chat continua em `roles` (o convite ainda espera): sem mudança |
 | `duplaCorrecoesPublicacao2Banco` · linha 159 (`connecting`/`connected`) | sala antiga: continua valendo; se a expectativa de fase depois de `connected` for `setup`, sem mudança |
 
@@ -1241,15 +1501,17 @@ Rode de novo. Esperado: PASS.
 
 - [ ] **Step 6: Commit**
 
+Antes, `cd "$W" && git status --short`: todo arquivo mudado por esta tarefa entra no `git add` abaixo (acrescente qualquer outro teste ajustado). Depois do commit, `git status --short` vazio.
+
 ```bash
-cd "$W" && git add supabase/migrations/20261003014150_treino_dupla_fluxo_sala.sql src/__tests__/duplaFluxoSimplesBanco.test.ts src/__tests__/duplaSalaBanco.test.ts src/__tests__/duplaResultadoBanco.test.ts src/__tests__/duplaResumoBanco.test.ts src/__tests__/duplaCreditosInicio.test.ts src/__tests__/duplaCreditosSeguranca.test.ts src/__tests__/duplaCreditosPreChecagem.test.ts src/__tests__/duplaParCanonico.test.ts src/__tests__/duplaUmaSala.test.ts src/__tests__/duplaMatchBanco.test.ts src/__tests__/duplaCorrecoesPublicacaoBanco.test.ts && git commit -m "$(cat <<'EOF'
-Treino em Dupla, fluxo simples (014150): um toque do ator, inicio 2 s a frente (apito); papeis levam a preparacao; nova rodada mesmo papel ou trocar; aceite do match leva a preparacao; estacao de quem virou candidato e limpa
+cd "$W" && git add supabase/migrations/20261003014150_treino_dupla_fluxo_sala.sql src/__tests__/helpers/duplaDb.ts src/__tests__/duplaFluxoSimplesBanco.test.ts src/__tests__/duplaSalaBanco.test.ts src/__tests__/duplaResultadoBanco.test.ts src/__tests__/duplaResumoBanco.test.ts src/__tests__/duplaCreditosInicio.test.ts src/__tests__/duplaCreditosSeguranca.test.ts src/__tests__/duplaCreditosPreChecagem.test.ts src/__tests__/duplaParCanonico.test.ts src/__tests__/duplaUmaSala.test.ts src/__tests__/duplaMatchBanco.test.ts src/__tests__/duplaChatBanco.test.ts src/__tests__/duplaCorrecoesPublicacaoBanco.test.ts src/__tests__/duplaCorrecoesPublicacao2Banco.test.ts src/__tests__/duplaCadeiaDuasVezes.test.ts src/__tests__/duplaHistoricoBanco.test.ts src/__tests__/duplaSalaTesteLocal.test.ts && git commit -m "$(cat <<'EOF'
+Treino em Dupla, fluxo simples (014150): um toque do ator, inicio 2 s a frente (apito; ate la o candidato so tem a porta); papeis levam a preparacao; nova rodada mesmo papel ou trocar; aceite do match leva a preparacao; estacao de quem virou candidato e limpa
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 EOF
 )"
 ```
-(Tire do `git add` o que não mudou.)
+(Arquivo listado que não mudou não atrapalha o `git add`.)
 
 ---
 
@@ -1287,11 +1549,11 @@ e no fim do `describe` (estes três ficam por último, porque mexem no banco do 
   it("permissões: as app_* sem visitante; o miolo do convite e o gatilho só por dentro", async () => {
     const pode = async (papel: string, sig: string) =>
       (await d.sql<any>(`select has_function_privilege($1, $2, 'execute') as ok`, [papel, sig]))[0].ok as boolean;
-    for (const sig of ["public.app_dupla_invite(uuid,text)", "public.app_dupla_next_station(uuid,text)", "public.app_dupla_start(uuid)", "public.app_dupla_set_station(uuid,text)", "public.app_dupla_radar(text,text)", "public.app_dupla_invites()", "public.app_dupla_requests()", "public.app_dupla_room_content(uuid)", "public.app_dupla_swipe(uuid,text,text)", "public.app_dupla_link_lookup(text,text)", "public.app_dupla_link_request(text,text)", "public.app_dupla_answer_request(uuid,boolean)"]) {
+    for (const sig of ["public.app_dupla_invite(uuid,text)", "public.app_dupla_next_station(uuid,text)", "public.app_dupla_start(uuid)", "public.app_dupla_set_station(uuid,text)", "public.app_dupla_radar(text,text)", "public.app_dupla_invites()", "public.app_dupla_requests()", "public.app_dupla_room_content(uuid)", "public.app_dupla_swipe(uuid,text,text)", "public.app_dupla_link_lookup(text,text)", "public.app_dupla_link_request(text,text)", "public.app_dupla_answer_request(uuid,boolean)", "public.app_dupla_print_path(uuid,text)", "public.app_dupla_result(uuid,integer)", "public.app_dupla_history_result(uuid,integer)", "public.app_dupla_history(integer)"]) {
       expect(await pode("anon", sig), sig).toBe(false);
       expect(await pode("authenticated", sig), sig).toBe(true);
     }
-    for (const sig of ["public.dupla_invite_core(uuid,uuid,text,boolean,uuid,boolean)", "public.dupla_invite_accepted_setup()", "public.dupla_room_state(public.checklist_rooms,uuid)", "public.dupla_porta(text)"]) {
+    for (const sig of ["public.dupla_invite_core(uuid,uuid,text,boolean,uuid,boolean)", "public.dupla_invite_accepted_setup()", "public.dupla_room_state(public.checklist_rooms,uuid)", "public.dupla_porta(text)", "public.dupla_antes_do_inicio(public.checklist_rooms)"]) {
       expect(await pode("anon", sig), sig).toBe(false);
       expect(await pode("authenticated", sig), sig).toBe(false);
     }
@@ -1312,6 +1574,11 @@ e no fim do `describe` (estes três ficam por último, porque mexem no banco do 
     expect(await assinatura("public.app_dupla_next_station(uuid,text)")).toBe(false);
     expect(await gatilho()).toBe(false);
     expect(await assinatura("public.dupla_porta(text)")).toBe(false);
+    expect(await assinatura("public.dupla_antes_do_inicio(public.checklist_rooms)")).toBe(false);
+    const fonte = async (nome: string) =>
+      (await d.sql<any>(`select prosrc as s from pg_proc where proname = $1 and pronamespace = 'public'::regnamespace`, [nome]))[0].s as string;
+    for (const f of ["dupla_room_state", "app_dupla_room_content", "app_dupla_print_path"]) expect(await fonte(f), f).not.toContain("dupla_antes_do_inicio");
+    for (const f of ["app_dupla_result", "app_dupla_history_result", "app_dupla_history"]) expect(await fonte(f), f).not.toContain("now() < s.started_at");
     const [{ s }] = await d.sql<any>(`select prosrc as s from pg_proc where proname = 'app_dupla_start' and pronamespace = 'public'::regnamespace`);
     expect(s).toContain("Os dois precisam estar prontos.");
     const [{ l }] = await d.sql<any>(`select prosrc as l from pg_proc where proname = 'app_dupla_link_request' and pronamespace = 'public'::regnamespace`);
@@ -1331,10 +1598,24 @@ Esperado: FAIL em "desfazer…" (`ENOENT` dos arquivos de desfazer). "permissõe
 
 - [ ] **Step 3: Gerar os desfazer e recriar à mão as duas funções apagadas**
 
+O ramo NÃO junta `origin/main` (ruling A24): o gerador processa toda migração a partir da 014130, então confira antes que só existem as três do fluxo simples nessa faixa (se aparecer a 014200 ou outra, pare: ela veio de uma junção e o gerador sobrescreveria o desfazer dela):
+
+```bash
+cd "$W" && ls supabase/migrations | awk '$0 >= "20261003014130"'
+```
+Esperado: só `20261003014130_treino_dupla_fluxo_convite.sql`, `20261003014140_treino_dupla_fluxo_sigilo.sql` e `20261003014150_treino_dupla_fluxo_sala.sql`.
+
 ```bash
 cd "$W" && node /Volumes/StaziaMed/.tmp-aulas/fase2/publicar-etapa2/desfazer-gerador/gerar.mjs "$W" 20261003014130 && ls supabase/desfazer | grep fluxo
 ```
 Esperado: os três arquivos `…014130…`, `…014140…`, `…014150….desfazer.sql`.
+
+O cabeçalho que o gerador escreve traz a faixa fixa da etapa 2 ("Cole em ordem INVERSA (014120 → 013990)"). Corrija nos três:
+
+```bash
+cd "$W" && for f in supabase/desfazer/20261003014130_treino_dupla_fluxo_convite.desfazer.sql supabase/desfazer/20261003014140_treino_dupla_fluxo_sigilo.desfazer.sql supabase/desfazer/20261003014150_treino_dupla_fluxo_sala.desfazer.sql; do sed -i '' 's/Cole em ordem INVERSA (014120 → 013990)/Cole em ordem INVERSA (014150 → 014130)/' "$f"; done && grep -c "014150 → 014130" supabase/desfazer/*fluxo*.desfazer.sql && ! grep -l "014120 → 013990" supabase/desfazer/*fluxo*.desfazer.sql
+```
+Esperado: `1` em cada um dos três e nenhum arquivo com a faixa antiga.
 
 O gerador não recria função que a migração apagou. Acrescente no FIM de cada um:
 
@@ -1350,7 +1631,7 @@ cd "$W" && D=supabase/desfazer && {
 } >> "$D/20261003014150_treino_dupla_fluxo_sala.desfazer.sql"
 ```
 
-Leia os três arquivos inteiros e confira: o de 014130 apaga `dupla_invite_core(uuid,uuid,text,boolean,uuid,boolean)` ANTES de recriar a de 5 argumentos; o de 014150 apaga o gatilho `study_invites_accepted_setup`, a função `dupla_invite_accepted_setup()` e `app_dupla_next_station(uuid,text)` antes de recriar a `(uuid)`.
+Leia os três arquivos inteiros e confira: o de 014130 apaga `dupla_invite_core(uuid,uuid,text,boolean,uuid,boolean)` ANTES de recriar a de 5 argumentos; o de 014140 volta as seis funções refeitas (estado, conteúdo, imagem, resultado, resultado pelo histórico e histórico, sem `dupla_antes_do_inicio` nem `now() < s.started_at`) e apaga `dupla_porta(text)` e `dupla_antes_do_inicio(checklist_rooms)`; o de 014150 apaga o gatilho `study_invites_accepted_setup`, a função `dupla_invite_accepted_setup()` e `app_dupla_next_station(uuid,text)` antes de recriar a `(uuid)`.
 
 - [ ] **Step 4: "Só a equipe" com as assinaturas novas**
 
@@ -1383,6 +1664,8 @@ Esperado: PASS (o `apoioVarredura` e o `segurancaPermissoesBanco` varrem todas a
 
 - [ ] **Step 6: Commit**
 
+Antes, `cd "$W" && git status --short`: todo arquivo mudado por esta tarefa entra no `git add` abaixo. Depois do commit, `git status --short` vazio.
+
 ```bash
 cd "$W" && git add supabase/desfazer/20261003014130_treino_dupla_fluxo_convite.desfazer.sql supabase/desfazer/20261003014140_treino_dupla_fluxo_sigilo.desfazer.sql supabase/desfazer/20261003014150_treino_dupla_fluxo_sala.desfazer.sql src/__tests__/duplaFluxoSimplesBanco.test.ts src/__tests__/fase2PublicacaoEquipe.test.ts && git commit -m "$(cat <<'EOF'
 Treino em Dupla, fluxo simples: desfazer das tres migracoes (com as funcoes apagadas recriadas), colar duas vezes e so a equipe
@@ -1406,10 +1689,10 @@ EOF
 - Consumes (do banco): estado com `station` (nulo para o candidato antes de `running`), `station_ready`, `porta` (1 a 5 ou nulo), `invite_pending`, `me.role`, `me.seen_station`; `app_dupla_start`, `app_dupla_set_station`, `app_dupla_set_roles`, `app_dupla_draw_roles`, `app_dupla_room_done_stations`, `app_dupla_stations`.
 - Produces:
   - `SetupPhase({ room, actions, askLeave })` (só para o ator SEM estação e para o candidato) e `candidateWaitText(room): string` ("Aguardando {ator} iniciar a estação" com estação; "O ator está escolhendo a estação" sem).
-  - `porta.js`: `APITO_MS = 2000`. `Porta.jsx`: `Porta({ numero: number, estado?: "fechada" | "abrindo" | "aberta", jaPassouMs?: number })` (SVG com `role="img"` e nome "Porta N"; só tokens) e `prefereMenosMovimento(): boolean`.
+  - `porta.js`: `APITO_MS = 2000`. `Porta.jsx`: `Porta({ numero: number, estado?: "fechada" | "abrindo" | "aberta", jaPassouMs?: number })` (SVG com `role="img"` e nome "Porta N"; só tokens; a folha da porta leva `data-ja-passou` com o atraso usado na animação) e `prefereMenosMovimento(): boolean`. A porta é desenhada SÓ na tela do candidato (DONO-1): nunca em tela do ator.
   - `RoomScreen`: em `setup`, o ator com estação vai direto a `RunningPhase` com `started = false`. Sai `evaluatorRoomKey` e o `sessionStorage` da "sala do avaliador".
   - `EvaluatorFooter`: antes de iniciar, "Trocar estação" (abre `StationPicker`) e "Iniciar estação" ligado quando `room.station && !room.invite_pending`; com o convite pendente, "Aguardando {nome} aceitar".
-  - `useRoom`: chave do conteúdo com a etapa `"espera"` para quem não é o ator antes de começar.
+  - `useRoom`: chave do conteúdo com a etapa `"espera"` para quem não é o ator antes de começar e enquanto o servidor ainda esconde a estação em `running` (DONO-2: `room.station` nulo nos 2 s do apito); quando o estado traz a estação, a chave muda e o conteúdo é pedido de novo.
 
 - [ ] **Step 1: Escrever o teste que falha**
 
@@ -1488,7 +1771,9 @@ describe("Fluxo simples · preparação", () => {
     fireEvent.click(start);
     await advance(0);
     expect(calls("app_dupla_start")).toHaveLength(1);
-    expect(screen.getByText("Em andamento")).toBeTruthy();
+    // "Em andamento" aparece duas vezes (selo do cabeçalho e modo do rodapé)
+    expect(screen.getAllByText("Em andamento").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("img", { name: /Porta/ })).toBeNull(); // DONO-1: o ator nunca vê a porta
   });
 
   it("convite ainda não aceito: 'Iniciar estação' desligado e 'Aguardando Bruno aceitar'", async () => {
@@ -1606,13 +1891,14 @@ Troque a função `contentKeyOf` inteira por:
 ```js
 /**
  * O conteúdo do meu papel muda com a rodada, a fase (papéis → espera/sala → resultado), o papel, a estação e, para o candidato,
- * os liberados. Fluxo simples (014140): quem não é o ator não recebe nada antes de começar ("espera"); ao começar, a chave muda e
- * o conteúdo é lido de novo.
+ * os liberados. Fluxo simples (014140, DONO-2): quem não é o ator não recebe nada antes do início marcado ("espera"), inclusive
+ * em "running" durante os 2 s do apito (o servidor manda `station` nulo); quando o estado traz a estação (porta aberta), a
+ * chave muda e o conteúdo é lido de novo.
  */
 function contentKeyOf(room) {
   if (!room || room.phase === "closed") return null;
   const role = room.me?.role ?? "";
-  const waiting = role !== "evaluator" && ["connecting", "setup"].includes(room.phase);
+  const waiting = role !== "evaluator" && (["connecting", "setup"].includes(room.phase) || (room.phase === "running" && !room.station));
   const stage = room.phase === "roles" ? "roles" : room.phase === "result" ? "result" : waiting ? "espera" : "sala";
   const station = room.station ? room.station.id ?? room.station.label ?? "?" : "";
   const released = role === "candidate" ? (room.released_pressings || []).join(",") : "";
@@ -1638,7 +1924,8 @@ Crie `src/novo/app/dupla/room/Porta.jsx`:
 // Treino em Dupla · a porta da estação (dono, 19/10): o candidato fica "de frente para a porta" com o número da ÁREA, como na
 // prova (1 Clínica Médica, 2 Cirurgia Geral, 3 Pediatria, 4 Ginecologia e Obstetrícia, 5 MFC/Saúde Coletiva). O número vem do
 // servidor (`room.porta`, 014140); nunca há porta sem número (quem chama não desenha a porta sem `numero`). Ao iniciar, a porta
-// abre durante o apito, no tempo do servidor (porta.js). Só tokens do design system; o leitor de tela ouve "Porta N".
+// abre durante o apito, no tempo do servidor (porta.js). Só na tela do CANDIDATO (DONO-1: o ator não vê a porta). Só tokens do
+// design system; o leitor de tela ouve "Porta N".
 import React from "react";
 import { APITO_MS } from "../porta.js";
 
@@ -1662,8 +1949,9 @@ export function prefereMenosMovimento() {
 
 /**
  * @param {{ numero: number, estado?: "fechada" | "abrindo" | "aberta", jaPassouMs?: number }} p
- *   jaPassouMs: quanto do apito já passou no relógio do servidor; a animação começa desse ponto (atraso negativo) para os dois
- *   aparelhos ficarem juntos.
+ *   jaPassouMs: quanto do apito já tinha passado, no relógio do servidor, quando a porta começou a abrir NESTA tela; a animação
+ *   começa desse ponto (atraso negativo) para o apito e a porta ficarem juntos. Quem chama fixa esse valor uma vez (PortaEntrada,
+ *   Tarefa 6): mudar o atraso de uma animação em curso não a reinicia e faria a porta abrir mais rápido que o apito.
  */
 export function Porta({ numero, estado = "fechada", jaPassouMs = 0 }) {
   const animar = !prefereMenosMovimento();
@@ -1672,7 +1960,11 @@ export function Porta({ numero, estado = "fechada", jaPassouMs = 0 }) {
     <svg className="dupla-porta" viewBox="0 0 200 300" role="img" aria-label={`Porta ${numero}`} data-estado={estado} data-animar={animar ? "sim" : "nao"}>
       <style>{CSS}</style>
       <rect x="30" y="20" width="140" height="270" rx="6" fill="var(--surface-sunken)" stroke="var(--border-strong)" strokeWidth="6" />
-      <g className="dupla-porta__folha" style={estado === "abrindo" && animar ? { animationDelay: `-${atraso}ms` } : undefined}>
+      <g
+        className="dupla-porta__folha"
+        data-ja-passou={estado === "abrindo" ? atraso : undefined}
+        style={estado === "abrindo" && animar ? { animationDelay: `-${atraso}ms` } : undefined}
+      >
         <rect x="46" y="34" width="108" height="250" rx="4" fill="var(--surface-card)" stroke="var(--border-default)" strokeWidth="3" />
         <circle cx="138" cy="164" r="6" fill="var(--text-brand)" />
         <rect x="70" y="70" width="60" height="60" rx="30" fill="var(--surface-brand-soft)" />
@@ -1925,14 +2217,17 @@ cd "$W" && nice bash "$FILA" npx vitest run src/__tests__/duplaSalaPreparo.test.
 | `duplaSalaFases` · "preparação (Etapa P): candidato vê só 'Estação N · Área'…" | o desenho muda: o candidato NÃO vê "Estação N · Área" antes de começar; troque a expectativa por `expect(document.body.textContent).not.toContain("Estação 3")` e pelo texto de espera; título: `"preparação (fluxo simples, 19/10): candidato não vê nada da estação antes de começar"` |
 | `duplaSalaFases` · "decisões do dono (16/10): origem sempre visível…" | a parte "origem sempre visível ao candidato" vale só em `running` (monte em `running`); o aviso "Você já viu esta estação" em `setup` agora vem da `SetupPhase` ("Você já viu esta estação, então já conhece o tema.") |
 | `duplaSalaRodape` · "antes de iniciar: … Iniciar desligado sem os dois prontos" | "Iniciar estação" fica LIGADO sem prontidão; desligado só com `invite_pending: true` ou sem estação; título sem "sem os dois prontos" |
-| `duplaSalaPreparo`/`duplaSalaFases` que importam `evaluatorRoomKey` | apague o import e o uso (a chave não existe mais) |
+| testes que usam a chave do `sessionStorage` da "sala do avaliador" (`smn-dupla-sala-avaliador:…`) | hoje nenhum teste importa `evaluatorRoomKey` (conferido na varredura); se algum gravar essa chave à mão para abrir a sala do avaliador, apague essa linha (o ator com estação já entra direto) |
+| qualquer teste de tela em que o ATOR esperava ver uma porta | não existe porta na tela do ator (DONO-1): troque pela tela de trabalho ("Aguardando início"/"Em andamento" com `getAllByText`) |
 
 Rode de novo. Esperado: PASS.
 
 - [ ] **Step 11: Commit**
 
+Antes, `cd "$W" && git status --short`: todo arquivo mudado por esta tarefa entra no `git add` abaixo (acrescente qualquer outro teste ajustado). Depois do commit, `git status --short` vazio.
+
 ```bash
-cd "$W" && git add src/novo/app/dupla/porta.js src/novo/app/dupla/room/Porta.jsx src/novo/app/dupla/room/RoomScreen.jsx src/novo/app/dupla/room/SetupPhase.jsx src/novo/app/dupla/room/EvaluatorFooter.jsx src/novo/app/dupla/room/RolesPhase.jsx src/novo/app/dupla/room/useRoom.js src/novo/app/dupla/room/sala.css src/__tests__/duplaFluxoSimplesSala.test.tsx src/__tests__/duplaSalaPreparo.test.tsx src/__tests__/duplaSalaFases.test.tsx src/__tests__/duplaSalaRodape.test.tsx && git commit -m "$(cat <<'EOF'
+cd "$W" && git add src/novo/app/dupla/porta.js src/novo/app/dupla/room/Porta.jsx src/novo/app/dupla/room/RoomScreen.jsx src/novo/app/dupla/room/SetupPhase.jsx src/novo/app/dupla/room/EvaluatorFooter.jsx src/novo/app/dupla/room/RolesPhase.jsx src/novo/app/dupla/room/useRoom.js src/novo/app/dupla/room/sala.css src/__tests__/duplaFluxoSimplesSala.test.tsx src/__tests__/duplaSalaPreparo.test.tsx src/__tests__/duplaSalaFases.test.tsx src/__tests__/duplaSalaRodape.test.tsx src/__tests__/duplaSalaAoVivo.test.tsx src/__tests__/duplaSalaEstacao.test.tsx src/__tests__/duplaSalaFechadaSozinho.test.tsx src/__tests__/duplaCreditosTela.test.tsx src/__tests__/duplaTempoReal.test.tsx && git commit -m "$(cat <<'EOF'
 Treino em Dupla, fluxo simples (sala): ator vai direto a preparacao com Iniciar estacao e Trocar estacao; candidato de frente para a porta numerada da area; papeis sem confirmar; rodape com area segura
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
@@ -1942,21 +2237,22 @@ EOF
 
 ---
 
-### Task 6: Apito e porta sincronizados — a porta abre durante o apito, pelo relógio do servidor, e o candidato entra quando ele acaba
+### Task 6: Apito e porta pelo relógio do servidor — o apito toca nos dois aparelhos, a porta abre só no do candidato e, quando abre, a tela dele pede o conteúdo de novo
 
 **Files:**
 - Modify: `src/novo/app/dupla/porta.js` (linha do tempo), `src/novo/app/dupla/room/Porta.jsx` (`PortaEntrada`), `src/novo/app/dupla/room/RoomScreen.jsx`, `src/novo/app/dupla/sound.js`
 - Create: `src/__tests__/duplaFluxoSimplesPorta.test.ts`
-- Modify: `src/__tests__/duplaFluxoSimplesSala.test.tsx`, `src/__tests__/duplaSalaRodape.test.tsx`, `src/__tests__/duplaSalaPreparo.test.tsx`
+- Modify: `src/__tests__/duplaFluxoSimplesSala.test.tsx`, `src/__tests__/duplaSalaRodape.test.tsx`, `src/__tests__/duplaSalaPreparo.test.tsx` e os outros do comando do Step 9
 
 **Interfaces:**
-- Consumes: estado da sala com `started_at`/`ends_at` gravados pela 014150 (`started_at` = toque do ator + 2 s) e `server_now`; `offsetMs` de `useRoom` (diferença de relógio medida por `measureOffset`); `room.porta` (014140); `Porta`, `APITO_MS` (Tarefa 5); `playWhistle` (`sound.js`).
+- Consumes: estado da sala com `started_at`/`ends_at` gravados pela 014150 (`started_at` = toque do ator + 2 s) e `server_now`; para o candidato, até `started_at`, o estado vem com `station`, `ends_at` e `duration_ms` nulos (DONO-2, 014140); `offsetMs` de `useRoom` (diferença de relógio medida por `measureOffset`) e `reload()` (= `app_dupla_room` sem `p_since_rev`); `room.porta` (014140); `Porta`, `APITO_MS` (Tarefa 5); `playWhistle` (`sound.js`).
 - Produces (em `porta.js`, funções puras, sem `Date.now()`; quem chama passa a hora do servidor = `Date.now() + offsetMs`):
   - `APITO_TOLERANCIA_MS = 1000`.
   - `entrada(room, serverNowMs) → { etapa: "fechada" | "abrindo" | "aberta", apitoEm: number | null, abreEm: number | null, faltaMs: number }` — "abrindo" de `started_at − APITO_MS` até `started_at`.
   - `deveApitar(entrada, serverNowMs, jaApitou: boolean) → boolean` — só na etapa "abrindo", uma vez, com atraso de até 1 s.
   - `tempoMostrado(entrada, restanteMs: number | null, duracaoMs: number | null) → number | null` — durante a porta abrindo, a duração cheia.
-  - `PortaEntrada({ room, entrada })` em `Porta.jsx`: tela dos dois aparelhos enquanto a porta abre ("A estação vai começar").
+  - `PortaEntrada({ room, entrada })` em `Porta.jsx`: tela SÓ do candidato enquanto a porta abre e até a estação chegar ("A estação vai começar"); o atraso da animação é fixado quando a porta começa a abrir nesta tela (ruling D1).
+  - `RoomScreen`: o apito toca nos DOIS aparelhos (`useWhistle`, dependente de `porta.etapa`/`porta.apitoEm`, ruling D4); a porta (`PortaEntrada`) só para quem não é o ator (DONO-1: o ator fica na `RunningPhase`, com roteiro, impressos e PEP, e o cronômetro em 10:00 até a porta abrir); `useEstacaoAoAbrir`: com a porta aberta e o estado ainda sem a estação, pede o estado inteiro de novo na hora e a cada 1 s até chegar (DONO-2; abrir a porta não muda o `rev`, então a consulta "mudou algo?" não basta); com a estação no estado, a chave do conteúdo muda (Tarefa 5) e a folha é pedida. O relógio da tela (`useNow`) anda também quando o estado só tem `started_at` (o candidato não recebe `ends_at` durante o apito).
 
 - [ ] **Step 1: Escrever o teste da linha do tempo (falha)**
 
@@ -1969,6 +2265,7 @@ Crie `src/__tests__/duplaFluxoSimplesPorta.test.ts`:
  * servidor: o teste passa a hora; nada de Date.now().
  */
 import { describe, expect, it } from "vitest";
+import { measureOffset } from "../novo/app/dupla/clock.js";
 import { APITO_MS, APITO_TOLERANCIA_MS, deveApitar, entrada, tempoMostrado } from "../novo/app/dupla/porta.js";
 
 const T = Date.parse("2026-10-19T15:00:02.000Z"); // started_at: a porta termina de abrir aqui
@@ -1994,11 +2291,26 @@ describe("porta.js · entrada na estação", () => {
     expect(entrada(sala({ phase: "review" }), T + 60000).etapa).toBe("aberta");
   });
 
-  it("dois aparelhos com relógios diferentes, mesma hora do servidor: mesma etapa", () => {
-    const servidor = T - 1200;
-    const ator = { aparelho: servidor - 30000, diferenca: 30000 };
-    const candidato = { aparelho: servidor + 45000, diferenca: -45000 };
-    expect(entrada(sala(), ator.aparelho + ator.diferenca)).toEqual(entrada(sala(), candidato.aparelho + candidato.diferenca));
+  it("dois aparelhos com relógios diferentes (ator 30 s atrasado, candidato 45 s adiantado) e o mesmo started_at: cada um mede a sua diferença e os dois veem a mesma etapa na mesma hora real", () => {
+    // Cada aparelho mede a diferença numa consulta: enviou na hora DELE, o servidor respondeu com server_now, voltou 200 ms depois.
+    const resposta = T - 2600; // server_now da última consulta (hora do servidor)
+    const erro = { ator: -30000, candidato: 45000 }; // quanto o relógio de cada aparelho está à frente do servidor
+    const medido = {
+      ator: measureOffset(new Date(resposta).toISOString(), resposta + erro.ator - 100, resposta + erro.ator + 100),
+      candidato: measureOffset(new Date(resposta).toISOString(), resposta + erro.candidato - 100, resposta + erro.candidato + 100),
+    };
+    expect(medido).toEqual({ ator: 30000, candidato: -45000 });
+    // a mesma hora real lida em cada aparelho = hora do aparelho + a diferença medida
+    for (const [depois, etapa] of [[0, "fechada"], [800, "abrindo"], [2000, "abrindo"], [2700, "aberta"]] as const) {
+      const real = resposta + depois;
+      const ator = entrada(sala(), real + erro.ator + medido.ator);
+      const candidato = entrada(sala(), real + erro.candidato + medido.candidato);
+      expect(ator.etapa, `${depois} ms`).toBe(etapa);
+      expect(candidato, `${depois} ms`).toEqual(ator);
+    }
+    // sem a diferença medida, cada aparelho estaria numa etapa diferente
+    expect(entrada(sala(), resposta + 800 + erro.ator).etapa).toBe("fechada");
+    expect(entrada(sala(), resposta + 800 + erro.candidato).etapa).toBe("aberta");
   });
 
   it("apita uma vez, e só se o atraso desde o começo do apito for de até 1 s", () => {
@@ -2021,55 +2333,90 @@ describe("porta.js · entrada na estação", () => {
 
 - [ ] **Step 2: Escrever os testes da tela (falham)**
 
-No fim de `src/__tests__/duplaFluxoSimplesSala.test.tsx`, acrescente:
+No topo de `src/__tests__/duplaFluxoSimplesSala.test.tsx`, junte aos imports `import { PortaEntrada } from "../novo/app/dupla/room/Porta.jsx";`. No fim do arquivo, acrescente:
 
 ```tsx
 const T0 = Date.parse(NOW);
 const em = (ms: number) => new Date(T0 + ms).toISOString();
-// No servidor simulado, cada estado novo chega com server_now = NOW: no relógio do servidor, "agora" é NOW quando ele chega.
+// Servidor simulado padrão: cada estado chega com server_now = NOW (no relógio do servidor, "agora" é NOW quando ele chega).
+// Para DONO-2 o relógio precisa andar: `relogioDeVerdade()` põe o aparelho em NOW e faz o servidor responder com a hora certa.
+function relogioDeVerdade() {
+  vi.setSystemTime(T0);
+  const base = rpc.getMockImplementation()!;
+  rpc.mockImplementation(async (fn: string, args: any = {}) => {
+    const r = await base(fn, args);
+    return r && typeof r === "object" && "server_now" in r ? { ...r, server_now: new Date().toISOString() } : r;
+  });
+}
+/** Estado do candidato logo depois do toque do ator (DONO-2): só a porta e o horário de abertura; nada da estação. */
+const iniciouSemEstacao = (abre: number) => ({
+  ...srv.room, rev: srv.room.rev + 1, phase: "running", station: null, duration_ms: null, ends_at: null, started_at: em(abre),
+});
+/** Passado o início marcado, o servidor entrega a estação: MESMO rev, como no banco (abrir a porta não muda a sala). */
+function servidorEntrega(abre: number) {
+  srv.room = { ...srv.room, station: CAND_STATION, duration_ms: 600000, ends_at: em(abre + 600000) };
+  srv.content = contentOf("candidate");
+}
+/** Consultas do estado inteiro (sem p_since_rev): as que trazem a estação mesmo com o rev igual. */
+const pedidosCheios = () => calls("app_dupla_room").filter((c: any[]) => c[1]?.p_since_rev == null).length;
 
 describe("Fluxo simples · apito e porta", () => {
-  it("candidato: a porta numerada abre durante o apito e, quando acaba, aparecem a folha e o cronômetro de 10 min", async () => {
+  it("candidato (DONO-2): logo depois do toque chegam só a porta e o horário; a porta abre durante o apito e, quando abre, a tela pede estado e conteúdo de novo e só então mostra a folha e o cronômetro", async () => {
+    relogioDeVerdade();
     srv.room = candidatoEsperando();
     srv.content = conteudoEspera;
     await mount();
-    srv.room = { ...srv.room, rev: srv.room.rev + 1, phase: "running", station: CAND_STATION, duration_ms: 600000, started_at: em(1700), ends_at: em(601700) };
-    srv.content = contentOf("candidate");
-    await advance(2000); // a consulta de 2 s traz o início: o apito começou há 300 ms (relógio do servidor)
+    srv.room = iniciouSemEstacao(3700); // o apito começa em 1,7 s e a porta abre em 3,7 s (relógio do servidor)
+    await advance(2000); // a consulta de 2 s traz o início: o apito começou há 300 ms
     expect(screen.getByRole("img", { name: "Porta 1" }).getAttribute("data-estado")).toBe("abrindo");
     expect(screen.getByText("A estação vai começar")).toBeTruthy();
     expect(screen.queryByText("INSTRUÇÕES AO PARTICIPANTE")).toBeNull();
     expect(apito.n).toBe(1);
-    await advance(1800);
+    const conteudoAntes = calls("app_dupla_room_content").length;
+    const cheiosAntes = pedidosCheios();
+    servidorEntrega(3700);
+    await advance(1000); // ainda abrindo: a tela não pede nada novo
+    expect(screen.queryByText("INSTRUÇÕES AO PARTICIPANTE")).toBeNull();
+    expect(calls("app_dupla_room_content").length).toBe(conteudoAntes);
+    await advance(800); // 3,8 s: a porta abriu
     await advance(0);
+    await advance(0);
+    expect(pedidosCheios()).toBeGreaterThan(cheiosAntes); // pediu o estado inteiro de novo
+    expect(calls("app_dupla_room_content").length).toBeGreaterThan(conteudoAntes); // e o conteúdo
     expect(screen.queryByRole("img", { name: "Porta 1" })).toBeNull();
     expect(screen.getByText("INSTRUÇÕES AO PARTICIPANTE")).toBeTruthy();
     expect(screen.getByRole("timer").textContent).toMatch(/10:00|09:59/);
     expect(apito.n).toBe(1);
   });
 
-  it("ator: o toque em 'Iniciar estação' mostra a mesma porta abrindo e o apito; depois, a estação em andamento", async () => {
+  it("ator (DONO-1): o toque em 'Iniciar estação' NÃO mostra porta; ele segue na tela de trabalho, com o cronômetro em 10:00 durante o apito, e ouve o apito", async () => {
     srv.steps.app_dupla_start = () => ({ phase: "running", started_at: em(2000), ends_at: em(602000) });
     await mount();
     fireEvent.click(screen.getByRole("button", { name: "Iniciar estação" }));
     await advance(0);
-    expect(screen.getByRole("img", { name: "Porta 1" }).getAttribute("data-estado")).toBe("abrindo");
     expect(apito.n).toBe(1);
-    await advance(2100);
-    expect(screen.queryByRole("img", { name: "Porta 1" })).toBeNull();
+    expect(screen.queryByRole("img", { name: /Porta/ })).toBeNull();
+    expect(screen.queryByText("A estação vai começar")).toBeNull();
     expect(screen.getAllByText("Em andamento").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("timer").some((t) => t.textContent === "10:00")).toBe(true);
+    await advance(2100);
+    expect(screen.queryByRole("img", { name: /Porta/ })).toBeNull();
+    expect(screen.getAllByRole("timer").some((t) => /^09:5\d$/.test(t.textContent ?? ""))).toBe(true);
+    expect(apito.n).toBe(1);
   });
 
-  it("início que chega atrasado mais de 1 s: a porta abre no tempo do servidor, sem apito", async () => {
+  it("início que chega atrasado mais de 1 s: a porta abre no tempo do servidor, sem apito; ao abrir, a folha chega", async () => {
+    relogioDeVerdade();
     srv.room = candidatoEsperando();
     srv.content = conteudoEspera;
     await mount();
-    srv.room = { ...srv.room, rev: srv.room.rev + 1, phase: "running", station: CAND_STATION, duration_ms: 600000, started_at: em(500), ends_at: em(600500) };
-    srv.content = contentOf("candidate");
+    srv.room = iniciouSemEstacao(2500); // o apito começou em 0,5 s: a consulta de 2 s chega 1,5 s atrasada
     await advance(2000);
     expect(screen.getByRole("img", { name: "Porta 1" })).toBeTruthy();
     expect(apito.n).toBe(0);
+    servidorEntrega(2500);
     await advance(600);
+    await advance(0);
     await advance(0);
     expect(screen.getByText("INSTRUÇÕES AO PARTICIPANTE")).toBeTruthy();
     expect(apito.n).toBe(0);
@@ -2084,20 +2431,57 @@ describe("Fluxo simples · apito e porta", () => {
     expect(apito.n).toBe(0);
   });
 
-  it("movimento reduzido: a porta troca sem animação (no mesmo tempo)", async () => {
+  it("movimento reduzido: a porta do candidato troca sem animação (no mesmo tempo)", async () => {
     const antes = window.matchMedia;
     window.matchMedia = vi.fn().mockReturnValue({ matches: true, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined }) as any;
     try {
-      srv.steps.app_dupla_start = () => ({ phase: "running", started_at: em(2000), ends_at: em(602000) });
+      relogioDeVerdade();
+      srv.room = candidatoEsperando();
+      srv.content = conteudoEspera;
       await mount();
-      fireEvent.click(screen.getByRole("button", { name: "Iniciar estação" }));
-      await advance(0);
+      srv.room = iniciouSemEstacao(3700);
+      await advance(2000);
       expect(screen.getByRole("img", { name: "Porta 1" }).getAttribute("data-animar")).toBe("nao");
-      await advance(2100);
+      servidorEntrega(3700);
+      await advance(1800);
+      await advance(0);
+      await advance(0);
       expect(screen.queryByRole("img", { name: "Porta 1" })).toBeNull();
     } finally {
       window.matchMedia = antes;
     }
+  });
+
+  it("porta aberta mas o servidor ainda sem a estação (relógio do aparelho adiantado): a porta fica aberta com 'A estação vai começar' e a tela pede o estado de novo a cada 1 s até chegar", async () => {
+    relogioDeVerdade();
+    srv.room = candidatoEsperando();
+    srv.content = conteudoEspera;
+    await mount();
+    srv.room = iniciouSemEstacao(3700);
+    await advance(2000);
+    await advance(1800); // 3,8 s: a porta abriu na tela, mas o servidor ainda não entrega
+    expect(screen.getByRole("img", { name: "Porta 1" }).getAttribute("data-estado")).toBe("aberta");
+    expect(screen.getByText("A estação vai começar")).toBeTruthy();
+    const pedidos = pedidosCheios();
+    await advance(1000);
+    expect(pedidosCheios()).toBeGreaterThan(pedidos);
+    expect(screen.queryByText("INSTRUÇÕES AO PARTICIPANTE")).toBeNull();
+    servidorEntrega(3700);
+    await advance(1000);
+    await advance(0);
+    await advance(0);
+    expect(screen.queryByRole("img", { name: "Porta 1" })).toBeNull();
+    expect(screen.getByText("INSTRUÇÕES AO PARTICIPANTE")).toBeTruthy();
+  });
+
+  it("D1: o atraso da animação da porta fica fixo desde que ela começou a abrir nesta tela (não muda a cada 250 ms)", () => {
+    const { container, rerender } = render(<PortaEntrada room={{ porta: 2 }} entrada={{ etapa: "abrindo", faltaMs: 1500 }} />);
+    const folha = () => container.querySelector(".dupla-porta__folha") as Element;
+    expect(folha().getAttribute("data-ja-passou")).toBe("500");
+    rerender(<PortaEntrada room={{ porta: 2 }} entrada={{ etapa: "abrindo", faltaMs: 1000 }} />);
+    expect(folha().getAttribute("data-ja-passou")).toBe("500");
+    rerender(<PortaEntrada room={{ porta: 2 }} entrada={{ etapa: "aberta", faltaMs: 0 }} />);
+    expect(screen.getByRole("img", { name: "Porta 2" }).getAttribute("data-estado")).toBe("aberta");
   });
 });
 ```
@@ -2107,7 +2491,7 @@ describe("Fluxo simples · apito e porta", () => {
 ```bash
 cd "$W" && nice bash "$FILA" npx vitest run src/__tests__/duplaFluxoSimplesPorta.test.ts src/__tests__/duplaFluxoSimplesSala.test.tsx --maxWorkers=2
 ```
-Esperado: FAIL — `entrada`, `deveApitar`, `tempoMostrado` e `APITO_TOLERANCIA_MS` não existem; a sala vai direto à estação sem porta; o apito toca na troca de fase.
+Esperado: FAIL — `entrada`, `deveApitar`, `tempoMostrado`, `APITO_TOLERANCIA_MS` e `PortaEntrada` não existem; a sala do candidato vai direto à `RunningPhase` sem porta (e sem a estação, porque o servidor ainda esconde); o relógio da tela não anda sem `ends_at`; o apito toca na troca de fase; nada pede o estado de novo quando a porta abre.
 
 - [ ] **Step 4: `porta.js` — a linha do tempo**
 
@@ -2153,32 +2537,36 @@ export function tempoMostrado(e, restanteMs, duracaoMs) {
 }
 ```
 
-- [ ] **Step 5: `Porta.jsx` — a tela da porta abrindo**
+- [ ] **Step 5: `Porta.jsx` — a tela da porta do candidato**
 
 No fim de `src/novo/app/dupla/room/Porta.jsx`, acrescente:
 
 ```jsx
 /**
- * Tela dos dois aparelhos enquanto a porta abre (apito tocando). Sem número de porta (nunca deve acontecer: o servidor manda a
- * porta de toda estação da prova), só o texto.
- * @param {{ room: { porta?: number | null }, entrada: { etapa: string, faltaMs: number } }} p
+ * Tela do CANDIDATO enquanto a porta abre (apito tocando) e até a estação chegar do servidor (DONO-1: o ator não vê a porta;
+ * DONO-2: com a porta aberta, a tela pede estado e conteúdo de novo e só então troca para a estação). Sem número de porta
+ * (nunca deve acontecer: o servidor manda a porta de toda estação da prova), só o texto.
+ * O atraso da animação é fixado na primeira vez que a porta aparece abrindo NESTA tela (ruling D1): recalcular a cada 250 ms
+ * mudaria o atraso de uma animação em curso (não a reinicia) e a porta abriria mais rápido que o apito.
+ * @param {{ room: { porta?: number | null }, entrada: { etapa: "fechada" | "abrindo" | "aberta", faltaMs: number } }} p
  */
 export function PortaEntrada({ room, entrada }) {
-  const jaPassou = APITO_MS - (entrada.faltaMs ?? APITO_MS);
+  const jaPassou = React.useRef(null);
+  if (entrada.etapa === "abrindo" && jaPassou.current == null) jaPassou.current = APITO_MS - (entrada.faltaMs ?? APITO_MS);
   return (
     <main
       role="status"
       aria-live="polite"
       style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, padding: "32px 16px", boxSizing: "border-box" }}
     >
-      {room.porta ? <Porta numero={room.porta} estado={entrada.etapa === "abrindo" ? "abrindo" : "fechada"} jaPassouMs={jaPassou} /> : null}
+      {room.porta ? <Porta numero={room.porta} estado={entrada.etapa} jaPassouMs={jaPassou.current ?? 0} /> : null}
       <p style={{ margin: 0, font: "700 var(--text-lg)/1.3 var(--font-sans)", color: "var(--text-primary)", textAlign: "center" }}>A estação vai começar</p>
     </main>
   );
 }
 ```
 
-- [ ] **Step 6: `RoomScreen.jsx` — porta, apito e cronômetro pelo relógio do servidor**
+- [ ] **Step 6: `RoomScreen.jsx` — apito nos dois, porta só no candidato, estado pedido de novo ao abrir**
 
 (a) Imports: depois de `import { remainingMs as remainingFrom } from "../clock.js";` acrescente
 ```js
@@ -2189,21 +2577,26 @@ import { PortaEntrada } from "./Porta.jsx";
 (b) Substitua a função `useWhistle` inteira (do comentário `/**` que começa com `* Apito: ao ver a fase passar a "running"` até o `}` que fecha a função) por:
 ```js
 /**
- * Apito (dono, 19/10). O do início toca quando a porta começa a abrir, pelo relógio do SERVIDOR (deveApitar, porta.js): uma vez
- * por rodada e só com atraso de até 1 s (rede lenta, aba no fundo, sala aberta depois: a porta abre sem som). O do fim toca uma
- * vez por rodada ao chegar a 00:00 e volta a armar se o tempo passar de zero de novo (+1 min). Abrir já em 00:00 não apita.
- * Som desligado: playWhistle não toca (sound.js), e a porta abre no mesmo tempo.
+ * Apito (dono, 19/10), nos DOIS aparelhos (DONO-1: o ator não vê a porta, mas ouve o apito). O do início toca quando a porta
+ * começa a abrir, pelo relógio do SERVIDOR (deveApitar, porta.js): uma vez por rodada e só com atraso de até 1 s (rede lenta,
+ * aba no fundo, sala aberta depois: a porta abre sem som). O efeito depende só da etapa e da hora do apito (ruling D4), não do
+ * objeto `porta` (novo a cada 250 ms). O do fim toca uma vez por rodada ao chegar a 00:00 e volta a armar se o tempo passar de
+ * zero de novo (+1 min). Abrir já em 00:00 não apita. Som desligado: playWhistle não toca (sound.js), e a porta abre no mesmo
+ * tempo.
  */
 function useWhistle(room, porta, serverNowMs, remaining) {
   const inicio = React.useRef({ round: null, feito: false });
+  const agora = React.useRef(serverNowMs);
+  agora.current = serverNowMs;
   const armed = React.useRef({ round: null, on: false });
   const phase = room?.phase ?? null;
   const round = room?.round ?? null;
+  const { etapa, apitoEm } = porta;
   React.useEffect(() => {
     if (inicio.current.round !== round) inicio.current = { round, feito: false };
-    if (deveApitar(porta, serverNowMs, inicio.current.feito)) playWhistle();
-    if (porta.etapa !== "fechada") inicio.current.feito = true;
-  }, [round, porta, serverNowMs]);
+    if (deveApitar({ etapa, apitoEm }, agora.current, inicio.current.feito)) playWhistle();
+    if (etapa !== "fechada") inicio.current.feito = true;
+  }, [round, etapa, apitoEm]);
   React.useEffect(() => {
     if (phase !== "running" || remaining == null) return;
     if (armed.current.round !== round) armed.current = { round, on: false };
@@ -2214,28 +2607,53 @@ function useWhistle(room, porta, serverNowMs, remaining) {
     }
   }, [phase, round, remaining]);
 }
+
+/**
+ * DONO-2 (dono, 19/10): o servidor só entrega a estação ao candidato depois do início marcado, e abrir a porta não muda o `rev`
+ * da sala (a consulta "mudou algo?" diria que não). Quando a porta abre e o estado ainda está sem a estação, pede o estado
+ * INTEIRO de novo (`reload` = app_dupla_room sem p_since_rev) na hora e a cada 1 s até chegar; com a estação no estado, a chave
+ * do conteúdo muda (useRoom) e a folha é pedida.
+ */
+function useEstacaoAoAbrir(aguardando, reload) {
+  const reloadRef = React.useRef(reload);
+  reloadRef.current = reload;
+  React.useEffect(() => {
+    if (!aguardando) return undefined;
+    reloadRef.current();
+    const t = setInterval(() => reloadRef.current(), 1000);
+    return () => clearInterval(t);
+  }, [aguardando]);
+}
 ```
 
 (c) Troque
 ```js
+  const ticking = room?.phase === "running" && Boolean(room.ends_at) && typeof room.paused_left_ms !== "number";
+  const now = useNow(ticking);
   const fromServer = remainingFrom(room, now, offsetMs);
   const remaining = fromServer ?? (typeof room?.duration_ms === "number" ? room.duration_ms : null);
   useWhistle(room, fromServer);
 ```
 por
 ```js
-  // Entrada na estação (dono, 19/10): apito e porta pelo relógio do SERVIDOR, iguais nos dois aparelhos (porta.js).
+  // DONO-2: durante o apito o candidato ainda não tem `ends_at` (só `started_at`); o relógio anda do mesmo jeito para a porta abrir.
+  const ticking = room?.phase === "running" && Boolean(room.ends_at || room.started_at) && typeof room.paused_left_ms !== "number";
+  const now = useNow(ticking);
+  // Entrada na estação (dono, 19/10): apito (nos dois aparelhos) e porta (só no do candidato) pelo relógio do SERVIDOR (porta.js).
   const serverNow = now + (Number.isFinite(offsetMs) ? offsetMs : 0);
   const porta = entrada(room, serverNow);
   const fromServer = remainingFrom(room, now, offsetMs);
   const remaining = tempoMostrado(porta, fromServer, typeof room?.duration_ms === "number" ? room.duration_ms : null);
   useWhistle(room, porta, serverNow, fromServer);
+  // DONO-2: a porta abriu e o estado do candidato ainda não tem a estação → pede o estado de novo até chegar.
+  useEstacaoAoAbrir(room?.phase === "running" && room.me?.role !== "evaluator" && !room.station && porta.etapa === "aberta", reload);
 ```
 
 (d) Logo depois de `if (!Phase) return null;` acrescente:
 ```js
-  // Porta abrindo nos dois aparelhos (apito tocando): a estação aparece quando ela termina de abrir.
-  const entrando = room.phase === "running" && porta.etapa !== "aberta";
+  // Porta só na tela do CANDIDATO (DONO-1): enquanto abre (apito tocando) e até a estação chegar (DONO-2). O ator segue na
+  // tela de trabalho (RunningPhase), com o cronômetro em 10:00 até a porta abrir.
+  const entrando = room.phase === "running" && !isEval && (porta.etapa !== "aberta" || !room.station);
 ```
 
 (e) Troque
@@ -2272,27 +2690,31 @@ No topo de `src/novo/app/dupla/sound.js`, depois do comentário, acrescente `imp
 ```bash
 cd "$W" && nice bash "$FILA" npx vitest run src/__tests__/duplaFluxoSimplesPorta.test.ts src/__tests__/duplaFluxoSimplesSala.test.tsx src/__tests__/duplaSom.test.ts --maxWorkers=2
 ```
-Esperado: PASS (6 da linha do tempo; 16 da sala; `duplaSom` sem mudança).
+Esperado: PASS (6 da linha do tempo; 18 da sala; `duplaSom` sem mudança).
 
-- [ ] **Step 9: Ajustar os testes antigos do apito**
+- [ ] **Step 9: Ajustar os testes antigos do apito e da entrada**
 
 ```bash
-cd "$W" && nice bash "$FILA" npx vitest run src/__tests__/duplaSalaRodape.test.tsx src/__tests__/duplaSalaPreparo.test.tsx src/__tests__/duplaSalaFases.test.tsx src/__tests__/duplaSalaAoVivo.test.tsx src/__tests__/duplaTempoReal.test.tsx --maxWorkers=2
+cd "$W" && nice bash "$FILA" npx vitest run src/__tests__/duplaSalaRodape.test.tsx src/__tests__/duplaSalaPreparo.test.tsx src/__tests__/duplaSalaFases.test.tsx src/__tests__/duplaSalaAoVivo.test.tsx src/__tests__/duplaTempoReal.test.tsx src/__tests__/duplaSalaEstacao.test.tsx --maxWorkers=2
 ```
 
 | Arquivo · teste | Correção |
 |---|---|
-| `duplaSalaRodape` · "apito ao começar e uma vez no 00:00…" | o passo do início vira `({ phase: "running", started_at: at(2000), ends_at: at(5000) })` (o início fica 2 s à frente); depois do clique, `whistle.n` = 1; troque `advance(3500)` por `advance(5500)` antes de "Tempo esgotado" e `whistle.n` = 2. As partes "recarregar no meio" e "abrir já no 00:00" ficam (porta já aberta: sem apito de início) |
-| `duplaSalaPreparo` · "candidato espera e entra sozinho…" | o estado em andamento usa `started_at` 1,5 s depois de `NOW` (`new Date(Date.parse(NOW) + 1500).toISOString()`) e `ends_at` 10 min depois disso; depois do `visibilitychange`, `await advance(1600)` antes de esperar "Em andamento"; `whistle.n` = 1 continua |
+| `duplaSalaRodape` · "apito ao começar e uma vez no 00:00…" (ator) | o passo do início vira `({ phase: "running", started_at: at(2000), ends_at: at(5000) })` (o início fica 2 s à frente); depois do clique, `whistle.n` = 1 (o ator ouve o apito, sem porta: DONO-1); troque `advance(3500)` por `advance(5500)` antes de "Tempo esgotado" e `whistle.n` = 2. As partes "recarregar no meio" e "abrir já no 00:00" ficam (porta já aberta: sem apito de início) |
+| `duplaSalaPreparo` · "candidato espera e entra sozinho…" | o estado em andamento usa `started_at` 1,5 s depois de `NOW` (`new Date(Date.parse(NOW) + 1500).toISOString()`) e `ends_at` 10 min depois disso; depois do `visibilitychange`, `await advance(1600)` antes de esperar "Em andamento"; `whistle.n` = 1 continua (o servidor simulado já manda a estação: a tela não precisa pedir de novo) |
 | testes que montam a sala em `running` com `started_at` no futuro em relação a `NOW` sem querer | ponha `started_at: NOW` (porta já aberta) |
+| testes do ATOR que esperavam uma porta ou "A estação vai começar" depois de "Iniciar estação" | não há porta na tela do ator (DONO-1): espere a tela de trabalho (`getAllByText("Em andamento")`, cronômetro) |
+| testes do CANDIDATO em `running` cujo estado simulado não traz `station` nem `ends_at` (como o servidor faz durante o apito) | a tela mostra a porta até a estação chegar (DONO-2): ou ponha a estação no estado (porta já aberta), ou siga o modelo de `duplaFluxoSimplesSala` ("candidato (DONO-2)…") |
 
 Rode de novo. Esperado: PASS.
 
 - [ ] **Step 10: Commit**
 
+Antes, `cd "$W" && git status --short`: todo arquivo mudado por esta tarefa entra no `git add` abaixo (acrescente qualquer outro teste ajustado). Depois do commit, `git status --short` vazio.
+
 ```bash
-cd "$W" && git add src/novo/app/dupla/porta.js src/novo/app/dupla/room/Porta.jsx src/novo/app/dupla/room/RoomScreen.jsx src/novo/app/dupla/sound.js src/__tests__/duplaFluxoSimplesPorta.test.ts src/__tests__/duplaFluxoSimplesSala.test.tsx src/__tests__/duplaSalaRodape.test.tsx src/__tests__/duplaSalaPreparo.test.tsx && git commit -m "$(cat <<'EOF'
-Treino em Dupla, fluxo simples (apito e porta): a porta abre durante o apito pelo relogio do servidor nos dois aparelhos; o candidato entra quando o apito acaba; sem som ou com movimento reduzido a porta abre no mesmo tempo
+cd "$W" && git add src/novo/app/dupla/porta.js src/novo/app/dupla/room/Porta.jsx src/novo/app/dupla/room/RoomScreen.jsx src/novo/app/dupla/sound.js src/__tests__/duplaFluxoSimplesPorta.test.ts src/__tests__/duplaFluxoSimplesSala.test.tsx src/__tests__/duplaSalaRodape.test.tsx src/__tests__/duplaSalaPreparo.test.tsx src/__tests__/duplaSalaFases.test.tsx src/__tests__/duplaSalaAoVivo.test.tsx src/__tests__/duplaTempoReal.test.tsx src/__tests__/duplaSalaEstacao.test.tsx && git commit -m "$(cat <<'EOF'
+Treino em Dupla, fluxo simples (apito e porta): apito nos dois aparelhos pelo relogio do servidor; a porta abre so no candidato (o ator fica na tela de trabalho); ao abrir, a tela do candidato pede estado e conteudo de novo e so entao mostra a folha; sem som ou com movimento reduzido a porta abre no mesmo tempo
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 EOF
@@ -2470,7 +2892,19 @@ por
 
 - [ ] **Step 5: `ResultPhase.jsx`**
 
-(a) No comentário do topo, troque `"Treinar outra estação" abre a rodada seguinte com o mesmo par, de volta à` … `"Encerrar treino" pede` `confirmação.` (as três linhas) por: `Fim (dono, 19/10): "Nova estação · mesmo papel", "Nova estação · trocar de papel" (rodada seguinte com o mesmo par, na preparação, estação DIFERENTE das já treinadas; o banco recusa repetida) e "Sair" (pede confirmação).`
+(a) No comentário do topo, troque as linhas 4 a 7
+```js
+// conferência); depois aparece "Nota revisada". "Treinar outra estação" abre a rodada seguinte com o mesmo par, de volta à
+// escolha dos papéis e de uma estação DIFERENTE (decisão do dono de 16/10: não há inverter papéis na mesma estação, porque o
+// novo candidato já viu o tema como avaliador; o banco recusa estação já treinada na sala). "Encerrar treino" pede
+// confirmação. O nome da estação aparece aos dois só aqui, no resultado.
+```
+por
+```js
+// conferência); depois aparece "Nota revisada". Fim (dono, 19/10): "Nova estação · mesmo papel", "Nova estação · trocar de
+// papel" (rodada seguinte com o mesmo par, na preparação, estação DIFERENTE das já treinadas; o banco recusa repetida) e "Sair"
+// (pede confirmação). O nome da estação aparece aos dois só aqui, no resultado.
+```
 
 (b) Troque o bloco dos botões do cabeçalho (do `<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>` que contém "Encerrar treino" até o `</div>` antes de `)}`) por:
 ```jsx
@@ -2528,7 +2962,7 @@ e, dentro do `.map`, troque `{value || "Sem comentários."}` por `{value || "Sem
 ```bash
 cd "$W" && nice bash "$FILA" npx vitest run src/__tests__/duplaFluxoSimplesSala.test.tsx --maxWorkers=2
 ```
-Esperado: PASS (21 testes).
+Esperado: PASS (23 testes).
 
 - [ ] **Step 7: Ajustar os testes antigos que o desenho muda**
 
@@ -2539,18 +2973,25 @@ cd "$W" && nice bash "$FILA" npx vitest run src/__tests__/duplaSalaConferencia.t
 | Arquivo · teste | Correção |
 |---|---|
 | `duplaSalaConferencia`, `duplaSalaFases` (linhas 534-550), `duplaSalaEstacao` (203-217) | `"Pontos positivos"` → `"Comentário (opcional)"`; `"Finalizar e liberar resultado"` → `"Enviar nota"`; botão do diálogo `"Finalizar e liberar"` → `"Enviar nota"`; `p_feedback` esperado `{ pos: "", neg: "", gen: <texto> }` |
+| `duplaSalaConferencia` · linhas 72-73 (dois campos preenchidos) | só existe um campo: apague a linha de `"Pontos positivos"` e troque `getByLabelText("Orientações gerais")` por `getByLabelText("Comentário (opcional)")` (mesmo texto "Organize o exame."); o `p_feedback` esperado vira `{ pos: "", neg: "", gen: "Organize o exame." }`; título do diálogo `"Finalizar avaliação?"` → `"Enviar nota?"` (a frase dos critérios pendentes fica) |
+| `duplaSalaConferencia` · "feedback e anotações sobrevivem ao recarregar…" (linhas 89 e 92) | `getByLabelText("Pontos para melhorar")` → `getByLabelText("Comentário (opcional)")` nas duas linhas (o rascunho guarda só `gen`); os botões "Finalizar e liberar resultado"/"Finalizar e liberar" → "Enviar nota" |
+| `duplaSalaFases` · linha 553 | `"Finalizar avaliação?"` → `"Enviar nota?"` (e o botão da linha 550 → `"Enviar nota"`) |
+| `duplaSalaFases` · resultado (linha 582) | o `RESULT` do teste tem `pos` e `neg` preenchidos e `gen` vazio: aparecem "Pontos positivos" e "Pontos para melhorar" (campos antigos preenchidos) e "Comentário" com "Sem comentário."; troque `getAllByText("Sem comentários.")).toHaveLength(1)` por `getAllByText("Sem comentário.")).toHaveLength(1)` e o título "Feedback do avaliador", se conferido, por "Comentário do ator" |
+| `duplaSalaFases` · resultado do avaliador sem feedback (linha 604) | só o "Comentário" aparece: `getAllByText("Sem comentários.")).toHaveLength(3)` vira `getAllByText("Sem comentário.")).toHaveLength(1)` |
 | `duplaSalaFases` (586-587) | `"Encerrar treino"` → `"Sair"`; `"Treinar outra estação"` → `"Nova estação · mesmo papel"` (e confira também `"Nova estação · trocar de papel"`) |
 | `duplaResultadoTela` · "avaliador vê … 'Rever a nota'" | depois de rever, o rascunho tem só `gen`: troque `getByLabelText("Pontos positivos")` por `getByLabelText("Comentário (opcional)")` e o valor esperado pelo `gen` do resultado (no `result()` do arquivo, mude `feedback` para `{ pos: "", neg: "", gen: "Boa escuta." }`) |
 | `duplaResultadoTela` · "Treinar outra estação (sem inverter papéis)…" | reescreva com os botões novos: "Nova estação · mesmo papel" chama `app_dupla_next_station` com `p_papel: "mesmo"` uma vez (clique duplo não duplica); o passo do servidor devolve `{ phase: "setup", round: 2, station: null, station_ready: false }` e a tela mostra "Escolher estação"; "Sair" abre "Encerrar treino?" |
 | `duplaHistoricoTela` (linha 71) | a lista de botões ausentes no histórico vira `["Nova estação · mesmo papel", "Nova estação · trocar de papel", "Sair", "Solicitar revisão da nota", "Rever a nota"]` |
-| `duplaSozinhoIATela` / `duplaSozinhoResultado` | o resultado do treino sozinho com `pos` preenchido continua mostrando "Pontos positivos" (campo antigo preenchido): deve passar sem mudança |
+| `duplaSozinhoIATela` / `duplaSozinhoResultado` | usam o resultado do treino sozinho (`SoloResult.jsx`), não o `ResultPhase`: devem passar sem mudança |
 
 Rode de novo. Esperado: PASS.
 
 - [ ] **Step 8: Commit**
 
+Antes, `cd "$W" && git status --short`: todo arquivo mudado por esta tarefa entra no `git add` abaixo (acrescente qualquer outro teste ajustado). Depois do commit, `git status --short` vazio.
+
 ```bash
-cd "$W" && git add src/novo/app/dupla/room/ReviewPhase.jsx src/novo/app/dupla/room/ResultPhase.jsx src/novo/app/dupla/room/useRoom.js src/__tests__/duplaFluxoSimplesSala.test.tsx src/__tests__/duplaSalaConferencia.test.tsx src/__tests__/duplaSalaFases.test.tsx src/__tests__/duplaResultadoTela.test.tsx src/__tests__/duplaSalaEstacao.test.tsx src/__tests__/duplaHistoricoTela.test.tsx && git commit -m "$(cat <<'EOF'
+cd "$W" && git add src/novo/app/dupla/room/ReviewPhase.jsx src/novo/app/dupla/room/ResultPhase.jsx src/novo/app/dupla/room/useRoom.js src/__tests__/duplaFluxoSimplesSala.test.tsx src/__tests__/duplaSalaConferencia.test.tsx src/__tests__/duplaSalaFases.test.tsx src/__tests__/duplaResultadoTela.test.tsx src/__tests__/duplaSalaEstacao.test.tsx src/__tests__/duplaHistoricoTela.test.tsx src/__tests__/duplaSozinhoIATela.test.tsx src/__tests__/duplaSozinhoResultado.test.tsx && git commit -m "$(cat <<'EOF'
 Treino em Dupla, fluxo simples (nota e fim): um comentario opcional e Enviar nota; Nova estacao mesmo papel ou trocar de papel e Sair
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
@@ -2795,8 +3236,10 @@ Rode de novo. Esperado: PASS.
 
 - [ ] **Step 7: Commit**
 
+Antes, `cd "$W" && git status --short`: todo arquivo mudado por esta tarefa entra no `git add` abaixo (acrescente qualquer outro teste ajustado). Depois do commit, `git status --short` vazio.
+
 ```bash
-cd "$W" && git add src/novo/app/dupla/MatchModal.jsx src/novo/app/dupla/live.js src/novo/app/dupla/radarApi.js src/novo/app/dupla/HandleField.jsx src/novo/app/dupla/RadarScreen.jsx src/novo/app/App.jsx src/__tests__/duplaFluxoSimplesConvite.test.tsx src/__tests__/duplaRadarTempoReal.test.tsx src/__tests__/duplaArrobaTela.test.tsx src/__tests__/duplaRadarTela.test.tsx src/__tests__/duplaRotas.test.tsx && git commit -m "$(cat <<'EOF'
+cd "$W" && git add src/novo/app/dupla/MatchModal.jsx src/novo/app/dupla/live.js src/novo/app/dupla/radarApi.js src/novo/app/dupla/HandleField.jsx src/novo/app/dupla/RadarScreen.jsx src/novo/app/App.jsx src/__tests__/duplaFluxoSimplesConvite.test.tsx src/__tests__/duplaRadarTempoReal.test.tsx src/__tests__/duplaArrobaTela.test.tsx src/__tests__/duplaRadarTela.test.tsx src/__tests__/duplaRotas.test.tsx src/__tests__/duplaMatchTela.test.tsx src/__tests__/duplaChatTela.test.tsx src/__tests__/duplaPerfilTela.test.tsx && git commit -m "$(cat <<'EOF'
 Treino em Dupla, fluxo simples (convite): te chamou para treinar como candidato, Aceitar ou Recusar, sem nada da estacao; convite por link do @ sai (botao, tela, rota e pedido de 24 h)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
@@ -3024,15 +3467,17 @@ Rode de novo. Esperado: PASS.
 
 - [ ] **Step 8: Commit**
 
+Antes, `cd "$W" && git status --short`: todo arquivo mudado por esta tarefa entra no `git add` abaixo (acrescente qualquer outro teste que o `grep -ln "PracticeScreen"` listou e foi ajustado). Depois do commit, `git status --short` vazio.
+
 ```bash
-cd "$W" && git add src/novo/app/dupla/RadarScreen.jsx src/novo/app/dupla/radarApi.js src/novo/app/dupla/PracticeScreen.jsx src/__tests__/duplaFluxoSimplesConvite.test.tsx src/__tests__/duplaRadarTela.test.tsx src/__tests__/duplaPraticarTela.test.tsx src/__tests__/duplaMatchTela.test.tsx src/__tests__/duplaChatTela.test.tsx src/__tests__/duplaCreditosTela.test.tsx && git commit -m "$(cat <<'EOF'
+cd "$W" && git add src/novo/app/dupla/RadarScreen.jsx src/novo/app/dupla/radarApi.js src/novo/app/dupla/PracticeScreen.jsx src/__tests__/duplaFluxoSimplesConvite.test.tsx src/__tests__/duplaRadarTela.test.tsx src/__tests__/duplaPraticarTela.test.tsx src/__tests__/duplaMatchTela.test.tsx src/__tests__/duplaChatTela.test.tsx src/__tests__/duplaCreditosTela.test.tsx src/__tests__/duplaRotas.test.tsx src/__tests__/duplaEstacoesTela.test.tsx src/__tests__/fase2TelasTela.test.tsx src/__tests__/menuCelularMais.test.tsx src/__tests__/duplaPerfilTela.test.tsx && git commit -m "$(cat <<'EOF'
 Treino em Dupla, fluxo simples (lista): abas Online e Perto de voce; sem estacao, Convidar abre a lista de estacoes; o Praticar abre a lista e o match fica secundario; menu continua Praticar
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 EOF
 )"
 ```
-(Tire do `git add` o que não mudou.)
+(Arquivo listado que não mudou não atrapalha o `git add`. A escolha de estação pelo colega usa o seletor da sala, sem todos os filtros do Banco de estações: variação C3, pendência anotada no desenho §5b.)
 
 ---
 
@@ -3091,14 +3536,17 @@ tail -3 /Volumes/StaziaMed/.tmp-aulas/fase2/publicar-fluxo-simples/suite-ramo.lo
 
 - [ ] **Step 3: Suíte do main e comparação**
 
-```bash
-cd "$W" && git rev-parse --short main
-```
-Se for `ade3ef1e`, use a suíte do main já gravada: `cp /Volumes/StaziaMed/.tmp-aulas/fase2/publicar-etapa2/suite-main.json /Volumes/StaziaMed/.tmp-aulas/fase2/publicar-fluxo-simples/suite-main.json`. Se o main andou, rode a do main num worktree temporário e apague-o depois:
+A base da comparação é o ponto em que este ramo sai do main publicado: `git merge-base HEAD origin/main` (ruling E). **Nunca use o nome `main`**: o `main` local (77852960) é resto antigo, não pode ser usado nem mexido, e o ramo `main` já está aberto na pasta principal (um `git worktree add … main` falha). Não rode `git fetch` nem junte `origin/main` (ruling A24).
 
 ```bash
-cd "$W" && git worktree add /Volumes/StaziaMed/.tmp-aulas/tmp-correcoes/main-suite main && ln -s "$W/node_modules" /Volumes/StaziaMed/.tmp-aulas/tmp-correcoes/main-suite/node_modules && bash /Volumes/StaziaMed/.tmp-aulas/fase2/publicar-fluxo-simples/rodar-suite.sh /Volumes/StaziaMed/.tmp-aulas/tmp-correcoes/main-suite main; git worktree remove --force /Volumes/StaziaMed/.tmp-aulas/tmp-correcoes/main-suite
+cd "$W" && B=$(git merge-base HEAD origin/main) && git rev-parse --short "$B"
 ```
+Se for `ade3ef1e` (situação de 19/10), use a suíte do main já gravada nessa base: `cp /Volumes/StaziaMed/.tmp-aulas/fase2/publicar-etapa2/suite-main.json /Volumes/StaziaMed/.tmp-aulas/fase2/publicar-fluxo-simples/suite-main.json`. Se for outro, rode a suíte dessa base num worktree temporário DESTACADO (sem ramo) e apague-o depois:
+
+```bash
+cd "$W" && B=$(git merge-base HEAD origin/main) && git worktree add --detach /Volumes/StaziaMed/.tmp-aulas/tmp-correcoes/main-suite "$B" && ln -s "$W/node_modules" /Volumes/StaziaMed/.tmp-aulas/tmp-correcoes/main-suite/node_modules && bash /Volumes/StaziaMed/.tmp-aulas/fase2/publicar-fluxo-simples/rodar-suite.sh /Volumes/StaziaMed/.tmp-aulas/tmp-correcoes/main-suite main; git worktree remove --force /Volumes/StaziaMed/.tmp-aulas/tmp-correcoes/main-suite
+```
+Confira que existe `/Volumes/StaziaMed/.tmp-aulas/fase2/publicar-fluxo-simples/suite-main.json` antes de comparar (sem ele o `comparar.mjs` quebra).
 
 Compare:
 ```bash
@@ -3145,6 +3593,9 @@ declare
   v_inv uuid;
   v_s jsonb;
   v_c jsonb;
+  v_a jsonb;
+  v_k jsonb;
+  v_img text;
   v_call text;
   v_recusa text := '';
 begin
@@ -3158,7 +3609,7 @@ begin
     (4, 'início sem "os dois prontos" e com "Escolha a estação antes de iniciar"',
        (select prosrc from pg_proc where proname = 'app_dupla_start' and pronamespace = 'public'::regnamespace) not like '%Os dois precisam estar prontos%'
        and (select prosrc from pg_proc where proname = 'app_dupla_start' and pronamespace = 'public'::regnamespace) like '%Escolha a estação antes de iniciar%'),
-    (5, 'estado e conteúdo escondem a estação antes de começar',
+    (5, 'estado e conteúdo escondem a estação antes do início marcado',
        (select prosrc from pg_proc where proname = 'dupla_room_state' and pronamespace = 'public'::regnamespace) like '%v_hide%'
        and (select prosrc from pg_proc where proname = 'app_dupla_room_content' and pronamespace = 'public'::regnamespace) like '%''waiting'', true%'
        and (select prosrc from pg_proc where proname = 'app_dupla_room_content' and pronamespace = 'public'::regnamespace) like '%dupla_sweep%'),
@@ -3171,7 +3622,11 @@ begin
        and not has_function_privilege('anon', 'public.app_dupla_invite(uuid,text)', 'execute')
        and not has_function_privilege('authenticated', 'public.dupla_invite_core(uuid,uuid,text,boolean,uuid,boolean)', 'execute')
        and not has_function_privilege('authenticated', 'public.dupla_invite_accepted_setup()', 'execute')
-       and not has_function_privilege('authenticated', 'public.dupla_room_state(public.checklist_rooms,uuid)', 'execute')),
+       and not has_function_privilege('authenticated', 'public.dupla_room_state(public.checklist_rooms,uuid)', 'execute')
+       and not has_function_privilege('authenticated', 'public.dupla_antes_do_inicio(public.checklist_rooms)', 'execute')
+       and not has_function_privilege('anon', 'public.app_dupla_print_path(uuid,text)', 'execute')
+       and not has_function_privilege('anon', 'public.app_dupla_result(uuid,integer)', 'execute')
+       and not has_function_privilege('anon', 'public.app_dupla_history(integer)', 'execute')),
     (8, 'Treino em Dupla continua desligado e a cota de créditos também',
        coalesce((select (value ->> 'aberto')::boolean from public.app_settings where key = 'treino_dupla'), false) = false
        and coalesce((select (value ->> 'ativa')::boolean from public.app_settings where key = 'creditos'), false) = false);
@@ -3186,7 +3641,15 @@ begin
     (16, 'convite por link do @ saiu: as três funções recusam e a lista de pedidos é vazia',
        (select bool_and(prosrc like '%O convite por link saiu%') from pg_proc
          where proname in ('app_dupla_link_lookup', 'app_dupla_link_request', 'app_dupla_answer_request') and pronamespace = 'public'::regnamespace)
-       and (select prosrc from pg_proc where proname = 'app_dupla_requests' and pronamespace = 'public'::regnamespace) like '%''requests'', ''[]''::jsonb%');
+       and (select prosrc from pg_proc where proname = 'app_dupla_requests' and pronamespace = 'public'::regnamespace) like '%''requests'', ''[]''::jsonb%'),
+    (19, 'DONO-2 no código: estado, conteúdo e imagem usam o início marcado; resultado, resultado pelo histórico e histórico também',
+       to_regprocedure('public.dupla_antes_do_inicio(public.checklist_rooms)') is not null
+       and (select bool_and(prosrc like '%dupla_antes_do_inicio%') from pg_proc
+             where proname in ('dupla_room_state', 'app_dupla_room_content', 'app_dupla_print_path') and pronamespace = 'public'::regnamespace)
+       and (select bool_and(prosrc like '%now() < s.started_at%') from pg_proc
+             where proname in ('app_dupla_result', 'app_dupla_history_result', 'app_dupla_history') and pronamespace = 'public'::regnamespace)),
+    (20, 'dados: nenhuma sala começada (andamento, conferência ou resultado) sem started_at — o sigilo do candidato conta com isso',
+       not exists (select 1 from public.checklist_rooms where phase in ('running', 'review', 'result') and started_at is null));
 
   -- ---------------------------------------------------------------- aluno e visitante recusados
   select user_id into v_admin from public.user_roles where role = 'admin' order by user_id limit 1;
@@ -3203,7 +3666,8 @@ begin
     execute 'set local role authenticated';
     foreach v_call in array array[
       format('app_dupla_invite(%L::uuid, ''inep2025-1-e07'')', v_admin), 'app_dupla_radar(null, ''perto'')', 'app_dupla_invites()', 'app_dupla_requests()',
-      'app_dupla_next_station(''00000000-0000-4000-8000-0000000000ff''::uuid, ''trocar'')', 'app_dupla_start(''00000000-0000-4000-8000-0000000000ff''::uuid)'] loop
+      'app_dupla_next_station(''00000000-0000-4000-8000-0000000000ff''::uuid, ''trocar'')', 'app_dupla_start(''00000000-0000-4000-8000-0000000000ff''::uuid)',
+      'app_dupla_print_path(''00000000-0000-4000-8000-0000000000ff''::uuid, ''candidate_sheet'')'] loop
       begin
         execute 'select public.' || v_call;
         v_recusa := v_recusa || v_call || ' ABRIU; ';
@@ -3261,16 +3725,38 @@ begin
     perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
     v_s := public.app_dupla_start(v_sala);
+    v_a := public.app_dupla_room(v_sala); -- o ator recebe a estação com o nome desde o toque (DONO-1: tela de trabalho no apito)
     execute 'reset role';
+    insert into _conf_fs values (13, 'equipe: um toque do ator inicia 2 s à frente (apito); o ator recebe a estação na hora',
+      v_s ->> 'phase' = 'running' and v_a -> 'station' ? 'name'
+      and (select started_at > now() + interval '1 second' and ends_at - started_at = coalesce(duration_ms, 600000) * interval '1 millisecond'
+             from public.checklist_rooms where id = v_sala));
+    -- DONO-2: o ensaio é uma transação só (now() fixo), então logo depois do toque o candidato está ANTES do início marcado
     perform set_config('request.jwt.claims', json_build_object('sub', v_outro, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
     v_c := public.app_dupla_room(v_sala);
+    v_k := public.app_dupla_room_content(v_sala);
+    begin
+      perform public.app_dupla_print_path(v_sala, 'candidate_sheet');
+      v_img := 'ABRIU';
+    exception when others then
+      v_img := 'recusou';
+    end;
+    execute 'reset role';
+    insert into _conf_fs values (17, 'DONO-2: antes do início marcado o candidato recebe só a porta e o horário (estado, conteúdo e imagem da folha recusada)',
+      v_c -> 'station' = 'null'::jsonb and v_c -> 'ends_at' = 'null'::jsonb and v_c -> 'duration_ms' = 'null'::jsonb
+      and v_c -> 'released_pressings' = '[]'::jsonb and v_c ->> 'started_at' is not null and (v_c ->> 'porta') ~ '^[1-5]$'
+      and v_k -> 'station' = 'null'::jsonb and coalesce((v_k ->> 'waiting')::boolean, false) and v_img = 'recusou');
+    -- a porta abre: o início marcado passa (trazendo o início e o fim 3 s para trás, só dentro do ensaio, que é desfeito)
+    update public.checklist_rooms set started_at = started_at - interval '3 seconds', ends_at = ends_at - interval '3 seconds' where id = v_sala;
+    execute 'set local role authenticated';
+    v_c := public.app_dupla_room(v_sala);
+    v_k := public.app_dupla_room_content(v_sala);
     execute 'reset role';
     perform set_config('request.jwt.claims', '', true);
-    insert into _conf_fs values (13, 'equipe: um toque do ator inicia 2 s à frente (apito); em andamento o candidato vê a estação sem o nome',
-      v_s ->> 'phase' = 'running' and v_c -> 'station' is not null and v_c -> 'station' <> 'null'::jsonb and not (v_c -> 'station' ? 'name')
-      and (select started_at > now() + interval '1 second' and ends_at - started_at = coalesce(duration_ms, 600000) * interval '1 millisecond'
-             from public.checklist_rooms where id = v_sala));
+    insert into _conf_fs values (18, 'DONO-2: passado o início marcado, o candidato recebe a estação (sem o nome), o fim do cronômetro e a folha',
+      v_c -> 'station' is not null and v_c -> 'station' <> 'null'::jsonb and not (v_c -> 'station' ? 'name')
+      and v_c ->> 'ends_at' is not null and v_k -> 'station' ? 'doctor_scene');
   end if;
 end
 $conf$;
@@ -3284,7 +3770,7 @@ select jsonb_agg(jsonb_build_object('item', item, 'ok', ok) order by o) as confe
 ```bash
 cd /Volumes/StaziaMed/.tmp-aulas/fase2/publicar-fluxo-simples && E=/Volumes/StaziaMed/.tmp-aulas/fase2/publicar-etapa2 && node ensaiar.mjs "$E/antes-etapa2.sql" "$E/publicar-etapa2.sql" "$E/conferir-etapa2.sql" "$E/preparo-aluno-temporario.sql" "$E/conferir-base-ontem.sql" "$E/restaurar-aluno-temporario.sql" publicar-fluxo-simples.sql conferir-fluxo-simples.sql | tee saida-ensaio-1.txt
 ```
-Esperado: 22/22 da etapa 2, 53/53 da base (as duas conferências rodam ANTES das três migrações novas, porque conferem o texto das funções da etapa 2 que o fluxo simples refaz), `tudo_ok: true` do fluxo simples, e a última linha `ENSAIO (desfeito)`.
+Esperado: 22/22 da etapa 2, 53/53 da base (as duas conferências rodam ANTES das três migrações novas, porque conferem o texto das funções da etapa 2 que o fluxo simples refaz), `tudo_ok: true` do fluxo simples (itens 1–20, inclusive 17–19 do DONO-2 e 20, que confere nos dados de produção que não há sala começada sem `started_at`), e a última linha `ENSAIO (desfeito)`. Se o item 20 falhar, pare e avise: há sala real em andamento sem início gravado, e o sigilo do candidato nela dependeria só da fase.
 
 Cadeia colada duas vezes (idempotência):
 ```bash
@@ -3302,18 +3788,22 @@ Se qualquer ensaio der "ERRO, nada gravado": leia o erro, corrija a migração n
 
 - [ ] **Step 8: Relatório (fora do repositório) e conferência final**
 
-Escreva `/Volumes/StaziaMed/.tmp-aulas/fase2/publicar-fluxo-simples/RELATORIO.md` com: hash do ramo (`git -C "$W" rev-parse --short HEAD`); as três migrações e o sha256 de `publicar-fluxo-simples.sql`; a comparação da suíte (`comparacao.txt`: totais e "só no ramo"); `apoioVarredura`; build; os três ensaios; e "Para publicar (só com ordem do dono)": 1) SQL da etapa 2 (se ainda não foi) e depois `publicar-fluxo-simples.sql` pelo `/Volumes/StaziaMed/.tmp-aulas/pgaplicar/aplicar-sql.mjs --gravar`, conferindo com `node ensaiar.mjs conferir-fluxo-simples.sql`; 2) site (juntar no main, GitHub, Vercel); 3) **teste manual do dono com duas contas da equipe (computador e celular)** antes de qualquer abertura aos alunos: porta numerada, apito e porta abrindo juntos nos dois aparelhos, folha e 10 minutos ao abrir. Anote também que nenhum modelo do Vertex/Gemini foi usado em nenhum passo (nem para revisar).
+Escreva `/Volumes/StaziaMed/.tmp-aulas/fase2/publicar-fluxo-simples/RELATORIO.md` com: hash do ramo (`git -C "$W" rev-parse --short HEAD`); as três migrações e o sha256 de `publicar-fluxo-simples.sql`; a comparação da suíte (`comparacao.txt`: totais e "só no ramo"); `apoioVarredura`; build; os três ensaios; e "Para publicar (só com ordem do dono)": 1) SQL da etapa 2 (se ainda não foi) e depois `publicar-fluxo-simples.sql` pelo `/Volumes/StaziaMed/.tmp-aulas/pgaplicar/aplicar-sql.mjs --gravar`, conferindo com `node ensaiar.mjs conferir-fluxo-simples.sql`; 2) site (juntar no main, GitHub, Vercel); 3) **teste manual do dono com duas contas da equipe (computador e celular)** antes de qualquer abertura aos alunos: porta numerada no candidato; apito nos dois aparelhos ao mesmo tempo; a porta abre só no do candidato e o ator segue na tela dele (roteiro, impressos, PEP) durante o apito (DONO-1); a folha e os 10 minutos só aparecem ao candidato quando a porta abre (DONO-2). Anote também a pendência C3 (a escolha de estação pelo colega usa o seletor da sala, sem todos os filtros do Banco de estações) e que nenhum modelo do Vertex/Gemini foi usado em nenhum passo (nem para revisar).
 
-Confira que nada foi gravado nem enviado:
+Confira que nada foi gravado nem enviado (o ramo nunca foi enviado: não existe `origin/fase2-etapa2`, então não compare com ele):
 ```bash
-cd "$W" && git status --short && git log --oneline -10 && git log origin/fase2-etapa2..HEAD --oneline 2>/dev/null | wc -l
+cd "$W" && git status -sb && git log --oneline -12
 ```
-Esperado: árvore limpa; os commits das Tarefas 1–9 no ramo; nenhum `push`. Nenhum comando com `--gravar`, `supabase db push` ou Vercel foi rodado.
+Esperado: `## fase2-etapa2` sem nada mudado embaixo (árvore limpa); no log, os commits das Tarefas 1–9 em cima de `d55e5f35` (e do commit deste plano); nenhum `push`. Nenhum comando com `--gravar`, `supabase db push` ou Vercel foi rodado.
 
 ---
 
 ## Self-review (feito ao escrever)
 
-- **Cobertura do desenho (com a 2ª rodada, e8d458e5):** §1 um toque (T3, T5), ator escolhe (T1, T3, T9), telas limpas (T2, T5); §2 decisões 1 lista (T9), 2 só o ator convida (T1), 2b mesmo/trocar (T3, T7), 3 sem link de chamada (constraint + T5), 4 um botão (T3, T5), 5 comentário e revisão (T3, T7), 6 dois caminhos sem sortear estação (T9; "Em dupla" do Banco já leva a `go("dupla", { estacao })`, que agora abre a lista), 7 match secundário (T3 banco, T9 tela), 8 duas abas (T1, T9); §2b link do @ sai (T1 banco, T8 telas e rota), papéis do match pelas escolhas do perfil sem regra nova (T3 não toca em `dupla_assign`), estação limpa quando quem a trouxe vira candidato (T3: match e escolha de papéis), menu continua "Praticar" (T9, guarda), nenhum Vertex/Gemini (constraint, T10); §3.3 porta numerada desde a entrada e "O ator está escolhendo a estação" (T2, T5); §3.4 apito e porta sincronizados pelo relógio do servidor, som desligado e movimento reduzido (T3 grava +2 s, T6 linha do tempo e telas); recusa/fim do prazo avisam o ator (`ClosedPhase` "{nome} não entrou na sala.", já coberto em `duplaSalaFases`); §4 todos os itens (T1–T3); §5 telas e celular (T5–T9); §7 testes, varredura, suíte, build e ensaio (T1–T10).
-- **Nomes:** `app_dupla_next_station(p_room_id, p_papel)`, `actions.nextStation(papel)`, `station_ready`, `porta`, `dupla_porta`, `waiting`, `role` do convite, `recolarFluxoSimples`, `candidateWaitText`, `APITO_MS`, `APITO_TOLERANCIA_MS`, `entrada`, `deveApitar`, `tempoMostrado`, `Porta`, `PortaEntrada` usados igual em todas as tarefas.
+- **Cobertura do desenho (com a 2ª rodada, e8d458e5):** §1 um toque (T3, T5), ator escolhe (T1, T3, T9), telas limpas (T2, T5); §2 decisões 1 lista (T9), 2 só o ator convida (T1), 2b mesmo/trocar (T3, T7), 3 sem link de chamada (constraint + T5), 4 um botão (T3, T5), 5 comentário e revisão (T3, T7), 6 dois caminhos sem sortear estação (T9; "Em dupla" do Banco já leva a `go("dupla", { estacao })`, que agora abre a lista), 7 match secundário (T3 banco, T9 tela), 8 duas abas (T1, T9); §2b link do @ sai (T1 banco, T8 telas e rota), papéis do match pelas escolhas do perfil sem regra nova (T3 não toca em `dupla_assign`), estação limpa quando quem a trouxe vira candidato (T3: match e escolha de papéis), menu continua "Praticar" (T9, guarda), nenhum Vertex/Gemini (constraint, T10); §3.3 porta numerada desde a entrada e "O ator está escolhendo a estação" (T2, T5); §3.4 apito nos dois aparelhos e porta só no candidato pelo relógio do servidor, nada da estação ao candidato nos 2 s, conteúdo pedido de novo ao abrir, som desligado e movimento reduzido (T2 sigilo por horário, T3 grava +2 s, T6 linha do tempo e telas); recusa/fim do prazo avisam o ator (`ClosedPhase` "{nome} não entrou na sala.", já coberto em `duplaSalaFases`); §4 todos os itens (T1–T3); §5 telas e celular (T5–T9); §7 testes, varredura, suíte, build e ensaio (T1–T10).
+- **3ª rodada do dono (seção 2c do desenho):**
+  - **DONO-1 (o ator não vê a porta):** T5 (a porta só existe na `SetupPhase` do candidato; teste do ator confere que não há porta), T6 (`entrando` só para quem não é o ator; o ator fica na `RunningPhase` com o cronômetro em 10:00 durante o apito; `useWhistle` toca nos dois; teste "ator (DONO-1)"), T10 (item 13 e roteiro do teste manual).
+  - **DONO-2 (nada da estação ao candidato antes do início marcado):** T2 (regra no banco por horário, não só por fase: apoio `dupla_antes_do_inicio`; cobre TODAS as funções que entregam algo da estação ao candidato — `dupla_room_state` (também `ends_at`, `paused_left_ms`, `duration_ms` e `released_pressings`), `app_dupla_room_content`, `app_dupla_print_path` (base da URL assinada), `app_dupla_result`, `app_dupla_history_result`, `app_dupla_history`; testes "DONO-2…" com o início no futuro e depois trazido para o passado), T3 (o início 2 s à frente faz a regra valer de verdade; `abrirPorta` nos testes; teste "DONO-2 com o início de verdade"), T4 (permissões e desfazer das funções novas e refeitas), T5 (chave do conteúdo em "espera" enquanto o estado vem sem a estação), T6 (ao abrir a porta, `useEstacaoAoAbrir` pede o estado inteiro de novo e repete a cada 1 s; a folha só aparece depois; o relógio da tela anda só com `started_at`), T10 (itens 17–20 da conferência). Funções conferidas e deixadas de fora por não entregarem conteúdo da estação: `app_dupla_marks` (só o avaliador), `app_dupla_room_done_stations` (rodadas anteriores), `open_room` do baralho/radar, `dupla_room_notify` (só o `rev`), `app_dupla_chat_room`, `dupla_export_rooms`.
+- **Rulings da varredura aplicados no texto:** E (T10 Step 3 por `git merge-base HEAD origin/main`, worktree `--detach` se a base mudar; Step 8 com `git status -sb`/`git log`, sem `origin/fase2-etapa2`); A24 (não juntar `origin/main`; T4 confere que só há as três migrações a partir da 014130 antes do gerador); tabelas de quebras completas (T2: `duplaPacoteBanco`, `duplaTelasBanco`, `duplaSalaTesteLocal` 152-154, `duplaCorrecoesPublicacao2Banco` 129; T3: `duplaCorrecoesPublicacao2Banco` 151-152, mais `duplaSalaBanco` 403/510 e o helper `rodada` de `duplaResultadoBanco`, consequências do DONO-2 e do `setup` direto; T7: `duplaSalaFases` 553/582/604, `duplaSalaConferencia` 73/89/92, `duplaSozinho*` pelo `SoloResult.jsx`); T5 `getAllByText("Em andamento")`; D1 (atraso da animação fixado na primeira renderização "abrindo" de `PortaEntrada`, com teste); D2 (teste dos dois aparelhos com `measureOffset` e offsets diferentes contra o mesmo `started_at`); D4 (`useWhistle` depende de `etapa`/`apitoEm`); D7 (`recolarFluxoSimples` só onde a recolagem é parcial); `git add` de cada tarefa com todos os testes que ela ajusta e `git status --short` vazio no fim; T1 `grep -c "O convite por link saiu"` = 4; T3 só a linha 336 de `duplaResultadoBanco`; T4 cabeçalho do desfazer corrigido para "014150 → 014130". C1, C2, C3 (pendência) e C5 anotados no desenho (§5b).
+- **Nomes:** `app_dupla_next_station(p_room_id, p_papel)`, `actions.nextStation(papel)`, `station_ready`, `porta`, `dupla_porta`, `dupla_antes_do_inicio`, `waiting`, `role` do convite, `recolarFluxoSimples`, `abrirPorta`, `candidateWaitText`, `APITO_MS`, `APITO_TOLERANCIA_MS`, `entrada`, `deveApitar`, `tempoMostrado`, `Porta`, `PortaEntrada`, `useEstacaoAoAbrir` usados igual em todas as tarefas.
 - **Sem placeholders:** as funções longas são copiadas por linha exata (`sed -n`) das bases citadas e recebem trocas com o texto exato de antes e depois; cada tarefa confere a cópia por `grep -c`.

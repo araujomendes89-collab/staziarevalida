@@ -34,13 +34,21 @@ plataformas, estilo Pense Revalida; quem escolhe a estação é o ator/avaliador
 - O menu da 2ª fase **continua "Praticar"** (dá para praticar sozinho com IA).
 - Execução: um agente por tarefa e outro confere antes da próxima. **Nenhum modelo do Vertex/Gemini** (nem para revisar).
 
+## 2c. Decisões do dono (19/10, terceira rodada)
+
+- **DONO-1 — o ator não vê a porta.** Durante os 2 s do apito o ator continua na tela dele (roteiro, impressos que pode liberar
+  e PEP) e ouve o apito normalmente. Só o candidato vê a porta abrindo.
+- **DONO-2 — nada da estação chega ao aparelho do candidato antes do início marcado** (toque do ator + 2 s do apito). Durante
+  os 2 s o candidato recebe só a porta (número da área) e o horário de abertura; quando a porta abre, a tela dele pede o
+  conteúdo de novo e só então recebe a folha. Isso vale no banco (não só na tela) e tem teste de banco.
+
 ## 3. Fluxo
 
 1. **Começar (ator).**
    - Pela estação: Banco de estações → toca na estação → janela "Como você quer treinar?" → **Em dupla** → lista de colegas
      → **Convidar**.
    - Pelo colega: aba "Treinar em dupla" → lista (Online | Perto de você) → toca no colega → escolhe a estação (lista do
-     Banco de estações, mesma busca e filtros) → **Convidar**.
+     Banco de estações, mesma busca e filtros; nesta entrega, busca e grupos por área — ver §5b, C3) → **Convidar**.
 2. **Convite (candidato).** Aviso "Fulano te chamou para treinar como candidato" com **Aceitar** ou **Recusar**. O convite
    não mostra a estação, a área nem a origem. Vale 60 s (regra do radar, 014000). Recusa ou fim do prazo avisam o ator.
 3. **Sala (ao aceitar).** Nasce com papéis e estação definidos, direto na fase de preparação.
@@ -61,11 +69,19 @@ plataformas, estilo Pense Revalida; quem escolhe a estação é o ator/avaliador
      ainda escolhe, o candidato vê só "O ator está escolhendo a estação" (sem porta); a porta numerada aparece assim que a
      estação é escolhida. Nunca há porta sem número.
 4. **Início com apito e porta, sincronizados** (dono, 19/10: "é como se o aluno estivesse entrando na sala real"). O ator
-   aperta "Iniciar estação". Nos dois aparelhos, **o apito (o que já existe, 2 s) e a abertura da porta acontecem juntos**: a
-   porta abre durante o apito e, quando o apito termina, o candidato "entra": aparece a folha e os 10 minutos começam. O servidor
-   marca o início = toque do ator + duração do apito, e os dois aparelhos disparam apito e porta pelo relógio do servidor (não
-   pelo clique), para ficarem em sincronia. Com som desligado, a porta abre no mesmo tempo sem som; com movimento reduzido, a
-   porta troca sem animação.
+   aperta "Iniciar estação". O servidor marca o **início = toque do ator + duração do apito (2 s)**, e os dois aparelhos seguem
+   o relógio do servidor (não o clique), para ficarem em sincronia:
+   - **Os dois ouvem o apito** (o que já existe, 2 s), ao mesmo tempo.
+   - **Só o candidato vê a porta abrindo** (DONO-1). A porta abre durante o apito e, quando o apito termina, o candidato
+     "entra": a tela pede o conteúdo de novo ao servidor, recebe a folha e os 10 minutos começam.
+   - **O ator não vê porta** (DONO-1): durante os 2 s ele continua na tela dele (roteiro, impressos que pode liberar e PEP),
+     com o cronômetro parado nos 10 minutos até a porta abrir.
+   - **Durante os 2 s o aparelho do candidato não recebe nada da estação** (DONO-2): só a porta (número da área) e o horário
+     de abertura (e a hora do servidor). A folha, os impressos (inclusive os que o ator liberar nesses 2 s), a imagem da folha,
+     a duração e o fim do cronômetro só saem do servidor depois do início marcado.
+   Com som desligado, a porta abre no mesmo tempo sem som; com movimento reduzido, a porta troca sem animação. Se o aparelho
+   pedir o conteúdo um instante antes (relógio adiantado), o servidor ainda não entrega: a porta fica aberta com "A estação vai
+   começar" e a tela pede de novo a cada segundo até chegar.
 5. **Atendimento (10 min).** O candidato vê a folha e os impressos liberados; o ator libera impressos e marca o PEP. Termina
    pelo tempo ou por **"Encerrar"** do ator.
 6. **Nota.** O ator confere o PEP, escreve um comentário opcional e aperta **"Enviar nota"**. Os dois veem a nota, os itens e
@@ -97,9 +113,15 @@ ROLLBACK antes de gravar.
 - **Nota.** O comentário único usa `feedback_gen`; `feedback_pos`/`feedback_neg` ficam vazios (colunas mantidas). O pedido de
   revisão (`app_dupla_request_review`, `app_dupla_redo_review`) não muda.
 - **Lista.** `app_dupla_radar` deixa de entregar a aba "Ator"; ficam "Online" e "Perto de você".
-- **Segurança (não pode regredir):** antes de `running` o candidato recebe SÓ o número da porta (área); nunca nome, tema,
-  número da estação, origem, versão do conteúdo, id ou folha da estação (inclusive no convite e na sala em `setup`); aluno comum continua sem acesso (2ª fase só equipe, chave
-  `treino_dupla` desligada); estação pendente só entre duas pessoas da equipe (`dupla_station_liberada`).
+- **Segurança (não pode regredir):**
+  - O sigilo **não depende só da fase**: para quem não é o ator, nada da estação sai do banco **antes do início marcado**
+    (`started_at` nulo ou `now() < started_at`, DONO-2) — nem nome, tema, número da estação, área por escrito, origem, versão
+    do conteúdo, id, duração, fim do cronômetro, folha, impressos (iniciais ou liberados) ou imagem. Antes disso saem só a
+    **porta** (número da área), o **horário de abertura** (`started_at`) e a hora do servidor (`server_now`). Vale no convite
+    (nem a porta), no estado da sala, no conteúdo por papel, na imagem do impresso/folha (que é a base da URL assinada) e no
+    resultado e no histórico (caso o ator encerrasse e enviasse a nota durante o apito). O ator recebe tudo, sempre.
+  - Aluno comum continua sem acesso (2ª fase só equipe, chave `treino_dupla` desligada); estação pendente só entre duas
+    pessoas da equipe (`dupla_station_liberada`).
 
 ## 5. O que muda nas telas (src/novo/app/dupla)
 
@@ -112,6 +134,18 @@ ROLLBACK antes de gravar.
   link de chamada.
 - Celular: nenhuma janela ou botão escondido pela barra de baixo (z-modal 90, ade3ef1e); botões principais ao alcance do polegar.
 
+## 5b. Variações aceitas na execução (varredura do plano, 19/10)
+
+- **C1:** a sala do convite direto **nasce em `setup` já no convite** (não só ao aceitar); o "Iniciar estação" fica travado
+  até o aceite. Para o candidato o efeito é o mesmo (só entra ao aceitar); o ator já lê a estação durante os 60 s, o que já é
+  direito dele.
+- **C2:** na sala do match ainda nos papéis (convite pendente ou os dois com "qualquer papel"), o candidato vê a tela dos
+  papéis, não "O ator está escolhendo a estação"; esse texto aparece em `setup` sem estação.
+- **C3 (pendência para o dono):** ao convidar pelo colega, a escolha de estação usa o seletor da sala (busca + grupos por
+  área), **sem todos os filtros do Banco de estações**. Filtros completos ficam para depois, se o dono quiser.
+- **C5:** pausar ou "+1 min" durante os 2 s do apito pode deixar até 2 s a mais no cronômetro (ex.: 10:01 depois de
+  retomar). Raro e inofensivo.
+
 ## 6. Fora deste trabalho
 
 Vídeo dentro do app; sortear estação; avaliação por IA e créditos (seguem desligados); abrir a 2ª fase aos alunos (regra de
@@ -122,7 +156,13 @@ acesso por fase e cadeado continuam pendentes); limites de convite e números de
 - Banco (PGlite, todas as migrações): convite direto cria sala em `setup` com papéis fixos; candidato não recebe dados da
   estação em nenhuma fase antes de `running`; só o ator inicia, libera, marca, encerra e envia a nota; nova rodada com "mesmo
   papel" e "trocar"; match continua funcionando; aluno e visitante recusados.
+- Banco, DONO-2 (obrigatório): com o início marcado no futuro, o candidato não recebe a folha nem nada da estação (estado,
+  conteúdo, impressos liberados, imagem da folha, resultado e histórico), só a porta, o horário de abertura e a hora do
+  servidor; o ator recebe tudo; depois do horário (no teste, o início é trazido para o passado, porque no PGlite o `now()` é
+  fixo na transação) o candidato recebe. Vale também com o início de verdade (`app_dupla_start`, 2 s à frente).
 - Telas: fluxo pela estação e pelo colega; convite aceito/recusado/expirado; preparação, atendimento, nota, revisão e fim.
+  Porta só na tela do candidato; o ator fica na tela de trabalho e ouve o apito (DONO-1); ao abrir a porta, a tela do
+  candidato pede estado e conteúdo de novo e só então mostra a folha (DONO-2).
 - `apoioVarredura` e `fase2PublicacaoEquipe` passam; suíte inteira comparada ao main; build.
 - Ensaio em produção com ROLLBACK (cadeia da etapa 2 + migrações novas), conferências da base (53) e da etapa 2 (22) ok.
 - Teste manual do dono com duas contas da equipe (computador e celular) antes de qualquer abertura aos alunos.
