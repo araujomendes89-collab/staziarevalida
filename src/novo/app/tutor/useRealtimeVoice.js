@@ -116,10 +116,21 @@ function waitIce(pc, ms = 3_000) {
 }
 
 /**
+ * Ferramentas da voz que MUDAM a conversa no servidor (a questão respondida, a próxima aberta). Relato de 19/10: a voz passava de
+ * questão sozinha e o cartão da tela ficava na antiga; o "Próxima" era recusado ("Responda a questão atual…") e nada acontecia.
+ * Depois delas a tela relê a conversa (onSessionChange). As outras ferramentas só leem.
+ */
+export const FERRAMENTAS_QUE_MUDAM_A_CONVERSA = new Set(["submit_answer", "next_question"]);
+/** GPT-Live delega ao motor do Tutor, que também responde, revela, dá dica ou abre a próxima questão. */
+const DELEGACOES_QUE_MUDAM_A_CONVERSA = new Set(["answer", "next", "hint", "reveal"]);
+const mudouAConversa = (nome, output) => FERRAMENTAS_QUE_MUDAM_A_CONVERSA.has(nome) && !(output && typeof output === "object" && output.error);
+
+/**
  * live = o servidor indicou que pode abrir o GPT-Live (manda a oferta antes de abrir a ligação).
  * onAvatar recebe a emoção que o servidor calculou (para a animação), nunca deduzida do texto.
+ * onSessionChange(nomes) avisa que a própria voz mudou a conversa no servidor (respondeu a questão, abriu a próxima): a tela relê.
  */
-export function useRealtimeVoice({ backend, sessionId, live = false, hint = null, onTranscript, onWarning, onAvatar }) {
+export function useRealtimeVoice({ backend, sessionId, live = false, hint = null, onTranscript, onWarning, onAvatar, onSessionChange }) {
   const [state, setStateRaw] = React.useState("idle");
   const [error, setError] = React.useState(null);
   const [remaining, setRemaining] = React.useState(null); // segundos de voz que restam (pelo servidor)
@@ -160,7 +171,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     },
   });
   const cb = React.useRef({});
-  cb.current = { onTranscript, onWarning, onAvatar };
+  cb.current = { onTranscript, onWarning, onAvatar, onSessionChange };
   const setState = (next) => {
     setStateRaw((prev) => {
       const v = typeof next === "function" ? next(prev) : next;
@@ -403,6 +414,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
         if (!calls.length) break;
         for (const c of calls) r.current.handled.add(c.call_id);
         setState("thinking");
+        const mudaram = [];
         for (const c of calls) {
           const t0 = Date.now();
           const out = await comFraseDeEspera(c.name, voiceApi.tool(backend, id, c.name, c.arguments ?? "{}").catch((e) => ({ output: { error: e.message } })));
@@ -411,8 +423,10 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
           m.toolSum += Date.now() - t0;
           const output = out.output ?? out;
           if (output?.avatar) cb.current.onAvatar?.(output.avatar);
+          if (mudouAConversa(c.name, output)) mudaram.push(c.name);
           send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: c.call_id, output: JSON.stringify(output) } });
         }
+        if (mudaram.length) cb.current.onSessionChange?.(mudaram);
         // "espere o aluno" (ruído, TV, outra pessoa): o professor não fala de novo; volta a ouvir
         if (calls.every((c) => c.name === "wait_for_user")) setState("listening");
         else send({ type: "response.create" });
@@ -469,6 +483,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
       for (const t of res.thinking ?? []) send({ type: "session.thinking.append", event_id: eid("ctx"), delegation_id: did, content: t });
       for (const s of res.say ?? []) send({ type: "session.commentary.append", event_id: eid("diz"), delegation_id: did, content: s });
       if (res.avatar) cb.current.onAvatar?.(res.avatar);
+      if (DELEGACOES_QUE_MUDAM_A_CONVERSA.has(res.intent)) cb.current.onSessionChange?.([res.intent]);
     }
     cur.delegBusy = false;
   };
@@ -553,6 +568,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     const id = cur.voiceCallId;
     setState("thinking");
     const responses = [];
+    const mudaram = [];
     for (const c of calls) {
       if (!c?.name) continue;
       const t0 = Date.now();
@@ -562,8 +578,11 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
       m.toolSum += Date.now() - t0;
       const output = out.output ?? out;
       if (output?.avatar) cb.current.onAvatar?.(output.avatar);
+      if (mudouAConversa(c.name, output)) mudaram.push(c.name);
       responses.push({ id: c.id, name: c.name, response: { output } });
     }
+    // a conversa mudou no servidor mesmo que a ligação tenha acabado no meio: a tela relê
+    if (mudaram.length) cb.current.onSessionChange?.(mudaram);
     if (r.current !== cur) return;
     cur.gem?.respondTools(responses);
     if (calls.every((c) => c.name === "wait_for_user")) setState("listening");

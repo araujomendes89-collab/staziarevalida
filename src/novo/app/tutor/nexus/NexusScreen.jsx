@@ -122,6 +122,11 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose, go = nu
   const [micStream, setMicStream] = React.useState(null);
   const [fallback, setFallback] = React.useState(null); // { note, caption }: a voz que estava falando parou e outro jeito assumiu
   const [picked, setPicked] = React.useState(null); // letra marcada na voz ao vivo (a voz do professor guarda a dela)
+  // cartão da questão na voz ao vivo: o motivo de uma recusa (aparece no próprio cartão; antes ficava atrás do aviso de minutos) e o
+  // "carregando" de Responder/Próxima (um toque só)
+  const [cardNote, setCardNote] = React.useState(null);
+  const [cardBusy, setCardBusy] = React.useState(false);
+  const cardBusyRef = React.useRef(false);
   const [legendas, setLegendasState] = React.useState(() => lerLegendas(conta));
   const setLegendas = (on) => {
     setLegendasState(on);
@@ -166,6 +171,32 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose, go = nu
     setSession(s);
     return s;
   };
+  /**
+   * Relê a conversa para o cartão acompanhar o servidor (relato de 19/10: a voz ao vivo responde e abre a próxima questão pelas
+   * ferramentas; o cartão ficava na questão antiga e o "Próxima" era recusado). Questão nova: a letra marcada e o aviso antigo somem.
+   */
+  const syncCard = async () => {
+    const antes = sessionRef.current?.question?.id ?? null;
+    if (!sessionRef.current) return null;
+    const s = await reload();
+    if ((s?.question?.id ?? null) !== antes) {
+      setPicked(null);
+      setCardNote(null);
+    }
+    return s;
+  };
+  /** Responder/Próxima do cartão na voz ao vivo: um toque só (o botão fica desabilitado enquanto o banco responde). */
+  const cardAction = async (fn) => {
+    if (cardBusyRef.current) return;
+    cardBusyRef.current = true;
+    setCardBusy(true);
+    try {
+      await fn();
+    } finally {
+      cardBusyRef.current = false;
+      setCardBusy(false);
+    }
+  };
   // as falas da conversa por voz aparecem no Chat (a mesma conversa; o servidor grava e confere)
   const appendMessage = (m) =>
     setSession((s) => (s ? { ...s, messages: [...(s.messages ?? []), { id: m.id ?? `nx-${Date.now()}-${(s.messages ?? []).length}`, role: m.role, content: m.content, voice: true }] } : s));
@@ -175,6 +206,8 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose, go = nu
   const live = useRealtimeVoice({
     backend, sessionId: session?.id ?? null, live: server.live, hint: server.hint,
     onTranscript: (role, said) => appendMessage({ role, content: said }), onWarning: setLiveNote, onAvatar: setLiveAvatar,
+    // a própria voz respondeu ou abriu a próxima questão no servidor: o cartão relê a conversa
+    onSessionChange: () => void syncCard().catch(() => {}),
   });
   // voz do professor e por escrito: o turno pelo motor do Tutor
   const ttsRef = React.useRef(null);
@@ -299,6 +332,7 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose, go = nu
       setClosing(false);
       closingRef.current = null;
       setPicked(null);
+      setCardNote(null);
       setLiveNote(null);
       setLiveAvatar(null);
       if (o.jeito !== "aovivo" && !o.mic) releaseMic(); // sem microfone liberado (CF02) não fica nada aberto
@@ -461,6 +495,38 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose, go = nu
     refresh().catch(() => {}); // a conversa pode ter trocado a personalidade preferida e o uso do dia
   };
 
+  /**
+   * "Voltar" na conversa (relato de 19/10: só havia "Encerrar"). Sai SEM encerrar: a voz desliga e para de contar minutos (a tela de
+   * voz desmonta e fecha a ligação), e a conversa continua aberta no Histórico. Por cima de outra tela (a questão do treino, do Plano
+   * de Hoje, do Caderno de erros…), fecha a camada e a tela de baixo continua exatamente como estava (resposta, correção, tempo).
+   * Pela página do Tutor (menu), volta para a tela anterior do app; aberta direto pelo endereço, vai para o Início.
+   */
+  const temTelaAnterior = () => typeof window !== "undefined" && Number(window.history.state?.idx) > 0;
+  /**
+   * Página do Tutor: sai da tela de voz JÁ (a voz para e os minutos param; a conversa continua aberta no Histórico) e a Nexus volta
+   * para a entrada. Sem isso, se a tela anterior do histórico também for o Tutor (tocar em "Tutor" no menu estando no Tutor empilha
+   * /tutor de novo), a rota não mudava, a Nexus não desmontava e a voz seguia aberta no primeiro toque.
+   */
+  const deixarConversa = () => {
+    if (opened?.jeito === "aovivo") void Promise.resolve(live.stop?.()).catch(() => {});
+    else void Promise.resolve(tts.stop?.()).catch(() => {});
+    setOpened(null);
+    releaseMic();
+    setMicStream(null);
+    setPicked(null);
+    setCardNote(null);
+    setLiveNote(null);
+    toLobby();
+  };
+  const voltar = overlay
+    ? onClose
+    : () => {
+        deixarConversa();
+        if (temTelaAnterior()) window.history.back();
+        else go?.("home");
+      };
+  const voltarRotulo = overlay ? (request?.questionId ? "Voltar para a questão" : "Voltar para a tela anterior") : temTelaAnterior() ? "Voltar para a tela anterior" : "Voltar para o Início";
+
   const errorBox = error && (
     <div className="nx-error" role="alert">
       <span>{error.message}</span>
@@ -475,31 +541,47 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose, go = nu
     const card = session.question && ["questao", "erros"].includes(session.mode) ? (
       aoVivo ? (
         <QuestionCard
-          session={session} marked={picked} gate={session.gate}
+          session={session} marked={picked} gate={session.gate} busy={cardBusy} error={cardNote}
           onMark={(l) => setPicked(l)}
-          onAnswer={async (l) => {
-            try {
-              await backend.rpc("app_tutor_answer", { p_session_id: session.id, p_option: l, p_confidence: null, p_response_ms: null, p_first_pick: null });
-              await reload();
-              live.sendText(`Marquei a ${l}.`);
-            } catch (e) {
-              setFallback((f) => ({ ...(f ?? {}), note: messageOf(e) }));
-            }
-          }}
+          onAnswer={(l) =>
+            cardAction(async () => {
+              const antes = session.question?.id ?? null;
+              try {
+                await backend.rpc("app_tutor_answer", { p_session_id: session.id, p_option: l, p_confidence: null, p_response_ms: null, p_first_pick: null });
+                setCardNote(null);
+                await reload();
+                live.sendText(`Marquei a ${l}.`);
+              } catch (e) {
+                // a voz pode ter respondido ou passado de questão sem a tela saber: relê; se a questão já não está aberta aqui, o
+                // cartão acompanha o servidor; senão, o motivo aparece no cartão
+                const s = await syncCard().catch(() => null);
+                const igual = s?.question && s.question.id === antes && s.question.state === "open";
+                setCardNote(!s || igual ? messageOf(e) : null);
+              }
+            })
+          }
           onHint={() => live.sendText("Me dá uma ajuda aqui.")}
           onReveal={() => live.sendText("Me mostra a resolução.")}
-          onNext={async () => {
-            try {
-              const s2 = await backend.rpc("app_tutor_next_question", { p_session_id: session.id });
-              setSession(s2);
-              setPicked(null);
-              live.sendText("Vamos para a próxima.");
-              // a passagem fixa é só a reserva: a criada agora pela IA aparece quando chegar
-              void tutorOpening(backend, s2?.id ?? session.id).then((op) => op && setSession((cur) => (cur?.id === s2?.id ? withOpening(cur, op) : cur)));
-            } catch (e) {
-              setFallback((f) => ({ ...(f ?? {}), note: messageOf(e) }));
-            }
-          }}
+          onNext={() =>
+            cardAction(async () => {
+              const antes = session.question?.id ?? null;
+              try {
+                const s2 = await backend.rpc("app_tutor_next_question", { p_session_id: session.id });
+                setSession(s2);
+                setPicked(null);
+                setCardNote(null);
+                live.sendText("Vamos para a próxima.");
+                // a passagem fixa é só a reserva: a criada agora pela IA aparece quando chegar
+                void tutorOpening(backend, s2?.id ?? session.id).then((op) => op && setSession((cur) => (cur?.id === s2?.id ? withOpening(cur, op) : cur)));
+              } catch (e) {
+                // recusado ("Responda a questão atual…"): a voz já pode ter aberto a próxima no servidor. Relê: se a questão mudou, o
+                // cartão pula para ela (sem erro); senão, o motivo aparece no cartão (ex.: limite de questões de hoje)
+                const s = await syncCard().catch(() => null);
+                const mudou = Boolean(s?.question) && s.question.id !== antes;
+                setCardNote(mudou ? null : messageOf(e));
+              }
+            })
+          }
         />
       ) : (
         <QuestionCard session={session} marked={tts.marked} gate={session.gate} onMark={tts.mark} onAnswer={tts.answer} onHint={() => tts.command("hint")} onReveal={() => tts.command("reveal")} onNext={() => tts.command("next")} />
@@ -512,7 +594,8 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose, go = nu
         messages={session.messages ?? []}
         avatar={aoVivo ? liveAvatar : tts.avatar}
         entitlement={aoVivo ? status.entitlement : null}
-        note={aoVivo ? liveNote ?? fallback?.note ?? null : error?.message ?? fallback?.note ?? null}
+        // voz ao vivo: o aviso de minutos E o motivo de uma troca que falhou (ex.: "Escrever pelo Chat"); um não esconde o outro
+        note={aoVivo ? [liveNote, fallback?.note] : error?.message ?? fallback?.note ?? null}
         jeitoLabel={JEITO_LABEL[opened.jeito]}
         card={card}
         captions={legendas}
@@ -520,6 +603,18 @@ function Nexus({ status: statusLido, refresh, overlay, request, onClose, go = nu
         closing={closing}
         onWrite={aoVivo ? () => void switchJeito("voice") : undefined}
         onClose={finish}
+        onBack={
+          voltar
+            ? () => {
+                // a voz para já e a conversa NÃO é encerrada. Por cima da questão: a voz do professor e o por escrito fecham a chamada
+                // no servidor aqui; a voz ao vivo fecha a dela quando a camada sai (a Nexus desmonta). Na página do Tutor, quem para a
+                // voz é deixarConversa (dentro de voltar)
+                if (overlay && !aoVivo) void Promise.resolve(tts.stop?.()).catch(() => {});
+                voltar();
+              }
+            : null
+        }
+        backLabel={voltarRotulo}
       />
     );
   } else if (phase === "summary" || phase === "readonly") {

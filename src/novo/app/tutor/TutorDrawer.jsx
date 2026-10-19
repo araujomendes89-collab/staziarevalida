@@ -13,14 +13,40 @@ const Dock = React.createContext(null);
  */
 export function TutorDockProvider({ children, go = null }) {
   const [request, setRequest] = React.useState(null);
-  const open = React.useCallback((req) => setRequest({ ...req, key: Date.now() }), []);
+  // o elemento que tinha o foco ao abrir (o botão "Discutir/Conversar com o Tutor"): ao fechar a camada (Fechar, Esc, "Voltar para a
+  // questão"), o foco volta para ele; se ele sumiu, vai para o título da questão (teclado e leitor de tela não perdem o lugar)
+  const volta = React.useRef(null);
+  const open = React.useCallback((req) => {
+    volta.current = document.activeElement;
+    setRequest({ ...req, key: Date.now() });
+  }, []);
   const close = React.useCallback(() => setRequest(null), []);
+  // depois que a camada saiu da tela (e a tela de voz devolveu o que era dela)
+  React.useEffect(() => {
+    if (request || !volta.current) return;
+    const antes = volta.current;
+    volta.current = null;
+    devolverFoco(antes);
+  }, [request]);
   return (
     <Dock.Provider value={open}>
       {children}
       {request && <NexusScreen key={request.key} go={go} overlay request={request} onClose={close} />}
     </Dock.Provider>
   );
+}
+
+/** Foco de volta para quem abriu o Tutor; se ele saiu da tela, para o título da questão (ou o primeiro título da tela). */
+function devolverFoco(antes) {
+  if (typeof document === "undefined") return;
+  if (antes && antes.isConnected && antes !== document.body && antes !== document.documentElement && typeof antes.focus === "function") {
+    antes.focus();
+    if (document.activeElement === antes) return;
+  }
+  const titulo = document.querySelector("main h1") ?? document.querySelector("h1");
+  if (!titulo) return;
+  if (!titulo.hasAttribute("tabindex")) titulo.setAttribute("tabindex", "-1");
+  titulo.focus({ preventScroll: true });
 }
 
 export const useTutorDock = () => React.useContext(Dock);

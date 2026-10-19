@@ -558,6 +558,18 @@
   gap: 8px;
   align-items: center;
 }
+/* motivo de uma recusa do "Responder"/"Próxima" (relato de 19/10: antes ficava escondido atrás do aviso de minutos da voz) */
+.nx-q__erro {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  /* tokens do design system (têm versão do modo noite; o nome usado antes, "text-danger", não existe: o texto ficava #b42318 com contraste 2,58:1 no escuro) */
+  border: 1px solid var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  font-size: 14px;
+  line-height: 1.45;
+}
 
 /* ---- celular */
 @media (max-width: 600px) {
