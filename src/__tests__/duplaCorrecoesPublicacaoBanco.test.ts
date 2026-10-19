@@ -280,6 +280,11 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
     expect(sql).not.toContain("colada uma vez só");
     expect(sql).toContain("Pode ser colada duas vezes");
     await expect(d.db.exec(sql)).resolves.toBeDefined();
+    // Junção da etapa 2: o treino sozinho (014090–014120) refaz funções desta; recola-se o resto da cadeia, na ordem, para os
+    // testes seguintes partirem do banco inteiro.
+    for (const g of fs.readdirSync(MIGRATIONS_DIR).filter((x) => x.includes("treino_dupla") && x > f).sort()) {
+      await d.db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, g), "utf8"));
+    }
   });
 
   it("a 013405 colada duas vezes dá o mesmo banco; tabela nova fechada; funções de apoio fora do navegador", async () => {

@@ -2,6 +2,7 @@
 -- Cole em ordem INVERSA (014120 → 013990): cada um volta o banco ao estado de antes da sua migração. Pode ser colado duas vezes.
 -- Os dados gravados nas tabelas e colunas novas se perdem. Fora o que vier dito abaixo, nada mexe nas linhas de quem já usava o app.
 -- função refeita: fase2_evaluations(uuid) volta como era antes desta migração
+drop function if exists public.fase2_evaluations(uuid);
 CREATE OR REPLACE FUNCTION public.fase2_evaluations(p_uid uuid)
  RETURNS TABLE(id text, origin text, station_id text, at timestamp with time zone, score10 numeric)
  LANGUAGE sql
@@ -14,6 +15,8 @@ AS $function$
   select s.id, 'dupla'::text, s.station_id, s.finished_at, round(s.correctness / 10, 1)
     from public.checklist_study_sessions s where s.doctor_id = p_uid
 $function$;
+revoke all on function public.fase2_evaluations(uuid) from public, anon, authenticated, service_role;
+grant execute on function public.fase2_evaluations(uuid) to service_role;
 -- função refeita: app_fase2_attempt(uuid) volta como era antes desta migração
 CREATE OR REPLACE FUNCTION public.app_fase2_attempt(p_attempt_id uuid)
  RETURNS jsonb
