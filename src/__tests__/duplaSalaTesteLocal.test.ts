@@ -149,9 +149,9 @@ describe("Rota /dupla/sala-teste", () => {
     expect(c.phase).toBe(fase);
     expect(a.phase).toBe(fase);
     // Etapa P: o candidato só recebe o nome e o id da estação no resultado; o avaliador sempre.
-    if (fase === "result") expect(c.station).toMatchObject({ id: "teste-inep2020-e01", area_code: "CM" });
-    else expect(c.station).toEqual(expect.not.objectContaining({ id: expect.anything(), name: expect.anything() }));
-    expect(c.station).toMatchObject({ label: "Estação 1", area_code: "CM" });
+    // Fluxo simples (014140): antes do início, o candidato recebe só a porta (a estação de teste é de Clínica Médica: porta 1).
+    const antes = ["roles", "connecting", "setup"].includes(fase) || (fase === "closed" && !c.started_at);
+    if (antes) { expect(c.station).toBeNull(); expect(c.porta).toBe(1); } else { if (fase === "result") expect(c.station).toMatchObject({ id: "teste-inep2020-e01", area_code: "CM" }); else expect(c.station).toEqual(expect.not.objectContaining({ id: expect.anything(), name: expect.anything() })); expect(c.station).toMatchObject({ label: "Estação 1", area_code: "CM" }); }
     expect(a.station).toMatchObject({ id: "teste-inep2020-e01", area_code: "CM" });
     expect(c.me).toMatchObject({ public_name: "Candidato de teste", role: "candidate" });
     expect(c.partner).toMatchObject({ public_name: "Avaliador de teste", role: "evaluator" });
@@ -185,7 +185,10 @@ describe("Rota /dupla/sala-teste", () => {
     }
 
     // conteúdo por papel: o candidato não recebe o roteiro do ator nem os impressos não liberados
-    if (fase !== "roles" && fase !== "closed") {
+    if (fase === "connecting" || fase === "setup") {
+      expect((await rpc(cand, "app_dupla_room_content", { p_room_id: id })).station).toBeNull(); // fluxo simples (014140)
+    }
+    if (["running", "review", "result"].includes(fase)) {
       const conteudoC = await rpc(cand, "app_dupla_room_content", { p_room_id: id });
       const conteudoA = await rpc(aval, "app_dupla_room_content", { p_room_id: id });
       expect(conteudoC.role).toBe("candidate");

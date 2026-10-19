@@ -183,12 +183,9 @@ describe("Migração 9760 — leituras das telas, perfil de estudo e chave no pa
       });
       const carla = await d.rpc(U.carla, "app_dupla_room", { p_room_id: sala });
       expect(carla).toMatchObject({
-        id: sala, rev: 4, phase: "roles", round: 1, duration_ms: 480000, invite_pending: false, call_link: null, started_at: null,
+        id: sala, rev: 4, phase: "roles", round: 1, duration_ms: null, station_ready: true, porta: 1, invite_pending: false, call_link: null, started_at: null,
         ends_at: null, paused_left_ms: null, paused_at: null, finished_at: null, released_pressings: [], closed_reason: null, closed_by: null,
-        station: {
-          label: "Estação", area: "Clínica Médica", area_code: "CM", number: null, edition: null, reapplication: false,
-          institution: null, duration_ms: 600000, is_pro_only: false,
-        },
+        station: null, // fluxo simples (014140): antes de começar, nada da estação à candidata (só a porta)
         me: { user_id: U.carla, public_name: "Carla Dias", role: "candidate", confirmed: true, connected: true, ready: false },
         partner: { user_id: U.fabio, public_name: "Fábio Nunes Prado", role: "evaluator", confirmed: false, connected: true, ready: true },
         match_note: "Definido pelo match: você quer ser médico(a) e Fábio topa qualquer papel. Vocês ainda podem trocar.",
@@ -196,9 +193,8 @@ describe("Migração 9760 — leituras das telas, perfil de estudo e chave no pa
       expect(new Date(carla.server_now).getTime()).toBeGreaterThan(Date.now() - 60_000);
       expect(carla.partner.seen_ms_ago).toBeGreaterThanOrEqual(14_000);
       expect(carla.partner.seen_ms_ago).toBeLessThan(120_000);
-      // Etapa P (012900): o candidato não recebe o nome nem o id da estação; o avaliador recebe.
-      expect(carla.station).not.toHaveProperty("name");
-      expect(carla.station).not.toHaveProperty("id");
+      // Etapa P (012900) e fluxo simples (014140): antes de começar, a candidata não recebe nada da estação; o avaliador recebe.
+      expect(carla.station).toBeNull();
       const fabio = await d.rpc(U.fabio, "app_dupla_room", { p_room_id: sala });
       expect(fabio.station).toMatchObject({ id: "teste-dupla-e01", name: STATION.name, label: "Estação" });
       expect(fabio.me).toMatchObject({ user_id: U.fabio, role: "evaluator", confirmed: false, ready: true });

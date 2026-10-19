@@ -61,9 +61,8 @@ describe("Migração 012900: o candidato não recebe o tema da estação", () =>
       const id = await sala(fase);
       const r = await ler(U.carla, id);
       expect(vaza(r), fase).toEqual([]);
-      expect(r.estado.station.label, fase).toBe("Estação 5");
-      expect(r.estado.station.name, fase).toBeUndefined();
-      expect(r.estado.station.id, fase).toBeUndefined();
+      // fluxo simples (014140): antes de começar, só a porta
+      if (["roles", "connecting", "setup"].includes(fase)) { expect(r.estado.station, fase).toBeNull(); expect(r.conteudo.station, fase).toBeNull(); } else { expect(r.estado.station.label, fase).toBe("Estação 5"); expect(r.estado.station.name, fase).toBeUndefined(); expect(r.estado.station.id, fase).toBeUndefined(); }
       await d.sql(`delete from public.checklist_rooms`);
     }
   });
@@ -82,13 +81,12 @@ describe("Migração 012900: o candidato não recebe o tema da estação", () =>
     }
   });
 
-  it("fase roles sem papéis: ninguém recebe o nome, só 'Estação N'", async () => {
+  it("fase roles sem papéis: ninguém recebe nada da estação (fluxo simples, 014140)", async () => {
     const id = await sala("roles", {}, false);
     for (const u of [U.carla, U.fabio]) {
       const r = await ler(u, id);
       expect(vaza(r)).toEqual([]);
-      expect(r.estado.station.label).toBe("Estação 5");
-      expect(r.conteudo.station.label).toBe("Estação 5");
+      expect(r.estado.station).toBeNull(); expect(r.estado.station_ready).toBe(true); expect(r.conteudo.station).toBeNull();
     }
   });
 

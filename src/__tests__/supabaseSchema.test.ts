@@ -327,8 +327,13 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
       for (const uid of [U.ana, U.bruno]) {
         const r = await d.rpc(uid, "app_dupla_room_content", { p_room_id: roles });
         expect(r.role).toBeNull();
+        if (uid === U.ana) {
+          // Fluxo simples (014140): antes de começar, a candidata não recebe nada da estação.
+          expect(r).toEqual({ role: null, station: null, pressing_count: 0, pressings: [], waiting: true });
+          continue;
+        }
         // Etapa P (012900): só o avaliador (Bruno) recebe o nome e o id da estação.
-        const chaves = ["area", "area_code", "duration_ms", "label", "number", ...(uid === U.bruno ? ["id", "name"] : [])].sort();
+        const chaves = ["area", "area_code", "duration_ms", "id", "label", "name", "number"].sort();
         expect(Object.keys(r.station).sort()).toEqual(chaves);
         expect(r.pressing_count).toBe(2);
         expect(r.pressings).toEqual([]);

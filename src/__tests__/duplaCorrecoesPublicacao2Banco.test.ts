@@ -4,7 +4,7 @@
  *  1) o aviso "Você já viu esta estação" vale em QUALQUER sala (e nas avaliações como avaliador), sem dizer qual estação é;
  *  2) estação que voltou a pendente com aluno na sala: nada do conteúdo sai e a rodada volta aos papéis, sem nota;
  *  3) a exportação dos dados traz as tentativas do treino sozinho (station_attempts), com as colunas listadas;
- *  4) decisão: o candidato recebe a folha em connecting/setup, mas nunca o nome, o id ou o tema.
+ *  4) refeito pelo fluxo simples (014140): em connecting/setup o candidato não recebe nada da estação (a folha vem no início).
  * Os testes de 1 a 3 falham sem a 013406. Estações e pessoas daqui são SÓ de teste.
  */
 import fs from "node:fs";
@@ -77,8 +77,7 @@ describe("Migração 013406: correções da revisão antes de publicar (2ª leva
     await act(U.bruno, "set_station", s2, { p_station_id: SECRETA.id });
     const a = await estado(U.ana, s2);
     expect(a.me).toMatchObject({ role: "candidate", seen_station: true });
-    expect(a.station).not.toHaveProperty("name");
-    expect(a.station).not.toHaveProperty("id");
+    expect(a.station).toBeNull(); // fluxo simples (014140): antes de começar, nada da estação ao candidato (nem nome nem id)
     expect(vaza(a)).toEqual([]);
     expect(vaza(await conteudo(U.ana, s2))).toEqual([]);
     // o avaliador fica sabendo (para combinarem trocar)
@@ -126,7 +125,7 @@ describe("Migração 013406: correções da revisão antes de publicar (2ª leva
       confirmed_ids: [U.ana, U.bruno], connected_ids: [U.ana, U.bruno], ready_ids: [U.ana], duration_ms: 480000, station_chosen_by: U.bruno,
     });
     await d.sql(`insert into public.checklist_room_marks (room_id, round, item_id, evaluator_id, grade) values ($1, 1, 'i1', $2, 'correct')`, [id, U.bruno]);
-    expect((await conteudo(U.ana, id)).station.doctor_scene).toBe(STATION.doctor_scene); // antes: a folha sai
+    expect(await conteudo(U.ana, id)).toMatchObject({ role: "candidate", station: null, waiting: true }); // fluxo simples (014140): antes de começar, nada da estação ao candidato
 
     await d.sql(`update public.checklist_stations set medical_review = 'pending' where id = $1`, [SECRETA.id]);
     const c = await conteudo(U.ana, id);
@@ -230,21 +229,12 @@ describe("Migração 013406: correções da revisão antes de publicar (2ª leva
   });
 
   // ------------------------------------------------------------------ 4) decisão: folha em connecting/setup
-  it("4: em connecting e setup o candidato recebe só a folha (cenário, tarefas, impressos iniciais), nunca nome, id ou tema", async () => {
+  it("4 (refeito pelo fluxo simples, 014140): em connecting e setup o candidato não recebe nada da estação; a folha vem no início", async () => {
     for (const phase of ["connecting", "setup"] as const) {
       const id = await sala(U.ana, U.bruno, phase, SECRETA.id);
       const c = await conteudo(U.ana, id);
-      expect(c.role, phase).toBe("candidate");
+      expect(c, phase).toMatchObject({ role: "candidate", station: null, pressing_count: 0, pressings: [], waiting: true });
       expect(vaza(c), phase).toEqual([]);
-      expect(Object.keys(c.station).sort(), phase).toEqual(
-        ["area", "area_code", "candidate_sheet", "doctor_scene", "doctor_tasks", "duration_ms", "label", "number", "version"].sort()
-      );
-      expect(c.station.label).toBe("Estação 7");
-      expect(c.pressings, phase).toEqual([
-        // in_sheet: da 013560 (o relato vai na folha)
-        { id: "i1", display_number: 1, initially_visible: true, in_sheet: true, name: "Relato do caso", content: "Relato inicial de teste.", has_image: false },
-      ]);
-      expect(c, phase).not.toHaveProperty("checklist_items");
       expect(vaza(await estado(U.ana, id)), phase).toEqual([]);
     }
   });
