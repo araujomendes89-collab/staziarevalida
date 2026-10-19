@@ -268,13 +268,16 @@ async function funcoes(papel: "authenticated" | "anon"): Promise<Fn[]> {
 async function varrerFuncoes(uid: string | null): Promise<{ total: number; chamadas: number; ok: number; achados: Achado[]; semArgs: string[]; respondeu: number; soErro: string[] }> {
   const papel = uid ? "authenticated" : "anon";
   const lista = await funcoes(papel);
-  const uuids = [aulaId, podcastId, atualizacaoId, treinoId, tutorId, sComp, sOfi, docComp, claim, analise, cartao, matComp, matLink, pSrcLink, pSrcPdf, ALUNO, ADMIN];
   const achados: Achado[] = [];
   const semArgs: string[] = [];
   const respondeu = new Set<string>();
   let chamadas = 0;
   let ok = 0;
-  for (const f of lista) {
+  let ultimaRemontagem = -1;
+  for (let i = 0; i < lista.length; i++) {
+    const f = lista[i];
+    // os ids do mundo mudam quando o banco é remontado (ver o estouro de pilha logo abaixo): relidos a cada função
+    const uuids = [aulaId, podcastId, atualizacaoId, treinoId, tutorId, sComp, sOfi, docComp, claim, analise, cartao, matComp, matLink, pSrcLink, pSrcPdf, ALUNO, ADMIN];
     const obrig = f.nargs - f.ndef;
     // função que recebe linha de tabela (campo calculado do PostgREST: GET /tabela?select=*,funcao): chama sobre cada linha visível
     const comp = f.relids.findIndex((r) => r);
@@ -296,19 +299,40 @@ async function varrerFuncoes(uid: string | null): Promise<{ total: number; chama
           : `select public.${f.proname}(${argsSql}${extra})::text r`);
       }
     }
+    // O PGlite acumula pilha a cada erro capturado (ver montarMundo). Com as funções da 2ª fase, a varredura do aluno passa de
+    // 3.900 chamadas e estoura no meio ("stack depth limit exceeded" e depois "current transaction is aborted"), o que deixava
+    // o resto das funções sem conferir. Ao estourar: banco novo e a MESMA função de novo, do começo. Uma função que estoure
+    // sozinha num banco recém-montado é erro de verdade e para o teste.
+    let estourou = false;
+    const parciais: Achado[] = [];
+    let chamadasF = 0;
+    let okF = 0;
+    let respondeuF = false;
     for (const v of variantes) {
-      chamadas++;
+      chamadasF++;
       let texto: string;
       try {
         texto = String((await como(uid, (q) => q<{ r: string }>(v)))[0]?.r ?? "");
-        ok++;
-        respondeu.add(f.proname);
+        okF++;
+        respondeuF = true;
       } catch (e: any) {
+        if (/stack depth limit exceeded|current transaction is aborted/i.test(String(e.message))) { estourou = true; break; }
         texto = `ERRO: ${e.message} ${e.detail ?? ""} ${e.hint ?? ""}`;
       }
       const m = marcasEm(texto);
-      if (m.length) achados.push({ quem: papel, onde: `função ${f.proname}`, marcas: m, amostra: texto.slice(0, 240) });
+      if (m.length) parciais.push({ quem: papel, onde: `função ${f.proname}`, marcas: m, amostra: texto.slice(0, 240) });
     }
+    if (estourou) {
+      if (ultimaRemontagem === i) throw new Error(`estouro de pilha na função ${f.proname} logo depois de remontar o banco`);
+      ultimaRemontagem = i;
+      await montarMundo();
+      i--;
+      continue;
+    }
+    chamadas += chamadasF;
+    ok += okF;
+    if (respondeuF) respondeu.add(f.proname);
+    achados.push(...parciais);
   }
   const soErro = lista.map((f) => f.proname).filter((n) => !respondeu.has(n));
   return { total: lista.length, chamadas, ok, achados, semArgs: [...new Set(semArgs)], respondeu: respondeu.size, soErro };
@@ -367,7 +391,7 @@ describe("varredura sistemática como ALUNO", () => {
     expect(funcAluno.total).toBeGreaterThan(200);
     expect(funcAluno.ok).toBeGreaterThan(80);
     expect(resumo(funcAluno.achados.filter((a) => !conhecido(a)))).toEqual([]);
-  }, 600_000);
+  }, 1_800_000);
 
   it("toda tabela/visão que o aluno pode ler foi lida; nenhuma devolve marca da apostila (fora os vazamentos documentados)", async () => {
     tabAluno = await varrerTabelas(ALUNO);
