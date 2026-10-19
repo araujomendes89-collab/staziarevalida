@@ -353,7 +353,12 @@ describe("Migração 9770 — sinal, baralho, escolha, match, convite e saída d
       return sala;
     };
     expect(await par("teste-dupla-e01", "teste-dupla-e02")).toEqual({ station_id: "teste-dupla-e02", duration_ms: 480000 }); // a de quem completou
+    // 014150 (dono, 19/10): quem trouxe a estação e virou candidato fica sem ela. Ana ('qualquer') com Bruno ('ator') é a candidata.
+    expect(await par("teste-dupla-e01", null)).toEqual({ station_id: null, duration_ms: null });
+    // a do outro, quando o outro é o ator (Ana 'ator', Bruno 'candidato'): fica
+    await d.sql(`update public.study_profiles set role_pref = case user_id when $1::uuid then 'ator' else 'med' end where user_id in ($1, $2)`, [U.ana, U.bruno]);
     expect(await par("teste-dupla-e01", null)).toEqual({ station_id: "teste-dupla-e01", duration_ms: 600000 }); // a do outro
+    await d.sql(`update public.study_profiles set role_pref = case user_id when $1::uuid then 'any' else 'ator' end where user_id in ($1, $2)`, [U.ana, U.bruno]);
     expect(await par(null, "teste-dupla-e02")).toEqual({ station_id: "teste-dupla-e02", duration_ms: 480000 });
     expect(await par(null, null)).toEqual({ station_id: null, duration_ms: null });
     // Pro-only: sem Pro (teste grátis) nos dois, ou em um só, fica sem estação; com Pro nos dois, vale.
@@ -362,6 +367,8 @@ describe("Migração 9770 — sinal, baralho, escolha, match, convite e saída d
     expect(await par(null, "teste-dupla-pro")).toEqual({ station_id: null, duration_ms: null }); // só Bruno tem Pro
     await setPlan(d.db, U.ana, "elite", "active");
     expect(await par(null, "teste-dupla-pro")).toEqual({ station_id: "teste-dupla-pro", duration_ms: 420000 });
+    // (a do outro de novo com Ana atora: a candidata que trouxe a estação ficaria sem ela)
+    await d.sql(`update public.study_profiles set role_pref = case user_id when $1::uuid then 'ator' else 'med' end where user_id in ($1, $2)`, [U.ana, U.bruno]);
     expect(await par("teste-dupla-pro", null)).toEqual({ station_id: "teste-dupla-pro", duration_ms: 420000 });
   });
 
@@ -471,7 +478,8 @@ describe("Migração 9770 — sinal, baralho, escolha, match, convite e saída d
       expect(await d.rpc(U.bruno, "app_dupla_answer_invite", { p_invite_id: id, p_accept: true })).toEqual({ room_id: r.room_id });
       expect(await d.sql(`select status from public.study_invites`)).toEqual([{ status: "accepted" }]);
       const [depois] = await d.sql(`select phase, rev, closed_reason from public.checklist_rooms`);
-      expect(depois).toEqual({ phase: "roles", rev: antes.rev + 1, closed_reason: null });
+      // 014150: com os papéis decididos pelas preferências (Bruno 'ator'), aceitar leva à preparação (o gatilho soma 1 ao rev)
+      expect(depois).toEqual({ phase: "setup", rev: antes.rev + 2, closed_reason: null });
       expect((await convites(U.bruno)).invites).toEqual([]);
       // Resposta repetida recusa.
       await expect(d.rpc(U.bruno, "app_dupla_answer_invite", { p_invite_id: id, p_accept: true })).rejects.toThrow("Convite já respondido.");

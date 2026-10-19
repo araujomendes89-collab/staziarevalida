@@ -28,6 +28,8 @@ const RAIZ = path.resolve(AQUI, "../..");
 // Contas de teste (uuids fixos, prefixo ffffffff para nunca bater com conta real).
 const uid = (n) => `ffffffff-0000-4000-8000-${String(n).padStart(12, "0")}`;
 export const CONTAS = { x: uid(1), p: uid(2), q: uid(3), a: uid(4), b: uid(5), c: uid(6), av: uid(7), ca: uid(8), d: uid(9), e: uid(10) };
+// Estação de TESTE do roteiro (aprovada, sem Pro): o início do fluxo simples (014150) exige a estação escolhida.
+export const ESTACAO = "teste-concorrencia-e01";
 
 /** Prepara o ambiente: contas Pro, chave do módulo aberta, cota ligada (3 por dia no Pro), perfis online. Tudo de TESTE. */
 export async function montar(h) {
@@ -47,6 +49,11 @@ export async function montar(h) {
     `insert into public.app_settings (key, value) values ('creditos', '{"ativa": true, "match": {"pro": 3, "cobra_rodada_extra": false}, "ia": {}}'::jsonb)
        on conflict (key) do update set value = excluded.value`
   );
+  await h.admin(
+    `insert into public.checklist_stations (id, name, topic, area, medical_review) values ($1, 'Estação de teste do roteiro', 'Teste', 'Clínica Médica', 'approved')
+       on conflict (id) do nothing`,
+    [ESTACAO]
+  );
   for (const nome of ["a", "b", "c", "d", "e", "av", "ca"]) {
     await h.admin(
       `insert into public.study_profiles (user_id, public_name, role_pref, status, last_seen_at) values ($1, $2, 'any', 'livre', now())`,
@@ -62,6 +69,7 @@ export async function limpar(h) {
   await h.admin(`delete from public.study_matches where user_a = any ($1::uuid[]) or user_b = any ($1::uuid[])`, [ids]);
   await h.admin(`delete from public.study_swipes where from_user = any ($1::uuid[]) or to_user = any ($1::uuid[])`, [ids]);
   await h.admin(`delete from auth.users where id = any ($1::uuid[])`, [ids]);
+  await h.admin(`delete from public.checklist_stations where id = $1`, [ESTACAO]);
 }
 
 const consumo = (conta, chave) =>
@@ -133,9 +141,9 @@ export const CENARIOS = [
     nome: "dois app_dupla_start ao mesmo tempo na mesma sala: um débito por aluno",
     async executa(h) {
       const [sala] = await h.admin(
-        `insert into public.checklist_rooms (member_ids, phase, round, candidate_id, evaluator_id, ready_ids, confirmed_ids, connected_ids)
-           values (array[$1::uuid, $2::uuid], 'setup', 1, $1, $2, array[$1::uuid, $2::uuid], array[$1::uuid, $2::uuid], array[$1::uuid, $2::uuid]) returning id`,
-        [CONTAS.ca, CONTAS.av]
+        `insert into public.checklist_rooms (member_ids, phase, round, candidate_id, evaluator_id, ready_ids, confirmed_ids, connected_ids, station_id)
+           values (array[$1::uuid, $2::uuid], 'setup', 1, $1, $2, array[$1::uuid, $2::uuid], array[$1::uuid, $2::uuid], array[$1::uuid, $2::uuid], $3) returning id`,
+        [CONTAS.ca, CONTAS.av, ESTACAO]
       );
       const res = await h.paralelo(2, () => h.comoAluno(CONTAS.av, `select public.app_dupla_start($1::uuid) as r`, [sala.id]));
       h.confere(res.filter((r) => r.status === "fulfilled").length === 1, "só uma chamada inicia");

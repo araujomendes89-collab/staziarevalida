@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
-  addStation, makeRoom, MIGRATIONS_DIR, openDuplaDb, setDupla, setPlan, STATION, stationAssets, U, type DuplaDb, type Phase,
+  abrirPorta, addStation, makeRoom, MIGRATIONS_DIR, openDuplaDb, setDupla, setPlan, STATION, stationAssets, U, type DuplaDb, type Phase,
 } from "./helpers/duplaDb";
 
 const MIGRACAO = "20261003013350_treino_dupla_sala.sql";
@@ -85,45 +85,42 @@ describe("Migração 013350: ações da sala do Treino em Dupla", () => {
          from public.checklist_study_sessions where room_id = $1 order by round`, [id]);
 
   // ------------------------------------------------------------------ papéis
-  it("papéis: qualquer membro escolhe ou sorteia; mudar zera confirmações; confirmar exige estação e papéis; os dois → connecting", async () => {
+  it("papéis: escolher ou sortear leva à preparação (fluxo simples); confirmar segue valendo em sala antiga", async () => {
     const id = await sala("roles", { papeis: false, station: null });
     await expect(act(U.ana, "confirm_roles", id)).rejects.toThrow("Escolha a estação antes de confirmar.");
+    await expect(act(U.ana, "set_roles", id, { p_candidate_id: U.carla })).rejects.toThrow("Escolha inválida.");
     let s = await act(U.ana, "set_roles", id, { p_candidate_id: U.bruno });
     expect(s.me.role).toBe("evaluator");
     expect(s.partner.role).toBe("candidate");
     expect(s.rev).toBe(1);
-    await expect(act(U.ana, "set_roles", id, { p_candidate_id: U.carla })).rejects.toThrow("Escolha inválida.");
-    s = await act(U.bruno, "set_roles", id, { p_candidate_id: U.ana });
-    expect(s.me.role).toBe("evaluator");
-    // sorteio: alguém candidato, o outro avaliador
-    const sorteio = await act(U.ana, "draw_roles", id);
-    const r = await linha(id);
+    expect(s.phase).toBe("setup");
+    // na preparação os papéis não mudam mais por aqui
+    await expect(act(U.bruno, "set_roles", id, { p_candidate_id: U.ana })).rejects.toThrow(FASE);
+    await expect(act(U.ana, "draw_roles", id)).rejects.toThrow(FASE);
+    // sorteio: alguém candidato, o outro avaliador, e a sala vai à preparação
+    const outra = await sala("roles", { papeis: false, station: null });
+    const sorteio = await act(U.ana, "draw_roles", outra);
+    const r = await linha(outra);
     expect([U.ana, U.bruno]).toContain(r.candidate_id);
     expect(r.evaluator_id).toBe(r.candidate_id === U.ana ? U.bruno : U.ana);
     expect(sorteio.rev).toBe(r.rev);
-    // volta ao combinado e escolhe a estação (avaliador = bruno)
-    await act(U.ana, "set_roles", id, { p_candidate_id: U.ana });
-    await act(U.bruno, "set_station", id, { p_station_id: STATION.id });
-    s = await act(U.ana, "confirm_roles", id);
+    expect(r.phase).toBe("setup");
+    // sala antiga (nos papéis, com papéis e estação): confirmar ainda vale e os dois → connecting
+    const antiga = await sala("roles");
+    s = await act(U.ana, "confirm_roles", antiga);
     expect(s.me.confirmed).toBe(true);
     expect(s.phase).toBe("roles");
-    // mudar os papéis zera as confirmações, mas não a estação
-    s = await act(U.bruno, "set_roles", id, { p_candidate_id: U.ana });
-    expect(s.me.confirmed).toBe(false);
-    expect(s.partner.confirmed).toBe(false);
-    expect((await linha(id)).station_id).toBe(STATION.id);
-    await act(U.ana, "confirm_roles", id);
-    s = await act(U.bruno, "confirm_roles", id);
+    s = await act(U.bruno, "confirm_roles", antiga);
     expect(s.phase).toBe("connecting");
-    await expect(act(U.ana, "set_roles", id, { p_candidate_id: U.ana })).rejects.toThrow(FASE);
-    await expect(act(U.ana, "draw_roles", id)).rejects.toThrow(FASE);
+    await expect(act(U.ana, "set_roles", antiga, { p_candidate_id: U.ana })).rejects.toThrow(FASE);
+    await expect(act(U.ana, "draw_roles", antiga)).rejects.toThrow(FASE);
     // sem papéis (com estação gravada): confirmar recusa
     const semPapeis = await sala("roles", { papeis: false });
     await expect(act(U.ana, "confirm_roles", semPapeis)).rejects.toThrow("Definam os papéis antes de confirmar.");
   });
 
   // ------------------------------------------------------------------ estação
-  it("estação: só o avaliador escolhe, só depois dos papéis; aprovada; Pro-only com os dois Pro; trocar zera confirmações e repõe a duração", async () => {
+  it("estação: só o avaliador escolhe, só depois dos papéis; aprovada; Pro-only com os dois Pro; a sala fica na preparação; trocar repõe a duração", async () => {
     const id = await sala("roles", { papeis: false, station: null });
     await expect(act(U.bruno, "set_station", id, { p_station_id: STATION.id })).rejects.toThrow("Definam os papéis antes de escolher a estação.");
     await act(U.ana, "set_roles", id, { p_candidate_id: U.ana });
@@ -132,19 +129,19 @@ describe("Migração 013350: ações da sala do Treino em Dupla", () => {
     await expect(act(U.bruno, "set_station", id, { p_station_id: "nao-existe" })).rejects.toThrow("Estação não encontrada.");
     let s = await act(U.bruno, "set_station", id, { p_station_id: "teste-dupla-pro" });
     expect(s.duration_ms).toBe(480000);
+    expect(s.phase).toBe("setup"); // fluxo simples (014150): papéis e estação → preparação
     expect((await linha(id)).station_chosen_by).toBe(U.bruno);
-    // trocar zera as confirmações e repõe a duração da estação nova
-    await act(U.ana, "confirm_roles", id);
+    // trocar (na preparação) repõe a duração da estação nova
     s = await act(U.bruno, "set_station", id, { p_station_id: STATION.id });
     expect(s.duration_ms).toBe(600000);
-    expect(s.partner.confirmed).toBe(false);
+    expect(s.phase).toBe("setup");
     // Pro-only: um dos dois sem plano pago → recusa
     await setPlan(d.db, U.ana, "trial", "trialing", new Date(Date.now() + 86_400_000).toISOString());
     await setDupla(d.db, { aberto: true, planos: ["trial", "pro", "elite"] });
     await expect(act(U.bruno, "set_station", id, { p_station_id: "teste-dupla-pro" })).rejects.toThrow("Estação exclusiva dos planos Pro e Elite.");
     await setDupla(d.db, { aberto: true, planos: ["pro", "elite"] });
-    // fora da fase dos papéis
-    const outra = await sala("setup");
+    // fora dos papéis e da preparação (014150: a preparação também aceita a escolha)
+    const outra = await sala("running");
     await expect(act(U.bruno, "set_station", outra, { p_station_id: STATION.id })).rejects.toThrow(FASE);
   });
 
@@ -172,23 +169,28 @@ describe("Migração 013350: ações da sala do Treino em Dupla", () => {
   });
 
   // ------------------------------------------------------------------ cronômetro
-  it("cronômetro: só o avaliador; set_duration nos limites; iniciar exige os dois prontos e grava ends_at = started_at + duração; iniciar duas vezes não duplica", async () => {
+  it("cronômetro: só o avaliador; set_duration nos limites; iniciar exige a estação e o convite aceito, grava o início 2 s à frente e ends_at = started_at + duração; iniciar duas vezes não duplica", async () => {
     const id = await sala("setup", { extra: { duration_ms: 600000 } });
     await expect(act(U.ana, "set_duration", id, { p_duration_ms: 300000 })).rejects.toThrow(SO_AVALIADOR);
     await expect(act(U.bruno, "set_duration", id, { p_duration_ms: 59999 })).rejects.toThrow("Duração fora do permitido.");
     await expect(act(U.bruno, "set_duration", id, { p_duration_ms: 600001 })).rejects.toThrow("Duração fora do permitido.");
     expect((await act(U.bruno, "set_duration", id, { p_duration_ms: 60000 })).duration_ms).toBe(60000);
     expect((await act(U.bruno, "set_duration", id, { p_duration_ms: 480000 })).duration_ms).toBe(480000);
-    await expect(act(U.bruno, "start", id)).rejects.toThrow("Os dois precisam estar prontos.");
-    await act(U.ana, "ready", id, { p_ready: true });
-    await expect(act(U.bruno, "start", id)).rejects.toThrow("Os dois precisam estar prontos.");
-    await act(U.bruno, "ready", id, { p_ready: true });
+    // fluxo simples (014150): sem "os dois prontos"; precisa da estação e do convite aceito
+    await d.sql(`update public.checklist_rooms set station_id = null where id = $1`, [id]);
+    await expect(act(U.bruno, "start", id)).rejects.toThrow("Escolha a estação antes de iniciar.");
+    await d.sql(`update public.checklist_rooms set station_id = $2 where id = $1`, [id, STATION.id]);
+    await d.sql(`insert into public.study_invites (from_user, to_user, room_id) values ($1, $2, $3)`, [U.bruno, U.ana, id]);
+    await expect(act(U.bruno, "start", id)).rejects.toThrow("O convite ainda não foi aceito.");
+    await d.sql(`update public.study_invites set status = 'accepted' where room_id = $1`, [id]);
     await expect(act(U.ana, "start", id)).rejects.toThrow(SO_AVALIADOR);
     await d.sql(`update public.checklist_rooms set released_pressings = '{p1}', paused_total_ms = 5 where id = $1`, [id]);
     const s = await act(U.bruno, "start", id);
     expect(s.phase).toBe("running");
     const r = await linha(id);
     expect(r.ends_menos_inicio).toBe(480000);
+    const [{ futuro }] = await d.sql<any>(`select started_at > now() as futuro from public.checklist_rooms where id = $1`, [id]);
+    expect(futuro).toBe(true); // o início fica ~2 s depois do toque (o apito)
     expect(r.pausas).toBe(0);
     expect(r.released_pressings).toEqual([]);
     expect(r.finished_at).toBeNull();
@@ -409,18 +411,11 @@ describe("Migração 013350: ações da sala do Treino em Dupla", () => {
     const id = await sala("roles", { papeis: false, station: null });
     respostas.push(await act(U.ana, "set_roles", id, { p_candidate_id: U.ana }));
     await ler(id);
-    await act(U.bruno, "set_station", id, { p_station_id: SECRETA.id });
-    await ler(id);
-    respostas.push(await act(U.ana, "confirm_roles", id));
-    await act(U.bruno, "confirm_roles", id);
-    await ler(id);
-    respostas.push(await act(U.ana, "connected", id));
-    await act(U.bruno, "connected", id);
-    await ler(id);
-    respostas.push(await act(U.ana, "ready", id, { p_ready: true }));
-    await act(U.bruno, "ready", id, { p_ready: true });
+    await act(U.bruno, "set_station", id, { p_station_id: SECRETA.id }); // fluxo simples: a sala já está na preparação
     await ler(id);
     await act(U.bruno, "start", id);
+    await ler(id); // os 2 s do apito (início marcado no futuro)
+    await abrirPorta(d.db, id); // DONO-2: a folha (e a imagem, pedida abaixo) só depois do início marcado
     await ler(id);
     await act(U.bruno, "release", id, { p_pressing_id: "teste-inep2020-e07-p2", p_released: true });
     await act(U.bruno, "release", id, { p_pressing_id: "teste-inep2020-e07-p3", p_released: true });
@@ -522,15 +517,10 @@ describe("Migração 013350: ações da sala do Treino em Dupla", () => {
     let s = await act(U.ana, "set_roles", id, { p_candidate_id: U.ana });
     expect(await enviados()).toEqual([{ payload: { rev: s.rev }, event: "sala", topic, private: true }]);
     await act(U.bruno, "set_station", id, { p_station_id: STATION.id });
-    await act(U.ana, "confirm_roles", id);
-    await act(U.bruno, "confirm_roles", id);
-    await act(U.ana, "connected", id);
-    await act(U.bruno, "connected", id);
-    await act(U.ana, "ready", id, { p_ready: true });
-    await act(U.bruno, "ready", id, { p_ready: true });
     s = await act(U.bruno, "start", id);
+    await abrirPorta(d.db, id); // encerrar espera o início marcado (014150); abrir a porta no teste não muda o rev
     const n = (await enviados()).length;
-    expect(n).toBe(9);
+    expect(n).toBe(3);
     await act(U.bruno, "mark", id, { p_item_id: "i1", p_grade: "correct" });
     expect(await enviados()).toHaveLength(n);
     await act(U.bruno, "release", id, { p_pressing_id: "p1", p_released: true });

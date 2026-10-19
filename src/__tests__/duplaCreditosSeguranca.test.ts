@@ -7,7 +7,7 @@
  * scripts/e2e/dupla.mjs (Tarefa 20 do plano de 11/10), que ainda não existe.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { U, addProfile, addStation, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
+import { STATION, U, addProfile, addStation, openDuplaDb, recolarFluxoSimples, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
 const ABERTO = { aberto: true, planos: ["trial", "pro", "elite"] };
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
@@ -46,7 +46,10 @@ describe("Créditos · segurança (§47 do documento) e jornada completa", () =>
     await cota({}, false);
   };
 
-  /** x e y formam a sala pelo caminho real e a deixam em "setup", os dois prontos (a fase "setup" é montada direto no banco). */
+  /**
+   * x e y formam a sala pelo caminho real e a deixam em "setup", os dois prontos, com a estação escolhida (a fase "setup" e a
+   * estação são montadas direto no banco; 014150: o início exige a estação).
+   */
   const salaPronta = async (x: string, y: string, avaliador: string) => {
     expect(await swipe(y, x)).toEqual({ matched: false });
     const r = await swipe(x, y);
@@ -56,9 +59,10 @@ describe("Créditos · segurança (§47 do documento) e jornada completa", () =>
     await d.rpc(y, "app_dupla_answer_invite", { p_invite_id: inv.invites[0].id, p_accept: true });
     const candidato = avaliador === x ? y : x;
     await d.sql(
-      `update public.checklist_rooms set phase = 'setup', candidate_id = $2, evaluator_id = $3, ready_ids = member_ids, confirmed_ids = member_ids, connected_ids = member_ids
+      `update public.checklist_rooms set phase = 'setup', candidate_id = $2, evaluator_id = $3, ready_ids = member_ids, confirmed_ids = member_ids, connected_ids = member_ids,
+              station_id = $4
         where id = $1`,
-      [r.room_id, candidato, avaliador]
+      [r.room_id, candidato, avaliador, STATION.id]
     );
     return r.room_id as string;
   };
@@ -185,8 +189,8 @@ describe("Créditos · segurança (§47 do documento) e jornada completa", () =>
     expect(await swipe(U.bruno, U.ana)).toEqual({ matched: false });
     const r = await swipe(U.ana, U.bruno);
     await d.sql(
-      `update public.checklist_rooms set phase = 'setup', candidate_id = $2, evaluator_id = $3, ready_ids = member_ids, confirmed_ids = member_ids, connected_ids = member_ids where id = $1`,
-      [r.room_id, U.ana, U.bruno]
+      `update public.checklist_rooms set phase = 'setup', candidate_id = $2, evaluator_id = $3, ready_ids = member_ids, confirmed_ids = member_ids, connected_ids = member_ids, station_id = $4 where id = $1`,
+      [r.room_id, U.ana, U.bruno, STATION.id]
     );
     await expect(iniciar(U.bruno, r.room_id)).rejects.toThrow("O convite ainda não foi aceito.");
     expect(await d.sql(`select count(*)::int as n from public.credit_ledger where user_id = any ($1::uuid[])`, [[U.ana, U.bruno]])).toEqual([{ n: 0 }]);
@@ -199,14 +203,20 @@ describe("Créditos · segurança (§47 do documento) e jornada completa", () =>
     expect(await gasto(U.bruno)).toBe(1);
   });
 
-  it("desligada, o início não olha o convite (comportamento de antes)", async () => {
+  // Fluxo simples (014150): o início sempre espera o convite aceito, com a cota ligada ou desligada (o candidato nunca começa uma
+  // estação que ainda não aceitou).
+  it("desligada, o início também espera o convite aceito (fluxo simples); aceito, inicia sem rastro de crédito", async () => {
     expect(await swipe(U.bruno, U.ana)).toEqual({ matched: false });
     const r = await swipe(U.ana, U.bruno);
     await d.sql(
-      `update public.checklist_rooms set phase = 'setup', candidate_id = $2, evaluator_id = $3, ready_ids = member_ids where id = $1`,
-      [r.room_id, U.ana, U.bruno]
+      `update public.checklist_rooms set phase = 'setup', candidate_id = $2, evaluator_id = $3, station_id = $4 where id = $1`,
+      [r.room_id, U.ana, U.bruno, STATION.id]
     );
+    await expect(iniciar(U.bruno, r.room_id)).rejects.toThrow("O convite ainda não foi aceito.");
+    const inv = await d.rpc(U.bruno, "app_dupla_invites");
+    await d.rpc(U.bruno, "app_dupla_answer_invite", { p_invite_id: inv.invites[0].id, p_accept: true });
     expect((await iniciar(U.bruno, r.room_id)).phase).toBe("running");
+    expect(await d.sql(`select count(*)::int as n from public.credit_ledger where user_id = any ($1::uuid[])`, [[U.ana, U.bruno]])).toEqual([{ n: 0 }]);
   });
 
   it("o consumo não grava created_by (quem aperta 'iniciar' não é 'quem lançou' os créditos dos dois); os membros de uma sala aberta não mudam", async () => {
@@ -234,6 +244,7 @@ describe("Créditos · segurança (§47 do documento) e jornada completa", () =>
     for (const f of ["20261003014040_treino_dupla_integridade.sql", "20261003014050_treino_dupla_creditos_inicio.sql"]) {
       await d.db.exec(fs.readFileSync(path.join(__dirname, "../../supabase/migrations", f), "utf8"));
     }
+    await recolarFluxoSimples(d.db); // a cadeia volta inteira (o fluxo simples refaz funções que a 014050 também refaz)
     expect(await d.sql(`select phase, closed_reason from public.checklist_rooms where id = $1`, [sala.id])).toEqual([{ phase: "closed", closed_reason: "sem_sinal" }]);
   });
 
@@ -270,9 +281,9 @@ describe("Créditos · segurança (§47 do documento) e jornada completa", () =>
     // 4) um segundo par com um sem crédito não inicia e ninguém paga: Carla com Eva; Eva sem crédito por conta própria
     await d.sql(`select public.credit_consume($1::uuid, 'match', 1, 'room', gen_random_uuid(), 'jornada-eva')`, [U.eva]);
     const outra = await d.sql<{ id: string }>(
-      `insert into public.checklist_rooms (member_ids, phase, round, candidate_id, evaluator_id, ready_ids, confirmed_ids, connected_ids)
-         values (array[$1::uuid, $2::uuid], 'setup', 1, $1, $2, array[$1::uuid, $2::uuid], array[$1::uuid, $2::uuid], array[$1::uuid, $2::uuid]) returning id`,
-      [U.carla, U.eva]
+      `insert into public.checklist_rooms (member_ids, phase, round, candidate_id, evaluator_id, ready_ids, confirmed_ids, connected_ids, station_id)
+         values (array[$1::uuid, $2::uuid], 'setup', 1, $1, $2, array[$1::uuid, $2::uuid], array[$1::uuid, $2::uuid], array[$1::uuid, $2::uuid], $3) returning id`,
+      [U.carla, U.eva, STATION.id]
     );
     const antesCarla = await gasto(U.carla);
     for (const quem of [U.eva, U.carla]) {

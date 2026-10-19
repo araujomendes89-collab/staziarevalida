@@ -67,6 +67,13 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
     await act(U.bruno, "set_station", id, { p_station_id: SECRETA.id });
     return id;
   };
+  /**
+   * Fluxo simples (014150): escolher papéis ou a estação leva a sala à preparação e quem trouxe a estação e vira candidato fica
+   * sem ela. Os achados abaixo (aviso "já viu", 013405) trocam os papéis com a estação já escolhida, o que só acontece em sala
+   * antiga, ainda nos papéis: isto devolve a sala aos papéis, sem "quem escolheu" (a troca não limpa a estação; a regra nova é
+   * testada em duplaFluxoSimplesBanco).
+   */
+  const salaAntiga = (id: string) => d.sql(`update public.checklist_rooms set phase = 'roles', station_chosen_by = null where id = $1`, [id]);
 
   // ------------------------------------------------------------------ achado 1 (bloqueia)
   it("achado 1: a candidata vira avaliadora (cartão), vê o nome e volta a candidata → recebe o aviso; o avaliador também sabe", async () => {
@@ -74,10 +81,12 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
     let a = await estado(U.ana, id);
     expect(a.me).toMatchObject({ role: "candidate", seen_station: false });
     // cartão "Ator/Avaliador" (app_dupla_set_roles): o avaliador recebe o nome na hora (permitido: decisão de 16/10)
+    await salaAntiga(id);
     a = await act(U.ana, "set_roles", id, { p_candidate_id: U.bruno });
     expect(a.me.role).toBe("evaluator");
     expect(a.station.name).toBe(SECRETA.name);
     // volta a candidata: o nome e o id continuam fora do estado e do conteúdo
+    await salaAntiga(id);
     a = await act(U.ana, "set_roles", id, { p_candidate_id: U.ana });
     // fluxo simples (014140, rodada de correção 1): antes do início marcado o aviso não chega ao candidato; o avaliador fica sabendo
     expect(a.me).toMatchObject({ role: "candidate", seen_station: false });
@@ -99,11 +108,13 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
     // sorteia até a ana cair como avaliadora (o sorteio é do servidor)
     let s: any;
     for (let i = 0; i < 60; i++) {
+      await salaAntiga(id);
       s = await act(U.ana, "draw_roles", id);
       if (s.me.role === "evaluator") break;
     }
     expect(s.me.role).toBe("evaluator");
     for (let i = 0; i < 60; i++) {
+      await salaAntiga(id);
       s = await act(U.ana, "draw_roles", id);
       if (s.me.role === "candidate") break;
     }
@@ -139,21 +150,33 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
     await addProfile(d.db, U.ana, { public_name: "Ana Souza", role_pref: "med" });
     await addProfile(d.db, U.bruno, { public_name: "Bruno Lima", role_pref: "ator" });
     try {
-      await seen(d.db, U.ana);
-      await seen(d.db, U.bruno);
-      expect((await d.rpc(U.ana, "app_dupla_swipe", { p_to: U.bruno, p_direction: "right", p_station_id: SECRETA.id })).matched).toBe(false);
-      await seen(d.db, U.ana);
-      const m = await d.rpc(U.bruno, "app_dupla_swipe", { p_to: U.ana, p_direction: "right" });
-      expect(m.matched).toBe(true);
-      const [sala] = await d.sql(`select station_id, station_chosen_by, candidate_id, evaluator_id from public.checklist_rooms where id = $1`, [m.room_id]);
-      expect(sala).toEqual({ station_id: SECRETA.id, station_chosen_by: U.ana, candidate_id: U.ana, evaluator_id: U.bruno });
-      const a = await estado(U.ana, m.room_id);
-      // fluxo simples (014140, rodada de correção 1): antes do início marcado o aviso não chega ao candidato; o avaliador fica sabendo
-      expect(a.me).toMatchObject({ role: "candidate", seen_station: false });
-      expect(vaza(a)).toEqual([]);
-      expect((await estado(U.bruno, m.room_id)).partner.seen_station).toBe(true);
-      expect(await d.sql(`select user_id, how from public.checklist_room_station_views where room_id = $1 order by how`, [m.room_id])).toEqual([
-        { user_id: U.bruno, how: "avaliador" },
+      const formar = async () => {
+        await seen(d.db, U.ana);
+        await seen(d.db, U.bruno);
+        expect((await d.rpc(U.ana, "app_dupla_swipe", { p_to: U.bruno, p_direction: "right", p_station_id: SECRETA.id })).matched).toBe(false);
+        await seen(d.db, U.ana);
+        const m = await d.rpc(U.bruno, "app_dupla_swipe", { p_to: U.ana, p_direction: "right" });
+        expect(m.matched).toBe(true);
+        return m.room_id as string;
+      };
+      // 014150 (dono, 19/10): Ana trouxe a estação e virou candidata ('med' com 'ator'): a sala nasce sem estação e ninguém "viu"
+      let sala = await formar();
+      expect((await d.sql(`select station_id, station_chosen_by, candidate_id, evaluator_id from public.checklist_rooms where id = $1`, [sala]))[0])
+        .toEqual({ station_id: null, station_chosen_by: null, candidate_id: U.ana, evaluator_id: U.bruno });
+      expect(await d.sql(`select 1 from public.checklist_room_station_views where room_id = $1`, [sala])).toEqual([]);
+      // quem trouxe a estação vira o ator ('ator' com 'med'): a estação fica, gravada como vista só por ele
+      await d.sql(`delete from public.checklist_rooms`);
+      await d.sql(`delete from public.study_matches`);
+      await d.sql(`delete from public.study_swipes`);
+      await d.sql(`update public.study_profiles set role_pref = case user_id when $1::uuid then 'ator' else 'med' end where user_id in ($1, $2)`, [U.ana, U.bruno]);
+      sala = await formar();
+      expect((await d.sql(`select station_id, station_chosen_by, candidate_id, evaluator_id from public.checklist_rooms where id = $1`, [sala]))[0])
+        .toEqual({ station_id: SECRETA.id, station_chosen_by: U.ana, candidate_id: U.bruno, evaluator_id: U.ana });
+      const b = await estado(U.bruno, sala);
+      expect(b.me).toMatchObject({ role: "candidate", seen_station: false });
+      expect(vaza(b)).toEqual([]);
+      expect((await estado(U.ana, sala)).partner.seen_station).toBe(false);
+      expect(await d.sql(`select user_id, how from public.checklist_room_station_views where room_id = $1 order by how`, [sala])).toEqual([
         { user_id: U.ana, how: "escolheu" },
       ]);
     } finally {
@@ -202,8 +225,10 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
   it("achado 3: sala aberta (antes do resultado) e quem já viu a estação", async () => {
     const id = await salaPapeis();
     expect((await d.rpc<any>(U.ana, "dupla_export_rooms"))[0]).not.toHaveProperty("station_id");
-    // a candidata passa por avaliadora e volta: já viu, pode receber (não há nada novo para ela)
+    // a candidata passa por avaliadora e volta (sala antiga): já viu, pode receber (não há nada novo para ela)
+    await salaAntiga(id);
     await act(U.ana, "set_roles", id, { p_candidate_id: U.bruno });
+    await salaAntiga(id);
     await act(U.ana, "set_roles", id, { p_candidate_id: U.ana });
     const [sala] = await d.rpc<any>(U.ana, "dupla_export_rooms");
     expect(sala.station_id).toBe(SECRETA.id);
@@ -214,6 +239,7 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
   it("achado 4: quem viu como avaliador e vira candidato recebe o aviso, só para a estação que viu", async () => {
     const id = await salaPapeis(); // bruno avaliador viu SECRETA
     await act(U.bruno, "set_station", id, { p_station_id: STATION.id }); // e depois STATION
+    await salaAntiga(id);
     let b = await act(U.bruno, "set_roles", id, { p_candidate_id: U.bruno }); // bruno vira candidato, ainda em STATION
     // fluxo simples (014140, rodada de correção 1): antes do início marcado o aviso não chega ao candidato; o avaliador fica sabendo
     expect(b.me).toMatchObject({ role: "candidate", seen_station: false });
@@ -261,7 +287,8 @@ describe("Migração 013405: correções da revisão antes de publicar", () => {
       const equipe = await makeRoom(d.db, { members: [U.admin, U.carla], phase: "roles", station: null, candidate: U.carla, evaluator: U.admin });
       const s = await act(U.admin, "set_station", equipe, { p_station_id: PENDENTE.id });
       expect(s.station.id).toBe(PENDENTE.id);
-      await act(U.carla, "confirm_roles", equipe);
+      expect(s.phase).toBe("setup"); // 014150: a escolha leva à preparação; o ator inicia
+      expect((await act(U.admin, "start", equipe)).phase).toBe("running");
     } finally {
       await d.sql(`delete from public.study_profiles where user_id in ($1, $2, $3)`, [U.admin, U.ana, U.carla]);
     }

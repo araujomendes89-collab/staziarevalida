@@ -256,6 +256,20 @@ export async function makeRoom(
 }
 
 /**
+ * Fluxo simples (DONO-2, 19/10): app_dupla_start grava o início 2 s à frente (o apito) e, até lá, o candidato não recebe nada
+ * da estação (014140). No PGlite o now() é fixo em cada transação; para o teste ler "depois de a porta abrir", isto traz o
+ * início e o fim 3 s para trás (a duração não muda). Use logo depois de app_dupla_start quando o teste for ler o que o
+ * candidato recebe (estado, conteúdo, imagem, resultado).
+ */
+export async function abrirPorta(db: PGlite, roomId: string): Promise<void> {
+  await db.query(
+    `update public.checklist_rooms set started_at = started_at - interval '3 seconds', ends_at = ends_at - interval '3 seconds'
+      where id = $1 and started_at is not null`,
+    [roomId]
+  );
+}
+
+/**
  * Avaliação de uma rodada direto no banco (sem passar pelas regras); devolve o id.
  * Nota de teste: `score` = correctness / 10 sobre `max_score` 10. `finishedAt` (ISO) manda na ordem das avaliações;
  * `answers` é o `checklist_answers` no formato publicado: `[{ id, grade: "Correct"|"Partial"|"Incorrect", subitems }]`.

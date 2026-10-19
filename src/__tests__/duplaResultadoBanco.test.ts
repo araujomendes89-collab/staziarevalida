@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { addSession, addStation, makeRoom, MIGRATIONS_DIR, openDuplaDb, setDupla, setPlan, STATION, U, type DuplaDb, type Phase } from "./helpers/duplaDb";
+import { abrirPorta, addSession, addStation, makeRoom, MIGRATIONS_DIR, openDuplaDb, setDupla, setPlan, STATION, U, type DuplaDb, type Phase } from "./helpers/duplaDb";
 
 const MIGRACAO = "20261003013360_treino_dupla_resultado.sql";
 const FASE = "Esta ação não vale nesta fase da sala.";
@@ -61,17 +61,12 @@ describe("Migração 013360 (+013380): resultado, revisão da nota, treinar outr
       `select *, score::float8 as score_n, score_before_review::float8 as antes_n, correctness::float8 as pct
          from public.checklist_study_sessions where room_id = $1 and round = $2`, [id, round]))[0];
 
-  /** Uma rodada inteira pelas funções, da fase dos papéis (já definidos) ao resultado. Marca i1 e i2 com os níveis dados. */
+  /** Uma rodada inteira pelas funções, da preparação (papéis e estação já definidos) ao resultado. Marca i1 e i2 com os níveis dados. */
   const rodada = async (id: string, cand: string, aval: string, i1: string | null, i2: string | null, ler?: (fase: string) => Promise<void>) => {
-    await act(cand, "confirm_roles", id);
-    await act(aval, "confirm_roles", id);
-    await ler?.("connecting");
-    await act(cand, "connected", id);
-    await act(aval, "connected", id);
     await ler?.("setup");
-    await act(cand, "ready", id, { p_ready: true });
-    await act(aval, "ready", id, { p_ready: true });
-    await act(aval, "start", id);
+    await act(aval, "start", id); // fluxo simples (014150): um toque do ator, sem confirmar, conexão ou "pronto"
+    await ler?.("apito"); // os 2 s do apito: início marcado no futuro
+    await abrirPorta(d.db, id); // DONO-2: o resultado e o estado do candidato esperam o início marcado
     await act(aval, "release", id, { p_pressing_id: "teste-inep2020-e08-p2", p_released: true });
     await ler?.("running");
     await act(aval, "mark", id, { p_item_id: "i1", p_grade: i1 });
@@ -80,7 +75,7 @@ describe("Migração 013360 (+013380): resultado, revisão da nota, treinar outr
     await ler?.("review");
     return act(aval, "finalize", id, { p_feedback: { gen: "Feedback de teste." } });
   };
-  /** Sala na fase dos papéis com a estação SECRETA escolhida pelo avaliador (bruno) e ana candidata. */
+  /** Sala com a estação SECRETA escolhida pelo avaliador (bruno) e ana candidata (014150: a escolha leva à preparação). */
   const salaPronta = async () => {
     const id = await makeRoom(d.db, { members: [U.ana, U.bruno], phase: "roles", candidate: U.ana, evaluator: U.bruno, station: null });
     await act(U.bruno, "set_station", id, { p_station_id: SECRETA.id });
@@ -152,13 +147,8 @@ describe("Migração 013360 (+013380): resultado, revisão da nota, treinar outr
   it("tempo esgotado não fecha a sala: com os dois dando sinal ela segue em andamento e vai à conferência pelo avaliador", async () => {
     const id = await salaPronta();
     for (const u of [U.ana, U.bruno]) await d.sql(`insert into public.study_profiles (user_id, public_name, last_seen_at) values ($1, 'Pessoa de teste', now()) on conflict (user_id) do update set last_seen_at = now()`, [u]);
-    await act(U.ana, "confirm_roles", id);
-    await act(U.bruno, "confirm_roles", id);
-    await act(U.ana, "connected", id);
-    await act(U.bruno, "connected", id);
-    await act(U.ana, "ready", id, { p_ready: true });
-    await act(U.bruno, "ready", id, { p_ready: true });
     await act(U.bruno, "start", id);
+    await abrirPorta(d.db, id); // encerrar espera o início marcado (014150)
     // o cronômetro zerou há 5 minutos e a sala não mudou há 5 minutos
     await d.sql(`update public.checklist_rooms set ends_at = now() - interval '5 minutes', updated_at = now() - interval '5 minutes' where id = $1`, [id]);
     expect((await d.rpc(U.ana, "app_dupla_room", { p_room_id: id })).phase).toBe("running");
@@ -170,50 +160,47 @@ describe("Migração 013360 (+013380): resultado, revisão da nota, treinar outr
     expect(await d.sql(`select proname from pg_proc where proname = 'app_dupla_swap'`)).toEqual([]);
   });
 
-  it("treinar outra estação: rodada 2 sem papéis e sem estação, tudo zerado (menos o link); dois cliques não pulam duas rodadas", async () => {
+  it("nova rodada (fluxo simples): preparação sem estação, mesmos papéis, tudo zerado (menos o link); dois cliques não pulam duas rodadas", async () => {
     const id = await salaPronta();
     await expect(act(U.ana, "next_station", id)).rejects.toThrow(FASE);
     await rodada(id, U.ana, U.bruno, "partial", "correct");
     await d.sql(`update public.checklist_rooms set call_link = 'https://meet.example.com/abc', duration_ms = 120000 where id = $1`, [id]);
     const s = await act(U.ana, "next_station", id);
     expect(s).toMatchObject({
-      phase: "roles", round: 2, station: null, duration_ms: null, started_at: null, ends_at: null, paused_left_ms: null, paused_at: null,
+      phase: "setup", round: 2, station: null, duration_ms: null, started_at: null, ends_at: null, paused_left_ms: null, paused_at: null,
       finished_at: null, released_pressings: [], call_link: "https://meet.example.com/abc",
-      me: { role: null, confirmed: false, connected: false, ready: false, seen_station: false },
-      partner: { role: null, confirmed: false, connected: false, ready: false },
+      me: { role: "candidate", confirmed: false, connected: false, ready: false, seen_station: false },
+      partner: { role: "evaluator", confirmed: false, connected: false, ready: false },
     });
     const r = await linha(id);
-    expect(r).toMatchObject({ station_id: null, station_chosen_by: null, candidate_id: null, evaluator_id: null, paused_total_ms: 0, connected_ids: [], ready_ids: [], confirmed_ids: [] });
+    expect(r).toMatchObject({ station_id: null, station_chosen_by: null, candidate_id: U.ana, evaluator_id: U.bruno, paused_total_ms: 0, connected_ids: [], ready_ids: [], confirmed_ids: [] });
     // segundo clique (outra aba): não pula para a rodada 3
     await expect(act(U.bruno, "next_station", id)).rejects.toThrow(FASE);
     expect((await linha(id)).round).toBe(2);
-    // a rodada 2 não vê as marcações da rodada 1
-    await act(U.ana, "set_roles", id, { p_candidate_id: U.bruno });
-    expect(await d.rpc(U.ana, "app_dupla_marks", { p_room_id: id })).toEqual([]);
+    // a rodada 2 não vê as marcações da rodada 1 (o avaliador continua o mesmo)
+    expect(await d.rpc(U.bruno, "app_dupla_marks", { p_room_id: id })).toEqual([]);
   });
 
   it("rodada seguinte: o banco recusa a estação já treinada nesta sala (qualquer rodada anterior), na escolha e na confirmação", async () => {
     const JA = "Vocês já treinaram esta estação nesta sala. Escolham outra.";
     const id = await salaPronta();
     await rodada(id, U.ana, U.bruno, "partial", "correct");
-    await act(U.bruno, "next_station", id);
-    // papéis trocados de propósito: quem era candidata agora avalia
-    await act(U.bruno, "set_roles", id, { p_candidate_id: U.bruno });
+    // papéis trocados de propósito ("trocar"): quem era candidata agora avalia
+    await act(U.bruno, "next_station", id, { p_papel: "trocar" });
     await expect(act(U.ana, "set_station", id, { p_station_id: SECRETA.id })).rejects.toThrow(JA);
     expect(await d.rpc(U.ana, "app_dupla_room_done_stations", { p_room_id: id })).toEqual([SECRETA.id]);
     expect(await d.rpc(U.bruno, "app_dupla_room_done_stations", { p_room_id: id })).toEqual([SECRETA.id]);
     await expect(d.rpc(U.carla, "app_dupla_room_done_stations", { p_room_id: id })).rejects.toThrow("Sala não encontrada.");
-    // a mesma estação posta por fora (comando direto) também é recusada ao confirmar
-    await d.sql(`update public.checklist_rooms set station_id = $2 where id = $1`, [id, SECRETA.id]);
+    // sala antiga (nos papéis): a mesma estação posta por fora (comando direto) também é recusada ao confirmar
+    await d.sql(`update public.checklist_rooms set phase = 'roles', station_id = $2 where id = $1`, [id, SECRETA.id]);
     await expect(act(U.ana, "confirm_roles", id)).rejects.toThrow(JA);
-    await d.sql(`update public.checklist_rooms set station_id = null where id = $1`, [id]);
+    await d.sql(`update public.checklist_rooms set phase = 'setup', station_id = null where id = $1`, [id]);
     // outra estação: vale; quem escolheu e é avaliadora não recebe o aviso de candidato
     const s = await act(U.ana, "set_station", id, { p_station_id: OUTRA.id });
     expect(s).toMatchObject({ round: 2, station: { id: OUTRA.id }, duration_ms: OUTRA.duration_ms });
     await rodada(id, U.bruno, U.ana, "correct", "correct");
-    // rodada 3: as duas estações anteriores ficam de fora
-    await act(U.ana, "next_station", id);
-    await act(U.ana, "set_roles", id, { p_candidate_id: U.ana });
+    // rodada 3: as duas estações anteriores ficam de fora (papéis trocados de novo: ana candidata)
+    await act(U.ana, "next_station", id, { p_papel: "trocar" });
     await expect(act(U.bruno, "set_station", id, { p_station_id: SECRETA.id })).rejects.toThrow(JA);
     await expect(act(U.bruno, "set_station", id, { p_station_id: OUTRA.id })).rejects.toThrow(JA);
     expect((await d.rpc<string[]>(U.ana, "app_dupla_room_done_stations", { p_room_id: id })).sort()).toEqual([OUTRA.id, SECRETA.id].sort());
@@ -224,8 +211,7 @@ describe("Migração 013360 (+013380): resultado, revisão da nota, treinar outr
   it("rodadas em salas diferentes: última nota e média da estação contam todas (previous_pct e my_last_pct)", async () => {
     const id = await salaPronta();
     await rodada(id, U.ana, U.bruno, "partial", "correct"); // ana: 37,5%
-    await act(U.bruno, "next_station", id);
-    await act(U.bruno, "set_roles", id, { p_candidate_id: U.bruno });
+    await act(U.bruno, "next_station", id, { p_papel: "trocar" });
     await act(U.ana, "set_station", id, { p_station_id: OUTRA.id });
     await rodada(id, U.bruno, U.ana, "correct", "correct"); // bruno: 50% na OUTRA
     expect((await d.rpc(U.bruno, "app_dupla_result", { p_room_id: id, p_round: 2 })).previous_pct).toBeNull();
@@ -258,12 +244,10 @@ describe("Migração 013360 (+013380): resultado, revisão da nota, treinar outr
     expect((await d.rpc(U.ana, "app_dupla_room", { p_room_id: id })).station.name).toBe(SECRETA.name);
     expect((await d.rpc(U.ana, "app_dupla_result", { p_room_id: id, p_round: 1 })).station.name).toBe(SECRETA.name);
     // rodada 2: bruno vira candidato numa estação nova e não recebe o nome dela em nenhuma fase até o resultado
-    await act(U.ana, "next_station", id);
-    await act(U.ana, "set_roles", id, { p_candidate_id: U.bruno });
-    await act(U.ana, "set_station", id, { p_station_id: OUTRA.id });
+    deBruno.push(await act(U.ana, "next_station", id, { p_papel: "trocar" }).then(() => d.rpc(U.bruno, "app_dupla_room", { p_room_id: id })));
+    deBruno.push(await act(U.ana, "set_station", id, { p_station_id: OUTRA.id }).then(() => d.rpc(U.bruno, "app_dupla_room", { p_room_id: id })));
     const bruno = lerComo(U.bruno, deBruno);
     await bruno();
-    deBruno.push(await act(U.bruno, "confirm_roles", id));
     await rodada(id, U.bruno, U.ana, "correct", null, async (fase) => {
       await bruno();
       if (fase === "running") await expect(d.rpc(U.bruno, "app_dupla_result", { p_room_id: id, p_round: 2 })).rejects.toThrow("Resultado ainda não liberado.");
@@ -333,7 +317,7 @@ describe("Migração 013360 (+013380): resultado, revisão da nota, treinar outr
     }
     expect(await defs()).toEqual(antes);
     const acl = Object.fromEntries(antes.map((f) => [f.id, f.acl]));
-    for (const f of ["app_dupla_request_review(uuid,integer,text)", "app_dupla_redo_review(uuid,integer)", "app_dupla_next_station(uuid)", "app_dupla_room_done_stations(uuid)"]) {
+    for (const f of ["app_dupla_request_review(uuid,integer,text)", "app_dupla_redo_review(uuid,integer)", "app_dupla_next_station(uuid,text)", "app_dupla_room_done_stations(uuid)"]) {
       expect(acl[f], f).toBe(acl["app_dupla_room(uuid,integer)"]);
     }
     expect(acl["app_admin_dupla_usage(text)"]).toBe(acl["app_admin_save_dupla(boolean,text[])"]);

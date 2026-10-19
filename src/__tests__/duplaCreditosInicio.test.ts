@@ -18,7 +18,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
-import { MIGRATIONS_DIR, STATION, addStation, makeRoom, openDuplaDb, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
+import { MIGRATIONS_DIR, STATION, addStation, makeRoom, openDuplaDb, recolarFluxoSimples, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
 const MIGRACAO = "20261003014050_treino_dupla_creditos_inicio.sql";
 const SQL = fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8");
@@ -27,7 +27,8 @@ const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOSt
 const NEUTRA = "Não foi possível iniciar agora. Confirmem a cota de hoje e tentem de novo.";
 const FASE = "Esta ação não vale nesta fase da sala.";
 const SO_AVALIADOR = "Só o avaliador pode fazer isso.";
-const NAO_PRONTOS = "Os dois precisam estar prontos.";
+const SEM_ESTACAO = "Escolha a estação antes de iniciar.";
+const CONVITE_PENDENTE = "O convite ainda não foi aceito.";
 const SEM_SALA = "Sala não encontrada.";
 const ABERTO = { aberto: true, planos: ["trial", "pro", "elite"] };
 
@@ -296,15 +297,22 @@ describe("Stazia Match · crédito no início da estação (app_dupla_start)", (
   });
 
   // ------------------------------------------------------------------ pré-condições
-  it("sem os dois prontos: nada consome", async () => {
+  // Fluxo simples (014150): o início é um toque do ator, sem "os dois prontos"; precisa da estação e do convite aceito.
+  it("sem a estação ou com o convite ainda pendente: nada consome; sem os dois prontos, inicia e cobra", async () => {
     await cota(true);
     const cand = await conta("pro");
     const aval = await conta("pro");
-    for (const ready of [[], [cand], [aval]]) {
-      const id = await sala(cand, aval, { ready });
-      await expect(iniciar(aval, id)).rejects.toThrow(NAO_PRONTOS);
-      await nadaPago(id, [cand, aval], [0, 0]);
-    }
+    const semEstacao = await sala(cand, aval);
+    await d.sql(`update public.checklist_rooms set station_id = null where id = $1`, [semEstacao]);
+    await expect(iniciar(aval, semEstacao)).rejects.toThrow(SEM_ESTACAO);
+    await nadaPago(semEstacao, [cand, aval], [0, 0]);
+    const pendente = await sala(cand, aval);
+    await d.sql(`insert into public.study_invites (from_user, to_user, room_id) values ($1, $2, $3)`, [aval, cand, pendente]);
+    await expect(iniciar(aval, pendente)).rejects.toThrow(CONVITE_PENDENTE);
+    await nadaPago(pendente, [cand, aval], [0, 0]);
+    const semProntos = await sala(cand, aval, { ready: [] });
+    expect((await iniciar(aval, semProntos)).phase).toBe("running");
+    expect(await livro(semProntos)).toHaveLength(2);
   });
 
   it("quem não é o avaliador, quem não é da sala e o visitante: nada consome", async () => {
@@ -342,7 +350,7 @@ describe("Stazia Match · crédito no início da estação (app_dupla_start)", (
     await iniciar(aval, id);
     await d.sql(`update public.checklist_rooms set phase = 'result' where id = $1`, [id]);
     const s = await d.rpc<any>(cand, "app_dupla_next_station", { p_room_id: id });
-    expect(s).toMatchObject({ phase: "roles", round: 2 });
+    expect(s).toMatchObject({ phase: "setup", round: 2 }); // 014150: a nova rodada volta à preparação, mesmos papéis
     await d.sql(
       `update public.checklist_rooms
           set phase = 'setup', candidate_id = $2, evaluator_id = $3, station_id = $4,
@@ -440,7 +448,7 @@ describe("Stazia Match · crédito no início da estação (app_dupla_start)", (
     ehNeutraProxima(await erroDe(d.rpc(cand, "app_dupla_next_station", { p_room_id: id })));
     // com bônus nos dois, abre
     await concede(aval, 1, "bonus");
-    expect(await d.rpc<any>(cand, "app_dupla_next_station", { p_room_id: id })).toMatchObject({ phase: "roles", round: 2 });
+    expect(await d.rpc<any>(cand, "app_dupla_next_station", { p_room_id: id })).toMatchObject({ phase: "setup", round: 2 });
   });
 
   it("sem crédito na hora de INICIAR a segunda estação (gastou no meio): a sala não começa, mensagem neutra, nada novo no livro", async () => {
@@ -467,7 +475,7 @@ describe("Stazia Match · crédito no início da estação (app_dupla_start)", (
     const id = await sala(cand, aval);
     await iniciar(aval, id);
     await d.sql(`update public.checklist_rooms set phase = 'result' where id = $1`, [id]);
-    expect(await d.rpc<any>(cand, "app_dupla_next_station", { p_room_id: id })).toMatchObject({ phase: "roles", round: 2 });
+    expect(await d.rpc<any>(cand, "app_dupla_next_station", { p_room_id: id })).toMatchObject({ phase: "setup", round: 2 });
   });
 
   it("'Treinar outra estação' com a cota desligada ou entre pessoas da equipe: abre como antes", async () => {
@@ -724,6 +732,7 @@ describe("Stazia Match · crédito no início da estação (app_dupla_start)", (
     });
     const antes = await retrato();
     await d.db.exec(SQL);
+    await recolarFluxoSimples(d.db); // a 014150 refaz o início, a escolha e a nova rodada que a 014050 também refaz
     expect(await retrato()).toEqual(antes);
     // a cota continua como estava e a função continua funcionando depois de colada de novo
     await cota(true);

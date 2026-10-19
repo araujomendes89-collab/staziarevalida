@@ -16,7 +16,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
-import { MIGRATIONS_DIR, addProfile, addStation, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
+import { MIGRATIONS_DIR, addProfile, addStation, openDuplaDb, recolarFluxoSimples, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
 const MIGRACAO = "20261003014050_treino_dupla_creditos_inicio.sql";
 const SQL = fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8");
@@ -345,6 +345,7 @@ describe("Stazia Match · pré-checagem de crédito (escolha e convite)", () => 
     });
     const antes = await retrato();
     await d.db.exec(SQL);
+    await recolarFluxoSimples(d.db); // a 014150 refaz o início, a escolha e a nova rodada que a 014050 também refaz
     expect(await retrato()).toEqual(antes);
 
     // permissões e definição das duas funções redefinidas

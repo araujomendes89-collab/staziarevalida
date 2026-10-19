@@ -158,9 +158,9 @@ describe("Migração 013406: correções da revisão antes de publicar (2ª leva
       expect(vaza(s)).toEqual([]);
       expect(JSON.stringify(s)).not.toMatch(/revis|aprova|pendente/i);
     }
-    // o avaliador escolhe outra estação: o aviso some e a rodada segue a mesma
+    // o avaliador escolhe outra estação: o aviso some e a rodada segue a mesma (014150: a escolha leva à preparação)
     const s = await act(U.bruno, "set_station", id, { p_station_id: OUTRA.id });
-    expect(s).toMatchObject({ phase: "roles", round: 1, notice: null });
+    expect(s).toMatchObject({ phase: "setup", round: 1, notice: null });
     expect((await estado(U.ana, id)).notice).toBeNull();
   });
 

@@ -7,7 +7,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
-import { MIGRATIONS_DIR, STATION, U, addProfile, addSession, addStation, makeRoom, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
+import { MIGRATIONS_DIR, STATION, U, abrirPorta, addProfile, addSession, addStation, makeRoom, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
 const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
 const ABERTO = { aberto: true, planos: ["trial", "pro", "elite"] };
@@ -335,5 +335,215 @@ describe("Fluxo simples do Treino em Dupla (014130–014150)", () => {
     await d.sql(`update public.checklist_rooms set started_at = now() - interval '1 second', ends_at = now() + interval '10 minutes' where id = $1`, [sala]);
     expect((await estado(U.bruno, sala)).me).toMatchObject({ role: "candidate", seen_station: true });
     expect((await estado(U.ana, sala)).partner.seen_station).toBe(true);
+  });
+
+  // ------------------------------------------------------------------ 014150: início, papéis e rodadas
+  // (014150, ordem do controlador: encerrar e enviar a nota esperam o início marcado; por isso a rodada abre a porta antes.)
+  const rodadaCompleta = async () => {
+    const r = await convidar(U.ana, U.bruno);
+    await aceitar(U.bruno, r.room_id);
+    await act(U.ana, "start", r.room_id);
+    await abrirPorta(d.db, r.room_id);
+    await act(U.ana, "finish", r.room_id);
+    await act(U.ana, "finalize", r.room_id, { p_feedback: { gen: "" } });
+    return r.room_id as string;
+  };
+
+  it("um toque do ator: o início espera o aceite; depois, só o ator inicia, sem 'pronto', conexão ou confirmar", async () => {
+    const r = await convidar(U.ana, U.bruno);
+    await expect(act(U.ana, "start", r.room_id)).rejects.toThrow("O convite ainda não foi aceito.");
+    // o ator troca a estação enquanto o convite espera: o candidato continua sem saber qual é
+    await act(U.ana, "set_station", r.room_id, { p_station_id: OUTRA.id });
+    await aceitar(U.bruno, r.room_id);
+    expect((await estado(U.bruno, r.room_id)).station).toBeNull();
+    await expect(act(U.bruno, "start", r.room_id)).rejects.toThrow("Só o avaliador pode fazer isso.");
+    const s = await act(U.ana, "start", r.room_id);
+    expect(s.phase).toBe("running");
+    expect(await linha(r.room_id)).toMatchObject({ phase: "running", station_id: OUTRA.id, ready_ids: [], confirmed_ids: [], connected_ids: [] });
+    // o início é gravado 2 s à frente (o apito); o cronômetro tem a duração inteira a partir daí
+    const [t] = await d.sql<any>(
+      `select round(extract(epoch from (started_at - now())) * 1000)::int as falta, round(extract(epoch from (ends_at - started_at)) * 1000)::int as dur
+         from public.checklist_rooms where id = $1`, [r.room_id]);
+    expect(t.falta).toBeGreaterThan(1000);
+    expect(t.falta).toBeLessThanOrEqual(2000);
+    expect(t.dur).toBe(600000);
+    // DONO-2: até o início marcado (os 2 s do apito) o candidato recebe só a porta e o horário; com a porta aberta, a estação
+    expect(await estado(U.bruno, r.room_id)).toMatchObject({ station: null, ends_at: null, station_ready: true, porta: 1 });
+    await abrirPorta(d.db, r.room_id);
+    expect((await estado(U.bruno, r.room_id)).station).toMatchObject({ area: OUTRA.area });
+    await expect(act(U.ana, "start", r.room_id)).rejects.toThrow("Esta ação não vale nesta fase da sala.");
+  });
+
+  it("DONO-2 com o início de verdade: logo depois do toque o candidato recebe só a porta e o horário (estado, conteúdo, impressos, imagem); o ator recebe tudo; com a porta aberta, o candidato recebe a folha", async () => {
+    const r = await convidar(U.ana, U.bruno);
+    await aceitar(U.bruno, r.room_id);
+    await act(U.ana, "start", r.room_id);
+    await act(U.ana, "release", r.room_id, { p_pressing_id: "p1", p_released: true }); // o ator libera durante o apito
+    const e = await estado(U.bruno, r.room_id);
+    expect(e).toMatchObject({ phase: "running", station: null, duration_ms: null, ends_at: null, released_pressings: [], station_ready: true, porta: 1 });
+    expect(Date.parse(e.started_at)).toBe(new Date((await linha(r.room_id)).started_at).getTime()); // o horário de abertura sai
+    const c = await conteudo(U.bruno, r.room_id);
+    expect(c).toEqual({ role: "candidate", station: null, pressing_count: 0, pressings: [], waiting: true });
+    expect(vaza([e, c])).toEqual([]);
+    await expect(d.rpc(U.bruno, "app_dupla_print_path", { p_room_id: r.room_id, p_pressing_id: "candidate_sheet" })).rejects.toThrow("Esta ação não vale nesta fase da sala.");
+    expect((await estado(U.ana, r.room_id)).station).toMatchObject({ id: SECRETA.id, name: SECRETA.name });
+    expect((await conteudo(U.ana, r.room_id)).station).toMatchObject({ actor_script: expect.any(String) });
+    await abrirPorta(d.db, r.room_id);
+    expect((await estado(U.bruno, r.room_id)).station).toMatchObject({ area: SECRETA.area });
+    const c2 = await conteudo(U.bruno, r.room_id);
+    expect(c2.station).toMatchObject({ doctor_scene: SECRETA.doctor_scene });
+    expect(JSON.stringify(c2.pressings)).toContain("Hemograma");
+    await d.rpc(U.bruno, "app_dupla_print_path", { p_room_id: r.room_id, p_pressing_id: "candidate_sheet" }); // não recusa mais
+  });
+
+  it("só o ator libera, marca, encerra e envia a nota; a nota guarda o comentário em feedback_gen; o candidato pede revisão", async () => {
+    const r = await convidar(U.ana, U.bruno);
+    await aceitar(U.bruno, r.room_id);
+    await act(U.ana, "start", r.room_id);
+    await abrirPorta(d.db, r.room_id); // encerrar e enviar a nota esperam o início marcado (teste abaixo)
+    await expect(act(U.bruno, "release", r.room_id, { p_pressing_id: "p1", p_released: true })).rejects.toThrow("Só o avaliador pode fazer isso.");
+    await expect(d.rpc(U.bruno, "app_dupla_mark", { p_room_id: r.room_id, p_item_id: "i1", p_grade: "correct" })).rejects.toThrow("Só o avaliador pode fazer isso.");
+    await expect(act(U.bruno, "finish", r.room_id)).rejects.toThrow("Só o avaliador pode fazer isso.");
+    await d.rpc(U.ana, "app_dupla_mark", { p_room_id: r.room_id, p_item_id: "i1", p_grade: "correct" });
+    await act(U.ana, "finish", r.room_id);
+    await expect(act(U.bruno, "finalize", r.room_id, { p_feedback: { gen: "x" } })).rejects.toThrow("Só o avaliador pode fazer isso.");
+    expect((await act(U.ana, "finalize", r.room_id, { p_feedback: { gen: "Boa anamnese." } })).phase).toBe("result");
+    const [sess] = await d.sql<any>(`select feedback_pos, feedback_neg, feedback_gen, doctor_id, actor_id from public.checklist_study_sessions where room_id = $1`, [r.room_id]);
+    expect(sess).toEqual({ feedback_pos: "", feedback_neg: "", feedback_gen: "Boa anamnese.", doctor_id: U.bruno, actor_id: U.ana });
+    await act(U.bruno, "request_review", r.room_id, { p_round: 1, p_reason: "O item 2 foi feito." });
+    expect((await act(U.ana, "redo_review", r.room_id, { p_round: 1 })).phase).toBe("review");
+  });
+
+  // Ordem do controlador (Tarefa 2, achado 2): a avaliação da rodada (checklist_study_sessions, que o candidato lê direto pela
+  // API) só nasce no "Enviar a nota"; encerrar ou enviar a nota durante os 2 s do apito entregaria a estação antes da porta.
+  it("durante o apito (início marcado no futuro) o ator não encerra nem envia a nota; passado o horário, encerra e envia", async () => {
+    const r = await convidar(U.ana, U.bruno);
+    await aceitar(U.bruno, r.room_id);
+    await act(U.ana, "start", r.room_id);
+    await expect(act(U.ana, "finish", r.room_id)).rejects.toThrow("A estação ainda não começou. Espere o apito terminar.");
+    expect(await linha(r.room_id)).toMatchObject({ phase: "running", finished_at: null });
+    // mesmo que a sala já estivesse na revisão (encerrada por outro caminho), a nota espera o início marcado
+    await d.sql(`update public.checklist_rooms set phase = 'review', finished_at = now() where id = $1`, [r.room_id]);
+    await expect(act(U.ana, "finalize", r.room_id, { p_feedback: { gen: "x" } })).rejects.toThrow("A estação ainda não começou. Espere o apito terminar.");
+    expect(await d.sql(`select 1 from public.checklist_study_sessions where room_id = $1`, [r.room_id])).toEqual([]);
+    expect(await linha(r.room_id)).toMatchObject({ phase: "review" });
+    // a porta abre: encerrar e enviar a nota funcionam
+    await d.sql(`update public.checklist_rooms set phase = 'running', finished_at = null where id = $1`, [r.room_id]);
+    await abrirPorta(d.db, r.room_id);
+    expect((await act(U.ana, "finish", r.room_id)).phase).toBe("review");
+    expect((await act(U.ana, "finalize", r.room_id, { p_feedback: { gen: "ok" } })).phase).toBe("result");
+    expect(await d.sql(`select 1 from public.checklist_study_sessions where room_id = $1`, [r.room_id])).toHaveLength(1);
+  });
+
+  it("nova rodada 'trocar': os papéis invertem, a sala volta à preparação sem estação e só o novo ator escolhe", async () => {
+    const sala = await rodadaCompleta();
+    await expect(act(U.bruno, "next_station", sala, { p_papel: "outro" })).rejects.toThrow("Escolha inválida.");
+    const s = await act(U.bruno, "next_station", sala, { p_papel: "trocar" });
+    expect(s).toMatchObject({ phase: "setup", round: 2, station: null, station_ready: false });
+    expect(await linha(sala)).toMatchObject({ evaluator_id: U.bruno, candidate_id: U.ana, station_id: null, started_at: null });
+    await expect(act(U.bruno, "start", sala)).rejects.toThrow("Escolha a estação antes de iniciar.");
+    await expect(act(U.ana, "set_station", sala, { p_station_id: OUTRA.id })).rejects.toThrow("Só o avaliador escolhe a estação.");
+    await expect(act(U.bruno, "set_station", sala, { p_station_id: SECRETA.id })).rejects.toThrow("Vocês já treinaram esta estação nesta sala. Escolham outra.");
+    await act(U.bruno, "set_station", sala, { p_station_id: OUTRA.id });
+    expect(await estado(U.ana, sala)).toMatchObject({ phase: "setup", station: null, station_ready: true });
+    expect((await act(U.bruno, "start", sala)).phase).toBe("running");
+  });
+
+  it("tela antiga, sem p_papel: a nova rodada mantém os papéis ('mesmo')", async () => {
+    const sala = await rodadaCompleta();
+    const s = await d.rpc<any>(U.bruno, "app_dupla_next_station", { p_room_id: sala });
+    expect(s).toMatchObject({ phase: "setup", round: 2 });
+    expect(await linha(sala)).toMatchObject({ evaluator_id: U.ana, candidate_id: U.bruno, station_id: null });
+  });
+
+  it("match: perfil, baralho e papéis pelas preferências não mudam; com os papéis decididos, aceitar leva à preparação e o ator escolhe a estação", async () => {
+    await d.sql(`update public.study_profiles set role_pref = 'ator' where user_id = $1`, [U.bruno]); // Ana 'med', Bruno 'ator'
+    await d.rpc(U.bruno, "app_dupla_swipe", { p_to: U.ana, p_direction: "right" });
+    const m = await d.rpc<any>(U.ana, "app_dupla_swipe", { p_to: U.bruno, p_direction: "right" });
+    expect(m.matched).toBe(true);
+    expect(await linha(m.room_id)).toMatchObject({ phase: "roles", candidate_id: U.ana, evaluator_id: U.bruno, station_id: null });
+    const [{ id }] = (await d.rpc<any>(U.bruno, "app_dupla_invites")).invites;
+    await d.rpc(U.bruno, "app_dupla_answer_invite", { p_invite_id: id, p_accept: true });
+    expect(await linha(m.room_id)).toMatchObject({ phase: "setup", station_id: null });
+    await act(U.bruno, "set_station", m.room_id, { p_station_id: SECRETA.id });
+    expect((await act(U.bruno, "start", m.room_id)).phase).toBe("running");
+  });
+
+  it("match: quem trouxe a estação e virou candidato fica sem ela; quem trouxe e virou ator fica com ela", async () => {
+    await d.sql(`update public.study_profiles set role_pref = 'ator' where user_id = $1`, [U.bruno]); // Ana 'med', Bruno 'ator'
+    await d.rpc(U.bruno, "app_dupla_swipe", { p_to: U.ana, p_direction: "right" });
+    const m = await d.rpc<any>(U.ana, "app_dupla_swipe", { p_to: U.bruno, p_direction: "right", p_station_id: SECRETA.id });
+    expect(m.matched).toBe(true);
+    expect(await linha(m.room_id)).toMatchObject({ candidate_id: U.ana, evaluator_id: U.bruno, station_id: null, station_chosen_by: null, duration_ms: null });
+    await d.sql(`delete from public.checklist_rooms`);
+    await d.sql(`delete from public.study_matches`);
+    await d.sql(`delete from public.study_swipes`);
+    await d.rpc(U.ana, "app_dupla_swipe", { p_to: U.bruno, p_direction: "right" });
+    const n = await d.rpc<any>(U.bruno, "app_dupla_swipe", { p_to: U.ana, p_direction: "right", p_station_id: SECRETA.id });
+    expect(await linha(n.room_id)).toMatchObject({ candidate_id: U.ana, evaluator_id: U.bruno, station_id: SECRETA.id, station_chosen_by: U.bruno });
+  });
+
+  it("papéis escolhidos na sala: se quem trouxe a estação vira candidato, a estação é limpa; se vira ator, fica", async () => {
+    const a = await makeRoom(d.db, { members: [U.ana, U.bruno], phase: "roles", station: SECRETA.id, extra: { station_chosen_by: U.ana } });
+    await act(U.bruno, "set_roles", a, { p_candidate_id: U.ana });
+    expect(await linha(a)).toMatchObject({ phase: "setup", candidate_id: U.ana, station_id: null, station_chosen_by: null, duration_ms: null });
+    const b = await makeRoom(d.db, { members: [U.ana, U.bruno], phase: "roles", station: SECRETA.id, extra: { station_chosen_by: U.ana } });
+    await act(U.ana, "set_roles", b, { p_candidate_id: U.bruno });
+    expect(await linha(b)).toMatchObject({ phase: "setup", evaluator_id: U.ana, station_id: SECRETA.id });
+  });
+
+  it("match sem papéis decididos ('qualquer papel' dos dois): a sala fica nos papéis; escolher ou sortear os papéis leva à preparação", async () => {
+    await d.sql(`update public.study_profiles set role_pref = 'any' where user_id = any ($1::uuid[])`, [[U.ana, U.bruno]]);
+    await d.rpc(U.bruno, "app_dupla_swipe", { p_to: U.ana, p_direction: "right" });
+    const m = await d.rpc<any>(U.ana, "app_dupla_swipe", { p_to: U.bruno, p_direction: "right" });
+    const [{ id }] = (await d.rpc<any>(U.bruno, "app_dupla_invites")).invites;
+    await d.rpc(U.bruno, "app_dupla_answer_invite", { p_invite_id: id, p_accept: true });
+    expect(await linha(m.room_id)).toMatchObject({ phase: "roles", candidate_id: null, evaluator_id: null });
+    expect((await act(U.ana, "set_roles", m.room_id, { p_candidate_id: U.bruno })).phase).toBe("setup");
+    expect(await linha(m.room_id)).toMatchObject({ candidate_id: U.bruno, evaluator_id: U.ana });
+
+    const outra = await makeRoom(d.db, { members: [U.ana, U.carla], phase: "roles", station: null });
+    expect((await act(U.carla, "draw_roles", outra)).phase).toBe("setup");
+    const l = await linha(outra);
+    expect([l.candidate_id, l.evaluator_id].sort()).toEqual([U.ana, U.carla].sort());
+  });
+
+  it("estação que caiu (sala nos papéis com os papéis definidos): o ator escolhe outra e a sala vai direto à preparação", async () => {
+    const sala = await makeRoom(d.db, { members: [U.ana, U.bruno], phase: "roles", candidate: U.bruno, evaluator: U.ana, station: null, extra: { station_dropped_round: 1 } });
+    await expect(act(U.bruno, "set_station", sala, { p_station_id: OUTRA.id })).rejects.toThrow("Só o avaliador escolhe a estação.");
+    expect((await act(U.ana, "set_station", sala, { p_station_id: OUTRA.id })).phase).toBe("setup");
+  });
+
+  it("salas antigas: 'conexão' ainda leva à preparação e o início não pede mais 'pronto'", async () => {
+    const sala = await makeRoom(d.db, { members: [U.ana, U.bruno], phase: "connecting", candidate: U.bruno, evaluator: U.ana, station: SECRETA.id });
+    await act(U.ana, "connected", sala);
+    expect((await act(U.bruno, "connected", sala)).phase).toBe("setup");
+    expect((await act(U.ana, "start", sala)).phase).toBe("running");
+  });
+
+  it("014150: permissões (aluno anônimo e público fora; o gatilho só por dentro) e a assinatura antiga da nova rodada sumiu", async () => {
+    const [p] = await d.sql<any>(`select
+        has_function_privilege('anon', 'public.app_dupla_start(uuid)', 'execute') as start_anon,
+        has_function_privilege('anon', 'public.app_dupla_next_station(uuid, text)', 'execute') as next_anon,
+        has_function_privilege('anon', 'public.app_dupla_set_roles(uuid, uuid)', 'execute') as roles_anon,
+        has_function_privilege('anon', 'public.app_dupla_draw_roles(uuid)', 'execute') as draw_anon,
+        has_function_privilege('anon', 'public.app_dupla_set_station(uuid, text)', 'execute') as station_anon,
+        has_function_privilege('anon', 'public.app_dupla_swipe(uuid, text, text)', 'execute') as swipe_anon,
+        has_function_privilege('anon', 'public.app_dupla_finish(uuid)', 'execute') as finish_anon,
+        has_function_privilege('anon', 'public.app_dupla_finalize(uuid, jsonb)', 'execute') as finalize_anon,
+        has_function_privilege('authenticated', 'public.app_dupla_next_station(uuid, text)', 'execute') as next_auth,
+        has_function_privilege('authenticated', 'public.dupla_invite_accepted_setup()', 'execute') as gatilho_auth,
+        has_function_privilege('anon', 'public.dupla_invite_accepted_setup()', 'execute') as gatilho_anon,
+        to_regprocedure('public.app_dupla_next_station(uuid)') is null as antiga_sumiu`);
+    expect(p).toEqual({
+      start_anon: false, next_anon: false, roles_anon: false, draw_anon: false, station_anon: false, swipe_anon: false,
+      finish_anon: false, finalize_anon: false, next_auth: true, gatilho_auth: false, gatilho_anon: false, antiga_sumiu: true,
+    });
+    // só equipe: com a chave desligada, o porteiro recusa antes de qualquer regra nova
+    const sala = await makeRoom(d.db, { members: [U.ana, U.bruno], phase: "setup", candidate: U.bruno, evaluator: U.ana, station: SECRETA.id });
+    await setDupla(d.db, { aberto: false, planos: [] });
+    for (const [fn, args] of [["start", {}], ["next_station", { p_papel: "trocar" }], ["set_station", { p_station_id: OUTRA.id }], ["finish", {}]] as const) {
+      await expect(act(U.ana, fn, sala, args), fn).rejects.toThrow("Sem acesso ao Treinamento em Dupla.");
+    }
   });
 });

@@ -8,7 +8,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
-import { MIGRATIONS_DIR, STATION, U, addProfile, addStation, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
+import { MIGRATIONS_DIR, STATION, U, addProfile, addStation, openDuplaDb, recolarFluxoSimples, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
 const SQL = fs.readFileSync(path.join(MIGRATIONS_DIR, "20261003014040_treino_dupla_integridade.sql"), "utf8");
 // A 014050 refaz app_dupla_swipe a partir da 014040; quem cola a primeira cola a segunda em seguida.
@@ -215,6 +215,7 @@ describe("Migração 014040 — um par, uma conexão (study_matches_par_uniq e r
       await d.sql(`delete from public.study_matches where (user_a, user_b) = ($1, $2)`, [U.bruno, U.ana]);
       await d.db.exec(SQL);
       await d.db.exec(SQL_CREDITOS);
+      await recolarFluxoSimples(d.db); // 014150 refaz funções que a 014050 também refaz
       expect(await d.sql(`select 1 from pg_indexes where indexname = 'study_matches_par_uniq'`)).toHaveLength(1);
       await expect(d.sql(`insert into public.study_matches (user_a, user_b) values ($1, $2)`, [U.bruno, U.ana])).rejects.toThrow(/study_matches_par_uniq/);
     } finally {
@@ -222,6 +223,7 @@ describe("Migração 014040 — um par, uma conexão (study_matches_par_uniq e r
       await d.sql(`delete from public.study_matches where (user_a, user_b) in (($1, $2), ($2, $1))`, [U.ana, U.bruno]);
       await d.db.exec(SQL);
       await d.db.exec(SQL_CREDITOS);
+      await recolarFluxoSimples(d.db); // 014150 refaz funções que a 014050 também refaz
     }
     expect(await d.sql(`select 1 from pg_indexes where indexname = 'study_matches_par_uniq'`)).toHaveLength(1);
     expect((await d.sql<{ def: string }>(`select pg_get_functiondef('public.app_dupla_swipe(uuid,text,text)'::regprocedure) as def`))[0].def).toBe(swipeAntes);

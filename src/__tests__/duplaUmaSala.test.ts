@@ -8,7 +8,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
-import { MIGRATIONS_DIR, U, addProfile, addStation, openDuplaDb, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
+import { MIGRATIONS_DIR, U, addProfile, addStation, openDuplaDb, recolarFluxoSimples, seen, setDupla, setPlan, type DuplaDb } from "./helpers/duplaDb";
 
 const MIGRACAO = "20261003014040_treino_dupla_integridade.sql";
 const SQL = fs.readFileSync(path.join(MIGRATIONS_DIR, MIGRACAO), "utf8");
@@ -310,6 +310,7 @@ describe("Migração 014040 — uma pessoa, uma sala aberta (study_room_claims e
 
     await d.db.exec(SQL);
     await d.db.exec(SQL_CREDITOS);
+    await recolarFluxoSimples(d.db); // 014150 refaz funções que a 014050 também refaz
 
     expect(await d.sql(`select id, phase, closed_reason, rev from public.checklist_rooms order by created_at`)).toEqual([
       { id: antiga!, phase: "roles", closed_reason: null, rev: 0 },
@@ -330,6 +331,7 @@ describe("Migração 014040 — uma pessoa, uma sala aberta (study_room_claims e
     const depois = await retrato();
     await d.db.exec(SQL);
     await d.db.exec(SQL_CREDITOS);
+    await recolarFluxoSimples(d.db); // 014150 refaz funções que a 014050 também refaz
     expect(await retrato()).toEqual(depois);
   });
 
@@ -354,6 +356,7 @@ describe("Migração 014040 — uma pessoa, uma sala aberta (study_room_claims e
     await d.db.exec(SQL);
     // (A 014050 refaz app_dupla_swipe a partir desta; colada em seguida, a função volta igual.)
     await d.db.exec(SQL_CREDITOS);
+    await recolarFluxoSimples(d.db); // 014150 refaz funções que a 014050 também refaz
     expect(await retrato()).toEqual(antes);
 
     // A função de apoio e a de escolha não são chamáveis pelo navegador sem passar pelo porteiro.
