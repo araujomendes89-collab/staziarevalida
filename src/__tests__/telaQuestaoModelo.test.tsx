@@ -59,7 +59,9 @@ describe("Respondendo (treino): nada de gabarito, explicação, tema ou fontes a
     const { container } = await open(session("treino", [question()]));
     expect(screen.getByText(/^Treino · /)).toBeTruthy();
     expect(screen.getByText("Caso clínico")).toBeTruthy();
-    expect(screen.getByText("Pergunta")).toBeTruthy();
+    // Proposta B (19/10/2026): sem a caixa "Pergunta"; a pergunta vai em negrito no fim do caso e é o título da questão
+    expect(screen.queryByText("Pergunta")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Segundo a Lista vigente, como deve ser feita essa notificação?" }).tagName).toBe("STRONG");
     expect(screen.getByText("Marcar para revisão")).toBeTruthy();
     expect(screen.getByText("Pular")).toBeTruthy();
     expect(screen.getByText("Escolha uma alternativa")).toBeTruthy();
@@ -323,9 +325,9 @@ describe("Marcar e relatar erro", () => {
     expect(backend.rpc).toHaveBeenCalledWith("app_set_bookmark", { p_question_id: "q1", p_on: true });
   });
 
-  it("'Nos avise' abre o formulário e envia o relato (sem código interno), agradecendo", async () => {
+  it("'Nos avise de um erro' abre o formulário e envia o relato (sem código interno), agradecendo", async () => {
     await open(session("treino", [question()]));
-    fireEvent.click(screen.getByRole("button", { name: "Nos avise" }));
+    fireEvent.click(screen.getByRole("button", { name: "Nos avise de um erro" }));
     expect((screen.getByRole("button", { name: "Enviar aviso" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByRole("button", { name: "Fonte desatualizada" })).toBeNull(); // inédita: sem fontes ao aluno
     fireEvent.click(screen.getByRole("button", { name: "Gabarito incorreto" }));

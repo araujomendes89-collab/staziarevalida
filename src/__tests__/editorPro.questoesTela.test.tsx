@@ -161,14 +161,15 @@ const QUESTAO = { id: "q9", statement: ENUNCIADO, options: ["A", "B", "C", "D"].
 const DADOS = { staz: false, annulled: false, commentary: null, linked: null, linkedNote: false };
 
 describe("Aluno: leitura com formatação (ParagrafoRico)", () => {
-  it("enunciado e alternativa com negrito; sem formatação, igual a hoje (caixa 'Pergunta' e texto puro)", () => {
+  it("enunciado e alternativa com negrito; sem formatação, a pergunta em negrito no fim do caso (Proposta B)", () => {
     const { container, unmount } = render(<QuestionStatement question={{ ...QUESTAO, formatacao: { statement: negrito(ENUNCIADO) } }} />);
     expect(container.querySelector(".tq-stem strong")?.textContent).toBe(ENUNCIADO);
     unmount();
     const antes = render(<QuestionStatement question={QUESTAO} />);
-    expect(antes.container.querySelector("p.tq-stem")?.textContent).toBe("Criança de 3 anos com febre há dois dias.");
-    expect(antes.container.querySelector(".tq-ask__text")?.textContent).toBe("Qual a conduta mais adequada?");
-    expect(antes.container.querySelector("strong")).toBeNull();
+    expect(antes.container.querySelector("p.tq-stem")?.textContent).toBe(ENUNCIADO);
+    expect(antes.container.querySelector(".tq-ask__text")).toBeNull();
+    // o único negrito é o da pergunta (a tela pôs, não o banco)
+    expect(Array.from(antes.container.querySelectorAll("strong")).map((n) => n.textContent)).toEqual(["Qual a conduta mais adequada?"]);
     antes.unmount();
     const alts = render(<Alternatives options={QUESTAO.options} formatacao={{ "opcao.A.texto": negrito("Texto da A."), "opcao.B.texto": negrito("Texto VELHO da B.") }} stateOf={() => "idle"} />);
     expect(alts.container.querySelector(".tq-alt__text strong")?.textContent).toBe("Texto da A.");

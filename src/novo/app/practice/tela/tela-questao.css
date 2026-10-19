@@ -121,10 +121,9 @@
 .tq-case { padding: 24px 36px 0; }
 .tq-case .tq-over { margin-bottom: 10px; display: block; }
 .tq-stem { margin: 0; max-width: 68ch; font-size: 18px; line-height: 1.7; color: var(--tq-text); text-align: justify; hyphens: auto; text-wrap: pretty; }
-.tq-case .tq-figs { margin-top: 4px; }
-.tq-ask { margin: 28px 36px 0; padding: 20px 22px; border-radius: 16px; background: var(--tq-accent-soft); border: 1px solid var(--tq-accent-line); }
-.tq-ask .tq-over { display: block; margin-bottom: 6px; }
-.tq-ask__text { margin: 0; font-size: 21px; line-height: 1.45; font-weight: 700; letter-spacing: -0.01em; color: var(--tq-ink); text-align: justify; hyphens: auto; }
+/* Proposta B (19/10/2026): sem a caixa PERGUNTA; a pergunta é a última frase do enunciado, em negrito, como na prova impressa */
+.tq-stem strong.tq-pergunta { font-weight: 700; color: var(--tq-ink); }
+.tq-stem--fim { margin-top: 12px; }
 .tq-err { margin: 16px 36px 0; }
 
 /* ---------- alternativas ---------- */
@@ -133,11 +132,12 @@
 .tq-alt:hover { border-color: var(--border-strong); }
 .tq-alt__main { flex: 1; min-width: 0; min-height: 60px; display: flex; align-items: center; gap: 16px; padding: 12px 8px 12px 14px; border: 0; background: transparent; text-align: left; cursor: pointer; color: inherit; border-radius: 15px; }
 .tq-alt__main:disabled { cursor: default; }
-.tq-alt__letter { width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; display: grid; place-items: center; font-family: var(--font-mono); font-size: 15px; font-weight: 600; background: var(--tq-letter-bg); color: var(--gray-700); border: 1px solid var(--border-default); }
-[data-theme="dark"] .tq-alt__letter { color: var(--text-secondary); }
-.tq-alt__text { flex: 1; min-width: 0; font-size: 16px; line-height: 1.5; color: var(--tq-text); overflow-wrap: anywhere; }
+.tq-alt__letter { width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; display: grid; place-items: center; font-family: var(--font-mono); font-size: 15px; font-weight: 600; background: var(--tq-letter-bg); color: var(--tq-ink); border: 1px solid var(--border-default); }
+.tq-alt__text { flex: 1; min-width: 0; font-size: 16.5px; line-height: 1.5; color: var(--tq-text); overflow-wrap: anywhere; }
 .tq-alt__badge { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; font-size: 13px; font-weight: 700; }
-.tq-alt__strike { width: 48px; flex-shrink: 0; border: 0; border-left: 1px solid var(--border-subtle); background: transparent; border-radius: 0 15px 15px 0; display: grid; place-items: center; cursor: pointer; color: var(--text-disabled); }
+/* ícone de riscar discreto (sem a linha que separava a coluna): forte ao passar o mouse, no foco do teclado e quando riscado */
+.tq-alt__strike { width: 48px; flex-shrink: 0; border: 0; background: transparent; border-radius: 0 15px 15px 0; display: grid; place-items: center; cursor: pointer; color: var(--text-secondary); opacity: 0.55; transition: opacity 0.12s; }
+.tq-alt:hover .tq-alt__strike:not(:disabled), .tq-alt__strike:focus-visible, .tq-alt__strike[aria-pressed="true"]:not(:disabled) { opacity: 1; }
 .tq-alt__strike:hover:not(:disabled) { background: var(--tq-hover); color: var(--tq-ink); }
 .tq-alt__strike:disabled { opacity: 0.35; cursor: not-allowed; }
 .tq-alt__strike[aria-pressed="true"] { color: var(--tq-accent-text); }
@@ -279,8 +279,7 @@
   .tq-flag { margin: 14px 20px 0; }
   .tq-case { padding: 18px 20px 0; }
   .tq-stem { font-size: 17px; }
-  .tq-ask { margin: 22px 20px 0; padding: 16px; }
-  .tq-ask__text { font-size: 18px; text-align: left !important; }
+  .tq-alt__text { font-size: 16px; }
   .tq-alts { padding: 16px 20px 0; }
   .tq-alt__main { gap: 12px; padding: 10px 6px 10px 10px; min-height: 56px; }
   .tq-alt__badge span.tq-alt__badge-t { display: none; }
@@ -296,12 +295,10 @@
   .tq-pause { margin: 24px auto; padding: 28px 20px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .tq-timer, .tq-alt, .tq-primary { transition: none; }
+  .tq-timer, .tq-alt, .tq-primary, .tq-alt__strike { transition: none; }
 }
 
 /* ===== Novas telas, onda 3 (15/10/2026): detalhes do pacote que faltavam ===== */
-/* a pergunta fica alinhada à esquerda (só o caso clínico é justificado, como no pacote) */
-.tq-ask__text { text-align: left; hyphens: none; }
 /* rótulos de 11 px passam a 12 px (onda 0) */
 .tq-timer__lab { font-size: 12px; }
 .tq-timer__lab { letter-spacing: 0.06em; }
@@ -330,7 +327,6 @@
   .tq-main[data-revealed="true"] .tq-side { flex: 0 0 320px; }
   .tq-chips { padding: 22px 24px 0; }
   .tq-case { padding: 20px 24px 0; }
-  .tq-ask { margin: 22px 24px 0; }
   .tq-alts { padding: 20px 24px 0; }
   .tq-answer { margin: 24px 24px 0; }
   .tq-foot { padding: 14px 24px; }
@@ -344,16 +340,17 @@
   .tq-fs button:disabled { opacity: 0.4; cursor: not-allowed; }
   .tq-sheet[data-fs="0"] .tq-stem { font-size: 16px; }
   .tq-sheet[data-fs="2"] .tq-stem { font-size: 21px; }
-  .tq-sheet[data-fs="0"] .tq-ask__text { font-size: 19px; }
-  .tq-sheet[data-fs="2"] .tq-ask__text { font-size: 24px; }
-  .tq-sheet[data-fs="0"] .tq-alt__text { font-size: 15px; }
-  .tq-sheet[data-fs="1"] .tq-alt__text { font-size: 17px; }
-  .tq-sheet[data-fs="2"] .tq-alt__text { font-size: 19px; }
+  .tq-sheet[data-fs="0"] .tq-alt__text { font-size: 15.5px; }
+  .tq-sheet[data-fs="1"] .tq-alt__text { font-size: 16.5px; }
+  .tq-sheet[data-fs="2"] .tq-alt__text { font-size: 18.5px; }
   .tq-stem[data-clamp="true"] { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .tq-more { display: inline-flex; align-items: center; min-height: 44px; margin-top: 4px; padding: 0 2px; border: 0; background: none; color: var(--tq-accent-text); font-size: 14px; font-weight: 700; cursor: pointer; }
 }
+/* celular: alternativas a 16 px no tamanho padrão (A−/A+ ajusta 15 / 16 / 18) */
 @media (max-width: 720px) {
-  .tq-ask__text { text-align: left !important; }
+  .tq-sheet[data-fs="0"] .tq-alt__text { font-size: 15px; }
+  .tq-sheet[data-fs="1"] .tq-alt__text { font-size: 16px; }
+  .tq-sheet[data-fs="2"] .tq-alt__text { font-size: 18px; }
 }
 
 /* ===== G4, auditoria de proporção (16/10/2026) ===== */
@@ -411,12 +408,12 @@
   .tq-chips { padding-inline: 16px; }
   .tq-case { padding-inline: 16px; }
   .tq-flag, .tq-err, .tq-hint-solo { margin-inline: 16px; }
-  .tq-ask, .tq-answer { margin-inline: 16px; }
+  .tq-answer { margin-inline: 16px; }
   .tq-alts { padding-inline: 16px; }
   .tq-report { padding-inline: 16px; }
   .tq-alt__main { gap: 10px; padding-left: 8px; }
   .tq-alt__letter { width: 32px; height: 32px; }
-  .tq-alt__strike { width: 40px; }
+  .tq-alt__strike { width: 44px; }
 }
 
 /* telas largas (a partir de 1728 px): questão maior, sem ficar perdida no meio */
@@ -424,12 +421,11 @@
   .tq-head__in, .tq-main { max-width: 1440px; }
   .tq-sheet { max-width: 1040px; }
   .tq-stem { font-size: clamp(18px, 1vw, 20px); }
-  .tq-ask__text { font-size: 23px; }
 }
 
 /* ===== Hotfix iPhone (18/10/2026): nada da tela de questão pode ficar mais largo que o celular ===== */
 /* palavras e números longos (endereços de site, "<https://…>", sequências sem espaço) quebram em vez de empurrar a página */
-.tq-stem, .tq-ask__text, .tq-hint__t, .tq-chip, .tq-pending__t { overflow-wrap: break-word; overflow-wrap: anywhere; }
+.tq-stem, .tq-hint__t, .tq-chip, .tq-pending__t { overflow-wrap: break-word; overflow-wrap: anywhere; }
 .tq-chip { max-width: 100%; }
 /* tabelas e quadros rolam DENTRO do cartão, com sombra na borda indicando que há mais para o lado */
 .tq .tr-tabela-rolagem, .tq .tq-tabela-rolagem {

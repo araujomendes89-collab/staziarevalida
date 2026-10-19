@@ -500,7 +500,7 @@ function Runner({ session, go, onFinished }) {
         )}
       </main>
       {/* mini tutor: a questão aberta (antes de responder só pistas; simulado em andamento fica travado até a entrega) */}
-      <MiniTutor contexto={contextoDaQuestao(question, { simulado: sim, respondida: revealed })} evitar=".tq-stem, .tq-ask, .tq-alts > *, .tq-foot, .tq-side" go={go} />
+      <MiniTutor contexto={contextoDaQuestao(question, { simulado: sim, respondida: revealed })} evitar=".tq-stem, .tq-alts > *, .tq-foot, .tq-side" go={go} />
     </div>
   );
 }

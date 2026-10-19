@@ -1,14 +1,14 @@
-// Cartão da questão no modelo "Tela de Questão": chips, caso clínico, caixa PERGUNTA, alternativas A–D com ícone de riscar,
+// Cartão da questão no modelo "Tela de Questão": chips, caso clínico com a pergunta em negrito no fim (Proposta B), alternativas A–D com ícone de riscar,
 // rodapé (marcar, pular, confirmar) e "Encontrou algum erro nesta questão?". Só apresentação: quem decide estados e chama o banco
 // é a tela que usa (PracticeSession, resultado, caderno de erros). Nada aqui mostra gabarito, explicação ou fontes por conta própria:
 // a correção entra pelo slot `answer`, que a tela só preenche DEPOIS de responder.
 import React from "react";
 import { Icon } from "../../../ds";
 import { useSession } from "../../session.jsx";
-import { QuestionFigures } from "../QuestionFigures.jsx";
+import { FiguraAmpliada, FigurasDaQuestao } from "../QuestionFigures.jsx";
 import { SupportTable } from "../SupportTable.jsx";
 import { PreliminarySeal } from "../Correction.jsx";
-import { areaLabel, areaOf, isStaziamed, questionRef, splitStatement } from "../format.js";
+import { areaLabel, areaOf, isStaziamed, montarEnunciado, questionRef } from "../format.js";
 // leitor do aluno (sem TipTap): só com formatação que o banco mandou e que bate com o texto; sem ela, a tela é a de sempre
 import ParagrafoRico from "../../editorPro/leitor/ParagrafoRico.jsx";
 import { ricoDoCampo } from "../../../../shared/questions/formatacao";
@@ -73,19 +73,75 @@ function useTextSize() {
   return [size, change];
 }
 
-/** Enunciado: "Caso clínico", figuras e tabela de apoio, e a caixa "Pergunta" (a última frase, quando dá para separar). */
-export function QuestionStatement({ question, hint = null, revealed = false, size = 1, changeSize = () => {} }) {
-  // enunciado com formatação (editor profissional): vai inteiro, sem separar a "Pergunta" (a formatação é do texto todo)
+const ESTILO_ENUNCIADO = { textAlign: "justify", hyphens: "auto" };
+
+/**
+ * Enunciado no modelo da prova impressa (Proposta B, escolhida pelo dono em 19/10/2026): o rótulo "Caso clínico", o texto contínuo
+ * e a pergunta (a última frase, quando dá para separar) em NEGRITO no fim do próprio texto, sem caixa. Figuras e tabelas entram no
+ * ponto da prova quando a figura tem `apos` (format.js, montarEnunciado); sem isso, depois do caso e antes da pergunta.
+ * A pergunta é o título da questão para leitores de tela (role="heading"; nível 1 na tela, `nivelTitulo` no cartão compacto).
+ */
+export function QuestionStatement({ question, hint = null, revealed = false, size = 1, changeSize = () => {}, nivelTitulo = 1 }) {
+  // enunciado com formatação (editor profissional): vai inteiro, sem separar a pergunta (a formatação é do texto todo)
   const ricoEnunciado = ricoDoCampo(question.formatacao, "statement", question.statement);
-  const { stem, ask } = ricoEnunciado ? { stem: question.statement, ask: "" } : splitStatement(question.statement);
+  const images = Array.isArray(question.images) ? question.images : [];
+  const blocos = ricoEnunciado
+    ? [{ tipo: "rico" }, ...(images.length ? [{ tipo: "figuras", indices: images.map((_, i) => i) }] : []), ...(question.support ? [{ tipo: "apoio" }] : [])]
+    : montarEnunciado({ statement: question.statement, images, support: question.support });
+  const pergunta = blocos.find((b) => b.tipo === "pergunta")?.texto ?? "";
   const [caseOpen, setCaseOpen] = React.useState(false);
-  // tablet/celular, depois de responder: o caso fica em 3 linhas com "Ver caso completo" (no computador o caso aparece inteiro)
+  const [ampliada, setAmpliada] = React.useState(null);
+  // tablet/celular, depois de responder: o caso fica em 3 linhas com "Ver caso completo" (no computador o caso aparece inteiro).
+  // Com o caso encolhido, a pergunta sai do parágrafo encolhido e fica num parágrafo próprio, sempre visível.
   const clamp = revealed && !caseOpen;
+  const idBase = `tq-stem-${question.id}`;
+  const corpo = blocos.filter((b) => b.tipo !== "pergunta");
+  const ultimo = corpo[corpo.length - 1];
+  const perguntaNoTexto = Boolean(pergunta) && ultimo?.tipo === "texto" && !clamp;
+  // cada parágrafo do caso tem id (o primeiro, o de sempre): "Ver caso completo" controla todos
+  const idDe = new Map();
+  corpo.forEach((b) => (b.tipo === "texto" || b.tipo === "rico") && idDe.set(b, idDe.size === 0 ? idBase : `${idBase}-${idDe.size}`));
+  const forte = (
+    <strong className="tq-pergunta" role="heading" aria-level={nivelTitulo} lang="pt-BR">
+      {pergunta}
+    </strong>
+  );
+  const conteudo = corpo.map((bloco, n) => {
+    if (bloco.tipo === "texto" || bloco.tipo === "rico") {
+      const id = idDe.get(bloco);
+      const comPergunta = perguntaNoTexto && bloco === ultimo;
+      const paragrafo =
+        bloco.tipo === "rico" ? (
+          <div key={id} id={id} className="tq-stem tq-rico" data-clamp={clamp ? "true" : "false"} lang="pt-BR" style={ESTILO_ENUNCIADO}>
+            <ParagrafoRico texto={question.statement} rico={ricoEnunciado} />
+          </div>
+        ) : (
+          <p key={id} id={id} className="tq-stem" data-clamp={clamp ? "true" : "false"} lang="pt-BR" style={ESTILO_ENUNCIADO}>
+            {bloco.texto}
+            {comPergunta && " "}
+            {comPergunta && forte}
+          </p>
+        );
+      // "Ver caso completo" logo depois do primeiro parágrafo, como sempre
+      if (id !== idBase || !revealed) return paragrafo;
+      return (
+        <React.Fragment key={id}>
+          {paragrafo}
+          <button type="button" className="tq-more" aria-expanded={caseOpen} aria-controls={[...idDe.values()].join(" ")} onClick={() => setCaseOpen(!caseOpen)}>
+            {caseOpen ? "Mostrar menos" : "Ver caso completo"}
+          </button>
+        </React.Fragment>
+      );
+    }
+    if (bloco.tipo === "figuras") return <FigurasDaQuestao key={`f${n}`} images={images} indices={bloco.indices} questionId={question.id} onOpen={setAmpliada} />;
+    if (bloco.tipo === "apoio") return <SupportTable key={`a${n}`} support={question.support} />;
+    return null;
+  });
   return (
     <>
       <div className="tq-case">
         <div className="tq-case__head">
-          <span className="tq-over">{ask ? "Caso clínico" : "Enunciado"}</span>
+          <span className="tq-over">{pergunta ? "Caso clínico" : "Enunciado"}</span>
           <span role="group" aria-label="Tamanho do texto" className="tq-fs">
             <button type="button" onClick={() => changeSize(-1)} disabled={size === 0} aria-label="Diminuir texto">
               A−
@@ -95,34 +151,16 @@ export function QuestionStatement({ question, hint = null, revealed = false, siz
             </button>
           </span>
         </div>
-        {ricoEnunciado ? (
-          <div id={`tq-stem-${question.id}`} className="tq-stem tq-rico" data-clamp={clamp ? "true" : "false"} lang="pt-BR" style={{ textAlign: "justify", hyphens: "auto" }}>
-            <ParagrafoRico texto={question.statement} rico={ricoEnunciado} />
-          </div>
-        ) : (
-          <p id={`tq-stem-${question.id}`} className="tq-stem" data-clamp={clamp ? "true" : "false"} lang="pt-BR" style={{ textAlign: "justify", hyphens: "auto" }}>
-            {stem}
+        {conteudo}
+        {pergunta && !perguntaNoTexto && (
+          <p className="tq-stem tq-stem--fim" lang="pt-BR" style={ESTILO_ENUNCIADO}>
+            {forte}
           </p>
         )}
-        {revealed && (
-          <button type="button" className="tq-more" aria-expanded={caseOpen} aria-controls={`tq-stem-${question.id}`} onClick={() => setCaseOpen(!caseOpen)}>
-            {caseOpen ? "Mostrar menos" : "Ver caso completo"}
-          </button>
-        )}
-        <QuestionFigures images={question.images} questionId={question.id} />
-        <SupportTable support={question.support} />
+        <FiguraAmpliada figura={ampliada} onClose={() => setAmpliada(null)} />
       </div>
-      {ask && (
-        <div className="tq-ask">
-          <span className="tq-over tq-over--accent">Pergunta</span>
-          <h1 className="tq-ask__text" lang="pt-BR">
-            {ask}
-          </h1>
-          {hint}
-        </div>
-      )}
-      {/* sem frase de pergunta, a dica fica sozinha, sem a caixa azul "Pergunta" vazia */}
-      {!ask && hint && <div className="tq-hint-solo">{hint}</div>}
+      {/* a dica do Tutor fica sempre fora do enunciado, logo depois dele */}
+      {hint && <div className="tq-hint-solo">{hint}</div>}
     </>
   );
 }
@@ -227,7 +265,7 @@ function reportFailure(error) {
 }
 
 /**
- * "Encontrou algum erro nesta questão? Nos avise": usa o envio de relatos que o app já tem (app_report_problem); a equipe lê em
+ * "Encontrou algum erro nesta questão? Nos avise de um erro": usa o envio de relatos que o app já tem (app_report_problem); a equipe lê em
  * Configurações > Relatos dos alunos. A mensagem leva a referência da questão (sem código interno).
  */
 export function ReportQuestion({ question }) {
@@ -269,7 +307,7 @@ export function ReportQuestion({ question }) {
             Encontrou algum erro nesta questão?
           </span>
           <button type="button" className="tq-link" onClick={() => setPhase("open")} aria-expanded="false">
-            Nos avise
+            Nos avise de um erro
           </button>
         </div>
       )}
@@ -338,7 +376,7 @@ export function QuestionSheet({ question, revealed = false, topic = null, bookma
         </div>
       )}
       {banner && <div className="tq-err">{banner}</div>}
-      <QuestionStatement question={question} hint={hint} revealed={revealed} size={size} changeSize={changeSize} />
+      <QuestionStatement question={question} hint={hint} revealed={revealed} size={size} changeSize={changeSize} nivelTitulo={compact ? 2 : 1} />
       {alternatives}
       {revealed && answer}
       {footer}

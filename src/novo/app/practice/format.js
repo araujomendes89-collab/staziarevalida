@@ -84,18 +84,106 @@ export function formatWhen(iso, now = new Date()) {
   return `${new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "short" }).format(date)}, ${time}`;
 }
 
+// Fim de frase: ponto, interrogação ou exclamação (com aspas/parêntese opcional) + espaço + maiúscula. Nas questões com figura ou
+// tabela, também ":" + espaço + maiúscula: é a frase que apresenta a figura ("Os exames ... revelam:"), que é do caso, não da pergunta.
+// Sem figura o ":" não conta (ex.: "KDIGO (Kidney Disease: Improving ...").
+const FIM_DE_FRASE = /[.?!]["”’)]?\s+(?=\p{Lu})/gu;
+const FIM_DE_FRASE_COM_FIGURA = /(?:[.?!]["”’)]?|:)\s+(?=\p{Lu})/gu;
+const PERGUNTA_MIN = 12;
+const PERGUNTA_MAX = 320;
+
+/** Posição onde começa a pergunta (a última frase), a partir de `desde`; -1 se não houver fronteira. */
+function inicioDaPergunta(text, { comFigura = false, desde = 0 } = {}) {
+  let cut = -1;
+  for (const match of text.matchAll(comFigura ? FIM_DE_FRASE_COM_FIGURA : FIM_DE_FRASE)) {
+    const fim = match.index + match[0].length;
+    if (fim > desde) cut = fim;
+  }
+  return cut;
+}
+
+const tamanhoDePergunta = (ask) => ask.length >= PERGUNTA_MIN && ask.length <= PERGUNTA_MAX;
+
 /**
  * Separa o comando da questão (a última frase) do caso clínico, só para dar destaque
  * visual: o texto é o mesmo, na mesma ordem. Sem uma divisão clara, fica tudo no caso.
+ * `comFigura`: a questão tem figura ou tabela (aí ":" também fecha frase).
  */
-export function splitStatement(statement) {
+export function splitStatement(statement, { comFigura = false } = {}) {
   const text = String(statement ?? "").trim();
-  let cut = -1;
-  for (const match of text.matchAll(/[.?!]["”’)]?\s+(?=\p{Lu})/gu)) cut = match.index + match[0].length;
+  const cut = inicioDaPergunta(text, { comFigura });
   if (cut <= 0) return { stem: text, ask: "" };
   const ask = text.slice(cut).trim();
-  if (ask.length < 12 || ask.length > 320) return { stem: text, ask: "" };
+  if (!tamanhoDePergunta(ask)) return { stem: text, ask: "" };
   return { stem: text.slice(0, cut).trim(), ask };
+}
+
+/** O trecho de posição da figura no enunciado: "vazio" | "ausente" | "repetido" | "ok" (aparece exatamente uma vez). */
+export function situacaoDoTrecho(statement, apos) {
+  const text = String(statement ?? "").trim();
+  const trecho = typeof apos === "string" ? apos.trim() : "";
+  if (!trecho) return "vazio";
+  const primeira = text.indexOf(trecho);
+  if (primeira < 0) return "ausente";
+  return text.indexOf(trecho, primeira + 1) >= 0 ? "repetido" : "ok";
+}
+
+/** A figura tem posição válida? Só quando `apos` aparece exatamente UMA vez no enunciado. Devolve o fim do trecho, ou -1. */
+function posicaoDaFigura(text, image) {
+  if (situacaoDoTrecho(text, image?.apos) !== "ok") return -1;
+  const apos = image.apos.trim();
+  return text.indexOf(apos) + apos.length;
+}
+
+/**
+ * Monta o enunciado na ordem da prova: blocos { tipo: "texto", texto } | { tipo: "figuras", indices } | { tipo: "apoio" } |
+ * { tipo: "pergunta", texto }. `indices` são as posições ORIGINAIS em `images` (o endereço da figura é buscado por elas).
+ * - Figura com `apos` válido (trecho exato que aparece uma vez): logo depois do trecho.
+ * - Figura sem `apos`, com trecho que sumiu ou se repete, e a tabela de apoio: no lugar de sempre (depois do caso, antes da pergunta).
+ * - A pergunta é a última frase depois da última figura posicionada; se depois dela só houver uma frase, ela é a pergunta.
+ * O texto não muda nem troca de ordem: juntando os textos com espaço, volta o enunciado.
+ */
+export function montarEnunciado({ statement, images = [], support = null } = {}) {
+  const text = String(statement ?? "").trim();
+  const lista = Array.isArray(images) ? images : [];
+  const comFigura = lista.length > 0 || Boolean(support);
+  const posicoes = lista.map((image) => posicaoDaFigura(text, image));
+  const ultimaAncora = Math.max(-1, ...posicoes);
+
+  // pergunta: depois da última figura posicionada
+  let cut = inicioDaPergunta(text, { comFigura, desde: ultimaAncora > 0 ? ultimaAncora : 0 });
+  if (cut < 0 && ultimaAncora > 0 && ultimaAncora < text.length && /^\s*\p{Lu}/u.test(text.slice(ultimaAncora))) cut = ultimaAncora;
+  let ask = cut > 0 ? text.slice(cut).trim() : "";
+  if (!tamanhoDePergunta(ask)) {
+    ask = "";
+    cut = -1;
+  }
+  const fimDoCaso = cut > 0 ? cut : text.length;
+
+  // pontos de corte: cada figura posicionada no seu trecho; as demais (e a tabela de apoio) no fim do caso
+  const pontos = lista.map((_, indice) => ({ pos: posicoes[indice] >= 0 ? posicoes[indice] : fimDoCaso, indice }));
+  pontos.sort((a, b) => a.pos - b.pos || a.indice - b.indice);
+
+  const blocos = [];
+  const texto = (de, ate) => {
+    const t = text.slice(de, ate).trim();
+    if (t) blocos.push({ tipo: "texto", texto: t });
+  };
+  const figuras = (indice) => {
+    const ultimo = blocos[blocos.length - 1];
+    if (ultimo?.tipo === "figuras") ultimo.indices.push(indice);
+    else blocos.push({ tipo: "figuras", indices: [indice] });
+  };
+  let de = 0;
+  for (const { pos, indice } of pontos) {
+    texto(de, pos);
+    de = Math.max(de, pos);
+    figuras(indice);
+  }
+  texto(de, fimDoCaso);
+  if (support) blocos.push({ tipo: "apoio" });
+  if (ask) blocos.push({ tipo: "pergunta", texto: ask });
+  return blocos;
 }
 
 /** Percentual inteiro, sem dividir por zero. */

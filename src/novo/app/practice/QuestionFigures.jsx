@@ -59,27 +59,52 @@ export function FigureImage({ questionId, image, index, onOpen, style }) {
   );
 }
 
+/** Figura do tipo "tabela" (recorte de tabela do caderno): usa a largura toda, sem o teto de altura das figuras. */
+const ESTILO_TABELA = { maxHeight: "none" };
+
+/**
+ * Um grupo de figuras do enunciado, na posição em que a prova as mostra. `indices` são as posições ORIGINAIS em `images`: o endereço
+ * da figura e a legenda "Figura N" seguem essa numeração, mesmo quando a figura aparece em outro ponto do texto.
+ */
+export function FigurasDaQuestao({ images, indices, questionId, onOpen }) {
+  if (!images?.length || !indices?.length) return null;
+  return (
+    <div className="tq-figs" style={{ display: "flex", flexDirection: "column", gap: 12, margin: "16px 0" }}>
+      {indices.map((i) => {
+        const img = images[i];
+        if (!img) return null;
+        return (
+          <figure key={img.path ?? img.url ?? i} style={{ margin: 0 }}>
+            <FigureImage questionId={questionId} image={img} index={i} onOpen={onOpen} style={img.tipo === "tabela" ? ESTILO_TABELA : undefined} />
+            {images.length > 1 && <figcaption style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", marginTop: 4 }}>Figura {i + 1}</figcaption>}
+          </figure>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A figura ampliada (um diálogo só por cartão). `figura`: { src, alt } ou null. */
+export function FiguraAmpliada({ figura, onClose }) {
+  if (!figura) return null;
+  return (
+    <div role="dialog" aria-modal="true" aria-label={figura.alt} onClick={onClose} onKeyDown={(e) => e.key === "Escape" && onClose()} style={{ position: "fixed", inset: 0, zIndex: 60, background: "var(--surface-overlay)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <img src={figura.src} alt={figura.alt} style={{ maxWidth: "100%", maxHeight: "100%", background: "#fff", borderRadius: "var(--radius-md)" }} />
+      <button type="button" autoFocus aria-label="Fechar" className="sm-btn sm-btn--secondary sm-btn--sm" style={{ position: "absolute", top: 16, right: 16 }} onClick={onClose}>
+        Fechar
+      </button>
+    </div>
+  );
+}
+
+/** Todas as figuras em bloco, na ordem do array (prévia da Administração). */
 export function QuestionFigures({ images, questionId }) {
   const [open, setOpen] = React.useState(null);
   if (!images?.length) return null;
   return (
     <>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, margin: "16px 0 0" }}>
-        {images.map((img, i) => (
-          <figure key={img.path ?? img.url ?? i} style={{ margin: 0 }}>
-            <FigureImage questionId={questionId} image={img} index={i} onOpen={setOpen} />
-            {images.length > 1 && <figcaption style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", marginTop: 4 }}>Figura {i + 1}</figcaption>}
-          </figure>
-        ))}
-      </div>
-      {open && (
-        <div role="dialog" aria-modal="true" aria-label={open.alt} onClick={() => setOpen(null)} onKeyDown={(e) => e.key === "Escape" && setOpen(null)} style={{ position: "fixed", inset: 0, zIndex: 60, background: "var(--surface-overlay)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <img src={open.src} alt={open.alt} style={{ maxWidth: "100%", maxHeight: "100%", background: "#fff", borderRadius: "var(--radius-md)" }} />
-          <button type="button" autoFocus aria-label="Fechar" className="sm-btn sm-btn--secondary sm-btn--sm" style={{ position: "absolute", top: 16, right: 16 }} onClick={() => setOpen(null)}>
-            Fechar
-          </button>
-        </div>
-      )}
+      <FigurasDaQuestao images={images} indices={images.map((_, i) => i)} questionId={questionId} onOpen={setOpen} />
+      <FiguraAmpliada figura={open} onClose={() => setOpen(null)} />
     </>
   );
 }

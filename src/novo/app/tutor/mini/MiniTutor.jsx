@@ -9,7 +9,7 @@
 //  - contexto automático (a tela passa `contexto`, ver contexto.js); simulado em andamento: travado até a entrega.
 //  - saldo: cada mensagem gasta a cota do Tutor por texto de hoje; a voz gasta os minutos de voz de hoje. O saldo fica à vista e, quando
 //    acaba, aparece o aviso com o convite para ver os planos (nada é cobrado pelo app).
-// Uso: <MiniTutor contexto={contextoDaQuestao(q, {...})} evitar=".tq-stem, .tq-ask, .tq-alts > *, .tq-foot, .tq-side" go={go} />.
+// Uso: <MiniTutor contexto={contextoDaQuestao(q, {...})} evitar=".tq-stem, .tq-alts > *, .tq-foot, .tq-side" go={go} />.
 // Fora do app (sem servidor), não aparece.
 import React from "react";
 import { createPortal } from "react-dom";

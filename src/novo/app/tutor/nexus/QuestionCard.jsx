@@ -19,7 +19,7 @@ export function QuestionCard({ session, marked, busy = false, gate = null, onMar
   if (!q) return null;
   const open = q.state === "open";
   const ricoEnunciado = ricoDoCampo(q.formatacao, "statement", q.statement);
-  const parts = ricoEnunciado ? { stem: q.statement, ask: "" } : splitStatement(q.statement ?? "");
+  const parts = ricoEnunciado ? { stem: q.statement, ask: "" } : splitStatement(q.statement ?? "", { comFigura: (Array.isArray(q.images) && q.images.length > 0) || Boolean(q.support) });
   const answered = session.last_answer;
   const stateOf = (id) => {
     if (open) return id === marked ? "selected" : "idle";
