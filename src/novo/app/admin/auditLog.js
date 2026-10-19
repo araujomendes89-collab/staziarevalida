@@ -78,6 +78,7 @@ export const ACTION_LABEL = {
   "dupla.save": "Treinamento em Dupla: acesso salvo",
   "dupla.ia.save": "Treino sozinho: avaliação por IA salva",
   "dupla.chat.save": "Chat do Treinamento em Dupla: regras salvas",
+  "dupla.convites": "Treinamento em Dupla: limites dos convites diretos salvos",
   "dupla.chat.denuncia.ler": "Denúncia do chat aberta",
   "dupla.chat.denuncia.encerrar": "Denúncia do chat encerrada",
   "credito.config": "Créditos do Treinamento em Dupla: configuração salva",
