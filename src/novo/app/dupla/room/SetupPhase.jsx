@@ -3,6 +3,7 @@
 // e o cronômetro fica no rodapé dela. O candidato espera aqui e passa sozinho à estação quando o avaliador inicia.
 import React from "react";
 import { Avatar, Badge, Button, Card, Icon } from "../../../ds";
+import { OwnQuotaLine } from "../CreditHeader.jsx";
 import { CardBlock, PairHeader, RoleBand, firstName, pageStyle, stationLine } from "./parts.jsx";
 
 const overline = { font: "var(--type-overline)", letterSpacing: "var(--tracking-overline)", textTransform: "uppercase", color: "var(--text-tertiary)" };
@@ -72,6 +73,7 @@ export function SetupPhase({ room, actions, askLeave, openEvaluatorRoom }) {
       />
       <RoleBand room={room} />
       <ReadyCard room={room} actions={actions} />
+      <OwnQuotaLine roomId={room.id} />
       {!isEval && <CandidateWaiting room={room} />}
       <div
         style={{

@@ -493,7 +493,7 @@ describe("Supabase — Treinamento em Dupla (dados)", () => {
       // dupla_export_rooms (Etapa P, 012900): só as salas de quem chama (visitante: lista vazia); a exportação, que roda com os
       // direitos de quem chama, inclusive do visitante, precisa dela.
       // dupla_export_chat (Etapa C, 013370): idem, com o que o chat guarda de quem chama (visitante: nulo).
-      else if (f.proname === "dupla_export_rooms" || f.proname === "dupla_export_chat") expect(f, f.proname).toMatchObject({ anon: true, authenticated: true });
+      else if (f.proname === "dupla_export_rooms" || f.proname === "dupla_export_chat" || f.proname === "dupla_export_creditos") expect(f, f.proname).toMatchObject({ anon: true, authenticated: true });
       else expect(f, f.proname).toMatchObject({ anon: false, authenticated: false });
       // Toda função do módulo roda com caminho de busca vazio (security definer ou, nas puras, só por segurança).
       expect(f.config, f.proname).toEqual(['search_path=""']);

@@ -55,7 +55,7 @@ describe("CF07: configurações internas só para a equipe", () => {
 
   it("a equipe (editor e administrador) continua lendo", async () => {
     for (const uid of [ADMIN, EDITOR]) {
-      expect((await as<{ key: string }>(uid, `select key from public.app_settings`)).map((r) => r.key).sort()).toEqual(["announcement", "simulado_ineditas_pct", "treino_dupla", "treino_dupla_chat", "trial_days"]); // chaves do Treino em Dupla (013300) e do chat (013370)
+      expect((await as<{ key: string }>(uid, `select key from public.app_settings`)).map((r) => r.key).sort()).toEqual(["announcement", "creditos", "simulado_ineditas_pct", "treino_dupla", "treino_dupla_chat", "trial_days"]); // chaves do Treino em Dupla (013300), do chat (013370) e dos créditos (013490)
       expect(await as(uid, `select id from public.tutor_config`)).toHaveLength(1);
     }
   });

@@ -78,6 +78,11 @@ export const ACTION_LABEL = {
   "dupla.chat.save": "Chat do Treinamento em Dupla: regras salvas",
   "dupla.chat.denuncia.ler": "Denúncia do chat aberta",
   "dupla.chat.denuncia.encerrar": "Denúncia do chat encerrada",
+  "credito.config": "Créditos do Treinamento em Dupla: configuração salva",
+  "credito.conceder": "Créditos concedidos a um aluno",
+  "credito.estornar": "Crédito estornado",
+  "credito.extrato": "Extrato de créditos de um aluno consultado",
+  "credito.conciliar": "Saldos de créditos conferidos",
   // atualizações
   "guideline_update.publish": "Atualização publicada",
   "guideline_update.unpublish": "Atualização tirada do ar",

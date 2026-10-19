@@ -4,6 +4,22 @@
 > tarefa. Os passos usam caixas `- [ ]`. **Nada deste plano foi construído.** Ele só pode começar com a ordem do dono, depois de ele
 > responder as decisões D1 a D13 da §11 da spec.
 
+> **Nota (2026-10-17, frente Stazia Match, Etapa M0 — só documento; o adendo é construído no ramo `dupla-sozinho-ia`).** O livro de créditos
+> único já existe no ramo `stazia-match` (migrações 013490 a 013530). Para quem for juntar:
+> 1. **Tarefa A1 (cota da avaliação por IA):** em vez de `ai_usage_ledger.feature = 'solo_eval'` com limites próprios, a reserva usa
+>    `credit_consume(uid, 'ia', n, 'solo_run', run, 'solo:'||run||':'||tentativa)` e a falha faz `credit_refund`; os limites vêm de
+>    `app_settings.creditos.ia` (vazio = IA bloqueada; autoavaliação sempre disponível). O `ai_usage_ledger` segue só para CUSTO.
+>    Isto é a Etapa M3 do plano `2026-10-12-stazia-match-engenharia.md`; a migração `013540` está reservada para ela.
+> 2. **Numeração:** as migrações antigas deste plano (9900/9901/9910/9920/9930) colidem com o plano de 11/10; valem as faixas
+>    reservadas em `.tmp-aulas/NUMEROS-MIGRACAO.md` (013430 a 013480).
+> 3. **Tarefa R1 (convite direto):** sem `study_blocks` e sem limites de convite fixos (decisões D8 e D9 do dono; limites de taxa são
+>    a Etapa R do plano Match, só com os números dele); **não cria `study_matches`** (só curtida recíproca cria conexão; spec Match
+>    §12.7, pergunta 8, aguardando o dono). Antes de criar a sala, o convite direto deve chamar `credit_available(uid, 'match')` para
+>    os DOIS e responder igual a "indisponível" sem dizer o motivo; a reserva por pessoa (`study_room_claims`, 013510) já impede a
+>    mesma pessoa em duas salas, e a unicidade do par (`study_matches_par_uniq`) já está no banco.
+> 4. **Peças comuns refeitas no ramo `stazia-match`:** `app_dupla_swipe` (013510, 013520), `app_dupla_answer_invite` (013520),
+>    `app_dupla_start` (013520), `app_export_my_data` (013500, chave `study_credits`). Partir da definição mais nova ao juntar.
+
 **Spec:** `docs/superpowers/specs/2026-10-12-treino-dupla-sozinho-e-radar.md` (manda neste assunto). Spec e plano base:
 `docs/superpowers/specs/2026-10-09-treino-dupla-design.md` e `docs/superpowers/plans/2026-10-09-treino-dupla.md`. Registro e regras:
 `.superpowers/sdd/2026-10-09-treino-dupla/` (`rulings.md`, `constraints.md`, relatórios das tarefas).

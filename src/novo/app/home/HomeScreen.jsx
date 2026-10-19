@@ -23,6 +23,7 @@ import { NivelamentoConvite } from "../nivelamento/NivelamentoConvite.jsx";
 import { CONVITE } from "../nivelamento/textos.js";
 import { useCobrancaLigada } from "../plan/Assinatura.jsx";
 import { ConviteOnboarding, PrimeirosPassosCartao, PrimeirosPassosFaixa, useOnboardingAtual } from "../onboarding/Inicio.jsx";
+import { CreditosHoje } from "./CreditosHoje.jsx";
 
 const DIAGNOSTIC_SIZE = 10;
 const R = { borderRadius: 24 };
@@ -712,6 +713,7 @@ export function HomeScreen({ go, mobile }) {
   return (
     <>
       {error && <Banner tone="danger">{error}</Banner>}
+      <CreditosHoje go={go} />
       {boot.role === "admin" && <RadarAvisoFaixa avisos={radar} go={go} />}
       {data.announcement && (
         <Banner tone={data.announcement.tone} icon="megaphone" title={data.announcement.title}>

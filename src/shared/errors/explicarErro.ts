@@ -58,7 +58,8 @@ function partsOf(error: unknown): Parts {
   const o = error as Record<string, unknown>;
   const message = typeof o.message === "string" ? o.message.trim() : typeof o.error === "string" ? o.error.trim() : "";
   const details = typeof o.details === "string" ? o.details : "";
-  const hint = typeof o.hint === "string" ? o.hint : "";
+  // Dica em CAIXA_ALTA_COM_SUBLINHADO (ex.: INSUFFICIENT_CREDITS) é código para as telas decidirem o que fazer, não texto para a pessoa.
+  const hint = typeof o.hint === "string" && !/^[A-Z][A-Z0-9_]+$/.test(o.hint.trim()) ? o.hint : "";
   const rawCode = typeof o.code === "string" || typeof o.code === "number" ? String(o.code) : "";
   const rawStatus = Number(o.status ?? o.statusCode);
   const status = Number.isInteger(rawStatus) && rawStatus >= 100 && rawStatus < 600 ? rawStatus : statusFromText(message);

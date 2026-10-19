@@ -9,6 +9,8 @@ import { firstName } from "./deck.js";
 import { useInvites, useRequests } from "./live.js";
 import { playMatchSound, setSoundOn, soundOn } from "./sound.js";
 import { useChatWindows } from "./chat/ChatList.jsx";
+import { PAIR_UNAVAILABLE_TEXT, creditKind } from "./credits.js";
+import { QuotaNotice } from "./QuotaNotice.jsx";
 
 // Animações do pacote (components.css:174-181), só com nomes novos; a janela deixa o confete sair da caixa.
 const STYLE = `
@@ -267,13 +269,14 @@ export function RequestDialog({ request, busy = false, onAccept, onDecline, onDi
  * Com `paused` (outra janela aberta na tela, como o chat) o convite espera a janela fechar.
  * @param {{ go: (route: string, query?: Record<string, string>) => void, meName: string, inviteTick: number, live: boolean, paused?: boolean }} p
  */
-export function InviteWatcher({ go, meName, inviteTick, live, paused = false }) {
+export function InviteWatcher({ go, meName, inviteTick, live, paused = false, onCredit }) {
   const { backend } = useSession();
   const { invites, serverNow, refresh } = useInvites(inviteTick, live);
   const [answered, setAnswered] = React.useState(() => new Set());
   const { requests, refresh: refreshRequests } = useRequests(inviteTick);
   const [dismissed, setDismissed] = React.useState(() => new Set());
   const [busy, setBusy] = React.useState(false);
+  const [quotaOpen, setQuotaOpen] = React.useState(false);
   const [, bump] = React.useState(0);
   const [toastNode, showToast] = useToast();
   const chat = useChatWindows({ go, onError: (text) => showToast(text, "danger") });
@@ -312,11 +315,16 @@ export function InviteWatcher({ go, meName, inviteTick, live, paused = false }) 
     try {
       const result = await backend.rpc("app_dupla_answer_invite", { p_invite_id: invite.id, p_accept: accept });
       setAnswered((prev) => new Set(prev).add(invite.id));
+      if (accept) onCredit?.();
       if (accept && result?.room_id) go("dupla-sala", { sala: result.room_id });
       else void refresh();
     } catch (e) {
       setAnswered((prev) => new Set(prev).add(invite.id));
-      showToast(messageOf(e), "danger");
+      const kind = creditKind(e);
+      if (kind === "quota") {
+        setQuotaOpen(true);
+        onCredit?.();
+      } else showToast(kind === "pair" ? PAIR_UNAVAILABLE_TEXT : messageOf(e), "danger");
       void refresh();
     } finally {
       setBusy(false);
@@ -355,6 +363,7 @@ export function InviteWatcher({ go, meName, inviteTick, live, paused = false }) 
   return (
     <>
       {toastNode}
+      <QuotaNotice open={quotaOpen} onClose={() => setQuotaOpen(false)} />
       {invite && !chat.chatOpen && !paused && invite.kind === "direto" && (
         <DirectInviteDialog key={invite.id} invite={invite} busy={busy} nowMs={nowMs} onAccept={() => respond(true)} onDecline={() => respond(false)} />
       )}
