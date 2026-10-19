@@ -35,7 +35,7 @@ export function statsLabel(stats) {
  * @typedef {{ icon: string, text: string, strong?: boolean, weak?: boolean }} CardReason
  * @typedef {{
  *   public_name: string, school?: string | null, city?: string | null, exam?: string | null, bio?: string | null,
- *   goal?: string | null, areas?: string[], role_pref?: "med" | "ator" | "any", pace?: string,
+ *   handle?: string, goal?: string | null, areas?: string[], role_pref?: "med" | "ator" | "any", pace?: string,
  *   days?: string[], shifts?: string[], stats?: { done: number, avg: number | null } | null,
  *   compat?: number, reasons?: CardReason[], online?: boolean
  * }} PublicCard
@@ -46,7 +46,7 @@ export function statsLabel(stats) {
  * @param {PublicCard} p
  */
 export function toCard(p) {
-  const meta = [p.school, p.city, p.exam && "Revalida " + p.exam].filter(Boolean).join(" · ");
+  const meta = [p.handle && "@" + p.handle, p.school, p.city, p.exam && "Revalida " + p.exam].filter(Boolean).join(" · ");
   const person = {
     name: p.public_name,
     meta,

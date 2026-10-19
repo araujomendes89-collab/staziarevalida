@@ -29,9 +29,9 @@ export function nextEditions(today = new Date()) {
 
 /**
  * @typedef {{
- *   public_name: string, school: string, city: string, goal: string, exam: string, bio: string,
+ *   public_name: string, handle: string, school: string, city: string, goal: string, exam: string, bio: string,
  *   areas: string[], role_pref: "med" | "ator" | "any", pace: "livre" | "cronometrado" | "simulacao",
- *   days: string[], shifts: string[], radar_visible: boolean, show_school: boolean, show_stats: boolean
+ *   days: string[], shifts: string[], radar_visible: boolean, allow_direct_invites: boolean, show_school: boolean, show_stats: boolean
  * }} Draft
  * @typedef {{
  *   profile: (Partial<Draft> & { public_name: string }) | null,
@@ -43,7 +43,7 @@ export function nextEditions(today = new Date()) {
 /**
  * Rascunho do formulário. Com perfil salvo, é o perfil (texto vazio no lugar de nulo). Na primeira vez: o nome da Conta,
  * a edição-alvo da Conta se ela estiver entre as três próximas (senão a primeira), papel "any", ritmo "cronometrado",
- * os três interruptores ligados e listas vazias.
+ * os quatro interruptores ligados e listas vazias.
  * @param {AppDuplaProfile} data
  * @param {Date} [today]
  * @returns {Draft}
@@ -53,6 +53,7 @@ export function profileDraft(data, today = new Date()) {
   if (saved) {
     return {
       public_name: saved.public_name ?? "",
+      handle: saved.handle ?? "",
       school: saved.school ?? "",
       city: saved.city ?? "",
       goal: saved.goal ?? "",
@@ -64,6 +65,7 @@ export function profileDraft(data, today = new Date()) {
       days: [...(saved.days ?? [])],
       shifts: [...(saved.shifts ?? [])],
       radar_visible: saved.radar_visible ?? true,
+      allow_direct_invites: saved.allow_direct_invites ?? true,
       show_school: saved.show_school ?? true,
       show_stats: saved.show_stats ?? true,
     };
@@ -72,6 +74,7 @@ export function profileDraft(data, today = new Date()) {
   const target = data?.defaults?.exam ?? "";
   return {
     public_name: data?.defaults?.public_name ?? "",
+    handle: "",
     school: "",
     city: "",
     goal: "",
@@ -83,6 +86,7 @@ export function profileDraft(data, today = new Date()) {
     days: [],
     shifts: [],
     radar_visible: true,
+    allow_direct_invites: true,
     show_school: true,
     show_stats: true,
   };
@@ -106,11 +110,12 @@ export const AREA_ORDER = AREAS.map((a) => a.code);
 export const DAY_ORDER = DAYS;
 export const SHIFT_ORDER = SHIFTS;
 
-/** O que vai em `p_profile`: textos aparados; prova vazia não vai. */
+/** O que vai em `p_profile`: textos aparados; prova vazia não vai; @ vazio não vai (o servidor sorteia um no perfil novo). */
 export function draftPayload(d) {
-  const { exam, ...rest } = d;
+  const { exam, handle, ...rest } = d;
   return {
     ...rest,
+    ...(handle && handle.trim() ? { handle: handle.trim().toLowerCase() } : {}),
     public_name: d.public_name.trim(),
     school: d.school.trim(),
     city: d.city.trim(),

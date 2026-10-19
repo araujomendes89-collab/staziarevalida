@@ -514,7 +514,7 @@ describe("Praticar com baralho", () => {
 describe("Meu perfil de estudo com sinal e convite", () => {
   const openProfile = async () => {
     render(<StudyProfileScreen go={go} />);
-    await screen.findByLabelText("Nome público");
+    await screen.findByLabelText("Nome ou apelido");
   };
 
   it("sinal 'livre' na entrada e 'fora' ao sair; o convite abre o mesmo 'Deu match!' e aceitar abre a sala", async () => {

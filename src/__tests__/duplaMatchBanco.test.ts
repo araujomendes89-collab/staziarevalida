@@ -248,7 +248,7 @@ describe("Migração 9770 — sinal, baralho, escolha, match, convite e saída d
       stats: { done: 2, avg: 7.25 }, online: true,
     });
     expect(Object.keys(completo).sort()).toEqual(
-      ["areas", "bio", "city", "compat", "days", "exam", "goal", "online", "pace", "public_name", "reasons", "role_pref", "school", "shifts", "stats", "user_id"]
+      ["areas", "bio", "city", "compat", "days", "exam", "goal", "handle", "online", "pace", "public_name", "reasons", "role_pref", "school", "shifts", "stats", "user_id"]
     );
     // Instituição e estatística escondidas quando a pessoa pede.
     await d.sql(`update public.study_profiles set show_school = false, show_stats = false where user_id = $1`, [U.bruno]);
@@ -451,7 +451,7 @@ describe("Migração 9770 — sinal, baralho, escolha, match, convite e saída d
       const r = await formar();
       expect(r.matched).toBe(true);
       const bruno = await convites(U.bruno);
-      expect(bruno.invites).toEqual([{ id: expect.any(String), room_id: r.room_id, from: { user_id: U.ana, public_name: "Ana Souza" }, expires_at: expect.any(String) }]);
+      expect(bruno.invites).toEqual([{ id: expect.any(String), room_id: r.room_id, kind: "match", from: { user_id: U.ana, public_name: "Ana Souza" }, station: null, expires_at: expect.any(String) }]);
       expect(new Date(bruno.invites[0].expires_at).getTime()).toBeGreaterThan(Date.now());
       expect(new Date(bruno.server_now).getTime()).toBeGreaterThan(Date.now() - 60_000);
       // Quem completou o match não recebe o convite; outras pessoas também não.

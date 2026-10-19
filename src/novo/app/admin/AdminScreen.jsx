@@ -20,6 +20,7 @@ import { AdminPodcasts } from "./AdminPodcasts.jsx";
 import { AdminAI } from "./ai/AdminAI.jsx";
 import { AdminDupla } from "./AdminDupla.jsx";
 import { AdminDuplaChatReports, AdminDuplaChatSettings } from "./AdminDuplaChat.jsx";
+import { AdminDuplaConvites, AdminDuplaHandleLog } from "./AdminDuplaConvites.jsx";
 import { OfficialVoicesPanel } from "./OfficialVoicesPanel.jsx";
 import { VoiceReactionsPanel } from "./VoiceReactionsPanel.jsx";
 import { RadarFila } from "./radar/RadarFila.jsx";
@@ -87,6 +88,7 @@ export function AdminScreen() {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <AdminSettings />
           <AdminDupla />
+          <AdminDuplaConvites />
           <AdminDuplaChatSettings />
           <AdminSupportContact />
           <AdminReports />
@@ -99,7 +101,12 @@ export function AdminScreen() {
           </section>
         </div>
       )}
-      {tab === "denuncias" && <AdminDuplaChatReports />}
+      {tab === "denuncias" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <AdminDuplaChatReports />
+          <AdminDuplaHandleLog />
+        </div>
+      )}
       {tab === "registro" && <AdminAudit />}
     </>
   );
