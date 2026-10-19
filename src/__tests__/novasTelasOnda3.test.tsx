@@ -2,7 +2,7 @@
 /** Novas telas, onda 3: A−/A+ e "Ver caso completo" da questão, arte das áreas e botões de pausa do cabeçalho. */
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend: { rpc: vi.fn() }, boot: {}, user: { id: "u" } }) }));
@@ -47,7 +47,13 @@ describe("Onda 3 · tela de questão", () => {
     expect(window.localStorage.getItem("stazia-tq-tamanho-texto")).toBe("0");
   });
 
-  it("antes de responder não há 'Ver caso completo'; depois, ele abre e fecha o caso", () => {
+  it("antes de responder não há 'Ver caso completo'; depois, ele abre e fecha o caso (tablet/celular; no computador o caso vem inteiro)", () => {
+    // tablet (até 1180 px): é onde o CSS encolhe o caso e mostra o botão
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) => ({ matches: /max-width:\s*1180px/.test(q), media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false })) as any;
+    onTestFinished(() => {
+      window.matchMedia = original;
+    });
     const { rerender } = render(sheet(false));
     expect(screen.queryByText("Ver caso completo")).toBeNull();
     rerender(sheet(true));

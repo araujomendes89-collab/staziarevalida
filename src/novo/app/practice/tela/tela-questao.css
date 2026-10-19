@@ -135,8 +135,11 @@
 .tq-alt__letter { width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; display: grid; place-items: center; font-family: var(--font-mono); font-size: 15px; font-weight: 600; background: var(--tq-letter-bg); color: var(--tq-ink); border: 1px solid var(--border-default); }
 .tq-alt__text { flex: 1; min-width: 0; font-size: 16.5px; line-height: 1.5; color: var(--tq-text); overflow-wrap: anywhere; }
 .tq-alt__badge { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; font-size: 13px; font-weight: 700; }
-/* ícone de riscar discreto (sem a linha que separava a coluna): forte ao passar o mouse, no foco do teclado e quando riscado */
-.tq-alt__strike { width: 48px; flex-shrink: 0; border: 0; background: transparent; border-radius: 0 15px 15px 0; display: grid; place-items: center; cursor: pointer; color: var(--text-secondary); opacity: 0.55; transition: opacity 0.12s; }
+/* ícone de riscar discreto (sem a linha que separava a coluna): forte ao passar o mouse, no foco do teclado e quando riscado.
+   Cor de tinta no claro: a 0,55 dá 3,5:1 sobre o cartão (o cinza dava 2,5:1, abaixo do mínimo de 3:1 para ícone de controle);
+   no escuro o cinza secundário a 0,55 já dá 3,4:1 */
+.tq-alt__strike { width: 48px; flex-shrink: 0; border: 0; background: transparent; border-radius: 0 15px 15px 0; display: grid; place-items: center; cursor: pointer; color: var(--tq-ink); opacity: 0.55; transition: opacity 0.12s; }
+[data-theme="dark"] .tq-alt__strike { color: var(--text-secondary); }
 .tq-alt:hover .tq-alt__strike:not(:disabled), .tq-alt__strike:focus-visible, .tq-alt__strike[aria-pressed="true"]:not(:disabled) { opacity: 1; }
 .tq-alt__strike:hover:not(:disabled) { background: var(--tq-hover); color: var(--tq-ink); }
 .tq-alt__strike:disabled { opacity: 0.35; cursor: not-allowed; }
@@ -183,7 +186,7 @@
 .tq-report { padding: 14px 36px 18px; border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 14px; }
 .tq-report__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .tq-report__ask { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-secondary); }
-.tq-link { height: 40px; padding: 0 12px; border-radius: 10px; border: 0; background: transparent; color: var(--tq-accent-text); font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.tq-link { height: 44px; padding: 0 12px; border-radius: 10px; border: 0; background: transparent; color: var(--tq-accent-text); font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .tq-link:hover { background: var(--tq-hover); }
 .tq-form { display: flex; flex-direction: column; gap: 14px; }
 .tq-form fieldset { margin: 0; padding: 0; border: 0; }
@@ -338,6 +341,9 @@
   .tq-fs button { min-width: 44px; height: 36px; border: 0; border-radius: 8px; background: transparent; color: var(--text-secondary); font-size: 14px; font-weight: 800; cursor: pointer; }
   .tq-fs button[data-plus="true"] { font-size: 16px; color: var(--tq-ink); background: var(--surface-card); box-shadow: var(--shadow-xs); }
   .tq-fs button:disabled { opacity: 0.4; cursor: not-allowed; }
+  /* toque de 44 px no A−/A+ sem mudar o desenho: a área de toque passa 4 px acima e abaixo do botão de 36 px */
+  .tq-fs button { position: relative; }
+  .tq-fs button::after { content: ""; position: absolute; inset: -4px 0; }
   .tq-sheet[data-fs="0"] .tq-stem { font-size: 16px; }
   .tq-sheet[data-fs="2"] .tq-stem { font-size: 21px; }
   .tq-sheet[data-fs="0"] .tq-alt__text { font-size: 15.5px; }
@@ -440,6 +446,15 @@
   background-color: var(--surface-card);
 }
 .tq .tr-tabela-rolagem:focus-visible, .tq .tq-tabela-rolagem:focus-visible { outline-offset: 0; }
+/* figura do tipo "tabela" (QuestionFigures.jsx): nunca mais estreita que 560 px; quando não cabe, rola para o lado e avisa */
+.tq .tq-fig-tabela { container-type: inline-size; }
+/* sem a sombra de rolagem: o fundo branco da imagem a cobre, e no computador (sem rolagem) sobrava um fio na borda do cartão;
+   quem avisa que dá para deslizar é a frase abaixo da tabela */
+.tq .tq-fig-tabela .tq-tabela-rolagem { border-radius: var(--radius-md); background: none; }
+.tq .tq-fig-tabela__dica { margin-top: 6px; font-size: 13px; line-height: 1.4; color: var(--text-tertiary); }
+@container (max-width: 561px) {
+  .tq .tq-fig-tabela[data-larga="true"] .tq-fig-tabela__dica { display: block !important; }
+}
 .tq .tr-tabela-rolagem table, .tq .tq-tabela-rolagem table { overflow-wrap: normal; }
 @media (max-width: 720px) {
   /* cabeçalho: os 3 blocos podem encolher; o rótulo do cronômetro corta com reticências em vez de passar da borda */

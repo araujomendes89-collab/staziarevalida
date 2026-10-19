@@ -6,7 +6,7 @@
  *   trecho que sumiu ou se repete), a figura fica onde sempre ficou: depois do caso, antes da pergunta.
  */
 import { describe, expect, it } from "vitest";
-import { montarEnunciado, splitStatement } from "../novo/app/practice/format.js";
+import { montarEnunciado, situacaoDoTrecho, splitStatement } from "../novo/app/practice/format.js";
 
 const Q73 =
   "Na maternidade, um recém-nascido (RN) de 30 horas de vida, evolui com icterícia zona 3 de Kramer. Nasceu com 36 semanas de idade gestacional (IG), de parto vaginal, tendo algumas equimoses durante o parto. A tipagem sanguínea da mãe é O- e do RN é B+. Os exames laboratoriais, realizados quando a criança estava com 32 horas de vida, revelam: Considerando-se o caso e a tabela de referência apresentados, a conduta médica adequada é";
@@ -99,6 +99,37 @@ describe("montarEnunciado: blocos na ordem da prova", () => {
     expect(montarEnunciado({ statement, images: [{ url: "/x.png", alt: "x", apos: "analise a imagem" }] })).toEqual([
       { tipo: "texto", texto: statement },
       { tipo: "figuras", indices: [0] },
+    ]);
+  });
+
+  it("figura ancorada no fim do texto, com pergunta separável: a pergunta continua (em negrito) e a figura vem depois dela", () => {
+    const statement = "Paciente com lesão de pele no dorso há 3 meses. Qual o diagnóstico da lesão mostrada na imagem a seguir?";
+    expect(montarEnunciado({ statement, images: [{ url: "/x.png", alt: "x", apos: "na imagem a seguir?" }] })).toEqual([
+      { tipo: "texto", texto: "Paciente com lesão de pele no dorso há 3 meses." },
+      { tipo: "pergunta", texto: "Qual o diagnóstico da lesão mostrada na imagem a seguir?" },
+      { tipo: "figuras", indices: [0] },
+    ]);
+    // a mesma questão sem "apos": igual, só que a figura antes da pergunta (lugar de sempre)
+    expect(montarEnunciado({ statement, images: [{ url: "/x.png", alt: "x" }] }).map((b) => b.tipo)).toEqual(["texto", "figuras", "pergunta"]);
+    // com outra figura no meio do caso, a do fim continua depois da pergunta
+    const duas = montarEnunciado({ statement, images: [{ url: "/x.png", alt: "x", apos: "na imagem a seguir?" }, { url: "/y.png", alt: "y", apos: "no dorso" }] });
+    expect(duas.map((b) => b.tipo)).toEqual(["texto", "figuras", "texto", "pergunta", "figuras"]);
+    expect(duas[1]).toEqual({ tipo: "figuras", indices: [1] });
+    expect(duas[4]).toEqual({ tipo: "figuras", indices: [0] });
+  });
+
+  it("trecho que termina no meio de uma palavra não vale: a figura fica no lugar de sempre (não parte a palavra)", () => {
+    const statement = "Jovem com dismenorreia há 6 meses. Exames revelam: Qual a conduta adequada?";
+    expect(situacaoDoTrecho(statement, "dismenor")).toBe("meio-de-palavra");
+    expect(situacaoDoTrecho(statement, "Exames revel")).toBe("meio-de-palavra");
+    expect(situacaoDoTrecho(statement, "dismenorreia")).toBe("ok");
+    expect(situacaoDoTrecho(statement, "revelam:")).toBe("ok");
+    expect(situacaoDoTrecho(statement, "reia")).toBe("ok"); // começo no meio da palavra não parte nada: a figura entra depois de "dismenorreia"
+    const blocos = montarEnunciado({ statement, images: [{ url: "/x.png", alt: "x", apos: "Exames revel" }] });
+    expect(blocos).toEqual([
+      { tipo: "texto", texto: "Jovem com dismenorreia há 6 meses. Exames revelam:" },
+      { tipo: "figuras", indices: [0] },
+      { tipo: "pergunta", texto: "Qual a conduta adequada?" },
     ]);
   });
 

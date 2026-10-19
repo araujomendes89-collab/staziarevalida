@@ -118,14 +118,21 @@ export function splitStatement(statement, { comFigura = false } = {}) {
   return { stem: text.slice(0, cut).trim(), ask };
 }
 
-/** O trecho de posição da figura no enunciado: "vazio" | "ausente" | "repetido" | "ok" (aparece exatamente uma vez). */
+const LETRA_OU_NUMERO = /[\p{L}\p{N}]/u;
+
+/**
+ * O trecho de posição da figura no enunciado: "vazio" | "ausente" | "repetido" | "meio-de-palavra" | "ok" (aparece exatamente uma vez
+ * e termina onde termina uma palavra). "meio-de-palavra": a figura partiria a palavra ("dismenor" | figura | "reia").
+ */
 export function situacaoDoTrecho(statement, apos) {
   const text = String(statement ?? "").trim();
   const trecho = typeof apos === "string" ? apos.trim() : "";
   if (!trecho) return "vazio";
   const primeira = text.indexOf(trecho);
   if (primeira < 0) return "ausente";
-  return text.indexOf(trecho, primeira + 1) >= 0 ? "repetido" : "ok";
+  if (text.indexOf(trecho, primeira + 1) >= 0) return "repetido";
+  const depois = text.charAt(primeira + trecho.length);
+  return LETRA_OU_NUMERO.test(trecho.slice(-1)) && LETRA_OU_NUMERO.test(depois) ? "meio-de-palavra" : "ok";
 }
 
 /** A figura tem posição válida? Só quando `apos` aparece exatamente UMA vez no enunciado. Devolve o fim do trecho, ou -1. */
@@ -138,9 +145,11 @@ function posicaoDaFigura(text, image) {
 /**
  * Monta o enunciado na ordem da prova: blocos { tipo: "texto", texto } | { tipo: "figuras", indices } | { tipo: "apoio" } |
  * { tipo: "pergunta", texto }. `indices` são as posições ORIGINAIS em `images` (o endereço da figura é buscado por elas).
- * - Figura com `apos` válido (trecho exato que aparece uma vez): logo depois do trecho.
- * - Figura sem `apos`, com trecho que sumiu ou se repete, e a tabela de apoio: no lugar de sempre (depois do caso, antes da pergunta).
- * - A pergunta é a última frase depois da última figura posicionada; se depois dela só houver uma frase, ela é a pergunta.
+ * - Figura com `apos` válido (trecho exato que aparece uma vez e termina no fim de uma palavra): logo depois do trecho.
+ * - Figura com `apos` no fim do enunciado (depois da pergunta, "...na imagem a seguir?"): depois da pergunta.
+ * - Figura sem `apos`, com trecho que sumiu, se repete ou parte uma palavra, e a tabela de apoio: no lugar de sempre (depois do caso,
+ *   antes da pergunta).
+ * - A pergunta é a última frase depois da última figura posicionada no meio do texto; se depois dela só houver uma frase, ela é a pergunta.
  * O texto não muda nem troca de ordem: juntando os textos com espaço, volta o enunciado.
  */
 export function montarEnunciado({ statement, images = [], support = null } = {}) {
@@ -148,7 +157,8 @@ export function montarEnunciado({ statement, images = [], support = null } = {})
   const lista = Array.isArray(images) ? images : [];
   const comFigura = lista.length > 0 || Boolean(support);
   const posicoes = lista.map((image) => posicaoDaFigura(text, image));
-  const ultimaAncora = Math.max(-1, ...posicoes);
+  // figura ancorada no fim do texto não esconde a pergunta: ela vem depois da pergunta
+  const ultimaAncora = Math.max(-1, ...posicoes.filter((pos) => pos < text.length));
 
   // pergunta: depois da última figura posicionada
   let cut = inicioDaPergunta(text, { comFigura, desde: ultimaAncora > 0 ? ultimaAncora : 0 });
@@ -160,8 +170,10 @@ export function montarEnunciado({ statement, images = [], support = null } = {})
   }
   const fimDoCaso = cut > 0 ? cut : text.length;
 
-  // pontos de corte: cada figura posicionada no seu trecho; as demais (e a tabela de apoio) no fim do caso
-  const pontos = lista.map((_, indice) => ({ pos: posicoes[indice] >= 0 ? posicoes[indice] : fimDoCaso, indice }));
+  // pontos de corte: cada figura posicionada no seu trecho; as demais (e a tabela de apoio) no fim do caso; com pergunta, as
+  // ancoradas no fim do texto ficam para depois dela
+  const depoisDaPergunta = (indice) => Boolean(ask) && posicoes[indice] === text.length;
+  const pontos = lista.map((_, indice) => ({ pos: posicoes[indice] >= 0 ? posicoes[indice] : fimDoCaso, indice })).filter((p) => !depoisDaPergunta(p.indice));
   pontos.sort((a, b) => a.pos - b.pos || a.indice - b.indice);
 
   const blocos = [];
@@ -183,6 +195,7 @@ export function montarEnunciado({ statement, images = [], support = null } = {})
   texto(de, fimDoCaso);
   if (support) blocos.push({ tipo: "apoio" });
   if (ask) blocos.push({ tipo: "pergunta", texto: ask });
+  lista.forEach((_, indice) => depoisDaPergunta(indice) && figuras(indice));
   return blocos;
 }
 

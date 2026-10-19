@@ -1,5 +1,5 @@
 -- Posição da figura no enunciado (19/10/2026, defeito da Revalida 2024/2 Q73): cada figura de questions.images pode ter
---   "apos": trecho exato do enunciado que aparece UMA vez; a tela desenha a figura logo depois dele. Sem "apos" (ou se o texto mudou e o
+--   "apos": trecho exato do enunciado que aparece UMA vez e termina no fim de uma palavra; a tela desenha a figura logo depois dele. Sem "apos" (ou se o texto mudou e o
 --            trecho sumiu ou se repete), a figura fica no lugar de sempre: depois do caso, antes da pergunta.
 --   "tipo": "tabela" (recorte de tabela: a tela usa a largura toda) ou "figura".
 -- O aluno já recebe questions.images inteiro (practice_question_view e as demais): nada muda para ele além da posição.
@@ -47,6 +47,11 @@ begin
         v_vezes := (char_length(v.statement) - char_length(replace(v.statement, v_apos, ''))) / char_length(v_apos);
         if v_vezes <> 1 then
           raise exception 'O trecho "%" precisa aparecer uma vez só no enunciado (aparece % vezes). Copie um trecho maior, exatamente como está no texto.', left(v_apos, 80), v_vezes using errcode = '22023';
+        end if;
+        -- e terminar onde termina uma palavra: senão a figura partiria a palavra ("dismenor" | figura | "reia"). Mesma regra da tela (format.js)
+        if right(v_apos, 1) ~ '[0-9A-Za-zÀ-ÖØ-öø-ÿ]'
+           and substr(v.statement, strpos(v.statement, v_apos) + char_length(v_apos), 1) ~ '[0-9A-Za-zÀ-ÖØ-öø-ÿ]' then
+          raise exception 'O trecho "%" termina no meio de uma palavra. Copie até o fim da palavra.', left(v_apos, 80) using errcode = '22023';
         end if;
         v_fig := v_fig || jsonb_build_object('apos', v_apos);
       end if;

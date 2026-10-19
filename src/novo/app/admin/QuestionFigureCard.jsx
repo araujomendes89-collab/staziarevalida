@@ -15,17 +15,21 @@ const ALT_MAX = 300;
 const AVISO_TRECHO = {
   ausente: "Este trecho não está no enunciado: a figura fica no lugar de sempre.",
   repetido: "Este trecho aparece mais de uma vez: copie um trecho maior, exatamente como está no texto.",
+  "meio-de-palavra": "Este trecho termina no meio de uma palavra: copie até o fim da palavra.",
 };
 const layoutDe = (images) => images.map((image, index) => ({ index, apos: (image.apos ?? "").trim(), tipo: image.tipo === "tabela" ? "tabela" : null }));
 
 /**
  * Posição de cada figura no enunciado (19/10/2026, defeito da Revalida 2024/2 Q73): depois de qual trecho a figura entra e se ela é
- * uma tabela (largura toda). Sem trecho, a figura fica depois do caso, antes da pergunta. O banco confere de novo com o enunciado
- * SALVO (app_admin_set_question_figure_layout); nada muda no arquivo nem no texto alternativo.
+ * uma tabela (largura toda). Sem trecho, a figura fica depois do caso, antes da pergunta. A tela e o banco
+ * (app_admin_set_question_figure_layout) conferem com o enunciado SALVO (`enunciadoSalvo`): o aluno vê o salvo, não o que está sendo
+ * digitado. Nada muda no arquivo nem no texto alternativo.
  */
-export function FigurePositions({ question, onChanged }) {
+export function FigurePositions({ question, enunciadoSalvo = null, onChanged }) {
   const { backend } = useSession();
   const images = question.images ?? [];
+  const enunciado = enunciadoSalvo ?? question.statement;
+  const naoSalvo = enunciadoSalvo != null && String(enunciadoSalvo).trim() !== String(question.statement ?? "").trim();
   // a chave em texto evita refazer o estado a cada desenho (question.images pode chegar como lista nova com o mesmo conteúdo)
   const chave = JSON.stringify(layoutDe(images));
   const salvo = React.useMemo(() => JSON.parse(chave), [chave]);
@@ -33,7 +37,7 @@ export function FigurePositions({ question, onChanged }) {
   const [state, setState] = React.useState({ busy: false, error: null, note: null });
   React.useEffect(() => setLayout(salvo), [salvo]);
   if (!images.length) return null;
-  const situacoes = layout.map((item) => situacaoDoTrecho(question.statement, item.apos));
+  const situacoes = layout.map((item) => situacaoDoTrecho(enunciado, item.apos));
   const valido = situacoes.every((s) => s === "ok" || s === "vazio");
   const mudou = JSON.stringify(layout) !== JSON.stringify(salvo);
   const muda = (index, campo, valor) => {
@@ -57,8 +61,13 @@ export function FigurePositions({ question, onChanged }) {
       <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
         Sem trecho, a figura aparece depois do caso, antes da pergunta. Com trecho, logo depois dele, como na prova. Copie o trecho do enunciado salvo, exatamente; ele precisa aparecer uma vez só.
       </div>
+      {naoSalvo && (
+        <div role="status" style={{ font: "var(--type-caption)", color: "var(--warning-text)" }}>
+          O enunciado tem mudança ainda não salva. A posição é conferida com o enunciado salvo: salve a questão antes de mexer na posição.
+        </div>
+      )}
       {layout.map((item, i) => {
-        const perdida = salvo[i].apos && situacaoDoTrecho(question.statement, salvo[i].apos) !== "ok";
+        const perdida = salvo[i].apos && situacaoDoTrecho(enunciado, salvo[i].apos) !== "ok";
         return (
           <div key={item.index} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <TextField label={`Figura ${item.index + 1}: entra depois do trecho`} value={item.apos} maxLength={300} onChange={(e) => muda(item.index, "apos", e.target.value)} error={AVISO_TRECHO[situacoes[i]]} />
@@ -86,7 +95,7 @@ export function FigurePositions({ question, onChanged }) {
   );
 }
 
-export function QuestionFigureCard({ question, isNew, onChanged }) {
+export function QuestionFigureCard({ question, enunciadoSalvo = null, isNew, onChanged }) {
   const { backend } = useSession();
   const images = question.images ?? [];
   const many = images.length > 1;
@@ -160,7 +169,7 @@ export function QuestionFigureCard({ question, isNew, onChanged }) {
                   </div>
                 ))}
               </div>
-              <FigurePositions question={question} onChanged={onChanged} />
+              <FigurePositions question={question} enunciadoSalvo={enunciadoSalvo} onChanged={onChanged} />
             </>
           ) : (
             <>
@@ -243,7 +252,7 @@ export function QuestionFigureCard({ question, isNew, onChanged }) {
                 )
               )}
               {state.error && <Banner tone="danger">{state.error}</Banner>}
-              {current && mode === "view" && <FigurePositions question={question} onChanged={onChanged} />}
+              {current && mode === "view" && <FigurePositions question={question} enunciadoSalvo={enunciadoSalvo} onChanged={onChanged} />}
             </>
           )}
         </div>

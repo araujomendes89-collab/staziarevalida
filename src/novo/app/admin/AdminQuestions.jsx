@@ -585,7 +585,7 @@ export function QuestionEditor({ id, onClose, onSaved, commentReviewReady = fals
           )}
         </div>
       </Card>
-      <QuestionFigureCard question={form} isNew={isNew} onChanged={figureChanged} />
+      <QuestionFigureCard question={form} enunciadoSalvo={savedForm?.statement ?? null} isNew={isNew} onChanged={figureChanged} />
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Comentário</h3>

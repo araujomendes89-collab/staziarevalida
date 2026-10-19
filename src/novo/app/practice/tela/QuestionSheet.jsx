@@ -9,6 +9,7 @@ import { FiguraAmpliada, FigurasDaQuestao } from "../QuestionFigures.jsx";
 import { SupportTable } from "../SupportTable.jsx";
 import { PreliminarySeal } from "../Correction.jsx";
 import { areaLabel, areaOf, isStaziamed, montarEnunciado, questionRef } from "../format.js";
+import { useMQ } from "../../shell/useLayout.js";
 // leitor do aluno (sem TipTap): só com formatação que o banco mandou e que bate com o texto; sem ela, a tela é a de sempre
 import ParagrafoRico from "../../editorPro/leitor/ParagrafoRico.jsx";
 import { ricoDoCampo } from "../../../../shared/questions/formatacao";
@@ -91,48 +92,60 @@ export function QuestionStatement({ question, hint = null, revealed = false, siz
   const pergunta = blocos.find((b) => b.tipo === "pergunta")?.texto ?? "";
   const [caseOpen, setCaseOpen] = React.useState(false);
   const [ampliada, setAmpliada] = React.useState(null);
-  // tablet/celular, depois de responder: o caso fica em 3 linhas com "Ver caso completo" (no computador o caso aparece inteiro).
-  // Com o caso encolhido, a pergunta sai do parágrafo encolhido e fica num parágrafo próprio, sempre visível.
-  const clamp = revealed && !caseOpen;
+  // tablet/celular (até 1180 px, o mesmo corte do CSS), depois de responder: o 1º parágrafo do caso fica em 3 linhas com
+  // "Ver caso completo". No computador o caso aparece inteiro, sem botão, e a pergunta continua no fim do próprio texto.
+  const encolhe = useMQ("(max-width: 1180px)");
+  const clamp = encolhe && revealed && !caseOpen;
   const idBase = `tq-stem-${question.id}`;
-  const corpo = blocos.filter((b) => b.tipo !== "pergunta");
-  const ultimo = corpo[corpo.length - 1];
-  const perguntaNoTexto = Boolean(pergunta) && ultimo?.tipo === "texto" && !clamp;
-  // cada parágrafo do caso tem id (o primeiro, o de sempre): "Ver caso completo" controla todos
+  // a pergunta fica no fim do parágrafo que vem logo antes dela; num parágrafo próprio quando antes dela vem figura ou tabela,
+  // ou quando esse parágrafo é o que está encolhido (assim ela continua sempre visível)
+  const iPergunta = blocos.findIndex((b) => b.tipo === "pergunta");
+  const antesDaPergunta = iPergunta > 0 ? blocos[iPergunta - 1] : null;
+  const primeiroParagrafo = blocos.find((b) => b.tipo === "texto" || b.tipo === "rico");
+  const perguntaNoTexto = Boolean(pergunta) && antesDaPergunta?.tipo === "texto" && !(clamp && antesDaPergunta === primeiroParagrafo);
+  // cada parágrafo do caso tem id (o primeiro, o de sempre)
   const idDe = new Map();
-  corpo.forEach((b) => (b.tipo === "texto" || b.tipo === "rico") && idDe.set(b, idDe.size === 0 ? idBase : `${idBase}-${idDe.size}`));
+  blocos.forEach((b) => (b.tipo === "texto" || b.tipo === "rico") && idDe.set(b, idDe.size === 0 ? idBase : `${idBase}-${idDe.size}`));
   const forte = (
     <strong className="tq-pergunta" role="heading" aria-level={nivelTitulo} lang="pt-BR">
       {pergunta}
     </strong>
   );
-  const conteudo = corpo.map((bloco, n) => {
+  const conteudo = blocos.map((bloco, n) => {
     if (bloco.tipo === "texto" || bloco.tipo === "rico") {
       const id = idDe.get(bloco);
-      const comPergunta = perguntaNoTexto && bloco === ultimo;
+      const ehPrimeiro = bloco === primeiroParagrafo;
+      // só o 1º parágrafo encolhe: o botão fica logo depois dele, e os parágrafos seguintes (depois de figuras) aparecem inteiros
+      const encolhido = clamp && ehPrimeiro;
+      const comPergunta = perguntaNoTexto && bloco === antesDaPergunta;
       const paragrafo =
         bloco.tipo === "rico" ? (
-          <div key={id} id={id} className="tq-stem tq-rico" data-clamp={clamp ? "true" : "false"} lang="pt-BR" style={ESTILO_ENUNCIADO}>
+          <div key={id} id={id} className="tq-stem tq-rico" data-clamp={encolhido ? "true" : "false"} lang="pt-BR" style={ESTILO_ENUNCIADO}>
             <ParagrafoRico texto={question.statement} rico={ricoEnunciado} />
           </div>
         ) : (
-          <p key={id} id={id} className="tq-stem" data-clamp={clamp ? "true" : "false"} lang="pt-BR" style={ESTILO_ENUNCIADO}>
+          <p key={id} id={id} className="tq-stem" data-clamp={encolhido ? "true" : "false"} lang="pt-BR" style={ESTILO_ENUNCIADO}>
             {bloco.texto}
             {comPergunta && " "}
             {comPergunta && forte}
           </p>
         );
-      // "Ver caso completo" logo depois do primeiro parágrafo, como sempre
-      if (id !== idBase || !revealed) return paragrafo;
+      if (!ehPrimeiro || !encolhe || !revealed) return paragrafo;
       return (
         <React.Fragment key={id}>
           {paragrafo}
-          <button type="button" className="tq-more" aria-expanded={caseOpen} aria-controls={[...idDe.values()].join(" ")} onClick={() => setCaseOpen(!caseOpen)}>
+          <button type="button" className="tq-more" aria-expanded={caseOpen} aria-controls={idBase} onClick={() => setCaseOpen(!caseOpen)}>
             {caseOpen ? "Mostrar menos" : "Ver caso completo"}
           </button>
         </React.Fragment>
       );
     }
+    if (bloco.tipo === "pergunta")
+      return perguntaNoTexto ? null : (
+        <p key="pergunta" className="tq-stem tq-stem--fim" lang="pt-BR" style={ESTILO_ENUNCIADO}>
+          {forte}
+        </p>
+      );
     if (bloco.tipo === "figuras") return <FigurasDaQuestao key={`f${n}`} images={images} indices={bloco.indices} questionId={question.id} onOpen={setAmpliada} />;
     if (bloco.tipo === "apoio") return <SupportTable key={`a${n}`} support={question.support} />;
     return null;
@@ -152,11 +165,6 @@ export function QuestionStatement({ question, hint = null, revealed = false, siz
           </span>
         </div>
         {conteudo}
-        {pergunta && !perguntaNoTexto && (
-          <p className="tq-stem tq-stem--fim" lang="pt-BR" style={ESTILO_ENUNCIADO}>
-            {forte}
-          </p>
-        )}
         <FiguraAmpliada figura={ampliada} onClose={() => setAmpliada(null)} />
       </div>
       {/* a dica do Tutor fica sempre fora do enunciado, logo depois dele */}

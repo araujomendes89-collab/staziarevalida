@@ -50,7 +50,17 @@ describe("posição da figura no enunciado", () => {
     expect(await failure(layout(EDITOR, 902, [{ index: 0, apos: "e" }]))).toMatch(/aparecer uma vez/);
     expect(await failure(layout(EDITOR, 902, [{ index: 0, tipo: "grafico" }]))).toMatch(/tabela.*figura/);
     expect(await failure(layout(EDITOR, 902, [{ index: 3, apos: "revelam:" }]))).toMatch(/não existe/);
+    // trecho que termina no meio de uma palavra (a figura partiria "revel|am:"; "icter|ícia" com acento também)
+    expect(await failure(layout(EDITOR, 902, [{ index: 0, apos: "Os exames revel" }]))).toMatch(/meio de uma palavra/);
+    expect(await failure(layout(EDITOR, 902, [{ index: 0, apos: "com icter" }]))).toMatch(/meio de uma palavra/);
     expect((await row(902)).images).toEqual(antes);
+  });
+
+  it("trecho que termina no fim da palavra (com ou sem pontuação) é aceito", async () => {
+    await t.rpc(EDITOR, "app_admin_save_question", { p_question: question(907, { statement: STATEMENT, needs_image: true }) });
+    await setFigure(907);
+    expect((await layout(EDITOR, 907, [{ index: 0, apos: "com icterícia" }])).images[0].apos).toBe("com icterícia");
+    expect((await layout(EDITOR, 907, [{ index: 0, apos: "Os exames revelam" }])).images[0].apos).toBe("Os exames revelam");
   });
 
   it("'apos' vazio volta a figura ao lugar de sempre (tira a chave)", async () => {

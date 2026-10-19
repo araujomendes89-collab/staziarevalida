@@ -74,6 +74,31 @@ describe("Posição no enunciado (Administração)", () => {
     expect(await screen.findByText("Posição salva.")).toBeTruthy();
   });
 
+  it("trecho que termina no meio de uma palavra: avisa e não deixa salvar", () => {
+    render(<FigurePositions question={Q} onChanged={() => {}} />);
+    const regiao = screen.getByRole("group", { name: "Posição no enunciado" });
+    const t1 = within(regiao).getByLabelText("Figura 1: entra depois do trecho") as HTMLInputElement;
+    fireEvent.change(t1, { target: { value: "Os exames revel" } });
+    expect(within(regiao).getByText(/termina no meio de uma palavra/)).toBeTruthy();
+    expect((within(regiao).getByRole("button", { name: "Salvar posição" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("enunciado com mudança não salva: confere com o enunciado SALVO (o que o banco e o aluno usam) e avisa", () => {
+    const digitado = STATEMENT.replace("revelam:", "mostram:");
+    render(<FigurePositions question={{ ...Q, statement: digitado }} enunciadoSalvo={STATEMENT} onChanged={() => {}} />);
+    const regiao = screen.getByRole("group", { name: "Posição no enunciado" });
+    expect(within(regiao).getByText(/mudança ainda não salva/)).toBeTruthy();
+    const t1 = within(regiao).getByLabelText("Figura 1: entra depois do trecho") as HTMLInputElement;
+    fireEvent.change(t1, { target: { value: "mostram:" } }); // só no texto digitado: o banco recusaria
+    expect(within(regiao).getByText(/não está no enunciado/)).toBeTruthy();
+    fireEvent.change(t1, { target: { value: "revelam:" } }); // no salvo
+    expect((within(regiao).getByRole("button", { name: "Salvar posição" }) as HTMLButtonElement).disabled).toBe(false);
+    cleanup();
+    // sem mudança no enunciado, nada de aviso
+    render(<FigurePositions question={Q} enunciadoSalvo={STATEMENT} onChanged={() => {}} />);
+    expect(screen.queryByText(/mudança ainda não salva/)).toBeNull();
+  });
+
   it("posição perdida: o enunciado mudou e o trecho gravado sumiu", () => {
     render(<FigurePositions question={{ ...Q, statement: "Texto novo sem o trecho. Qual a conduta adequada?" }} onChanged={() => {}} />);
     expect(screen.getByText(/Posição perdida/)).toBeTruthy();
