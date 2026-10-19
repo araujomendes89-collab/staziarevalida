@@ -164,54 +164,6 @@ export function useInvites(inviteTick, live) {
   return { invites: state.invites, serverNow: state.serverNow, refresh };
 }
 
-/**
- * Pedidos de treino que chegaram para mim (`app_dupla_requests`, valem 24 h): na entrada, a cada aviso (`inviteTick`), ao voltar a
- * aba e a rede e de 30 em 30 s. Erro de rede (ou função ausente) mantém a lista anterior; resposta atrasada nunca vence a nova.
- * @returns {{ requests: object[], refresh(): Promise<void> }}
- */
-export function useRequests(inviteTick) {
-  const { backend } = useSession();
-  const [requests, setRequests] = React.useState([]);
-  const seq = React.useRef(0);
-  const alive = React.useRef(true);
-
-  React.useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-    };
-  }, []);
-
-  const refresh = React.useCallback(async () => {
-    if (!backend) return;
-    const mine = ++seq.current;
-    const res = await quiet(() => backend.rpc("app_dupla_requests"));
-    if (!alive.current || mine !== seq.current || !res) return;
-    setRequests(Array.isArray(res.requests) ? res.requests : []);
-  }, [backend]);
-
-  React.useEffect(() => {
-    void refresh();
-  }, [refresh, inviteTick]);
-
-  React.useEffect(() => {
-    const timer = setInterval(() => void refresh(), POLL_LIVE_MS);
-    const onVisible = () => {
-      if (pageVisible()) void refresh();
-    };
-    const onOnline = () => void refresh();
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("online", onOnline);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("online", onOnline);
-    };
-  }, [refresh]);
-
-  return { requests, refresh };
-}
-
 // ------------------------------------------------------------------ radar (quem está online)
 const RADAR_POLL_LOCAL_MS = 20000;
 const RADAR_POLL_LIVE_MS = 30000;

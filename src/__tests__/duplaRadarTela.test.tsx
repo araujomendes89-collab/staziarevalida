@@ -149,8 +149,7 @@ describe("Radar · lista", () => {
     await openRadar();
     const text = document.body.textContent ?? "";
     for (const banned of ["Busca automática de duplas", "Salas abertas", "Convite rápido"]) expect(text, banned).not.toContain(banned);
-    // o texto de ajuda do link menciona WhatsApp; o que não pode existir é um botão com esse nome
-    expect(text).toContain("WhatsApp");
+    expect(text).not.toContain("WhatsApp");
     for (const b of screen.getAllByRole("button")) expect(b.textContent ?? "", "botão").not.toMatch(/WhatsApp/i);
     expect(screen.queryByRole("button", { name: /WhatsApp/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /WhatsApp/i })).toBeNull();
@@ -410,135 +409,9 @@ describe("Radar · erros", () => {
   });
 });
 
-describe("Radar · link de convite", () => {
-  const LINK = () => `${window.location.origin}/novo/convite/eu.teste`;
-
-  it("copia o link só com o @ (sem o id da estação) e mostra 'Link copiado'", async () => {
+describe("Radar · sem link de convite", () => {
+  it("o convite por link do @ saiu: não há botão para copiar o link", async () => {
     await openRadar({ station: STATION, stationId: "est-teste-3" });
-    fireEvent.click(screen.getByRole("button", { name: "Copiar link de convite" }));
-    expect(await screen.findByRole("button", { name: "Link copiado" })).toBeTruthy();
-    expect(clipboardWrite).toHaveBeenCalledWith(LINK());
-    expect(LINK()).toMatch(/^https?:\/\/.+\/novo\/convite\/eu\.teste$/);
-    expect(screen.queryByLabelText("Link de convite")).toBeNull();
-  });
-
-  it("sem estação o link leva só o @", async () => {
-    await openRadar();
-    fireEvent.click(screen.getByRole("button", { name: "Copiar link de convite" }));
-    await screen.findByRole("button", { name: "Link copiado" });
-    expect(clipboardWrite).toHaveBeenCalledWith(`${window.location.origin}/novo/convite/eu.teste`);
-  });
-
-  it("sem @ no perfil não há botão de link", async () => {
-    await openRadar({ saved: { ...SAVED, handle: null } });
     expect(screen.queryByRole("button", { name: "Copiar link de convite" })).toBeNull();
-  });
-
-  it("se a cópia for recusada e o jeito antigo falhar, mostra o campo para copiar à mão (sem erro)", async () => {
-    clipboardWrite.mockRejectedValue(new Error("negado"));
-    const exec = vi.fn(() => false);
-    (document as any).execCommand = exec;
-    await openRadar({ station: STATION, stationId: "est-teste-3" });
-    fireEvent.click(screen.getByRole("button", { name: "Copiar link de convite" }));
-    const field = (await screen.findByLabelText("Link de convite")) as HTMLInputElement;
-    expect(field.value).toBe(LINK());
-    expect(field.readOnly).toBe(true);
-    expect(exec).toHaveBeenCalledWith("copy");
-    expect(screen.queryByRole("button", { name: "Link copiado" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Copiar link de convite" })).toBeTruthy();
-    delete (document as any).execCommand;
-  });
-
-  it("sem a API de área de transferência, o jeito antigo copia", async () => {
-    Object.defineProperty(navigator, "clipboard", { configurable: true, writable: true, value: undefined });
-    const exec = vi.fn(() => true);
-    (document as any).execCommand = exec;
-    await openRadar();
-    fireEvent.click(screen.getByRole("button", { name: "Copiar link de convite" }));
-    expect(await screen.findByRole("button", { name: "Link copiado" })).toBeTruthy();
-    expect(exec).toHaveBeenCalledWith("copy");
-    delete (document as any).execCommand;
-  });
-});
-
-describe("Praticar com ?modo=online", () => {
-  function Where() {
-    const l = useLocation();
-    return <div data-testid="onde">{l.pathname + l.search}</div>;
-  }
-  /** `go` do app troca o endereço; aqui ele grava na rota, como o App faz. */
-  function Harness() {
-    const loc = useLocation();
-    void loc;
-    return <PracticeScreen go={go} />;
-  }
-
-  it("renderiza o radar", async () => {
-    render(
-      <MemoryRouter initialEntries={["/dupla?modo=online"]}>
-        <Harness />
-        <Where />
-      </MemoryRouter>,
-    );
-    expect(await screen.findByText("Quem está online")).toBeTruthy();
-    expect(await screen.findByText("Colega Teste Um")).toBeTruthy();
-    expect(screen.queryByText("Como a compatibilidade é calculada")).toBeNull();
-    expect(rpcCalls("app_dupla_radar").length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("leva a estação do endereço ao radar", async () => {
-    render(
-      <MemoryRouter initialEntries={["/dupla?modo=online&estacao=est-teste-3"]}>
-        <Harness />
-      </MemoryRouter>,
-    );
-    await screen.findByText("Quem está online");
-    await waitFor(() => expect(rpcCalls("app_dupla_radar").some((c) => c[1].p_station_id === "est-teste-3")).toBe(true));
-  });
-
-  it("'Voltar para Praticar' do radar chama go('dupla')", async () => {
-    render(
-      <MemoryRouter initialEntries={["/dupla?modo=online"]}>
-        <Harness />
-      </MemoryRouter>,
-    );
-    fireEvent.click(await screen.findByRole("button", { name: /Voltar para Praticar/ }));
-    expect(go).toHaveBeenCalledWith("dupla", undefined);
-  });
-
-  it("no baralho, 'Ver quem está online' navega para o radar", async () => {
-    render(
-      <MemoryRouter initialEntries={["/dupla"]}>
-        <Harness />
-      </MemoryRouter>,
-    );
-    fireEvent.click(await screen.findByRole("button", { name: "Ver quem está online" }));
-    expect(go).toHaveBeenCalledWith("dupla", { modo: "online" });
-  });
-
-  it("no baralho com estação, o atalho leva a estação junto", async () => {
-    render(
-      <MemoryRouter initialEntries={["/dupla?estacao=est-teste-3"]}>
-        <Harness />
-      </MemoryRouter>,
-    );
-    fireEvent.click(await screen.findByRole("button", { name: "Ver quem está online" }));
-    expect(go).toHaveBeenCalledWith("dupla", { estacao: "est-teste-3", modo: "online" });
-  });
-
-  it("sem perfil de estudo o radar não abre (cai na tela de criar o perfil)", async () => {
-    const base = backend.rpc.getMockImplementation();
-    backend.rpc.mockImplementation(async (fn: string, args: any) => {
-      if (fn === "app_dupla_profile") return { profile: null, defaults: { public_name: "Eu", exam: null }, stats: { done: 0, avg: null } };
-      return base(fn, args);
-    });
-    render(
-      <MemoryRouter initialEntries={["/dupla?modo=online"]}>
-        <Harness />
-      </MemoryRouter>,
-    );
-    expect(await screen.findByText("Encontrar dupla")).toBeTruthy();
-    expect(screen.queryByText("Quem está online")).toBeNull();
-    expect(rpcCalls("app_dupla_radar")).toHaveLength(0);
   });
 });

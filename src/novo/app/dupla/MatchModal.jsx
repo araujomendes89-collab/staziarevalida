@@ -2,11 +2,11 @@
 // Porte de Match.jsx do pacote de design (89-118) com o Dialog e as cores do app. "Enviar mensagem" abre o chat de estudo do par
 // (pacote de 11/10, Etapa C); "Agendar sessão" continua fora. O pacote usa a fanfarra ao abrir e o botão de som no canto.
 import React from "react";
-import { Avatar as DsAvatar, Badge, Button, Dialog, Icon, ProgressBar, useToast } from "../../ds";
+import { Avatar as DsAvatar, Button, Dialog, Icon, ProgressBar, useToast } from "../../ds";
 import { useSession } from "../session.jsx";
 import { messageOf } from "../admin/common.jsx";
 import { firstName } from "./deck.js";
-import { useInvites, useRequests } from "./live.js";
+import { useInvites } from "./live.js";
 import { playMatchSound, setSoundOn, soundOn } from "./sound.js";
 import { useChatWindows } from "./chat/ChatList.jsx";
 import { PAIR_UNAVAILABLE_TEXT, creditKind } from "./credits.js";
@@ -165,31 +165,31 @@ export function MatchModal({ meName, partnerName, busy = false, onOpen, onMessag
 const INVITE_TTL_S = 60;
 
 /**
- * Convite direto do radar (kind "direto"): "{nome} convidou você para treinar", a estação (só "Estação N", a área e a duração: o
- * convidado ainda pode ser o candidato, então o tema não aparece), contagem dos 60 s, "Aceitar" e "Agora não". O som é o do
- * "Deu match!" (desligável), sem a fanfarra visual. Esc e clique no fundo valem "Agora não".
- * @param {{ invite: { from?: { public_name?: string }, station?: { label?: string, area?: string, duration_ms?: number } | null, expires_at: string },
- *   busy?: boolean, nowMs: number, onAccept(): void, onDecline(): void }} p
+ * Convite direto do radar (kind "direto"), fluxo simples (dono, 19/10): quem convida é o ator, então quem recebe é o candidato:
+ * "{nome} te chamou para treinar como candidato". NADA da estação (nem número, área, porta, duração ou origem: o servidor nem
+ * manda, 014130). Contagem dos 60 s, "Aceitar" e "Recusar". O som é o do "Deu match!" (desligável). Esc e clique no fundo valem
+ * "Recusar".
+ * @param {{ invite: { from?: { public_name?: string }, role?: string | null, expires_at: string }, busy?: boolean, nowMs: number,
+ *   onAccept(): void, onDecline(): void }} p
  */
 export function DirectInviteDialog({ invite, busy = false, nowMs, onAccept, onDecline }) {
   React.useEffect(() => {
     playMatchSound();
   }, []);
   const name = invite.from?.public_name ?? "";
-  const station = invite.station ?? null;
   const left = Math.max(0, Math.ceil((Date.parse(invite.expires_at) - nowMs) / 1000));
-  const minutes = station?.duration_ms ? Math.round(station.duration_ms / 60000) : null;
+  const title = invite.role === "candidate" ? `${name} te chamou para treinar como candidato` : `${name} convidou você para treinar`;
   const handleClose = () => {
     if (!busy) onDecline();
   };
   return (
     <Dialog
-      title={`${name} convidou você para treinar`}
+      title={title}
       onClose={handleClose}
       actions={
         <>
           <Button variant="ghost" disabled={busy} onClick={onDecline}>
-            Agora não
+            Recusar
           </Button>
           <Button icon="check" loading={busy} onClick={onAccept}>
             Aceitar
@@ -201,64 +201,10 @@ export function DirectInviteDialog({ invite, busy = false, nowMs, onAccept, onDe
         <DsAvatar name={name} size={48} />
         <div style={{ minWidth: 0 }}>
           <div style={{ font: "600 16px var(--font-sans)", color: "var(--text-primary)" }}>{name}</div>
-          {station ? (
-            <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-              <Badge size="sm" tone="brand">{station.label}</Badge>
-              {station.area && <Badge size="sm">{station.area}</Badge>}
-              {minutes != null && <Badge size="sm" icon="timer">{`${minutes} min`}</Badge>}
-            </div>
-          ) : (
-            <div style={{ font: "13px var(--font-sans)", color: "var(--text-tertiary)", marginTop: 4 }}>A estação se escolhe na sala.</div>
-          )}
+          <div style={{ font: "13px var(--font-sans)", color: "var(--text-tertiary)", marginTop: 4 }}>A estação aparece quando o atendimento começar.</div>
         </div>
       </div>
       <ProgressBar label="O convite expira em" valueLabel={`${left} s`} value={left} max={INVITE_TTL_S} color={left <= 10 ? "var(--warning-solid)" : "var(--action-primary)"} />
-    </Dialog>
-  );
-}
-
-/**
- * Pedido de treino por link (vale 24 h): "{nome} pediu para treinar com você", com o @, a estação (só "Estação N", a área e a
- * duração) e "Aceitar" / "Agora não". Esc ou clique no fundo só fecham o aviso (o pedido continua valendo); "Agora não" encerra.
- */
-export function RequestDialog({ request, busy = false, onAccept, onDecline, onDismiss }) {
-  const name = request.from?.public_name ?? "";
-  const station = request.station ?? null;
-  const minutes = station?.duration_ms ? Math.round(station.duration_ms / 60000) : null;
-  return (
-    <Dialog
-      title={`${name} pediu para treinar com você`}
-      onClose={() => {
-        if (!busy) onDismiss();
-      }}
-      actions={
-        <>
-          <Button variant="ghost" disabled={busy} onClick={onDecline}>
-            Agora não
-          </Button>
-          <Button icon="check" loading={busy} onClick={onAccept}>
-            Aceitar
-          </Button>
-        </>
-      }
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 14, margin: "14px 0 12px", padding: 14, background: "var(--surface-sunken)", borderRadius: 12 }}>
-        <DsAvatar name={name} size={48} />
-        <div style={{ minWidth: 0 }}>
-          <div style={{ font: "600 16px var(--font-sans)", color: "var(--text-primary)" }}>{name}</div>
-          {request.from?.handle && <div style={{ font: "500 12px var(--font-mono)", color: "var(--text-tertiary)" }}>{`@${request.from.handle}`}</div>}
-          {station && (
-            <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-              <Badge size="sm" tone="brand">{station.label}</Badge>
-              {station.area && <Badge size="sm">{station.area}</Badge>}
-              {minutes != null && <Badge size="sm" icon="timer">{`${minutes} min`}</Badge>}
-            </div>
-          )}
-        </div>
-      </div>
-      <p style={{ margin: 0, font: "13px/1.5 var(--font-sans)", color: "var(--text-tertiary)" }}>
-        Ao aceitar, a sala abre e {name.split(/\s+/)[0] || "a pessoa"} recebe o convite na hora.
-      </p>
     </Dialog>
   );
 }
@@ -273,8 +219,6 @@ export function InviteWatcher({ go, meName, inviteTick, live, paused = false, on
   const { backend } = useSession();
   const { invites, serverNow, refresh } = useInvites(inviteTick, live);
   const [answered, setAnswered] = React.useState(() => new Set());
-  const { requests, refresh: refreshRequests } = useRequests(inviteTick);
-  const [dismissed, setDismissed] = React.useState(() => new Set());
   const [busy, setBusy] = React.useState(false);
   const [quotaOpen, setQuotaOpen] = React.useState(false);
   const [, bump] = React.useState(0);
@@ -331,27 +275,6 @@ export function InviteWatcher({ go, meName, inviteTick, live, paused = false, on
     }
   };
 
-  // Pedidos de treino por link: só aparecem quando não há convite na tela; fechar o aviso não recusa o pedido.
-  const request = invite ? null : requests.find((r) => !dismissed.has(r.id) && Date.parse(r.expires_at) > nowMs) ?? null;
-  const answerRequest = async (accept) => {
-    if (!request || busy) return;
-    setBusy(true);
-    try {
-      const result = await backend.rpc("app_dupla_answer_request", { p_request_id: request.id, p_accept: accept });
-      setDismissed((prev) => new Set(prev).add(request.id));
-      if (accept && result?.room_id) go("dupla-sala", { sala: result.room_id });
-      else void refreshRequests();
-    } catch (e) {
-      const text = messageOf(e);
-      showToast(text, "danger");
-      // Pedido que já não existe sai da tela; outro erro (ex.: quem pediu saiu do ar agora) mantém o aviso e o pedido, que vale 24 h.
-      if (/Pedido (vencido|não encontrado|já respondido)/.test(text)) setDismissed((prev) => new Set(prev).add(request.id));
-      void refreshRequests();
-    } finally {
-      setBusy(false);
-    }
-  };
-
   // "Enviar mensagem": o convite sai da tela sem ser recusado (vence sozinho em 60 s, ou vira aceito pelo "Abrir sala" do chat).
   const message = async () => {
     if (!invite || busy) return;
@@ -369,16 +292,6 @@ export function InviteWatcher({ go, meName, inviteTick, live, paused = false, on
       )}
       {invite && !chat.chatOpen && !paused && invite.kind !== "direto" && (
         <MatchModal key={invite.id} meName={meName} partnerName={invite.from?.public_name ?? ""} busy={busy} onOpen={() => respond(true)} onMessage={message} onClose={() => respond(false)} />
-      )}
-      {request && !chat.chatOpen && !paused && (
-        <RequestDialog
-          key={request.id}
-          request={request}
-          busy={busy}
-          onAccept={() => answerRequest(true)}
-          onDecline={() => answerRequest(false)}
-          onDismiss={() => setDismissed((prev) => new Set(prev).add(request.id))}
-        />
       )}
       {chat.node}
     </>

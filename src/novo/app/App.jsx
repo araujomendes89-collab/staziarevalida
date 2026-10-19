@@ -33,8 +33,6 @@ import { DuplaGate, duplaAllowed } from "./dupla/DuplaGate.jsx";
 import { StationsScreen } from "./dupla/StationsScreen.jsx";
 import { PracticeScreen } from "./dupla/PracticeScreen.jsx";
 import { StudyProfileScreen } from "./dupla/StudyProfileScreen.jsx";
-import { InviteLinkScreen } from "./dupla/InviteLinkScreen.jsx";
-import { rememberPendingInvite, takePendingInvite } from "./dupla/radarApi.js";
 import { RoomScreen } from "./dupla/room/RoomScreen.jsx";
 import { HomeScreen } from "./home/HomeScreen.jsx";
 import { TodayPlan } from "./home/TodayPlan.jsx";
@@ -92,7 +90,6 @@ const TITLES = {
   estacoes: ["Banco de estações", null],
   dupla: ["Praticar em dupla", null],
   "dupla-perfil": ["Meu perfil de estudo", null],
-  convite: ["Convite para treinar", null],
   peps: ["Meus PEPs", "Estações avaliadas"],
   paciente: ["Paciente simulado", "Treine a anamnese com IA"],
   desempenho2: ["Desempenho prático", "Notas pelo PEP"],
@@ -101,8 +98,7 @@ const TITLES = {
 };
 // planos etapa 4: a faixa da amostra do dia nas telas que gastam a amostra
 const AMOSTRA_ROTA = { questoes: "questoes", simulados: "simulados_teoricos", flash: "flashcards" };
-// "convite" (convite por link do @, radar): com a 2ª fase fechada o endereço leva ao início, como as outras telas da dupla.
-const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "dupla-perfil", "dupla-sala", "convite", "peps", "paciente", "desempenho2"];
+const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "dupla-perfil", "dupla-sala", "peps", "paciente", "desempenho2"];
 // Aluno com o Treino em Dupla aberto: o Banco de estações (um só, decisão do dono de 16/10: o do pacote de 11/10) e o Praticar
 // em dupla abrem; as outras telas da 2ª fase com dados (fase2_allowed, hoje só a equipe) ficam "Em breve" e o endereço leva ao
 // Banco de estações. "estacoes" NÃO entra aqui (entraria em ciclo, mandando o aluno para a própria tela).
@@ -110,7 +106,7 @@ const SOON = ["home2", "teoria2", "estacao", "peps", "paciente", "desempenho2"];
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", "nivelamento", "apresentacao", "dupla-sala", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "mapas", "planos", "nivelamento", "home2", "teoria2", "estacoes", "peps", "paciente", "desempenho2", "dupla", "dupla-perfil", "dupla-sala", "convite"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "mapas", "planos", "nivelamento", "home2", "teoria2", "estacoes", "peps", "paciente", "desempenho2", "dupla", "dupla-perfil", "dupla-sala"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -231,8 +227,6 @@ function Screen({ view }) {
   else if (route === "dupla") body = <DuplaGate go={go}><PracticeScreen go={go} /></DuplaGate>;
   else if (route === "dupla-perfil") body = <DuplaGate go={go}><StudyProfileScreen go={go} /></DuplaGate>;
   else if (route === "dupla-sala") body = <DuplaGate go={go}><RoomScreen roomId={params.roomId} go={go} /></DuplaGate>;
-  // Convite por link do @ (/novo/convite/<@>): fora do DuplaGate para a pessoa sem acesso ver uma mensagem neutra, não o convite do plano
-  else if (route === "convite") body = <InviteLinkScreen go={go} handle={params.handle ?? ""} stationId={query.get("estacao")} />;
   else if (route === "peps") body = <Fase2Peps go={go} />;
   else if (route === "paciente") body = <Fase2Patient go={go} />;
   else if (route === "desempenho2") body = <Fase2Performance go={go} />;
@@ -337,18 +331,8 @@ function AvisosGlobais({ boot }) {
 
 function Root() {
   const session = useSession();
-  const { pathname, search } = useLocation();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
-
-  // Convite por link aberto sem conta: o cadastro/login aparece nesta mesma rota; se o endereço se perder pelo caminho (e-mail de
-  // confirmação), depois de entrar a pessoa volta ao convite (uma vez, em até 2 dias).
-  React.useEffect(() => {
-    if (session.status === "signed-out" && pathname.startsWith("/convite/")) rememberPendingInvite(pathname + search);
-    else if (session.status === "ready" && !pathname.startsWith("/convite/") && (pathname === "/" || pathname === "/home" || pathname === "/estacoes")) {
-      const pending = takePendingInvite();
-      if (pending) navigate(pending, { replace: true });
-    } else if (session.status === "ready" && pathname.startsWith("/convite/")) takePendingInvite();
-  }, [session.status, pathname, search, navigate]);
 
   // Contrato/Termo, Política e Regulamento são públicos: abrem com ou sem login, também carregando ou com erro.
   const publicPath = pathname.replace(/\/+$/, "");
@@ -409,7 +393,6 @@ function Root() {
           <Route path="/dupla/perfil" element={<Screen view="dupla-perfil" />} />
           <Route path="/dupla/estacoes" element={<Navigate to="/estacoes" replace />} />
           <Route path="/dupla/sala/:roomId" element={<Screen view="dupla-sala" />} />
-          <Route path="/convite/:handle" element={<Screen view="convite" />} />
           <Route path="/:route?" element={<Screen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

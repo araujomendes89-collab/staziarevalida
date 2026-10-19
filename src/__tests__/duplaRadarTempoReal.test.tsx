@@ -2,7 +2,7 @@
  * Treinamento em Dupla · radar: tempo real e avisos (jsdom, relógio falso onde há tempo).
  *  - useRadar (live.js): consulta na entrada, a cada 20 s (30 s com canal ao vivo), ao voltar a aba e a rede, quando a Presença muda
  *    (no máximo 1 consulta a cada 5 s), erro mantém a lista, resposta atrasada não vence a nova, trocar a aba limpa a lista.
- *  - InviteWatcher (MatchModal.jsx): convite direto, "Deu match!" e pedido de treino por link.
+ *  - InviteWatcher (MatchModal.jsx): convite direto e "Deu match!".
  * Todas as pessoas são de TESTE.
  */
 import React from "react";
@@ -288,39 +288,26 @@ describe("useRadar", () => {
 });
 
 // ------------------------------------------------------------------------------------------------------- InviteWatcher
-describe("InviteWatcher · convite direto, 'Deu match!' e pedido de treino", () => {
+describe("InviteWatcher · convite direto e 'Deu match!'", () => {
   let invitesNow: any[];
-  let requestsNow: any[];
   let go: any;
   let answerInviteError: Error | null;
-  let answerRequestError: Error | null;
 
   const station = (extra: Record<string, unknown> = {}) => ({ label: "Estação 7", name: "NOME-SECRETO-DA-ESTACAO", area: "Ginecologia e Obstetrícia", duration_ms: 600000, ...extra });
   const direct = (id: string, name: string, extra: Record<string, unknown> = {}) => ({
-    id, room_id: `sala-${id}`, kind: "direto", from: { user_id: `u-${id}`, public_name: name }, station: station(), expires_at: new Date(Date.now() + 60000).toISOString(), ...extra,
+    id, room_id: `sala-${id}`, kind: "direto", from: { user_id: `u-${id}`, public_name: name }, role: "candidate", station: null, expires_at: new Date(Date.now() + 60000).toISOString(), ...extra,
   });
-  const request = (id: string, name: string, extra: Record<string, unknown> = {}) => ({
-    id, from: { user_id: `u-${id}`, public_name: name, handle: "colega.pedido" }, station: station({ label: "Estação 4" }), expires_at: new Date(Date.now() + 86400000).toISOString(), ...extra,
-  });
-
   beforeEach(() => {
     go = vi.fn();
     invitesNow = [];
-    requestsNow = [];
     answerInviteError = null;
-    answerRequestError = null;
     vi.mocked(sound.playMatchSound).mockClear();
     backend.rpc.mockReset();
     backend.rpc.mockImplementation(async (fn: string, args: any) => {
       if (fn === "app_dupla_invites") return { invites: invitesNow, server_now: new Date().toISOString() };
-      if (fn === "app_dupla_requests") return { requests: requestsNow };
       if (fn === "app_dupla_answer_invite") {
         if (answerInviteError) throw answerInviteError;
         return { room_id: args.p_accept ? "sala-aceita" : null };
-      }
-      if (fn === "app_dupla_answer_request") {
-        if (answerRequestError) throw answerRequestError;
-        return { room_id: args.p_accept ? "sala-do-pedido" : null };
       }
       throw new Error(`rpc não simulada: ${fn}`);
     });
@@ -329,28 +316,20 @@ describe("InviteWatcher · convite direto, 'Deu match!' e pedido de treino", () 
   const mountWatcher = () => render(<InviteWatcher go={go} meName="Eu Teste" inviteTick={0} live={false} />);
 
   describe("convite direto", () => {
-    it("abre 'X convidou você para treinar' com Estação N, área e minutos, sem o nome da estação e sem 'Deu match!'", async () => {
+    it("abre 'X te chamou para treinar como candidato', sem a estação (nem número, área ou minutos) e sem 'Deu match!'", async () => {
       invitesNow = [direct("d1", "Colega Teste Um")];
       mountWatcher();
-      const dialog = await screen.findByRole("dialog", { name: "Colega Teste Um convidou você para treinar" });
-      expect(within(dialog).getByText("Estação 7")).toBeTruthy();
-      expect(within(dialog).getByText("Ginecologia e Obstetrícia")).toBeTruthy();
-      expect(within(dialog).getByText("10 min")).toBeTruthy();
+      const dialog = await screen.findByRole("dialog", { name: "Colega Teste Um te chamou para treinar como candidato" });
+      expect(within(dialog).getByText("A estação aparece quando o atendimento começar.")).toBeTruthy();
+      expect(dialog.textContent).not.toMatch(/Estação \d|Ginecologia|min\b/);
       expect(within(dialog).getByRole("button", { name: "Aceitar" })).toBeTruthy();
-      expect(within(dialog).getByRole("button", { name: "Agora não" })).toBeTruthy();
-      expect(document.body.textContent).not.toContain("NOME-SECRETO-DA-ESTACAO");
+      expect(within(dialog).getByRole("button", { name: "Recusar" })).toBeTruthy();
       expect(screen.queryByText("Deu match!")).toBeNull();
       expect(screen.queryByRole("dialog", { name: "Deu match!" })).toBeNull();
       expect(screen.queryByRole("button", { name: "Abrir sala agora" })).toBeNull();
       expect(screen.queryByRole("button", { name: "Continuar buscando" })).toBeNull();
       // o som é o do aviso (desligável), tocado uma vez
       expect(sound.playMatchSound).toHaveBeenCalledTimes(1);
-    });
-
-    it("sem estação no convite: 'A estação se escolhe na sala.'", async () => {
-      invitesNow = [direct("d2", "Colega Teste Um", { station: null })];
-      mountWatcher();
-      expect(await screen.findByText("A estação se escolhe na sala.")).toBeTruthy();
     });
 
     it("'Aceitar' chama app_dupla_answer_invite com p_accept true e vai à sala", async () => {
@@ -362,16 +341,16 @@ describe("InviteWatcher · convite direto, 'Deu match!' e pedido de treino", () 
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     });
 
-    it("'Agora não' chama com p_accept false e não vai à sala", async () => {
+    it("'Recusar' chama com p_accept false e não vai à sala", async () => {
       invitesNow = [direct("d4", "Colega Teste Um")];
       mountWatcher();
-      fireEvent.click(await screen.findByRole("button", { name: "Agora não" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Recusar" }));
       await waitFor(() => expect(rpcCalls("app_dupla_answer_invite")).toEqual([["app_dupla_answer_invite", { p_invite_id: "d4", p_accept: false }]]));
       expect(go).not.toHaveBeenCalled();
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     });
 
-    it("a tecla Esc vale 'Agora não'", async () => {
+    it("a tecla Esc vale 'Recusar'", async () => {
       invitesNow = [direct("d5", "Colega Teste Um")];
       mountWatcher();
       await screen.findByRole("dialog");
@@ -440,91 +419,6 @@ describe("InviteWatcher · convite direto, 'Deu match!' e pedido de treino", () 
       invitesNow = [old];
       mountWatcher();
       expect(await screen.findByRole("dialog", { name: "Deu match!" })).toBeTruthy();
-    });
-  });
-
-  describe("pedido de treino por link", () => {
-    it("mostra '{nome} pediu para treinar com você' com @ e estação sem nome", async () => {
-      requestsNow = [request("r1", "Colega Teste Pedido")];
-      mountWatcher();
-      const dialog = await screen.findByRole("dialog", { name: "Colega Teste Pedido pediu para treinar com você" });
-      expect(within(dialog).getByText("@colega.pedido")).toBeTruthy();
-      expect(within(dialog).getByText("Estação 4")).toBeTruthy();
-      expect(within(dialog).getByText("Ginecologia e Obstetrícia")).toBeTruthy();
-      expect(within(dialog).getByText("10 min")).toBeTruthy();
-      expect(document.body.textContent).not.toContain("NOME-SECRETO-DA-ESTACAO");
-      expect(screen.queryByText("Deu match!")).toBeNull();
-    });
-
-    it("'Aceitar' chama app_dupla_answer_request com p_accept true e vai à sala", async () => {
-      requestsNow = [request("r2", "Colega Teste Pedido")];
-      mountWatcher();
-      fireEvent.click(await screen.findByRole("button", { name: "Aceitar" }));
-      await waitFor(() => expect(go).toHaveBeenCalledWith("dupla-sala", { sala: "sala-do-pedido" }));
-      expect(rpcCalls("app_dupla_answer_request")).toEqual([["app_dupla_answer_request", { p_request_id: "r2", p_accept: true }]]);
-      expect(rpcCalls("app_dupla_answer_invite")).toHaveLength(0);
-    });
-
-    it("'Agora não' chama com p_accept false", async () => {
-      requestsNow = [request("r3", "Colega Teste Pedido")];
-      mountWatcher();
-      fireEvent.click(await screen.findByRole("button", { name: "Agora não" }));
-      await waitFor(() => expect(rpcCalls("app_dupla_answer_request")).toEqual([["app_dupla_answer_request", { p_request_id: "r3", p_accept: false }]]));
-      expect(go).not.toHaveBeenCalled();
-      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    });
-
-    it("Esc só fecha o aviso e NÃO responde ao pedido", async () => {
-      requestsNow = [request("r4", "Colega Teste Pedido")];
-      mountWatcher();
-      await screen.findByRole("dialog");
-      fireEvent.keyDown(document, { key: "Escape" });
-      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-      expect(rpcCalls("app_dupla_answer_request")).toHaveLength(0);
-      expect(rpcCalls("app_dupla_answer_invite")).toHaveLength(0);
-      expect(go).not.toHaveBeenCalled();
-    });
-
-    it("com um convite na tela o pedido espera; quando o convite sai, o pedido aparece", async () => {
-      invitesNow = [direct("d9", "Colega Teste Um")];
-      requestsNow = [request("r5", "Colega Teste Pedido")];
-      mountWatcher();
-      await screen.findByRole("dialog", { name: "Colega Teste Um convidou você para treinar" });
-      expect(screen.queryByText(/pediu para treinar com você/)).toBeNull();
-      expect(screen.getAllByRole("dialog")).toHaveLength(1);
-      fireEvent.click(screen.getByRole("button", { name: "Agora não" }));
-      expect(await screen.findByRole("dialog", { name: "Colega Teste Pedido pediu para treinar com você" })).toBeTruthy();
-      expect(rpcCalls("app_dupla_answer_request")).toHaveLength(0);
-    });
-
-    it("erro do servidor vira aviso e o aviso do pedido continua (o pedido vale 24 h); pedido que já não existe sai da tela", async () => {
-      requestsNow = [request("r6", "Colega Teste Pedido")];
-      answerRequestError = new Error("Colega Teste Pedido não pode receber convites agora.");
-      mountWatcher();
-      fireEvent.click(await screen.findByRole("button", { name: "Aceitar" }));
-      expect(await screen.findByText("Colega Teste Pedido não pode receber convites agora.")).toBeTruthy();
-      expect(go).not.toHaveBeenCalled();
-      expect(screen.queryByRole("dialog")).not.toBeNull(); // quem pediu saiu do ar agora: dá para tentar de novo
-    });
-
-    it("pedido vencido ou já respondido: aviso e a janela sai", async () => {
-      requestsNow = [request("r6b", "Colega Teste Pedido")];
-      answerRequestError = new Error("Pedido já respondido.");
-      mountWatcher();
-      fireEvent.click(await screen.findByRole("button", { name: "Aceitar" }));
-      expect(await screen.findByText("Pedido já respondido.")).toBeTruthy();
-      expect(go).not.toHaveBeenCalled();
-      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    });
-
-    it("pedido vencido não aparece", async () => {
-      requestsNow = [request("r7", "Colega Teste Pedido", { expires_at: new Date(Date.now() - 1000).toISOString() })];
-      mountWatcher();
-      await waitFor(() => expect(rpcCalls("app_dupla_requests").length).toBeGreaterThan(0));
-      await act(async () => {
-        await Promise.resolve();
-      });
-      expect(screen.queryByRole("dialog")).toBeNull();
     });
   });
 });

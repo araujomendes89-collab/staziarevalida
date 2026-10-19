@@ -10,7 +10,6 @@ import { LoadError, Loading, isStaffRole, messageOf } from "../admin/common.jsx"
 import { ROLE_PREF_LABEL, areaByLabel } from "./labels.js";
 import { useDuplaChannel, useHeartbeat, useRadar } from "./live.js";
 import { InviteWatcher } from "./MatchModal.jsx";
-import { InviteLinkButton } from "./InviteLinkButton.jsx";
 import { installAudioWake } from "./sound.js";
 import { ABAS, NEAR_LABEL, STATE_LABEL, filterPeople, invitePerson } from "./radarApi.js";
 
@@ -296,15 +295,6 @@ export function RadarScreen({ go, profile, saved, station, stationId }) {
               onChange={(e) => save({ allow_direct_invites: e.target.checked })}
             />
           </div>
-          {saved.handle && (
-            <div style={{ paddingTop: 16, display: "flex", flexDirection: "column", gap: 6 }}>
-              <span style={{ font: "13px var(--font-sans)", color: "var(--text-tertiary)" }}>
-                Chame um colega que não está online: envie o seu link, por exemplo pelo WhatsApp. Ele só leva o seu @ ({`@${saved.handle}`}).
-              </span>
-              {/* O link leva só o @: o id da estação não vai na URL (o convidado pode ser o candidato). */}
-              <InviteLinkButton handle={saved.handle} />
-            </div>
-          )}
         </div>
 
         <div style={panel}>

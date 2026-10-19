@@ -17,7 +17,7 @@ vi.mock("../novo/app/dupla/sound.js", () => ({ installAudioWake: () => undefined
 vi.mock("../novo/app/dupla/MatchModal.jsx", () => ({ InviteWatcher: () => null }));
 
 import { StudyProfileScreen } from "../novo/app/dupla/StudyProfileScreen.jsx";
-import { copyText, filterPeople, inviteLink, invitePath, rememberPendingInvite, takePendingInvite } from "../novo/app/dupla/radarApi.js";
+import { filterPeople } from "../novo/app/dupla/radarApi.js";
 
 const SAVED = {
   public_name: "Colega Teste Um", handle: "colega.teste", school: "Faculdade de Teste", city: "Cidade Teste · TT", goal: "Treinar de teste", exam: "2026/2", bio: "Bio de teste",
@@ -69,13 +69,13 @@ describe("Perfil de estudo · campo de nome e do @", () => {
     expect(screen.queryByLabelText("Nome público")).toBeNull();
   });
 
-  it("mostra o @ atual sem '@' duplicado, a dica do @ atual e o texto fixo sobre o link antigo", async () => {
+  it("mostra o @ atual sem '@' duplicado, a dica do @ atual e o texto fixo", async () => {
     await open();
     expect(handleInput().value).toBe("colega.teste");
     expect(handleInput().value.startsWith("@")).toBe(false);
     expect(screen.getByText("Seu @ atual. Você pode trocar a cada 15 dias.")).toBeTruthy();
-    expect(screen.getByText(/o link de convite antigo deixa de valer/)).toBeTruthy();
-    expect(screen.getByText(/Trocar o @ não muda seu nome/)).toBeTruthy();
+    expect(screen.getByText(/Trocar o @ não muda seu nome\./)).toBeTruthy();
+    expect(screen.queryByText(/link de convite/)).toBeNull();
   });
 
   it("perfil salvo com '@' no começo é mostrado sem o '@'", async () => {
@@ -188,43 +188,6 @@ describe("Perfil de estudo · troca travada por 15 dias", () => {
   });
 });
 
-describe("Perfil de estudo · link de convite", () => {
-  const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
-  afterEach(() => {
-    if (originalClipboard) Object.defineProperty(navigator, "clipboard", originalClipboard);
-    else delete (navigator as any).clipboard;
-    delete (document as any).execCommand;
-  });
-
-  it("'Copiar link de convite' copia …/novo/convite/<@> e mostra 'Link copiado'", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
-    await open();
-    fireEvent.click(screen.getByRole("button", { name: "Copiar link de convite" }));
-    expect(await screen.findByRole("button", { name: "Link copiado" })).toBeTruthy();
-    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/novo/convite/colega.teste`);
-    expect(screen.queryByLabelText("Link de convite")).toBeNull();
-  });
-
-  it("se a cópia falhar mostra o campo 'Link de convite' com o link para copiar à mão", async () => {
-    Object.defineProperty(navigator, "clipboard", { value: { writeText: vi.fn().mockRejectedValue(new Error("negado")) }, configurable: true });
-    Object.defineProperty(document, "execCommand", { value: () => false, configurable: true });
-    await open();
-    fireEvent.click(screen.getByRole("button", { name: "Copiar link de convite" }));
-    const field = (await screen.findByLabelText("Link de convite")) as HTMLInputElement;
-    expect(field.value).toBe(`${window.location.origin}/novo/convite/colega.teste`);
-    expect(field.readOnly).toBe(true);
-    expect(screen.getByRole("button", { name: "Copiar link de convite" })).toBeTruthy();
-  });
-
-  it("perfil novo (sem @ gravado) não oferece o botão de copiar", async () => {
-    loaded = { profile: null, defaults: { public_name: "Colega Teste Dois", exam: "2026/2" }, stats: { done: 0, avg: null } };
-    await open();
-    expect(screen.queryByRole("button", { name: "Copiar link de convite" })).toBeNull();
-    expect(screen.getByPlaceholderText("Será sorteado ao salvar; você pode escolher o seu")).toBeTruthy();
-  });
-});
-
 describe("Perfil de estudo · salvar com o @", () => {
   it("manda 'handle' e continua mandando allow_direct_invites", async () => {
     await open();
@@ -278,30 +241,6 @@ describe("Perfil de estudo · salvar com o @", () => {
 });
 
 // ------------------------------------------------------------------ radarApi.js · funções puras
-describe("radarApi · invitePath e inviteLink", () => {
-  it("caminho sem estação", () => {
-    expect(invitePath("colega.teste")).toBe("/novo/convite/colega.teste");
-    expect(invitePath("colega.teste", null)).toBe("/novo/convite/colega.teste");
-  });
-  it("tira o '@' do começo", () => {
-    expect(invitePath("@colega.teste")).toBe("/novo/convite/colega.teste");
-    expect(invitePath("@@colega.teste")).toBe("/novo/convite/colega.teste");
-  });
-  it("com estação acrescenta ?estacao= codificado", () => {
-    expect(invitePath("colega.teste", "est-1")).toBe("/novo/convite/colega.teste?estacao=est-1");
-    expect(invitePath("colega.teste", "est 1/2&x")).toBe("/novo/convite/colega.teste?estacao=est%201%2F2%26x");
-  });
-  it("codifica o @ (nada de barra ou espaço solto no caminho)", () => {
-    expect(invitePath("a b/c")).toBe("/novo/convite/a%20b%2Fc");
-    expect(invitePath(null)).toBe("/novo/convite/");
-  });
-  it("inviteLink junta a origem informada ou a do aparelho", () => {
-    expect(inviteLink("colega.teste", "est-1", "https://exemplo.teste")).toBe("https://exemplo.teste/novo/convite/colega.teste?estacao=est-1");
-    expect(inviteLink("@colega.teste", null, "https://exemplo.teste")).toBe("https://exemplo.teste/novo/convite/colega.teste");
-    expect(inviteLink("colega.teste")).toBe(`${window.location.origin}/novo/convite/colega.teste`);
-  });
-});
-
 describe("radarApi · filterPeople por @", () => {
   const people = [
     { public_name: "Colega Teste Um", handle: "colega.um", school: "Faculdade A", areas: ["GO"] },
@@ -319,108 +258,5 @@ describe("radarApi · filterPeople por @", () => {
   });
   it("pessoa sem @ ainda é achada pelo nome", () => {
     expect(filterPeople([{ public_name: "Colega Sem Arroba" }], "arroba")).toHaveLength(1);
-  });
-});
-
-describe("radarApi · convite pendente", () => {
-  beforeEach(() => localStorage.clear());
-  const KEY = "dupla:convite-pendente";
-
-  it("guarda e devolve /convite/<@> uma única vez", () => {
-    rememberPendingInvite("/convite/colega.teste");
-    expect(takePendingInvite()).toBe("/convite/colega.teste");
-    expect(localStorage.getItem(KEY)).toBeNull();
-    expect(takePendingInvite()).toBeNull();
-  });
-  it("aceita ?estacao=", () => {
-    rememberPendingInvite("/convite/colega.teste?estacao=est-1");
-    expect(takePendingInvite()).toBe("/convite/colega.teste?estacao=est-1");
-  });
-  it("aceita @ codificado", () => {
-    rememberPendingInvite("/convite/colega%2Eteste");
-    expect(takePendingInvite()).toBe("/convite/colega%2Eteste");
-  });
-  it.each([
-    "/admin",
-    "/convite/",
-    "/convite/a/b",
-    "/novo/convite/colega.teste",
-    "//exemplo.invalid/convite/x",
-    "https://exemplo.invalid/convite/x",
-    "/convite/x?outro=1",
-    "/convite/x?estacao=",
-    "/convite/x?estacao=a&b=c",
-    "/convite/x#frag",
-    "/convite/x y",
-  ])("recusa o caminho %s (e esquece)", (path) => {
-    rememberPendingInvite(path);
-    expect(takePendingInvite()).toBeNull();
-    expect(localStorage.getItem(KEY)).toBeNull();
-  });
-  it("recusa entrada com mais de 2 dias, mas aceita a de pouco menos", () => {
-    localStorage.setItem(KEY, JSON.stringify({ path: "/convite/colega.teste", at: Date.now() - 2 * 86400000 - 60000 }));
-    expect(takePendingInvite()).toBeNull();
-    expect(localStorage.getItem(KEY)).toBeNull();
-    localStorage.setItem(KEY, JSON.stringify({ path: "/convite/colega.teste", at: Date.now() - 86400000 }));
-    expect(takePendingInvite()).toBe("/convite/colega.teste");
-  });
-  it("entrada estragada não lança erro", () => {
-    localStorage.setItem(KEY, "{isto não é json");
-    expect(takePendingInvite()).toBeNull();
-    localStorage.setItem(KEY, JSON.stringify({ path: 42, at: Date.now() }));
-    expect(takePendingInvite()).toBeNull();
-    expect(takePendingInvite()).toBeNull();
-  });
-});
-
-describe("radarApi · copyText", () => {
-  const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
-  afterEach(() => {
-    if (originalClipboard) Object.defineProperty(navigator, "clipboard", originalClipboard);
-    else delete (navigator as any).clipboard;
-    delete (document as any).execCommand;
-  });
-  const setClipboard = (writeText: any) => Object.defineProperty(navigator, "clipboard", { value: writeText ? { writeText } : undefined, configurable: true });
-  const setExec = (fn: any) => Object.defineProperty(document, "execCommand", { value: fn, configurable: true });
-
-  it("usa a API moderna", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    const exec = vi.fn(() => true);
-    setClipboard(writeText);
-    setExec(exec);
-    expect(await copyText("texto de teste")).toBe(true);
-    expect(writeText).toHaveBeenCalledWith("texto de teste");
-    expect(exec).not.toHaveBeenCalled();
-  });
-  it("se a API moderna recusar, cai no execCommand e limpa o campo oculto", async () => {
-    setClipboard(vi.fn().mockRejectedValue(new Error("negado")));
-    const exec = vi.fn(() => true);
-    setExec(exec);
-    expect(await copyText("texto de teste")).toBe(true);
-    expect(exec).toHaveBeenCalledWith("copy");
-    expect(document.querySelector("textarea")).toBeNull();
-  });
-  it("sem API moderna usa o execCommand", async () => {
-    setClipboard(null);
-    const exec = vi.fn(() => true);
-    setExec(exec);
-    expect(await copyText("texto de teste")).toBe(true);
-    expect(exec).toHaveBeenCalledWith("copy");
-  });
-  it("devolve false (sem lançar) se tudo falhar", async () => {
-    setClipboard(vi.fn().mockRejectedValue(new Error("negado")));
-    setExec(() => false);
-    await expect(copyText("texto de teste")).resolves.toBe(false);
-    expect(document.querySelector("textarea")).toBeNull();
-    setExec(() => {
-      throw new Error("sem suporte");
-    });
-    await expect(copyText("texto de teste")).resolves.toBe(false);
-    // (o campo oculto fica no documento quando execCommand lança: ver relatório, radarApi.js:113-114; não é afirmado aqui)
-    document.querySelectorAll("textarea").forEach((t) => t.remove());
-  });
-  it("sem API moderna e sem execCommand devolve false", async () => {
-    setClipboard(null);
-    await expect(copyText("texto de teste")).resolves.toBe(false);
   });
 });

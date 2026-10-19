@@ -1,11 +1,10 @@
 // Treino em Dupla · campo "Nome de usuário (@)" do perfil de estudo (migrações 014000/014010). O servidor sorteia um @ neutro
 // ("revalida.k7m2") ao criar o perfil; a pessoa pode trocar. Enquanto digita, a tela pergunta ao servidor e mostra "Disponível." ou o
 // motivo ("Esse @ já está em uso." etc.). No máximo 1 troca a cada 15 dias; o @ sorteado não conta. Trocar o @ NÃO muda o nome
-// público nem nada que dependa da conta, mas o link de convite antigo deixa de valer.
+// público nem nada que dependa da conta.
 import React from "react";
 import { TextField } from "../../ds";
 import { useSession } from "../session.jsx";
-import { InviteLinkButton } from "./InviteLinkButton.jsx";
 
 const clean = (v) => String(v ?? "").replace(/^@+/, "").trim().toLowerCase();
 
@@ -76,9 +75,8 @@ export function HandleField({ saved, value, onChange, hasProfile }) {
         hint={hint}
       />
       <span style={{ font: "12px/1.45 var(--font-sans)", color: "var(--text-tertiary)" }}>
-        De 3 a 20 caracteres: letras minúsculas, números, ponto ou sublinhado. Trocar o @ não muda seu nome, mas o link de convite antigo deixa de valer.
+        De 3 a 20 caracteres: letras minúsculas, números, ponto ou sublinhado. Trocar o @ não muda seu nome.
       </span>
-      {hasProfile && saved && <InviteLinkButton handle={saved} />}
     </div>
   );
 }
